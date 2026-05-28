@@ -29,7 +29,7 @@ async function setup() {
   const E = eng.window.__rivalTest;
   assert.ok(E && typeof E.rollTrainerTeam === 'function', 'rollTrainerTeam must be exposed on __rivalTest');
   assert.ok(typeof E.getRivalEncounterPhase === 'function', 'getRivalEncounterPhase must be exposed');
-  assert.ok(typeof E._rivalCounterPlan === 'function', '_rivalCounterPlan must be exposed');
+  assert.ok(typeof E._rivalBuildCounterTypePool === 'function', '_rivalBuildCounterTypePool must be exposed');
   return eng;
 }
 
@@ -59,38 +59,48 @@ function hasAnyType(E, name, types) {
 // Unit tests — the plan helpers in isolation (no RNG, no engine roll).
 // ---------------------------------------------------------------------------
 
-test('_rivalCounterPlan: per-phase forced-counter / flex / decay shape', async () => {
-  const { window } = await setup();
-  const P = window.__rivalTest._rivalCounterPlan;
+test('_rivalBuildCounterTypePool: scored list of every counter type, distinct, score-sorted', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const build = E._rivalBuildCounterTypePool;
 
-  const intro = P(0, 1);
-  assert.equal(intro.forcedCounter, 1, 'intro: lone slot is a forced counter');
-  assert.equal(intro.flexSlots, 0);
-  assert.equal(intro.sigP, 0, 'intro: no signature roll');
+  // A true monotype-Water party: only Grass / Electric are super-effective vs pure Water.
+  E.sm.team = ['Squirtle', 'Wartortle', 'Blastoise', 'Vaporeon', 'Psyduck', 'Goldeen'].map((n) => ({ name: n, build: {} }));
+  const water = build();
+  assert.ok(water.length >= 1 && water.length <= 2, `pure-Water -> {Grass,Electric}, got [${water.join(', ')}]`);
+  assert.ok(water.every((t) => ['Grass', 'Electric'].includes(t)), `Water counters are Grass/Electric: [${water.join(', ')}]`);
+  assert.equal(new Set(water).size, water.length, 'list is distinct');
 
-  const early = P(2, 3);
-  assert.equal(early.forcedCounter, 1);
-  assert.equal(early.flexSlots, 2);
-  assert.equal(early.sigP, 0.45);
+  // A type-diverse party yields several distinct counters, sorted by punish-score.
+  E.sm.team = ['Charizard', 'Venusaur', 'Blastoise', 'Pikachu', 'Machamp', 'Gengar'].map((n) => ({ name: n, build: {} }));
+  const diverse = build();
+  assert.ok(diverse.length >= 3, `diverse party -> >=3 distinct counters, got [${diverse.join(', ')}]`);
+  assert.equal(new Set(diverse).size, diverse.length, 'all distinct');
 
-  const mid = P(3, 5);
-  assert.equal(mid.forcedCounter, 2);
-  assert.equal(mid.flexSlots, 3);
-  assert.equal(mid.sigP, 0.40);
+  // dual-OK scoring: a lone Gyarados (Water/Flying) is hit 4x by Electric, so Electric
+  // ranks first; the second type isn't separately tracked, just the net effectiveness.
+  E.sm.team = [{ name: 'Gyarados', build: {} }];
+  const gy = build();
+  assert.equal(gy[0], 'Electric', `Gyarados -> Electric leads (4x), got [${gy.join(', ')}]`);
+});
 
-  const league = P(4, 6);
-  assert.equal(league.forcedCounter, 3, 'league: 3 forced counter slots');
-  assert.equal(league.flexSlots, 3, 'league: 3 flex (sig-eligible) slots');
-  assert.equal(league.sigP, 0.35);
-  assert.equal(league.decay, 15, 'league: harder decay so a counter-type does not repeat across six');
-
-  const fallback = P(null, 6); // routed rematch / non-standard rival row
-  assert.equal(fallback.forcedCounter, 2);
-  assert.equal(fallback.decay, 10);
-
-  // forcedCounter never exceeds the actual party size.
-  assert.equal(P(4, 2).forcedCounter, 2);
-  assert.equal(P(3, 1).forcedCounter, 1);
+test('cycle-back: vs a monotype party the rival repeats its few counters across all slots', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  primeStory(E, ['Squirtle', 'Wartortle', 'Blastoise', 'Vaporeon', 'Psyduck', 'Goldeen']); // pure Water
+  const trainer = makeRivalTrainer();
+  const COUNTER = ['Grass', 'Electric'];
+  let totalFrac = 0;
+  const N = 40;
+  for (let s = 0; s < N; s++) {
+    eng.seedRng(13000 + s);
+    const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
+    totalFrac += team.filter((m) => hasAnyType(E, m.name, COUNTER)).length / 6;
+  }
+  const avg = totalFrac / N;
+  // Only Grass/Electric counter pure Water; cycling repeats them across all 6 slots
+  // (the old distinct+random model capped near 2/6).
+  assert.ok(avg >= 0.7, `pure-Water rival is Grass/Electric ${(avg * 100).toFixed(0)}% — cycling should fill most slots (>=70%)`);
 });
 
 test('_rivalIntroStarterCounterType: GB starter triangle, null for non-classical', async () => {
@@ -137,9 +147,12 @@ test('counter dominance: the rival skews toward types that beat YOUR party (Wate
     ['Charmander', 'Ninetales', 'Arcanine', 'Flareon', 'Magmar', 'Rapidash'], COUNTER, 60, 7000);
 
   assert.equal(water.teamsWithCoverage, water.N, 'every league rival team vs a Water party should carry >=1 Grass/Electric counter');
-  assert.ok(water.avgFrac >= 0.4,
-    `vs Water: avg Grass/Electric coverage ${(water.avgFrac * 100).toFixed(0)}% should be >= 40%`);
-  assert.ok(water.avgFrac >= fire.avgFrac + 0.15,
+  // Pure-distinct: a Water party exposes ~2 distinct counters (Grass, Electric); the
+  // remaining slots random-fill, so coverage sits lower than the old stack-the-counter
+  // model but is still clearly elevated vs a party those types do not counter.
+  assert.ok(water.avgFrac >= 0.28,
+    `vs Water: avg Grass/Electric coverage ${(water.avgFrac * 100).toFixed(0)}% should be >= 28%`);
+  assert.ok(water.avgFrac >= fire.avgFrac + 0.12,
     `counter logic must respond to the player's typing: Water ${(water.avgFrac * 100).toFixed(0)}% should clearly exceed Fire ${(fire.avgFrac * 100).toFixed(0)}%`);
 });
 
@@ -173,28 +186,61 @@ test('no duplicate species in a generated rival team', async () => {
   }
 });
 
-test('signatures are cameos, not the backbone: low average sig count at league', async () => {
+test('pure counter: signatures are never injected (only coincidental at most)', async () => {
   const eng = await setup();
   const E = eng.window.__rivalTest;
+  // The RIVAL_SIGS carry no Grass/Electric STAB, so vs a Water party none of them is a
+  // valid counter pick — they can only appear as a rare random fallback, never as a
+  // deliberate cameo. Expect ~zero across many rolls.
   primeStory(E, ['Squirtle', 'Lapras', 'Vaporeon', 'Gyarados', 'Wartortle', 'Blastoise']);
   const trainer = makeRivalTrainer();
   const sigSet = new Set(RIVAL_SIGS);
 
   let totalSigs = 0;
-  let teamsWithSomeSig = 0;
   const N = 200;
   for (let s = 0; s < N; s++) {
     eng.seedRng(4000 + s);
     const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
-    const sigs = team.filter((m) => sigSet.has(m.name)).length;
-    totalSigs += sigs;
-    if (sigs > 0) teamsWithSomeSig++;
+    totalSigs += team.filter((m) => sigSet.has(m.name)).length;
   }
   const avgSigs = totalSigs / N;
-  // 3 flex slots @ 0.35 -> ~1 sig expected; counters fill the other ~5 slots.
-  assert.ok(avgSigs < 3, `avg sig count ${avgSigs.toFixed(2)} should be < 3 (signatures are cameos)`);
-  assert.ok(avgSigs >= 0.2, `avg sig count ${avgSigs.toFixed(2)} should be >= 0.2 (cameos still appear)`);
-  assert.ok(teamsWithSomeSig < N, 'not every team should contain a signature');
+  assert.ok(avgSigs < 0.5, `avg sig count ${avgSigs.toFixed(2)} should be < 0.5 (pure counter never injects signatures)`);
+});
+
+test('rival taunt name is "<player> Sucks", canonical fallback when unnamed', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const prevProfile = E.sm.trainerProfile;
+  E.sm.trainerProfile = { name: 'Red' };
+  assert.equal(E._storyRivalTauntName('Blue'), 'Red Sucks');
+  E.sm.trainerProfile = null;
+  assert.equal(E._storyRivalTauntName('Blue'), 'Blue', 'no player name -> keep canonical identity');
+  E.sm.trainerProfile = { name: '   ' };
+  assert.equal(E._storyRivalTauntName('Silver'), 'Silver', 'blank/whitespace name -> keep canonical');
+  E.sm.trainerProfile = prevProfile;
+});
+
+test('rival taunt-name swap preserves the canonical dialogue pool', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  assert.equal(typeof E.getTrainerQuoteForBattle, 'function', 'getTrainerQuoteForBattle exposed');
+  E.sm.active = false;
+  E.sm.badges = 2;
+  const row = E.STORY_RIVAL_ROW_EARLY;
+  const BLUE_LINES = ['Smell ya later… if you can win!', 'Gramps was right—you\'re not half bad!', 'I\'m the real deal!'];
+  const collect = (trainer, n) => {
+    const out = new Set();
+    for (let s = 0; s < n; s++) { eng.seedRng(11000 + s); out.add(E.getTrainerQuoteForBattle(trainer, 'Rival', row)); }
+    return out;
+  };
+  const canonical = collect({ name: 'Blue', role: 'Rival' }, 400);
+  const swapped = collect({ name: 'Red Sucks', canonName: 'Blue', role: 'Rival' }, 400);
+  // Swapping the displayed name to "<player> Sucks" must not change what the rival can say.
+  assert.deepEqual([...swapped].sort(), [...canonical].sort(), 'swapped rival draws the identical quote pool');
+  assert.ok(BLUE_LINES.some((l) => swapped.has(l)), 'Blue\'s canonical per-name lines survive the swap (via canonName)');
+  // Control: without canonName the lookup would key on "Red Sucks" and drop the per-name lines.
+  const broken = collect({ name: 'Red Sucks', role: 'Rival' }, 400);
+  assert.ok(!BLUE_LINES.some((l) => broken.has(l)), 'without canonName the per-name lines are lost (proves canonName matters)');
 });
 
 test('trainer.sigs array is not mutated by a team roll', async () => {

@@ -8015,6 +8015,23 @@
             color: #b3c2d6;
             box-shadow: inset -3px -3px 0px 0px #181a22, inset 3px 3px 0px 0px #3a3e4d;
         }
+        /* Collection: header (back/title) + tabs stay pinned; only the body scrolls.
+           Scoped to #screen-collection so other .story-screen-outer screens are unaffected. */
+        #screen-collection { overflow: hidden; }
+        #screen-collection .story-collection-shell {
+            flex: 1 1 auto;
+            min-height: 0;
+            width: 100%;
+            padding-bottom: 0;
+        }
+        #screen-collection .story-collection-head,
+        #screen-collection .story-collection-tabs { flex-shrink: 0; }
+        #screen-collection .story-collection-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+        }
 
         /* Pokédex tab content */
         .pdex-summary {
@@ -8268,14 +8285,10 @@
             </div>
 
             <button type="button" class="menu-btn-quickplay menu-btn-quickplay--story" onclick="window.StoryMode && window.StoryMode.showMenu()">&#9670; Story Mode</button>
-            <div class="menu-collection-row">
-                <button type="button" class="menu-collection-btn" onclick="window.StoryMode && window.StoryMode.openCollection && window.StoryMode.openCollection('pokedex')" aria-label="Open Pokédex, Achievements, and Hall of Fame">
-                    <span class="menu-collection-icon" aria-hidden="true">📖</span>
-                    <span class="menu-collection-text">Collection</span>
-                    <span class="menu-collection-sub" aria-hidden="true">Pokédex · Trophies · Hall of Fame</span>
-                </button>
-            </div>
-            <button type="button" class="menu-customize-toggle" id="menu-customize-toggle" aria-expanded="false" aria-controls="menu-customize-panel" onclick="window.menuToggleCustomize && window.menuToggleCustomize()">
+            <!-- Collection moved into the Story Mode page (removed from the home screen per spec). -->
+            <!-- Other play modes (vs AI / Local PvP / Online / Gauntlet) are paused for development.
+                 The reveal toggle below is hidden but kept in the DOM — un-hide it to bring them back. -->
+            <button type="button" class="menu-customize-toggle" id="menu-customize-toggle" aria-expanded="false" aria-controls="menu-customize-panel" onclick="window.menuToggleCustomize && window.menuToggleCustomize()" hidden style="display:none;">
                 <span>Other play modes &amp; draft rules</span><span class="chev" aria-hidden="true">▼</span>
             </button>
         </div>
@@ -8666,8 +8679,7 @@
             <button class="story-menu-btn story-menu-btn--continue" id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="display:none;">&#9654; Continue Run</button>
             <button class="story-menu-btn story-menu-btn--new" onclick="window.StoryMode.openTrainerCreate()">&#9670; New Adventure</button>
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
-            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Pokédex &amp; Collection</button>
-            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('achievements')">&#127942; Achievements</button>
+            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Collection</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
             <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
         </div>
@@ -9261,7 +9273,6 @@
                 <div class="story-create-trainer-row">
                     <div class="story-create-portrait">
                         <img id="story-create-sprite" alt="Trainer sprite" decoding="async">
-                        <div class="story-create-portrait-name" id="story-create-portrait-name">Red</div>
                     </div>
                     <div class="story-create-trainer-controls">
                         <label class="story-create-field">
@@ -9308,9 +9319,7 @@
 
             <section class="story-create-section">
                 <h2 class="story-create-sec-title">3 &mdash; Storyline</h2>
-                <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
-                <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
-                <p id="story-create-storyline-warn" class="story-create-storyline-warn" aria-live="polite" style="margin-top:6px;"></p>
+                <p style="color:#888;font-size:11px;margin:0 0 6px;">Your storyline is rolled at random when you begin &mdash; you&rsquo;ll see which one you got before you set out. The road north is the same; who walks it with you and what waits at the cage is the surprise.</p>
             </section>
 
             <section class="story-create-section">
@@ -9382,6 +9391,7 @@
                 <button type="button" class="story-collection-tab" id="collection-tab-ach" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('achievements')">&#127941; Achievements</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-hof" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('hof')">&#127942; Hall of Fame</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-rival" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('rival')">&#9876;&#65039; Rivalry</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-sig" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('signatures')">&#11088; Signatures</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-memorial" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('memorial')">&#128369;&#65039; Memorial</button>
             </div>
             <div class="story-collection-body" id="collection-body" role="tabpanel">
@@ -10997,7 +11007,7 @@ All four are always on. In Classic mode each team gets one per battle; in Unlimi
 <b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a matching Z-Crystal unleashes one colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
 The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
-Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 4 runs as a self-contained session with its own balls, Bait, and Rocks. The Caged God in the post-game needs the Master Ball — saved for that one fight.<br>
+Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. The Caged God in the post-game needs the Master Ball — saved for that one fight.<br>
 <b>Catch chance</b> = species rate × ball multiplier. Poké Ball <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates climb with rarity: G1 12%, G2 22%, G3 35%, G4 50%. On a missed throw the wild may flee, with G1 the most likely to bolt and G4 the least.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Build Power Tiers (T1 → T4)</h3>
 Every Pokémon carries a training tier, separate from its species grade:<br>
@@ -11018,7 +11028,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
 <b>Relic Annex</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides.<br>
 <b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random Vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
-<b>Safari Zone</b> (City 4) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
+<b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
 After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure. The <b>Caged God</b> boss arc needs three corrupted-Center leads scattered through the post-game, then the Master Ball.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Useful Habits</h3>
@@ -14329,14 +14339,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
         // Two stacking layers:
-        //   1. Early-game softening (extended through Gym 3): protects fresh saves from RNG bricks.
-        //        - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT     0.82 (deepest)
-        //        - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT     0.95
-        //        - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT   0.92
-        //        - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT     0.95
-        //        - badges 2, non-GL fight   → EARLY_GAME_FOE_STAT_MULT   0.92
-        //        - badges 2, Gym Leader 3   → STAGE2_GL_FOE_STAT_MULT    0.97 (gentlest — Stage 2 entry)
-        //        - badges >= 3 (Gym 4+)     → 1.00, softening ends
+        //   1. Early-game nerf (story spec): a starting stat penalty that fades over the
+        //      first three CITIES and applies symmetrically to every foe in them —
+        //      ~20% at the start (City 0), 15% at City 1, 10% at City 2, 0% from City 3 on.
+        //      Keyed on the city clock (not badges) so City 0 and City 1 — both before the
+        //      first badge — get different softening. See FOE_STAT_NERF_BY_CITY.
         //   2. Stage-gated late-game ramp ("slightly harder than Fire Red" past G2 unlock):
         //        - Stages 1–2 (badges 0–4) → 1.00 (true FR feel)
         //        - Stage 3 start (G6, badge 5) → 1.05
@@ -14346,20 +14353,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The "gym leaders keep their signature ace identity" guarantee is enforced through
         // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
         // while signature aces stay in the canonical grade), not via per-mon stat exemptions.
-        // Set any constant to 1.0 to disable that tier's softening.
-        // Module-level consts (read directly by _earlyGameFoeStatMult below). Also exported
-        // to window for any external/console reader. Previously these lived only on window,
-        // which made them silently `undefined` if a top-level read ran before assignment.
-        const PRE_GYM1_FOE_STAT_MULT     = 0.82;
-        const EARLY_GAME_FOE_STAT_MULT   = 0.92;
-        const EARLY_GL_FOE_STAT_MULT     = 0.95;
-        const EARLY_GL2_FOE_STAT_MULT    = 0.97; // GL2 — un-flatten the GL1≡GL2 start
-        const STAGE2_GL_FOE_STAT_MULT    = 0.99; // GL3 gentle softening — Stage 2 entry
-        window.PRE_GYM1_FOE_STAT_MULT     = PRE_GYM1_FOE_STAT_MULT;
-        window.EARLY_GAME_FOE_STAT_MULT   = EARLY_GAME_FOE_STAT_MULT;
-        window.EARLY_GL_FOE_STAT_MULT     = EARLY_GL_FOE_STAT_MULT;
-        window.EARLY_GL2_FOE_STAT_MULT    = EARLY_GL2_FOE_STAT_MULT;
-        window.STAGE2_GL_FOE_STAT_MULT    = STAGE2_GL_FOE_STAT_MULT;
+        const FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]; // index = city; City ≥3 → 1.0
+        window.FOE_STAT_NERF_BY_CITY = FOE_STAT_NERF_BY_CITY;
         // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
         // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
         // and skips the turn. Read via the public getter (window.StoryMode.state, which
@@ -14371,25 +14366,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _earlyGameFoeStatMult() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm) return 1.0;
-            const badges = sm.badges | 0;
-            if (badges >= 3) return 1.0;
             const idx = sm.eventIndex | 0;
             // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
             const SER = window.STORY_EVENTS_RAW;
-            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            if (!SER) return 1.0;
+            const row = (idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            // Only soften actual battles; city/hub rows pass through at 1.0.
             if (!row || row[1] !== 'Battle') return 1.0;
-            const evt = String(row[2] || '');
-            if (badges === 0) {
-                if (evt === 'Gym Leader 1') return EARLY_GL_FOE_STAT_MULT;
-                return PRE_GYM1_FOE_STAT_MULT;
+            // Current city = the nearest preceding City row's index.
+            let city = -1;
+            for (let i = Math.min(idx, SER.length - 1); i >= 0; i--) {
+                const r = SER[i];
+                if (r && r[1] === 'City') { const m = String(r[2] || '').match(/City\s*(\d+)/); city = m ? (+m[1]) : -1; break; }
             }
-            if (badges === 1) {
-                if (evt === 'Gym Leader 2') return EARLY_GL2_FOE_STAT_MULT;
-                return EARLY_GAME_FOE_STAT_MULT;
-            }
-            // badges === 2 (Stage 1→2 boundary, G3 era starting)
-            if (evt === 'Gym Leader 3') return STAGE2_GL_FOE_STAT_MULT;
-            return EARLY_GAME_FOE_STAT_MULT;
+            if (city < 0 || city >= FOE_STAT_NERF_BY_CITY.length) return 1.0;
+            return FOE_STAT_NERF_BY_CITY[city];
         }
         window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
         // Stage-gated foe stat mult: the "slightly harder than Fire Red" ramp the design
@@ -29647,11 +29638,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [39,'Battle','Rival',{g1:0,g2:50,g3:50,g4:0},5400,null],
           [41,'Battle','Basic Trainer',{g1:0,g2:20,g3:80,g4:0},2500,null],
           [42,'Battle','Elite Trainer',{g1:0,g2:40,g3:60,g4:0},2900,null],
-          [43,'City','City7',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Poké Casino','Gym Battle','Leave City']],
+          [43,'City','City7',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [44,'Battle','Gym Trainer 1',{g1:0,g2:35,g3:65,g4:0},3550,null],
           [45,'Battle','Gym Trainer 2',{g1:0,g2:45,g3:55,g4:0},3550,null],
           [46,'Battle','Gym Leader 7',{g1:0,g2:50,g3:50,g4:0},5800,null],
-          [47,'City','City7',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Poké Casino','Leave City']],
+          [47,'City','City7',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [48,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},3000,null],
           [49,'Battle','Elite Trainer',{g1:0,g2:80,g3:20,g4:0},3000,null],
           [50,'City','City8',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
@@ -29681,11 +29672,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
-            mart: 0, tutor: 0, nature: 1, center: 0, relic: 0, artifacts: 0,
+            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0, artifacts: 0,
             link: 2, stoneShop: 3, evolab: 2,
-            dept: 4, casino: 5, dojo: 2, evtrainer: 7, safari: 5,
+            dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
             colress: 6,
-            bag: 0, party: 0, fanclub: 1, // one-time intros: Bag + Party at the start town; Fan Club at the first gym city
+            bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
         // than dirty every row of the literal above, we splice 'Pokémon Fan Club'
@@ -29703,6 +29694,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { fac: 'Move Tutor', minCity: 0 },
                 { fac: 'Nature Rater', minCity: 1 },     // Nature Rater debuts at the first gym city
                 { fac: 'Pokémon Fan Club', minCity: 1 },
+                { fac: 'Battle Dojo', minCity: 1 },       // Battle Dojo (White Belt) debuts at City 1, present C1+
                 { fac: 'Evolution Tutor', minCity: 2 },   // Stone Sage debuts at City 2
             ];
             for (const row of STORY_EVENTS_RAW) {
@@ -29761,24 +29753,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
-        // Professor gifts: the gift now honors the same evolution-stage cap as
-        // enemies/wilds (_storyEvoStageCapForCity) — C0-1 basics-only, C2-5 +first-evos,
-        // C6+ unrestricted — so the gift is a stage-appropriate partner you grow, not a
-        // pre-evolved mon that out-classes the basics you actually face early.
+        // Professor gifts honor their own evolution-stage cap
+        // (_professorEvoStageCapForCity) — Basic C0-2 · Stage-1 C3-5 · ALL C6 — so the
+        // gift is a stage-appropriate partner you grow, not a pre-evolved mon that
+        // out-classes the basics you actually face early.
         // Stage 2 (G3 era): Cities 3–5 settle into G3.
         // Stage 3 (G2 era): City 6 transition, Cities 7–8 settle into G2.
         // Stage 4 (G1 era): City 9 league hub stays G1 legendary pool.
+        // Professor gift grade mix by city (Sheet 5). The gift rides the same weak-early
+        // curve as the rest of the build sheet: pure G4 at C0, G3 creeping in, a G2 tail
+        // opening C4 and taking over by C6 (the last professor city). C7+ are kept as a
+        // safe extrapolation — the spec has no professor past C6, and C8 is the Mystery
+        // Figure (overridden by mystery mode), C9 the League legendary gate.
         const PROF_ROLLS = [
-          {g1:0,  g2:0,  g3:50,  g4:50 }, // City0 — basics-only (stage cap); G3/G4 so the gift matches the unevolved foes
-          {g1:0,  g2:0,  g3:50,  g4:50 }, // City1 — basics-only, G3/G4
-          {g1:0,  g2:10, g3:60,  g4:30 }, // City2 — G2 reachable unconditionally, G3 majority, residual G4 tail
-          {g1:0,  g2:0,  g3:80,  g4:20 }, // City3 — G3 settling in
-          {g1:0,  g2:0,  g3:100, g4:0  }, // City4 — G3 era
-          {g1:0,  g2:0,  g3:100, g4:0  }, // City5 — G3 era
-          {g1:0,  g2:30, g3:70,  g4:0  }, // City6 — G2 introduced
-          {g1:0,  g2:60, g3:40,  g4:0  }, // City7 — G2 emerging
-          {g1:0,  g2:100,g3:0,   g4:0  }, // City8 — G2 era
-          {g1:100,g2:0,  g3:0,   g4:0  }, // City9 — League City (post-G8 legendary gate)
+          {g1:0,  g2:0,  g3:0,   g4:100}, // C0 — pure G4 basic
+          {g1:0,  g2:0,  g3:20,  g4:80 }, // C1
+          {g1:0,  g2:0,  g3:40,  g4:60 }, // C2
+          {g1:0,  g2:0,  g3:60,  g4:40 }, // C3
+          {g1:0,  g2:20, g3:60,  g4:20 }, // C4 — G2 tail opens
+          {g1:0,  g2:50, g3:50,  g4:0  }, // C5
+          {g1:0,  g2:70, g3:30,  g4:0  }, // C6 — last professor city
+          {g1:0,  g2:80, g3:20,  g4:0  }, // C7 — extrapolation (no professor in spec)
+          {g1:0,  g2:100,g3:0,   g4:0  }, // C8 — Mystery Figure city (overridden by mystery mode)
+          {g1:100,g2:0,  g3:0,   g4:0  }, // C9 — League City (post-G8 legendary gate)
         ];
         // Maps each gym leader's name to their in-game city/town
         const GYM_LEADER_CITY_NAMES = {
@@ -30480,6 +30477,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // City-8 post-Gym-8 legendary gate is the lone exception — required swap-in,
             // takes precedence over the post-gym suppression below.
             if (isPreLeagueLegendaryMysteryGate(c)) return true;
+            // Per the facility matrix the Professor recruits only through City 6 (says
+            // goodbye there) and is gone from City 7 on. The C8 legendary (Mystery
+            // Figure) handoff above is the lone post-C6 exception.
+            if (c >= 7) return false;
             // Post-gym hubs intentionally don't auto-force the Professor. The badge
             // unlocks the +1 slot, but the new partner is meant to come from the
             // *next* city's Professor — after the player walks the route (with its
@@ -30665,14 +30666,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spe: Math.floor(Math.random() * 32)
             };
         }
-        // Wild IVs rise with the run: early catches roll under a low cap, late catches
-        // can approach perfect. Keeps early wild catches honestly weaker than late ones.
-        function _rollCappedIVs(cap) {
-            const c = Math.max(3, Math.min(31, cap | 0));
-            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const roll = () => Math.floor(rng() * (c + 1));
-            return { hp:roll(), atk:roll(), def:roll(), spa:roll(), spd:roll(), spe:roll() };
-        }
         // Enemy IV scaling by training tier — matches the existing T1..T4 curve
         // (`_storyBuildTierForEvent`). Aces get the top quartile of their tier's
         // range so a leader's signature mon still feels surgical compared to its
@@ -30695,6 +30688,131 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const roll = () => Math.max(0, Math.min(31, (center - 3) + Math.floor(rng() * 7)));
             return { hp:roll(), atk:roll(), def:roll(), spa:roll(), spd:roll(), spe:roll() };
+        }
+        // ── CITY-CURVE IVs (story build sheets) ────────────────────────────
+        // Per-stat IV [min,max] indexed by ARRIVED city. Two source shapes:
+        //   trainers  : tight band that climbs with city (route fodder is genuinely
+        //               weak early); difficulty shifts the band UP by whole city-steps
+        //               (basic +0 · gym/elite +1 · leader/rival/E4 +2).
+        //   wild/prof : wider "0..cap" band whose FLOOR rises with city — a late catch
+        //               can be near-perfect but is never guaranteed (improves with
+        //               stage only, no difficulty axis).
+        const STORY_IV_CITY_TRAINER = Object.freeze([
+            [0, 0], [0, 5], [5, 10], [10, 15], [15, 20], [20, 25], [25, 31], [31, 31],
+        ]);
+        const STORY_IV_CITY_WILDPROF = Object.freeze([
+            [0, 10], [0, 20], [0, 31], [5, 31], [10, 31], [15, 31], [20, 31], [25, 31],
+        ]);
+        // Difficulty → city-step shift for the trainer IV band (Sheet 4: rolls improve
+        // with BOTH stage and trainer-type difficulty).
+        function _trainerDifficultyStep(eventType) {
+            const e = String(eventType || '');
+            // Endgame league untouched at +2 — E4 / Champion / Mystery / Victory Road must
+            // remain the peak-difficulty spike (and at C8+ the table clamps to max anyway).
+            if (e === 'Champion' || e === 'Mystery Figure' || e === 'Victory Road' || /^E[1-4]$/.test(e)) return 2;
+            // Gym Leaders + Rival: slight nerf from +2 -> +1 to tighten player-vs-leader
+            // parity (was reading the C+2 IV/EV band — a Leader at C5 hit C7's 31/508
+            // band, making the gap to a wild-trained player too steep). The "boss feel"
+            // still comes from grade rolls + tier (items/abilities) + signature aces.
+            if (/^Gym Leader/.test(e) || e === 'Rival') return 1;
+            if (/Gym Trainer/.test(e) || e === 'Elite Trainer') return 1;
+            if (e === 'Basic Trainer') return 0;
+            return 1;
+        }
+        function _rollCityIVs(kind, city, diffStep, isAce) {
+            const tbl = (kind === 'wildprof') ? STORY_IV_CITY_WILDPROF : STORY_IV_CITY_TRAINER;
+            let idx = (city | 0) + (diffStep | 0);
+            if (idx < 0) idx = 0;
+            if (idx >= tbl.length) idx = tbl.length - 1;
+            let lo = tbl[idx][0], hi = tbl[idx][1];
+            // Signature aces floor at the band midpoint so a leader's identity mon
+            // stays surgical relative to its fillers.
+            if (isAce && hi > lo) lo = Math.round(lo + (hi - lo) * 0.5);
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const roll = () => Math.max(0, Math.min(31, lo + Math.floor(rng() * (hi - lo + 1))));
+            return { hp: roll(), atk: roll(), def: roll(), spa: roll(), spd: roll(), spe: roll() };
+        }
+        // ── CITY-CURVE EVs (story build sheets) ────────────────────────────
+        // In this game EVs are the BATTLE-trained axis (IVs are the vitamin-trained
+        // axis), so a build's EV TOTAL tracks how far through the run its trainer has
+        // "battled". Per-city band of total EVs; difficulty shifts the band UP by whole
+        // city-steps for trainers (basic +0 · gym/elite +1 · leader/rival/E4 +2). Wild
+        // catches & professor gifts match the trainer curve at difficulty 0.
+        const STORY_EV_CITY_TOTAL = Object.freeze([
+            [0, 50], [50, 100], [100, 150], [150, 200], [200, 250], [300, 350], [350, 400], [508, 508],
+        ]);
+        function _storyEvTotalForCity(city, diffStep) {
+            let idx = (city | 0) + (diffStep | 0);
+            if (idx < 0) idx = 0;
+            if (idx >= STORY_EV_CITY_TOTAL.length) idx = STORY_EV_CITY_TOTAL.length - 1;
+            const lo = STORY_EV_CITY_TOTAL[idx][0], hi = STORY_EV_CITY_TOTAL[idx][1];
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Raw total within the band — per-stat 4-rounding happens in the distributor.
+            return lo + Math.floor(rng() * (hi - lo + 1));
+        }
+        // Reshape a build's EV spread to hit a target total. A build that already has a
+        // spread is scaled proportionally (shape preserved); an empty spread invests the
+        // target into the species' best two battle stats. 252-per-stat / 508-total safe.
+        function _distributeEVsToTotal(build, base, target) {
+            if (!build) return;
+            const keys = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+            const t = Math.max(0, Math.min(508, target | 0));
+            const src = (build.evs && typeof build.evs === 'object') ? build.evs : null;
+            let cur = 0;
+            if (src) for (const k of keys) cur += (src[k] | 0);
+            if (t <= 0) { build.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }; return; }
+            if (cur > 0) {
+                const scale = t / cur;
+                const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                for (const k of keys) out[k] = Math.max(0, Math.min(252, Math.round(((src[k] | 0) * scale) / 4) * 4));
+                build.evs = out;
+                return;
+            }
+            const pair = _pickBattleEVStats(base);
+            const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            const first = Math.min(252, Math.round((t / 2) / 4) * 4);
+            out[pair[0]] = first;
+            out[pair[1]] = Math.max(0, Math.min(252, Math.round((t - first) / 4) * 4));
+            build.evs = out;
+        }
+        // ── OPTIMIZATION GRADIENTS (Sheet opt curves) ──────────────────────
+        // City sets the PARITY CEILING — an optimization is only available once the
+        // player could unlock it — and difficulty sets how OFTEN a trainer actually
+        // applies the available optimization. Each returns a probability 0..1 of the
+        // build keeping its OPTIMIZED form vs the tier downgrade's baseline; the caller
+        // snapshots the original nature/ability/moves and restores on a winning roll.
+        // Nature: neutral C0-1 · ramps C2-4 · all-best C5+.
+        function _storyNatureOptChance(city, diffStep) {
+            const c = city | 0;
+            let base;
+            if (c <= 1) base = 0; else if (c >= 5) base = 1; else base = (c - 1) * 0.25;
+            return Math.max(0, Math.min(1, base + (diffStep | 0) * 0.12));
+        }
+        // Ability (optimal ability over slot-0): no-opt C0-2 · ramps C3-5 · optimized
+        // C6+. Hidden-ability AVAILABILITY is gated separately (parity, Dojo C4).
+        function _storyAbilityOptChance(city, diffStep) {
+            const c = city | 0;
+            let base;
+            if (c <= 2) base = 0; else if (c >= 6) base = 1; else base = (c - 2) / 3;
+            return Math.max(0, Math.min(1, base + (diffStep | 0) * 0.12));
+        }
+        // Moves: basic STAB (L1) C0-3 · some full sets (L2) C4-5 · full sets C6+.
+        function _storyMoveOptChance(city, diffStep) {
+            const c = city | 0;
+            let base;
+            if (c <= 3) base = 0; else if (c >= 6) base = 1; else base = (c - 3) / 3;
+            return Math.max(0, Math.min(1, base + (diffStep | 0) * 0.12));
+        }
+        // Foe item tier by city (parity with the Dojo unlock clock): C0 none · C1-3
+        // berries (1) · C4-6 staples (2) · C7+ best/meta (3). No difficulty shift — a
+        // foe can never field an item the player couldn't yet hold. Frontier → full.
+        function _storyFoeItemTier(city) {
+            if ((city | 0) < 0) return 3;
+            const c = city | 0;
+            if (c <= 0) return 0;
+            if (c <= 3) return 1;
+            if (c <= 6) return 2;
+            return 3;
         }
         // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
         // that ship explicit ivs (e.g. 0 Atk for Trick Room) are left alone.
@@ -31327,7 +31445,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const nm = trainer && trainer.name ? String(trainer.name) : '';
+            // canonName holds the real rival identity when the display name was taunt-swapped
+            // to "<player> Sucks"; per-name quote lookups must key on the canonical name.
+            const nm = trainer && (trainer.canonName || trainer.name) ? String(trainer.canonName || trainer.name) : '';
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
                 if (phase !== null && phase !== undefined) {
@@ -31498,7 +31618,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Rival') return 'Rival';
             if (e === 'Mystery Figure') return 'Mystery Figure';
             if (e === 'Victory Road') return 'Victory Road';
-            if (e === 'Elite Trainer') return 'Ace Trainer';
+            if (e === 'Elite Trainer') return 'Elite Trainer';
             return 'Trainer';
         }
         // City NPC flavor (index = City N from event name). Uses Math.random only — must not advance story battle RNG.
@@ -31889,7 +32009,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Storyline-variant clear log — keyed by variant id, value true.
                 // Cosmetic record only (which storylines you've cleared); the
                 // storyline picker is pure-random and does not read this.
-                clearedVariants: {}
+                clearedVariants: {},
+                // Signature journal: { [trainerBaseName]: { seen, mons: { [species]: true } } }
+                // — which Elite/Leader/E4/Champion trainers you've faced and which of
+                // their signature aces actually appeared (devolved/fallback forms don't
+                // count, so high-tier sigs read as "locked" until a run reaches them).
+                sigJournal: {}
             };
         }
         function readStoryMeta() {
@@ -31908,7 +32033,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     frontierRoundsTotal: Math.max(0, obj.frontierRoundsTotal | 0),
                     hofRecords: Array.isArray(obj.hofRecords) ? obj.hofRecords.slice(0, 10) : [],
                     trainerProfile: (obj.trainerProfile && typeof obj.trainerProfile === 'object') ? obj.trainerProfile : null,
-                    clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {}
+                    clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {},
+                    sigJournal: (obj.sigJournal && typeof obj.sigJournal === 'object') ? obj.sigJournal : {}
                 };
             } catch (e) { return _emptyStoryMeta(); }
         }
@@ -33427,6 +33553,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
+        // Trainer-type grade availability (Sheet 4 −/o/+ matrix): per grade
+        // [G1,G2,G3,G4], 0 = forbidden · 1 = some · 2 = high. The ladder makes
+        // higher-difficulty trainers favour stronger grades at the same city.
+        function _trainerGradeProfile(eventType) {
+            const e = String(eventType || '');
+            if (/^(E[1-4]|Champion|Mystery Figure|Victory Road)$/.test(e)) return [1, 2, 1, 0]; // G1 some, G2 high
+            if (/^Gym Leader/.test(e) || e === 'Rival') return [0, 2, 1, 0];                      // G2 high, G3 some
+            if (/Gym Trainer/.test(e) || e === 'Elite Trainer') return [0, 1, 2, 1];              // G3 high, G2/G4 some
+            if (e === 'Basic Trainer') return [0, 0, 1, 2];                                       // G4 high, G3 some
+            return [0, 1, 2, 1];
+        }
+        // Merge the −/o/+ availability matrix onto the already-ramped grade weights:
+        // forbidden grades drop to 0, "high" grades are favoured 2.5× over "some", then
+        // renormalize. The ramp supplies the per-city base %, so the o/+ shares rise with
+        // city automatically; the profile adds the per-trainer-type difficulty skew. If
+        // the mask would zero everything (e.g. an Intro Rival's pure-G4 base vs a G4-
+        // forbidden profile), the ramped base is kept unchanged.
+        function _applyTrainerGradeMatrix(gw, eventType) {
+            if (!gw) return gw;
+            const prof = _trainerGradeProfile(eventType);
+            const FACTOR = [0, 1, 2.5];
+            const keys = ['g1', 'g2', 'g3', 'g4'];
+            const out = { g1: 0, g2: 0, g3: 0, g4: 0 };
+            let sum = 0;
+            for (let i = 0; i < 4; i++) { const w = (gw[keys[i]] || 0) * FACTOR[prof[i]]; out[keys[i]] = w; sum += w; }
+            if (sum <= 0) return gw;
+            for (const k of keys) out[k] = (out[k] / sum) * 100;
+            return out;
+        }
+
         function applyDifficultyToSigProbability(p) {
             const d = sm.storyDifficulty || 'normal';
             let x = Math.max(0, Math.min(1, +p || 0));
@@ -33457,34 +33613,93 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── EVOLUTION-STAGE GATE (story mode) ──────────────────────────────
-        // Mirrors the player's evolution unlock onto enemies + wild encounters.
+        // Per-source evolution caps (Sheet 4/5), all keyed on the ARRIVED city via
+        // cityIndexFromEventIndex (a route battle's DEPARTING city — so the route INTO
+        // a city keeps the old cap; the city's gym + route OUT get the new one).
         // Stage of a species: 0 = basic (no prevo), 1 = first evolution,
-        // 2 = second/final evolution (its prevo also evolved). Era is keyed on
-        // the ARRIVED city via cityIndexFromEventIndex, which returns a route
-        // battle's DEPARTING city — so the route INTO a city keeps the old cap
-        // and the city's gym + the route OUT get the new one:
-        //   C0-1 → basic only · C2-5 → + first evos · C6+ → all evolutions.
-        // The Stone Sage (player evolution) debuts C2 and honors the same caps,
-        // so the player's basic → first-evo (C2) → final-evo (C6) journey and
-        // the enemy/wild curve advance together.
+        // 2 = second/final evolution (its prevo also evolved). Each source has its own
+        // curve so the player's roster outpaces what routes hand them:
+        //   Player & enemy trainers : Basic C0-1 · Stage-1 C2-3 · ALL C4+
+        //   Wild encounters         : Basic C0-4 · Stage-1 C5-6 · ALL C7
+        //   Professor gifts         : Basic C0-2 · Stage-1 C3-5 · ALL C6
+        // The Stone Sage (player evolution) debuts C2 and honors the player cap.
         function _storyEvoStageOf(name) {
             const b = baseStats[name];
             if (!b || !b.prevo) return 0;
             const pb = baseStats[b.prevo];
             return (pb && pb.prevo) ? 2 : 1;
         }
+        // Signature override (story spec): a signature ace that's too evolved for the
+        // current city devolves to fit the cap by walking its prevo chain —
+        // Venusaur → Ivysaur (cap 1) → Bulbasaur (cap 0) — instead of vanishing.
+        // Returns the name at/below the cap, or null if the chain can't reach it
+        // (then the caller rerolls / drops the slot).
+        function _devolveToStage(name, cap) {
+            let cur = name, guard = 0;
+            while (_storyEvoStageOf(cur) > cap && guard++ < 4) {
+                const b = baseStats[cur];
+                if (!b || !b.prevo || !baseStats[b.prevo]) return null;
+                cur = b.prevo;
+            }
+            return _storyEvoStageOf(cur) <= cap ? cur : null;
+        }
+        // Gen-illegal signature fallback (story spec, chain step 1): if a signature is
+        // outside the run's enabled gens, walk DOWN its evo line for the nearest gen-legal
+        // form — Magnezone (gen 4) → Magneton (gen 1) in a gen-1 run. Returns a gen-legal
+        // form or null (caller then falls back to another signature / the signature's type
+        // / the trainer's theme type / random, all handled downstream).
+        function _genLegalEvoLineForm(name, genSet) {
+            let cur = name, guard = 0;
+            while (cur && guard++ < 6) {
+                const b = baseStats[cur];
+                if (!b) return null;
+                if (genSet.has(b.gen)) return cur;
+                cur = b.prevo;
+            }
+            return null;
+        }
+        // Signature grade-scaling (story spec): a signature stronger than the row's grade
+        // ceiling devolves to the strongest form that fits — Venusaur (G2) → Ivysaur (ceil
+        // G3) → Bulbasaur (ceil G4) — instead of being dropped. `ceiling` is the strongest
+        // grade NUMBER allowed (1 = G1 ok … 4 = only G4); a lower mon grade number is a
+        // stronger mon, so we devolve while grade < ceiling.
+        function _devolveSigToGradeCeiling(name, ceiling) {
+            let cur = name, guard = 0;
+            while (cur && getMonGrade(cur, getBST(cur)) < ceiling && guard++ < 5) {
+                const b = baseStats[cur];
+                if (!b || !b.prevo || !baseStats[b.prevo]) break;
+                cur = b.prevo;
+            }
+            return cur;
+        }
         function _storyEvoStageCapForCity(cityIdx) {
+            // Enemy trainers (Sheet 4): Basic C0-1 · Stage-1 C2-3 · ALL (final) C4+.
             const c = cityIdx | 0;
             if (c <= 1) return 0;
+            if (c <= 3) return 1;
+            return 2;
+        }
+        // Wild encounters (Sheet 5): Basic C0-4 · Stage-1 C5-6 · ALL C7. Wilds lag the
+        // player so routes stay catch-and-train, not pre-evolved threats.
+        function _wildEvoStageCapForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (c <= 4) return 0;
+            if (c <= 6) return 1;
+            return 2;
+        }
+        // Professor gifts (Sheet 5): Basic C0-2 · Stage-1 C3-5 · ALL C6. The C8 Mystery
+        // Figure is a full legendary handled separately (profCap bypass).
+        function _professorEvoStageCapForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (c <= 2) return 0;
             if (c <= 5) return 1;
             return 2;
         }
-        // PLAYER evolution cap (Evolution Sage) — decoupled from the enemy curve so the
-        // player evolves a bit ahead of what they fight. 3-layer staging:
-        //   C0 basics only · C1-3 Stage-1 evolutions · C4+ Stage-2 (final) evolutions.
+        // PLAYER evolution cap (Evolution Sage) — Sheet 4 player row: Basic C0-1 ·
+        //   Stage-1 C2-3 (Stone Sage debuts C2) · ALL (final) C4+.
         function _playerEvoStageCapForCity(cityIdx) {
             const c = cityIdx | 0;
-            if (c <= 0) return 0;
+            if (c <= 1) return 0;
             if (c <= 3) return 1;
             return 2;
         }
@@ -33670,9 +33885,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 0;
         }
 
-        function _applyEnemyGimmickDistribution(team, eventType, ctx) {
+        function _applyEnemyGimmickDistribution(team, eventType, ctx, storyRowIdx) {
             const keys = _storyEnemyMechKeys(ctx);
             if (!keys.length || !team || !team.length) return team;
+            // Spec 1f: enemy battle mechanics stay off until City 7 — the player unlocks
+            // and uses them first; foes pick them up a city later. Bosses that pass an
+            // explicit mech ctx (Mystery Figure) and frontier/generator rolls bypass.
+            if (storyRowIdx != null && sm && sm.active && !(ctx && ctx.settings)) {
+                let _mechCity = -1;
+                try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
+                if (_mechCity >= 0 && _mechCity < 7) return team;
+            }
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const _S = (ctx && ctx.settings) || (sm && sm.settings);
             const classic = !(_S && _S.classicMode === false);
@@ -33792,12 +34015,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
-        // After each rival species is picked we divide that type's pick-weight by the
-        // decay constant so the second mon isn't a copy of the first. Old value (÷30)
-        // collapsed coverage after 2–3 picks, so rivals felt scattered even against
-        // monotype parties. ÷10 still spreads coverage but lets a dominant counter-type
-        // appear on two mons when the player's party deserves the answer.
-        const RIVAL_ATTACK_TYPE_DECAY = 10;
 
         function _rivalCombinedEffVsMon(atkType, d1, d2) {
             const ch = typeChart[atkType];
@@ -33820,62 +34037,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return s;
         }
-        function _rivalInitMutableTypeWeights() {
-            const w = {};
-            // Low base floor (0.10) keeps the roll honest: types that don't hit
-            // anything on the player's party barely register, so the rival's picks
-            // read as deliberate counters rather than scattered coverage. (Pre-overhaul
-            // this was 0.35, which let useless types nudge in and muddied the counter feel.)
+        /** Scored counter-type list (Phase 3): every attack type that is
+         *  super-effective (>=2x) against AT LEAST ONE of your live party, sorted by
+         *  how hard it punishes the whole team (sum of m² over SE matchups). The caller
+         *  fields one mon per type top-down, distinct first, then CYCLES back through the
+         *  same list when it has more slots than counter types (fire steel rock dark →
+         *  fire steel …), so the rival never goes mono-type while it still has answers. */
+        function _rivalBuildCounterTypePool() {
+            if (!sm || !Array.isArray(sm.team)) return [];
+            const scored = [];
             for (const atk of Object.keys(typeChart)) {
-                w[atk] = _rivalScoreAttackTypeVsParty(atk) + 0.10;
+                if (atk === '???') continue;
+                let seHits = 0, score = 0;
+                for (const slot of sm.team) {
+                    if (!slot || !slot.name || slot.isEgg) continue;
+                    const pb = baseStats[slot.name];
+                    if (!pb || !pb.t1) continue;
+                    const m = _rivalCombinedEffVsMon(atk, pb.t1, pb.t2 || null);
+                    if (m >= 2) { seHits++; score += m * m; }
+                }
+                if (seHits > 0) scored.push({ atk, score });
             }
-            return w;
-        }
-        function _rivalPickWeightedType(weights, rng) {
-            let sum = 0;
-            const keys = Object.keys(weights);
-            for (const k of keys) sum += Math.max(0, weights[k]);
-            if (sum <= 0) return keys[Math.floor(rng() * keys.length)];
-            let r = rng() * sum;
-            for (const k of keys) {
-                r -= Math.max(0, weights[k]);
-                if (r <= 0) return k;
-            }
-            return keys[keys.length - 1];
-        }
-        function _rivalDecayAttackType(t, weights, decayK) {
-            const k = decayK || RIVAL_ATTACK_TYPE_DECAY;
-            if (t != null && weights && Object.prototype.hasOwnProperty.call(weights, t)) weights[t] /= k;
-        }
-        function _rivalDecaySpeciesStabTypes(speciesName, weights, decayK) {
-            const bs = baseStats[speciesName];
-            if (!bs || !weights) return;
-            if (bs.t1) _rivalDecayAttackType(bs.t1, weights, decayK);
-            if (bs.t2 && bs.t2 !== bs.t1) _rivalDecayAttackType(bs.t2, weights, decayK);
-        }
-        /** Per-phase counter-team shape. The rival's team is built to answer YOUR
-         *  six, not to parade fixed aces — so most slots are raw type-counter picks
-         *  and signatures only appear as occasional flavor cameos (the `sigP` roll on
-         *  flex slots). Forced-counter slots never roll a signature.
-         *    phase 0 (intro):  lone starter-triangle counter.
-         *    phase 2 (early):  1 forced counter, rest flex @ 0.45 sig.
-         *    phase 3 (mid):    2 forced counters, rest flex @ 0.40 sig.
-         *    phase 4 (league): 3 forced counters, 3 flex @ 0.35 sig, harder decay (15)
-         *                      so a dominant counter-type doesn't repeat across the six.
-         *  Non-standard rival rows (e.g. a Crucible rematch routed through the Rival
-         *  pipeline, phase === null) get a sensible mid-game default. */
-        function _rivalCounterPlan(phase, partySize) {
-            const n = Math.max(1, partySize | 0);
-            let forced, sigP, decay = RIVAL_ATTACK_TYPE_DECAY;
-            switch (phase) {
-                case 0:  forced = 1; sigP = 0;    break;
-                case 2:  forced = 1; sigP = 0.45; break;
-                case 3:  forced = 2; sigP = 0.40; break;
-                case 4:  forced = 3; sigP = 0.35; decay = 15; break;
-                default: forced = 2; sigP = 0.40; break;
-            }
-            forced = Math.min(forced, n);
-            return { forcedCounter: forced, flexSlots: Math.max(0, n - forced), sigP, decay };
+            scored.sort((a, b) => b.score - a.score);
+            return scored.map((x) => x.atk);
         }
         /** GB starter-triangle counter type for the intro rival: Grass→Fire,
          *  Fire→Water, Water→Grass. Returns null for non-classical starters so the
@@ -33900,8 +34084,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window.__rivalTest = {
                 rollTrainerTeam: (...a) => rollTrainerTeam(...a),
                 getRivalEncounterPhase: (...a) => getRivalEncounterPhase(...a),
-                _rivalCounterPlan: (...a) => _rivalCounterPlan(...a),
+                _rivalBuildCounterTypePool: (...a) => _rivalBuildCounterTypePool(...a),
+                selectTrainerForRole: (...a) => selectTrainerForRole(...a),
+                baseTrainerName: (...a) => _baseTrainerName(...a),
+                generateBasicTrainer: (...a) => _generateBasicTrainer(...a),
+                storyDowngradeBuildForTier: (...a) => _storyDowngradeBuildForTier(...a),
+                pickT2FlavorItemForSpecies: (...a) => _pickT2FlavorItemForSpecies(...a),
+                makeBuild: (...a) => makeBuild(...a),
+                storyBuildTierForEvent: (...a) => _storyBuildTierForEvent(...a),
+                get baseStats() { return baseStats; },
+                get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
+                get T2_TYPE_BOOST_ITEM() { return _T2_TYPE_BOOST_ITEM; },
+                get T2_UNIVERSAL_FLAVOR_ITEMS() { return _T2_UNIVERSAL_FLAVOR_ITEMS; },
+                get ELITE_ITEMS_SET() { return _ELITE_ITEMS_SET; },
+                storyEventSeed: (...a) => _storyEventSeed(...a),
+                withEventSeededRng: (...a) => _withEventSeededRng(...a),
+                storyIsSignatureTrainerRole: (...a) => _storyIsSignatureTrainerRole(...a),
+                storyRecordSignatureEncounter: (...a) => _storyRecordSignatureEncounter(...a),
+                storyApplySigEncounter: (...a) => _storyApplySigEncounter(...a),
+                storyBuildSignatureRegistry: (...a) => _storyBuildSignatureRegistry(...a),
+                get TRAINER_DATA() { return TRAINER_DATA; },
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
+                getTrainerQuoteForBattle: (...a) => getTrainerQuoteForBattle(...a),
+                _storyRivalTauntName: (...a) => _storyRivalTauntName(...a),
                 pickRivalSecondaryIntroLine: (...a) => pickRivalSecondaryIntroLine(...a),
                 getRivalAftermathLine: (...a) => getRivalAftermathLine(...a),
                 rivalPhaseTagline: (...a) => rivalPhaseTagline(...a),
@@ -33965,25 +34170,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
-        }
-        function _rivalPickWeightedSignature(S, weights, usedNames, rng) {
-            const pool = S.filter((nm) => !usedNames.has(nm));
-            if (!pool.length) return null;
-            const scored = pool.map((nm) => {
-                const bs = baseStats[nm];
-                let sc = 0.02;
-                if (bs && bs.t1) sc += Math.max(0, weights[bs.t1] || 0);
-                if (bs && bs.t2) sc += Math.max(0, weights[bs.t2] || 0);
-                return { nm, sc };
-            });
-            let sum = 0;
-            for (const x of scored) sum += x.sc;
-            let r = rng() * sum;
-            for (const x of scored) {
-                r -= x.sc;
-                if (r <= 0) return x.nm;
-            }
-            return pool[Math.floor(rng() * pool.length)];
         }
 
         function buildSyntheticSignaturePool(trainer, genSet, rng) {
@@ -34049,14 +34235,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             '', '', '', 'Oran Berry', 'Sitrus Berry', 'Pecha Berry', 'Cheri Berry',
             'Chesto Berry', 'Lum Berry', 'Rawst Berry', 'Aspear Berry'
         ];
-        const _T2_FLAVOR_ITEMS = [
-            'Leftovers', 'Sitrus Berry', 'Lum Berry', 'Eviolite',
-            'Black Belt', 'Charcoal', 'Mystic Water', 'Magnet', 'Soft Sand',
-            'Silk Scarf', 'Miracle Seed', 'Sharp Beak', 'Black Glasses',
-            'Spell Tag', 'Twisted Spoon', 'Hard Stone', 'Poison Barb',
-            'Dragon Fang', 'NeverMeltIce', 'Metal Coat', 'Silver Powder',
-            'Wise Glasses', 'Muscle Band'
-        ];
+        // Type-coherent picker: a T2 mon's flavor item should match its STAB, not be
+        // random from the global flavor pool (a Charizard with Mystic Water reads as
+        // a broken roll). Universal items (Leftovers / Eviolite / berries / Muscle Band /
+        // Wise Glasses) are always eligible so variety stays.
+        const _T2_TYPE_BOOST_ITEM = {
+            'Normal':   'Silk Scarf',
+            'Fire':     'Charcoal',
+            'Water':    'Mystic Water',
+            'Electric': 'Magnet',
+            'Grass':    'Miracle Seed',
+            'Ice':      'NeverMeltIce',
+            'Fighting': 'Black Belt',
+            'Poison':   'Poison Barb',
+            'Ground':   'Soft Sand',
+            'Flying':   'Sharp Beak',
+            'Psychic':  'Twisted Spoon',
+            'Bug':      'Silver Powder',
+            'Rock':     'Hard Stone',
+            'Ghost':    'Spell Tag',
+            'Dragon':   'Dragon Fang',
+            'Dark':     'Black Glasses',
+            'Steel':    'Metal Coat',
+            // 'Fairy' — no T2 fairy-boost flavor item; falls through to universal.
+        };
+        const _T2_UNIVERSAL_FLAVOR_ITEMS = ['Leftovers', 'Sitrus Berry', 'Lum Berry', 'Eviolite', 'Muscle Band', 'Wise Glasses'];
+        function _pickT2FlavorItemForSpecies(name, rng) {
+            const b = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+            const boosts = [];
+            if (_T2_TYPE_BOOST_ITEM[b.t1]) boosts.push(_T2_TYPE_BOOST_ITEM[b.t1]);
+            if (b.t2 && b.t2 !== b.t1 && _T2_TYPE_BOOST_ITEM[b.t2]) boosts.push(_T2_TYPE_BOOST_ITEM[b.t2]);
+            // 50/50 between matching type-boost (when available) and a universal staple,
+            // so the same species across multiple Novice trainers still shows variety.
+            if (boosts.length && rng() < 0.5) return boosts[Math.floor(rng() * boosts.length)];
+            return _T2_UNIVERSAL_FLAVOR_ITEMS[Math.floor(rng() * _T2_UNIVERSAL_FLAVOR_ITEMS.length)];
+        }
         // Tournament-grade items: stripped at T1 entirely, swapped for flavor at T2,
         // kept at T3/T4. Includes Choice / Orb / pinch-berry families that drive
         // competitive damage math; flavor type-boost items at T2 fill the slot.
@@ -34184,21 +34397,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const t = tier | 0;
             if (t >= STORY_BUILD_TIER.COMPETENT) return; // T3/T4 keep all moves
             const dropSet = (t === STORY_BUILD_TIER.UNTRAINED) ? _T1_DOWNGRADE_MOVES : _T2_DOWNGRADE_MOVES;
+            // Per-tier BP ceiling — keeps the Smogon set's COVERAGE / type variety but
+            // caps RAW POWER so early fights stay viable + fun (not one-shotted by a
+            // 130 BP Leaf Storm on a route Bulbasaur). T1 mons hit at moderate STAB
+            // (=90 cap, replaced with 55-80 BP basics); T2 keeps standard 90-110 BP STAB
+            // (Surf / Flamethrower / Earthquake / Thunderbolt) but strips 120+ heavy
+            // hitters (Close Combat / Outrage / Brave Bird / Leaf Storm / Draco Meteor).
+            const bpCap = (t === STORY_BUILD_TIER.UNTRAINED) ? 90 : 120;
             const replacement = _t1ReplacementForSpecies(name);
             const seen = new Set();
             for (let i = 0; i < build.m.length; i++) {
                 const mv = build.m[i];
                 if (!mv) continue;
-                if (dropSet.has(mv)) build.m[i] = replacement;
-                // De-dupe: if the replacement is already in the slot, pick
-                // a secondary type's move or fall back to Tackle so we don't
-                // end up with two identical moves.
+                const md = (typeof movesDB !== 'undefined') ? movesDB[mv] : null;
+                const tooStrong = !!(md && md.pow && (md.pow | 0) >= bpCap);
+                if (dropSet.has(mv) || tooStrong) build.m[i] = replacement;
+                // De-dupe: if the replacement is already in the slot, pick a secondary
+                // type's basic STAB, then walk a short fallback chain so two attacks
+                // getting replaced into the same primary don't both end up identical.
                 if (seen.has(build.m[i])) {
                     const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
                     const t2 = bs.t2 && _T1_BASIC_STAB_BY_TYPE[bs.t2];
-                    if (t2 && !seen.has(t2)) build.m[i] = t2;
-                    else if (!seen.has('Tackle')) build.m[i] = 'Tackle';
-                    else if (!seen.has('Quick Attack')) build.m[i] = 'Quick Attack';
+                    const chain = [t2, 'Tackle', 'Quick Attack', 'Scratch', 'Pound', 'Bite', 'Body Slam'];
+                    for (const cand of chain) {
+                        if (cand && !seen.has(cand)) { build.m[i] = cand; break; }
+                    }
                 }
                 seen.add(build.m[i]);
             }
@@ -34262,7 +34485,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return STORY_BUILD_TIER.UNTRAINED;              // Stage 1 — T1
             }
             if (e === 'Gym Trainer 1' || e === 'Gym Trainer') {
-                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
+                // GT1 = basic power (one tier under GT2's elite power): same curve as a
+                // route Basic Trainer, so a gym's front-room staff read as weaker than the
+                // back-room (GT2) staff. GT2 keeps the elite/COMPETENT curve above.
                 if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
@@ -34300,7 +34525,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const t = tier | 0;
             if (t >= STORY_BUILD_TIER.TOURNAMENT) return build;
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
-            const gimmickBound = (build.gimmick && build.gimmick !== 'STANDARD') || _isStoryGimmickItem(build.i);
+            // Only MEGA / Z-Move builds truly NEED their specific item — Mega Stones and
+            // Z-Crystals are mechanically tied to the build. TERA / DYNAMAX / GMAXDYNAMAX
+            // / STANDARD use a competitive item (Choice / Life Orb / etc.) that the low-tier
+            // downgrade SHOULD swap to flavor (a Novice trainer can't field Choice Specs).
+            // Without this narrowing, an Untrained route trainer whose CSV roll happened to
+            // tag the build as TERA could still hold Life Orb / Choice Band on a C0 fight.
+            const gimmickBound = (build.gimmick === 'MEGA' || build.gimmick === 'ZMOVE') || _isStoryGimmickItem(build.i);
             // Seeded story RNG so build degradation (nature/item/ability) is replay-deterministic.
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const pickNeutralNature = () => _NEUTRAL_NATURES_LIST[Math.floor(rng() * _NEUTRAL_NATURES_LIST.length)];
@@ -34353,9 +34584,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (base.abilities && base.abilities['0'] && rng() < 0.25) {
                     build.a = base.abilities['0'];
                 }
-                // Item: elite-tier items get swapped for flavor type-boost gear.
+                // Item: elite-tier items get swapped for a TYPE-MATCHED flavor item
+                // (Charizard -> Charcoal, not Mystic Water) with a universal staple as
+                // the alternative so the same species varies across trainers.
                 if (!gimmickBound && _ELITE_ITEMS_SET.has(build.i)) {
-                    build.i = _storyBuildPrefersNoItem(build) ? '' : pickFlavorItem(_T2_FLAVOR_ITEMS);
+                    build.i = _storyBuildPrefersNoItem(build) ? '' : _pickT2FlavorItemForSpecies(name, rng);
                 }
                 // Moves: trim screens / room / pivot family only. Hazards,
                 // setup, and status stay — Novice trainers are showing off
@@ -34428,24 +34661,91 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sigSet = new Set();
             if (sigNames && typeof sigNames.forEach === 'function') sigNames.forEach(n => sigSet.add(n));
             else if (Array.isArray(sigNames)) sigNames.forEach(n => sigSet.add(n));
+            // City-clock parity: unlocks are bound to the city number and apply to foes
+            // the same way they do to the player. Hidden abilities open at the Dojo's
+            // Black Belt (C4); item tiers open with the Dojo too (tier-2 staples at C4,
+            // tier-3 meta items at C7) — so before a tier unlocks for the player, foes
+            // can't carry it either. Off outside an active story roll (frontier /
+            // generator), which use full Smogon builds.
+            let _foeCity = -1;
+            try {
+                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) _foeCity = cityIndexFromEventIndex(storyRowIdx);
+            } catch (e) {}
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const _hiddenAllowedForFoes = _foeCity < 0 || _foeCity >= 4;
+            const _foeItemTierCap = _storyFoeItemTier(_foeCity); // C0 none · C1-3 berries · C4-6 staples · C7+ best
+            const _diffStep = _trainerDifficultyStep(eventType);
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
+                // Snapshot the optimized build BEFORE the tier downgrade so the
+                // city/difficulty optimization gradient can selectively restore it.
+                const _optN = slot.build.n;
+                const _optA = slot.build.a;
+                const _optM = Array.isArray(slot.build.m) ? slot.build.m.slice() : null;
                 if (tier < STORY_BUILD_TIER.TOURNAMENT) {
                     _storyDowngradeBuildForTier(slot.name, slot.build, tier);
                 }
-                // Post-Gym-4 enemy nudge — small EV bump on T2/T3 trainers to
-                // keep pace with the per-battle EV training the player picks
-                // up. No-op on T1 (route fodder stays at 0 EV) and T4 (already
-                // capped). Skipped pre-Gym-4 so the early softening holds.
-                try { _storyMaybeNudgeFoeEVs(slot.name, slot.build, tier); } catch (e) {}
+                if (!_hiddenAllowedForFoes) {
+                    const _bs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                    if (_bs && _bs.abilities && _bs.abilities.H && _bs.abilities['0'] && slot.build.a === _bs.abilities.H) {
+                        slot.build.a = _bs.abilities['0'];
+                    }
+                }
+                // Item-tier city gate: strip any item above the tier the player can field
+                // at this city (matches "no item early"). Gimmick-bound items (mega stones,
+                // Z-crystals) are left to the gimmick system, which is itself city-gated.
+                if (_foeItemTierCap < 3 && slot.build.i) {
+                    const _it = slot.build.i;
+                    const _gimmickBound = (slot.build.gimmick && slot.build.gimmick !== 'STANDARD')
+                        || isMegaStone(_it) || (Z_TYPE_MAP_VALUES && Z_TYPE_MAP_VALUES.has(_it));
+                    if (!_gimmickBound && _dojoItemTier(_it) > _foeItemTierCap) {
+                        slot.build.i = '';
+                    }
+                }
+                // City-curve EVs (Sheet 4): assign a target total from the city band
+                // (difficulty-shifted) and reshape the spread to hit it — EVs are the
+                // battle-trained axis, so the total tracks how far the trainer has
+                // progressed. Replaces the tier EV caps. Frontier / generator runs
+                // (_foeCity < 0) keep the legacy tier caps + post-Gym-4 nudge.
+                if (_foeCity < 0) {
+                    try { _storyMaybeNudgeFoeEVs(slot.name, slot.build, tier); } catch (e) {}
+                } else {
+                    try {
+                        const _evBase = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                        _distributeEVsToTotal(slot.build, _evBase, _storyEvTotalForCity(_foeCity, _trainerDifficultyStep(eventType)));
+                    } catch (e) {}
+                }
                 slot.build.powerTier = tier;
-                // Tier-scaled IVs: T1 0-15, T2 10-22, T3 18-28, T4 26-31.
-                // Aces shift to the top quartile of their tier's range. Always
-                // overwrites — enemy IVs track tier, not whatever the CSV preset
-                // happened to ship with (the IV bake for fast/Trick-Room sets is
-                // applied at engine level via getIV defaults, not by enemy roll).
-                try { slot.build.ivs = _rollTieredIVs(tier, sigSet.has(slot.name)); }
-                catch (e) {}
+                // City-curve IVs (Sheet 4): band climbs with the arrived city and
+                // shifts up with trainer difficulty (basic +0 · gym/elite +1 ·
+                // leader/rival/E4 +2). Aces floor at the band midpoint. Always
+                // overwrites — enemy IVs track the city/difficulty curve, not whatever
+                // the CSV preset shipped. Frontier / generator runs (_foeCity < 0) keep
+                // the legacy tier-center roll so post-HoF rematches stay sharp.
+                try {
+                    slot.build.ivs = (_foeCity < 0)
+                        ? _rollTieredIVs(tier, sigSet.has(slot.name))
+                        : _rollCityIVs('trainer', _foeCity, _diffStep, sigSet.has(slot.name));
+                } catch (e) {}
+                // City/difficulty optimization gradient: restore the optimized nature /
+                // ability / moves with a probability that rises with city (the parity
+                // ceiling on what's available) and trainer difficulty. Frontier /
+                // generator (_foeCity < 0) keeps the pure tier-downgrade result.
+                if (_foeCity >= 0) {
+                    if (_optN) {
+                        slot.build.n = (rng() < _storyNatureOptChance(_foeCity, _diffStep))
+                            ? _optN
+                            : _NEUTRAL_NATURES_LIST[Math.floor(rng() * _NEUTRAL_NATURES_LIST.length)];
+                    }
+                    if (_optA && rng() < _storyAbilityOptChance(_foeCity, _diffStep)) {
+                        const _bs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                        const _isHidden = !!(_bs && _bs.abilities && _bs.abilities.H && _optA === _bs.abilities.H);
+                        if (!_isHidden || _hiddenAllowedForFoes) slot.build.a = _optA;
+                    }
+                    if (_optM && _optM.length && rng() < _storyMoveOptChance(_foeCity, _diffStep)) {
+                        slot.build.m = _optM.slice();
+                    }
+                }
             }
             return team;
         }
@@ -34553,12 +34853,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _filterSigsByGradeCeiling(sigs, minGradeNumber) {
             if (!Array.isArray(sigs) || sigs.length === 0) return [];
             const ceiling = minGradeNumber | 0;
-            return sigs.filter(name => {
+            // Scale rather than drop: a signature stronger than the ceiling devolves to the
+            // strongest form that fits (keeps the trainer's identity). Forms already at/under
+            // the ceiling pass through unchanged.
+            return sigs.map(name => {
                 const b = baseStats[name];
-                if (!b) return false;
-                const g = getMonGrade(name, getBST(name));
-                return g >= ceiling;
-            });
+                if (!b) return null;
+                if (getMonGrade(name, getBST(name)) >= ceiling) return name;
+                return _devolveSigToGradeCeiling(name, ceiling);
+            }).filter(Boolean);
         }
         // Gym Leader union pool support: if a leader's post-cap sig pool falls
         // below a useful size (e.g. Misty-as-GL8 keeps only Lapras after the
@@ -34611,6 +34914,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
+            // Sheet 4 grade-availability matrix: shape the ramped weights by trainer-type
+            // difficulty (basic → G3/G4 · gym/elite → G3 · leader/rival → G2/G3 ·
+            // E4/Champion → G1/G2). Only inside an active story run — frontier / generator
+            // callers keep the raw ramp.
+            if (sm && sm.active && battleEventType) gwIn = _applyTrainerGradeMatrix(gwIn, battleEventType);
             // Evolution-stage cap for this battle's arrived city (2 = no
             // restriction: C6+, bosses at the League, or non-story callers).
             // Applied uniformly below — even sig-cap-exempt trainers (Rival,
@@ -34644,10 +34952,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _trainerIsPlaceholder = isPlaceholderSignatureList(trainer.sigs || []);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder') || _trainerIsPlaceholder;
             const sigP = applyDifficultyToSigProbability(_signatureProbabilityForEvent(battleEventType));
-            let S = (trainer.sigs || []).filter(name => {
-                const b = baseStats[name];
-                return b && genSet.has(b.gen);
-            }).slice();
+            // Gen filter with evo-line fallback (story spec): a gen-illegal signature first
+            // tries the nearest gen-legal form in its own line (Magnezone → Magneton) before
+            // being dropped. Duplicates are preserved — sigs are a multiset (Lance ×3
+            // Dragonite), and _sigMult/_canUse below allow each instance one slot.
+            let S = (trainer.sigs || []).map(name => {
+                if (!baseStats[name]) return null;
+                return _genLegalEvoLineForm(name, genSet);
+            }).filter(Boolean);
             // v19 sig-grade cap: drop any sig whose tier exceeds the row's
             // gradeWeights ceiling. Boss events (Rival/E1-E4/Champion/Mystery)
             // already roll into top tiers via their own gradeWeights, so they
@@ -34681,7 +34993,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
             // this empties S the (capped) filler pool fills the slots.
             if (_evoStageCap < 2 && Array.isArray(S) && S.length) {
-                S = S.filter(n => _storyEvoStageOf(n) <= _evoStageCap);
+                // Devolve each over-evolved signature to fit the cap (Venusaur →
+                // Bulbasaur at C0-1) rather than dropping it, so a leader keeps their
+                // identity. Drop only if the chain can't reach the cap; dedupe so two
+                // sigs collapsing onto the same basic don't both occupy a slot.
+                const seen = new Set();
+                const fitted = [];
+                for (const n of S) {
+                    const d = _storyEvoStageOf(n) <= _evoStageCap ? n : _devolveToStage(n, _evoStageCap);
+                    if (d && genSet.has((baseStats[d] || {}).gen) && !seen.has(d)) { seen.add(d); fitted.push(d); }
+                }
+                S = fitted;
             }
             const _poolKey = (isMixed ? 'mixed' : types.slice().sort().join('+')) + '|' + Array.from(genSet).sort((a, b) => a - b).join(',');
             let T = _trainerPoolCache.get(_poolKey);
@@ -34711,19 +35033,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Rival counter-pick branch and the standard filler picks below.
             if (_evoStageCap < 2) T = _capGradePoolsByEvoStage(T, _evoStageCap);
 
-            // Rival: the team is built to COUNTER your live six — score offensive typings
-            // vs your party, weighted-roll STAB types, decay each picked type so coverage
-            // spreads. Signatures are demoted to occasional flavor cameos via the per-phase
-            // counter plan (_rivalCounterPlan): most slots are forced raw counter-picks,
-            // only flex slots roll a signature, and the intro rival mirrors the GB starter
-            // triangle against your lone starter.
+            // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
+            // built fresh against your LIVE six (dynamic, never cached). Score every
+            // super-effective attack type vs your party, field one mon per type top-down,
+            // distinct first, then CYCLE back through the scored list when there are more
+            // slots than counter types (fire steel rock dark → fire steel). Each mon only
+            // needs the counter type as ONE of its types (dual is fine, the second type is
+            // ignored). The intro rival leads with the GB starter-triangle answer.
             if (String(battleEventType) === 'Rival' && sm && Array.isArray(sm.team) && sm.team.length > 0) {
                 const _rivalPhase = getRivalEncounterPhase(storyRowIdx);
                 if ((storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) S = [];
-                const typeWeights = _rivalInitMutableTypeWeights();
-                const _plan = _rivalCounterPlan(_rivalPhase, partySize);
-                const _flexSigP = applyDifficultyToSigProbability(_plan.sigP);
-                const _decayK = _plan.decay;
                 const _introCounterType = (_rivalPhase === 0 && sm.team[0] && sm.team[0].name)
                     ? _rivalIntroStarterCounterType(sm.team[0].name) : null;
                 function pickFromUnionPlain(usedNames) {
@@ -34740,70 +35059,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const avail = pool.filter((n) => !usedNames.has(n));
                     return avail.length ? avail[Math.floor(rng() * avail.length)] : null;
                 }
+                // Per-slot counter types: intro type leads, then the scored list cycled to
+                // fill every slot (distinct first; repeats only once the list is exhausted).
+                const _scored = _rivalBuildCounterTypePool();
+                const _cycle = _introCounterType ? _scored.filter((t) => t !== _introCounterType) : _scored;
+                const _slotTypes = [];
+                if (_introCounterType) _slotTypes.push(_introCounterType);
+                for (let k = 0; _slotTypes.length < partySize && _cycle.length; k++) _slotTypes.push(_cycle[k % _cycle.length]);
                 const teamR = [];
                 const usedR = new Set();
+                const _counterLock = new Set();
                 for (let i = 0; i < partySize; i++) {
                     let chosen = null;
-                    const isForcedCounter = i < _plan.forcedCounter;
-                    // Flex slots may roll a signature cameo; forced-counter slots never do.
-                    if (!isForcedCounter && S.length > 0 && rng() <= _flexSigP) {
-                        chosen = _rivalPickWeightedSignature(S, typeWeights, usedR, rng);
-                        if (chosen) {
-                            const si = S.indexOf(chosen);
-                            if (si >= 0) S.splice(si, 1);
-                            _rivalDecaySpeciesStabTypes(chosen, typeWeights, _decayK);
-                        }
-                    }
-                    if (!chosen) {
-                        // Raw counter-pick vs your live party. The intro rival's first slot
-                        // uses the GB starter-triangle type when your starter is classical.
-                        let targetType = (i === 0 && _introCounterType) ? _introCounterType : null;
-                        if (!targetType) targetType = _rivalPickWeightedType(typeWeights, rng);
+                    const targetType = _slotTypes[i] || null;
+                    if (targetType) {
                         chosen = _rivalPickSpeciesForAttackType(targetType, gwIn, T, usedR, rng);
-                        if (chosen) _rivalDecayAttackType(targetType, typeWeights, _decayK);
+                        if (chosen && !usedR.has(chosen)) _counterLock.add(i); // protect counters from rebalancing
                     }
-                    if (!chosen || usedR.has(chosen)) {
-                        for (let t = 0; t < 10; t++) {
-                            const tt = _rivalPickWeightedType(typeWeights, rng);
-                            const c = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
-                            if (c && !usedR.has(c)) {
-                                chosen = c;
-                                _rivalDecayAttackType(tt, typeWeights, _decayK);
-                                break;
-                            }
-                        }
-                    }
+                    // Fallback only when the party has no super-effective answer at all, or the
+                    // chosen type ran out of available species at this grade / gen window.
                     if (!chosen || usedR.has(chosen)) chosen = pickFromUnionPlain(usedR);
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
-                    // Anti-monotony cap: allow up to 3 mons sharing a primary type (was 2).
-                    // Against a monotype player party only one or two attack types are
-                    // super-effective, so letting the dominant counter land on a third mon
-                    // reads as a deliberate hard-counter rather than coincidence — while still
-                    // stopping the rival from fielding a full six-of-a-kind lineup.
-                    if (isMixed && partySize >= 4 && chosen) {
-                        const t1c = (baseStats[chosen] || {}).t1 || '';
-                        const othersSame = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1c).length;
-                        if (othersSame >= 3) {
-                            for (let r = 0; r < 8; r++) {
-                                const tt = _rivalPickWeightedType(typeWeights, rng);
-                                const alt = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
-                                if (!alt || usedR.has(alt)) continue;
-                                const t1a = (baseStats[alt] || {}).t1 || '';
-                                const oc = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1a).length;
-                                if (oc < 3) {
-                                    chosen = alt;
-                                    _rivalDecayAttackType(tt, typeWeights, _decayK);
-                                    break;
-                                }
-                            }
-                        }
-                    }
                     usedR.add(chosen);
                     teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
                 }
                 const _origSigsR = new Set((trainer.sigs || []));
-                const _lockedR = new Set();
+                const _lockedR = new Set(_counterLock);
                 for (let _i = 0; _i < teamR.length; _i++) if (_origSigsR.has(teamR[_i].name)) _lockedR.add(_i);
                 const _candR = [...T[1], ...T[2], ...T[3], ...T[4]];
                 enforceRoleCoverage(teamR, _lockedR);
@@ -34812,7 +35094,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // End-game illegal-build injection (Rival post-G8 → 2 slots).
                 const _illegalCountR = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
                 if (_illegalCountR > 0) _storyInjectIllegalBuilds(teamR, _origSigsR, _illegalCountR);
-                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx, _origSigsR);
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType, null, storyRowIdx), battleEventType, storyRowIdx, _origSigsR);
             }
 
             // Gym leaders already have signature Pokémon as their identity — the rest
@@ -34948,7 +35230,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Signature aces are protected so a leader's identity mon doesn't morph mid-run.
             const _illegalCount = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
             if (_illegalCount > 0) _storyInjectIllegalBuilds(team, _origSigs, _illegalCount);
-            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx, _origSigs);
+            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType, null, storyRowIdx), battleEventType, storyRowIdx, _origSigs);
         }
         // Boot-time data sanity check (warn-only; never throws). Surfaces TRAINER_DATA
         // authoring mistakes — typo'd signature names, sigs whose gen falls outside the
@@ -35006,8 +35288,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
+                    devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
+                    wildEvoStageCapForCity: (...a) => _wildEvoStageCapForCity(...a),
+                    professorEvoStageCapForCity: (...a) => _professorEvoStageCapForCity(...a),
+                    playerEvoStageCapForCity: (...a) => _playerEvoStageCapForCity(...a),
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
+                    rollCityIVs: (...a) => _rollCityIVs(...a),
+                    trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
+                    storyEvTotalForCity: (...a) => _storyEvTotalForCity(...a),
+                    distributeEVsToTotal: (...a) => _distributeEVsToTotal(...a),
+                    wildGradeWeightsForCity: (...a) => _wildGradeWeightsForCity(...a),
+                    get PROF_ROLLS() { return PROF_ROLLS; },
+                    trainerGradeProfile: (...a) => _trainerGradeProfile(...a),
+                    applyTrainerGradeMatrix: (...a) => _applyTrainerGradeMatrix(...a),
+                    storyNatureOptChance: (...a) => _storyNatureOptChance(...a),
+                    storyAbilityOptChance: (...a) => _storyAbilityOptChance(...a),
+                    storyMoveOptChance: (...a) => _storyMoveOptChance(...a),
+                    storyFoeItemTier: (...a) => _storyFoeItemTier(...a),
+                    applyEnemyGimmickDistribution: (...a) => _applyEnemyGimmickDistribution(...a),
+                    genLegalEvoLineForm: (...a) => _genLegalEvoLineForm(...a),
+                    devolveSigToGradeCeiling: (...a) => _devolveSigToGradeCeiling(...a),
+                    filterSigsByGradeCeiling: (...a) => _filterSigsByGradeCeiling(...a),
+                    storySigGradeCeiling: (...a) => _storySigGradeCeiling(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
@@ -35017,11 +35320,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     npcStage: (...a) => _npcStage(...a),
                     npcStageUpCheck: (...a) => _npcStageUpCheck(...a),
                     dojoItemTier: (...a) => _dojoItemTier(...a),
+                    moveCostForStage: (...a) => _moveCostForStage(...a),
+                    itemCostForTier: (...a) => _itemCostForTier(...a),
+                    abilityCostForMon: (...a) => _abilityCostForMon(...a),
                     opAbilitiesForMon: (...a) => _opAbilitiesForMon(...a),
                     dojoAbilityUnlockStage: (...a) => _dojoAbilityUnlockStage(...a),
                     abilityCostForMon: (...a) => _abilityCostForMon(...a),
                     tutorGetPoolForMon: (...a) => _tutorGetPoolForMon(...a),
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
+                    txStarredPool: (...a) => _txStarredPool(...a),
+                    txStageCountRule: (...a) => _txStageCountRule(...a),
                 };
             } catch (e) {}
         }
@@ -35152,7 +35460,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (isGymLeaderSlot) return /^gym leader\s*\d$/.test(tr);
                 if (rk === 'rival') return t.isRival;
-                if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
+                // Elite pool (story spec) = all named Elite Trainers PLUS every gym leader,
+                // so a leader can recur as an Elite Trainer (with their signature roster).
+                if (rk === 'elite trainer') return (tr === 'elite trainer' && !t.isRival) || /^gym leader\s*\d$/.test(tr);
                 return tr === rk;
             });
             let candidates = roleAll.slice();
@@ -35194,8 +35504,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (biased.length) candidates = biased;
             }
             // Exclude any whose base name is already used this run (allow Basic/Gym Trainers to repeat).
+            // Exception: gym leaders filling an ELITE TRAINER slot may recur (the spec lets a
+            // leader reappear "multiple times as elite trainer"); in their own Gym-Leader-N slot
+            // they still dedup, so there's never a duplicate *leader* fight.
             if (usedBaseNames && !isBasicLike) {
-                const fresh = candidates.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
+                const fresh = candidates.filter(t => {
+                    if (rk === 'elite trainer' && /^gym leader\s*\d$/.test(String(t.role).toLowerCase())) return true;
+                    return !usedBaseNames.has(_baseTrainerName(t.name));
+                });
                 if (fresh.length) candidates = fresh;
             }
             if (!candidates.length) candidates = TRAINER_DATA;
@@ -35250,6 +35566,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             E3: [],
             E4: ['Lance', 'Karen'],
         };
+
+        // ── Per-event deterministic RNG (static-roll spec) ─────────────────────
+        // A non-rival event's roll must be reproducible across refresh / flee / revisit.
+        // Derive a per-event seed from (runSeed, eventIdx) and run the roll through a
+        // private LCG so the result is a pure function of those two — no stored team
+        // needed. The shared storyRngNext stream is swapped out for the duration and
+        // restored in finally. No-op outside an active seeded run.
+        function _storyEventSeed(eventIdx) {
+            const base = (sm && sm.runSeed != null) ? (sm.runSeed >>> 0) : 0x12345678;
+            let h = (base ^ Math.imul(((eventIdx | 0) + 1), 0x9E3779B9)) >>> 0;
+            h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+            h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+            return (h ^ (h >>> 16)) >>> 0;
+        }
+        function _withEventSeededRng(eventIdx, fn) {
+            if (!(sm && sm.active) || sm.runSeed == null) return fn();
+            const saved = window.storyRngNext;
+            let s = _storyEventSeed(eventIdx);
+            window.storyRngNext = function () {
+                s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+                return s / 4294967296;
+            };
+            try { return fn(); }
+            finally { window.storyRngNext = saved; }
+        }
+        // Dynamic Basic-Trainer generator (story spec): route / gym-trainer fodder is no
+        // longer a fixed roster entry — it's generated with a rolled type (single, or a
+        // dual combo ~1/3 of the time), a generic class name + sprite reused from the
+        // existing Basic-Trainer art (so sprites always resolve), and NO signatures. Gym
+        // Trainers pass the gym's type as preferredType so their lineup stays on-type.
+        // Seeded per event so the generated identity is static across revisits.
+        function _generateBasicTrainer(eventIdx, preferredType) {
+            return _withEventSeededRng(eventIdx, () => {
+                const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const types = Object.keys(typeChart).filter(t => t !== '???');
+                const basics = TRAINER_DATA.filter(t => t.role === 'Basic Trainer' && !t.tag);
+                const flavor = basics.length ? basics[Math.floor(rng() * basics.length)] : { name: 'Trainer', spriteFile: 'Youngster' };
+                const primary = preferredType || types[Math.floor(rng() * types.length)];
+                let type = primary;
+                if (rng() < 0.33) {
+                    const t2 = types[Math.floor(rng() * types.length)];
+                    if (t2 !== primary) type = primary + '/' + t2;
+                }
+                return {
+                    role: 'Basic Trainer',
+                    name: flavor.name || 'Trainer',
+                    type,
+                    sigs: [],
+                    spriteFile: flavor.spriteFile || flavor.name,
+                    pkmGens: normalizeEnabledGens(sm.settings && sm.settings.enabledGens),
+                };
+            });
+        }
 
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
@@ -35483,7 +35852,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sprite: TRAINER_DEFAULT,
             difficulty: 'normal',
             genPreset: 'all',
-            storyline: 'classic'
+            storyline: 'surprise_me' // always random per spec — resolved at run start
         };
         function _trainerSpritePath(filename) {
             return 'sprites/trainers/' + String(filename || '');
@@ -35498,7 +35867,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _tcSyncPortrait() {
             const img = document.getElementById('story-create-sprite');
-            const cap = document.getElementById('story-create-portrait-name');
             if (img) {
                 img.src = _trainerSpritePath(_tcState.sprite);
                 img.onerror = function() {
@@ -35508,7 +35876,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 };
             }
-            if (cap) cap.textContent = _trainerPrettyName(_tcState.sprite);
         }
         function _tcSyncDifficultyCards() {
             const cards = document.querySelectorAll('#screen-story-trainercreate .story-create-diff-card');
@@ -35593,22 +35960,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             _tcState.genPreset = allChecked ? 'all' : (onlyG1 ? 'kanto' : 'custom');
             _tcSyncGenPresetButtons();
-            // Render the storyline picker grid + restore the last-used pick if
-            // any. Defaults to 'classic' for a fresh first-time install.
-            if (typeof STORYLINE_VARIANTS !== 'undefined' && !STORYLINE_VARIANTS[_tcState.storyline]) {
-                _tcState.storyline = 'classic';
-            }
-            try {
-                const raw = localStorage.getItem(STORY_MENU_DEFAULTS_KEY);
-                if (raw) {
-                    const d = JSON.parse(raw);
-                    if (d && typeof d.storyLine === 'string' && STORYLINE_VARIANTS[d.storyLine]) {
-                        _tcState.storyline = d.storyLine;
-                    }
-                }
-            } catch (e) {}
-            _tcRenderStorylineGrid();
-            _tcSyncStorylineCards();
+            // Storyline is ALWAYS rolled at random on Begin Adventure (per spec) — the
+            // player no longer picks one. Force the 'surprise_me' sentinel; it resolves
+            // to one of the real variants in _readStorylineFromUI() at run construction.
+            _tcState.storyline = 'surprise_me';
             const warn = document.getElementById('story-create-warning');
             if (warn) warn.textContent = '';
             setTimeout(() => { try { if (nameInput) nameInput.focus(); } catch (e) {} }, 80);
@@ -35759,7 +36114,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _collectionDexShiny = false; // false = Regular view, true = Shiny Dex view
         let _collectionPrevScreen = null;
         function openCollection(tab) {
-            const okTab = (tab === 'achievements' || tab === 'hof' || tab === 'rival' || tab === 'memorial') ? tab : 'pokedex';
+            const okTab = (tab === 'achievements' || tab === 'hof' || tab === 'rival' || tab === 'signatures' || tab === 'memorial') ? tab : 'pokedex';
             _collectionTab = okTab;
             // Remember which screen we came from so closeCollection can return there.
             const visible = document.querySelector('.screen:not(.hidden)');
@@ -35769,6 +36124,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 achievements: 'collection-tab-ach',
                 hof: 'collection-tab-hof',
                 rival: 'collection-tab-rival',
+                signatures: 'collection-tab-sig',
                 memorial: 'collection-tab-memorial'
             };
             for (const k in tabs) {
@@ -35799,6 +36155,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_collectionTab === 'achievements') body.innerHTML = _renderAchievementsTab();
             else if (_collectionTab === 'hof') body.innerHTML = _renderHofRecordsTab();
             else if (_collectionTab === 'rival') body.innerHTML = _pcRenderRivalJournalTab();
+            else if (_collectionTab === 'signatures') body.innerHTML = _renderSignaturesTab();
             else if (_collectionTab === 'memorial') body.innerHTML = _renderMemorialTab();
             else body.innerHTML = _renderPokedexTab(_collectionDexGen);
         }
@@ -35821,6 +36178,97 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             items.sort((a, b) => (a.dex - b.dex) || a.name.localeCompare(b.name));
             return items;
+        }
+
+        // ── Signature journal (story spec 3.6) ────────────────────────────────
+        // Roles whose signature aces are tracked in the journal: gym leaders, the
+        // Elite Four, the Champion, and named Elite Trainers.
+        function _storyIsSignatureTrainerRole(role) {
+            const r = String(role || '');
+            return /^Gym Leader\s*\d$/.test(r) || /^E[1-4]$/.test(r) || r === 'Champion' || r === 'Elite Trainer';
+        }
+        // Pure journal update (no I/O — testable): mark the trainer faced and flag every
+        // listed signature that actually appeared in the rolled team (devolved / fallback
+        // forms that don't match a listed sig stay "locked", which surfaces the gen/tier
+        // gates). Returns the (mutated) journal object.
+        function _storyApplySigEncounter(journal, trainer, enemyTeam) {
+            const j = (journal && typeof journal === 'object') ? journal : {};
+            if (!trainer || !_storyIsSignatureTrainerRole(trainer.role)) return j;
+            if (!Array.isArray(trainer.sigs) || !trainer.sigs.length) return j;
+            const base = _baseTrainerName(trainer.name);
+            if (!base) return j;
+            const entry = j[base] || { seen: false, mons: {} };
+            if (!entry.mons) entry.mons = {};
+            entry.seen = true;
+            const teamSpecies = new Set((enemyTeam || []).map(m => m && m.name).filter(Boolean));
+            for (const sig of trainer.sigs) if (teamSpecies.has(sig)) entry.mons[sig] = true;
+            j[base] = entry;
+            return j;
+        }
+        // I/O wrapper: read meta, apply the encounter, persist.
+        function _storyRecordSignatureEncounter(trainer, enemyTeam) {
+            if (!trainer || !_storyIsSignatureTrainerRole(trainer.role)) return;
+            if (!Array.isArray(trainer.sigs) || !trainer.sigs.length) return;
+            const meta = readStoryMeta();
+            meta.sigJournal = _storyApplySigEncounter(
+                (meta.sigJournal && typeof meta.sigJournal === 'object') ? meta.sigJournal : {}, trainer, enemyTeam);
+            writeStoryMeta(meta);
+        }
+        // Merge every signature-trainer in TRAINER_DATA (by base name, unioning sigs
+        // across role variants) with the saved journal into a render-ready registry.
+        function _storyBuildSignatureRegistry(journalOverride) {
+            const journal = (journalOverride && typeof journalOverride === 'object')
+                ? journalOverride
+                : (((readStoryMeta() || {}).sigJournal) || {});
+            const byBase = new Map();
+            for (const t of TRAINER_DATA) {
+                if (!_storyIsSignatureTrainerRole(t.role)) continue;
+                if (!Array.isArray(t.sigs) || !t.sigs.length) continue;
+                const base = _baseTrainerName(t.name);
+                if (!byBase.has(base)) byBase.set(base, { base, role: t.role, charGen: t.charGen | 0, sigs: new Set() });
+                const rec = byBase.get(base);
+                for (const s of t.sigs) if (baseStats[s]) rec.sigs.add(s);
+            }
+            const roleRank = (r) => /^Gym Leader/.test(r) ? 0 : /^E[1-4]$/.test(r) ? 1 : r === 'Champion' ? 2 : 3;
+            const out = [];
+            for (const rec of byBase.values()) {
+                const seenEntry = journal[rec.base] || null;
+                const sigs = Array.from(rec.sigs).map(species => ({
+                    species,
+                    gen: (baseStats[species] || {}).gen | 0,
+                    seen: !!(seenEntry && seenEntry.mons && seenEntry.mons[species]),
+                }));
+                sigs.sort((a, b) => (a.gen - b.gen) || a.species.localeCompare(b.species));
+                out.push({
+                    name: rec.base, role: rec.role, charGen: rec.charGen,
+                    seen: !!(seenEntry && seenEntry.seen),
+                    sigs, sigCount: sigs.length, seenCount: sigs.filter(s => s.seen).length,
+                });
+            }
+            out.sort((a, b) => roleRank(a.role) - roleRank(b.role) || a.name.localeCompare(b.name));
+            return out;
+        }
+        function _renderSignaturesTab() {
+            const reg = _storyBuildSignatureRegistry();
+            const totalSigs = reg.reduce((a, t) => a + t.sigCount, 0);
+            const seenSigs = reg.reduce((a, t) => a + t.seenCount, 0);
+            const seenTrainers = reg.filter(t => t.seen).length;
+            const summary = `<div class="pdex-summary"><span class="pdex-chip">${seenTrainers}/${reg.length} trainers faced</span><span class="pdex-chip">${seenSigs}/${totalSigs} signatures encountered</span></div>`;
+            if (!reg.length) return summary + '<p class="ach-empty">No signature trainers available.</p>';
+            const blocks = reg.map(t => {
+                const head = `<div class="sig-trainer-head"><span class="sig-name">${t.seen ? _esc(t.name) : '???'}</span> <span class="sig-role">${_esc(storyDisplayRoleLabel(t.role))}</span> <span class="sig-count">${t.seenCount}/${t.sigCount}</span></div>`;
+                const cells = t.sigs.map(s => {
+                    const spr = (typeof getSprite === 'function') ? _esc(getSprite(s.species, false)) : '';
+                    if (s.seen) {
+                        const img = spr ? `<img src="${spr}" alt="${_esc(s.species)}" class="pdex-cell-img" loading="lazy" decoding="async" onerror="handleSpriteError(this)">` : '';
+                        return `<div class="pdex-cell pdex-cell--caught" title="${_esc(s.species)} — encountered">${img}<div class="pdex-cell-name">${_esc(s.species)}</div></div>`;
+                    }
+                    const img = spr ? `<img src="${spr}" alt="" class="pdex-cell-img pdex-cell-img--unknown" loading="lazy" decoding="async" onerror="handleSpriteError(this)">` : '';
+                    return `<div class="pdex-cell pdex-cell--unknown" title="Not yet encountered — needs Gen ${s.gen}">${img}<div class="pdex-cell-name">??? <small>Gen ${s.gen}</small></div></div>`;
+                }).join('');
+                return `<div class="sig-trainer">${head}<div class="pdex-grid">${cells}</div></div>`;
+            }).join('');
+            return summary + blocks;
         }
 
         function _renderPokedexTab(genFilter) {
@@ -36278,7 +36726,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  Fields (all optional except `kind`):
          *    kind        — 'rival' | 'gymLeader' | 'gymTrainer' | 'basic' |
          *                  'elite' | 'champion' | 'mystery' | 'victoryRoad' |
-         *                  'aceTrainer'
+         *                  'eliteTrainer'
          *    gymNumber   — 1..8 (gymLeader / gymTrainer)
          *    eliteNumber — 1..4 (elite)
          *    coldOpen    — STORY_COLD_OPENS key (one-shot pre-battle scene)
@@ -37375,7 +37823,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémart. The basics, always in stock."',
                     '"Poké Balls (300G) for the road. Potions, Full Restore, Max Elixir for the long fights. X items push a stat two stages for one battle. Dire Hit for a crit edge. Guard Spec. locks your stats safe for five turns."',
-                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take a complimentary Poké Ball — first one\'s on the house."'
+                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take five Poké Balls to start you off — on the house. And word is some shops out there stock revives and special battle items… but you didn\'t hear that from me."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ pokeBall: 1 }); } catch (e) {}
@@ -38663,7 +39111,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (name === 'Champion') return { kind: 'champion' };
             if (name === 'Mystery Figure') return { kind: 'mystery' };
             if (name === 'Victory Road') return { kind: 'victoryRoad' };
-            if (name === 'Elite Trainer') return { kind: 'aceTrainer' };
+            if (name === 'Elite Trainer') return { kind: 'eliteTrainer' };
             if (name === 'Rival') return { kind: 'rival' };
             return { kind: 'basic' };
         }
@@ -38773,10 +39221,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 chainAfter: true,
                 prepare(battleIdx, ev) {
                     if (!_shouldFireWildBeforeBattle(battleIdx)) return null;
-                    // Wild grade is keyed on `sm.badges` (see _WILD_GRADE_CURVE_BY_BADGES),
+                    // Wild grade is keyed on the arrived city (see STORY_WILD_GRADE_BY_CITY),
                     // independent of the upcoming trainer's gradeWeights — wilds reflect
                     // the route's biology, not the next fight's lineup.
-                    const enc = rollWildEncounter(storySettingsGens());
+                    // Static-roll spec: seed each route wild by (runSeed, battleIdx, which
+                    // wild in the node) so refresh/flee/revisit reproduces the same encounter.
+                    // The wildSeen counter is persisted in sm, so the key is stable. (Safari /
+                    // Crucible wilds stay deliberately random — not seeded.)
+                    const _wildSeedKey = 800000 + (battleIdx | 0) * 10 + _wildSeenCount(battleIdx);
+                    const enc = _withEventSeededRng(_wildSeedKey, () => rollWildEncounter(storySettingsGens()));
                     if (!enc) return null;
                     return {
                         encounter: enc,
@@ -39450,7 +39903,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
                 else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
                 else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
-                else if (nxEvent === 'Elite Trainer') nextLabel = 'Ace Trainer';
+                else if (nxEvent === 'Elite Trainer') nextLabel = 'Elite Trainer';
                 else if (nxEvent === 'Gym Trainer 1' || nxEvent === 'Gym Trainer 2') nextLabel = 'Gym Trainer';
                 else if (nxEvent === 'Basic Trainer') nextLabel = 'Route Trainer';
                 const theme = _resolveThemeForBattleRow(nxId);
@@ -39489,7 +39942,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: 'icons/story/story_dojo.png?v=20260516', label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
                 }
             }
-            const relicAvailableHere = (cityIdx === 0 || actions.includes('Department Store'));
+            const relicAvailableHere = [0, 3, 6, 9].includes(cityIdx);
             if (relicAvailableHere && cityIdx === 0 && !sm.artifactFreeClaimUsed) {
                 suggestedFacilities.add('relic');
                 tips.push({ iconPath: 'icons/story/story_artifacts.png?v=20260516', label: 'Claim your free relic!', click: 'window.StoryMode.enterArtifactShop()' });
@@ -39707,7 +40160,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('shop', makeActionBtn('🏬 Department Store','dept','window.StoryMode.enterShop(\'dept\')','dept', _facOpts('dept', [{label:'Premium',tone:'info'}])));
             }
             const _relicCityIdx = getCityIndex(ev);
-            if (_relicCityIdx === 0 || actions.includes('Department Store')) {
+            // Relic Annex cycles in every third city per the facility matrix: C0, C3, C6, C9.
+            if ([0, 3, 6, 9].includes(_relicCityIdx)) {
                 const relicFree = (_relicCityIdx === 0 && !sm.artifactFreeClaimUsed);
                 const relicMeta = relicFree
                     ? [{label:'1st Free',tone:'free'}]
@@ -39729,10 +40183,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // facility's capability grows (see NPC_STAGE_CITY / NPC_STAGE_NAMES).
             const _stageTag = (key) => { const t = _npcStageName(key); return t ? ' — ' + t : ''; };
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(1500, '+')])));
+                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(_moveCostForStage(), '+')])));
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(2000, '+')])));
+                _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(500, '+')])));
             }
             if (actions.includes('Evolution Tutor') && _tutorTeam) {
                 _push('train', makeActionBtn('🧬 Stone Sage' + _stageTag('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(1500, '+')])));
@@ -39752,11 +40206,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
                 _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(5000)], { soft:true })));
             }
-            if (cityIdx === 0 || (sm.artifacts || []).length > 0) {
-                _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
+            // Artifact Hall — present in every city per the matrix (the relic enable/disable hub).
+            _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
+            // Pokémon Center — PC storage + Underground. Debuts at City 1 (matrix); the
+            // start town (C0) has no Center — battles auto-heal, so none is needed there.
+            if (cityIdx >= 1) {
+                _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
             }
-            // Pokémon Center — full party heal, free, unlimited
-            _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
             // Daycare Inn — the dark front. One-time egg event (Gym 1+), then the
             // one-time Fight Club secret (6+ badges). Hidden once it has no business
             // left, and shuttered entirely in the endgame.
@@ -39779,7 +40235,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : [{label:'Tonight',tone:'info'}];
                 _push('quest', makeActionBtn('🥊 Fight Club','pits','window.StoryMode.enterPits()','gym', _facOpts('pits', fcMeta, { soft:true })));
             }
-            // Safari Zone — mid-game "wilderness town" destination (City 4 in the timeline).
+            // Safari Zone — mid-game "wilderness town" destination (City 5 in the timeline).
             // Gated by actions.includes('Safari Zone') so it feels like a real city, not a
             // ubiquitous facility. Post-HoF access stays through the Crucible.
             if (actions.includes('Safari Zone')) {
@@ -39800,7 +40256,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _partyLabel = _partyN
                 ? `Party (${_partyN}/${_partyCapNow})${_partyHint}`
                 : 'Party — Empty (Visit Professor)';
-            _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
+            // Party / sort hub debuts at City 1 (matrix). At the start town the starter
+            // is still being chosen via the Professor, so no standalone Party button.
+            if (cityIdx >= 1) {
+                _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
+            }
             if (actions.includes('Link Station')) {
                 _push('utility', makeActionBtn('📡 Cable Link Station','link','window.StoryMode.enterLink()','link', _facOpts('link', [_costBadge(5000, '+')])));
             }
@@ -41330,9 +41790,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.gold = Math.max(0, (sm.gold | 0) - fee);
             const failedBattleIdx = sm.eventIndex;
             sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
-            // Keep the frozen foe team for the battle the player left so Leave City → rematch uses the same party (RNG is not re-rolled).
+            // Keep the frozen foe team for the battle the player left so Leave City → rematch
+            // uses the same party (static, RNG not re-rolled) — EXCEPT the Rival, which is a
+            // dynamic matchup: fleeing and re-entering after a team swap must re-roll a fresh
+            // counter to the new party. (A mid-fight reload doesn't go through retreat, so the
+            // lock survives there and the rival fight resumes intact.)
             const lock = sm.currentEnemyLock;
-            if (!lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
+            const _fledWasRival = failedBattleIdx === STORY_RIVAL_ROW_INTRO || failedBattleIdx === STORY_RIVAL_ROW_EARLY
+                || failedBattleIdx === STORY_RIVAL_ROW_MID || failedBattleIdx === STORY_RIVAL_ROW_LEAGUE;
+            if (_fledWasRival || !lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
                 sm.currentEnemyLock = null;
             }
             _storyRefundBattleBagItems();
@@ -41638,7 +42104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Catch-tutorial partner picker — draws a random Grade-4 species from the
         // player's enabled gens, matching what a real pre-Gym-1 route wild would
         // surface. Grade 4 is already the entire pre-Gym-1 wild pool (see
-        // `_WILD_GRADE_CURVE_BY_BADGES[0] = { g4: 100 }`), so the tutorial mon
+        // `STORY_WILD_GRADE_BY_CITY[0] = { g4: 100 }`), so the tutorial mon
         // sits in the same tier the player will encounter on the very next
         // route — just with guaranteed catch and no flee.
         //
@@ -41751,11 +42217,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const titleEl = document.getElementById('story-prof-screen-title');
             if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
             document.getElementById('story-prof-name').textContent = profName;
-            document.getElementById('story-prof-quote').textContent = _profLegendaryMysteryMode
-                ? '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."'
-                : (isSwapWithoutMystery
-                    ? '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."'
-                    : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)]);
+            // City 6 is the Professor's last appearance (matrix: Professor C0–C6).
+            // They send the player off with a goodbye here; no Professor after C6.
+            const _isFinalProfCity = !_profLegendaryMysteryMode && cityIdx === 6;
+            let _profQuote;
+            if (_profLegendaryMysteryMode) {
+                _profQuote = '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."';
+            } else if (_isFinalProfCity) {
+                _profQuote = isSwapWithoutMystery
+                    ? '"Last stop for the lab — your party\'s full, so swap a teammate for this one or send it to the PC. After this, you walk the rest of the road alone. Go take the League."'
+                    : '"This is the last partner the lab can hand you before the League — from here you\'re on your own. Make it count, and good luck out there."';
+            } else if (isSwapWithoutMystery) {
+                _profQuote = '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."';
+            } else {
+                _profQuote = PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)];
+            }
+            document.getElementById('story-prof-quote').textContent = _profQuote;
             const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
             document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
 
@@ -41774,6 +42251,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 && _pendingProfBadges === (sm.badges | 0);
 
             if (!shouldReuseChoices) {
+                // Static-roll spec: seed the gift roll by (runSeed, city, badges, mode) so the
+                // same lab visit reproduces the same choices after a refresh (the in-memory
+                // _pendingProfChoices cache only covers within-session reuse). try/finally so
+                // the early "no choices" return below still restores the shared RNG stream.
+                const _profSeedKey = 900000 + (cityIdx | 0) * 1000 + ((sm.badges | 0) * 4) + (_profMysteryMode ? 1 : 0) + (_profLegendaryMysteryMode ? 2 : 0);
+                const _savedProfNext = window.storyRngNext;
+                if (sm && sm.active && sm.runSeed != null) {
+                    let _ps = _storyEventSeed(_profSeedKey);
+                    window.storyRngNext = function () { _ps = (Math.imul(_ps, 1664525) + 1013904223) >>> 0; return _ps / 4294967296; };
+                }
+                try {
                 // Mystery mode: offer 1 Pokémon. Professor mode: offer 3 choices.
                 const numChoices = _profMysteryMode ? 1 : 3;
                 const sg = storySettingsGens();
@@ -41781,7 +42269,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const usedNames = new Set(sm.team.filter(t => t && !t.isEgg).map(t => t.name));
                 // Block all forms of families already on the team (e.g. having Arceus blocks Arceus-Fire)
                 const usedFamilies = new Set(sm.team.filter(t => t && !t.isEgg).map(t => _storyBaseFamily(t.name)));
-                const profCap = _profLegendaryMysteryMode ? 99 : Math.min(_storyEvoStageCapForCity(cityIdx), 1); // professor never gifts a fully-evolved (Stage-2) mon
+                const profCap = _profLegendaryMysteryMode ? 99 : _professorEvoStageCapForCity(cityIdx); // Sheet 5: Basic C0-2 · Stage-1 C3-5 · ALL C6 (Mystery Figure bypasses via mystery mode)
                 for (let i = 0; i < numChoices; i++) {
                     let name = null;
                     for (let t = 0; t < 24; t++) {
@@ -41824,14 +42312,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _profTier = _profLegendaryMysteryMode
                         ? STORY_BUILD_TIER.TOURNAMENT
                         : _storyBuildTierForProfessor(cityIdx, sm.badges);
+                    // Snapshot the optimized gift before the tier downgrade so the
+                    // city opt-gradient can selectively restore it (professor has no
+                    // difficulty axis → diff 0).
+                    const _pOptN = build.n, _pOptA = build.a;
+                    const _pOptM = Array.isArray(build.m) ? build.m.slice() : null;
                     if (_profTier < STORY_BUILD_TIER.TOURNAMENT) {
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
-                    // Professor gifts are player-side mons — roll random IVs so
-                    // the Fan Club has work to do. Legendary mystery offers stay
-                    // random too (the gimmick is the species, not perfect stats).
-                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollRandomIVs()); } catch (e) {}
+                    // City-curve EVs + opt gradient (match trainer curve at diff 0) —
+                    // except legendary mystery offers, which keep their full preset.
+                    if (!_profLegendaryMysteryMode) {
+                        try {
+                            const _pEvBase = (typeof baseStats === 'object') ? baseStats[name] : null;
+                            _distributeEVsToTotal(build, _pEvBase, _storyEvTotalForCity(cityIdx, 0));
+                        } catch (e) {}
+                        try {
+                            const _pr = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                            if (_pOptN) build.n = (_pr() < _storyNatureOptChance(cityIdx, 0)) ? _pOptN : _NEUTRAL_NATURES_LIST[Math.floor(_pr() * _NEUTRAL_NATURES_LIST.length)];
+                            if (_pOptA && _pr() < _storyAbilityOptChance(cityIdx, 0)) {
+                                const _pbs = (typeof baseStats === 'object') ? baseStats[name] : null;
+                                const _pHidden = !!(_pbs && _pbs.abilities && _pbs.abilities.H && _pOptA === _pbs.abilities.H);
+                                if (!_pHidden || cityIdx >= 4) build.a = _pOptA; // prof hidden opens at Dojo C4
+                            }
+                            if (_pOptM && _pOptM.length && _pr() < _storyMoveOptChance(cityIdx, 0)) build.m = _pOptM.slice();
+                        } catch (e) {}
+                    }
+                    // Professor gifts are player-side mons on the wild/prof city curve
+                    // (Sheet 5): a "0..cap" band whose floor rises with the city, so the
+                    // Fan Club / vitamins still have work to do. Legendary mystery offers
+                    // stay perfect (the gimmick is the species, not the stat grind).
+                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollCityIVs('wildprof', cityIdx, 0, false)); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
@@ -41851,6 +42363,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _pendingProfBadges = (sm.badges | 0);
                 // Auto-select the single mystery offer so Accept is ready immediately
                 _profSelectedIdx = _profMysteryMode ? 0 : null;
+                } finally { window.storyRngNext = _savedProfNext; }
             }
             _renderProfChoices();
             showScreen('screen-story-professor');
@@ -41863,30 +42376,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gimmickBadge = { MEGA: '<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>', ZMOVE: '<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>', DYNAMAX: '<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>', GMAXDYNAMAX: '<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>', STANDARD: '' };
             const gb = (ch.build.gimmick && gimmickBadge[ch.build.gimmick]) || '';
             const tera = ch.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
-            // Training tier chip — labels the build's current polish so the player
-            // knows whether to expect raw potential ("Untrained") or a tournament-
-            // grade gift. The chip carries a tooltip explaining the system on first
-            // hover so the meaning isn't a mystery.
-            const _ptN = ch.build.powerTier | 0;
-            const _ptLabel = (typeof _storyBuildTierLabel === 'function') ? _storyBuildTierLabel(_ptN) : '';
-            const _ptColor = (_ptN >= 1 && _ptN <= 4 && typeof STORY_BUILD_TIER_COLOR !== 'undefined') ? STORY_BUILD_TIER_COLOR[_ptN] : '#9e9e9e';
-            const _ptTip = _ptN === 4
-                ? 'Tournament: fully optimized. No training needed.'
-                : _ptN === 3
-                    ? 'Competent: solid build. Some polish at tutors helps.'
-                    : _ptN === 2
-                        ? 'Novice: partial training. Tutors will sharpen EVs, nature, and gear.'
-                        : 'Untrained: raw potential. Move Tutor, EV Trainer, Nature Rater, and Battle Dojo bring it up to fighting shape.';
-            const ptBadge = _ptLabel
-                ? `<span class="hover-text" data-tip-key="${encodeURIComponent(_ptTip)}" style="font-size:10px;background:${_ptColor};color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:help;" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_ptLabel}</span>`
-                : '';
+            // No training-tier chip on the choice card — the tier ("Untrained" etc.)
+            // is internal build info surfaced nowhere else in the game, so it stayed
+            // confusing on the pick screen. Removed per the opening-flow spec.
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
                 <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                 <div class="draft-card-body">
                     <div class="draft-card-header">
-                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}${ptBadge}</span>
+                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span>
                         <button type="button" class="draft-card-info-btn" title="Full summary" aria-label="Full summary" onclick="event.stopPropagation();window.StoryMode.profOpenSummary(${idx})">&#8505;</button>
                     </div>
                     <div class="draft-card-details">
@@ -42926,6 +43425,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
+        /** The rival's taunt display name — "<your name> Sucks". Falls back to the
+         *  canonical identity (Blue/Silver/…) when the player hasn't set a name. */
+        function _storyRivalTauntName(canonName) {
+            const pn = ((sm && sm.trainerProfile && sm.trainerProfile.name) || '').trim();
+            return pn ? `${pn} Sucks` : (canonName || 'your rival');
+        }
         function _showIntroRivalColdOpen(rivalName, onDone) {
             const variant = _storyActiveVariant();
             // Per-variant intro framing — the introRival cold-open is the
@@ -42936,7 +43441,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hub = (typeof cityProfessorHubSlot === 'function') ? (cityProfessorHubSlot(0) || {}) : {};
             const profName = hub.label || 'Prof. Oak';
             const profSpriteFile = hub.spriteFile || 'OakProfessor';
-            const displayRival = (rivalName && String(rivalName).trim()) || 'someone you know';
+            const displayRival = _storyRivalTauntName((rivalName && String(rivalName).trim()) || '');
             const intro = _STORY_INTRO_SCENES[variant.id] || _STORY_INTRO_SCENES.classic;
             // metaKey is left blank here — the outer dispatcher
             // (_runStoryColdOpen) already stamps a variant-keyed dedupe entry,
@@ -43033,6 +43538,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // Parity move gate (#1): before the player's Move Tutor reaches TM Expert (City 4)
+        // the player only has egg + level-up moves, so foes are held to the same access.
+        // Pre-warm the egg/level-up learnset for the rolled foe species (reusing the Move
+        // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
+        // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
+        // full. From City 4 on both sides have full move access → no-op. Deterministic.
+        async function _storyGateFoeMovesByCity(team, storyRowIdx) {
+            if (!Array.isArray(team) || !team.length || storyRowIdx == null || storyRowIdx < 0 || !sm || !sm.active) return;
+            let city = -1;
+            try { city = cityIndexFromEventIndex(storyRowIdx); } catch (e) { return; }
+            if (city < 0 || city >= 4) return;
+            const species = [...new Set(team.map(s => s && s.name).filter(Boolean))];
+            // Warm all species' learnsets in parallel so the pre-fight delay stays small.
+            try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
+            for (const slot of team) {
+                if (!slot || !slot.build || !Array.isArray(slot.build.m) || !slot.build.m.length) continue;
+                const learn = _tutorLearnsetCache.get(slot.name);
+                if (!learn || !Array.isArray(learn.tier1) || !learn.tier1.length) continue; // no data → leave moves as-is
+                const allowed = new Set(learn.tier1);
+                const orig = slot.build.m.slice();
+                const kept = orig.filter(mv => allowed.has(String(mv).split('/')[0]));
+                if (kept.length === orig.length) continue; // already all egg/level-up
+                const targetLen = Math.min(4, orig.length);
+                if (kept.length < targetLen) {
+                    let pctOf = null;
+                    try { pctOf = _txStarredPool(slot.name).moves.pctOf; } catch (e) {}
+                    const have = new Set(kept.map(m => String(m).split('/')[0]));
+                    const fill = learn.tier1.filter(mn => !have.has(mn));
+                    if (pctOf) fill.sort((a, b) => (pctOf.get(b) || 0) - (pctOf.get(a) || 0));
+                    while (kept.length < targetLen && fill.length) kept.push(fill.shift());
+                }
+                if (!kept.length) kept.push(learn.tier1[0]);
+                slot.build.m = kept;
+            }
+        }
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {
             if (!ev) return;
             if (ev[1] !== 'Battle') {
@@ -43075,6 +43615,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
             const isMysteryFinal = String(event || '') === 'Mystery Figure';
+            // Generic Basic / Gym-Trainer events are GENERATED (rolled type + generic
+            // sprite, no signatures) rather than pulled from a fixed roster (Phase 3.5d).
+            // Gym Trainers take the gym's type; route basics roll their own. Seeded per
+            // event so the generated identity is static across flee / revisit / reload.
+            const _genericBasicEvent = (String(event) === 'Basic Trainer' || /^Gym Trainer/.test(String(event)));
             const _mysteryFinalFace = isMysteryFinal ? _storyEnsureMysteryIdentity() : null;
             let trainer = isMysteryFinal
                 ? {
@@ -43103,9 +43648,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ];
                     })()
                 }
-                : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
-            if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
-                trainer = { ...trainer, spriteFile: sm.runRivalSpriteFile };
+                : _genericBasicEvent
+                    ? _generateBasicTrainer(idx, /^Gym Trainer/.test(String(event)) ? prefType : null)
+                    : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
+            if (!isMysteryFinal && event === 'Rival') {
+                // The rival taunts you to your face: their nameplate reads "<your name>
+                // Sucks", keeping their assigned sprite. canonName preserves the real
+                // identity (Blue/Silver/…) for the per-name dialogue + quote lookups.
+                trainer = {
+                    ...trainer,
+                    canonName: trainer.name,
+                    name: _storyRivalTauntName(trainer.name),
+                    ...(sm.runRivalSpriteFile ? { spriteFile: sm.runRivalSpriteFile } : {}),
+                };
             }
             sm.currentTrainerData = trainer;
 
@@ -43129,20 +43684,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(team) };
                         save();
                     } catch (e) { console.warn('[Story] enemy lock refresh save', e); }
+                    try { _storyRecordSignatureEncounter(trainer, team); } catch (e) {}
                     startFight(team);
                 }, idx);
                 return;
             }
 
-            showBattleIntro(trainer, event, () => {
-                const enemyTeam = isMysteryFinal
+            showBattleIntro(trainer, event, async () => {
+                const _rollEnemy = () => isMysteryFinal
                     ? rollMysteryFigureFinalBossTeam(6, sg)
                     : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                // Static-roll spec: every non-rival fight is a pure function of
+                // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
+                // The rival stays dynamic — it re-rolls off the LIVE party to counter it.
+                const enemyTeam = (String(event) === 'Rival') ? _rollEnemy() : _withEventSeededRng(idx, _rollEnemy);
+                try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
                 try {
                     sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(frozenTeam) };
                     save();
                 } catch (e) { console.warn('[Story] enemy lock save', e); }
+                try { _storyRecordSignatureEncounter(trainer, frozenTeam); } catch (e) {}
                 startFight(frozenTeam);
             }, idx);
         }
@@ -43176,7 +43738,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : '';
                 overlay.innerHTML = `
                     <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
-                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
+                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>
                     ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
                     <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
@@ -44170,8 +44732,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // accidentally hand a shiny to the broker for pocket gold.
                 const _ugShiny = !!(slot.build && slot.build._isShiny);
                 const _ugShinyMark = _ugShiny ? '<span style="color:#ffd54f;margin-right:3px;" title="Shiny — careful!">&#10024;</span>' : '';
+                const _srcPill = where === 'team'
+                    ? '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(76,175,80,0.22);color:#a5d6a7;border:1px solid #4caf50;">&#128101; Party</span>'
+                    : '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(79,195,247,0.16);color:#81d4fa;border:1px solid #4fc3f7;">&#128230; PC Box</span>';
                 html += `<div data-pc-row="${where}" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};cursor:pointer;" title="Click to view full build">
-                    <span style="font-size:9px;color:#888;width:30px;pointer-events:none;">${whereLabel}</span>
+                    ${_srcPill}
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
                     <span style="color:#ffd700;font-size:11px;font-weight:bold;pointer-events:none;">+${price.toLocaleString()}G</span>
                     <button type="button" onclick="event.stopPropagation();window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
@@ -44911,7 +45476,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.StoryFx && window.StoryFx.playSfx('pbRel', 0.7); } catch (e) {}
             _pcRefresh();
         }
-        function pcRelease(monId) {
+        async function pcRelease(monId) {
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'pc') return;
@@ -44922,14 +45487,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const shinyNote = (found.slot && found.slot.build && found.slot.build._isShiny)
                 ? ' ✨ This is a SHINY Pokémon.'
                 : '';
-            const ok = window.confirm('Release ' + name + '?' + shinyNote + ' This cannot be undone.' + evNote);
+            const ok = await window.showGameConfirm('Release ' + name + '?' + shinyNote + ' This cannot be undone.' + evNote);
             if (!ok) return;
             sm.pcBox.splice(found.index, 1);
             save();
             try { window.StoryFx && window.StoryFx.playSfx('pbTrayEmpty', 0.6); } catch (e) {}
             _pcRefresh();
         }
-        function pcSell(monId) {
+        async function pcSell(monId) {
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found) return;
@@ -44940,7 +45505,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const name = slot.name || 'this Pokémon';
             const evNote = _slotHasTrainedEVs(slot) ? ' Its EV training will be lost too.' : '';
             const shinyNote = (slot.build && slot.build._isShiny) ? ' ✨ This is a SHINY Pokémon.' : '';
-            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G?' + shinyNote + ' This cannot be undone.' + evNote);
+            const ok = await window.showGameConfirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G?' + shinyNote + ' This cannot be undone.' + evNote);
             if (!ok) return;
             if (found.where === 'team') sm.team.splice(found.index, 1);
             else sm.pcBox.splice(found.index, 1);
@@ -45184,24 +45749,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // circumstance, with one small exception: a 5% G2 leak from badge 6 onward gives late-game
         // routes a flash of "rare wild" tension without undermining Safari's identity as the only
         // path to mid- and high-tier catches.
-        const _WILD_GRADE_CURVE_BY_BADGES = {
-            0: { g1: 0, g2: 0, g3: 0,   g4: 100 }, // pre-Gym 1 — pure G4
-            1: { g1: 0, g2: 0, g3: 15,  g4: 85  }, // post-G1
-            2: { g1: 0, g2: 0, g3: 35,  g4: 65  }, // post-G2
-            3: { g1: 0, g2: 0, g3: 60,  g4: 40  }, // post-G3 — G3 starts taking over
-            4: { g1: 0, g2: 0, g3: 85,  g4: 15  }, // post-G4 — G3 era
-            5: { g1: 0, g2: 0, g3: 100, g4: 0   }, // post-G5 — pure G3
-            // v19 ramped G2 leak: starts rare at badge 6, eases up through 8.
-            // Pre-v19 was a flat 5% from badge 6 onward; the ramp gives players
-            // a clearer "wilds get slightly better as you go" beat without
-            // undermining Safari's identity as the primary path to G2/G1.
-            6: { g1: 0, g2: 3, g3: 97,  g4: 0   }, // post-G6 — first G2 leak (rare)
-            7: { g1: 0, g2: 5, g3: 95,  g4: 0   }, // post-G7 — slight ramp
-            8: { g1: 0, g2: 8, g3: 92,  g4: 0   }  // post-G8 — wild ladder peaks
-        };
-        function _wildGradeWeightsForBadges(badges) {
-            const b = Math.max(0, Math.min(8, badges | 0));
-            return _WILD_GRADE_CURVE_BY_BADGES[b];
+        // Wild grade mix by ARRIVED city (Sheet 5). Wilds stay the catch-and-train path:
+        // pure G4 through C2, G3 creeping in from C3, and a G2 tail opening at C5. Late
+        // routes can surface a G2 to catch, but the floor stays G4-heavy so the route
+        // never hands you a finished team. (Safari is the dedicated G1/G2 path and keeps
+        // its own curve.) Replaces the old badge-keyed curve — wild grade now rides the
+        // same city clock as the rest of the build sheet.
+        const STORY_WILD_GRADE_BY_CITY = [
+            { g1: 0, g2: 0,  g3: 0,  g4: 100 }, // C0
+            { g1: 0, g2: 0,  g3: 0,  g4: 100 }, // C1
+            { g1: 0, g2: 0,  g3: 0,  g4: 100 }, // C2
+            { g1: 0, g2: 0,  g3: 10, g4: 90  }, // C3
+            { g1: 0, g2: 0,  g3: 20, g4: 80  }, // C4
+            { g1: 0, g2: 10, g3: 30, g4: 60  }, // C5
+            { g1: 0, g2: 15, g3: 40, g4: 45  }, // C6
+            { g1: 0, g2: 20, g3: 50, g4: 30  }, // C7
+        ];
+        function _wildGradeWeightsForCity(city) {
+            const c = Math.max(0, Math.min(STORY_WILD_GRADE_BY_CITY.length - 1, city | 0));
+            return STORY_WILD_GRADE_BY_CITY[c];
         }
 
         /** Partially-trained wild build: moves rolled by makeBuild, default ability,
@@ -45360,11 +45926,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // silently inherit a shiny they were never told about, and
             // _storyMarkDexCaught would always record shiny=false.
             ensureShinyRolled(b);
-            b.i = 'None';
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
-            if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
-            b.n = _wildPickNature(base);
+            let _wCity = 0;
+            try { _wCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            // Wild held item by city (sheet: None C0-3, Level-1 items C4-6, Level-2 C7).
+            // Keep the build's item but gate it by the city tier, mirroring the enemy-trainer
+            // item cap: below C4 wilds carry nothing; C4-6 keep up to a staple; C7 keep best.
+            const _wildItemCap = (_wCity <= 3) ? 0 : (_wCity <= 6 ? 2 : 3);
+            if (!b.i || _wildItemCap === 0 || (typeof _dojoItemTier === 'function' && _dojoItemTier(b.i) > _wildItemCap)) {
+                b.i = 'None';
+            }
+            const _wRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Ability (Sheet 5 wild opt): slot-0 by default; a hidden ability only surfaces
+            // on late-route catches (C6+), and even then only sometimes — the wild "you
+            // grow it" philosophy applies to the ability slot too.
+            if (base && base.abilities) {
+                if (_wCity >= 6 && base.abilities.H && _wRng() < 0.35) b.a = base.abilities.H;
+                else if (base.abilities['0']) b.a = base.abilities['0'];
+            }
+            // Nature: neutral on the very first routes (C0), curated-positive from C1.
+            b.n = (_wCity <= 0)
+                ? _NEUTRAL_NATURES_LIST[Math.floor(_wRng() * _NEUTRAL_NATURES_LIST.length)]
+                : _wildPickNature(base);
             b.evs = _wildPickEVs(base);
+            // City-curve EV total (Sheet 5, "match trainer curve"): scale the archetype
+            // shape to the city's battle-trained EV level. IVs (the vitamin-trained axis)
+            // use the separate "0..cap" band rolled below.
+            try { _distributeEVsToTotal(b, base, _storyEvTotalForCity(_wCity, 0)); } catch (e) {}
             // Wild catches sit at the bottom of the training-tier curve. The 170-EV /
             // curated-positive-nature head-start (see _wildPickNature/_wildPickEVs)
             // makes them comparable to a T1 trainer mon's structural moves but with
@@ -45381,10 +45969,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
-            // Random IVs for wild / starter / partner — vitamins are how the
-            // player trains weak stats up. CSV builds that ship explicit IVs
-            // (rare on the wild path) are preserved by _ensureBuildIVs.
-            try { _ensureBuildIVs(b, _rollCappedIVs(15 + (sm && sm.badges ? (sm.badges | 0) * 2 : 0))); } catch (e) {}
+            // City-curve IVs for wild catches (Sheet 5): a "0..cap" band whose floor
+            // rises with the arrived city — early catches roll low, late catches can be
+            // near-perfect but never guaranteed. Vitamins remain how the player trains
+            // weak stats up. CSV builds that ship explicit IVs (rare on the wild path)
+            // are preserved by _ensureBuildIVs.
+            try { _ensureBuildIVs(b, _rollCityIVs('wildprof', _wCity, 0, false)); } catch (e) {}
             return b;
         }
 
@@ -45403,9 +45993,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { r -= (gradeWeights.g3||0); if (r <= 0) { chosenGrade = 3; }
             else { r -= (gradeWeights.g2||0); if (r <= 0) { chosenGrade = 2; }
             else { chosenGrade = 1; } } }
-            // No-stage wild rule: wilds are ALWAYS base/unevolved forms — evolution is
-            // the mechanic, so the route never hands you a pre-evolved shortcut.
-            const cap = 0;
+            // Wild evo cap rises with city (Sheet 5): Basic C0-4 · Stage-1 C5-6 · ALL C7.
+            // Earlier than the player so routes stay catch-and-train, but routes near the
+            // end of the run can surface mid/final evolutions.
+            let _wildCity = 0;
+            try { _wildCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            const cap = _wildEvoStageCapForCity(_wildCity);
             let pool = buildGradePool(enabledGens, chosenGrade);
             if (cap < 2) { const c = pool.filter(n => _storyEvoStageOf(n) <= cap); if (c.length) pool = c; }
             if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
@@ -45415,12 +46008,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return all.length ? all[Math.floor(Math.random() * all.length)] : null;
         }
 
-        /** Roll a route wild. Grade mix comes from the badge curve (NOT the
+        /** Roll a route wild. Grade mix comes from the city curve (NOT the
          *  upcoming trainer's `gradeWeights`); species pool comes from the
          *  player's enabled-gen toggles. Pure RNG end-to-end — no seed reuse
          *  so reloads and rematches each surface a different species. */
         function rollWildEncounter(enabledGens) {
-            const gw = _wildGradeWeightsForBadges(sm && sm.badges);
+            let _wgCity = 0;
+            try { _wgCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            const gw = _wildGradeWeightsForCity(_wgCity);
             const name = _pickWildSpeciesRandom(gw, enabledGens);
             if (!name) return null;
             const build = makeWildBuild(name);
@@ -50267,12 +50862,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // so it matches Item cost. Hidden abilities are now gated and
         // gimmick-enemy density rose with the Frontier/Hard Mode changes;
         // the +500G ability premium wasn't earning its keep.
-        const TUTOR_COST_MOVE    = 1500;
-        const TUTOR_COST_ITEM    = 2000;
+        const TUTOR_COST_MOVE    = 1500;  // fallback only — see _moveCostForStage (staged 1000/2500)
+        const TUTOR_COST_ITEM    = 2000;  // fallback only — see _itemCostForTier (tiered 500/1000/2500)
         const TUTOR_COST_ABILITY = 2000;  // regular ability swap
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
         const TUTOR_COST_AWAKEN  = 5000;  // Awakened pick (Grandmaster · City 8+)
         const TUTOR_COST_NATURE  = 2000;
+        // Move Tutor charge is staged by tutor tier: Heart Scale (L1) 1,000G per move,
+        // TM Expert (L2) 2,500G.
+        function _moveCostForStage() {
+            return (typeof _npcStage === 'function' && _npcStage('tutor') >= 1) ? 2500 : 1000;
+        }
+        // Battle Dojo item charge is tiered by item tier: tier-1 berries 500G,
+        // tier-2 staples 1,000G, tier-3 best/meta items 2,500G.
+        function _itemCostForTier(itemName) {
+            const t = (typeof _dojoItemTier === 'function') ? _dojoItemTier(itemName) : 2;
+            return t >= 3 ? 2500 : (t === 2 ? 1000 : 500);
+        }
 
         // ── Staged-NPC capability ladders (city-anchored, tunable) ───────────
         // Cities are the constant anchor — a facility's capability TIER is keyed
@@ -50285,6 +50891,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Battle Dojo:  White Belt (natural abilities · berry/basic items)
             //             → Black Belt (+Hidden abilities · +decent items)
             //             → Grandmaster (+Awakened abilities · +all items)
+            // Matrix (post-merge from main): White Belt C2–C4, Black Belt C5–C7, Grandmaster C8+.
             dojo:   [2, 5, 8],
             // Move Tutor:  Heart Scale (egg + level-up + own competitive moves)
             //            → TM Expert (+TMs / tutor / the full learnset)
@@ -51115,6 +51722,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // EV spreads use their own resolver (_evTrainerTopSpreadInfo) but follow
         // the same shape: top 7, soft overshoot, evo fill.
         const _TX_EV_RULES = { cap: 7, ceiling: 11, fillFromEvo: true };
+        // #47 curated tier-appropriate item fill. Many species' Smogon builds skew to
+        // tier-3 power items, so the early/mid Dojo tiers (which only surface tier ≤1 /
+        // ≤2 items) can come up short on real meta picks. When that happens we top the
+        // rec list up with broadly-good options of the right tier — nice berries at
+        // White Belt, solid staples at Black Belt — so the player always gets a full,
+        // sensible suggestion set. Keyed by Dojo item-tier cap; tier 3 (Grandmaster)
+        // already fills from the full meta so it needs no curated list. Every entry must
+        // satisfy _dojoItemTier(name) <= its key.
+        const _TX_ITEM_REC_FILL = {
+            1: ['Sitrus Berry', 'Lum Berry', 'Salac Berry', 'Liechi Berry', 'Petaya Berry', 'Chesto Berry', 'Aguav Berry'],
+            2: ['Leftovers', 'Eviolite', 'Rocky Helmet', 'Focus Sash', 'Black Sludge', 'Sitrus Berry', 'Lum Berry', 'Salac Berry'],
+            3: [],
+        };
         // Meme / non-competitive moves that occasionally appear in joke builds
         // and clear the threshold by accident (e.g. Kartana Giga Impact at
         // ~17% from one-off troll sets). Filtering them out at the pool layer
@@ -51258,9 +51878,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 moves: empty(), items: empty(), abilities: empty(), natures: empty(),
             };
         }
+        // #47 staged recommendation counts. Early Move Tutor (Heart Scale) surfaces
+        // 18 recommended moves; the TM Expert tier opens up to 30. Battle Dojo item
+        // recs grow 3 (White Belt — berries) → 5 (Black Belt — +mediocre staples) →
+        // 7 (Grandmaster — +best meta items), and the candidate item tier widens in
+        // lockstep. Outside an active story run (e.g. quick-play loadout editor) the
+        // full, unstaged counts apply.
+        function _txStageCountRule() {
+            let tutorStage = 1, dojoStage = 2; // default: full pools when not in a staged run
+            try {
+                if (typeof sm !== 'undefined' && sm && sm.active && typeof _npcStage === 'function') {
+                    tutorStage = _npcStage('tutor');
+                    dojoStage = _npcStage('dojo');
+                }
+            } catch (e) {}
+            return {
+                moves: tutorStage >= 1 ? 30 : 18,
+                items: dojoStage >= 2 ? 7 : (dojoStage >= 1 ? 5 : 3),
+                itemTierCap: dojoStage >= 2 ? 3 : (dojoStage >= 1 ? 2 : 1),
+                tutorStage, dojoStage,
+                sig: tutorStage + ':' + dojoStage,
+            };
+        }
         function _txStarredPool(monName) {
             if (!monName) return _txStarredPoolEmpty(0);
             const meta = _txMetaStatsFor(monName);
+            const stageRule = _txStageCountRule();
+            // At Heart Scale (tutor stage 0) the player can only teach egg + level-up moves,
+            // so the early move recs are restricted to that set (ranked by Smogon usage).
+            // The set comes from the Move Tutor's learnset cache once it's warm; the cache key
+            // carries a warm flag so a cold-cache pool and the warm (egg/level-up-filtered)
+            // pool don't collide.
+            const _eggLvlSet = (stageRule.tutorStage === 0 && typeof _tutorLearnsetCache !== 'undefined' && _tutorLearnsetCache.has(monName))
+                ? new Set((_tutorLearnsetCache.get(monName).tier1) || [])
+                : null;
+            const _cacheSig = stageRule.sig + ':' + ((_eggLvlSet && _eggLvlSet.size) ? 1 : 0);
             // Sparse only kicks in when BOTH the species' own builds AND the
             // entire evolution chain combined are below the threshold. This
             // lets Bulbasaur (8 own builds) borrow from Venusaur (~50) instead
@@ -51278,7 +51930,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return _txStarredPoolEmpty(ownTotal);
                 }
             }
-            if (meta && meta._starredPool) return meta._starredPool;
+            if (meta) {
+                if (!meta._starredPoolCache) meta._starredPoolCache = {};
+                if (meta._starredPoolCache[_cacheSig]) return meta._starredPoolCache[_cacheSig];
+            }
 
             // Pre-compute the evo-chain sorted-rows source per kind, only on
             // demand. For most species this is identical to the species' own
@@ -51300,24 +51955,73 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const buildBucketCap = (kind, rule) => {
                 let sorted = _txMetaSorted(meta, kind);
                 if (kind === 'moves') sorted = sorted.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
-                // Strict ≥1 build use; the Smogon-sorted list already has count>0
-                // entries only, so no extra filter beyond memes.
-                let pool = _txCapWithOvershoot(sorted, rule.cap, rule.ceiling);
-                // Floor-fill from the evolution chain when the species' own
-                // pool is short of the floor target (e.g. moves want ≥30).
-                // Pulls highest-stage first; meme moves stay blocked across the
-                // chain too. The own pool may already exceed the floor (up to
-                // cap) — fill only tops up toward the floor.
-                const fillTarget = rule.floor || rule.cap;
+                // #47 stage-gated rec counts: moves 18 (Heart Scale) → 30 (TM Expert);
+                // items 3 → 5 → 7 by Dojo tier, with the candidate item tier widening
+                // (berries → +mediocre staples → +best meta). `sorted` stays full so the
+                // usage-% tag still shows for every entry in "show all"; only the rec
+                // candidate set is narrowed.
+                let effCap = rule.cap, effCeiling = rule.ceiling, effFloor = rule.floor || rule.cap;
+                let candidates = sorted;
+                if (kind === 'moves') {
+                    effCap = effCeiling = effFloor = stageRule.moves;
+                    // Heart Scale (tutor stage 0): recommend only egg + level-up moves — the
+                    // moves the player can actually teach now — ranked by Smogon usage. If that
+                    // usage-ranked subset is short of the count, top up with the rest of the
+                    // egg/level-up pool so the early list stays full and on-tier.
+                    if (_eggLvlSet && _eggLvlSet.size) {
+                        candidates = sorted.filter(r => _eggLvlSet.has(r.name));
+                        if (candidates.length < effFloor) {
+                            const have = new Set(candidates.map(r => r.name));
+                            for (const mn of _eggLvlSet) {
+                                if (candidates.length >= effFloor) break;
+                                if (have.has(mn) || _TX_MEME_MOVE_BLOCKLIST.has(mn)) continue;
+                                candidates.push({ name: mn, count: 0, pct: 0 });
+                                have.add(mn);
+                            }
+                        }
+                    }
+                } else if (kind === 'items') {
+                    effCap = effCeiling = effFloor = stageRule.items;
+                    candidates = sorted.filter(r => (typeof _dojoItemTier === 'function' ? _dojoItemTier(r.name) : 1) <= stageRule.itemTierCap);
+                }
+                let pool = _txCapWithOvershoot(candidates, effCap, effCeiling);
+                // Floor-fill from the evolution chain when the species' own pool is
+                // short of the target. Pulls highest-stage first; the meme / item-tier
+                // filters apply across the chain too.
+                const fillTarget = effFloor;
                 if (rule.fillFromEvo && pool.length < fillTarget) {
                     let evoRows = evoChainSortedRows(kind);
-                    if (kind === 'moves') evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                    if (kind === 'moves') {
+                        evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                        // At Heart Scale, never borrow a move the current mon can't learn now.
+                        if (_eggLvlSet && _eggLvlSet.size) evoRows = evoRows.filter(r => _eggLvlSet.has(r.name));
+                    }
+                    else if (kind === 'items') evoRows = evoRows.filter(r => (typeof _dojoItemTier === 'function' ? _dojoItemTier(r.name) : 1) <= stageRule.itemTierCap);
                     const have = new Set(pool.map(r => r.name));
                     for (const r of evoRows) {
                         if (pool.length >= fillTarget) break;
                         if (have.has(r.name)) continue;
                         pool.push(r);
                         have.add(r.name);
+                    }
+                }
+                // Curated tier fill (#47): early/mid Dojo stages must never come up sparse.
+                // Keep the species' own usage-ranked picks first, then top up to the count
+                // with broadly-good tier-≤cap items (berries at White Belt → staples at Black
+                // Belt). Eviolite only for not-fully-evolved mons; Grandmaster (tier 3) needs
+                // no fill since it already draws the full meta.
+                if (kind === 'items' && pool.length < effFloor) {
+                    const fillList = _TX_ITEM_REC_FILL[stageRule.itemTierCap] || [];
+                    const monEvolves = !!(((typeof baseStats === 'object' && baseStats[monName]) || {}).evos || []).length;
+                    const have2 = new Set(pool.map(r => r.name));
+                    for (const nm of fillList) {
+                        if (pool.length >= effFloor) break;
+                        if (have2.has(nm)) continue;
+                        if ((typeof _dojoItemTier === 'function' ? _dojoItemTier(nm) : 1) > stageRule.itemTierCap) continue;
+                        if (nm === 'Eviolite' && !monEvolves) continue;
+                        const srcPct = (candidates.find(r => r.name === nm) || sorted.find(r => r.name === nm) || {}).pct || 0;
+                        pool.push({ name: nm, count: 0, pct: srcPct });
+                        have2.add(nm);
                     }
                 }
                 const starred = new Set(); const inPool = new Set(); const pctOf = new Map();
@@ -51367,23 +52071,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 natures: buildBucket('natures'),
             };
 
-            // Always include Pokédex regular + hidden abilities so the
-            // species' canonical choices are reachable from the ★ pool even
-            // when Smogon data is sparse on that slot. CSV-empty-ability
-            // rows already roll into slot 0 via _txAccumulateBuilds, so this
-            // only adds anything when the regular ability has truly never
-            // been recorded — kept as a belt-and-braces guarantee.
+            // #47 ability recommendations: rank the species' LEGAL ability pool by
+            // Smogon usage and ★ only the single best (the recommended one — no
+            // top-N). Regular abilities (slots 0/1) are always rankable; the Hidden
+            // ability joins the ranked pool only once the Battle Dojo has unlocked it
+            // (Black Belt, dojo stage ≥ 1). Awakened / extra abilities are never
+            // recommended here — they're added manually in the loadout editor. inPool
+            // keeps every legal slot so the picker can show (and lock) them; only
+            // `starred` carries the recommendation.
             try {
                 const bs = (typeof baseStats === 'object') ? baseStats[monName] : null;
+                const ab = result.abilities;
+                ab.starred = new Set();
                 if (bs && bs.abilities) {
+                    const hiddenUnlocked = stageRule.dojoStage >= 1;
+                    const legal = [];
                     for (const slot of ['0', '1', 'H']) {
                         const a = bs.abilities[slot];
-                        if (a) { result.abilities.starred.add(a); result.abilities.inPool.add(a); }
+                        if (!a) continue;
+                        ab.inPool.add(a);
+                        if (!ab.pctOf.has(a)) ab.pctOf.set(a, 0);
+                        if (slot !== 'H' || hiddenUnlocked) legal.push(a);
                     }
+                    let best = null, bestPct = -1;
+                    for (const a of legal) {
+                        const p = ab.pctOf.get(a) || 0;
+                        if (p > bestPct) { bestPct = p; best = a; }
+                    }
+                    if (best) ab.starred.add(best);
                 }
             } catch (e) {}
 
-            meta._starredPool = result;
+            if (!meta._starredPoolCache) meta._starredPoolCache = {};
+            meta._starredPoolCache[_cacheSig] = result;
             return result;
         }
         // Blend a 0..150 heuristic score with the 0..100 popularity score.
@@ -52611,8 +53331,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability cost is tiered by ability tier: regular 2000G, hidden 3000G, awaken 5000G.
             // Use the pending pick's tier when present so the bar shows the actual charge.
             let cost;
-            if (kind === 'move') cost = TUTOR_COST_MOVE;
-            else if (kind === 'item') cost = TUTOR_COST_ITEM;
+            if (kind === 'move') cost = _moveCostForStage();
+            else if (kind === 'item') {
+                const pendingItem = (pending && pending.kind === 'item') ? pending.value : null;
+                cost = pendingItem ? _itemCostForTier(pendingItem) : TUTOR_COST_ITEM;
+            }
             else if (kind === 'nature') cost = TUTOR_COST_NATURE;
             else if (kind === 'ability') {
                 const pendingAbil = (pending && pending.kind === 'ability') ? pending.value : null;
@@ -52729,7 +53452,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
-                filt.sort(_txSortByUsageDesc(pool.moves.pctOf, m => _txMoveHeuristic(m, mon, build, monName)));
+                // "Really good" ordering: blend Smogon usage (65%) with the per-pokemon
+                // heuristic (STAB / power / accuracy / coverage fit, 35%) so the best pick
+                // for THIS mon leads — not merely the most-used move. Usage% breaks ties.
+                filt.sort((a, b) => _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName)
+                    || (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0)
+                    || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -52746,7 +53474,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
-                filt.sort(_txSortByUsageDesc(pool.items.pctOf, it => _txItemHeuristic(it, mon, build, monName)));
+                // Blend usage (65%) with the per-pokemon item heuristic (35%) so the
+                // best-fit item for THIS mon leads (e.g. Eviolite on an NFE, Choice Band
+                // on a physical attacker), with usage% as the tie-breaker.
+                filt.sort((a, b) => _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName)
+                    || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
+                    || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -53008,7 +53741,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { for (const a of opAbils) awakenSet.add(a); }
             const haSet = new Set();
             if (_haName) haSet.add(_haName);
-            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet);
+            // #47: Awakened picks are NOT recommendations — pass no extra-starred set so
+            // they drop out of the ★ Recommended view (still selectable under "show all"
+            // once unlocked at Grandmaster; "they appear when they appear").
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, null);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
             const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, dojoStage: _dojoStage, haName: _haName };
 
@@ -53367,7 +54103,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                if (sm.gold < TUTOR_COST_MOVE) return;
+                const moveCost = _moveCostForStage();
+                if (sm.gold < moveCost) return;
                 const moves = mon.build.m || (mon.build.m = []);
                 const currentMoves = moves.map(m => m.split('/')[0]);
                 if (currentMoves.includes(newMove)) return;
@@ -53379,10 +54116,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const prompt = isAppend
                     ? `Teach ${newMove} to ${mon.name}? Fills an open move slot.`
                     : `Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`;
-                const ok = await _storyConfirmTutorChange(prompt, TUTOR_COST_MOVE);
+                const ok = await _storyConfirmTutorChange(prompt, moveCost);
                 if (!ok) return;
-                sm.gold -= TUTOR_COST_MOVE;
-                try { _storyTrackSpend(TUTOR_COST_MOVE); } catch (e) {}
+                sm.gold -= moveCost;
+                try { _storyTrackSpend(moveCost); } catch (e) {}
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
                 mon.build.m = moves.filter(Boolean);
@@ -53453,7 +54190,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                if (sm.gold < TUTOR_COST_ITEM) return;
+                const itemCost = _itemCostForTier(newItem);
+                if (sm.gold < itemCost) return;
                 if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
                 const curItem = mon.build.i;
                 if (curItem === newItem) return;
@@ -53469,11 +54207,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.build.gimmick = 'STANDARD';
                 } else {
                     const oldItemLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
-                    const ok = await _storyConfirmTutorChange(`Give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}.`, TUTOR_COST_ITEM);
+                    const ok = await _storyConfirmTutorChange(`Give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}.`, itemCost);
                     if (!ok) return;
                 }
-                sm.gold -= TUTOR_COST_ITEM;
-                try { _storyTrackSpend(TUTOR_COST_ITEM); } catch (e) {}
+                sm.gold -= itemCost;
+                try { _storyTrackSpend(itemCost); } catch (e) {}
                 mon.build.i = newItem;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
@@ -53589,8 +54327,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isAppend && moves.length >= 4) return false;
                 const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
                 const prompt = isAppend
-                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
-                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
                 if (!await _storyConfirmTutorChange(prompt, 0)) return false;
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
@@ -53617,7 +54355,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.build.gimmick = 'STANDARD';
                 } else {
                     const oldLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
-                    if (!await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldLabel}. Saves ${TUTOR_COST_ITEM.toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0)) return false;
+                    if (!await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldLabel}. Saves ${_itemCostForTier(newItem).toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0)) return false;
                 }
                 mon.build.i = newItem;
                 return true;

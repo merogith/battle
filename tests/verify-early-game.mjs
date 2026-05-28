@@ -38,11 +38,16 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   check('Nature Rater present in City 1 (debut)', h1.includes('Nature Rater'));
   check('Stone Sage NOT in City 1 (debuts C2)', !(h1.includes('Stone Sage') || h1.includes('Evolution Tutor')));
 
-  // --- City 2: Stone Sage + Battle Dojo debut here (the "systems open up" town) ---
+  // --- City 1: Battle Dojo now debuts here (White Belt), per the facility matrix ---
+  setup();
+  const h1d = render(1);
+  check('Battle Dojo present in City 1 (debut, White Belt)', h1d.includes('Battle Dojo'));
+
+  // --- City 2: Stone Sage debuts here (the "systems open up" town); Dojo carries over ---
   setup();
   const h2c = render(2);
   check('Stone Sage present in City 2 (debut)', h2c.includes('Stone Sage'));
-  check('Battle Dojo present in City 2 (debut, moved earlier from C4)', h2c.includes('Battle Dojo'));
+  check('Battle Dojo present in City 2 (carried from its C1 debut)', h2c.includes('Battle Dojo'));
   check('Stone Merchant NOT in City 2 (moved to C3)', !h2c.includes('Stone Emporium'));
 
   // --- Facility NEW/visited three-tier (the "still all NEW" report) ---
@@ -87,38 +92,44 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
 
   // --- Regression: opening the Bag / Party panel must repaint the hub IN PLACE.
   // Both are modal overlays — closing them does NOT re-render the action strip, so
-  // if open* doesn't repaint the hub, the disabled "Continue Route (Visit Bag and
-  // Party first)" button stays stuck even after the player visits both. The checks
-  // above pass either way because they call render() manually after open*; these
-  // read #story-action-buttons directly to prove the live UI updated on its own. ---
+  // if open* doesn't repaint the hub, the disabled "Continue Route (Visit … first)"
+  // button stays stuck even after the player visits. These read #story-action-buttons
+  // directly to prove the live UI updated on its own (no manual render() after open*).
+  // Per the matrix, Bag debuts at C0 and Party moved to C1 — so each is tested at its
+  // own city rather than as a pair in the start town. ---
   const stripHtml = () => { const el = window.document.getElementById('story-action-buttons'); return el ? el.innerHTML : ''; };
   const gateNamesIntro = (h) => /Continue Route[^<]*<span[^>]*>\(Visit [^<]*first\)/.test(h);
-  const introAllButBagParty = () => { sm.facilityIntros = { mart:1, tutor:1, nature:1, artifacts:1, center:1, relic:1 }; sm.profUsed = { 0: true }; };
 
-  setup(); introAllButBagParty();
-  render(0); // initial hub paint — gate names Bag + Party
-  check('live: C0 gate present on first paint', gateNamesIntro(stripHtml()));
+  // Bag at C0 — the lone utility intro at the start town now that Party moved to C1.
+  setup();
+  sm.facilityIntros = { mart:1, tutor:1, nature:1, artifacts:1, relic:1 }; sm.profUsed = { 0: true };
+  render(0); // initial hub paint — gate names Bag
+  check('live: C0 gate present on first paint (Bag pending)', gateNamesIntro(stripHtml()));
   SM.openCityBag();    // first open → marks Bag seen AND repaints hub in place
-  check('live: gate still present after Bag only (Party pending)', gateNamesIntro(stripHtml()));
+  check('live: C0 gate CLEARS after opening Bag (no manual re-render)', !gateNamesIntro(stripHtml()));
+
+  // Party at C1's post-gym hub — Center / Party / Dojo / Fan Club / Nature all debut at C1.
+  const c1PostGymIdx = SER.findIndex(r => Array.isArray(r) && r[1] === 'City' && r[2] === 'City1' && r[5].includes('Leave City') && !r[5].includes('Gym Battle'));
+  setup();
+  sm.badges = 1; sm.gymCleared = { 1: true };
+  sm.facilityIntros = { mart:1, tutor:1, nature:1, artifacts:1, relic:1, center:1, dojo:1, fanclub:1, evolab:1, link:1, stoneShop:1 };
+  sm.profUsed = { 1: true };
+  window.__renderCityActionsForTest(c1PostGymIdx); // initial paint — gate names Party
+  check('live: C1 gate present on first paint (Party pending)', gateNamesIntro(stripHtml()));
   SM.openPartyModal(); // first open → marks Party seen AND repaints hub in place
-  check('live: gate CLEARS after visiting Bag + Party (no manual re-render)', !gateNamesIntro(stripHtml()));
+  check('live: C1 gate CLEARS after opening Party (no manual re-render)', !gateNamesIntro(stripHtml()));
 
-  // Order-independent: visiting Party first then Bag must also clear the live gate.
-  setup(); introAllButBagParty();
-  render(0);
-  SM.openPartyModal();
-  check('live: gate still present after Party only (Bag pending)', gateNamesIntro(stripHtml()));
-  SM.openCityBag();
-  check('live: gate CLEARS after Party + Bag (reverse order)', !gateNamesIntro(stripHtml()));
-
-  // --- New-spread must-do intro gate: Battle Dojo debuts at C2; un-introduced it
-  // carries the 🔴 Required pill, which clears once the player has met it. ---
+  // --- New-spread must-do intro gate: a facility's debut city flags it 🔴 Required
+  // until the player has met it. Battle Dojo debuts at C1; Stone Sage + Link at C2. ---
   const reqCount = (h) => (h.match(/🔴 Required/g) || []).length;
+  setup();
+  const h1req = render(1);
+  check('Battle Dojo chip is flagged Required at its C1 debut', /Battle Dojo[\s\S]{0,260}?🔴 Required/.test(h1req));
   setup();
   const h2req = render(2);
   check('C2 debut facilities carry 🔴 Required when un-introduced', reqCount(h2req) > 0, `count=${reqCount(h2req)}`);
-  check('Battle Dojo chip is flagged Required at its C2 debut', /Battle Dojo[\s\S]{0,260}?🔴 Required/.test(h2req));
-  sm.facilityIntros = { dojo:1, evolab:1, link:1, mart:1, tutor:1, nature:1, fanclub:1 };
+  check('Stone Sage chip is flagged Required at its C2 debut', /Stone Sage[\s\S]{0,260}?🔴 Required/.test(h2req));
+  sm.facilityIntros = { dojo:1, evolab:1, link:1, mart:1, tutor:1, nature:1, fanclub:1, center:1 };
   const h2done = render(2);
   check('C2 Required pills clear once those facilities are introduced', reqCount(h2done) === 0, `count=${reqCount(h2done)}`);
 }
