@@ -40482,12 +40482,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Returns the list of facility-key strings that need introducing in the
         // current city BEFORE Leave City unlocks. Empty array = no gate.
+        // Phase 4.7 — priority order the player sees them in on city entry. The
+        // forced visit + intro flow walks PC → Mart → Professor → trainers (Move Tutor /
+        // Dojo / Nature Rater / Stone Sage) → economy (Department / Casino / Safari /
+        // EV / Fan Club / Daycare / Fight Club) → utility (Link / Power Up). Keys
+        // not in this list fall to the bottom in their natural order.
+        const _CITY_INTRO_PRIORITY = [
+            'center', 'mart', 'professor',
+            'tutor', 'dojo', 'nature', 'evolab',
+            'dept', 'casino', 'safari', 'evtrainer', 'fanclub', 'daycare', 'pits',
+            'stoneShop', 'link', 'colress',
+            'relic', 'artifacts', 'bag', 'party',
+        ];
         function _pendingFacilityIntrosHere(cityIdx, actionList) {
             if (!sm || cityIdx < 0) return [];
             const pending = [];
             for (const key of Object.keys(FACILITY_DEBUT_CITY)) {
                 if (_isFacilityRequiredHere(cityIdx, key, actionList)) pending.push(key);
             }
+            // Sort by the city-intro priority order so the player sees PC first, then
+            // Mart, then Professor, etc. — matches the "forced visit + intro" UX.
+            pending.sort((a, b) => {
+                const ia = _CITY_INTRO_PRIORITY.indexOf(a); const ib = _CITY_INTRO_PRIORITY.indexOf(b);
+                return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+            });
             return pending;
         }
         // Friendly name lookup for the "Visit X first" tooltip.
