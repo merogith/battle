@@ -10655,7 +10655,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Cities &amp; Facilities</h3>
 <b>Pokémart</b> — Poké Balls (300G), potions, X items.<br>
 <b>Department Store</b> — Great Balls (1,000G), revives, weather and terrain orbs.<br>
-<b>Pokémon Center</b> — <b>PC Storage</b> (cap 30) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member, your starter, and Subject Zero are not for sale.<br>
+<b>Pokémon Center</b> — <b>PC Storage</b> (cap 30) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member and Subject Zero are not for sale.<br>
 <b>Move Tutor</b> — Swap any move slot for any move the species can legally learn.<br>
 <b>Nature Rater</b> — Re-pick a nature for the +10%/-10% spread you actually want.<br>
 <b>Battle Dojo</b> — Swap held item and/or ability.<br>
@@ -32664,6 +32664,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
+                // Starter is a visual reminder only — strip the legacy `unsellable`
+                // flag that older saves co-applied with `starter:true`. Subject Zero
+                // and other bonded mons (no `starter` flag) keep their unsellable lock.
+                try {
+                    for (const arr of [sm.team || [], sm.pcBox || []]) {
+                        for (const slot of arr) {
+                            if (slot && slot.starter === true && slot.unsellable === true) {
+                                delete slot.unsellable;
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[Story] starter-unsellable backfill', e); }
                 // Interrupted Pit bracket recovery. If a save was written mid-bracket
                 // (tab closed during a Pit fight), sm.team holds only the 3 bracket mons
                 // while the full roster lives in sm.pits._teamBeforePit. Restore the full
@@ -36995,7 +37007,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémon Center! Your team\'s already healed — the road takes care of that for me."',
                     '"Upstairs is the PC: thirty slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies."',
-                    '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The only mons off the table are your starter and your last party member — every center on the road draws those lines. Take a Potion before you go — first-aid kit on the way out the door."'
+                    '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The one mon off the table is your last party member — every center on the road draws that line. Take a Potion before you go — first-aid kit on the way out the door."'
                 ],
                 onContinue: function () {
                     try {
@@ -40058,11 +40070,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _daycareSlotRow(slot, source, idx, totalInSource, partyCap) {
             if (!slot || !slot.name || !slot.id) return '';
             if (slot.isEgg) return '';
-            const isStarter = slot.starter === true;
             const isBound = slot.unsellable === true;
             const lastInParty = source === 'team' && _storyCountFighters() <= 1;
-            const canDrop = !isStarter && !isBound && !lastInParty;
-            const reason = isStarter ? 'Starter — bonded for life' : isBound ? 'Story-locked' : lastInParty ? 'Party needs at least one Pokémon' : '';
+            const canDrop = !isBound && !lastInParty;
+            const reason = isBound ? 'Story-locked' : lastInParty ? 'Party needs at least one Pokémon' : '';
             const sh = !!(slot.build && slot.build._isShiny);
             const grade = getMonGrade(slot.name, getBST(slot.name));
             return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,32,0.6);border:1px solid #2c3a3a;">
@@ -40866,7 +40877,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
-                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Starter — bonded for life" style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:9px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
+                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Your starter — keepsake marker only, no restrictions." style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:9px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
                             </div>
                             <div class="draft-card-details">${details}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
@@ -41376,7 +41387,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.style.cssText = bonded
                         ? 'opacity:0.4;cursor:not-allowed;min-width:130px;padding:10px;'
                         : 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
-                    if (bonded) slot.title = t.starter ? 'Starter — bonded for life' : 'Bonded — cannot be replaced';
+                    if (bonded) slot.title = 'Bonded — cannot be replaced';
                     slot.innerHTML = `
                         <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
                         <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
@@ -41399,14 +41410,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Normal professor: append to team
             _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
-            // The very first Pokémon the player ever gets — the starter — is bonded
-            // for life per the design spec (§8): "cannot sell your last party mon,
-            // the starter, or the boss-arc capture." The flag piggybacks on the
-            // existing unsellable path in the Underground sell screen.
+            // First Pokémon ever picked → flagged `starter: true` as a visual
+            // reminder ("★ STARTER" badge). No hard restrictions — the player
+            // can deposit, swap, daycare, or sell it like any other partner.
             const isStarterPick = !Array.isArray(sm.team) || sm.team.length === 0;
             const newSlot = { name: ch.name, build: ch.build, id: 'm_' + Math.random().toString(36).slice(2, 10) };
             if (isStarterPick) {
-                newSlot.unsellable = true;
                 newSlot.starter = true;
             }
             sm.team.push(newSlot);
@@ -43536,11 +43545,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const price = _pcSellPriceForSlot(slot);
                 const id = slot.id || '';
                 const unsellable = slot.unsellable === true;
-                const isStarter = slot.starter === true;
                 const isLastParty = where === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
                 const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
-                const reason = isStarter ? 'Starter — bonded for life' : isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
+                const reason = isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
                 // Underground rows also flag shiny so the player doesn't
                 // accidentally hand a shiny to the broker for pocket gold.
