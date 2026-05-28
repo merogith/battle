@@ -103,7 +103,7 @@ sm.tracks.villain = sm.tracks.villain || _pickTrack(VILLAIN_TRACKS, rng);
 sm.tracks.extra   = sm.tracks.extra   || _pickTrack(EXTRA_TRACKS,   rng);
 ```
 
-Display assigned tracks in a single confirm-modal one-liner (no warning glyph — these aren't tone choices, they're plot rolls). Player can re-roll the whole run by hitting "Back" before confirm.
+**Do NOT** surface the rolled tracks on the confirm modal — tracks stay hidden until the first villain / extra beat fires organically in-game (Road 1 = first extra beat, Road 2 = first villain beat, so the reveal lands within ~10 min of starting). Strongest first-experience feel, zero modal UI work. The player can still re-roll the whole run by hitting "Back" before confirm — the rolled tracks just don't show.
 
 ### Tests (PR-1)
 - `tests/suites/save-migration-v22.test.js` — load v21 fixture, assert v22 fields after `loadGameData`.
@@ -269,13 +269,14 @@ sm.stats.battlesLost = (sm.stats.battlesLost | 0) + 1;
 ```
 
 ### No Death Run achievement
-On Hall of Fame (battle.html:~44005), check:
+On Hall of Fame (battle.html:~44005), set the flag — the existing achievements / collection page pass owns the visual:
 ```js
 if ((sm.stats.battlesLost | 0) === 0) {
+    sm.achievements = sm.achievements || {};
     sm.achievements.noDeath = true;
-    _showAchievementBanner('No Death Run', 'Cleared without losing a single battle.');
 }
 ```
+No banner / no trophy work in this PR. Register the achievement key, hand off to the achievements system update.
 
 ### Route fight cap (≤4)
 New `_resolveRoadFights(roadId)` that the road-event cycler consults:
@@ -383,25 +384,25 @@ Every mechanic activation: banner one turn before via new `_showBattleBanner(tex
 ## PR-6 — Mystery Figure / The First reveal
 
 ### Identity dispatcher
-Update `_storyEnsureMysteryIdentity` (battle.html:30081):
+Replace `MYSTERY_FIGURE_IDENTITIES` (battle.html:30013) with a single entry:
+```js
+const MYSTERY_FIGURE_IDENTITIES = {
+    the_first: {
+        name: 'The First',
+        sprite: 'trainer_self_inverted',   // reuse player sprite, inverted CSS
+        nameplate: '???',
+        prefightLine: "You're going to win this one. The next one too. That's the problem.",
+        /* + reveal speech, post-fight line */
+    },
+};
+```
+The 7 old identities (`cyrus`, `n`, `ex_rocket`, etc.) are **deleted in this PR**. Simplify `_storyEnsureMysteryIdentity` (battle.html:30081) to:
 ```js
 function _storyEnsureMysteryIdentity() {
-    if (!sm.mysteryIdentity) sm.mysteryIdentity = 'the_first';  // hardcoded under 3-track
-    return MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity];
+    return MYSTERY_FIGURE_IDENTITIES.the_first;
 }
 ```
-Add `the_first` entry to `MYSTERY_FIGURE_IDENTITIES` (30013):
-```js
-the_first: {
-    name: 'The First',
-    sprite: 'trainer_self_inverted',   // reuse player sprite, inverted CSS
-    nameplate: '???',
-    prefightLine: "You're going to win this one. The next one too. That's the problem.",
-    /* etc */
-}
-```
-
-The other 7 identities stay defined but unreachable while 3-track is active (deferred retirement).
+Also grep for any callers that pass an identity key (`_BOSS_LEAD_FLAVOR`, `_storyPickMysteryIdentity`, etc.) and either remove the param or hardcode `the_first`. Run the full test suite — any test referencing an old identity is dead code and gets removed too.
 
 ### Mystery Figure team builder
 `rollMysteryFigureFinalBossTeam` (battle.html:34655) — verify the existing implementation produces player-party + one stronger starter slot per spec. If it does (per PLAYTEST_REPORT.md mention), keep. Otherwise patch to:
@@ -478,15 +479,15 @@ When the CSV changes, re-run the script and re-paste. (We can automate via a CI 
 
 ---
 
-## 5. Open design calls (flag, not blocking)
+## 5. Locked design decisions
 
-| # | Question | Default |
-|---|---|---|
-| 1 | Villain Story Ending location: Road 7 (CSV) or C9 area (mapping note) | **Road 7** (per flow CSV) |
-| 2 | Reward for No Death Run achievement: title / badge / gold bonus | **Title only** (cosmetic) |
-| 3 | Random track display on confirm modal: show keys or hide entirely | **Show one-line summary** ("This run: Team Magma · The Hypno") |
-| 4 | NG+ track re-roll on the same save: allowed or locked | **Re-rolled on NG+** (matches existing `sm.storyLine` NG+ behavior) |
-| 5 | 7 old Mystery Figure identities: retire now or later | **Later** (parked behind `the_first` dispatcher) |
+| # | Decision | Resolution | Implication |
+|---|---|---|---|
+| 1 | Villain Story Ending location | **Road 7 right after Boss** | Boss + Ending colocated. Clean reward beat, zero extra routing. |
+| 2 | No Death Run reward shape | **Register one achievement key (`sm.achievements.noDeath = true`) — surfaced through the existing collection / achievements page** | No custom HoF trophy work; the achievements system pass owns the visual. PR-4 just sets the flag. |
+| 3 | Reveal tracks on confirm modal | **Hide — keep it a mystery** | Player discovers villain + extra through the first beat (Road 1 extra, Road 2 villain) within ~10 minutes. Strongest first-experience feel, cheapest to ship (zero modal UI work). |
+| 4 | NG+ re-roll behavior | **Re-roll fresh tracks every NG+ on the same save** | 80 villain×extra combos hunt-able without creating new saves. Tiny: re-run the same roll logic in the NG+ entry path. |
+| 5 | Old 7 Mystery Figure identities | **Retire now — delete code** | PR-6 removes the 7 old entries from `MYSTERY_FIGURE_IDENTITIES`, keeps only `the_first`. Smaller surface, fewer dormant branches. |
 
 ---
 
