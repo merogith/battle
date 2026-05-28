@@ -30814,10 +30814,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (c <= 6) return 2;
             return 3;
         }
-        // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
-        // that ship explicit ivs (e.g. 0 Atk for Trick Room) are left alone.
-        function _ensureBuildIVs(build, ivs) {
+        // Stamp IVs onto a build. Default behavior: only set when none are present
+        // (Smogon / CSV builds that ship explicit 0 Atk for Trick Room are left alone).
+        // With `force=true` the caller asserts ITS curve wins (wild catches / Professor
+        // gifts feed the city wild/prof IV band — without force, makeBuild's default
+        // 31s from the CSV path silently win and the curve never fires).
+        function _ensureBuildIVs(build, ivs, force) {
             if (!build || !ivs) return;
+            if (force) { build.ivs = ivs; return; }
             if (!build.ivs || typeof build.ivs !== 'object') {
                 build.ivs = ivs;
                 return;
@@ -42345,7 +42349,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // (Sheet 5): a "0..cap" band whose floor rises with the city, so the
                     // Fan Club / vitamins still have work to do. Legendary mystery offers
                     // stay perfect (the gimmick is the species, not the stat grind).
-                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollCityIVs('wildprof', cityIdx, 0, false)); } catch (e) {}
+                    // force=true: the Professor gift's IVs come from the city wild/prof band
+                    // (Sheet 5). The CSV path inside makeBuild defaults every stat to 31, so
+                    // without force the band silently never fires and starters/gifts ship 31s.
+                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollCityIVs('wildprof', cityIdx, 0, false), true); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
@@ -45976,7 +45983,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // near-perfect but never guaranteed. Vitamins remain how the player trains
             // weak stats up. CSV builds that ship explicit IVs (rare on the wild path)
             // are preserved by _ensureBuildIVs.
-            try { _ensureBuildIVs(b, _rollCityIVs('wildprof', _wCity, 0, false)); } catch (e) {}
+            // force=true: a caught wild's IVs come from the city wild/prof band (Sheet 5).
+            // Without force, the CSV path inside makeBuild has already stamped 31s and the
+            // band silently never fires (caught wilds ship full 31s).
+            try { _ensureBuildIVs(b, _rollCityIVs('wildprof', _wCity, 0, false), true); } catch (e) {}
             return b;
         }
 
