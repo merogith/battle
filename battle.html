@@ -10050,6 +10050,29 @@
                     fetch('data/items.json').then(r => r.json()),
                     fetch('data/abilities.json').then(r => r.json())
                 ]);
+            // === DIALOGUE POOLS LOAD ===
+                _setLoadingText('Loading dialogue (5/5)…');
+                try {
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq] = await Promise.all([
+                        fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
+                        fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
+                        fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
+                        fetch('data/dialogue/champion-victory-lines.json').then(r => r.json()),
+                        fetch('data/dialogue/trainer-quotes.json').then(r => r.json()),
+                        fetch('data/dialogue/trainer-quotes-by-name.json').then(r => r.json()),
+                        fetch('data/dialogue/city-guide-quotes.json').then(r => r.json())
+                    ]);
+                    LEADER_VICTORY_LINES     = _lvl  || {};
+                    LEADER_BADGE_REFLECTIONS = _lbr  || {};
+                    ELITE_VICTORY_LINES      = _eel  || {};
+                    CHAMPION_VICTORY_LINES   = _cvl  || {};
+                    TRAINER_QUOTES           = _tq   || {};
+                    TRAINER_QUOTES_BY_NAME   = _tqbn || {};
+                    CITY_GUIDE_QUOTES        = _cgq  || [];
+                } catch (e) {
+                    console.error('[dialogue] load failed:', e);
+                }
+            // === END DIALOGUE POOLS LOAD ===
                 const speciesJSON = speciesJSONOrig['9'] || {};
                 for (let k in speciesJSON) {
                     let s = speciesJSON[k];
@@ -31915,212 +31938,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Per-leader victory flavor. Strings include the trainer's own voice; the engine
         // prepends "{Name}:" so the line reads as direct speech. One short line each.
-        const LEADER_VICTORY_LINES = {
-            'Brock':"\"Your defense rivals stone. Take the Boulder Badge.\"",
-            'Misty':"\"You really do have water under control. Cascade Badge—yours.\"",
-            'Lt. Surge':"\"Electrifying match, kid! Take this Thunder Badge.\"",
-            'Erika':"\"…The scent of victory suits you. The Rainbow Badge, please.\"",
-            'Koga':"\"Your subterfuge eclipsed mine. The Soul Badge is yours.\"",
-            'Sabrina':"\"I foresaw this outcome. The Marsh Badge—as it must be.\"",
-            'Blaine':"\"You doused the inferno! Burn this Volcano Badge into memory!\"",
-            'Giovanni':"\"…Hmph. You've earned the Earth Badge. Don't make me regret it.\"",
-            'Falkner':"\"My birds soared—but yours flew higher. Zephyr Badge, yours.\"",
-            'Bugsy':"\"Fascinating data! Your strategy joins my notes. Hive Badge!\"",
-            'Whitney':"\"…I'm not crying! …Fine. Take the Plain Badge already.\"",
-            'Morty':"\"You walked through the fog with eyes open. Fog Badge.\"",
-            'Chuck':"\"Hyaaah! That training paid off—for both of us. Storm Badge!\"",
-            'Jasmine':"\"…Thank you for your spirited battle. The Mineral Badge.\"",
-            'Pryce':"\"You reminded an old man what fire feels like. Glacier Badge.\"",
-            'Clair':"\"…Tch. You're worthy. The Rising Badge—don't embarrass it.\"",
-            'Roxanne':"\"My textbook will note this match. Stone Badge—well-earned.\"",
-            'Brawly':"\"That fight crashed harder than any wave. Knuckle Badge!\"",
-            'Wattson':"\"Wahaha! Shocking! Dynamo Badge—earned with watts to spare!\"",
-            'Flannery':"\"…You doused me good. Heat Badge—and my pride along with it.\"",
-            'Norman':"\"…My child, you've grown. Balance Badge—wear it well.\"",
-            'Winona':"\"You ride the sky as I do. Feather Badge—soar farther.\"",
-            'Tate':"\"Liza and I salute you. Mind Badge—two minds well-bested.\"",
-            'Liza':"\"Tate and I salute you. Mind Badge—two minds well-bested.\"",
-            'Wallace':"\"A graceful battle deserves a graceful prize. Rain Badge.\"",
-            'Juan':"\"Magnifico! Your technique flowed like water. Rain Badge.\"",
-            'Roark':"\"My father's pickaxe is yours someday. Coal Badge—mined honest.\"",
-            'Gardenia':"\"Hahaha! You uprooted me! Forest Badge—planted in respect.\"",
-            'Maylene':"\"That match made me stronger. Cobble Badge—earned in full.\"",
-            'Crasher Wake':"\"BWAHAHA! A fellow wrestler of the deep! Fen Badge!\"",
-            'Fantina':"\"Quelle technique! Magnifique! Relic Badge for the moment.\"",
-            'Byron':"\"…My own son couldn't crack me. You did. Mine Badge.\"",
-            'Candice':"\"You melted me with focus alone. Icicle Badge—wear it proud.\"",
-            'Volkner':"\"…Finally. Something worth being shocked over. Beacon Badge.\"",
-            'Cilan':"\"A perfectly seasoned match. The Trio Badge—our compliments.\"",
-            'Chili':"\"Hot stuff! The Trio Badge sizzles in your hand!\"",
-            'Cress':"\"…Cool, composed, and yours. The Trio Badge.\"",
-            'Lenora':"\"Class dismissed! Basic Badge—first lesson, well learned.\"",
-            'Burgh':"\"Such art in your strategy! Insect Badge—an inspired piece.\"",
-            'Elesa':"\"Dazzling! The Bolt Badge sparks brighter in your hands.\"",
-            'Clay':"\"Buried me good, you did! Quake Badge—dug up fair and square.\"",
-            'Skyla':"\"Cleared for takeoff, ace pilot! Jet Badge—your wings now.\"",
-            'Brycen':"\"…An icy heart can still be moved. Freeze Badge.\"",
-            'Drayden':"\"…The Legend Badge passes to a worthy successor.\"",
-            'Iris':"\"You're even stronger than I dreamed! Legend Badge—it's yours!\"",
-            'Viola':"\"Snap! A picture-perfect battle. Bug Badge—my best shot today.\"",
-            'Grant':"\"You climbed past me. Cliff Badge—the next handhold up.\"",
-            'Korrina':"\"Lucario and I bow to a fellow aura. Rumble Badge!\"",
-            'Ramos':"\"You pruned an old tree well. Plant Badge—keep growing.\"",
-            'Clemont':"\"By my calculations… you exceeded them! Voltage Badge!\"",
-            'Valerie':"\"…What a lovely battle. The Fairy Badge—a delicate gift.\"",
-            'Olympia':"\"The stars foretold this. Psychic Badge—written in light.\"",
-            'Wulfric':"\"You crack ice with warmth—rare. Iceberg Badge for you.\"",
-            'Milo':"\"Whew, tough one! Grass Badge—you grew it yourself!\"",
-            'Nessa':"\"You churned my tide. Water Badge—a souvenir from the deep.\"",
-            'Kabu':"\"Your spirit burned brighter than mine today. Fire Badge!\"",
-            'Bea':"\"…I lost. So I train harder. Fighting Badge—earned cleanly.\"",
-            'Allister':"\"…The ghosts approve. Ghost Badge—for the brave.\"",
-            'Opal':"\"You're positively pink! Fairy Badge—wear it with poise!\"",
-            'Gordie':"\"You rocked the climb. Rock Badge—solid as the mountain.\"",
-            'Melony':"\"You melted my heart and my ice. Ice Badge—dear to me.\"",
-            'Piers':"\"…Not bad. Encore. Dark Badge—Spikemuth approves.\"",
-            'Raihan':"\"You broke through. Dragon Badge—I'll film the rematch.\"",
-            'Katy':"\"Sweet victory for you! Bug Badge—frosted with respect.\"",
-            'Brassius':"\"A sculpture of a match. Grass Badge—a masterwork.\"",
-            'Iono':"\"And the streamer is YOU! Electric Badge—stay zappy!\"",
-            'Kofu':"\"Crackin' battle, kid! Water Badge—fresh as the catch.\"",
-            'Larry':"\"…Normal day. Normal Badge. Well earned, though.\"",
-            'Ryme':"\"Bone-rattling rhymes, bone-rattling fight. Ghost Badge.\"",
-            'Tulip':"\"You bloomed beautifully. Psychic Badge—stay vivid.\"",
-            'Grusha':"\"…Hmph. You can ski my mountain anytime. Ice Badge.\"",
-        };
+        let LEADER_VICTORY_LINES = {};
 
         // Companion to LEADER_VICTORY_LINES — a second, quieter beat the leader speaks
         // after handing over the badge. Each reflection ties the trainer's type / region
         // back to the player's victory, so the moment lands as personal flavor instead of
         // a stock "next gym is waiting" footer. Falls through silently when missing.
-        const LEADER_BADGE_REFLECTIONS = {
-            'Brock':"\"Pewter's stones aren't moving today. Maybe the rookie is.\"",
-            'Misty':"\"Cerulean's tide brings champions in. You're the first to ride it out.\"",
-            'Lt. Surge':"\"Vermilion's lights flicker for nobody — except, apparently, you.\"",
-            'Erika':"\"Celadon's perfumeries owe you a fragrance. I'll name it after your team.\"",
-            'Koga':"\"Fuchsia's poison gardens grow in shadow. You walked through them unbothered.\"",
-            'Sabrina':"\"Saffron's psychics felt the city shift the moment you arrived.\"",
-            'Blaine':"\"Cinnabar's volcano cooled long ago, but my pride hadn't. Now it has.\"",
-            'Giovanni':"\"Viridian Gym has had many leaders. The next ledger entry is yours.\"",
-            'Falkner':"\"Violet's birds circle the gym tower. Today they circled for you.\"",
-            'Bugsy':"\"Azalea's Bug Catching Contest gets a new entry in my field notes. You.\"",
-            'Whitney':"\"Goldenrod's department store is celebrating somewhere. Probably not me.\"",
-            'Morty':"\"Ecruteak's burned tower keeps its secrets. So will I, about this loss.\"",
-            'Chuck':"\"Cianwood's dojo has new mats coming in. You earned a sit-down on them.\"",
-            'Jasmine':"\"Olivine Lighthouse beams further tonight. I think Amphy approves.\"",
-            'Pryce':"\"Mahogany's ice tunnels feel a degree warmer. Probably the trainer in them.\"",
-            'Clair':"\"Blackthorn's Dragon's Den tested you, and you swam back out. Mark it.\"",
-            'Roxanne':"\"Rustboro's Trainer's School will study this match by Friday.\"",
-            'Brawly':"\"Dewford's waves never stop. Neither, apparently, did you.\"",
-            'Wattson':"\"Mauville's New Mauville Power Plant just dimmed a little — out of respect.\"",
-            'Flannery':"\"Lavaridge's hot springs run cool tonight. Like my fight did.\"",
-            'Norman':"\"Petalburg's city hall already knows. Word travels fast in my old job.\"",
-            'Winona':"\"Fortree's tree houses sway in trade winds. So does my opinion of you.\"",
-            'Tate':"\"Mossdeep's space center watches the stars. Tonight we watched you.\"",
-            'Liza':"\"Mossdeep's space center watches the stars. Tonight we watched you.\"",
-            'Wallace':"\"Sootopolis was carved by the sea. You carve battles the same way.\"",
-            'Juan':"\"Sootopolis applauds gracefully. As do I, despite the result.\"",
-            'Roark':"\"Oreburgh's mines run deep. Tonight, your team dug deeper.\"",
-            'Gardenia':"\"Eterna's forest pays attention. The wind in the trees says you won.\"",
-            'Maylene':"\"Veilstone's gym mats need replacing now. You took the lead match out of them.\"",
-            'Crasher Wake':"\"Pastoria's marsh is a wrestling ring for monsters. You ruled it tonight!\"",
-            'Fantina':"\"Hearthome's contest hall will whisper of your performance for weeks.\"",
-            'Byron':"\"Canalave's ironworks will hammer that out — every clang says your name.\"",
-            'Candice':"\"Snowpoint's snow falls quietly. So does my crown, today, on yours.\"",
-            'Volkner':"\"Sunyshore's solar panels gleam. Finally, a match worth their charge.\"",
-            'Cilan':"\"Striaton's restaurant menu has a new special: trainer who beat all three of us.\"",
-            'Chili':"\"Striaton's kitchen is cooler than my temper right now. You earned that.\"",
-            'Cress':"\"Striaton's tea cools while we lose. You drink it warm next time.\"",
-            'Lenora':"\"Nacrene's museum gets a new exhibit. A diorama of your team, perhaps.\"",
-            'Burgh':"\"Castelia's art galleries will hang your battle as a triptych.\"",
-            'Elesa':"\"Nimbasa's runway lights flash for a new model trainer tonight.\"",
-            'Clay':"\"Driftveil's market stalls were watching. They'll all sell to you cheap now.\"",
-            'Skyla':"\"Mistralton's airfield reroutes for champions. Your runway is open.\"",
-            'Brycen':"\"Icirrus's ice sculptures stand in tribute. They look like your team.\"",
-            'Drayden':"\"Opelucid's two cities — black and white — both name the same winner tonight.\"",
-            'Iris':"\"Opelucid's Dragon Tower bowed once tonight. I won't forget the angle.\"",
-            'Viola':"\"Santalune's photographer's studio just got its cover shot. You.\"",
-            'Grant':"\"Cyllage's seaside cliffs are higher than they look. You climbed mine.\"",
-            'Korrina':"\"Shalour's Tower of Mastery glows a little brighter. Lucario felt it.\"",
-            'Ramos':"\"Coumarine's monorail terraces keep growing. So does my respect for you.\"",
-            'Clemont':"\"Lumiose's Prism Tower flickered when you landed the final blow.\"",
-            'Valerie':"\"Laverre's Poké Ball Factory is making a special order. For you.\"",
-            'Olympia':"\"Anistar's sundial spins true today. Your name on its face.\"",
-            'Wulfric':"\"Snowbelle's glaciers shift in centuries. You shifted me in minutes.\"",
-            'Milo':"\"Turffield's geoglyph grew an inch tonight. Wholesome harvest, that fight.\"",
-            'Nessa':"\"Hulbury's lighthouse signals different ships. Today it signals you.\"",
-            'Kabu':"\"Motostoke's furnaces burn day and night. So does Galar's newest hopeful.\"",
-            'Bea':"\"Stow-on-Side's market criers will tell every traveler about this one.\"",
-            'Allister':"\"…Stow-on-Side's tombs are watching. They liked you. That's unusual.\"",
-            'Opal':"\"Ballonlea's pink forest blooms for a new favorite. You'll do.\"",
-            'Gordie':"\"Circhester's stone faces eroded by you in one match. Mom would laugh.\"",
-            'Melony':"\"Circhester's hot springs are colder than my heart was. You warmed both.\"",
-            'Piers':"\"Spikemuth's neon doesn't flicker for nobody. It flickered for you.\"",
-            'Raihan':"\"Hammerlocke's stadium camera caught the moment. It's already trending.\"",
-            'Katy':"\"Cortondo's bakery line has a new VIP. The kid who silenced the bugs.\"",
-            'Brassius':"\"Artazon's sunflora square has a new sculpture model: your lead Pokémon.\"",
-            'Iono':"\"Levincia's streaming district's chat is exploding. You broke the algorithm.\"",
-            'Kofu':"\"Cascarrafa's fountain plaza has fresh sushi tonight. Champion's discount, kid.\"",
-            'Larry':"\"Medali's diner has a usual. You can order it now. I recommend it.\"",
-            'Ryme':"\"Montenevera's haunted stage closes early tonight. Out of respect for the crowd.\"",
-            'Tulip':"\"Alfornada's psychics felt that match in the next valley over.\"",
-            'Grusha':"\"Glaseado's slopes are quieter than my crowd. You shut both of us up.\"",
-        };
+        let LEADER_BADGE_REFLECTIONS = {};
 
         // Per-Elite Four post-battle line. Used when the matched trainer name is canonical;
         // otherwise we fall through to the role-only "Elite N passed—one step closer!" line.
-        const ELITE_VICTORY_LINES = {
-            'Lorelei':"Lorelei: \"…You melted my ice. The next gate awaits.\"",
-            'Bruno':"Bruno: \"Hmm! Pure muscle wasn't enough. Move on, then.\"",
-            'Agatha':"Agatha: \"Heh heh… so the brat does bite. Onward.\"",
-            'Lance':"Lance: \"Dragons bow to your fire. The Champion is next.\"",
-            'Will':"Will: \"My psychic veil is lifted. Press onward.\"",
-            'Karen':"Karen: \"Strong trainers like what they like. You like winning.\"",
-            'Koga':"Koga: \"…I taught you nothing. You taught me. Onward.\"",
-            'Sidney':"Sidney: \"Heh. Couldn't roll you. Next gate's open.\"",
-            'Phoebe':"Phoebe: \"My ghosts hum your name now. Strange feeling.\"",
-            'Glacia':"Glacia: \"…Warm enough to melt me. Press on.\"",
-            'Drake':"Drake: \"You sail rougher seas than I expected. Sail on.\"",
-            'Aaron':"Aaron: \"Bzzt! You stung me clean. Onward, kid.\"",
-            'Bertha':"Bertha: \"Hee hee! The little one isn't so little. Move on.\"",
-            'Flint':"Flint: \"Hot match! You out-burned me. Press on.\"",
-            'Lucian':"Lucian: \"My calculations were off by exactly one—you. Onward.\"",
-            'Shauntal':"Shauntal: \"…I'll write you into a novel. Press on.\"",
-            'Marshal':"Marshal: \"Hmph! That was a true contest. Onward.\"",
-            'Grimsley':"Grimsley: \"…You played the long odds. They paid.\"",
-            'Caitlin':"Caitlin: \"…Magnificent. The path opens.\"",
-            'Malva':"Malva: \"You snuffed my fire. The next gate awaits.\"",
-            'Siebold':"Siebold: \"A meal well-cooked. Bon voyage to the next gate.\"",
-            'Wikstrom':"Wikstrom: \"En garde! …Or rather, well-fought. Onward.\"",
-            'Drasna':"Drasna: \"Oh my, what a sweet battle. Press on, dear.\"",
-            'Hala':"Hala: \"Alola! That was a thunderous fight. Move on.\"",
-            'Olivia':"Olivia: \"You polished the stones I set. Onward.\"",
-            'Acerola':"Acerola: \"Heehee! My ghosts liked you. Press on.\"",
-            'Kahili':"Kahili: \"Hole in one—of my pride. Move on, sharp shot.\"",
-            'Molayne':"Molayne: \"My circuits are humming. You earned the next gate.\"",
-            'Hassel':"Hassel: \"A dragon learned from you. Press on.\"",
-            'Poppy':"Poppy: \"Hee! That was so cool! Go, go, go!\"",
-            'Rika':"Rika: \"That was a SOLID match. Move on, champ.\"",
-            'Larry':"Larry: \"…Normal day. Above-normal opponent. The next gate's yours.\"",
-        };
+        let ELITE_VICTORY_LINES = {};
 
         // Per-champion victory line. If the matched champion has no entry we still emit
         // the generic "You defeated the Champion!" line as before.
-        const CHAMPION_VICTORY_LINES = {
-            'Blue':"Blue: \"Smell ya later… you actually did it.\"",
-            'Lance':"Lance: \"…A new Champion is crowned. The dragons salute you.\"",
-            'Steven Stone':"Steven Stone: \"My rarest find today—was you. Bravo.\"",
-            'Wallace':"Wallace: \"A graceful crown for a graceful trainer.\"",
-            'Cynthia':"Cynthia: \"…I enjoyed that. Garchomp and I yield, gladly.\"",
-            'Alder':"Alder: \"Hahaha! The next age belongs to you, friend.\"",
-            'Iris':"Iris: \"You're the best! …Now I have to train harder!\"",
-            'Diantha':"Diantha: \"Brava! The role of Champion suits you beautifully.\"",
-            'Leon':"Leon: \"Champion time… for YOU! That was unbeatable, mate.\"",
-            'Geeta':"Geeta: \"The mantle is yours now. Wear it well.\"",
-            'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
-            'Prof. Kukui':"Prof. Kukui: \"Wahoo! Now THAT was a Champion battle. Welcome to the wall, cousin!\"",
-            'Red':"Red: \"…\"",
-        };
+        let CHAMPION_VICTORY_LINES = {};
 
         /** Per-storyline-variant Champion fight dialogue. Each variant gets
          *  three intro options (rolled randomly per fight) and a single
@@ -33304,151 +33136,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return merged.length ? merged : generic;
         }
 
-        const TRAINER_QUOTES = {
-          'Basic Trainer':  ['Hey! You\'re on my route — you battle me to pass.','My team and I have been waiting all morning. Let\'s go!','Don\'t skip me. I\'ve got a strategy this time.','Trainer eyes meet trainer eyes — that\'s the rule.','…You want a fight? You\'ve got one.','First trainer of the day. Lucky me.'],
-          'Gym Trainer':    ['You don\'t reach the Leader by walking past me.','Hmph! Prove yourself in the front rooms first.','This gym\'s counting on me to thin out the crowd.','I train here every day. I\'ve seen every gimmick.','…Not bad. But not Leader-grade.','Pass me first. Then we\'ll see if the Leader bothers.'],
-          'Gym Leader':     ['Enough talk. Show me the badge fight.','This badge isn\'t for tourists. It\'s for trainers.','Show me what you\'ve trained for.','…Don\'t disappoint me. Or them.','You\'ve come far. Don\'t stop here.','My Pokémon and I won\'t hold back. Match it.'],
-          'Elite Trainer':  ['I\'ve been waiting for a real fight all week.','Technique beats raw power — usually. Let\'s test the rule.','…Impressive. But I\'m the gatekeeper for a reason.','Think you can keep up with the late-route circuit?','This won\'t be a warm-up. Bring your six.'],
-          'Rival':          ['You again. Same road, same fight.','I\'ve been training since the last time.','You don\'t get to pass this one.','Different team than last time. Adapt.','Settle this — like we always do.','Don\'t go easy. I never do.','I built this roster to counter yours.','I scouted your last three fights. Still feeling confident?','Adapt or lose — rival\'s rule.','Different partners this round. Hope you\'re ready.'],
-          'E1':             ['First gate of four. Welcome to the league.','…So you made it past Victory Road. Most don\'t.','Big leagues now. No more rookie excuses.','First test of the chamber. Don\'t blink.'],
-          'E2':             ['Round two of four. Still standing? Good.','…You passed the first chamber. I\'m a harder room.','I won\'t make my predecessor\'s mistake. Sit down.','The path narrows from here. Walk carefully.'],
-          'E3':             ['Three chambers in. The walls get closer.','…You feel the pressure yet? You should.','Two down. I\'m the one that breaks the rhythm.','Show me everything you\'ve been saving.'],
-          'E4':             ['Last gate. The Champion\'s door is at my back.','…This is the chamber most people lose in.','Past me there\'s only one fight left. Don\'t blow it.','No regrets. No excuses. Begin.'],
-          'Champion':       ['…So you\'ve come. The chamber\'s been quiet.','I\'m the Champion. Show me why I shouldn\'t stay one.','This is where the road ends — for one of us.','I won\'t hold back. I\'ve earned the right not to.','Show me the trainer the road made.'],
-          'Victory Road':   ['Fog, boulders, and people who won\'t move. Pick a fight or back down.','Only the strong make the climb. Prove it.','The air up here\'s thin. So\'s patience.','One misstep on this rock and the climb is over.','Turn back, or earn the next handhold.'],
-        };
+        let TRAINER_QUOTES = {};
         // Optional per-name lines (Game Boy–style). Key = trainer.name (see TRAINER_DATA).
-        const TRAINER_QUOTES_BY_NAME = {
-          'Blue': ['Smell ya later… if you can win!','Gramps was right—you\'re not half bad!','I\'m the real deal!'],
-          'Silver': ['…Get out of my way.','I don\'t need weaklings.','I\'ll show you real strength!'],
-          'Wally': ['I believe in my Pokémon!','…I\'ve grown since we last met!','Please—battle with everything you have!'],
-          'Barry': ['I\'m fining you… this battle!','Wait, I\'m not waiting!','You\'re my obstacle!'],
-          'N': ['…What is your truth?','Pokémon deserve better than this.','I will test your conviction!'],
-          'Gladion': ['…I have to win.','Stay out of my way!','Silvally—let\'s go!'],
-          'Hop': ['Mate! This is it!','I\'m not the little brother anymore!','Leon\'s not here—it\'s just us!'],
-          'Marnie': ['…Let\'s make this loud.','Team Yell\'s got my back—in spirit!','Don\'t hold back. I won\'t.'],
-          'Nemona': ['Battle time! Full power!','I\'ve been itching for this!','Let\'s go all out!'],
-          'Ethan': ['Johto\'s watching—don\'t embarrass either of us!','Still walking tall? Keep up with me!','Typhlosion-level heat—or we lose together.'],
-          'Lyra': ['I practiced extra after last time!','Let\'s make this one count!','Same journey, different outcome—maybe!'],
-          'May': ['Hoenn\'s tough—so am I!','Contest polish or battle grit—pick your poison!','You\'re not the only one improving out here!'],
-          'Brendan': ['Route training paid off—feel it!','I charted counters for your team.','Sharpedo-speed—can you match it?'],
-          'Brock': ['My rock-hard defense will grind you down!','Take your best shot!','Geology isn\'t just study—it\'s battle!'],
-          'Misty': ['My policy is an all-out offensive!','You\'re a drip compared to my Pokémon!','Water types—showtime!'],
-          'Lt. Surge': ['Electric types—ten-hut!','You\'re in my gym now!','One zap is all it takes!'],
-          'Erika': ['…Please enjoy the scent of my victory.','Grass types, don\'t hold back.','Shhh… the match has begun.'],
-          'Koga': ['Poison is a subtle art…','Feel the sting of true technique!','Your breathing is already slowing…'],
-          'Sabrina': ['I foresaw this battle…','Psychic power—absolute!','Your moves are already known to me.'],
-          'Blaine': ['My fiery Pokémon will melt you!','Hot enough for ya?!','Riddle me this: can you take the heat?'],
-          'Giovanni': ['Team Rocket\'s boss has time for you.','…Persistent, aren\'t you?','This ends now.'],
-          'Cynthia': ['…Let\'s enjoy this battle.','Garchomp and I won\'t disappoint!','The Champion\'s mantle is heavy—feel it!'],
-          'Steven Stone': ['Steel and resolve—both unbreakable.','I collect rare stones… and victories.','Meteor falls—so will you if you slack!'],
-          'Leon': ['Let\'s have a champion time!','Charizard—time to shine!','This is what it means to be unbeatable!'],
-          'Red': ['…','………………','…Don\'t need words.','…(Red\'s Pikachu sparks once.)','…(He raises his cap a little.)','…','…(The silence is louder than any boast.)'],
-          'Maxie': ['Magma rises!','I will reshape this region with land!','Step aside—or be left behind!'],
-          'Archie': ['The sea must rise!','Aqua washes away the old order!','My tide will not be turned!'],
-          'Cyrus': ['Spirit is a flaw.','I will erase this incomplete world.','Witness Galactic\'s perfection.'],
-          'Ghetsis': ['Pokémon are my tools.','Liberation? No—domination!','Hydreigon—silence them!'],
-          'Plumeria': ['Hurt my Skull family and I\'ll hurt you back.','Big sis is gonna teach you a lesson.','Salazzle—poison \'em!'],
-          'Lusamine': ['Beautiful Pokémon belong with me.','Aether Foundation is paradise.','You don\'t understand my love…'],
-          'Hilbert': ['Unova\'s ideals are mine to prove.','Reshiram-grade fire—match it!','I battle for what is right!'],
-          'Hilda': ['Unova\'s truth is in every battle.','Zekrom-grade thunder—dodge it!','I won\'t back down!'],
-          'Geeta': ['The Top Champion accepts your challenge.','Glimmora, dazzle them!','Show me the cause of your rise.'],
-          'Iris': ['Dragons fly higher than I ever could!','Haxorus—our bond shines!','The Champion of Unova never gives in!'],
-
-          // Elite Four — Kanto / Johto.
-          'Lorelei':  ['Welcome to the chamber of ice.','My Pokémon are polished as the floor — try not to slip.','Freezing temperatures slow the heart. Yours will be tested.'],
-          'Bruno':    ['Hmph! Spar with me.','My Pokémon have been hardened by strict training.','Pure muscle. No tricks. Step up.'],
-          'Agatha':   ['Oho! You look like a strong child.','Ghosts whisper your name in my chamber. Curious.','Heh heh heh… the old still bite.'],
-          'Lance':    ['Welcome. I am the strongest trainer in the league.','My dragons have not been seen for centuries — be honored.','Few have stood here. Fewer have left smiling.'],
-          'Will':     ['Welcome to my chamber. My mind is open.','Psychic veils part for the worthy. We shall see.','My Pokémon read every move before it is made.'],
-          'Karen':    ['Strong trainers use what they like.','My Pokémon are unconventional. So am I.','Dark types reward conviction, not convention.'],
-
-          // Elite Four — Hoenn.
-          'Sidney':   ['Heh, this here\'s gonna be a serious battle.','Dark types like things rough. I\'ll oblige.','Roll with my crew and see how far you get.'],
-          'Phoebe':   ['I\'ve trained on the side of Mt. Pyre. My spirits live there too.','My Pokémon and I have known each other for many lifetimes.','You can\'t fight what you can\'t touch. Try anyway.'],
-          'Glacia':   ['I traveled to a warm country to find sterner trainers.','My Pokémon\'s ice will not melt for warm hearts.','Show me a battle worth this cold trip.'],
-          'Drake':    ['I am the last gate of the Hoenn league.','My dragons have sailed every sea. Now they fight on land.','You\'ve come this far. Don\'t stop short.'],
-          'Wallace':  ['Welcome — I\'m the Champion of Hoenn.','My Milotic dances on every wave. Try to keep time.','Elegance is the deadliest art. Witness.'],
-
-          // Elite Four — Sinnoh.
-          'Aaron':    ['I love bug Pokémon. They\'re tough. Like me.','My friends have wings, claws, and pride. Mind the pride.','You won\'t see the sting coming.'],
-          'Bertha':   ['Hee hee hee! Welcome, child.','My old bones still pack ground-quake strength.','Grandma knows where it hurts.'],
-          'Flint':    ['I\'m fired up! Are you?','Fire types burn hottest when cornered. Mine too.','Match my heat or the chamber gets quiet fast.'],
-          'Lucian':   ['I have to look up from my book to fight you. Honored.','Psychic precision — every move calculated.','My Pokémon are well-read. You are about to be lectured.'],
-
-          // Elite Four — Unova.
-          'Shauntal': ['Oh — sorry, I was writing. Now then.','My ghosts haunt these pages. And this chamber.','A novel needs a worthy ending. Be one.'],
-          'Marshal':  ['Hmph! A real contest at last.','Fighting types win with grit, not gimmicks.','My fists and my Pokémon\'s — both ready.'],
-          'Grimsley': ['…Gamble with me.','Odds favor the patient. I am patient.','Dark types know one rule: take the long shot.'],
-          'Caitlin': ['…I have woken. The match may begin.','My Pokémon dream the moves before they happen.','Let us not waste this evening.'],
-          'Alder':    ['Welcome to my festival.','I left the chamber to walk the world. Now I\'m back.','Bug-type Champion. Yes, really. Find out why.'],
-
-          // Elite Four — Kalos.
-          'Malva':    ['Fire burns the unworthy. Show me your spark.','I host the news AND the next gate. Lucky you.','Pyroar\'s mane is the warning. Tackle the heart.'],
-          'Siebold':  ['Cooking is a martial art. So is battle.','My Pokémon are seasoned. Are you?','A perfect dish — a perfect victory. Same recipe.'],
-          'Wikstrom': ['En garde! A knight greets you.','Steel does not bend. My honor likewise.','Spar with one who has earned the chamber.'],
-          'Drasna':   ['Oh my, what a sweet face. Let\'s battle.','My dragons are old and wise. Don\'t underestimate kindness.','Grandma\'s dragons hit harder than they look.'],
-          'Diantha':  ['I\'m the Champion of Kalos. Pleased to meet you.','Mega Gardevoir and I share more than a stage.','A performance worth remembering — make it so.'],
-
-          // Elite Four — Alola.
-          'Hala':     ['Alola! That is how we greet a true challenger.','Crabominable\'s fists carry Tapu blessings.','The kahuna\'s test begins now. Don\'t flinch.'],
-          'Olivia':   ['I love rocks. And finely-cut trainers.','My Pokémon are polished stones. Try to crack one.','The pavement of Akala remembers every battle.'],
-          'Acerola':  ['Hi! Wanna play with my ghosts?','My Pokémon haunt sweetly. You\'ll see.','Boo! Heehee. Now begin.'],
-          'Kahili':   ['I returned to Alola to climb the league.','My flying Pokémon glide — like a clean putt.','Hole in one. Match it.'],
-          'Molayne': ['Beep — incoming battle alert.','Steel types and signal strength: both reliable.','My circuits hum at the thought of this match.'],
-          'Prof. Kukui':['Alola! Champion Kukui, ready to brawl!','My Pokémon learned to read me. Yours will too.','League founder, league fighter. Begin.'],
-
-          // Elite Four — Paldea.
-          'Rika':     ['Hola! Ground-type opener, let\'s go.','Clodsire\'s got chiquito charm and grandote bite.','My chamber\'s a quake. Hold on.'],
-          'Larry':    ['I\'m here. Let\'s do this.','Normal types — most efficient. Less fuss, more fight.','Don\'t make me say more than this.'],
-          'Hassel':   ['A dragon\'s spirit roars through my brush.','Calligraphy and combat — both about flow.','Match the stroke of my opening move.'],
-          'Poppy':    ['I\'m an Elite Four! For real! Believe it!','Steel-type squad, full power, go go go!','You\'re gonna lose to a kid. Heh.'],
-
-          // Themed Elite Trainer variants — same face, wrong year.
-          'Shadow Blue':      ['Smell ya later — the road got dark since we met.','Gramps wouldn\'t recognize this team. Good.','Real deal. Just the shadow side.'],
-          'Cursed Lance':     ['Dragons don\'t die. They wait. Watch.','You climbed the league. I climbed something… else.','My Pokémon don\'t obey me. They agree with me.'],
-          'Forsaken Cynthia': ['…The myths warned about this. You didn\'t listen.','I won my crown. Then I lost it to something quieter.','Garchomp is gone. The grin stayed.'],
-          'Eldritch N':       ['…They speak louder here. Can you hear them?','I freed them. They came back changed.','Truth, ideal, and something else entirely. Begin.'],
-          'Tarnished Steven': ['Hard stone, harder rust. I\'m the rust.','The League keeps its rare specimens. So do I.','I came back through Meteor Falls. Something came back with me.'],
-          'Pale Ghetsis':     ['Useful tool. Bring me your six.','Plasma\'s flag is rotted. I carry it anyway.','Ideals decay. Results don\'t. Begin.'],
-          'Hollow Cyrus':     ['Emotion was always the wound. I edited it.','Galaxies forgot me. I forgive them.','One trainer. One small task. Show me.'],
-          'Silent Red':       ['…','…(Pikachu\'s cheek sparks — yellow turned black.)','…(He doesn\'t raise the cap this time.)'],
-
-          // Cursed-tagged Basic Trainer variants.
-          'Cursed Vagrant':   ['The road is rough at night. Watch out.','I\'ve trained nonstop. You\'ll see.','Let\'s make this quick.'],
-          'Scarred Brawler':  ['I lost in this gym once. Not anymore.','Pure power works fine for me.','Show me a clean punch.'],
-          'Charred Acolyte':  ['Fire is power. I respect that.','The flame burns through every doubt.','Burn forward. That\'s my way.'],
-
-          // Multi-type wanderers — roamers with cross-region rosters.
-          'Tide-Frost Diver':  ['I trained in Hoenn and Sinnoh. My team reflects both.','Water and ice — both flow the same way.','Wet, then cold. You won\'t see it coming.'],
-          'Ash-Stone Climber': ['Hiked Cinnabar to Stark Mountain. My team came with me.','Stone holds heat the longest. So do I.','My team and I rest on warm rock.'],
-          'Marsh Mystic':      ['Poison and psychic both reward patience.','Two routes, same destination: victory.','I trade visions for venom.'],
-          'Sky-Steel Ranger':  ['Only iron-winged Pokémon keep up with me.','I fly, I land, I battle. In that order.','My patrol covers the whole region.'],
-          'Twilight Hunter':   ['Three types, one strategy. Read it if you can.','I work dusk to dawn. You\'ll see why.','Dark, ghost, and psychic. Pick your counter.'],
-          'Garden Mender':     ['Grass grows slow but strong. So do I.','Vines snare. Petals strike.','Sweet smell — sharp bite.'],
-
-          // Villain ranks — Team operatives at admin/executive tier.
-          'Rocket Executive':  ['Persistent! The Boss warned me about you.','Rocket\'s reach is wide. I represent it.','You took the gym back. Not this fight.'],
-          'Aqua Admin':        ['The tide rises. So do I.','Aqua\'s waves are unstoppable.','I lead the sea\'s elite squad. Begin.'],
-          'Magma Admin':       ['Surface and crust both burn under us.','You walk hot rock. I live on it.','Land begins where Magma stops.'],
-          'Galactic Commander':['Commander rank — the Boss has plans.','Galactic studies the cosmos. And your faints.','My orders are clear. Defeat you.'],
-          'Plasma Sage':       ['Truth, ideal, and a quiet third path.','Plasma\'s cause continues through me.','I\'ve studied your team. The weak spots show.'],
-          'Flare Scientist':   ['Flare science perfects everything — including battles.','Our data projects your defeat.','The serum is ready. So am I.'],
-          'Skull Boss':        ['Skull\'s top doesn\'t back down. Neither do I!','Spikemuth\'s beat carries — so will your defeat.','Brawl your way out. I dare ya!'],
-
-          // Veteran gym leaders — old champions of their type, upgraded for the post-circuit road.
-          'Veteran Brock':     ['I retired the badge. I didn\'t retire. Begin.','Stone-cold defence wasn\'t enough. So I added stone-cold offence.','My old gym\'s tour goes through here now.'],
-          'Veteran Misty':     ['You took my badge. I took up everything else.','Ice with water. Water with steam. Same girl.','You\'re a drip compared to my new team.'],
-          'Veteran Lt. Surge': ['Electric-only was a gym rule. The road has different rules.','You wanted lightning. I brought thunder, hail, and rust.','Soldier\'s on tour. Show me a clean strike.'],
-          'Veteran Erika':     ['…I added a few thorns since the badge match.','The garden has a fence now. With teeth.','Sleep, ivy, and a sharper smile. Begin.'],
-          'Veteran Koga':      ['Poison was the old technique. I learned new ones.','Subtle is for indoor venues. The route lets me shout.','Crobat is still here. So am I. So are we.'],
-          'Veteran Sabrina':   ['I foresaw your shape weeks ago. Begin.','Psychic, still. But the boundaries are wider.','My old gym had walls. I left them.'],
-          'Veteran Blaine':    ['My riddle: what burns hotter than a Cinnabar gym? Answer it in battle.','Volcano cooled. I didn\'t.','I trained in the dark. The sun missed me.'],
-          'Veteran Giovanni':  ['…Persistent. Always. Begin.','Rocket folded. I stayed.','Earth Badge to Earth-shaker. Show me.'],
-          'Veteran Whitney':   ['…I trained! For real this time! Don\'t make me cry again!','Miltank says hi. With a Body Slam.','New team. Same headache.'],
-          'Veteran Clair':     ['…Tch. Dragons learned ice. So did I.','The badge wasn\'t enough. The mountain isn\'t either.','Show me a worthy fight. Or get out of my air.'],
-          'Veteran Wallace':   ['A grace match — take your time. Then lose, with style.','Water meets dragon. River meets storm.','Begin. I\'ll savor every move.'],
-        };
+        let TRAINER_QUOTES_BY_NAME = {};
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
@@ -33654,20 +33344,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           ['"Same lab. Same bench. Different trainer."','"They say new horizons. I say same passion, sharper teeth."','"Drop in whenever the road bends back this way."'],
           ['"You\'re still training? Good. Most don\'t."','"There\'s always one more partner waiting for the right hand."','"The lab keeps the lights on for you."'],
         ];
-        const CITY_GUIDE_QUOTES = [
-          ['"Sea-salt morning. Lucky kid — you got the last starter."','"Professor said you might come by. Don\'t keep her waiting."','"Grab a relic before you head out. The first route is rougher than it reads."'],
-          ['"Quarry shift just ended — the gym\'s where they drink off the dust."','"Gym Leader likes to test endurance. Heal first, swagger later."','"Mart\'s open all night. Potions don\'t carry to the next run, so use them."'],
-          ['"Every barista in this town can recite a movepool. It\'s embarrassing."','"The Move Tutor knows tricks the schools won\'t teach. Bring gold."','"Dojo Master once boxed a Machamp. Allegedly. Still — don\'t test him."'],
-          ['"The students hold mock leagues in the quad. Don\'t lose to a freshman — they\'ll publish."','"Nature Rater keeps office hours. Make an appointment, like everyone else."','"Half the textbooks here will be wrong by next year. The Gym Leader won\'t."'],
-          ['"Ranger boots, hunter boots, poacher boots — every kind of mud meets at this gate."','"Safari Zone takes your money and your patience. Sometimes it gives back."','"Don\'t catch what you can\'t train. The Underground will buy what you can\'t keep."'],
-          ['"Half the badges in this town were earned at the slots. Don\'t ask which half."','"Casino payouts are real. Casino odds are realer."','"You can hear the Gym Leader from the rooftop bar. She likes a crowd."'],
-          ['"This city eats trainers and prints champions. Take notes."','"Department Store sells what you need. The alley sells what you don\'t."','"Colress is on the top floor. He hates waiting. Move fast."'],
-          ['"Thin air at the pass keeps the tourists down in the lowlands. Mostly."','"Veterans drink here between rematches. Buy a round, hear a story."','"League gates open at dawn. They close on the unworthy."'],
-          ['"Last gym before the Plateau. Pilgrims travel weeks to lose here."','"The bells ring for every challenger. They don\'t ring twice."','"A masked figure was asking after you. Wouldn\'t give a name."'],
-          ['"This is the room. No badges past that door — only legacies."','"Cameras are rolling. Smile or don\'t. It\'s your face."','"Welcome to the Plateau, trainer. Try not to flinch."'],
-          ['"This is it. The road goes one way from here, and not back."','"Nerves are the body\'s way of admitting you care."','"The gate opens for the worthy. The rest learn to read."'],
-          ['"Trainers still gather here, even after the credits roll."','"Hall of Fame is just over there. Your name should still be on it."','"The Underground broker has been asking about you. Quietly."'],
-        ];
+        let CITY_GUIDE_QUOTES = [];
         function _pickCityQuoteLine(poolArr, cityIdx) {
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
             const lines = poolArr[idx] || poolArr[0];
