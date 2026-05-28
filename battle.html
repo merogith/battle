@@ -53120,6 +53120,75 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Shape: { kind: 'move'|'item'|'ability'|'nature', value: string, slot?: number }
         let _txPending = null;
 
+        // ── PER-RENDER MEMO (Phase 1: render-cycle scoping) ──────────────
+        // Score / tag / starred-pool / card-html lookups are deterministic for
+        // a given (monName, move/item/ability/nature, pool-sig) tuple within
+        // one render cycle. We thread these Maps through the filter/sort/card
+        // path so each unique key is computed exactly once per renderTutorTeam.
+        //   • scoreCache  — Map<kind+":"+monName+":"+name, number>
+        //   • tagCache    — Map<monName+":"+name, 'natural'|'learnt'|'awakened'>
+        //   • starredPool — Map<monName, _txStarredPool(monName)>
+        //   • cardCache   — Map<kind+":"+monName+":"+name+":"+stateSig, string>
+        // The cache lives on `_txRender` and is reset on every top-level render.
+        // Stats counters drive the perf probe in renderTutorTeam.
+        const _txRender = {
+            ctx: null,           // active render-cycle context (Maps)
+            scoreCache: new Map(),
+            tagCache:   new Map(),
+            poolCache:  new Map(),
+            cardCache:  new Map(),
+        };
+        const _txRenderStats = {
+            scoreHit: 0, scoreMiss: 0,
+            poolHit:  0, poolMiss:  0,
+            cardHit:  0, cardMiss:  0,
+            cardsBuilt: 0,
+        };
+        function _txResetRenderStats() {
+            _txRenderStats.scoreHit = _txRenderStats.scoreMiss = 0;
+            _txRenderStats.poolHit  = _txRenderStats.poolMiss  = 0;
+            _txRenderStats.cardHit  = _txRenderStats.cardMiss  = 0;
+            _txRenderStats.cardsBuilt = 0;
+        }
+        function _txBeginRender() {
+            _txRender.scoreCache.clear();
+            _txRender.tagCache.clear();
+            _txRender.poolCache.clear();
+            _txRender.cardCache.clear();
+        }
+        // Per-render starred-pool — short-circuits the 3-4× repeat calls
+        // (rec chip, filter, card ctx, sparse banner) that happen every render.
+        function _txStarredPoolMemo(monName) {
+            if (!monName) return _txStarredPool(monName);
+            const cached = _txRender.poolCache.get(monName);
+            if (cached) { _txRenderStats.poolHit++; return cached; }
+            _txRenderStats.poolMiss++;
+            const v = _txStarredPool(monName);
+            _txRender.poolCache.set(monName, v);
+            return v;
+        }
+        // Per-render score memo — same call signature as the underlying
+        // _txScore* helpers; lookups within one render cycle are O(1) after the
+        // first call. Falls back to a direct compute when the render hasn't
+        // begun (defensive — shouldn't happen, but keeps loose callers safe).
+        function _txScoreMemo(kind, name, mon, build, monName, computeFn) {
+            const key = kind + ':' + (monName || '') + ':' + name;
+            const cached = _txRender.scoreCache.get(key);
+            if (cached !== undefined) { _txRenderStats.scoreHit++; return cached; }
+            _txRenderStats.scoreMiss++;
+            const v = computeFn(name, mon, build, monName);
+            _txRender.scoreCache.set(key, v);
+            return v;
+        }
+        function _txMoveTagMemo(monName, moveName) {
+            const key = (monName || '') + ':' + moveName;
+            const cached = _txRender.tagCache.get(key);
+            if (cached !== undefined) return cached;
+            const v = _moveTagForSpecies(monName, moveName);
+            _txRender.tagCache.set(key, v);
+            return v;
+        }
+
         function _initTutorMovePickerDelegationOnce() {
             const el = document.getElementById('story-tutor-team');
             if (!el || el._tutorPickerBound) return;
@@ -53473,7 +53542,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for the rec system to mean anything; in that mode the picker behaves
         // vanilla and a banner explains why.
         function _txRecChipHtml(kind, monName) {
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             if (pool.sparse) return '';
             const on = _txState.filter.recOnly[kind] ? 1 : 0;
             const label = on ? '★ Recommended' : '★ Show all';
@@ -53487,7 +53556,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // fewer than 10 Smogon builds. Tells the player the ★ system is sitting
         // out and the picker is in vanilla mode.
         function _txSparseBannerHtml(monName) {
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             if (!pool.sparse) return '';
             const note = pool.totalBuilds > 0
                 ? `Limited competitive data (${pool.totalBuilds} build${pool.totalBuilds===1?'':'s'}) — showing all options.`
@@ -53592,7 +53661,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let lockPill = '';
             try {
                 if (ctx && ctx.monName && typeof _moveTagForSpecies === 'function') {
-                    const tag = _moveTagForSpecies(ctx.monName, moveName);
+                    const tag = _txMoveTagMemo(ctx.monName, moveName);
                     if (tag === 'natural') {
                         tagPill = `<span class="tx-pill" style="background:rgba(129,199,132,0.18);border-color:#81c784;color:#a5d6a7;" title="Natural — egg / level-up / transfer / evolution">Natural</span>`;
                     } else if (tag === 'learnt') {
@@ -53741,7 +53810,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Read the move's tag from the cache populated by the tutor open path.
                 const pendingMove = (pending && pending.kind === 'move') ? pending.value : null;
                 const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
-                const tag = (pendingMove && monName) ? _moveTagForSpecies(monName, pendingMove) : null;
+                const tag = (pendingMove && monName) ? _txMoveTagMemo(monName, pendingMove) : null;
                 cost = _moveCostForStage(tag === 'unknown' ? null : tag);
             }
             else if (kind === 'item') {
@@ -53848,7 +53917,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const types = _txState.filter.moveTypes;
             const cats  = _txState.filter.moveCats;
             const sortKey = _txState.sort.moves || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
             const filt = allMoves.filter(m => {
                 // Equipped moves (extraInclude) always pass the ★ filter so the
@@ -53863,13 +53932,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (cats.size  && !cats.has(md.cat))  return false;
                 return true;
             });
+            // Decorate-sort-undecorate: pre-score every survivor exactly once
+            // (memoized in _txRender.scoreCache so a re-filter from a chip toggle
+            // re-uses the values). The comparator drops to a single Map.get per
+            // pair — N=200 cards now does ~3000 cache lookups instead of ~6000
+            // heuristic + popularity recomputes.
             if (recOnly && sortKey === 'recommended') {
-                // "Really good" ordering: blend Smogon usage (65%) with the per-pokemon
-                // heuristic (STAB / power / accuracy / coverage fit, 35%) so the best pick
-                // for THIS mon leads — not merely the most-used move. Usage% breaks ties.
-                filt.sort((a, b) => _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName)
+                const scoreOf = new Map();
+                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0)
                     || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
+                const scoreOf = new Map();
+                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -53877,7 +53954,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const q = (_txState.search.items || '').toLowerCase();
             const catFilter = _txState.filter.itemCat || 'all';
             const sortKey = _txState.sort.items || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.items;
             const filt = allItems.filter(it => {
                 if (recOnly && !pool.items.inPool.has(it)) return false;
@@ -53886,19 +53963,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
-                // Blend usage (65%) with the per-pokemon item heuristic (35%) so the
-                // best-fit item for THIS mon leads (e.g. Eviolite on an NFE, Choice Band
-                // on a physical attacker), with usage% as the tie-breaker.
-                filt.sort((a, b) => _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName)
+                const scoreOf = new Map();
+                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
                     || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
+                const scoreOf = new Map();
+                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyAbilityFilters(allAbils, mon, build, monName, extraStarred) {
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
             // Awaken / OP picks aren't Smogon-derived but ARE meant to be
             // surfaced when unlocked — accept an extra "always-in-pool" Set
@@ -53908,7 +53988,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return !q || a.toLowerCase().includes(q);
             });
             if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
-            else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
+            else if (sortKey === 'recommended') {
+                const scoreOf = new Map();
+                for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyNatureFilters(allNat, mon, build, monName) {
@@ -53916,7 +54000,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const up = _txState.filter.natureUp || 'any';
             const down = _txState.filter.natureDown || 'any';
             const sortKey = _txState.sort.natures || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.natures;
             const filt = allNat.filter(n => {
                 if (recOnly && !pool.natures.inPool.has(n)) return false;
@@ -54027,7 +54111,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '');
 
             // ★ pool = Smogon-usable moves for this species; drives the recommended border + star.
-            const sPool = _txStarredPool(t.name);
+            const sPool = _txStarredPoolMemo(t.name);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
             const equippedSet = new Set(currentMoves);
@@ -54123,7 +54207,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tab = _txState.dojoTab || 'item';
 
             // ★ pool — Smogon-usable items/abilities for this species.
-            const sPool = _txStarredPool(t.name);
+            const sPool = _txStarredPoolMemo(t.name);
             const sparseBanner = _txSparseBannerHtml(t.name);
 
             // Battle Dojo stage (city-anchored): 0 White Belt · 1 Black Belt · 2 Grandmaster.
@@ -54249,7 +54333,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const curNature = b.n || 'Hardy';
 
             // ★ pool — Smogon-usable natures for this species.
-            const sPool = _txStarredPool(t.name);
+            const sPool = _txStarredPoolMemo(t.name);
             const starredNats = sPool.natures.starred;
             const pendingNature = (_txPending && _txPending.kind === 'nature') ? _txPending.value : null;
 
@@ -54418,6 +54502,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function renderTutorTeam(skipFetch) {
+            // Perf probe — gated on the debug flag so prod paths stay zero-overhead.
+            // Toggle from the console: `window.__txPerf = true`. Each call logs
+            // the duration + cache hit-rate. Used during the UI-polish refactor
+            // to baseline regressions before / after the partial-update fast paths.
+            const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined')
+                ? performance.now() : 0;
+            // Fresh per-render memo so score / pool / tag lookups within this
+            // cycle are O(1) after the first hit. See _txRender comment block.
+            _txBeginRender();
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
@@ -54509,6 +54602,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { newInput.setSelectionRange(start, end); } catch (e) {}
                     }
                 } catch (e) {}
+            }
+            if (_pStart) {
+                const dur = (performance.now() - _pStart).toFixed(1);
+                const r = _txRenderStats;
+                console.log(`[txPerf] renderTutorTeam mode=${mode} skipFetch=${!!skipFetch} ${dur}ms · score:${r.scoreHit}/${r.scoreHit+r.scoreMiss} pool:${r.poolHit}/${r.poolHit+r.poolMiss} card:${r.cardHit}/${r.cardHit+r.cardMiss} cards=${r.cardsBuilt}`);
+                _txResetRenderStats();
             }
         }
 
