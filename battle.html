@@ -40208,9 +40208,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Artifact Hall — present in every city per the matrix (the relic enable/disable hub).
             _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
-            // Pokémon Center — PC storage + Underground. Debuts at City 1 (matrix); the
-            // start town (C0) has no Center — battles auto-heal, so none is needed there.
-            if (cityIdx >= 1) {
+            // Pokémon Center — PC storage + Underground. Available from C0 per the v2
+            // facility matrix so the player can swap / retry from the start town after a
+            // tough fight or revisit the PC right away.
+            if (cityIdx >= 0) {
                 _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
             }
             // Daycare Inn — the dark front. One-time egg event (Gym 1+), then the
@@ -40256,9 +40257,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _partyLabel = _partyN
                 ? `Party (${_partyN}/${_partyCapNow})${_partyHint}`
                 : 'Party — Empty (Visit Professor)';
-            // Party / sort hub debuts at City 1 (matrix). At the start town the starter
-            // is still being chosen via the Professor, so no standalone Party button.
-            if (cityIdx >= 1) {
+            // Party / sort hub available from C0 per the v2 facility matrix. At the start
+            // town the label reads "Empty (Visit Professor)" until the player picks a
+            // starter, but the button is still tappable so the player can see the state.
+            if (cityIdx >= 0) {
                 _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             }
             if (actions.includes('Link Station')) {
