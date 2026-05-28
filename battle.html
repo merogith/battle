@@ -40770,6 +40770,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // never call this; tests use it between cases.
             _reset() { this.pending.length = 0; this.running = false; },
         };
+        // Helper — wraps a playStoryTutorial call as an IntroQueue item so
+        // multiple facility intros fired from the same tick (city arrival,
+        // gate entry, post-battle return) sequence cleanly instead of stacking
+        // the underlying modal. The optional afterCallback fires AFTER the
+        // tutorial's Continue button is pressed and BEFORE the next queue
+        // item runs — matches the legacy callback semantics 1:1.
+        function _enqueueIntroTutorial(sceneId, afterCallback) {
+            IntroQueue.enqueue({
+                priority: INTRO_PRIORITY.facility_first_time,
+                run: (done) => {
+                    try {
+                        playStoryTutorial(sceneId, () => {
+                            if (afterCallback) {
+                                try { afterCallback(); }
+                                catch (e) { console.warn('[Story] intro afterCallback failed:', e); }
+                            }
+                            done();
+                        });
+                    } catch (e) {
+                        console.warn('[Story] intro queue tutorial failed:', sceneId, e);
+                        done();
+                    }
+                }
+            });
+        }
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
         function processNextEvent() {
@@ -41155,9 +41180,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // so the player has a tangible reward in hand walking in.
             if (cidx === 2) {
                 try {
-                    playStoryTutorial('firstCableLink', function () {
-                        try { playStoryTutorial('firstStoneSage'); } catch (e) {}
-                    });
+                    _enqueueIntroTutorial('firstCableLink');
+                    _enqueueIntroTutorial('firstStoneSage');
                 } catch (e) {}
             }
         }
@@ -44916,8 +44940,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }, introMs);
             };
-            try { playStoryTutorial('firstTrainerBattle', _runIntro); }
-            catch (e) { _runIntro(); }
+            _enqueueIntroTutorial('firstTrainerBattle', _runIntro);
         }
 
         function launchBattle(enemyTeam) {
@@ -45584,7 +45607,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.StoryFx && window.StoryFx.playSfx('save', 0.55); } catch (e) {}
                 // Story-embedded tutorial — Nurse Joy cameo. Replaces the
                 // prior 'center' alert.
-                try { playStoryTutorial('firstPokemonCenter'); } catch (e) {}
+                _enqueueIntroTutorial('firstPokemonCenter');
             } finally {
                 _storyEndInteraction();
             }
@@ -45963,7 +45986,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // free-entry alert. Dedupe is per-run: freeEntryUsed gates free
                 // entry to once per run, and the scene routes through
                 // sm.scenesShown so a fresh run replays the Warden intro.
-                try { playStoryTutorial('firstSafari'); } catch (e) {}
+                _enqueueIntroTutorial('firstSafari');
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
                 try { _storyTrackSpend(SAFARI_ENTRY_COST); } catch (e) {}
@@ -47295,11 +47318,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // rendered behind the overlay; on Continue the player drops
                 // into the live encounter. See STORY_TUTORIAL_SCENES.
                 if (_catchState.tutorialMode) {
-                    try { playStoryTutorial('firstWild'); } catch (e) {}
+                    _enqueueIntroTutorial('firstWild');
                 } else if (_catchState.safariMode) {
-                    try { playStoryTutorial('firstSafariCatch'); } catch (e) {}
+                    _enqueueIntroTutorial('firstSafariCatch');
                 } else {
-                    try { playStoryTutorial('firstWildRoute'); } catch (e) {}
+                    _enqueueIntroTutorial('firstWildRoute');
                 }
                 if (_catchState.roamingLabel) {
                     // Roaming legendaries keep the plain one-time-tip — they're
@@ -48426,7 +48449,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Per docs/EVOLUTION_FLOW_REBUILD.md §6.3 / §9: first visit fires the
                 // Emporium Keeper intro. No voucher here — the Stonewise Token was
                 // already granted by Granny's earlier scene on City 2 entry.
-                try { playStoryTutorial('firstStoneShop'); } catch (e) {}
+                _enqueueIntroTutorial('firstStoneShop');
                 save();
             } finally {
                 _storyEndInteraction();
@@ -49639,7 +49662,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 showScreen('screen-story-casino');
                 try { window.StoryFx && window.StoryFx.playSfx('gachaDial', 0.4); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
-                try { playStoryTutorial('firstCasino'); } catch (e) {}
+                _enqueueIntroTutorial('firstCasino');
             } finally {
                 _storyEndInteraction();
             }
@@ -54905,9 +54928,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // alerts. The tutor screen renders behind the overlay; on Continue
             // the player drops into it.
             try {
-                if (m === 'moves')        playStoryTutorial('firstMoveTutor');
-                else if (m === 'nature')  playStoryTutorial('firstNatureRater');
-                else if (m === 'loadout') playStoryTutorial('firstBattleDojo');
+                if (m === 'moves')        _enqueueIntroTutorial('firstMoveTutor');
+                else if (m === 'nature')  _enqueueIntroTutorial('firstNatureRater');
+                else if (m === 'loadout') _enqueueIntroTutorial('firstBattleDojo');
             } catch (e) {}
             } finally {
                 _storyEndInteraction();
@@ -55378,7 +55401,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
             // Story-embedded tutorial — Colress cameo (Scientist sprite).
             // Replaces the prior 'first-colress' alert.
-            try { playStoryTutorial('firstColress'); } catch (e) {}
+            _enqueueIntroTutorial('firstColress');
         }
 
         function _colressWishingPieceCount() {
@@ -56059,7 +56082,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
             // Story-embedded tutorial — Buck cameo (Battle_Girl sprite).
             // Replaces the prior 'first-ev' alert.
-            try { playStoryTutorial('firstEVTrainer'); } catch (e) {}
+            _enqueueIntroTutorial('firstEVTrainer');
         }
 
         // ── POKÉMON FAN CLUB ──────────────────────────────────────────────
