@@ -1688,6 +1688,80 @@
             .tx-filter-panel .tx-chip-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
         }
 
+        /* ── Phase 3 toolbar layout ─────────────────────────────────────
+           Two-row toolbar replacing the old "search row + drawer toggle +
+           hidden chip rows" pattern. Row 1 = search/star/count/clear.
+           Row 2 = horizontally scrollable chip strip + sort.
+           Active-filter pills appear above the grid to show what's filtering
+           without scrolling back into the toolbar. */
+        .tx-search-row-rec { display: inline-flex; align-items: center; }
+        .tx-chips-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 8px;
+        }
+        .tx-chips-row--sort-only {
+            justify-content: flex-end;
+        }
+        .tx-chip-strip {
+            display: flex; flex-wrap: nowrap; gap: 4px;
+            overflow-x: auto; overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x;
+            scrollbar-width: thin;
+            scroll-snap-type: x proximity;
+            flex: 1 1 0; min-width: 0;
+            padding: 2px 0;
+        }
+        .tx-chip-strip::-webkit-scrollbar { height: 4px; }
+        .tx-chip-strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
+        .tx-chip-strip > .tx-chip,
+        .tx-chip-strip > .tx-chip-row > .tx-chip { scroll-snap-align: start; flex-shrink: 0; }
+        /* Each nested chip-row inside the strip is a logical group
+           (types / cats / item-cats); collapse them into the same line. */
+        .tx-chip-strip > .tx-chip-row {
+            display: contents;
+        }
+        .tx-chip-strip-end {
+            display: inline-flex; align-items: center;
+            flex-shrink: 0; margin-left: auto;
+        }
+        @media (max-width: 600px) {
+            .tx-chips-row { flex-direction: column; align-items: stretch; gap: 6px; }
+            .tx-chip-strip-end { margin-left: 0; justify-content: flex-end; }
+        }
+        /* Active-filter pills above the grid — each pill is a tappable
+           remove button. Click to clear that single filter. Zero render
+           when no filter is active. */
+        .tx-active-filters {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+            margin: 8px 0; padding: 6px 10px;
+            background: rgba(206,147,216,0.06);
+            border: 1px solid rgba(206,147,216,0.18);
+            border-radius: 6px;
+        }
+        .tx-active-filters-label {
+            font-size: 10px; font-weight: 700;
+            color: #c6a4d0; text-transform: uppercase; letter-spacing: 0.08em;
+            margin-right: 4px;
+        }
+        .tx-active-filter {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 9px; font-size: 11px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
+            color: #d4d9e4; border-radius: 999px;
+            transition: all 0.12s; white-space: nowrap;
+        }
+        .tx-active-filter:hover {
+            background: rgba(244,67,54,0.20); border-color: #ef5350; color: #ffcdd2;
+        }
+        .tx-active-filter.tx-active-filter--cat-Physical { background: rgba(255,107,107,0.20); border-color: #ff6b6b; color: #ffcaca; }
+        .tx-active-filter.tx-active-filter--cat-Special  { background: rgba(107,159,255,0.20); border-color: #6b9fff; color: #cbdbff; }
+        .tx-active-filter.tx-active-filter--cat-Status   { background: rgba(180,187,204,0.15); border-color: #b4bbcc; color: #e0e5ee; }
+        .tx-active-filter.tx-active-filter--up    { background: rgba(102,187,106,0.18); border-color: #66bb6a; color: #c8e6c9; }
+        .tx-active-filter.tx-active-filter--down  { background: rgba(244,67,54,0.18); border-color: #ef5350; color: #ffcdd2; }
+        .tx-active-filter.type-badge { padding: 4px 9px; }
+
         /* Flash highlight when EV-trainer recs panel scrolls a preset into view —
            gives the player a clear "this is the one we just jumped to" beat. */
         @keyframes tx-card-flash {
@@ -53399,12 +53473,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
-                // Mobile filter drawer toggle (open/close the chip rows)
-                const filterToggle = t.closest('.tx-filter-toggle[data-filter-toggle]');
-                if (filterToggle) {
-                    const kind = filterToggle.dataset.filterToggle;
-                    if (kind && Object.prototype.hasOwnProperty.call(_txState.filterPanelOpen, kind)) {
-                        _txState.filterPanelOpen[kind] = !_txState.filterPanelOpen[kind];
+                // Phase 3 — active-filter "× search" pill clears just the search box
+                const clearSearch = t.closest('.tx-active-filter[data-clear-search]');
+                if (clearSearch) {
+                    const kind = clearSearch.dataset.clearSearch;
+                    if (kind && Object.prototype.hasOwnProperty.call(_txState.search, kind)) {
+                        _txState.search[kind] = '';
                         void renderTutorTeam(true);
                     }
                     return;
@@ -53436,7 +53510,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Filter chip toggle
-                const chip = t.closest('.tx-chip[data-filter-kind], .tx-empty-cta[data-filter-kind]');
+                const chip = t.closest('.tx-chip[data-filter-kind], .tx-empty-cta[data-filter-kind], .tx-active-filter[data-filter-kind]');
                 if (chip) {
                     const kind = chip.dataset.filterKind;
                     const value = chip.dataset.filterValue;
@@ -53566,10 +53640,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
                 : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
-            // When the last render's count differs from the one we're about
-            // to render, flash the count pill briefly so the player can see
-            // the ★ Recommended toggle actually changed something. Stored on
-            // a Map keyed by kind so each picker remembers its own last value.
+            // Count pill flashes briefly when the count changes between
+            // renders so the player can see the ★ toggle / chip filter
+            // actually narrowed or widened the list.
             if (!_txToolbarHtml._lastCount) _txToolbarHtml._lastCount = new Map();
             const prevCount = _txToolbarHtml._lastCount.get(kind);
             const countChanged = (prevCount != null && opts.count != null && prevCount !== opts.count);
@@ -53577,37 +53650,74 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const countHtml = (opts.count != null) ? `<span class="tx-count-pill${countChanged ? ' tx-count-pill--flash' : ''}">${opts.count} ${opts.countLabel || 'options'}</span>` : '';
             const placeholder = opts.placeholder || 'Search…';
             const hasChips = !!opts.chipsHtml;
-            const drawerOpen = _txState.filterPanelOpen[kind] ? 1 : 0;
             const activeN = _txActiveFilterCount(kind);
             const hasActiveFilters = activeN > 0 || (search && search.length > 0);
-            const filterToggle = hasChips
-                ? `<button type="button" class="tx-filter-toggle" data-filter-toggle="${kind}" data-open="${drawerOpen}" aria-expanded="${drawerOpen?'true':'false'}">
-                        ${drawerOpen ? 'Hide' : 'Filters'}
-                        ${activeN ? `<span class="tx-filter-badge">${activeN}</span>` : ''}
-                    </button>`
-                : '';
             const clearBtn = hasActiveFilters
                 ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">${window.uiSvgX()} Clear</button>`
                 : '';
-            const drawerHtml = hasChips
-                ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
-                : '';
-            // Leading chips (e.g. ★ Recommended toggle) sit on a row above the
-            // search input so they're always visible — never hidden behind the
-            // mobile filter drawer.
+            // Phase 3 layout — two clean rows:
+            //   Row 1: search input · ★ Recommended chip · count pill · clear button
+            //   Row 2: filter chips (always-visible strip) · sort selector
+            // Drops the old mobile drawer (.tx-filter-toggle + .tx-filter-panel) —
+            // the chips now live on a horizontally scrollable strip that's
+            // visible at all viewport widths. Active filter pills (× to remove)
+            // are surfaced above the grid by _txActiveFiltersHtml.
             const leadingChips = opts.leadingChipsHtml
-                ? `<div class="tx-chip-row tx-chip-row--leading">${opts.leadingChipsHtml}</div>`
+                ? `<span class="tx-search-row-rec">${opts.leadingChipsHtml}</span>`
                 : '';
+            const chipsRow = hasChips
+                ? `<div class="tx-chips-row">
+                        <div class="tx-chip-strip" role="tablist" aria-label="Filters">${opts.chipsHtml}</div>
+                        <div class="tx-chip-strip-end">${sortHtml}</div>
+                    </div>`
+                : (showSort ? `<div class="tx-chips-row tx-chips-row--sort-only">${sortHtml}</div>` : '');
             return `<div class="tx-toolbar">
-                ${leadingChips}
                 <div class="tx-search-row">
                     <input type="search" class="tx-search-input" data-kind="${kind}" placeholder="${_esc(placeholder)}" value="${_esc(search)}" autocomplete="off" />
-                    ${sortHtml}
-                    ${filterToggle}
-                    ${clearBtn}
+                    ${leadingChips}
                     ${countHtml}
+                    ${clearBtn}
                 </div>
-                ${drawerHtml}
+                ${chipsRow}
+            </div>`;
+        }
+
+        // Phase 3 — active-filter pills shown above the grid. Each pill is
+        // a tap target that removes its filter. Renders nothing when no
+        // search / chip / nature axis is active. Reused by the move, item,
+        // ability, and nature pickers via the `kind` parameter.
+        function _txActiveFiltersHtml(kind) {
+            const out = [];
+            const q = _txState.search[kind] || '';
+            if (q) {
+                out.push(`<button type="button" class="tx-active-filter" data-clear-search="${kind}" title="Clear search">${window.uiSvgX()} "${_esc(q)}"</button>`);
+            }
+            if (kind === 'moves') {
+                for (const t of _txState.filter.moveTypes) {
+                    out.push(`<button type="button" class="tx-active-filter type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" title="Remove ${t} filter">${window.uiSvgX()} ${t}</button>`);
+                }
+                for (const c of _txState.filter.moveCats) {
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--cat-${c}" data-filter-kind="moveCat" data-filter-value="${c}" title="Remove ${c} filter">${window.uiSvgX()} ${c}</button>`);
+                }
+            } else if (kind === 'items') {
+                if (_txState.filter.itemCat && _txState.filter.itemCat !== 'all') {
+                    const c = _txState.filter.itemCat;
+                    out.push(`<button type="button" class="tx-active-filter" data-filter-kind="itemCat" data-filter-value="all" title="Remove category filter">${window.uiSvgX()} ${_esc(_TX_ITEM_CAT_LABEL[c] || c)}</button>`);
+                }
+            } else if (kind === 'natures') {
+                if (_txState.filter.natureUp && _txState.filter.natureUp !== 'any') {
+                    const u = _txState.filter.natureUp;
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--up" data-filter-kind="natureUp" data-filter-value="${u}" title="Remove +${u} filter">${window.uiSvgX()} +${_TX_STAT_LABEL[u]||u}</button>`);
+                }
+                if (_txState.filter.natureDown && _txState.filter.natureDown !== 'any') {
+                    const d = _txState.filter.natureDown;
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--down" data-filter-kind="natureDown" data-filter-value="${d}" title="Remove -${d} filter">${window.uiSvgX()} -${_TX_STAT_LABEL[d]||d}</button>`);
+                }
+            }
+            if (!out.length) return '';
+            return `<div class="tx-active-filters" role="region" aria-label="Active filters">
+                <span class="tx-active-filters-label">Active:</span>
+                ${out.join('')}
             </div>`;
         }
 
@@ -54268,7 +54378,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
-                    ${sparseBanner + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
+                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
                 </div>
             </div>`;
         }
@@ -54347,7 +54457,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('items') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
             // Ability tab content
@@ -54368,7 +54478,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
