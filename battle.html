@@ -36641,6 +36641,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     bossMechanicsBattleInit: (s) => _storyBossMechanicsBattleInit(s),
                     bossMechanicsTurnTick: (s, m) => _storyBossMechanicsTurnTick(s, m),
                     showBossBanner: (t, a) => _showBossBanner(t, a),
+                    // Canon trainer overrides (PR-B/C).
+                    get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
                     // Mystery Figure single-voice (PR-6).
                     get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
                     pickMysteryIdentity: () => _storyPickMysteryIdentity(),
@@ -40747,6 +40749,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 battle._mechanics.push({ type: 'fieldLock', kind, value, turns, bannerText });
                 return battle._mechanics[battle._mechanics.length - 1];
             },
+        };
+
+        // BEAT_CANON_TRAINER (PR-B/C) — sceneKey → canon trainer name from
+        // TRAINER_DATA. When a beat with kind ∈ {boss, miniBoss, raid,
+        // mysteryBoss} is attached to a natural Battle row, the row's trainer
+        // assignment is overridden to this canon character. The existing
+        // trainer roller picks up the character's signature Pokémon (Giovanni's
+        // Rhydon, Cyrus's Weavile, etc.), delivering iconic encounters without
+        // mutating the timeline. Entries omitted for villains whose canon
+        // character isn't in TRAINER_DATA (Lysandre / Rose / Penny / Cassiopeia)
+        // — those still trigger BOSS_CONFIGS mechanics + tier rewards but
+        // field whatever the natural Elite Trainer roll produces. Future
+        // polish PR can add those canon characters to TRAINER_DATA.
+        const BEAT_CANON_TRAINER = {
+            // Villain bosses (Road 7 climax) — 7 named, 3 fall back to random Elite.
+            'villain.rocket.boss':    'Giovanni',
+            'villain.magma.boss':     'Maxie',
+            'villain.aqua.boss':      'Archie',
+            'villain.galactic.boss':  'Cyrus',
+            'villain.plasma.boss':    'Ghetsis',
+            'villain.skull.boss':     'Guzma',
+            'villain.yell.boss':      'Piers',
+            // Villain admins (Road 6 mini-boss) — 8 named, 2 fall back.
+            'villain.rocket.miniBoss':   'Proton',
+            'villain.magma.miniBoss':    'Tabitha',
+            'villain.aqua.miniBoss':     'Shelly',
+            'villain.galactic.miniBoss': 'Mars',
+            'villain.plasma.miniBoss':   'Saturn',
+            'villain.flare.miniBoss':    'Bryony',
+            'villain.skull.miniBoss':    'Plumeria',
+            'villain.yell.miniBoss':     'Marnie',
         };
 
         // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
@@ -45052,6 +45085,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _beatBattle = _activeBattleBeatForCurrentRow();
             if (_beatBattle && sm._activeBeatBattleKey !== _beatBattle.sceneKey) {
                 sm._activeBeatBattleKey = _beatBattle.sceneKey;
+                // PR-B/C: canon trainer override — when the beat is a
+                // boss/miniBoss/raid/mysteryBoss, swap the natural row's
+                // trainer assignment to the canon character (Giovanni,
+                // Proton, etc.). The existing trainer roller picks up their
+                // signature Pokémon, delivering an iconic encounter without
+                // mutating STORY_EVENTS_RAW. Lower-tier (battle/miniRaid)
+                // beats skip the override — they keep theme via prose only.
+                try {
+                    const _canon = BEAT_CANON_TRAINER && BEAT_CANON_TRAINER[_beatBattle.sceneKey];
+                    const _isInsertKind = _beatBattle.kind === 'boss' || _beatBattle.kind === 'miniBoss'
+                                        || _beatBattle.kind === 'raid' || _beatBattle.kind === 'mysteryBoss';
+                    if (_canon && _isInsertKind) {
+                        if (!sm.trainerAssignments) sm.trainerAssignments = {};
+                        // Stash the prior assignment so onBattleEnd can restore
+                        // if the player retries / retreats without winning.
+                        sm._priorTrainerAssignment = {
+                            rowId: ev[0] | 0,
+                            prev: sm.trainerAssignments[ev[0] | 0] || null,
+                        };
+                        sm.trainerAssignments[ev[0] | 0] = _canon;
+                        try { save(); } catch (e) {}
+                    }
+                } catch (e) { console.warn('[Story] canon trainer override:', e); }
                 _playStoryBeatScene(_beatBattle.sceneKey, () => {
                     try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
                     catch (e) { console.warn('[Story] beat-battle scene continuation failed:', e); }
@@ -45454,6 +45510,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // _activeBattleBeatForCurrentRow still resolves to the same
                 // slot on the next enterBattleEvent.
                 try { delete sm._activeBeatBattleKey; } catch (e) {}
+                // PR-B/C: restore the natural trainer assignment if a canon
+                // override was applied. The next retry / fresh attempt then
+                // re-stamps the canon name from BEAT_CANON_TRAINER cleanly.
+                try {
+                    if (sm._priorTrainerAssignment) {
+                        const restore = sm._priorTrainerAssignment;
+                        if (sm.trainerAssignments) {
+                            if (restore.prev != null) sm.trainerAssignments[restore.rowId] = restore.prev;
+                            else delete sm.trainerAssignments[restore.rowId];
+                        }
+                        delete sm._priorTrainerAssignment;
+                    }
+                } catch (e) {}
                 // Defeat: stash the pre-fight inventory so every game-over choice
                 // (Retry, Return to Last City, Concede) refunds the battle-bag
                 // items spent in the lost fight — only a win burns them for good.
