@@ -35285,6 +35285,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollTrainerTeam,
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
                     storyFreezeFoeTeamForPersistence,
+                    tutorFetchLearnsetMoveNames: (...a) => _tutorFetchLearnsetMoveNames(...a),
+                    moveTagForSpecies: (...a) => _moveTagForSpecies(...a),
                     findTrainerDataByName,
                     validateTrainerData: _validateTrainerData,
                     getTrainerData: () => TRAINER_DATA,
@@ -51344,10 +51346,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return keys;
         }
 
-        // Returns { all: [...names], tier1: [...names] } for a species' learnset.
-        // tier1 = moves reachable by egg-breed or level-up (method codes 'E'/'L'),
-        // i.e. what a Heart-Scale-tier Move Tutor can teach. The full set is used
-        // for the TM-Expert tier and for evolution move-legality checks.
+        // Returns { all, tier1, natural, learnt, awakened } for a species' learnset.
+        //   all      = every move reachable in any gen's learnset (legal pool)
+        //   tier1    = legacy: L + E (level-up + egg) — read by the old Heart-Scale path
+        //   natural  = L + E + V  (level-up, egg, transferred; evolution-learned uses L0).
+        //              "Anything the mon learns BY ITSELF" — Phase 4.1 Inner Strength tier.
+        //   learnt   = M + T + R + S + D + C  (TM / HM / Tutor / TR / event / dream / cave).
+        //              Phase 4.1 Expert tier — external teaching.
+        //   awakened = moves used by this species' Smogon CSV builds (legal or off-legal)
+        //              that are NOT in any gen's learnset. Phase 4.1 Guru tier.
         async function _tutorFetchLearnsetMoveNames(monName) {
             const cached = _tutorLearnsetCache.get(monName);
             if (cached) return cached;
@@ -51387,19 +51394,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             const all = new Set();
-            const tier1 = new Set();
+            const tier1 = new Set();   // legacy: L + E (kept so older callers still work)
+            const natural = new Set(); // Phase 4.1 Natural: L + E + V (transfer)
+            const learnt = new Set();  // Phase 4.1 Learnt:  M + T + R + S + D + C
             for (const [id, methods] of idMethods) {
                 try {
                     const mv = D.moves.get(id);
-                    if (mv && mv.exists !== false && mv.name && _tutorMoveAllowedStrict(mv.name)) {
-                        all.add(mv.name);
-                        if (methods.has('L') || methods.has('E')) tier1.add(mv.name);
-                    }
+                    if (!mv || mv.exists === false || !mv.name || !_tutorMoveAllowedStrict(mv.name)) continue;
+                    all.add(mv.name);
+                    const isNatural = methods.has('L') || methods.has('E') || methods.has('V');
+                    const isLearnt  = methods.has('M') || methods.has('T') || methods.has('R')
+                                   || methods.has('S') || methods.has('D') || methods.has('C');
+                    if (methods.has('L') || methods.has('E')) tier1.add(mv.name);
+                    if (isNatural) natural.add(mv.name);            // Natural wins on overlap
+                    else if (isLearnt) learnt.add(mv.name);          // Only Learnt if not also Natural
                 } catch (e2) {}
             }
-            const result = { all: [...all].sort(), tier1: [...tier1].sort() };
+            // Awakened = moves the species USES in Smogon CSV builds that aren't in any
+            // gen's learnset (off-legal sets — the L3 Guru tier).
+            const awakened = new Set();
+            try {
+                const csvMoves = _tutorGetPoolForMon(monName).moves;
+                for (const mv of csvMoves) {
+                    if (!natural.has(mv) && !learnt.has(mv) && _tutorMoveAllowedStrict(mv)) awakened.add(mv);
+                }
+            } catch (e3) {}
+            const result = {
+                all: [...all].sort(),
+                tier1: [...tier1].sort(),
+                natural: [...natural].sort(),
+                learnt: [...learnt].sort(),
+                awakened: [...awakened].sort(),
+            };
             _tutorLearnsetCache.set(monName, result);
             return result;
+        }
+        // Phase 4.1 — sync tag lookup once the cache is warm. Reads from
+        // _tutorLearnsetCache populated by _tutorFetchLearnsetMoveNames. Returns
+        // 'natural' | 'learnt' | 'awakened' | 'unknown' (unknown = cache cold).
+        function _moveTagForSpecies(monName, moveName) {
+            if (!monName || !moveName) return 'unknown';
+            const cached = _tutorLearnsetCache.get(monName);
+            if (!cached) return 'unknown';
+            if (cached.natural && cached.natural.indexOf(moveName) >= 0) return 'natural';
+            if (cached.learnt  && cached.learnt.indexOf(moveName)  >= 0) return 'learnt';
+            if (cached.awakened && cached.awakened.indexOf(moveName) >= 0) return 'awakened';
+            // In legacy cache shape (only `all`/`tier1`), fall back: tier1 ≈ natural;
+            // everything else in `all` ≈ learnt; anything outside `all` ≈ awakened.
+            if (cached.tier1 && cached.tier1.indexOf(moveName) >= 0) return 'natural';
+            if (cached.all && cached.all.indexOf(moveName) >= 0) return 'learnt';
+            return 'awakened';
         }
 
         async function _tutorGetMergedMovePoolAsync(monName) {
