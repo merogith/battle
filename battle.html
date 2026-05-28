@@ -29367,6 +29367,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // resolves to 'undefined' from there and the early-game softening silently no-ops.
         window.STORY_EVENTS_RAW = STORY_EVENTS_RAW;
 
+        // 3-track story-mode pools (v22+). One villain + one extra is rolled at
+        // run start (and back-filled on save migration). Tracks stay hidden until
+        // the first beat fires organically — Road 1 = first extra beat, Road 2 =
+        // first villain beat — so the reveal lands inside the first ~10 minutes
+        // of a run. See docs/story-design/STORY_3TRACK_IMPL_PLAN.md.
+        const VILLAIN_TRACKS = ['rocket','magma','aqua','galactic','plasma',
+                                'flare','skull','yell','macroCosmos','star'];
+        const EXTRA_TRACKS   = ['cubone','yamask','hypno','phantump',
+                                'mimikyu','drifloon','parasect','mewtwo'];
+        function _pickTrack(pool) {
+            const rng = (typeof sm !== 'undefined' && sm && sm.active
+                         && typeof window.storyRngNext === 'function')
+                ? window.storyRngNext : Math.random;
+            return pool[(rng() * pool.length) | 0];
+        }
+
         const STORY_MAIN_PATH_BATTLE_COUNT = STORY_EVENTS_RAW.reduce(function (acc, row) {
             return acc + (row && row[1] === 'Battle' ? 1 : 0);
         }, 0);
@@ -31506,7 +31522,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 21;
+        const SAVE_VER = 22;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV20 against a saved `version`).
@@ -32019,6 +32035,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
         }
+        /** v22: 3-track story-mode bone structure. Random villain + extra are
+         *  rolled per run and back-filled on any pre-v22 save so it joins the
+         *  new content layer on next load. Mid-run saves get fresh rolls;
+         *  scenes that would have fired on already-passed roads silently miss
+         *  (acceptable — the bone-structure pass is additive). Stats counter +
+         *  fired-event ledger live here too so PR-4 (No Death Run) and the
+         *  dispatcher dedupe have the shape they expect. */
+        function migrateStoryPreV22() {
+            if (!sm.tracks || typeof sm.tracks !== 'object') {
+                sm.tracks = { main: 'classic_v2', villain: null, extra: null };
+            }
+            if (!sm.tracks.main)    sm.tracks.main    = 'classic_v2';
+            if (!sm.tracks.villain) sm.tracks.villain = _pickTrack(VILLAIN_TRACKS);
+            if (!sm.tracks.extra)   sm.tracks.extra   = _pickTrack(EXTRA_TRACKS);
+            if (!sm.storyEventsFired || typeof sm.storyEventsFired !== 'object') sm.storyEventsFired = {};
+            if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
+            if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
+        }
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -32262,6 +32296,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    daycare: { unlocked:false, eggEventDone:false },
                    pits: { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false },
                    rivalEncounterLog: [],
+                   tracks: { main: 'classic_v2', villain: null, extra: null },
+                   storyEventsFired: {},
+                   stats: { battlesLost: 0 },
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -32639,6 +32676,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 21) {
                     try { migrateStoryPreV21(); } catch (e) { console.warn('[Story] v21 relative egg-hatch migrate', e); }
                 }
+                if (_loadedVer < 22) {
+                    try { migrateStoryPreV22(); } catch (e) { console.warn('[Story] v22 3-track migrate', e); }
+                }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -32647,6 +32687,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.pits || typeof sm.pits !== 'object') {
                     sm.pits = { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false };
                 }
+                // v22+ 3-track safety back-fills — protect a v22 save against a
+                // dropped field (the migration only fires for _loadedVer < 22).
+                if (!sm.tracks || typeof sm.tracks !== 'object') {
+                    sm.tracks = { main: 'classic_v2', villain: _pickTrack(VILLAIN_TRACKS), extra: _pickTrack(EXTRA_TRACKS) };
+                } else {
+                    if (!sm.tracks.main)    sm.tracks.main    = 'classic_v2';
+                    if (!sm.tracks.villain) sm.tracks.villain = _pickTrack(VILLAIN_TRACKS);
+                    if (!sm.tracks.extra)   sm.tracks.extra   = _pickTrack(EXTRA_TRACKS);
+                }
+                if (!sm.storyEventsFired || typeof sm.storyEventsFired !== 'object') sm.storyEventsFired = {};
+                if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
+                if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
                 // Per-mon bonus/tired back-fill on every build (active team + PC).
                 try {
                     for (const arr of [sm.team || [], sm.pcBox || []]) {
@@ -34640,6 +34692,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
+                    // 3-track story-mode (v22+) test handles.
+                    get VILLAIN_TRACKS() { return VILLAIN_TRACKS; },
+                    get EXTRA_TRACKS() { return EXTRA_TRACKS; },
+                    pickTrack: (pool) => _pickTrack(pool),
+                    migratePreV22: () => migrateStoryPreV22(),
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
@@ -35782,6 +35839,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 noItemThisRun: true,
                 rivalWinsThisRun: 0,
                 totalGoldSpentThisRun: 0,
+                // 3-track story-mode random assignment (v22+). Hidden from the
+                // confirm modal — first villain beat (Road 2) and first extra
+                // beat (Road 1) reveal the rolled tracks organically in-game.
+                tracks: { main: 'classic_v2', villain: _pickTrack(VILLAIN_TRACKS), extra: _pickTrack(EXTRA_TRACKS) },
+                storyEventsFired: {},
+                stats: { battlesLost: 0 },
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
