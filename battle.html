@@ -1357,6 +1357,15 @@
             border-right-color: #ffd54f;
             border-bottom-color: #ffd54f;
         }
+        .tx-card--ability[data-tier="awaken"] {
+            border-left-color: #ffb300;
+        }
+        .tx-card--ability[data-tier="awaken"][data-recommended="1"] {
+            border-left-color: #ffb300;
+            border-top-color: #ffd54f;
+            border-right-color: #ffd54f;
+            border-bottom-color: #ffd54f;
+        }
         .tx-card-head {
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
             font-size: 13px; font-weight: 700;
@@ -34647,6 +34656,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     npcStageUpCheck: (...a) => _npcStageUpCheck(...a),
                     dojoItemTier: (...a) => _dojoItemTier(...a),
                     opAbilitiesForMon: (...a) => _opAbilitiesForMon(...a),
+                    dojoAbilityUnlockStage: (...a) => _dojoAbilityUnlockStage(...a),
+                    abilityCostForMon: (...a) => _abilityCostForMon(...a),
                     tutorGetPoolForMon: (...a) => _tutorGetPoolForMon(...a),
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                 };
@@ -49597,7 +49608,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_ITEM    = 2000;
         const TUTOR_COST_ABILITY = 2000;  // regular ability swap
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
-        const TUTOR_COST_AWAKEN  = 5000;  // OP "Awaken" pick (City 6+)
+        const TUTOR_COST_AWAKEN  = 5000;  // Awakened pick (Grandmaster · City 8+)
         const TUTOR_COST_NATURE  = 2000;
 
         // ── Staged-NPC capability ladders (city-anchored, tunable) ───────────
@@ -49705,15 +49716,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
         }
 
-        function _abilityCostForMon(monName, abilityName) {
-            if (!abilityName) return TUTOR_COST_ABILITY;
-            const opSet = new Set(_opAbilitiesForMon(monName));
-            if (opSet.has(abilityName)) return TUTOR_COST_AWAKEN;
+        // Dojo ability tier → the Dojo stage that unlocks it for this species:
+        //   0 = basic    (slots 0/1)            · White Belt
+        //   1 = Hidden   (slot H)               · Black Belt
+        //   2 = Awakened (curated OP pick OR any off-legal Smogon ability) · Grandmaster
+        // Single source of truth for cost, the card lock, and the change-handler
+        // gate (mirrors _dojoItemTier-1 for held items).
+        function _dojoAbilityUnlockStage(monName, abilityName) {
+            if (!abilityName) return 0;
             try {
                 const bs = baseStats[monName];
-                if (bs && bs.abilities && bs.abilities.H === abilityName) return TUTOR_COST_HIDDEN;
+                const slots = (bs && bs.abilities) || {};
+                if (slots.H && abilityName === slots.H) return 1;          // Hidden
+                for (const k of Object.keys(slots)) {                      // basic legal slot
+                    if (k !== 'H' && slots[k] === abilityName) return 0;
+                }
+                if (new Set(_opAbilitiesForMon(monName)).has(abilityName)) return 2; // curated Awakened
+                // Off-legal Smogon pick: present in the species' Dojo pool but
+                // outside every legal slot (own + form base + dex) → Awakened.
+                const legal = new Set((_tutorGetPoolForMon(monName) || {}).legalAbilities || []);
+                if (legal.size && !legal.has(abilityName)) return 2;
             } catch (e) {}
-            return TUTOR_COST_ABILITY;
+            return 0;
+        }
+        function _abilityCostForMon(monName, abilityName) {
+            if (!abilityName) return TUTOR_COST_ABILITY;
+            const stage = _dojoAbilityUnlockStage(monName, abilityName);
+            return stage >= 2 ? TUTOR_COST_AWAKEN : stage === 1 ? TUTOR_COST_HIDDEN : TUTOR_COST_ABILITY;
         }
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
@@ -49851,6 +49880,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const moves = new Set();
             const items = new Set();
             const abilities = new Set();
+            // Legal slots only (0/1/H + form base / changesFrom + dex) — tracked
+            // apart from `abilities` so the Dojo can tell a species-legal pick
+            // from an off-legal Smogon ability (the latter classes as Awakened).
+            const legalAbilities = new Set();
             const natures = new Set();
             const entry = csvBuilds[monName];
             const bs = baseStats[monName];
@@ -49881,7 +49914,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (bs && bs.abilities) {
                 for (const k of Object.keys(bs.abilities)) {
                     const a = bs.abilities[k];
-                    if (a) abilities.add(a);
+                    if (a) { abilities.add(a); legalAbilities.add(a); }
                 }
             }
             const safeItems = new Set();
@@ -49901,7 +49934,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (!dsp || !dsp.abilities) return;
                             for (const slot of Object.keys(dsp.abilities)) {
                                 const a = dsp.abilities[slot];
-                                if (a && typeof a === 'string') abilities.add(a);
+                                if (a && typeof a === 'string') { abilities.add(a); legalAbilities.add(a); }
                             }
                         } catch (e2) {}
                     };
@@ -49917,14 +49950,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 moves: [...moves].sort(),
                 items: [...safeItems].sort(),
                 abilities: [...abilities].sort(),
+                legalAbilities: [...legalAbilities].sort(),
                 natures: [...natures].sort()
             };
         }
 
-        // ── OP "Awaken" abilities — surfaced in the Battle Dojo Ability tab once
-        // sm.badges >= 6 (post-Gym-6 / City 6+). Each entry: species → 3 picks
-        // from a curated 30 OP abilities. Authored by scripts/gen-op-abilities.mjs.
-        // Species with >5 current legal abilities are excluded (no OP needed).
+        // ── Curated "Awakened" abilities — shown in the Battle Dojo Ability tab
+        // at every stage (locked 🔒 until Grandmaster / City 8). Each entry:
+        // species → 4-7 picks from a curated 30. Authored by
+        // scripts/gen-op-abilities.mjs. These plus any off-legal Smogon ability
+        // in the species' pool make up the species' full Awakened set.
         let _opAbilitiesCache = null;
         async function _loadOpAbilities() {
             if (_opAbilitiesCache) return _opAbilitiesCache;
@@ -49938,11 +49973,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _opAbilitiesForMon(monName) {
             if (!_opAbilitiesCache) return [];
-            // Awakened abilities are the Battle Dojo's top tier (Grandmaster).
-            if (_npcStage('dojo') < 2) return [];
+            // Curated Awakened picks for this species. Returned at EVERY Dojo
+            // stage so the picker can show them locked (🔒 Grandmaster) below
+            // City 8 — the unlock gate lives in the card + the change handlers,
+            // not here. The data is curated to bring base + Hidden + Awakened to
+            // at least 7 options (no fixed cap).
             const list = _opAbilitiesCache[monName];
-            // Return the full Awaken set — the data is curated per species to
-            // bring base + Hidden + Awaken to at least 7 options (no fixed cap).
             return Array.isArray(list) ? list.slice() : [];
         }
         // Bridge the IIFE-scoped loader to the top-level boot path. Without
@@ -51865,14 +51901,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isHA      = ctx && ctx.hiddenAbilities && ctx.hiddenAbilities.has(abilityName);
             const isAwaken  = ctx && ctx.awakenAbilities && ctx.awakenAbilities.has(abilityName);
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(abilityName);
-            const tier      = isHA ? 'hidden' : 'regular';
-            // Staged Battle Dojo: the Hidden ability stays visible but is locked
-            // until Black Belt, so a ★-recommended Hidden ability still shows.
-            const locked = !!(ctx && typeof ctx.dojoStage === 'number' && abilityName === ctx.haName && ctx.dojoStage < 1 && !isCurrent);
+            const tier      = isAwaken ? 'awaken' : (isHA ? 'hidden' : 'regular');
+            // Staged Battle Dojo: a higher-tier ability stays visible but locked
+            // until its stage (Hidden → Black Belt · Awakened → Grandmaster), so
+            // its ★ recommendation and unlock target still show. The equipped
+            // pick is never locked.
+            let lockStage = -1;
+            if (ctx && typeof ctx.dojoStage === 'number' && !isCurrent) {
+                if (isAwaken) lockStage = 2;
+                else if (abilityName === ctx.haName) lockStage = 1;
+            }
+            const locked = lockStage > (ctx ? ctx.dojoStage : 99);
             const pills = [
-                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awaken</span>` : '',
+                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awakened</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
-                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches Black Belt">🔒 ${_esc(_npcStageName('dojo', 1))}</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
@@ -52285,13 +52328,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
             const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred, pctOf: sPool.items.pctOf, dojoStage: _dojoStage };
 
-            // Abilities — hidden tagged from baseStats.abilities slot 'H'. The Hidden
-            // ability stays visible (so the rec shows) but is locked until Black Belt;
-            // Awakened picks merge in only at Grandmaster (gated in _opAbilitiesForMon).
+            // Abilities — Hidden tagged from baseStats.abilities slot 'H' (locked
+            // until Black Belt). Awakened = every shown ability that isn't a legal
+            // slot (0/1/H): curated OP picks AND off-legal Smogon picks both
+            // qualify. All tiers stay visible — higher ones render locked (🔒) so
+            // the player sees the whole roster regardless of the ★ filter.
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const opAbils = _opAbilitiesForMon(t.name);
-            const awakenSet = new Set(opAbils);
-            const abils = [...new Set([...pool.abilities, ...opAbils])].sort();
+            const legalSet = new Set(pool.legalAbilities || []);
+            const abils = [...new Set([
+                ...pool.abilities, ...opAbils,
+                ...(curAbility && curAbility !== '(none)' ? [curAbility] : []),
+            ])].sort();
+            const awakenSet = new Set();
+            if (legalSet.size) { for (const a of abils) { if (!legalSet.has(a)) awakenSet.add(a); } }
+            else { for (const a of opAbils) awakenSet.add(a); }
             const haSet = new Set();
             if (_haName) haSet.add(_haName);
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet);
@@ -52772,14 +52823,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function tutorChangeAbility(teamIdx, newAbility) {
-            // Staged Dojo gate: the Hidden ability is locked until Black Belt
-            // (Awakened picks aren't even fetched below Grandmaster).
+            // Staged Dojo gate (the card is disabled when locked; guard the API
+            // too): Hidden unlocks at Black Belt, Awakened (curated OP + off-legal
+            // Smogon picks) at Grandmaster.
             {
                 const _m = sm.team[teamIdx];
-                let _ha = null;
-                try { const bs = baseStats[_m && _m.name]; _ha = (bs && bs.abilities && bs.abilities.H) || null; } catch (e) {}
-                if (_ha && newAbility === _ha && _npcStage('dojo') < 1) {
-                    try { window.showGameAlert && window.showGameAlert('Hidden abilities unlock when the Battle Dojo reaches Black Belt — keep earning badges.'); } catch (e) {}
+                const _need = _dojoAbilityUnlockStage(_m && _m.name, newAbility);
+                if (_need > _npcStage('dojo')) {
+                    try { window.showGameAlert && window.showGameAlert(`The Battle Dojo unlocks ${newAbility} at ${_npcStageName('dojo', _need)} — keep earning badges.`); } catch (e) {}
                     return;
                 }
             }
