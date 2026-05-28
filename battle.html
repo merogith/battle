@@ -34969,6 +34969,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // all frozen after boot — so it is safe to reuse across rolls. Keyed by type theme +
         // sorted gen list. Avoids a full baseStats scan (+ getMonGrade per species) per roll.
         const _trainerPoolCache = new Map();
+        // ──────────────────────────────────────────────────────────────────────────
+        // ENEMY-TRAINER BUILD PIPELINE — ORDER OF OPERATIONS (Phase 4 architecture).
+        // The full path from "an event needs an enemy team" to "battle gets a foe roster"
+        // crosses several layers. They must run in THIS order; reshuffling breaks the
+        // tag/tier/city gates that each layer depends on.
+        //
+        //   1.  rollTrainerTeam(trainer, …, storyRowIdx)          [this function]
+        //       — pick species (signature aces by gen-fallback + grade ceiling +
+        //         evo-stage cap; filler from the type/grade pool).
+        //       — call makeBuild(name) per slot — returns a Smogon CSV preset (or
+        //         designed fallback) with IVs/EVs/moves/item already populated.
+        //   2.  _storyDowngradeBuildForTier(name, build, tier)  [per slot, inside roll]
+        //       — T1 zero-EV / neutral nature / slot-0 ability / flavor berry,
+        //       — T2 cap EVs ≤ 220, swap elite items → type-coherent flavor,
+        //       — T3 cap EVs ≤ 420, keep nature/ability/item,
+        //       — T4 untouched.
+        //   3.  _storyDowngradeMovesForTier(name, build, tier)  [inside #2]
+        //       — drop setup/hazard/screen/pivot moves at T1/T2 (replaced by primary-
+        //         type basic STAB) AND BP-cap (T1 ≥90 BP, T2 ≥120 BP).
+        //   4.  Foe item-tier city gate + EV/IV city-curve overwrite + nature/ability/
+        //       move optimization gradient — all inside rollTrainerTeam after #2/#3.
+        //   5.  enterBattleEvent stamps build._storyStatMult per (event, city, row)
+        //       so buildPokemon scales maxHp + stats at battle-build time. (Phase 4.4)
+        //   6.  _storyGateFoeMovesByCity(team, storyRowIdx)      [in enterBattleEvent]
+        //       — async tag filter: C0–C3 Natural only · C4–C6 +Learnt · C7+ no gate
+        //         (uses the per-species learnset cache from Phase 4.1).
+        //   7.  storyFreezeFoeTeamForPersistence(team)           [pre-startFight]
+        //       — runs buildPokemon (move padding / gender / shiny lock) AND
+        //         _storySanitizeBuildGimmick (re-validate Mega/Z/Tera/Dmax against
+        //         current city + unlock so stale lock data can't fire a Mega Sableye
+        //         at C3). (Phase 4.0c)
+        //   8.  startFight uses the frozen team. buildPokemon's stat block reads
+        //       build._storyStatMult LAST in its compute order (nature → fatigue →
+        //       story-mult) so the % cleanly stacks.
+        //
+        // Every step is data-driven via constants you can tune without touching the
+        // pipeline order: _STORY_FOE_STAT_BAND, STORY_IV_CITY_TRAINER,
+        // STORY_EV_CITY_TOTAL, NPC_STAGE_CITY, _T2_TYPE_BOOST_ITEM, etc.
+        // ──────────────────────────────────────────────────────────────────────────
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
