@@ -17820,7 +17820,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const allKeys = ['hp','atk','def','spa','spd','spe'];
                     const evTotal = allKeys.reduce((sum, k) => sum + (evs[k] || 0), 0);
                     const evCells = allKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${evs[k] || 0}</span>`).join('');
-                    const ivCells = allKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${ivs[k] != null ? ivs[k] : 31}</span>`).join('');
+                    const bn = (bd.bonus && typeof bd.bonus === 'object') ? bd.bonus : null;
+                    const ivCells = allKeys.map(k => {
+                        const iv = ivs[k] != null ? ivs[k] : 31;
+                        const b  = bn ? Math.max(0, Math.min(10, bn[k] | 0)) : 0;
+                        const tag = b > 0 ? ` <small title="Fight Club bonus — effective ${Math.min(41, iv + b)}/41" style="color:#ff5252;font-weight:bold;">+${b}</small>` : '';
+                        return `<span><i>${SUM_STAT_LABELS[k]}</i> ${iv}${tag}</span>`;
+                    }).join('');
                     evIvHtml = `<div class="sum-evs-row">
                         <b>EVs (${evTotal}/510)</b>
                         <div class="sum-evs-grid">${evCells}</div>
@@ -53992,7 +53998,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return (e.hp|0)+(e.atk|0)+(e.def|0)+(e.spa|0)+(e.spd|0)+(e.spe|0);
             })();
             const ivAvg = Math.round(((ivs.hp|0)+(ivs.atk|0)+(ivs.def|0)+(ivs.spa|0)+(ivs.spd|0)+(ivs.spe|0)) / 6);
-            const summary = `Nature ${_esc(build.n || 'Hardy')} · EVs ${evTotal}/510 · IV avg ${ivAvg}/31`;
+            const bnObj = (build.bonus && typeof build.bonus === 'object') ? build.bonus : null;
+            const bonusTotal = bnObj
+                ? ['hp','atk','def','spa','spd','spe'].reduce((a, k) => a + Math.max(0, Math.min(10, bnObj[k] | 0)), 0)
+                : 0;
+            const bonusTag = bonusTotal > 0 ? ` · <span style="color:#ff5252;font-weight:bold;" title="Fight Club permanent stat boost (total across all six stats)">FC +${bonusTotal}</span>` : '';
+            const summary = `Nature ${_esc(build.n || 'Hardy')} · EVs ${evTotal}/510 · IV avg ${ivAvg}/31${bonusTag}`;
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="fanclub" aria-expanded="${expanded?'true':'false'}">
                 <div class="story-tutor-mon-main">
                     ${sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : ''}
@@ -54010,6 +54021,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const ivCells = ['hp','atk','def','spa','spd','spe'].map(k => {
                 const iv = (ivs[k] !== undefined) ? (ivs[k] | 0) : 31;
+                const bn = bnObj ? Math.max(0, Math.min(10, bnObj[k] | 0)) : 0;
                 const pct = Math.max(0, Math.min(100, Math.round((iv / 31) * 100)));
                 const color = _fanClubIvColor(iv);
                 const vitId = _VITAMIN_BY_STAT[k];
@@ -54026,9 +54038,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const remDisabled = !canRemove;
                 const remStyle = `font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid ${canRemove ? '#9aa3b0' : '#444'};background:${canRemove ? 'rgba(154,163,176,0.10)' : 'transparent'};color:${canRemove ? '#cfd5dd' : '#666'};cursor:${canRemove ? 'pointer' : 'not-allowed'};white-space:nowrap;`;
                 const remOnClick = canRemove ? `onclick="event.stopPropagation();window.StoryMode.removePermBoost('${k}','team',${idx})"` : '';
+                const bnTag = bn > 0
+                    ? `<span title="Fight Club bonus — effective ${Math.min(41, iv + bn)}/41" style="flex:0 0 auto;font-size:9px;font-weight:bold;color:#ff5252;padding:1px 4px;background:rgba(255,82,82,0.12);border:1px solid rgba(255,82,82,0.35);border-radius:3px;white-space:nowrap;">+${bn}</span>`
+                    : '';
                 return `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:rgba(0,0,0,0.25);border-radius:4px;">
                     <span style="flex:0 0 28px;font-size:10px;color:#9ab;font-weight:bold;">${_IV_STAT_LABEL[k]}</span>
                     <span style="flex:0 0 32px;font-size:11px;font-weight:bold;color:${color};text-align:right;">${iv}/31</span>
+                    ${bnTag}
                     <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
                         <div style="height:100%;width:${pct}%;background:${color};"></div>
                     </div>
