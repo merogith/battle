@@ -79,8 +79,10 @@ test('hpThresholdPhase activates surge on the NEXT turn (1-turn telegraph)', () 
     state.turnNumber = 2;
     ST.bossMechanicsTurnTick(state, foe);
     assert.equal(state._bossPendingTelegraph, null);
-    // After activation, surge starts at 3 and immediately decrements to 2 in the same tick.
-    assert.equal(foe._bossSurgeTurns, 2);
+    // Surge engages THIS turn and lasts 3 turns of +25% damage. The timer is set
+    // after the pre-activation decrement, so it reads 3 right after activation.
+    // (Was 2 under the same-tick off-by-one this fix corrects.)
+    assert.equal(foe._bossSurgeTurns, 3);
 });
 
 test('hpThresholdPhase only telegraphs once per threshold (does not refire)', () => {
@@ -115,8 +117,10 @@ test('immunityRound telegraphs at turn N-1 and activates on turn N', () => {
     state.turnNumber = 5;
     ST.bossMechanicsTurnTick(state, foe);
     assert.equal(state._bossPendingTelegraph, null);
-    // Immunity activates with 1 turn, decrements to 0 within the same tick.
-    assert.equal(foe._bossImmuneTurns, 0);
+    // Immunity is engaged for THIS turn's damage phase — the clamp checks > 0 — so it
+    // reads 1 right after activation and decrements to 0 on the next tick. (Was 0 under
+    // the same-tick off-by-one, which meant the immunity clamp never actually fired.)
+    assert.equal(foe._bossImmuneTurns, 1);
 });
 
 test('turn tick is a safe no-op when state has no boss mechanics', () => {

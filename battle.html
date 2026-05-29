@@ -23672,6 +23672,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 damage = Math.max(1, Math.floor(damage));
                 // Glass Cannon Pact artifact: +25% all damage, both sides
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
+                // Story boss surge phase: the boss deals +25% while its surge window is
+                // open (set by an HP-threshold phase telegraph). attacker is the boss here.
+                if (state._activeStoryBeatKey && attacker && attacker._bossSurgeTurns > 0) damage = Math.floor(damage * 1.25);
                 // Story artifact: [Type] Amplifier — attacks of that type +30%; Pokémon of that type take +15% from hits
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
@@ -42105,7 +42108,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // checks HP thresholds (foe HP %), and stages immunity-round telegraphs.
         function _storyBossMechanicsTurnTick(stateRef, foeMon) {
             if (!stateRef || !Array.isArray(stateRef._bossMechanics) || !foeMon) return;
-            // 1. Activate any telegraph queued from the prior turn.
+            // 1. Decrement timers set by a PRIOR turn's activation FIRST — before this
+            //    turn's activation below — so a timer freshly set this turn survives into
+            //    this turn's damage phase. (Decrementing after activation zeroed a
+            //    just-set immunity/surge on the same tick: the off-by-one bug.)
+            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
+            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
+            // 2. Activate any telegraph queued from the prior turn.
             if (stateRef._bossPendingTelegraph) {
                 const pending = stateRef._bossPendingTelegraph;
                 stateRef._bossPendingTelegraph = null;
@@ -42117,9 +42126,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // fieldLock activates at battle-init, not from telegraph.
             }
-            // 2. Decrement active per-turn effect timers.
-            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
-            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
             // 3. Walk mechanics, queue new telegraphs for next turn.
             for (const m of stateRef._bossMechanics) {
                 if (!m || !m.type) continue;
@@ -59563,6 +59569,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             get state() { return sm; },
+            // Boss-mechanics live wiring — startBattle (init) + the locked turn
+            // resolver reach these through window.StoryMode.*; previously only the
+            // test harness exposed them, so production boss mechanics never attached.
+            get BOSS_CONFIGS() { return BOSS_CONFIGS; },
+            bossMechanicsBattleInit: (s) => _storyBossMechanicsBattleInit(s),
+            bossMechanicsTurnTick: (s, m) => _storyBossMechanicsTurnTick(s, m),
+            showBossBanner: (t, a) => _showBossBanner(t, a),
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
