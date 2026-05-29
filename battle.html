@@ -42064,18 +42064,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.macroCosmos.miniBoss': { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SPONSOR' }] },
             'villain.star.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE TEAM' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'SCHEDULE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BIG BOSS' }] },
             'villain.star.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SQUAD' }] },
-            // Extra track raids (8) — Road 6 climax. Phase 3 mechanics from CSV.
-            'extra.cubone.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'A REMEMBERED PLACE' }] },
-            'extra.yamask.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WAKE' }] },
-            'extra.hypno.raid':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LULLABY' }] },
-            'extra.phantump.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE GROVE' }] },
-            'extra.mimikyu.raid':   { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE AUDIENCE' }] },
-            'extra.drifloon.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE CLIMB' }] },
-            'extra.parasect.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE SOIL' }] },
-            'extra.mewtwo.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LAB REMEMBERED' }] },
-            // Mystery Figure (apex) — HP threshold + immunity round + field lock.
-            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
+            // Extra track — SOLO legendary-tier Pokémon raids (Road 6). Configs for both
+            // raid (75/50/25) and miniRaid (50/25) are populated below the table by
+            // _populateExtraRaidConfigs (kept DRY across the 8 bosses).
+            // Mystery Figure (apex) — HP threshold + immunity round. Attached via the
+            // isMysteryFinal dispatch (mysteryBoss is excluded from the beat-key path).
+            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
         };
+
+        // Populate the 8 extra-track raids (solo Pokémon bosses): escalating HP-threshold
+        // phases — real raid 75/50/25 (surge → heal → immunity), mini raid 50/25
+        // (surge → immunity). One mechanic active at a time; banner is the boss's signature.
+        (function _populateExtraRaidConfigs() {
+            const banners = {
+                cubone: 'A REMEMBERED PLACE', yamask: 'THE WAKE', hypno: 'THE LULLABY', phantump: 'THE GROVE',
+                mimikyu: 'THE AUDIENCE', drifloon: 'THE CLIMB', parasect: 'THE SOIL', mewtwo: 'THE LAB REMEMBERED'
+            };
+            for (const k in banners) {
+                const b = banners[k];
+                BOSS_CONFIGS['extra.' + k + '.raid'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.75, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
+                BOSS_CONFIGS['extra.' + k + '.miniRaid'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
+            }
+        })();
 
         // Mini-raid / raid HP scaling — extra (solo-Pokémon) arcs only. The boss is ONE
         // legendary-tier Pokémon, so its HP is multiplied to survive a full player party:

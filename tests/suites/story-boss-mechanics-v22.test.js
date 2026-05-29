@@ -187,6 +187,18 @@ test('solo raid boss scaling: _bossStatMult boosts stats; _bossHpScale multiplie
     assert.equal(boss.stats.atk, Math.max(1, Math.floor(plain.stats.atk * 1.3)), 'atk boosted by stat mult only');
 });
 
+test('extra raids are populated with escalating multi-phase HP configs', () => {
+    const c = ST.BOSS_CONFIGS;
+    const raid = c['extra.mewtwo.raid'];
+    assert.ok(raid && raid.mechanics.length === 3, 'real raid has 3 HP phases');
+    assert.equal(raid.mechanics.map(m => m.at).join(','), '0.75,0.5,0.25');
+    assert.equal(raid.mechanics.map(m => m.effect).join(','), 'surge,heal,immunity');
+    const mini = c['extra.mewtwo.miniRaid'];
+    assert.ok(mini && mini.mechanics.length === 2, 'mini raid has 2 HP phases');
+    assert.equal(mini.mechanics.map(m => m.at).join(','), '0.5,0.25');
+    assert.equal(mini.mechanics.map(m => m.effect).join(','), 'surge,immunity');
+});
+
 test('turn tick is a safe no-op when state has no boss mechanics', () => {
     const state = mkBossState([]);
     delete state._bossMechanics;
