@@ -48062,7 +48062,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure, rival rematches, gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
+                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\n🔮 If the Caged God hunt is open, it sits at the very top: collect its three Underground leads right here, then enter the Cage to capture the specimen. (The Mystery Figure is a separate masked trainer — not the Caged God.)\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -48087,7 +48087,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
             const hardOn = !!sm.crucibleHardMode;
+            // Post-game quest: the Caged God hunt. Surfaced here (the post-game Underground
+            // hub) so it's discoverable and reachable — previously it only appeared inside
+            // a Pokémon Center of Cities 2/5/8, which the post-game can't travel back to.
+            const cagedGodHtml = _bossArcRenderSection(true);
             body.innerHTML = `
+                ${cagedGodHtml ? `<h4 style="color:#ce93d8;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Post-Game Quest</h4>${cagedGodHtml}<div style="height:18px;"></div>` : ''}
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
                 <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 10px;background:rgba(40,0,0,${hardOn ? '0.55' : '0.25'});border:1px solid ${hardOn ? '#ff5252' : '#5a2a2a'};cursor:pointer;font-size:11px;color:${hardOn ? '#ffcdd2' : '#bba'};">
                     <input type="checkbox" ${hardOn ? 'checked' : ''} onchange="window.StoryMode.toggleCrucibleHardMode(this.checked)" style="margin:0;cursor:pointer;">
@@ -48095,7 +48100,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
                     ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
-                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
+                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked trainer (a 6-mon trainer fight). Distinct from the Caged God hunt above.')}
                     ${btn('🌀',                                     'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
                     ${btn(png('icons/story/story_league.png'),     'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
                     ${btn(png('icons/story/story_gym.png'),        'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
@@ -48515,7 +48520,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
             return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
         }
-        function _bossArcRenderSection() {
+        function _bossArcRenderSection(hubMode) {
             _bossArcEnsureState();
             if (!sm.bossArc.available || sm.bossArc.cleared) return '';
             const L = sm.bossArc.leads;
@@ -48542,7 +48547,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
             </div>`;
 
-            if (localLeadKey && !L[localLeadKey]) {
+            if (hubMode && !allLeads) {
+                // Crucible hub = the post-game Underground: the whole broker network is
+                // reachable here, so any uncollected lead can be pulled (each still plays
+                // its broker scene). Keeps the 3-city lore in the labels.
+                const _leadCity = { ledger: 2, recording: 5, key: 8 };
+                for (const k of ['ledger', 'recording', 'key']) {
+                    if (L[k]) continue;
+                    const flav = _BOSS_LEAD_FLAVOR[k];
+                    html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${k}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)} <span style="color:#9a8aa8;">· City ${_leadCity[k]}</span></button>`;
+                }
+            } else if (localLeadKey && !L[localLeadKey]) {
                 const flav = _BOSS_LEAD_FLAVOR[localLeadKey];
                 html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${localLeadKey}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)}</button>`;
             } else if (localLeadKey && L[localLeadKey]) {
@@ -48572,6 +48587,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _bossArcCheckCageUnlock();
                 try { save(); } catch (e) {}
                 try { _pcRefresh(); } catch (e) {}
+                // Collected from the Crucible hub? Re-render it so the tracker updates.
+                try { if (sm.atCrucible) _renderCrucible(); } catch (e) {}
             };
             // Promote the lead from a plain window.alert() to the standard
             // narrative overlay. Per-variant body line is used when the
