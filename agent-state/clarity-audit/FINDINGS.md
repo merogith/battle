@@ -155,3 +155,21 @@ clock). It is also the *minimalist* direction the brief asks for.
 
 Items 4 & 6 and the `BOSS_CONFIGS` warning are **pure engineering / copy** and safe to do
 directly. Items 1–3 and 5 are **design calls** — see the maintainer questions.
+
+---
+
+## 5. Resolution — what shipped (maintainer approved all recommended options)
+
+Maintainer chose: single objective line · merge Relics into one facility · just-in-time
+one-liners · do all buckets now + a Phase-3 review.
+
+| Commit | Change | Verified |
+|---|---|---|
+| 1 | **Engine-scope boss hookup + neutral professor intro.** `startBattle`/turn-loop reached the StoryMode IIFE's `sm`/`BOSS_CONFIGS`/`_storyBossMechanics*` by bare name (always threw on every battle); rerouted through `window.StoryMode.*`. Intro copy "her bench" → "the bench" (RC-4). | jsdom smoke |
+| 2 | **One objective line** replaces the 4 competing signals (RC-1/2/3). `renderCityActions` now renders a single `objective` (sourced from the same gate flags as the buttons) + quiet "Suggested" chips; dropped the numbered banner and the misleading "Next Step (N)" → "Story". | `__renderCityActionsForTest`: City0→[START] Pick your starter; post-starter→[NEW HERE] see Pokémart; gym→[NEXT] Enter the Gym. Visual confirm (screenshot). |
+| 3 | **Relics merge** (RC-3). "Relic Annex" + "Artifact Hall" → one "Relics" hub entry everywhere, with a shared Browse/Manage tab bar; `artifacts` dropped from `FACILITY_DEBUT_CITY`; unified all copy. | probe: single button in relic + non-relic cities; both screens render tabs + "Relics" title; no stale strings leak. |
+| 4 | **No-levels teaching** (RC-5). Added one line to the `firstTrainerBattle` scene: every battle is Lv50, strength = how a partner is built. | jsdom smoke |
+
+### Two findings the prior reports overstated (corrected here)
+- **RC-5 teaching gap is mostly already closed.** Contrary to `PROGRESSION_CURVE_MASTER §3.1 F1` / `DESIGN 2.6`, EV theory *is* taught (`firstEVTrainer` scene), IVs *are* taught (`firstFanClub`), difficulty *is* shown in the picker sub-labels + Run Info, and Crucible/Frontier each have one-time explainer tips. Those reports predate the tutorial-scene system. The minimalist-correct action was therefore **one** targeted line (the genuinely-uncovered no-levels rule), not a pile of redundant tips — which would re-add the very noise this pass removes.
+- **RC-6 / ISSUE-015 is already guarded.** `proceedToNextBattle` has a `_storyBattleEntryBusy` re-entry guard (reset on city-return and on battle-open), so duplicate cold-open stacking can't wedge progression. The overlay overlap seen in screenshots was the automated harness force-advancing through scenes, not a player-reachable state. No overlay change made (avoids regression risk).
