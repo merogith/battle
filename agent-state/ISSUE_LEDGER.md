@@ -1,7 +1,7 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T12:52:38.999Z
-> **Source**: `agent-state/findings/*.md` (31 unique findings after dedup)
+> **Generated**: 2026-05-29T13:00:44.640Z
+> **Source**: `agent-state/findings/*.md` (48 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
 
@@ -13,62 +13,231 @@ status, edit the corresponding finding file and re-run.
 
 | Severity | Count |
 |---|---|
-| P0 | 0 |
-| P1 | 6 |
-| P2 | 10 |
-| P3 | 15 |
-| **Total** | **31** |
+| P0 | 2 |
+| P1 | 9 |
+| P2 | 15 |
+| P3 | 22 |
+| **Total** | **48** |
 
 | Category | Count |
 |---|---|
+| a11y | 4 |
 | balance | 1 |
-| bug | 2 |
+| bug | 6 |
 | data | 5 |
-| dx | 4 |
+| dx | 6 |
 | inconsistency | 14 |
+| perf | 4 |
 | refactor | 1 |
+| security | 3 |
 | test-gap | 4 |
 
 ## TOC
 
-- [ISSUE-001] [P1] League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative — `applyFoeDifficultyScaling` (inconsistency)
-- [ISSUE-002] [P1] Fresh story run starts with 0 Poké Balls; spec promises 5 in three places — `balls` (inconsistency)
-- [ISSUE-003] [P1] Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns — `canMove` (bug)
-- [ISSUE-004] [P1] canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift — `canMove` (inconsistency)
-- [ISSUE-005] [P1] parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift — `parseMoveEffects` (inconsistency)
-- [ISSUE-006] [P1] Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init — `startBattle` (inconsistency)
-- [ISSUE-007] [P2] Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts — `canMove` (bug)
-- [ISSUE-008] [P2] STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists — `catchMode` (inconsistency)
-- [ISSUE-009] [P2] Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv — `convertSmogonSet` (data)
-- [ISSUE-010] [P2] 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap — `describe('Status moves')` (test-gap)
-- [ISSUE-011] [P2] gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive) — `fetchSmogonSetsForGen` (data)
-- [ISSUE-012] [P2] Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants — `FOE_STAT_NERF_BY_CITY` (inconsistency)
-- [ISSUE-013] [P2] online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8× — `reportWinIfConfigured` (refactor)
-- [ISSUE-014] [P2] Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4 — `setConfusionDuration` (balance)
-- [ISSUE-015] [P2] Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES — `STORY_WILD_GRADE_BY_CITY` (inconsistency)
-- [ISSUE-016] [P2] G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor" — `storyStripGrade4IfPartyMature` (inconsistency)
-- [ISSUE-017] [P3] CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines — `CODEBASE_MAP` (dx)
-- [ISSUE-018] [P3] 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows — `convertSmogonSet` (data)
-- [ISSUE-019] [P3] 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool — `LEADER_VICTORY_LINES` (inconsistency)
-- [ISSUE-020] [P3] `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html) — `loadBuildsCSV` (data)
-- [ISSUE-021] [P3] Unguarded 'dex probe Pikachu' console.log left in the data-load path — `loadGameData` (dx)
-- [ISSUE-022] [P3] Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read — `loadGameData` (data)
-- [ISSUE-023] [P3] 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX — `MOVE_SFX_MAP` (inconsistency)
-- [ISSUE-024] [P3] Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast — `MYSTERY_FIGURE_IDENTITIES` (inconsistency)
-- [ISSUE-025] [P3] Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound) — `parseMoveEffects` (inconsistency)
-- [ISSUE-026] [P3] STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G — `SAFARI_ENTRY_COST` (inconsistency)
-- [ISSUE-027] [P3] SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20 — `SAVE_VER` (dx)
-- [ISSUE-028] [P3] 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles — `spread-damaging` (test-gap)
-- [ISSUE-029] [P3] 46 volatile-status moves are it.todo but assert with one mon.volatile flag check — `status-volatile` (test-gap)
-- [ISSUE-030] [P3] Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols — `STORY_EVENTS_RAW` (dx)
-- [ISSUE-031] [P3] 28 conditional-BP moves need per-move precondition tuning before damage assertion — `variable-power-conditional` (test-gap)
+- [ISSUE-001] [P0] Per-room host/guest tokens are stored inside world-readable `data` jsonb — token auth is self-defeating — `pvp_push_data` (security)
+- [ISSUE-002] [P0] `applyBattleLogHtml` regex sanitizer is bypassable — remote `battle_log_html` still reaches `innerHTML` — `sanitizeBattleLogHtml` (security)
+- [ISSUE-003] [P1] Professor "Choose This Pokémon" pick cards are click-only divs — keyboard/SR users can't select a starter/team mon — `_buildProfPickCardElement` (a11y)
+- [ISSUE-004] [P1] `lastRemoteSeq` is bumped on handler timeout, permanently skipping the timed-out remote update — `_onRemoteRow` (bug)
+- [ISSUE-005] [P1] League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative — `applyFoeDifficultyScaling` (inconsistency)
+- [ISSUE-006] [P1] Fresh story run starts with 0 Poké Balls; spec promises 5 in three places — `balls` (inconsistency)
+- [ISSUE-007] [P1] Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns — `canMove` (bug)
+- [ISSUE-008] [P1] canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift — `canMove` (inconsistency)
+- [ISSUE-009] [P1] parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift — `parseMoveEffects` (inconsistency)
+- [ISSUE-010] [P1] `pushData` queue swallows write failures to `console.warn` and advances — local state silently diverges from Supabase — `pushData` (bug)
+- [ISSUE-011] [P1] Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init — `startBattle` (inconsistency)
+- [ISSUE-012] [P2] Cold-open / intro-rival narrative overlay is not a dialog — no role/aria-modal/label, no ESC, no focus management — `_renderNarrativeOverlay` (a11y)
+- [ISSUE-013] [P2] Cluster of silent `.catch(console.warn)` sites hide real failures from the user — `applyHostMatchOptions` (bug)
+- [ISSUE-014] [P2] Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts — `canMove` (bug)
+- [ISSUE-015] [P2] STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists — `catchMode` (inconsistency)
+- [ISSUE-016] [P2] Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv — `convertSmogonSet` (data)
+- [ISSUE-017] [P2] 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap — `describe('Status moves')` (test-gap)
+- [ISSUE-018] [P2] gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive) — `fetchSmogonSetsForGen` (data)
+- [ISSUE-019] [P2] Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants — `FOE_STAT_NERF_BY_CITY` (inconsistency)
+- [ISSUE-020] [P2] loadGameData ~299 ms engine-only (>1.5× 200 ms boot target), dominated by parseCSV over the 2.56 MB builds.csv — `loadBuildsCSV` (perf)
+- [ISSUE-021] [P2] openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap — `openModal` (a11y)
+- [ISSUE-022] [P2] `pvp_rooms` SELECT remains `using(true)` — any anon client can scrape every live match's full state — `pvp_rooms_select` (security)
+- [ISSUE-023] [P2] online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8× — `reportWinIfConfigured` (refactor)
+- [ISSUE-024] [P2] Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4 — `setConfusionDuration` (balance)
+- [ISSUE-025] [P2] Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES — `STORY_WILD_GRADE_BY_CITY` (inconsistency)
+- [ISSUE-026] [P2] G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor" — `storyStripGrade4IfPartyMature` (inconsistency)
+- [ISSUE-027] [P3] Two near-duplicate global Escape keydown handlers both close the topmost modal — `_modalEscapeBound` (dx)
+- [ISSUE-028] [P3] Story tutorial overlay is a proper dialog but lacks a focus trap (Tab escapes to background) — `_showStoryTutorialScene` (a11y)
+- [ISSUE-029] [P3] Memory growth across 70 turns is non-leaking (flat ~104 MB post-GC) — prior "benign linear ~25 KB/turn" re-confirmed (no super-linear retention) — `benchMemoryGrowth` (perf)
+- [ISSUE-030] [P3] perf-bench covers boot/turn/parseMove/memory but cannot benchmark rollTrainerTeam, makeWildBuild, or build power tiers (not exposed on window/__engine) — `benchParseMove` (dx)
+- [ISSUE-031] [P3] CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines — `CODEBASE_MAP` (dx)
+- [ISSUE-032] [P3] 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows — `convertSmogonSet` (data)
+- [ISSUE-033] [P3] `deepClone` falls back to `JSON.parse(JSON.stringify(...))` which silently drops `Set`/`undefined` in cloned state — `deepClone` (bug)
+- [ISSUE-034] [P3] 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool — `LEADER_VICTORY_LINES` (inconsistency)
+- [ISSUE-035] [P3] `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html) — `loadBuildsCSV` (data)
+- [ISSUE-036] [P3] Unguarded 'dex probe Pikachu' console.log left in the data-load path — `loadGameData` (dx)
+- [ISSUE-037] [P3] Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read — `loadGameData` (data)
+- [ISSUE-038] [P3] 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX — `MOVE_SFX_MAP` (inconsistency)
+- [ISSUE-039] [P3] Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast — `MYSTERY_FIGURE_IDENTITIES` (inconsistency)
+- [ISSUE-040] [P3] Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound) — `parseMoveEffects` (inconsistency)
+- [ISSUE-041] [P3] parseMoveEffects per-move variance (308× raw) is GC/JIT jitter, NOT a pathological move — real per-move cost ~0.014 ms — `parseMoveEffects` (perf)
+- [ISSUE-042] [P3] Turn-loop tail (p95 ~30 ms, max ~46 ms vs ~6–20 ms median) is GC/jsdom-timer jitter, not a localizable per-turn hot path — `playTurn` (perf)
+- [ISSUE-043] [P3] STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G — `SAFARI_ENTRY_COST` (inconsistency)
+- [ISSUE-044] [P3] SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20 — `SAVE_VER` (dx)
+- [ISSUE-045] [P3] 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles — `spread-damaging` (test-gap)
+- [ISSUE-046] [P3] 46 volatile-status moves are it.todo but assert with one mon.volatile flag check — `status-volatile` (test-gap)
+- [ISSUE-047] [P3] Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols — `STORY_EVENTS_RAW` (dx)
+- [ISSUE-048] [P3] 28 conditional-BP moves need per-move precondition tuning before damage assertion — `variable-power-conditional` (test-gap)
 
 ---
 
-## <a id="ISSUE-001"></a> ISSUE-001: League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative
+## <a id="ISSUE-001"></a> ISSUE-001: Per-room host/guest tokens are stored inside world-readable `data` jsonb — token auth is self-defeating
 
 ---
 id: ISSUE-001
+severity: P0
+category: security
+anchor_symbol: pvp_push_data
+current_line_hint: ~67
+file: supabase/migrations/005_online_pvp_room_tokens.sql
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0001
+confidence: high
+status: open
+---
+
+**Title**: Per-room host/guest tokens are stored inside world-readable `data` jsonb — token auth is self-defeating
+
+**Evidence**:
+```sql
+-- 005: tokens embedded in the same jsonb that SELECT exposes to everyone
+host_token := encode(gen_random_bytes(24), 'hex');
+merged := p_data || jsonb_build_object('host_token', host_token);
+-- ... and SELECT policy (001/004) stays:
+create policy "pvp_rooms_select" on public.pvp_rooms for select to anon, authenticated using (true);
+```
+
+**Repro**: With the public anon key from `online-config.js`, run `supabase.from('pvp_rooms').select('*')` (or subscribe to `postgres_changes`). Every row's `data.host_token` and `data.guest_token` are returned in plaintext. Pass a scraped token to `pvp_push_data(p_room_id, stolen_token, {...})` and you can clobber any live match's draft/battle state.
+
+**Blast radius**: Defeats the entire migration-005 token scheme. The 004/005 comments claim "clients must use pvp_push_data with a valid token" as the access control, but the secret that gates that RPC is published to every anon reader via the always-open SELECT and via realtime UPDATE broadcasts (`_onRemoteRow` receives `payload.new` containing the tokens). Equivalent to the pre-004 "open UPDATE keyed on room id" — an attacker now needs the token, but the token is free. Affects every concurrent room. Combined with the bypassable battle-log sanitizer (separate finding), restores the remote-DOM script-injection path against peers.
+
+**Fix sketch**: Move tokens out of `data` jsonb into dedicated columns and stop returning them via SELECT/realtime: either a separate `pvp_room_tokens` table with RLS `using(false)` (only the SECURITY DEFINER RPCs read it), or store a hash of the token and have the client keep the only plaintext copy. The `data` jsonb the client subscribes to must never contain the token.
+
+**Verification**: `tests/integration/pvp-stub.test.js` — assert that the object returned by `fetchRoomByCode`/the realtime payload contains no `host_token`/`guest_token` key; assert `pvp_push_data` with a token read from a SELECT result is rejected.
+
+##
+
+---
+
+## <a id="ISSUE-002"></a> ISSUE-002: `applyBattleLogHtml` regex sanitizer is bypassable — remote `battle_log_html` still reaches `innerHTML`
+
+---
+id: ISSUE-002
+severity: P0
+category: security
+anchor_symbol: sanitizeBattleLogHtml
+current_line_hint: ~234
+file: online-pvp.js
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0002
+confidence: high
+status: open
+---
+
+**Title**: `applyBattleLogHtml` regex sanitizer is bypassable — remote `battle_log_html` still reaches `innerHTML`
+
+**Evidence**:
+```js
+function applyBattleLogHtml(html) {
+  const el = global.document.getElementById('battle-log');
+  el.innerHTML = sanitizeBattleLogHtml(typeof html === 'string' ? html : '');
+}
+// sanitizeBattleLogHtml uses regex strip of <script>/on*=/javascript: only
+```
+
+**Repro**: `node` harness against `sanitizeBattleLogHtml` shows survivors: `<img src=\`x\`onerror=alert(1)>` (backtick-quoted attr — the `on*=` regex requires whitespace before `on`, none exists after a backtick) passes through unchanged; `<a href="jav&#x09;ascript:alert(1)">` (HTML-entity-encoded scheme) passes because the regex only matches literal `javascript:`. An attacker who knows a room id + token (see token-leak finding) writes `battle_log_html` via `pvp_push_data`; `guestApplyBattleStart`/`guestApplyBattleBlob` then call `applyBattleLogHtml` on the peer.
+
+**Blast radius**: Script execution in the victim peer's page (full DOM/localStorage access, incl. display name + any site state). This is the prior P0 XSS — it is MITIGATED (regex blocklist added) but NOT closed; regex HTML sanitization is a known-broken approach. The two callers `guestApplyBattleStart` (line ~808) and `guestApplyBattleBlob` (line ~833) both feed remote data in.
+
+**Fix sketch**: Stop trusting a regex blocklist. Either rebuild the battle log from structured data the host sends (text + a fixed enum of span classes) and construct DOM with `textContent`, or run the HTML through DOMPurify with an allowlist of tags/attrs. Never `innerHTML` attacker-influenceable strings.
+
+**Verification**: Add the bypass vectors above to `tests/integration/pvp-stub.test.js`; assert no `onerror`/`onload`/`javascript:` survives and (better) that only allowlisted tags remain.
+
+##
+
+---
+
+## <a id="ISSUE-003"></a> ISSUE-003: Professor "Choose This Pokémon" pick cards are click-only divs — keyboard/SR users can't select a starter/team mon
+
+---
+id: ISSUE-003
+severity: P1
+category: a11y
+anchor_symbol: _buildProfPickCardElement
+current_line_hint: ~45388
+file: battle.html
+agents: [accessibility-ux-auditor]
+fingerprint: a448d3578603
+confidence: high
+status: open
+---
+
+**Title**: Professor "Choose This Pokémon" pick cards are click-only divs — keyboard/SR users can't select a starter/team mon
+
+**Evidence**:
+```js
+const card = document.createElement('div');
+card.className = `draft-card prof-pick-card tier-${tier}`;
+card.innerHTML = `...`;
+card.onclick = (e) => { if (e.target.closest('button, .hover-text, .type-badge, .draft-card-moves')) return; profSelectChoice(idx); };
+return card;
+```
+
+**Repro**: Story → reach a Professor pick (any city prof choice, multi-choice mode). Tab through the screen: focus lands on the per-card ℹ button, the Accept button (disabled until a card is picked), and Back — but never on the cards themselves. With keyboard/SR only you cannot select a choice, so Accept stays disabled and the required action is unreachable.
+
+**Blast radius**: Every Professor team-add event (the main way the team grows mid-run). Note the regular draft (`renderDraft`) already sets `role="button"`, `tabIndex=0`, `aria-label`, and an Enter/Space keydown — the professor card is the un-migrated twin, so this is a fixable inconsistency, not new design.
+
+**Fix sketch**: Mirror `renderDraft`: give the card `role="button"`, `tabIndex=0`, an `aria-label` (name + grade + "select for your team"), and an Enter/Space keydown that calls `profSelectChoice(idx)`. Keep the inner ℹ/hover-text exclusions.
+
+**Verification**: Tab to a prof card, press Enter — Accept enables and `prof-pick-card-selected` highlights. Re-run with a screen reader to confirm the card announces as a button.
+
+---
+
+## <a id="ISSUE-004"></a> ISSUE-004: `lastRemoteSeq` is bumped on handler timeout, permanently skipping the timed-out remote update
+
+---
+id: ISSUE-004
+severity: P1
+category: bug
+anchor_symbol: _onRemoteRow
+current_line_hint: ~556
+file: online-pvp.js
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0004
+confidence: medium
+status: open
+---
+
+**Title**: `lastRemoteSeq` is bumped on handler timeout, permanently skipping the timed-out remote update
+
+**Evidence**:
+```js
+const handlerP = Promise.resolve(global.onOnlineRoomData(d, { role, roomCode }));
+const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error('onOnlineRoomData timeout')), 10000));
+await Promise.race([handlerP, timeoutP]);
+lastRemoteSeq = incoming || lastRemoteSeq + 1;   // only runs if race didn't reject
+```
+
+**Repro**: The thrown-handler case is fixed (a reject skips the `lastRemoteSeq=` line and the outer `.catch` logs it), so a later row with the same seq could still apply. BUT note the ordering subtlety: the timeout was ADDED to fix a hang, yet a real hang now rejects → `lastRemoteSeq` is NOT bumped (good), but the in-flight `handlerP` keeps running detached and may apply state out of order relative to the next queued row whose seq is now > the stalled one. Two events whose ordering matters: (a) the detached `handlerP` from the timed-out row finally resolving, (b) the next row's handler that already ran and bumped `lastRemoteSeq`. (a) can clobber (b)'s applied state with stale data.
+
+**Blast radius**: Guest sees a turn briefly revert to an older snapshot when a slow handler completes after the next update already applied. Visual/state flicker; with the desync from the pushData finding, can wedge the match.
+
+**Fix sketch**: When the timeout wins the race, also cancel/guard the detached handler (e.g. capture the seq and have the handler no-op if `lastRemoteSeq` has since advanced past it), or make `onOnlineRoomData` idempotent and re-fetch the latest row instead of applying the stale `d`.
+
+**Verification**: In `tests/integration/pvp-stub.test.js`, make one handler hang past 10s, fire a newer row, then resolve the hung handler; assert final applied state equals the newer row.
+
+##
+
+---
+
+## <a id="ISSUE-005"></a> ISSUE-005: League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative
+
+---
+id: ISSUE-005
 severity: P1
 category: inconsistency
 anchor_symbol: applyFoeDifficultyScaling
@@ -100,10 +269,10 @@ const hpMult   = mult + (lb && lb.hp   ? lb.hp   : 0);
 
 ---
 
-## <a id="ISSUE-002"></a> ISSUE-002: Fresh story run starts with 0 Poké Balls; spec promises 5 in three places
+## <a id="ISSUE-006"></a> ISSUE-006: Fresh story run starts with 0 Poké Balls; spec promises 5 in three places
 
 ---
-id: ISSUE-002
+id: ISSUE-006
 severity: P1
 category: inconsistency
 anchor_symbol: balls
@@ -135,10 +304,10 @@ sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };   // line 34815
 
 ---
 
-## <a id="ISSUE-003"></a> ISSUE-003: Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns
+## <a id="ISSUE-007"></a> ISSUE-007: Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns
 
 ---
-id: ISSUE-003
+id: ISSUE-007
 severity: P1
 category: bug
 anchor_symbol: canMove
@@ -173,10 +342,10 @@ if (mon.status === "SLP") {
 
 ---
 
-## <a id="ISSUE-004"></a> ISSUE-004: canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift
+## <a id="ISSUE-008"></a> ISSUE-008: canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift
 
 ---
-id: ISSUE-004
+id: ISSUE-008
 severity: P1
 category: inconsistency
 anchor_symbol: canMove
@@ -211,10 +380,10 @@ else if (Math.random() < 0.3333) { /* hurt itself in confusion */ }             
 
 ---
 
-## <a id="ISSUE-005"></a> ISSUE-005: parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift
+## <a id="ISSUE-009"></a> ISSUE-009: parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift
 
 ---
-id: ISSUE-005
+id: ISSUE-009
 severity: P1
 category: inconsistency
 anchor_symbol: parseMoveEffects
@@ -247,10 +416,46 @@ if (Math.random() * 100 >= _sg(_secChance)) continue;   // bare — every second
 
 ---
 
-## <a id="ISSUE-006"></a> ISSUE-006: Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init
+## <a id="ISSUE-010"></a> ISSUE-010: `pushData` queue swallows write failures to `console.warn` and advances — local state silently diverges from Supabase
 
 ---
-id: ISSUE-006
+id: ISSUE-010
+severity: P1
+category: bug
+anchor_symbol: pushData
+current_line_hint: ~503
+file: online-pvp.js
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0003
+confidence: high
+status: open
+---
+
+**Title**: `pushData` queue swallows write failures to `console.warn` and advances — local state silently diverges from Supabase
+
+**Evidence**:
+```js
+const op = pushDataQueue.then(() => this._pushDataImpl(patch, existingData));
+pushDataQueue = op.catch((e) => { console.warn('[OnlinePvP] pushData queue', e); });
+return op;
+```
+
+**Repro**: Force `pvp_push_data` to return `{ok:false}` (token_mismatch / data_too_large) or throw (network drop). `_pushDataImpl` throws; `op` rejects. The returned `op` lets a caller that `await`s see it, but most callers (`handleSelectDraft`, `_hostRunResolution`, `afterHostStartBattle`) `await this.pushData(...)` inside a larger `try`-less flow or ignore it, and `pushDataQueue` is reassigned to the swallowed `.catch` so the NEXT queued push proceeds as if the failed one had landed. The host's local `state` advanced (e.g. `currentPlayer` flipped, turn resolved) but Supabase did not — peers never receive the update and diverge permanently.
+
+**Blast radius**: Every write path. The whole point of the comment at `_pushDataImpl` ("surface the write failure upstream") is undercut because the queue tail (`pushDataQueue`) is the swallowed promise, and no caller has retry/rollback. Desync is unrecoverable mid-match.
+
+**Fix sketch**: On a failed push, signal the UI (surface an "online sync failed" state and pause local turn progression) rather than only `console.warn`; consider not advancing local `currentPlayer`/turn until the push resolves, or implement a bounded retry before declaring the room desynced.
+
+**Verification**: `tests/integration/pvp-stub.test.js` — mock the RPC to reject once, assert a desync/error signal is raised and that local state was not advanced past the failed push.
+
+##
+
+---
+
+## <a id="ISSUE-011"></a> ISSUE-011: Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init
+
+---
+id: ISSUE-011
 severity: P1
 category: inconsistency
 anchor_symbol: startBattle
@@ -285,10 +490,83 @@ try {
 
 ---
 
-## <a id="ISSUE-007"></a> ISSUE-007: Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts
+## <a id="ISSUE-012"></a> ISSUE-012: Cold-open / intro-rival narrative overlay is not a dialog — no role/aria-modal/label, no ESC, no focus management
 
 ---
-id: ISSUE-007
+id: ISSUE-012
+severity: P2
+category: a11y
+anchor_symbol: _renderNarrativeOverlay
+current_line_hint: ~46103
+file: battle.html
+agents: [accessibility-ux-auditor]
+fingerprint: c1383b391838
+confidence: high
+status: open
+---
+
+**Title**: Cold-open / intro-rival narrative overlay is not a dialog — no role/aria-modal/label, no ESC, no focus management
+
+**Evidence**:
+```js
+const ov = document.createElement('div');
+ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:9998;...';
+if (toneClass) ov.classList.add(toneClass);
+// ... innerHTML built, onclick wired, then:
+document.body.appendChild(ov);   // no role/aria-modal/aria-label, no keydown, no focus()
+```
+
+**Repro**: Start a new story run. The intro-rival cold-open (and every per-variant narrative scene / cold-open routed through `_renderNarrativeOverlay`) appears as a fullscreen layer. A screen reader announces nothing; keyboard focus stays on whatever was behind it. Compare with `_showStoryTutorialScene`, `_renderVictoryOverlay`, the city-arrival overlay, and the Hall-of-Fame overlay — all of which set `role="dialog"`, `aria-modal`, `aria-label`, and ESC/focus.
+
+**Blast radius**: The single most prominent narrative moment of every run plus all choice-prompt scenes. SR users get a silent screen; keyboard users must blind-Tab to the Continue button (which is never auto-focused) to advance.
+
+**Fix sketch**: Copy the pattern already used by `_showStoryTutorialScene`: set `role="dialog"`, `aria-modal="true"`, `aria-label` from the scene name/banner, `tabIndex=-1`, add an Escape keydown that calls `dismiss()` (when no choices pending), and focus the Continue button after append.
+
+**Verification**: Open the intro cold-open with a screen reader — it should announce as a dialog with the speaker name; press Escape to dismiss; Tab should land on Continue first.
+
+---
+
+## <a id="ISSUE-013"></a> ISSUE-013: Cluster of silent `.catch(console.warn)` sites hide real failures from the user
+
+---
+id: ISSUE-013
+severity: P2
+category: bug
+anchor_symbol: applyHostMatchOptions
+current_line_hint: ~322
+file: online-pvp.js
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0006
+confidence: medium
+status: open
+---
+
+**Title**: Cluster of silent `.catch(console.warn)` sites hide real failures from the user
+
+**Evidence**:
+```js
+// line ~322 applyHostMatchOptions:  .catch((e) => console.warn(...))
+// line ~503 pushData queue:         op.catch((e) => console.warn(...))
+// line ~558 _onRemoteRow:           .catch((e) => console.warn(...))
+// plus ~12 inline await sites that only console.warn on rowErr and return
+```
+
+**Repro**: Disconnect the network mid-match. Fetches/RPCs fail; the only signal is `console.warn` the player never sees; the UI proceeds as if everything synced. `applyHostMatchOptions` silently skips applying match options (guest may play with wrong format/timer). `_onRemoteRow`'s catch eats handler errors with no recovery.
+
+**Blast radius**: Whole online layer fails open silently. The three trailing `.catch` sites plus the ~12 `if (rowErr) { console.warn(...); return; }` early-returns (e.g. `_hostRunResolution`, `afterHostStartBattle`, `handlePvPPlayTurn`, `reportWinIfConfigured`) all share the pattern: a server error becomes a no-op with no user feedback and no retry.
+
+**Fix sketch**: Route online-layer failures to a single user-visible "connection lost / sync failed" banner with a retry/leave action; keep `console.warn` for diagnostics but stop treating warn as the terminal handler.
+
+**Verification**: Mock each RPC/fetch to fail in `tests/integration/pvp-stub.test.js`; assert a user-facing error signal is emitted rather than a silent return.
+
+##
+
+---
+
+## <a id="ISSUE-014"></a> ISSUE-014: Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts
+
+---
+id: ISSUE-014
 severity: P2
 category: bug
 anchor_symbol: canMove
@@ -318,10 +596,10 @@ Uses raw `mon.stats.atk` / `mon.stats.def` with no `getStageMult(mon.stages.atk/
 
 ---
 
-## <a id="ISSUE-008"></a> ISSUE-008: STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists
+## <a id="ISSUE-015"></a> ISSUE-015: STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists
 
 ---
-id: ISSUE-008
+id: ISSUE-015
 severity: P2
 category: inconsistency
 anchor_symbol: catchMode
@@ -354,10 +632,10 @@ grep catchMode battle.html -> 0 matches.
 
 ---
 
-## <a id="ISSUE-009"></a> ISSUE-009: Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv
+## <a id="ISSUE-016"></a> ISSUE-016: Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv
 
 ---
-id: ISSUE-009
+id: ISSUE-016
 severity: P2
 category: data
 anchor_symbol: convertSmogonSet
@@ -390,10 +668,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-010"></a> ISSUE-010: 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap
+## <a id="ISSUE-017"></a> ISSUE-017: 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap
 
 ---
-id: ISSUE-010
+id: ISSUE-017
 severity: P2
 category: test-gap
 anchor_symbol: describe('Status moves')
@@ -480,10 +758,10 @@ Net: clusters 1-3 retire **143 TODOs (41%)** with near-zero new harness machiner
 
 ---
 
-## <a id="ISSUE-011"></a> ISSUE-011: gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive)
+## <a id="ISSUE-018"></a> ISSUE-018: gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive)
 
 ---
-id: ISSUE-011
+id: ISSUE-018
 severity: P2
 category: data
 anchor_symbol: fetchSmogonSetsForGen
@@ -515,10 +793,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-012"></a> ISSUE-012: Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants
+## <a id="ISSUE-019"></a> ISSUE-019: Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants
 
 ---
-id: ISSUE-012
+id: ISSUE-019
 severity: P2
 category: inconsistency
 anchor_symbol: FOE_STAT_NERF_BY_CITY
@@ -548,10 +826,120 @@ const FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]; // index = city; City >=3 -> 1
 
 ---
 
-## <a id="ISSUE-013"></a> ISSUE-013: online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8×
+## <a id="ISSUE-020"></a> ISSUE-020: loadGameData ~299 ms engine-only (>1.5× 200 ms boot target), dominated by parseCSV over the 2.56 MB builds.csv
 
 ---
-id: ISSUE-013
+id: ISSUE-020
+severity: P2
+category: perf
+anchor_symbol: loadBuildsCSV
+current_line_hint: ~10429
+file: battle.html
+agents: [performance-profiler]
+fingerprint: 7b1c4e9a2d50
+confidence: high
+status: open
+---
+
+**Title**: loadGameData ~299 ms engine-only (>1.5× 200 ms boot target), dominated by parseCSV over the 2.56 MB builds.csv
+
+**Evidence**:
+```js
+async function loadBuildsCSV() {
+    const text = await fetch('data/builds.csv').then(r => r.text()); // 2.56 MB
+    const rows = parseCSV(text, ',');                                // 17,397 rows
+    for (const row of rows) { /* per-row object construction + option decode */ }
+}
+```
+Measured (jsdom, seeded RNG=0, 5 boots): loadGameData engine-only = first-data-fetch → `__testReady` resolve. Samples: 301, 299, 291, 312, 294 ms → **median 299 ms** (min 291, max 312). Target: < 200 ms. Phase attribution: `parseCSV(builds.csv)` alone = **106.2 ms** for 17,397 rows; JSON file-read+parse total ≈ 90 ms (builds gen9.json 14.4 ms parse + species/moves ≈ 30 ms); the remaining ~100 ms is the `loadBuildsCSV` per-row object/option-decode loop. fetchRandbatsForGen is ~0 ms (cached). The builds CSV pipeline is the single largest synchronous boot cost.
+
+**Repro**: `node scripts/debug/perf-bench.mjs` (reports boot ms); for engine-only attribution, instrument `window.fetch` first-`data/` call → `await window.__testReady` resolution. `parseCSV` is reachable: `window.parseCSV(readFileSync('data/builds.csv','utf8'), ',')` measures ~106 ms.
+
+**Blast radius**: Every cold start in every browser (GH Pages static deploy has no warm cache on first visit). loadGameData blocks the "Loading…" overlay; in a real browser this 299 ms jsdom figure scales up (slower JSON/CSV parse on mobile). builds.csv is 2.56 MB — also the largest network transfer at boot. ~1.5× over target, so P2 (not >2× ⇒ not a hard P0/P1 boot blocker), but it is a genuine regression vs the stated 200 ms target and the dominant attributable phase.
+
+**Fix sketch**: Ship builds as a pre-parsed JSON (or a compact columnar format) instead of re-parsing a 2.56 MB CSV at every boot — moves the 106 ms parse + row-construction off the critical path. Alternatively defer loadBuildsCSV until first build is needed (lazy) so the engine becomes interactive before the CSV finishes, or gzip + stream-parse.
+
+**Verification**: Re-run boot attribution; confirm the parseCSV phase drops below ~20 ms and loadGameData median falls under 200 ms while `makeBuild`/draft pools still resolve (existing draft/story tests stay green).
+
+---
+
+## <a id="ISSUE-021"></a> ISSUE-021: openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap
+
+---
+id: ISSUE-021
+severity: P2
+category: a11y
+anchor_symbol: openModal
+current_line_hint: ~13586
+file: battle.html
+agents: [accessibility-ux-auditor]
+fingerprint: aedce7c75c51
+confidence: high
+status: open
+---
+
+**Title**: openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap
+
+**Evidence**:
+```js
+window.openModal = function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    try { const prev = document.activeElement;
+        if (prev && prev !== document.body) window._modalFocusStack.set(id, prev); } catch (e) {}
+    el.classList.remove('hidden');   // dialog shown; focus stays on the trigger button outside it
+};
+```
+
+**Repro**: Open Settings, Help, Story Bag, Story Party, or any `.modal` from a button. Focus remains on the trigger (outside the now-`aria-modal` dialog). Tab keeps cycling through the background page behind the overlay — nothing constrains focus to the modal. SR users are told a modal is open but their reading cursor is still on the page.
+
+**Blast radius**: All ~17 `.modal` overlays. They correctly declare `role="dialog"`/`aria-modal="true"` and restore focus on close, but the open path is half-finished: no focus-in, no trap. Same trap gap exists on the fullscreen overlays (`_showStoryTutorialScene`, victory, HoF) which focus a button but still let Tab leave.
+
+**Fix sketch**: In `openModal`, after un-hiding, focus the first focusable element inside `el` (or `el` itself with `tabIndex=-1`). Add a shared focus-trap keydown (Tab/Shift+Tab wrap within the modal) keyed off the topmost open `.modal`.
+
+**Verification**: Open Settings, confirm focus lands inside the sheet; Tab repeatedly and confirm focus never reaches background controls; close and confirm focus returns to the gear button.
+
+---
+
+## <a id="ISSUE-022"></a> ISSUE-022: `pvp_rooms` SELECT remains `using(true)` — any anon client can scrape every live match's full state
+
+---
+id: ISSUE-022
+severity: P2
+category: security
+anchor_symbol: pvp_rooms_select
+current_line_hint: ~47
+file: supabase/migrations/004_online_pvp_rls_tighten.sql
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0005
+confidence: high
+status: open
+---
+
+**Title**: `pvp_rooms` SELECT remains `using(true)` — any anon client can scrape every live match's full state
+
+**Evidence**:
+```sql
+create policy "pvp_rooms_select" on public.pvp_rooms for select
+  to anon, authenticated using (true);
+```
+
+**Repro**: `supabase.from('pvp_rooms').select('*')` with the public anon key returns every room row: codes, display names, drafts, battle snapshots — and (per the token-leak finding) the tokens. The prior P0 "open UPDATE/DELETE/INSERT" is genuinely fixed (004 dropped DELETE; 005 set INSERT/UPDATE `using/with check (false)` and routes writes through token RPCs), so this SELECT gap is the remaining piece of that cluster and is P2 ON ITS OWN — but it becomes P0 because it also leaks the tokens (filed separately).
+
+**Blast radius**: Spectator privacy leak (live match scraping, enumerate all active room codes, harvest display names). Independent of the token leak.
+
+**Fix sketch**: Realtime postgres-changes can work with a filtered SELECT policy if you gate on a column the subscriber proves it knows (e.g. require the room id in the channel filter and add a SECURITY DEFINER read RPC for the join-by-code path). At minimum, exclude token columns from anything SELECT can reach (see token finding).
+
+**Verification**: Attempt unfiltered `select('*')` with anon key in `tests/integration/pvp-stub.test.js` and assert it returns 0 rows / errors, while the room owner's filtered subscription still receives updates.
+
+##
+
+---
+
+## <a id="ISSUE-023"></a> ISSUE-023: online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8×
+
+---
+id: ISSUE-023
 severity: P2
 category: refactor
 anchor_symbol: reportWinIfConfigured
@@ -583,10 +971,10 @@ const prev = row.data;
 
 ---
 
-## <a id="ISSUE-014"></a> ISSUE-014: Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4
+## <a id="ISSUE-024"></a> ISSUE-024: Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4
 
 ---
-id: ISSUE-014
+id: ISSUE-024
 severity: P2
 category: balance
 anchor_symbol: setConfusionDuration
@@ -616,10 +1004,10 @@ Every confusion-set site (Confuse Ray ~26817, Swagger ~26983, Flatter ~26989, fa
 
 ---
 
-## <a id="ISSUE-015"></a> ISSUE-015: Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES
+## <a id="ISSUE-025"></a> ISSUE-025: Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES
 
 ---
-id: ISSUE-015
+id: ISSUE-025
 severity: P2
 category: inconsistency
 anchor_symbol: STORY_WILD_GRADE_BY_CITY
@@ -652,10 +1040,10 @@ function _wildGradeWeightsForCity(city) { ... }
 
 ---
 
-## <a id="ISSUE-016"></a> ISSUE-016: G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor"
+## <a id="ISSUE-026"></a> ISSUE-026: G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor"
 
 ---
-id: ISSUE-016
+id: ISSUE-026
 severity: P2
 category: inconsistency
 anchor_symbol: storyStripGrade4IfPartyMature
@@ -688,10 +1076,159 @@ function storyStripGrade4IfPartyMature(gw) {
 
 ---
 
-## <a id="ISSUE-017"></a> ISSUE-017: CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines
+## <a id="ISSUE-027"></a> ISSUE-027: Two near-duplicate global Escape keydown handlers both close the topmost modal
 
 ---
-id: ISSUE-017
+id: ISSUE-027
+severity: P3
+category: dx
+anchor_symbol: _modalEscapeBound
+current_line_hint: ~13649
+file: battle.html
+agents: [accessibility-ux-auditor]
+fingerprint: 3aee2ffaaeaa
+confidence: high
+status: open
+---
+
+**Title**: Two near-duplicate global Escape keydown handlers both close the topmost modal
+
+**Evidence**:
+```js
+if (!window.__pbsGlobalEscBound) { window.__pbsGlobalEscBound = true;
+    document.addEventListener('keydown', function (e) { /* close topmost .modal:not(.hidden) */ }); }
+// ...40 lines later...
+if (!window._modalEscapeBound) { window._modalEscapeBound = true;
+    document.addEventListener('keydown', function(e) { /* also close topmost .modal:not(.hidden) */ }); }
+```
+
+**Repro**: Read battle.html ~13610 and ~13649 — two separate guard flags register two document-level Escape listeners with overlapping logic (the second adds a game-confirm Promise carve-out; the first adds a `data-no-escape` carve-out). Both fire on every Escape.
+
+**Blast radius**: Behavior is currently correct (both call closeModal, double-close is idempotent), but the two handlers respect different opt-out conventions (`data-no-escape` vs game-confirm), so a future modal that sets `data-no-escape` will still be closed by the second handler. Maintenance/drift hazard.
+
+**Fix sketch**: Merge into one Escape handler that honors both the game-confirm Promise resolver and `data-no-escape`, behind a single guard flag.
+
+**Verification**: Add `data-no-escape="true"` to a test modal, press Escape — it should stay open. Confirm game-confirm still resolves false on Escape.
+
+---
+
+## <a id="ISSUE-028"></a> ISSUE-028: Story tutorial overlay is a proper dialog but lacks a focus trap (Tab escapes to background)
+
+---
+id: ISSUE-028
+severity: P3
+category: a11y
+anchor_symbol: _showStoryTutorialScene
+current_line_hint: ~40327
+file: battle.html
+agents: [accessibility-ux-auditor]
+fingerprint: 3d270f248237
+confidence: medium
+status: open
+---
+
+**Title**: Story tutorial overlay is a proper dialog but lacks a focus trap (Tab escapes to background)
+
+**Evidence**:
+```js
+ov.setAttribute('role', 'dialog');
+ov.setAttribute('aria-modal', 'true');
+ov.setAttribute('aria-label', npcName || nameplate || 'Story Tutorial');
+ov.tabIndex = -1;
+// ... focuses Continue button on append, ESC/Enter dismiss — but no Tab trap
+```
+
+**Repro**: Trigger any STORY_TUTORIAL_SCENES overlay (e.g. firstWild catch tutorial). It correctly announces as a dialog and focuses Continue, but pressing Tab moves focus to background controls behind the dim layer instead of staying on the single Continue button.
+
+**Blast radius**: All tutorial scenes. Lower impact than the narrative-overlay finding because the dialog semantics + Continue focus + ESC are already present; only the trap is missing. The same shared trap from the `openModal` finding would resolve this.
+
+**Fix sketch**: Reuse the shared focus-trap helper proposed for `openModal` on the tutorial overlay (and the other fullscreen `role="dialog"` overlays) so Tab/Shift+Tab cannot leave while it is open.
+
+**Verification**: Open a tutorial scene, press Tab several times, confirm focus stays on Continue (or cycles only within the overlay).
+
+---
+
+## <a id="ISSUE-029"></a> ISSUE-029: Memory growth across 70 turns is non-leaking (flat ~104 MB post-GC) — prior "benign linear ~25 KB/turn" re-confirmed (no super-linear retention)
+
+---
+id: ISSUE-029
+severity: P3
+category: perf
+anchor_symbol: benchMemoryGrowth
+current_line_hint: ~78
+file: scripts/debug/perf-bench.mjs
+agents: [performance-profiler]
+fingerprint: a05e7c14d3b9
+confidence: high
+status: open
+---
+
+**Title**: Memory growth across 70 turns is non-leaking (flat ~104 MB post-GC) — prior "benign linear ~25 KB/turn" re-confirmed (no super-linear retention)
+
+**Evidence**:
+70-turn story-style replay (seed=0, `--expose-gc`, gc() before each sample):
+```
+turn  20  103.69 MB
+turn  30  104.07 MB
+turn  40  103.99 MB
+turn  50  104.33 MB
+turn  60  104.69 MB
+```
+Post-GC heap is **flat at ~104 MB** (turns 0/10 read ~212 MB pre-the-first-effective-GC, then settle). Linear regression over post-settle samples is essentially flat/slightly negative; no quadratic or unbounded term. The runTurn harness `reset()`s state each turn (no cross-turn accumulation), and no retained-reference growth is observed. Refutes a leak; confirms prior conclusion.
+
+**Repro**: `node --expose-gc scripts/debug/perf-bench.mjs` (memory section) or 70-turn loop sampling `process.memoryUsage().heapUsed` every 10 turns after `global.gc()`.
+
+**Blast radius**: None — informational. A real long story run (~68 events) would not accumulate battle-state heap per the measured pattern. (Caveat: the harness `reset()`s state every turn, so a per-turn leak inside `playTurn` would be masked; sprite/asset caches that live outside `state` — flagged historically as an unbounded sprite-prefetch cache — are not exercised by this jsdom turn loop and are out of scope here.)
+
+**Fix sketch**: No action. Keep the `--expose-gc` + pre-sample `gc()` so the report doesn't show the misleading 212 MB pre-GC boot heap as turn-0 baseline; consider dropping the first two samples (pre-first-GC) from the chart.
+
+**Verification**: Re-run; post-GC samples stay flat (~±1 MB) across 70 turns; slope ≈ 0 KB/turn.
+
+---
+
+## <a id="ISSUE-030"></a> ISSUE-030: perf-bench covers boot/turn/parseMove/memory but cannot benchmark rollTrainerTeam, makeWildBuild, or build power tiers (not exposed on window/__engine)
+
+---
+id: ISSUE-030
+severity: P3
+category: dx
+anchor_symbol: benchParseMove
+current_line_hint: ~55
+file: scripts/debug/perf-bench.mjs
+agents: [performance-profiler]
+fingerprint: 9d33b6e8c1a4
+confidence: high
+status: open
+---
+
+**Title**: perf-bench covers boot/turn/parseMove/memory but cannot benchmark rollTrainerTeam, makeWildBuild, or build power tiers (not exposed on window/__engine)
+
+**Evidence**:
+The mandate lists `rollTrainerTeam` (target <50 ms), `makeBuild`/`makeWildBuild` across T1–T4, but perf-bench.mjs has no harness for them and they are unreachable:
+```
+window.makeBuild       -> function   (reachable)
+window.makeWildBuild   -> undefined  (inner-scope; NOT on window)
+window.rollTrainerTeam -> undefined  (inner-scope; NOT on window)
+engine.rollTrainerTeam -> undefined  (not in window.__engine export)
+```
+`window.__engine` (battle.html ~60001) exports parseMoveEffects/buildPokemon/AI internals but not the build/trainer roll functions. So 3 of the 6 mandated benchmarks have zero coverage. What IS measurable: `window.makeBuild` across 10 species × 20 trials = median 0.035 ms, max 4.465 ms (warm) — fast and flat, well within "flat across tiers", but tiers (T1–T4) can't be exercised because `STORY_BUILD_TIER` gating runs through `assignTrainers`/`rollTrainerTeam`, which aren't exposed.
+
+Note: the previously-reported parseMoveEffects single-arg bug is **already fixed** (commit ad2f541) — the current bench calls the correct 5-arg signature `parseMoveEffects(attacker, defender, move, true)` and measures real parse time. Verified the old single-arg form still throws (`TypeError: Cannot read properties of undefined (reading 'effectStr')`), so the fix is load-bearing. This finding is the residual coverage gap, not the (closed) arg-count bug.
+
+**Repro**: In the jsdom harness, `typeof window.rollTrainerTeam === 'undefined'` and `typeof window.makeWildBuild === 'undefined'`; grep `window.__engine = {` at battle.html ~60001 shows neither is exported.
+
+**Blast radius**: DX/test-coverage only. rollTrainerTeam runs once per story battle (~68 events in a full run) and pulls the build power-tier hooks (`STORY_BUILD_TIER`, `_applyTrainerGradeMatrix`, per-slot `makeBuild`); it is the most plausible mid-game hitch yet has no perf guard rail. A regression there would ship unnoticed.
+
+**Fix sketch**: Add `rollTrainerTeam`, `makeWildBuild`, `makeDesignedBuild` to the `window.__engine` test-harness export (alongside the existing AI internals) and add bench functions that roll 10 distinct trainer specs and build across the T1–T4 tiers. Read-only finding — no edit performed.
+
+**Verification**: After exposure, `node scripts/debug/perf-bench.mjs` reports rollTrainerTeam median < 50 ms and makeBuild/makeWildBuild flat across T1–T4.
+
+---
+
+## <a id="ISSUE-031"></a> ISSUE-031: CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines
+
+---
+id: ISSUE-031
 severity: P3
 category: dx
 anchor_symbol: CODEBASE_MAP
@@ -722,10 +1259,10 @@ Actual: 60,040 lines; SAVE_VER 22; STORY_EVENTS_RAW @ 29828; SAFARI_ENTRY_COST 1
 
 ---
 
-## <a id="ISSUE-018"></a> ISSUE-018: 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows
+## <a id="ISSUE-032"></a> ISSUE-032: 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows
 
 ---
-id: ISSUE-018
+id: ISSUE-032
 severity: P3
 category: data
 anchor_symbol: convertSmogonSet
@@ -757,10 +1294,44 @@ status: open
 
 ---
 
-## <a id="ISSUE-019"></a> ISSUE-019: 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool
+## <a id="ISSUE-033"></a> ISSUE-033: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` which silently drops `Set`/`undefined` in cloned state
 
 ---
-id: ISSUE-019
+id: ISSUE-033
+severity: P3
+category: bug
+anchor_symbol: deepClone
+current_line_hint: ~72
+file: online-pvp.js
+agents: [pvp-concurrency-hunter]
+fingerprint: a1c0ffee0007
+confidence: low
+status: open
+---
+
+**Title**: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` which silently drops `Set`/`undefined` in cloned state
+
+**Evidence**:
+```js
+function deepClone(o) {
+  return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
+}
+```
+
+**Repro**: On engines without `structuredClone` (older WebViews), `deepClone(state.pSide)` etc. drops any `Set` (note `state.revealedFoe` is a `Set` — handled explicitly in `exportBattleSnapshot`, but `pSide`/`fSide`/gimmick intents are cloned blindly). A `Set` in a side object would serialize to `{}`.
+
+**Blast radius**: Snapshot fidelity on legacy browsers only; `structuredClone` is widely available so this is latent. `structuredClone` itself throws on functions/DOM nodes — neither path clones cleanly if such values ever enter side state.
+
+**Fix sketch**: Audit that `pSide`/`fSide`/`p1GimmickIntent`/`p2GimmickIntent` contain only JSON-safe + Set values; if Sets are possible, convert to arrays in `exportBattleSnapshot` like `revealedFoe`. Otherwise document the JSON-only contract.
+
+**Verification**: Add an assertion in the snapshot round-trip test that re-imported side objects deep-equal the originals on both clone paths.
+
+---
+
+## <a id="ISSUE-034"></a> ISSUE-034: 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool
+
+---
+id: ISSUE-034
 severity: P3
 category: inconsistency
 anchor_symbol: LEADER_VICTORY_LINES
@@ -794,10 +1365,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-020"></a> ISSUE-020: `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html)
+## <a id="ISSUE-035"></a> ISSUE-035: `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html)
 
 ---
-id: ISSUE-020
+id: ISSUE-035
 severity: P3
 category: data
 anchor_symbol: loadBuildsCSV
@@ -828,10 +1399,10 @@ i: !itemPicked ? '' : itemPicked === 'No Item' ? 'NO_ITEM' : itemPicked,
 
 ---
 
-## <a id="ISSUE-021"></a> ISSUE-021: Unguarded 'dex probe Pikachu' console.log left in the data-load path
+## <a id="ISSUE-036"></a> ISSUE-036: Unguarded 'dex probe Pikachu' console.log left in the data-load path
 
 ---
-id: ISSUE-021
+id: ISSUE-036
 severity: P3
 category: dx
 anchor_symbol: loadGameData
@@ -866,10 +1437,10 @@ if (n === 0) {
 
 ---
 
-## <a id="ISSUE-022"></a> ISSUE-022: Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read
+## <a id="ISSUE-037"></a> ISSUE-037: Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read
 
 ---
-id: ISSUE-022
+id: ISSUE-037
 severity: P3
 category: data
 anchor_symbol: loadGameData
@@ -902,10 +1473,10 @@ const abilitiesJSON= abilitiesJSONOrig['9']|| {};
 
 ---
 
-## <a id="ISSUE-023"></a> ISSUE-023: 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX
+## <a id="ISSUE-038"></a> ISSUE-038: 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX
 
 ---
-id: ISSUE-023
+id: ISSUE-038
 severity: P3
 category: inconsistency
 anchor_symbol: MOVE_SFX_MAP
@@ -937,10 +1508,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-024"></a> ISSUE-024: Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast
+## <a id="ISSUE-039"></a> ISSUE-039: Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast
 
 ---
-id: ISSUE-024
+id: ISSUE-039
 severity: P3
 category: inconsistency
 anchor_symbol: MYSTERY_FIGURE_IDENTITIES
@@ -971,10 +1542,10 @@ const MYSTERY_FIGURE_IDENTITIES = { the_first: { sprite: 'Red', reveal: 'The Fir
 
 ---
 
-## <a id="ISSUE-025"></a> ISSUE-025: Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound)
+## <a id="ISSUE-040"></a> ISSUE-040: Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound)
 
 ---
-id: ISSUE-025
+id: ISSUE-040
 severity: P3
 category: inconsistency
 anchor_symbol: parseMoveEffects
@@ -1005,10 +1576,83 @@ Showdown applies STAB, type, crit, burn, item, and the 0.85-1.0 roll as discrete
 
 ---
 
-## <a id="ISSUE-026"></a> ISSUE-026: STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G
+## <a id="ISSUE-041"></a> ISSUE-041: parseMoveEffects per-move variance (308× raw) is GC/JIT jitter, NOT a pathological move — real per-move cost ~0.014 ms
 
 ---
-id: ISSUE-026
+id: ISSUE-041
+severity: P3
+category: perf
+anchor_symbol: parseMoveEffects
+current_line_hint: ~26076
+file: battle.html
+agents: [performance-profiler]
+fingerprint: 4f7a0c2b9e18
+confidence: high
+status: open
+---
+
+**Title**: parseMoveEffects per-move variance (308× raw) is GC/JIT jitter, NOT a pathological move — real per-move cost ~0.014 ms
+
+**Evidence**:
+First-pass over 100 distinct moves (lightly warmed): median 0.018 ms, max 2.96 ms ("Bulk Up"), p95 1.46 ms → 308× max/min ratio. But when the apparent "slow" moves are warmed 20× and measured individually they collapse to steady state:
+```
+Bulk Up        warmed median 0.0137 ms
+Bulldoze       warmed median 0.0164 ms
+Acid Spray     warmed median 0.0162 ms
+Aromatic Mist  warmed median 0.0122 ms
+```
+Fully warmed (5 passes) over 100 moves: median **0.0141 ms**, but the "slowest" call moves to a *different* move each run (Bulk Up → Aromatic Mist), and the residual ~128× ratio rides whichever call a GC pause lands on. The variance is measurement noise (JIT first-call + GC), not an intrinsic hot move. The prior run's "315× variance → slow move doing something pathological" is **refuted**.
+
+**Repro**: Warm each suspect move 20× then time 50 calls → steady-state ~0.013–0.016 ms; the "slow" label does not stick to any move across runs.
+
+**Blast radius**: None at runtime. Real per-move parse is ~0.014 ms median, **35× under** the 0.5 ms target; parseMoveEffects is not a hot path. The only artifact is in the bench report (raw max/IQR look alarming pre-warm-up).
+
+**Fix sketch**: No engine change. In benchParseMove, add a warm-up pass (loop the move set 3–5× before the measured loop) so the reported median/max reflect steady state, matching what the turn-loop bench already does for JIT. Optionally `--expose-gc` between samples.
+
+**Verification**: Re-run with warm-up; confirm max collapses toward median (~0.02 ms) and no move is a stable outlier.
+
+---
+
+## <a id="ISSUE-042"></a> ISSUE-042: Turn-loop tail (p95 ~30 ms, max ~46 ms vs ~6–20 ms median) is GC/jsdom-timer jitter, not a localizable per-turn hot path
+
+---
+id: ISSUE-042
+severity: P3
+category: perf
+anchor_symbol: playTurn
+current_line_hint: ~23826
+file: battle.html
+agents: [performance-profiler]
+fingerprint: c2a8f0341e77
+confidence: high
+status: open
+---
+
+**Title**: Turn-loop tail (p95 ~30 ms, max ~46 ms vs ~6–20 ms median) is GC/jsdom-timer jitter, not a localizable per-turn hot path
+
+**Evidence**:
+Measured (jsdom, seed=0). Per-move-slot, 40 trials each, Pikachu vs Snorlax:
+- slot 0 Thunderbolt: med 6.06, p95 33.65, max 35.73 ms
+- slot 1 Quick Attack: med 18.20, p95 32.65, max 32.89 ms
+- slot 2 Iron Tail: med 5.95, p95 29.68, max 32.94 ms
+- slot 3 Splash: med 13.09, p95 20.11, max 21.25 ms
+
+The ~30 ms tail appears on EVERY slot regardless of move complexity (Splash, a no-op, tails as hard as Thunderbolt). A fixed Thunderbolt×120 run: med 19.87, p95 23.45, max 37.46, with **zero turns exceeding 2× median**. The prior run's "~50 ms median / 78–84 ms max, 5× median" reproduces only as a heavy *tail*, not a localizable code path — it tracks GC pauses and jsdom `setTimeout`-backed microtask scheduling, not a specific move/branch.
+
+**Repro**: `node --expose-gc scripts/debug/perf-bench.mjs`; or per-slot harness timing `runTurn` across 40 trials per slot — observe the tail is slot-independent.
+
+**Blast radius**: jsdom measurement only. Production turn timing is governed by `settings.animations` + the real `sleep` (line ~12327), which the harness short-circuits to `Promise.resolve()` — so this jsdom tail does NOT correspond to player-visible input lag. Median (6–20 ms) and even max (≤46 ms) stay under the 50 ms jsdom target. No production regression.
+
+**Fix sketch**: No code fix warranted. For cleaner CI signal, run the turn-loop bench under `--expose-gc` with a forced `global.gc()` between trials and report median+IQR (already done) rather than max, since max is dominated by GC landing. Optionally pin trial count higher to stabilize p95.
+
+**Verification**: Re-run turn-loop bench with `--expose-gc`; confirm max tightens toward p95 and no single move slot is a consistent outlier.
+
+---
+
+## <a id="ISSUE-043"></a> ISSUE-043: STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G
+
+---
+id: ISSUE-043
 severity: P3
 category: inconsistency
 anchor_symbol: SAFARI_ENTRY_COST
@@ -1037,10 +1681,10 @@ const SAFARI_ENTRY_COST = 10000;   // battle.html:47912
 
 ---
 
-## <a id="ISSUE-027"></a> ISSUE-027: SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20
+## <a id="ISSUE-044"></a> ISSUE-044: SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20
 
 ---
-id: ISSUE-027
+id: ISSUE-044
 severity: P3
 category: dx
 anchor_symbol: SAVE_VER
@@ -1070,10 +1714,10 @@ const SAVE_VER = 22;   // battle.html:34133
 
 ---
 
-## <a id="ISSUE-028"></a> ISSUE-028: 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles
+## <a id="ISSUE-045"></a> ISSUE-045: 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles
 
 ---
-id: ISSUE-028
+id: ISSUE-045
 severity: P3
 category: test-gap
 anchor_symbol: spread-damaging
@@ -1104,10 +1748,10 @@ assert.ok(def.currentHp < before); // passes today
 
 ---
 
-## <a id="ISSUE-029"></a> ISSUE-029: 46 volatile-status moves are it.todo but assert with one mon.volatile flag check
+## <a id="ISSUE-046"></a> ISSUE-046: 46 volatile-status moves are it.todo but assert with one mon.volatile flag check
 
 ---
-id: ISSUE-029
+id: ISSUE-046
 severity: P3
 category: test-gap
 anchor_symbol: status-volatile
@@ -1138,10 +1782,10 @@ await runTurn({ playerMon: atk, foeMon: def });
 
 ---
 
-## <a id="ISSUE-030"></a> ISSUE-030: Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols
+## <a id="ISSUE-047"></a> ISSUE-047: Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols
 
 ---
-id: ISSUE-030
+id: ISSUE-047
 severity: P3
 category: dx
 anchor_symbol: STORY_EVENTS_RAW
@@ -1176,10 +1820,10 @@ Separately, several spec function-name anchors are RENAMED in code (feature pres
 
 ---
 
-## <a id="ISSUE-031"></a> ISSUE-031: 28 conditional-BP moves need per-move precondition tuning before damage assertion
+## <a id="ISSUE-048"></a> ISSUE-048: 28 conditional-BP moves need per-move precondition tuning before damage assertion
 
 ---
-id: ISSUE-031
+id: ISSUE-048
 severity: P3
 category: test-gap
 anchor_symbol: variable-power-conditional
