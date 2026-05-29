@@ -16983,7 +16983,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
                     const _smState = _SM && _SM.state;
                     const _bossCfgs = _SM && _SM.BOSS_CONFIGS;
-                    const _beatKey = _smState && _smState._activeBeatBattleKey;
+                    let _beatKey = _smState && _smState._activeBeatBattleKey;
+                    // The post-HoF Mystery Figure runs via the crucible end-flow, not the
+                    // beat-key path (mysteryBoss is excluded from _activeBattleBeatForCurrentRow),
+                    // so its declared 'main.mfBattle' mechanics were orphaned. Detect it by foe
+                    // role and attach them. Only the ephemeral battle state is set below
+                    // (state._activeStoryBeatKey) — sm._activeBeatBattleKey stays untouched, so
+                    // the mystery's own victory handling isn't double-processed.
+                    if (_smState && _smState.currentTrainerData && _smState.currentTrainerData.role === 'Mystery Figure') {
+                        _beatKey = 'main.mfBattle';
+                    }
                     const _cfg = _beatKey && _bossCfgs && typeof _bossCfgs === 'object' && _bossCfgs[_beatKey];
                     if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
                         state._activeStoryBeatKey = _beatKey;
