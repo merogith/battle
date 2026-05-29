@@ -817,33 +817,40 @@
             isolation: isolate;
         }
         .tx-search-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        /* On very narrow phones the search row used to wrap erratically —
-           the search input, sort selector, filter button and count pill all
-           competed for one row. Force the search input full-width and drop
-           the rest onto a second row, giving every control a clean 44px
-           touch target. */
-        /* Phone breakpoints — give every row-1 control a clean 44px touch
-           target without compressing the search input below typability. */
-        @media (max-width: 600px) {
-            .tx-search-input { flex: 1 1 100%; }
-            /* Hide the ?legend popover on phones — it's a first-time aid
-               that doesn't need to consume a tap target on every render. */
+        /* Phone breakpoints — raised the major-collapse threshold from 600 to
+           720px because real iPhones in portrait (390-414px) and small Android
+           in landscape were still getting the cramped desktop layout. Search
+           input takes the full row 1; the ★/?/count/sort/clear cluster wraps
+           to row 2; chips wrap below. */
+        @media (max-width: 720px) {
+            .tx-search-input {
+                flex: 1 1 100%;
+                order: 0;
+            }
+            /* Force the ★/?/count/sort/clear cluster onto its own row so the
+               search input never has to share width with them. */
+            .tx-search-row { row-gap: 6px; }
+            .tx-search-row-rec,
+            .tx-search-row .tx-sort-select,
+            .tx-search-row .tx-count-pill,
+            .tx-search-row .tx-count-pill--split,
+            .tx-search-row .tx-filter-clear {
+                order: 1;
+            }
+            /* Hide the ?legend popover on phones — first-time aid only. */
             .tx-legend { display: none !important; }
         }
         @media (max-width: 380px) {
             /* Below 380px the "★ Recommended" label wraps; abbreviate to
-               "★ Rec" to keep row 1 single-line. */
-            .tx-chip.tx-chip--rec[data-active="1"]::after {
-                content: ' Rec';
+               "★ Rec" to keep the row 2 cluster single-line. */
+            .tx-chip.tx-chip--rec[data-active="1"] .tx-chip-rec-long {
+                display: none;
             }
-            .tx-chip.tx-chip--rec[data-active="1"] {
-                font-size: 0;
+            .tx-chip.tx-chip--rec[data-active="1"] .tx-chip-rec-short {
+                display: inline;
             }
-            .tx-chip.tx-chip--rec[data-active="1"]::before {
-                content: '★'; font-size: 11px; margin-right: 2px;
-            }
-            .tx-chip.tx-chip--rec[data-active="1"]::after { font-size: 11px; }
         }
+        .tx-chip-rec-short { display: none; }
         .tx-search-input {
             flex: 1 1 200px; min-width: 0;
             padding: 10px 12px; font-size: 13px; color: #e8eaf0;
@@ -949,6 +956,38 @@
             border-color: #ffd54f; color: #1a0d22;
             box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
         }
+        /* Phase 8 — stage filter chips (move tutor) and tier filter chips
+           (dojo items). Color-coded to match the section-header colors
+           (green=Now, blue=L2, purple=L3) so the player connects the chip
+           with the card group it will surface. */
+        .tx-chip-row--stage {
+            padding-right: 6px; margin-right: 4px;
+            border-right: 1px dashed rgba(102,113,140,0.30);
+        }
+        .tx-chip.tx-chip--stage {
+            font-weight: 700;
+        }
+        .tx-chip.tx-chip--stage-now { color: #c8e6c9; border-color: rgba(102,187,106,0.45); }
+        .tx-chip.tx-chip--stage-now:hover { border-color: #66bb6a; color: #e8f5e9; }
+        .tx-chip.tx-chip--stage-now[data-active="1"] {
+            background: linear-gradient(180deg, rgba(102,187,106,0.30), rgba(102,187,106,0.18));
+            border-color: #66bb6a; color: #0f2e15;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+        }
+        .tx-chip.tx-chip--stage-l2 { color: #b3e5fc; border-color: rgba(79,195,247,0.45); }
+        .tx-chip.tx-chip--stage-l2:hover { border-color: #4fc3f7; color: #e1f5fe; }
+        .tx-chip.tx-chip--stage-l2[data-active="1"] {
+            background: linear-gradient(180deg, rgba(79,195,247,0.30), rgba(79,195,247,0.18));
+            border-color: #4fc3f7; color: #0a2740;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+        }
+        .tx-chip.tx-chip--stage-l3 { color: #e1bee7; border-color: rgba(206,147,216,0.45); }
+        .tx-chip.tx-chip--stage-l3:hover { border-color: #ce93d8; color: #f3e5f5; }
+        .tx-chip.tx-chip--stage-l3[data-active="1"] {
+            background: linear-gradient(180deg, rgba(206,147,216,0.30), rgba(206,147,216,0.18));
+            border-color: #ce93d8; color: #2a0d33;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+        }
         /* Phase 6 — Dojo tier-cap badge at the start of the item-category
            strip, and locked-abilities count badge on the Ability tab label.
            Both communicate "what's hidden until the next dojo stage" without
@@ -968,17 +1007,6 @@
             font-size: 10px; font-weight: 800;
             background: rgba(120,144,156,0.20); border: 1px solid #78909c;
             color: #cfd8dc; border-radius: 999px;
-        }
-        /* Replaces the sort <select> when ★ Recommended is ON — communicates
-           "the order is locked to Smogon usage" without offering a control
-           that would be ignored. Tooltip explains how to unlock. */
-        .tx-sort-locked {
-            display: inline-flex; align-items: center; justify-content: center;
-            padding: 6px 10px; min-height: 32px;
-            background: rgba(255,213,79,0.10); border: 1px dashed rgba(255,213,79,0.40);
-            border-radius: 6px;
-            color: #d4c47e; font-size: 11px; font-style: italic; font-weight: 600;
-            white-space: nowrap;
         }
         /* EV Trainer "How EVs work" explainer — collapsed by default so the
            preset cards land above the fold on phones. Native <details> for
@@ -1699,19 +1727,22 @@
             .tx-collapse-all { padding: 0 8px; font-size: 10px; }
             .tx-mon-switcher-hint { font-size: 10px; padding: 0 4px; }
         }
-        @media (max-width: 480px) {
+        @media (max-width: 720px) {
             .tx-mon-switcher { padding: 5px 6px; gap: 5px; }
             .tx-mon-pill { padding: 3px 8px 3px 3px; min-height: 44px; }
             .tx-mon-pill img { width: 26px; height: 26px; }
-            /* Keep labels visible even on iPhone-SE-class screens — sprites
-               alone aren't a reliable identifier (especially for 6-mon teams
-               where the bar tightens up). Truncate to 5 chars + ellipsis so
-               we never wrap. */
-            .tx-mon-pill-label { max-width: 5ch; font-size: 10px; }
+            /* Wider truncation budget — 8 chars handles Combusken / Nidoking
+               / Lairon-class names without ellipsis. The switcher already
+               scrolls-x so longer names don't push other pills off-screen. */
+            .tx-mon-pill-label { max-width: 8ch; font-size: 10px; }
         }
-        @media (max-width: 340px) {
-            /* On phones below the iPhone 5 width, sprites only — labels would
-               wrap or overlap. */
+        @media (max-width: 480px) {
+            /* Tighter at iPhone-SE class — 6ch + smaller pills. */
+            .tx-mon-pill-label { max-width: 6ch; }
+        }
+        @media (max-width: 360px) {
+            /* On phones below ~iPhone 5 width, sprites only — labels would
+               wrap or overlap and the switcher x-scroll handles ID. */
             .tx-mon-pill-label { display: none; }
             .tx-mon-pill { padding: 3px; }
         }
@@ -6913,7 +6944,6 @@
                the way back from "Show all". */
             .tx-chip { min-height: 44px !important; padding: 10px 14px !important; font-size: 11px !important; }
             .tx-chip.tx-chip--rec { min-height: 44px !important; padding: 10px 16px !important; }
-            .tx-sort-locked { min-height: 44px !important; padding: 10px 12px !important; }
             .tx-confirm-bar-btn { min-height: 44px !important; padding: 12px 16px !important; }
             /* Recommendation rows — already 44px, but ensure visible on small screens */
             .tx-rec-row { min-height: 52px !important; }
@@ -52058,6 +52088,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // every kind so first-time players see the curated list; toggle
                 // off via the ★ chip to expand to the full option list.
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
+                // Stage filter — restricts the visible pool to one stage band.
+                // Move tutor stage values: 'all' | 'unlocked' | 'l2' | 'l3'
+                //   'all'      — every stage visible (default)
+                //   'unlocked' — only moves the tutor can teach at the current city
+                //   'l2' | 'l3' — only moves locked at that stage (preview)
+                // Dojo tier values: 'all' | 't1' | 't2' | 't3'
+                //   't1' = berries only; 't2' = staples; 't3' = best meta items
+                stage: { moves: 'all', items: 'all' },
             },
             sort: {
                 moves: 'recommended',
@@ -52073,6 +52111,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
             _txState.filter.recOnly[kind] = true;
             _txState.sort[kind] = 'recommended';
+            if (_txState.filter.stage && _txState.filter.stage.hasOwnProperty(kind)) {
+                _txState.filter.stage[kind] = 'all';
+            }
         }
         const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
         const _TX_ALL_CATS  = ["Physical","Special","Status"];
@@ -53796,9 +53837,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             _txState.filter.recOnly[value] = !_txState.filter.recOnly[value];
                         }
                     } else if (kind === 'quick') {
-                        // Single surviving quick preset (post-dedup): STAB.
-                        // Tapping clears the type-filter axis when already
-                        // active; otherwise sets it to the species' STAB types.
                         const wasActive = chip.dataset.active === '1';
                         if (value === 'stab') {
                             _txState.filter.moveTypes.clear();
@@ -53807,6 +53845,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 for (const t of stab) _txState.filter.moveTypes.add(t);
                             }
                         }
+                    } else if (kind === 'moveStage') {
+                        // Phase 8 stage filter — sets the moves stage to the
+                        // chip value. Tapping the active chip reverts to 'all'.
+                        const wasActive = chip.dataset.active === '1';
+                        if (!_txState.filter.stage) _txState.filter.stage = { moves: 'all', items: 'all' };
+                        _txState.filter.stage.moves = wasActive ? 'all' : (value || 'all');
+                    } else if (kind === 'itemTier') {
+                        // Phase 8 tier filter for the Dojo Item tab.
+                        const wasActive = chip.dataset.active === '1';
+                        if (!_txState.filter.stage) _txState.filter.stage = { moves: 'all', items: 'all' };
+                        _txState.filter.stage.items = wasActive ? 'all' : (value || 'all');
                     }
                     void renderTutorTeam(true);
                     return;
@@ -53898,8 +53947,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The ★ Recommended chip lives outside the drawer (on the search row) so
         // we don't include it here.
         function _txActiveFilterCount(kind) {
-            if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size;
-            if (kind === 'items') return _txState.filter.itemCat !== 'all' ? 1 : 0;
+            const stage = _txState.filter.stage || {};
+            if (kind === 'moves') {
+                return _txState.filter.moveTypes.size + _txState.filter.moveCats.size
+                    + (stage.moves && stage.moves !== 'all' ? 1 : 0);
+            }
+            if (kind === 'items') {
+                return (_txState.filter.itemCat !== 'all' ? 1 : 0)
+                    + (stage.items && stage.items !== 'all' ? 1 : 0);
+            }
             if (kind === 'natures') return (_txState.filter.natureUp !== 'any' ? 1 : 0) + (_txState.filter.natureDown !== 'any' ? 1 : 0);
             return 0;
         }
@@ -54001,6 +54057,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 out.push(`<button type="button" class="tx-active-filter" data-clear-search="${kind}" title="Clear search">${window.uiSvgX()} "${_esc(q)}"</button>`);
             }
             if (kind === 'moves') {
+                const stage = _txState.filter.stage && _txState.filter.stage.moves;
+                if (stage && stage !== 'all') {
+                    const label = stage === 'unlocked' ? '✓ Now' : stage === 'l2' ? '🔒 L2' : '🔒 L3';
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--stage-${stage}" data-filter-kind="moveStage" data-filter-value="${stage}" title="Remove stage filter">${window.uiSvgX()} ${label}</button>`);
+                }
                 for (const t of _txState.filter.moveTypes) {
                     out.push(`<button type="button" class="tx-active-filter type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" title="Remove ${t} filter">${window.uiSvgX()} ${t}</button>`);
                 }
@@ -54008,6 +54069,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     out.push(`<button type="button" class="tx-active-filter tx-active-filter--cat-${c}" data-filter-kind="moveCat" data-filter-value="${c}" title="Remove ${c} filter">${window.uiSvgX()} ${c}</button>`);
                 }
             } else if (kind === 'items') {
+                const tier = _txState.filter.stage && _txState.filter.stage.items;
+                if (tier && tier !== 'all') {
+                    const label = tier === 't1' ? 'T1 Berries' : tier === 't2' ? 'T2 Staples' : '🔒 T3 Best';
+                    out.push(`<button type="button" class="tx-active-filter" data-filter-kind="itemTier" data-filter-value="${tier}" title="Remove tier filter">${window.uiSvgX()} ${label}</button>`);
+                }
                 if (_txState.filter.itemCat && _txState.filter.itemCat !== 'all') {
                     const c = _txState.filter.itemCat;
                     out.push(`<button type="button" class="tx-active-filter" data-filter-kind="itemCat" data-filter-value="all" title="Remove category filter">${window.uiSvgX()} ${_esc(_TX_ITEM_CAT_LABEL[c] || c)}</button>`);
@@ -54038,7 +54104,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _txStarredPoolMemo(monName);
             if (pool.sparse) return '';
             const on = _txState.filter.recOnly[kind] ? 1 : 0;
-            const label = on ? '★ Recommended' : '★ Show all';
+            // Label uses long+short spans so the <380px breakpoint can swap
+            // "★ Recommended" → "★ Rec" via CSS without a JS branch.
+            const label = on
+                ? `<span class="tx-chip-rec-long">★ Recommended</span><span class="tx-chip-rec-short">★ Rec</span>`
+                : '★ Show all';
             const title = on
                 ? 'Showing options used in competitive Smogon builds. Tap to expand to the full list.'
                 : 'Showing all options. Tap to narrow back to the Smogon-recommended list.';
@@ -54085,6 +54155,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const title = `${locked} abilit${locked === 1 ? 'y' : 'ies'} unlock at ${nextStage}.`;
                 return ` <span class="tx-tab-badge" title="${_esc(title)}">🔒 ${locked}</span>`;
             } catch (e) { return ''; }
+        }
+
+        // Phase 8 — explicit Stage filter chip group for the Move Tutor.
+        // Lets the player drill into one tier band without leaving ★ Show
+        // all on. Default 'all' (no restriction) so the rec-strip layout
+        // doesn't change unexpectedly. Active state mirrors the live state.
+        //
+        //   [Stage: All]  [✓ Now]  [🔒 L2]  [🔒 L3]
+        //
+        // L2 and L3 chips render with subdued treatment when the player is
+        // already at that stage (no preview value), and disappear entirely
+        // when there are no locked moves in the pool (e.g. L3 Guru).
+        function _txStageFiltersHtml(kind, monName, opts) {
+            if (kind !== 'moves') return '';
+            const cur = (_txState.filter.stage && _txState.filter.stage.moves) || 'all';
+            const curStage = opts && typeof opts.tutorStage === 'number' ? opts.tutorStage : 0;
+            const chips = [];
+            chips.push(`<button type="button" class="tx-chip tx-chip--stage" data-filter-kind="moveStage" data-filter-value="all" data-active="${cur==='all'?1:0}" aria-pressed="${cur==='all'?'true':'false'}" title="Show every stage band">All</button>`);
+            chips.push(`<button type="button" class="tx-chip tx-chip--stage tx-chip--stage-now" data-filter-kind="moveStage" data-filter-value="unlocked" data-active="${cur==='unlocked'?1:0}" aria-pressed="${cur==='unlocked'?'true':'false'}" title="Only moves you can teach at the current Move Tutor stage">✓ Now</button>`);
+            if (curStage < 1) {
+                chips.push(`<button type="button" class="tx-chip tx-chip--stage tx-chip--stage-l2" data-filter-kind="moveStage" data-filter-value="l2" data-active="${cur==='l2'?1:0}" aria-pressed="${cur==='l2'?'true':'false'}" title="Preview the L2 Expert lesson book (locked at the current stage)">🔒 L2</button>`);
+            }
+            if (curStage < 2) {
+                chips.push(`<button type="button" class="tx-chip tx-chip--stage tx-chip--stage-l3" data-filter-kind="moveStage" data-filter-value="l3" data-active="${cur==='l3'?1:0}" aria-pressed="${cur==='l3'?'true':'false'}" title="Preview the L3 Guru off-legal Smogon picks (locked at the current stage)">🔒 L3</button>`);
+            }
+            return `<div class="tx-chip-row tx-chip-row--stage" role="group" aria-label="Stage filter">${chips.join('')}</div>`;
+        }
+
+        // Phase 8 — Dojo Tier filter for the Item tab. Three tier bands map
+        // to the same band system the tier-cap badge uses (T1 berries / T2
+        // staples / T3 best meta items). Default 'all'. Tier-3 chip only
+        // renders when the dojo isn't already at Grandmaster (where it'd
+        // overlap with "All"). Tier-2 chip only renders below Black Belt.
+        function _txTierFiltersHtml(kind, opts) {
+            if (kind !== 'items') return '';
+            const cur = (_txState.filter.stage && _txState.filter.stage.items) || 'all';
+            const dojoStage = opts && typeof opts.dojoStage === 'number' ? opts.dojoStage : 0;
+            const chips = [];
+            chips.push(`<button type="button" class="tx-chip tx-chip--stage" data-filter-kind="itemTier" data-filter-value="all" data-active="${cur==='all'?1:0}" aria-pressed="${cur==='all'?'true':'false'}" title="Show every tier">All</button>`);
+            chips.push(`<button type="button" class="tx-chip tx-chip--stage tx-chip--stage-now" data-filter-kind="itemTier" data-filter-value="t1" data-active="${cur==='t1'?1:0}" aria-pressed="${cur==='t1'?'true':'false'}" title="T1 — berries only (unlocked at White Belt)">T1 Berries</button>`);
+            if (dojoStage < 2) {
+                chips.push(`<button type="button" class="tx-chip tx-chip--stage tx-chip--stage-l2" data-filter-kind="itemTier" data-filter-value="t2" data-active="${cur==='t2'?1:0}" aria-pressed="${cur==='t2'?'true':'false'}" title="T2 — staples (Leftovers, Eviolite, Focus Sash …) — unlocks at Black Belt">T2 Staples</button>`);
+            }
+            if (dojoStage < 2) {
+                chips.push(`<button type="button" class="tx-chip tx-chip--stage tx-chip--stage-l3" data-filter-kind="itemTier" data-filter-value="t3" data-active="${cur==='t3'?1:0}" aria-pressed="${cur==='t3'?'true':'false'}" title="T3 — best meta items (Choice Band/Specs/Scarf, Life Orb, Boots, AV …) — unlocks at Grandmaster">🔒 T3 Best</button>`);
+            }
+            return `<div class="tx-chip-row tx-chip-row--stage" role="group" aria-label="Tier filter">${chips.join('')}</div>`;
         }
 
         // Phase 5 — compound quick-filter chip for the Move Tutor. Only one
@@ -54506,24 +54623,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return a.localeCompare(b);
             };
         }
-        function _txApplyMoveFilters(allMoves, mon, build, monName, extraInclude) {
+        function _txApplyMoveFilters(allMoves, mon, build, monName, extraInclude, opts) {
             const q = (_txState.search.moves || '').toLowerCase();
             const types = _txState.filter.moveTypes;
             const cats  = _txState.filter.moveCats;
             const sortKey = _txState.sort.moves || 'recommended';
             const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
+            // Stage filter — see _txState.filter.stage.moves. 'all' is default;
+            // 'unlocked'/'l2'/'l3' restrict to moves whose required tutor
+            // stage matches. Equipped moves always pass (player never loses
+            // sight of a move already known).
+            const stageFilter = (_txState.filter.stage && _txState.filter.stage.moves) || 'all';
+            const curStage = opts && typeof opts.tutorStage === 'number' ? opts.tutorStage : 0;
             const filt = allMoves.filter(m => {
-                // Equipped moves (extraInclude) always pass the ★ filter so the
-                // player never loses sight of a move they currently run — they
-                // still obey the search box + type/category chips, though.
                 const forced = extraInclude && extraInclude.has(m);
                 if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
-                if (!md) return true;
-                if (types.size && !types.has(md.type)) return false;
-                if (cats.size  && !cats.has(md.cat))  return false;
+                if (md) {
+                    if (types.size && !types.has(md.type)) return false;
+                    if (cats.size  && !cats.has(md.cat))  return false;
+                }
+                if (stageFilter !== 'all' && !forced) {
+                    const tg = _txMoveTagMemo(monName, m);
+                    const req = tg === 'awakened' ? 2 : tg === 'learnt' ? 1 : 0;
+                    const isUnlocked = req <= curStage;
+                    if (stageFilter === 'unlocked' && !isUnlocked) return false;
+                    if (stageFilter === 'l2' && req !== 1) return false;
+                    if (stageFilter === 'l3' && req !== 2) return false;
+                }
                 return true;
             });
             // Decorate-sort-undecorate: pre-score every survivor exactly once
@@ -54554,10 +54683,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sortKey = _txState.sort.items || 'recommended';
             const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.items;
+            // Tier filter (Phase 8) — restricts the visible item pool to one
+            // dojo tier band. 'all' is default. 't1'/'t2'/'t3' show only
+            // items at exactly that tier so the player can preview-only the
+            // berries, only the staples, only the meta picks.
+            const tierFilter = (_txState.filter.stage && _txState.filter.stage.items) || 'all';
             const filt = allItems.filter(it => {
                 if (recOnly && !pool.items.inPool.has(it)) return false;
                 if (q && !it.toLowerCase().includes(q)) return false;
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
+                if (tierFilter !== 'all') {
+                    const t = _dojoItemTier(it);
+                    if (tierFilter === 't1' && t !== 1) return false;
+                    if (tierFilter === 't2' && t !== 2) return false;
+                    if (tierFilter === 't3' && t !== 3) return false;
+                }
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
@@ -54739,7 +54879,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // alongside the alternatives. Equipped moves render as non-learnable
             // "✓ Equipped" cards; everything else learns into the active slot.
             const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
-            const filtered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
+            const filtered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet, { tutorStage: ctx.tutorStage });
 
             // Partition the filtered move list into three buckets by lock
             // state: learnable now, locked at L2 Expert, locked at L3 Guru.
@@ -54804,7 +54944,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lockedCount,
                 countLabel: 'moves',
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
-                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
+                chipsHtml: _txStageFiltersHtml('moves', t.name, { tutorStage: ctx.tutorStage }) + _txQuickFiltersHtml('moves', t.name, mon) + _txMoveCatChipsHtml() + _txMoveTypeChipsHtml(),
                 sortOptions: [
                     { value:'recommended', label:'Best for this mon' },
                     { value:'usage', label:'By usage %' },
@@ -54915,7 +55055,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     placeholder: 'Search items (e.g. leftovers, choice, sash)',
                     count: filtItems.length, countLabel: 'items',
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
-                    chipsHtml: _txItemCatChipsHtml(),
+                    chipsHtml: _txTierFiltersHtml('items', { dojoStage: _dojoStage }) + _txItemCatChipsHtml(),
                     sortOptions: [
                         { value:'recommended', label:'Best for this mon' },
                         { value:'usage', label:'By usage %' },
