@@ -11979,31 +11979,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sfx.play().catch(() => {});
                 },
 
-                playCry(pokemonName, volume) {
+                playCry(pokemonName, volume, playbackRate) {
                     if (!settings.soundEnabled || !pokemonName) return;
-                    const sid = (typeof toShowdownSpriteId === 'function')
-                        ? toShowdownSpriteId(pokemonName.replace(/-Mega(-[XY])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, ''))
-                        : pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
-                    // Local-first: ~1200 cries ship in music/cries/ (works offline, no
-                    // third-party dependency). Fall back to the Showdown CDN only if a
-                    // species' local file is missing.
-                    const cry = new Audio(`music/cries/${sid}.mp3`);
-                    cry.volume = _soundVol * (volume || 0.5);
-                    cry.onerror = () => {
-                        const fb = new Audio(`https://play.pokemonshowdown.com/audio/cries/${sid}.mp3`);
-                        fb.volume = _soundVol * (volume || 0.5);
-                        fb.play().catch(() => {});
+                    const vol = _soundVol * (volume || 0.5);
+                    // Walk the local-first fallback chain (exact forme → base species → CDN),
+                    // advancing on each load error. cryCandidates() guarantees a vendored
+                    // base-species cry sits ahead of the CDN, so formes stay audible offline.
+                    const list = (typeof cryCandidates === 'function')
+                        ? cryCandidates(pokemonName)
+                        : [`music/cries/${pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '')}.mp3`];
+                    const playAt = (i) => {
+                        if (i >= list.length) return null;
+                        const a = new Audio(list[i]);
+                        a.volume = vol;
+                        if (playbackRate) a.playbackRate = playbackRate;
+                        a.onerror = () => { playAt(i + 1); };
+                        a.play().catch(() => {});
+                        return a;
                     };
-                    cry.play().catch(() => {});
-                    return cry;
+                    return playAt(0);
                 },
 
                 playFaintCry(pokemonName) {
                     if (!settings.soundEnabled || !pokemonName) return;
-                    const cry = this.playCry(pokemonName, 0.4);
-                    if (cry) {
-                        cry.playbackRate = 0.65;
-                    }
+                    // playbackRate is threaded through the fallback chain so the slowed faint
+                    // cry applies to whichever candidate actually plays (not just the first).
+                    this.playCry(pokemonName, 0.4, 0.65);
                     setTimeout(() => this.playUiSfx('faint', 0.7), 300);
                 }
             };
@@ -13438,6 +13439,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 .replace(/-mega-x/g, '-megax').replace(/-mega-y/g, '-megay')
                 .replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/-$/, '');
             return SPRITE_ID_ALIASES[normalized] || normalized;
+        }
+        // Ordered cry-audio fallback chain for a species/forme display name.
+        // Local-first: ~1200 base-species cries ship in music/cries/ (offline, no third-party
+        // dependency). Regional / alternate formes (Goodra-Hisui, Moltres-Galar, Darmanitan-Galar-Zen,
+        // …) are NOT vendored individually, so we walk toward the base species' local cry — which is
+        // guaranteed to exist — before ever touching the CDN. This keeps every forme audible offline.
+        function cryCandidates(name) {
+            // Mega / Gmax / Primal gimmicks share the base species' cry.
+            const core = String(name || '').replace(/-Mega(-[XY])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, '');
+            const out = [];
+            const seen = new Set();
+            const pushLocal = (n) => {
+                const u = `music/cries/${toShowdownSpriteId(n)}.mp3`;
+                if (!seen.has(u)) { seen.add(u); out.push(u); }
+            };
+            pushLocal(core);
+            // Strip trailing "-Forme" words (Hisui, Galar, Therian, Zen, Ash, …) one at a time until
+            // we reach the base species. Numeric/base formes that ship their own cry (Zygarde-10) win
+            // on the first candidate, so this only fires when the exact forme cry is absent.
+            let nm = core, prev;
+            do { prev = nm; nm = nm.replace(/-[A-Z][a-z]+$/, ''); if (nm !== prev) pushLocal(nm); } while (nm !== prev);
+            // CDN last resort — only reached if no local file matched. Showdown cry ids drop hyphens.
+            out.push(`https://play.pokemonshowdown.com/audio/cries/${toShowdownSpriteId(core).replace(/-/g, '')}.mp3`);
+            return out;
         }
         function _spriteDirFor(shiny, back) {
             if (back && shiny) return 'gen5ani-back-shiny';
@@ -60045,6 +60070,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     aiBestSwitch: typeof aiBestSwitch === 'function' ? aiBestSwitch : null,
                     aiPredictPlayerSwitchIn: typeof aiPredictPlayerSwitchIn === 'function' ? aiPredictPlayerSwitchIn : null,
                     getMoveEffectiveness: typeof getMoveEffectiveness === 'function' ? getMoveEffectiveness : null,
+                    cryCandidates: typeof cryCandidates === 'function' ? cryCandidates : null,
+                    toShowdownSpriteId: typeof toShowdownSpriteId === 'function' ? toShowdownSpriteId : null,
                     get state() { return state; },
                     set state(v) { state = v; },
                     get settings() { return settings; },
