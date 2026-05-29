@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: ae180cf0e424
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns

@@ -26027,7 +26027,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.statusTurns++;
                 let wakeThreshold = mon.sleepDuration || 2;
                 if (mon.ability === "Early Bird") wakeThreshold = Math.ceil(wakeThreshold / 2);
-                if (mon.statusTurns >= wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
+                // Sleep for exactly `wakeThreshold` turns (Showdown semantics): the mon
+                // cannot act on turns 1..threshold and wakes + acts on threshold+1, so a
+                // duration-1 sleep still costs one full turn. (Was `>=`, which let a
+                // duration-1 roll — 1/3 of all sleeps — wake and act on the same turn,
+                // making every sleep move ~33% shorter than canon.)
+                if (mon.statusTurns > wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
                 if (moveName === "Snore" || moveName === "Sleep Talk") return true; // Can use these while asleep
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }

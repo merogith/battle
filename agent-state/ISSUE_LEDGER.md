@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T17:44:11.412Z
+> **Generated**: 2026-05-29T17:51:08.520Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -370,7 +370,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: ae180cf0e424
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns
