@@ -26041,7 +26041,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_thawRng() < 0.2) { mon.status = null; logMsg(`${mon.name} thawed out!`, 'info'); return true; }
                 logMsg(`${mon.name} is frozen solid!`, 'status'); return false;
             }
-            if (mon.status === "PAR" && Math.random() < 0.25) { logMsg(`${mon.name} is paralyzed! It can't move!`, 'status'); return false; }
+            // Seeded in an active story run (storyAwareRng -> storyRngNext); plain
+            // Math.random in PvP/casual. Keeps paralysis + confusion self-hit on the
+            // same deterministic stream as the thaw roll above (ISSUE-009).
+            const _statusRng = storyAwareRng();
+            if (mon.status === "PAR" && _statusRng() < 0.25) { logMsg(`${mon.name} is paralyzed! It can't move!`, 'status'); return false; }
             if (mon.volatile.flinch && mon.ability !== "Inner Focus" && !mon.dynamaxed) {
                 logMsg(`${mon.name} flinched!`, 'info');
                 if (settings.animations) {
@@ -26066,7 +26070,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name} is confused!`, 'status');
                 mon.volatile.confusion--;
                 if (mon.volatile.confusion === 0) logMsg(`${mon.name} snapped out of confusion!`, 'info');
-                else if (Math.random() < 0.3333) {
+                else if (_statusRng() < 0.3333) {
                     // Confusion self-hit: 33% chance (Gen 7+ / modern VGC rule), 40 BP typeless physical
                     let dmg = Math.floor((Math.floor(Math.floor(22 * 40 * (mon.stats.atk / mon.stats.def)) / 50) + 2));
                     let actualDmg = Math.min(mon.currentHp, dmg);
@@ -26805,10 +26809,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === Secondary effects — data-driven from moves.json secondary/secondaries ===
             // Serene Grace doubles secondary effect chances (capped at 100%)
             const _sg = (chance) => sereneGrace ? Math.min(100, chance * 2) : chance;
+            // Seeded in an active story run (storyAwareRng -> storyRngNext); plain
+            // Math.random in PvP/casual. One stream for all secondary-effect rolls (ISSUE-012).
+            const _secRng = storyAwareRng();
 
             // Tri Attack: 3-way status split (custom logic not representable in standard secondary schema)
-            if (move.name === "Tri Attack" && Math.random() * 100 < _sg(20)) {
-                let _tr = Math.floor(Math.random() * 3);
+            if (move.name === "Tri Attack" && _secRng() * 100 < _sg(20)) {
+                let _tr = Math.floor(_secRng() * 3);
                 if (_tr === 0) applyStatus(defender, "BRN"); else if (_tr === 1) applyStatus(defender, "FRZ"); else applyStatus(defender, "PAR");
             }
 
@@ -26835,7 +26842,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_sec) continue;
                     if (move.name === "Tri Attack") continue; // handled explicitly above
                     const _secChance = (_sec.chance != null) ? _sec.chance : 100;
-                    if (Math.random() * 100 >= _sg(_secChance)) continue; // RNG failed
+                    if (_secRng() * 100 >= _sg(_secChance)) continue; // RNG failed
 
                     // Flinch (Inner Focus / Dynamax exemption checked in canMove)
                     if (_sec.volatileStatus === 'flinch' && defender.volatile) defender.volatile.flinch = true;
@@ -26854,7 +26861,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Stench ability: adds 10% flinch chance to all damaging moves (any category, regardless of contact)
-            if (attacker.ability === "Stench" && move.cat !== "Status" && defender.volatile && !defender.volatile.flinch && Math.random() < 0.1) {
+            if (attacker.ability === "Stench" && move.cat !== "Status" && defender.volatile && !defender.volatile.flinch && _secRng() < 0.1) {
                 defender.volatile.flinch = true;
             }
             // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic

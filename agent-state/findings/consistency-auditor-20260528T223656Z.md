@@ -40,7 +40,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 4ac6708be8d3
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift
@@ -73,7 +73,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: f57279301c3b
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift

@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T18:49:16.205Z
+> **Generated**: 2026-05-29T18:51:59.670Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -408,7 +408,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 4ac6708be8d3
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift
@@ -525,7 +525,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: f57279301c3b
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift
