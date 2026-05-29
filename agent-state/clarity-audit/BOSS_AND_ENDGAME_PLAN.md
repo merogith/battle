@@ -93,10 +93,34 @@ extra real boss phases 75/50/25, mini 50/25; villain faint-phases TBD by team si
 **Pool B — best-fitting/thematic (LATER, per-boss):** the banners already hint these —
 Galactic "DISTORTION" (Trick Room), Plasma "PRIORITY LOCK", Flare "THE WEAPON", etc.
 
-### Roster (being enumerated by sub-agent — confirm teams/species/sizes before build)
-- Villain: 10 factions × {miniBoss, boss} trainer fights (likely 1 faction per run via variant).
-- Extra: 8 mons × {miniRaid, raid} single-Pokémon (Cubone…Mewtwo).
-- `main.mfBattle`: apex (trainer or Pokémon — pending) — keep HP-phase 0.50 + immunity.
+### Roster (enumerated — confirmed against code)
+**Villain (10× `villain.<f>.boss`, all Road 7, 6-mon trainer teams via canon roll):**
+Rocket=Giovanni · Magma=Maxie · Aqua=Archie · Galactic=Cyrus · Plasma=Ghetsis · Skull=Guzma ·
+Yell=Piers — **7 have canon trainers**. **Flare / MacroCosmos / Star have NO canon trainer**
+(BEAT_CANON_TRAINER omits Lysandre/Rose/Penny) → they roll a random Elite Trainer. Each faction
+also has a `villain.<f>.miniBoss` (no config today). **Working as intended** (trainer fights).
+
+**Extra (8× `extra.<m>.raid`, Road 6) — ⚠ BIGGEST GAP vs intended design:**
+cubone→Marowak · yamask→Yamask · hypno→Hypno · phantump→Trevenant · mimikyu→Mimikyu ·
+drifloon→Drifblim · parasect→Parasect · mewtwo→Mewtwo. **These species exist ONLY in prose.**
+The actual battle is an ordinary 6-mon `rollTrainerTeam` — NOT a single Pokémon, NOT stat-boosted,
+NO HP scaling (`_bossHpScaleForKind` is dead). `kind:'raid'`/`'miniRaid'` is set in beat data but
+unused. Delivering the maintainer's vision (solo legendary-tier mon, HP×(maxParty−1)/−2) requires
+a NEW single-mon foe-substitution path that does not exist. Each mon also has `miniRaid`+`miniRaid2`
+lead-ins (Road 4/5).
+
+**`main.mfBattle` (post-HoF apex):** a **6-mon trainer** — a mirror of the player's HoF party +
+buffed starter (`rollMysteryFigureFinalBossTeam`). Its declared mechanics (HP@0.50 + immunity)
+are **ORPHANED**: `kind:'mysteryBoss'` is excluded from `_activeBattleBeatForCurrentRow` (41839),
+so `_activeBeatBattleKey` never becomes `main.mfBattle` → BOSS_CONFIGS never attaches. To give it
+mechanics, wire them through the `isMysteryFinal` dispatch (46789), not the BOSS_CONFIGS lookup.
+
+**Confirmed distinct:** Mystery Figure ("The First", a trainer) ≠ Caged God / Subject Zero
+(a single legendary wild in the post-game bossArc). Two different entities → endgame naming fix
+should separate them, not merge.
+
+### Party cap at the boss roads: maxParty = 6 at BOTH Road 6 (extra) and Road 7 (villain).
+→ if wired: raid HP ×5, miniRaid ×4. Player also fields 6.
 
 ### OPEN PARAMS to confirm after roster lands
 - Faint cadence X for villain bosses (every 1 vs every 2 faints) — depends on team sizes.
