@@ -15,10 +15,13 @@ const eng = await loadEngine();
 const ST = eng.window.__storyTest;
 
 function cityRowIdx(targetCity) {
+  // Return the ROW ID (ev[0]) of the first row in targetCity — production passes
+  // the row ID into storyGateFoeMovesByCity, not the array index.
+  const RAW = ST.STORY_EVENTS_RAW;
   for (let ei = 0; ei <= 120; ei++) {
     let c = -1;
     try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {}
-    if (c === targetCity) return ei;
+    if (c === targetCity && RAW[ei]) return RAW[ei][0];
   }
   return 0;
 }

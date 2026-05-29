@@ -23,7 +23,9 @@ setSm();
 
 const RAW = ST.STORY_EVENTS_RAW;
 const N = RAW.length;
-const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+// Return the ROW ID (ev[0]) of the first row in city c — production threads the
+// row ID (not the array index) into applyEnemyGimmickDistribution.
+const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return RAW[i][0]; return -1; };
 const countMechs = (eventType, row, trials = 8) => {
   let mech = 0;
   for (let t = 0; t < trials; t++) {

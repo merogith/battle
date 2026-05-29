@@ -32517,7 +32517,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const row = STORY_EVENTS_RAW[i];
                 if (!row || row[1] !== 'Battle') continue;
                 const m = String(row[2] || '').match(/^Gym Leader (\d+)$/);
-                if (m) out[parseInt(m[1], 10)] = i;
+                if (m) out[parseInt(m[1], 10)] = (row[0] | 0); // store ROW ID — trainerAssignments is row-ID-keyed
             }
             return out;
         })();
@@ -35896,7 +35896,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _storyEvoStageCapForRow(rowIdx) {
             if (rowIdx == null || !(sm && sm.active)) return 2;
-            return _storyEvoStageCapForCity(cityIndexFromEventIndex(rowIdx));
+            return _storyEvoStageCapForCity(cityIndexFromRowId(rowIdx));
         }
         function _capGradePoolsByEvoStage(T, cap) {
             if (cap >= 2 || !T) return T;
@@ -36075,7 +36075,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // explicit mech ctx (Mystery Figure) and frontier/generator rolls bypass.
             if (storyRowIdx != null && sm && sm.active && !(ctx && ctx.settings)) {
                 let _mechCity = -1;
-                try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
+                try { _mechCity = cityIndexFromRowId(storyRowIdx); } catch (e) {}
                 if (_mechCity >= 0 && _mechCity < 7) return team;
             }
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
@@ -36851,7 +36851,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // generator), which use full Smogon builds.
             let _foeCity = -1;
             try {
-                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) _foeCity = cityIndexFromEventIndex(storyRowIdx);
+                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) _foeCity = cityIndexFromRowId(storyRowIdx);
             } catch (e) {}
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const _hiddenAllowedForFoes = _foeCity < 0 || _foeCity >= 4;
@@ -37516,6 +37516,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     set sm(v) { sm = v; },
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
+                    cityIndexFromRowId: (...a) => cityIndexFromRowId(...a),
+                    STORY_RIVAL_ROW_INTRO,
+                    GYM_CITY_LEADER_EVENT,
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
                     devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
@@ -43533,6 +43536,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 0;
         }
 
+        // Foe-scaling consumers identify a battle by its STORY_EVENTS_RAW row ID
+        // (ev[0]), which is NOT the array index cityIndexFromEventIndex walks — a
+        // reordered row (e.g. the City-3 Rival) makes id !== index for later rows,
+        // and an id past the array length (intro Rival = 68) used to fall through to
+        // the deepest City. Resolve the row's array index first. Returns -1 for an
+        // unknown row id (callers treat <0 as "out of story", like their own guards).
+        function cityIndexFromRowId(rowId) {
+            if (rowId == null) return -1;
+            const ai = STORY_EVENTS_RAW.findIndex(r => r && (r[0] | 0) === (rowId | 0));
+            if (ai < 0) return -1;
+            return cityIndexFromEventIndex(ai);
+        }
+
         function lastStoryCityEventIndexAtOrBefore(ei) {
             const cap = Math.min(Math.max(0, ei | 0), STORY_EVENTS_RAW.length - 1);
             for (let i = cap; i >= 0; i--) {
@@ -46575,7 +46591,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function _storyGateFoeMovesByCity(team, storyRowIdx) {
             if (!Array.isArray(team) || !team.length || storyRowIdx == null || storyRowIdx < 0 || !sm || !sm.active) return;
             let city = -1;
-            try { city = cityIndexFromEventIndex(storyRowIdx); } catch (e) { return; }
+            try { city = cityIndexFromRowId(storyRowIdx); } catch (e) { return; }
             if (city < 0) return;
             const tutorStage = _npcStageForCity('tutor', city); // 0 / 1 / 2
             if (tutorStage >= 2) return; // Guru — no tag filter, full Smogon pool stays
@@ -46776,7 +46792,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // C9:+20%, with intro rival -25%, Champion +25%, Mystery Figure +30%.
                 try {
                     let _enemyCity = -1;
-                    try { _enemyCity = cityIndexFromEventIndex(idx); } catch (_e) {}
+                    try { _enemyCity = cityIndexFromRowId(idx); } catch (_e) {}
                     const _enemyMult = _storyEnemyStatMult(event, _enemyCity, idx);
                     for (const s of enemyTeam) if (s && s.build) s.build._storyStatMult = _enemyMult;
                 } catch (_e) {}

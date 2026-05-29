@@ -40,7 +40,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b46578ed397f
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: City-name lookup feeds an array index into a row-ID-keyed map → City 3 always shows "City 3"
@@ -231,7 +231,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 527695359ad9
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: `cityIndexFromEventIndex` fed a ROW ID instead of array index → intro Rival (row 68) scales as City 9 (fully-evolved, hidden abilities, top items, T4)
