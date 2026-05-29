@@ -165,6 +165,28 @@ test('heal phase effect restores foe HP on activation', () => {
     assert.ok(foe.currentHp > hpBefore, 'heal should raise HP');
 });
 
+test('solo raid boss scaling: _bossStatMult boosts stats; _bossHpScale multiplies HP only', () => {
+    const mk = ST.makeBuild || W.makeBuild;
+    const buildPokemon = W.buildPokemon;
+    assert.equal(typeof buildPokemon, 'function', 'buildPokemon reachable on window');
+    assert.equal(typeof mk, 'function', 'makeBuild reachable');
+    const base = mk('Marowak');
+    assert.ok(base, 'makeBuild returned a build');
+    // Same base build, cloned — only the boss fields differ → clean comparison.
+    const plainBuild = JSON.parse(JSON.stringify(base));
+    const bossBuild = JSON.parse(JSON.stringify(base));
+    bossBuild._bossStatMult = 1.3;  // legendary-tier all-stat boost
+    bossBuild._bossHpScale = 5;     // raid scale (maxParty 6 - 1)
+    const plain = buildPokemon('Marowak', plainBuild);
+    const boss = buildPokemon('Marowak', bossBuild);
+    // HP: ×1.3 (stat mult) then ×5 (HP scale), each floored, in that order.
+    const expHp = Math.floor(Math.floor(plain.maxHp * 1.3) * 5);
+    assert.equal(boss.maxHp, expHp, `boss HP should be floor(floor(${plain.maxHp}*1.3)*5)`);
+    assert.equal(boss.currentHp, boss.maxHp, 'boss enters at full scaled HP');
+    // Offensive stat: ×1.3 only (HP scale does not touch stats).
+    assert.equal(boss.stats.atk, Math.max(1, Math.floor(plain.stats.atk * 1.3)), 'atk boosted by stat mult only');
+});
+
 test('turn tick is a safe no-op when state has no boss mechanics', () => {
     const state = mkBossState([]);
     delete state._bossMechanics;

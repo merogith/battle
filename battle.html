@@ -14738,6 +14738,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
             }
+            // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
+            // (_bossStatMult) plus a separate party-scaled HP multiplier (_bossHpScale).
+            // Applied after the per-event mult so they compound; kept off _storyStatMult
+            // because enterBattleEvent overwrites that field on every rolled team member.
+            if (build && monName !== 'Shedinja') {
+                if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
+                    const bm = build._bossStatMult;
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * bm));
+                    mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * bm)));
+                    for (const k of ['atk','def','spa','spd','spe']) mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * bm));
+                    mon._bossStatMult = bm;
+                }
+                if (typeof build._bossHpScale === 'number' && build._bossHpScale > 1) {
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * build._bossHpScale));
+                    mon.currentHp = mon.maxHp; // raid boss enters at full scaled HP
+                    mon._bossHpScale = build._bossHpScale;
+                }
+            }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
             mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
@@ -42059,13 +42077,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
         };
 
-        // Mini-raid / raid HP scaling — extra arcs only. Mini = (partySize - 1) ×
-        // base HP; full raid = partySize × base HP. Wired by PR-5b battle setup.
+        // Mini-raid / raid HP scaling — extra (solo-Pokémon) arcs only. The boss is ONE
+        // legendary-tier Pokémon, so its HP is multiplied to survive a full player party:
+        // mini boss = (maxParty - 2) × base HP, real boss = (maxParty - 1) × base HP.
+        // partySize is the player's MAX party size (_storyMaxPartySize). Wired by the
+        // extra-raid foe-substitution path in enterBattleEvent.
         function _bossHpScaleForKind(kind, partySize) {
             const p = Math.max(1, partySize | 0);
-            if (kind === 'miniRaid') return Math.max(1, p - 1);
-            if (kind === 'raid') return p;
+            if (kind === 'miniRaid') return Math.max(1, p - 2);
+            if (kind === 'raid') return Math.max(1, p - 1);
             return 1; // bosses + battles use single-target scaling
+        }
+
+        // Solo-Pokémon raid bosses (extra track): scene-key stem → the legendary-tier
+        // species the prose names. These fights are ONE scaled Pokémon, not a trainer team.
+        const _EXTRA_RAID_SPECIES = {
+            cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
+            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
+        };
+        // Build the single-mon foe team for an extra raid/miniRaid beat. Returns the
+        // standard [{name, build}] draft shape (one element), or null to fall back to the
+        // normal trainer roll. Legendary-tier stats (_bossStatMult) + party-scaled HP
+        // (_bossHpScale) are applied by buildPokemon at fight start.
+        function _rollExtraRaidBossTeam(sceneKey) {
+            try {
+                const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)$/.exec(String(sceneKey || ''));
+                if (!m) return null;
+                const species = _EXTRA_RAID_SPECIES[m[1]];
+                if (!species || typeof makeBuild !== 'function') return null;
+                const build = _withStoryPlayerGimmickGate(() => makeBuild(species));
+                if (!build) return null;
+                const maxParty = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                build._bossStatMult = 1.3;                                 // legendary-tier stats
+                build._bossHpScale = _bossHpScaleForKind(m[2], maxParty);  // party-scaled bulk
+                return [{ name: species, build: build }];
+            } catch (e) { console.warn('[Story] extra raid boss roll failed:', e); return null; }
         }
 
         // ── BOSS_CONFIGS live wiring (PR-A polish) ────────────────────────
@@ -46914,9 +46960,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             showBattleIntro(trainer, event, async () => {
-                const _rollEnemy = () => isMysteryFinal
-                    ? rollMysteryFigureFinalBossTeam(6, sg)
-                    : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                const _rollEnemy = () => {
+                    if (isMysteryFinal) return rollMysteryFigureFinalBossTeam(6, sg);
+                    // Extra track: raid / miniRaid beats fight as ONE scaled legendary-tier
+                    // Pokémon, not a rolled trainer team.
+                    const _raidTeam = _rollExtraRaidBossTeam(sm._activeBeatBattleKey);
+                    if (_raidTeam) return _raidTeam;
+                    return rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                };
                 // Static-roll spec: every non-rival fight is a pure function of
                 // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
                 // The rival stays dynamic — it re-rolls off the LIVE party to counter it.
