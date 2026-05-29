@@ -42021,17 +42021,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // when the player triggers that battle. SceneKey-indexed so PR-5b
         // battle injection can look it up directly.
         const BOSS_CONFIGS = {
-            // Villain track bosses (10) — Road 7 climax. Phase 3 at 25% HP.
-            'villain.rocket.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALLED IN' }] },
-            'villain.magma.boss':     { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMAL HEAT' }] },
-            'villain.aqua.boss':      { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMORDIAL RAIN' }] },
-            'villain.galactic.boss':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DISTORTION' }] },
-            'villain.plasma.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'PRIORITY LOCK' }] },
-            'villain.flare.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WEAPON' }] },
-            'villain.skull.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DEAL' }] },
-            'villain.yell.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'SPOTLIGHT' }] },
-            'villain.macroCosmos.boss': { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE BRAND' }] },
-            'villain.star.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE TEAM' }] },
+            // Villain track — trainer-vs-trainer. Escalating FAINT-count phases (one
+            // mechanic active at a time, harder each step). Full boss opens with a phase
+            // (afterFaints:0) then escalates every 2 KOs (surge → immunity → surge). Mini
+            // boss starts plain and gets one phase after 2 KOs. Magma/Aqua also field-lock
+            // their signature weather (contestable — the player can still override it).
+            'villain.rocket.boss':      { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALLED IN' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'NO WITNESSES' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: "BOSS'S ORDERS" }] },
+            'villain.rocket.miniBoss':  { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'MUSCLE' }] },
+            'villain.magma.boss':       { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIMAL HEAT' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'MAGMA SHELL' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ERUPTION' }] },
+            'villain.magma.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'HEAT HAZE' }] },
+            'villain.aqua.boss':        { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIMORDIAL RAIN' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'UNDERTOW' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'TIDAL CRASH' }] },
+            'villain.aqua.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'RIPTIDE' }] },
+            'villain.galactic.boss':    { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'DISTORTION' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'STILLNESS' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'NEW WORLD' }] },
+            'villain.galactic.miniBoss':{ mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'COMMANDER' }] },
+            'villain.plasma.boss':      { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIORITY LOCK' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'COLD ARMOR' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'IDEALS' }] },
+            'villain.plasma.miniBoss':  { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SAGE' }] },
+            'villain.flare.boss':       { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'THE WEAPON' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'PERFECTION' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ULTIMATE' }] },
+            'villain.flare.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'ELEGANCE' }] },
+            'villain.skull.boss':       { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'DEAL' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'BIG BAD' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BOSS UP' }] },
+            'villain.skull.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'GRUNT' }] },
+            'villain.yell.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'SPOTLIGHT' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'ENCORE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'GIGANTAMAX' }] },
+            'villain.yell.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'CHEER' }] },
+            'villain.macroCosmos.boss': { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE BRAND' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'CHAIRMAN' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ETERNATUS' }] },
+            'villain.macroCosmos.miniBoss': { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SPONSOR' }] },
+            'villain.star.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE TEAM' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'SCHEDULE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BIG BOSS' }] },
+            'villain.star.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SQUAD' }] },
             // Extra track raids (8) — Road 6 climax. Phase 3 mechanics from CSV.
             'extra.cubone.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'A REMEMBERED PLACE' }] },
             'extra.yamask.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WAKE' }] },
