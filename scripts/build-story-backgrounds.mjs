@@ -34,6 +34,7 @@ const SCENES = [
   { name: 'gen3-mansion', repo: 'pret/pokefirered', scene: 'pokemon_mansion', mood: 'ominous / abandoned' },
   { name: 'gen3-league',  repo: 'pret/pokefirered', scene: 'victory_road',    mood: 'league approach / crucible' },
   { name: 'gen3-sea',     repo: 'pret/pokefirered', scene: 'seafoam_islands', mood: 'water / coast' },
+  { name: 'gen3-lab',     repo: 'pret/pokefirered', scene: 'silph_co',        mood: 'professor lab / institutional interior' },
 ];
 
 const SCREEN_TILES_W = 30, SCREEN_TILES_H = 20, MAP_STRIDE = 32; // GBA: 240x160 visible from a 32-wide map
