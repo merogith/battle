@@ -7,10 +7,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const battleHtml = fs.readFileSync(path.join(__dirname, '..', 'battle.html'), 'utf8');
-const m = battleHtml.match(/const typeChart=(\{[\s\S]*?\});/);
-if (!m) throw new Error('typeChart not found');
-const typeChart = eval(`(${m[1]})`);
+// Wave 5D: typeChart lives in data/type-chart.json (loaded into battle.html at boot).
+const typeChart = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'data', 'type-chart.json'), 'utf8'),
+);
 
 const ATK_TYPES = Object.keys(typeChart);
 const FLOOR = 0.35;
