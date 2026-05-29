@@ -14653,7 +14653,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!abilityVal) abilityVal = 'None';
             }
             let natureVal = build.n || 'Hardy';
-            let mon = { name: monName, type1: base.t1, type2: base.t2, item: build.i, ability: abilityVal, nature: natureVal, moves: generatedMoves, buildData: build };
+            // Normalize the "no held item" sentinels to null. UI picks become 'NO_ITEM' and data
+            // builds (builds.csv / gen*.json) carry the literal "No Item"; left as truthy strings they
+            // would make mon.item truthy and silently break Acrobatics / Knock Off / Unburden / Klutz.
+            const _heldItem = (build.i === 'No Item' || build.i === 'NO_ITEM') ? null : build.i;
+            let mon = { name: monName, type1: base.t1, type2: base.t2, item: _heldItem, ability: abilityVal, nature: natureVal, moves: generatedMoves, buildData: build };
 
             // Lv50 stat formulas with IVs (default 31), EVs and Nature.
             // Vitamins act on IVs directly (+3 per use, cap 31) — see Pokémon

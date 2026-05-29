@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 98ab942730c1
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Multi-hit moves skip the Shield Dust / Sheer Force / Covert Cloak / Substitute secondary gate
@@ -40,7 +40,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: f2cfc21d6afc
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Solar Beam bad-weather power halving is dead code — checks `"SolarBeam"` (no space) which never matches
@@ -67,7 +67,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 0fd8a87af215
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: 2-5 multi-hit distribution is 33/33/17/17, not the modern 35/35/15/15

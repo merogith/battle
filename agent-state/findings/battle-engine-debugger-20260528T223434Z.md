@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: a91c04d51751
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Toxic (badly-poison) counter `statusTurns` is not reset on switch-out
@@ -39,7 +39,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 69b6c1abe5f6
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Fire-type damaging moves do not thaw a frozen target (only flag-marked moves thaw)
@@ -69,7 +69,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 6c062b4964cb
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: HP-restore berry (Sitrus/Oran) eaten mid-hit suppresses Berserk / Wimp Out / Anger Shell HP-cross
@@ -102,7 +102,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: c57e525b9f15
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Multi-hit contact moves skip all on-contact abilities/items (Rough Skin, Iron Barbs, Rocky Helmet, Static, etc.)
@@ -133,7 +133,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 2237f9cefc92
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Salac Berry grants a phantom 1.5x Speed while merely held at <=25% HP (not consumed)

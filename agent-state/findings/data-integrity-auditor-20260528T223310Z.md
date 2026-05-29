@@ -68,7 +68,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: 76a92ca8e149
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: ISSUE-038 is marked fixed but `No Item` is still absent from items.json and 11 build slots still reference it

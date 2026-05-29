@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 6922faf9569e
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Damage formula divides un-truncated (fractional) A/D — Showdown floors atk/def stats first (±1 HP)
@@ -42,7 +42,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 36c4d7d6540c
 confidence: high
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Damage roll is continuous `0.85+rand*0.15` — never reaches 100%, so max-roll damage is unreachable
@@ -110,7 +110,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1c1d60204985
 confidence: medium
-status: open
+status: fixed-claude/funny-clarke-EnGMv
 ---
 
 **Title**: Burn halving & Ice Scales key off `move.cat`, not `_effectiveCat` — wrong for Photon Geyser / Shell Side Arm
