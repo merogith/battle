@@ -24,7 +24,8 @@ If you are a rights holder and want something removed, please open an issue.
 | Item icons (`sprites/items`) | Pokémon Showdown itemicons | as above | |
 | Item / ball icons (`sprites/pokesprite`) | [msikma/pokesprite](https://github.com/msikma/pokesprite) | **MIT** (code/data); sprite pixels © TPC | See `sprites/pokesprite/UPSTREAM_LICENSE.md`. |
 | Battle & menu backgrounds (`sprites/backgrounds`) | Generated for this project (AI image generation) | Project-owned | Prompts in `sprites/backgrounds/battle/GEMINI_PROMPTS.md`. |
-| Story scene backgrounds (`sprites/story/backgrounds`) | Authored for this project | Project-owned | |
+| Story scene backgrounds — original (`sprites/story/backgrounds/*.svg`) | Authored for this project | Project-owned | Hand-authored pixel/SVG scenes (lab, Crucible, Frontier, cities). |
+| Story scene backgrounds — gen3 (`sprites/story/backgrounds/gen3-*.png`) | [pret/pokefirered](https://github.com/pret/pokefirered) `graphics/map_preview/*` | **No asset grant — ripped GameFreak graphics** | Assembled from gen3 tile-atlas + tilemap by `scripts/build-story-backgrounds.mjs`. Reference/placeholder footing (same as the Showdown sprites). |
 | Story UI icons (`icons/story`) | Authored for this project | Project-owned | |
 | UI font (`fonts/press-start-2p.woff2`) | [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) (CodeMan38) | **SIL Open Font License 1.1** | See `fonts/OFL.txt`. |
 
