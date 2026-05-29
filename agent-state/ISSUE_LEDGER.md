@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T17:51:08.520Z
+> **Generated**: 2026-05-29T17:59:18.005Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -597,7 +597,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: d9a014e94e28
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init
@@ -635,7 +635,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 621cdb8220ed
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: `startBattle` reads bare `sm` (ReferenceError) → story boss/raid BOSS_CONFIGS mechanics never init

@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 621cdb8220ed
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: `startBattle` reads bare `sm` (ReferenceError) → story boss/raid BOSS_CONFIGS mechanics never init

@@ -16803,14 +16803,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity-round mechanics are tracked per-turn via
                 // _storyBossMechanicsTurnTick.
                 try {
-                    const _beatKey = sm && sm._activeBeatBattleKey;
-                    const _cfg = _beatKey && typeof BOSS_CONFIGS === 'object' && BOSS_CONFIGS[_beatKey];
+                    const _beatKey = _smRef && _smRef._activeBeatBattleKey;
+                    const _cfg = _beatKey && window.BOSS_CONFIGS && typeof window.BOSS_CONFIGS === 'object' && window.BOSS_CONFIGS[_beatKey];
                     if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
                         state._activeStoryBeatKey = _beatKey;
                         state._bossMechanics = _cfg.mechanics.slice();
                         state._bossMechanicsFired = {};
                         state._bossPendingTelegraph = null;
-                        _storyBossMechanicsBattleInit(state);
+                        if (typeof window._storyBossMechanicsBattleInit === 'function') window._storyBossMechanicsBattleInit(state);
                     }
                 } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
             } else {
@@ -20741,7 +20741,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // count. No-op if state._bossMechanics isn't set.
                 try {
                     if (Array.isArray(state._bossMechanics) && state._bossMechanics.length && state.fActive) {
-                        _storyBossMechanicsTurnTick(state, state.fActive);
+                        if (typeof window._storyBossMechanicsTurnTick === 'function') window._storyBossMechanicsTurnTick(state, state.fActive);
                     }
                 } catch (e) { console.warn('[Story] boss turn tick failed:', e); }
                 state.residualPhaseComplete = false;
@@ -42131,6 +42131,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
         }
+
+        // startBattle and the turn loop live OUTSIDE this StoryMode IIFE, so they
+        // must reach the boss-mechanics config + helpers through window. (ISSUE-014/015:
+        // bare `sm` / `BOSS_CONFIGS` / `_storyBossMechanics*` references at script-top
+        // were silent ReferenceErrors, so story boss/raid beats never got their
+        // scripted field locks, HP-threshold phases, or immunity rounds.)
+        window.BOSS_CONFIGS = BOSS_CONFIGS;
+        window._storyBossMechanicsBattleInit = _storyBossMechanicsBattleInit;
+        window._storyBossMechanicsTurnTick = _storyBossMechanicsTurnTick;
 
         // ── Story-beat reward delivery (PR-4b) — translates a beat slot into
         // a reward bundle via STORY_REWARD_TIERS (PR-2). PR-5 calls this after

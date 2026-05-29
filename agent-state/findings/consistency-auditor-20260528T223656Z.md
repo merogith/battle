@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: d9a014e94e28
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init
