@@ -28179,8 +28179,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_monItemActive && mon.currentHp > 0 && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
 
             // 4. Binding/Trap Damage
-            // Leech Seed
-            if (mon.volatile.leechSeed) {
+            // Leech Seed — Magic Guard prevents the drain (so the seeder also heals nothing).
+            if (mon.volatile.leechSeed && mon.ability !== "Magic Guard") {
                 if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
                     logMsg(`Type Nullifier: ${mon.name} ignored Leech Seed's drain!`, 'info');
                 } else {
@@ -28216,17 +28216,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _stickyTrap = mon.volatile.partialTrapSrc === "Octolock" || mon.volatile.partialTrap >= 999;
             if (mon.volatile.partialTrap > 0 && !_stickyTrap) {
                 mon.volatile.partialTrap--;
-                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                const _trapNull = state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon);
+                if (mon.ability === "Magic Guard") {
+                    // Magic Guard: the trap still expires on schedule but deals no damage.
+                } else if (_trapNull) {
                     logMsg(`Type Nullifier: ${mon.name} ignored the trap's squeeze!`, 'info');
                 } else {
-                let trapDmg = Math.max(1, Math.floor(mon.maxHp / 8));
-                let actTrapDmg = Math.min(mon.currentHp, trapDmg);
-                mon.currentHp -= actTrapDmg;
-                logMsg(`${mon.name} took ${actTrapDmg} damage from ${mon.volatile.partialTrapSrc || 'the trap'}!`, 'dmg');
+                    let trapDmg = Math.max(1, Math.floor(mon.maxHp / 8));
+                    let actTrapDmg = Math.min(mon.currentHp, trapDmg);
+                    mon.currentHp -= actTrapDmg;
+                    logMsg(`${mon.name} took ${actTrapDmg} damage from ${mon.volatile.partialTrapSrc || 'the trap'}!`, 'dmg');
+                }
                 if (mon.volatile.partialTrap === 0) {
                     logMsg(`${mon.name} was freed from ${mon.volatile.partialTrapSrc}!`, 'info');
                     mon.volatile.partialTrapSrc = '';
-                }
                 }
             }
             // Octolock: lower Def and SpDef by -1 each end of turn; no damage, no end-timer
