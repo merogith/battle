@@ -169,3 +169,24 @@ walk/attack sheet .. /PMDCollab/SpriteCollab/master/sprite/{dex4}/{Walk|Attack}-
 # Tuxemon (CC-BY 3.0 / CC0 JRPG BGM — pin to a commit SHA before shipping)
 bgm ................ /Tuxemon/Tuxemon/development/mods/tuxemon/music/{JRPG_town_loop|peasant_kingdom|...}.ogg
 ```
+
+---
+
+## 5. Phase 4 — Implementation status (delivered)
+
+All four design decisions were answered and implemented. Decisions: **Q1** scene art = gen3 pixel rips; **Q2** audio = reuse + Tuxemon CC; **Q3** = vendor full back-sprite coverage; **Q4** = optimize/dedupe/re-encode.
+
+| Decision | Shipped | Commit summary |
+|---|---|---|
+| **Q3 — Back sprites** | 786 base-species back + back-shiny vendored (78→864 each). New `scripts/download-back-sprites.mjs` (`@pkmn/dex` slug→dex-num). Formes + 12 newer-gen species keep remote fallback. | `feat(sprites): vendor full back-sprite coverage` |
+| **Q4 — Hygiene** | Re-encoded `background{1,2}.mp3` 172→128 kbps (−39 MB; background3 left as-is, already ~90 kbps). Deleted 5 unused loose backgrounds (−13 MB). Added `ATTRIBUTION.md`. | `chore(assets): re-encode BGM + drop loose dupes + attribution` |
+| **Q2 — Audio** | Battle-theme override layer in `AudioSystem`; wired the 4 dead `Theme*.mp3` to moods (trainer/leader/rival/elite) + 2 CC-BY Tuxemon tracks (boss + victory). Field BGM ducks/restores. | `feat(audio): scene-mood battle themes` |
+| **Q1 — Backgrounds** | `scripts/build-story-backgrounds.mjs` assembles gen3 map-preview tile-atlas+tilemap into 10 pixel scenes (pure-Node PNG codec). Wired into catch (forest/safari/cave), professor (lab/villain), Crucible (league), Frontier (mansion) via a manifest `scenes` map + `syncStorySceneBackground`. | `feat(story-bg): assemble + wire gen3 pixel backdrops` |
+
+**Net size:** back sprites +92 MB; music −39 MB; dedupe −13 MB; gen3 + Tuxemon +~2.5 MB → ~+42 MB working tree. (The 128 kbps music saving was smaller than first estimated because the loops were 172 kbps, just very long — not 320 kbps.)
+
+**Honest correction recorded during build:** Q1's gen3 rips are *not* drop-in images — gen3 scenery is a tile-atlas + `.bin` tilemap, so an assembler was built (re-confirmed with the user, who approved "assembler + author the gaps"; in practice gen3 interiors covered the gaps, so no off-style CSS was needed).
+
+**Not in this pass (available next steps, lower impact / new design calls):** a "VS" trainer-intro *visual* (music shipped; the splash screen is a separate visual-direction call), item-icon completeness (8.6%→full, a clean coverage win like back sprites), facility NPC portraits, animated egg hatch, per-city distinct backdrops.
+
+**Validation:** each slice verified — manifest parse-check, jsdom boot of the full monolith, integration test (`catch-system` 4/4), `ffprobe` duration checks, and direct image review of every gen3 scene. Live in-browser screenshots weren't possible (Playwright's chromium isn't installed and its CDN is outside the GitHub-only network).
