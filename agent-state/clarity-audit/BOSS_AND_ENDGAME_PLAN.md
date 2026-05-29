@@ -32,9 +32,9 @@
   there, so the Caged God was unreachable. Now surfaced at the top of the Crucible (post-game
   Underground hub) via `_bossArcRenderSection(hubMode)`; leads collectable hub-side (bossCollectLead
   was already city-agnostic); Mystery-Figure-vs-Caged-God naming clarified; 3-city lore kept in labels.
-- [ ] **7b — Crucible facility sub-sectioning** (OPTIONAL polish, not done): facilities are a flat
-  13-button grid. Could sub-group Catch/Train/Shop/Recover. Low value now the Caged God quest +
-  Battles/Facilities split exist.
+- [x] **7b — Crucible facility sub-sectioning** (committed, branch claude/endgame-crucible):
+  the flat 13-button Facilities grid is now three labeled sub-groups — Train & Evolve / Shop /
+  Catch, Store & Trade. Directly addresses the "confusing menu". No buttons changed.
 
 ## ROLE-BOUNDARY NOTES (for pasteur review)
 - 6a touches the Mystery Figure battle (pasteur owns "MF dispatch") but only ATTACHES the
