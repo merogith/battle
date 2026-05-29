@@ -1,5 +1,32 @@
 # Boss Mechanics Activation + Endgame Redesign — Plan
 
+## BUILD PROGRESS (7 increments)
+- [x] **1 — Foundation** (committed): exposed BOSS_CONFIGS/init/tick/banner on production
+  API; fixed immunity off-by-one (decrement-before-activate); wired the +25% surge damage
+  consumer. Boss mechanics now attach & fire for the first time. Tests green.
+- [x] **2 — Effect pool** (committed): `_applyBossPhaseEffect` dispatcher (surge/heal/immunity),
+  phases carry {effect,magnitude}, default 'surge' = backward compatible.
+- [x] **3 — faintPhase** (committed): new trigger; escalates on cumulative `state.foeParty`
+  KOs (every 2). Tests added (faintPhase + heal). 11/11 boss tests pass.
+- [x] **5a — Villain configs** (committed): 10 full bosses → escalating faintPhase chains;
+  10 mini-boss configs added; Magma/Aqua weather preserved.
+- [ ] **4 — Solo-Pokémon raid path** (NEXT, biggest/riskiest): when beat kind ∈ {raid,miniRaid},
+  substitute a SINGLE mapped species (extra.cubone→Marowak … extra.mewtwo→Mewtwo) instead of
+  `rollTrainerTeam`; boost stats to legendary-tier; scale HP via corrected `_bossHpScaleForKind`
+  (miniRaid×(maxParty−2), raid×(maxParty−1)) called with `_storyMaxPartySize()`. Intercept at
+  the foe-build in `enterBattleEvent` (~46820+, the `rollTrainerTeam` call ~46900). Needs a
+  REAL-battle verification, not just unit ticks. Species map lives in prose at STORY_SCENES 31722+.
+- [ ] **5b — Extra configs**: after 4, give extra raids multi-phase HP thresholds (raid 75/50/25,
+  miniRaid 50/25) with escalating effects; add `extra.*.miniRaid` configs.
+- [ ] **6 — mfBattle + canon villains**: wire mfBattle mechanics via the `isMysteryFinal`
+  dispatch (46789) since `mysteryBoss` is excluded from BOSS_CONFIGS injection; add
+  BEAT_CANON_TRAINER entries Flare→Lysandre, MacroCosmos→Rose, Star→Penny (need TRAINER_DATA).
+- [ ] **7 — Endgame**: Crucible sectioned layout + objective line; persistent guided Caged-God
+  tracker (🔮 N/3 · next city); separate Mystery-Figure vs Caged-God naming.
+
+---
+
+
 > 2026-05-29. Maintainer approved activating boss mechanics + wants a clean, simple,
 > GameBoy-style endgame. This is the plan to decide/fix before implementing.
 > All anchors verified against the working tree.
