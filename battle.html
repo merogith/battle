@@ -23832,7 +23832,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${attacker.name} lost ${ar} HP from Life Orb recoil!`, 'dmg');
                     }
                     if ((move.name === "Fling" || move.name === "Natural Gift") && attacker.item) consumeFlingNaturalGiftIfHeld(attacker, move.name);
-                    await parseMoveEffects(attacker, defender, move, isPlayer); updateUI();
+                    // Secondary-effect gate (mirrors the single-hit path): Sheer Force suppresses the
+                    // secondary; Shield Dust / Covert Cloak / a hit Substitute block it. Previously the
+                    // multi-hit branch called parseMoveEffects unconditionally (Twineedle / Double Iron Bash
+                    // bypassed all of these, and a Sheer Force user double-dipped power + secondary).
+                    if (!sheerForceActive && defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak" && !hitSub) {
+                        await parseMoveEffects(attacker, defender, move, isPlayer); updateUI();
+                    }
                     // Data-driven self stat-stage changes (same handler as single-hit path).
                     if (move.self && move.self.boosts && !sheerForceActive) {
                         const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
@@ -23848,7 +23854,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let hitSub = false;
                 // True only when damage was absorbed by Substitute (not Disguise) — used so Knock Off still strips items through sub
                 let hitSubFromSubstitute = false;
-                let actualDamage = 0;
+                let actualDamage = 0, _hpAfterHit = 0;
                 // PR-A: Story-mode boss immunity round — clamps damage to 0
                 // when foe was telegraphed last turn ('BOSS IS PREPARING' →
                 // immunity activates this turn). Status moves still apply
@@ -23903,6 +23909,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${attacker.name}'s Infiltrator bypassed the substitute!`, 'info');
                     }
                     actualDamage = Math.min(defender.currentHp, damage); defender.currentHp -= actualDamage;
+                    // Snapshot HP right after the hit, BEFORE a pinch berry (Sitrus/Oran) can heal it back up.
+                    // On-hit HP-cross abilities (Berserk / Anger Shell) read this so a berry heal above 50%
+                    // doesn't suppress them (canon: the ability fires on the hit, then the berry heals).
+                    _hpAfterHit = defender.currentHp;
                     if (attacker.volatile) attacker.volatile.dealtDamageThisTurn = (attacker.volatile.dealtDamageThisTurn|0) + actualDamage;
                     // HP-threshold berries: check immediately after damage drop
                     _checkBerriesAfterDamage(defender);
@@ -24284,18 +24294,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // Berserk (defender): when a damaging move drops HP to <=50% (crossing the threshold), raise SpA +1
                     if (defender.ability === "Berserk" && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0) {
-                        let _bkBefore = defender.currentHp + actualDamage;
+                        let _bkBefore = _hpAfterHit + actualDamage;
                         let _bkHalf = defender.maxHp / 2;
-                        if (_bkBefore > _bkHalf && defender.currentHp <= _bkHalf) {
+                        if (_bkBefore > _bkHalf && _hpAfterHit <= _bkHalf) {
                             changeStage(defender, 'spa', 1);
                             logMsg(`${defender.name}'s Berserk raised its Special Attack!`, 'info');
                         }
                     }
                     // Anger Shell (defender): HP crosses to <=50% from damaging move -> -1 Def/SpD, +1 Atk/SpA/Spe
                     if (defender.ability === "Anger Shell" && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0) {
-                        let _asBefore = defender.currentHp + actualDamage;
+                        let _asBefore = _hpAfterHit + actualDamage;
                         let _asHalf = defender.maxHp / 2;
-                        if (_asBefore > _asHalf && defender.currentHp <= _asHalf) {
+                        if (_asBefore > _asHalf && _hpAfterHit <= _asHalf) {
                             logMsg(`${defender.name}'s Anger Shell activated!`, 'info');
                             changeStage(defender, 'def', -1);
                             changeStage(defender, 'spd', -1);
