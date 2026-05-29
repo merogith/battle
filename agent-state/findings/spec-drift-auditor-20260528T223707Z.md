@@ -7,7 +7,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 3a000383b7a4
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Fresh story run starts with 0 Poké Balls; spec promises 5 in three places

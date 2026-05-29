@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T18:04:16.497Z
+> **Generated**: 2026-05-29T18:09:01.565Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -335,7 +335,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 3a000383b7a4
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Fresh story run starts with 0 Poké Balls; spec promises 5 in three places
