@@ -155,7 +155,7 @@ file: docs/STORY_FEATURES_INTEGRATION.md
 agents: [spec-drift-auditor]
 fingerprint: 37c82575616a
 confidence: high
-status: open
+status: fixed-claude/optimistic-ptolemy-g3COo
 ---
 
 **Title**: De-scoped features (Black Market, Illegal Dealer, Trader, Wager, full Itinerary) still presented as active spec — precise doc-edit list
