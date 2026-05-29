@@ -1,7 +1,7 @@
 // Staged-NPC capability ladders (city-anchored, tunable). Verifies the stage
 // resolver + names, the Battle Dojo item-tier classifier, the Awakened-ability
 // city gate, the Move-Tutor staged pool fallback, and that the city-screen chip
-// tags advance with the arrived city (Move Tutor / Battle Dojo / Stone Sage).
+// tags advance with the arrived city (Move Tutor / Battle Dojo / Evolution Tutor).
 //   node --test tests/suites/story-staged-npc.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -51,8 +51,8 @@ test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
   assert.equal(ST.npcStageName('tutor', 1), 'Expert');
   assert.equal(ST.npcStageName('tutor', 2), 'Guru');
-  assert.equal(ST.npcStageName('evolab', 0), 'Awakening');
-  assert.equal(ST.npcStageName('evolab', 1), 'Ascension');
+  assert.equal(ST.npcStageName('evolab', 0), 'Evolution Teacher');
+  assert.equal(ST.npcStageName('evolab', 1), 'Evolution Master');
   assert.equal(ST.npcStageName('dojo', 9), 'Grandmaster', 'over-cap stage clamps to last label');
 });
 
@@ -126,7 +126,7 @@ test('stage-up beat: one-time free use, fires once, debut grants nothing', () =>
   assert.equal(sm.inventory.heartScale | 0, 1, 'no double-grant on re-entry');
 });
 
-test('stage-up gifts: dojo (Black Belt / Grandmaster) and Stone Sage (Ascension)', () => {
+test('stage-up gifts: dojo (Black Belt / Grandmaster) and Evolution Tutor (Evolution Master)', () => {
   const sm = setSm({ eventIndex: cityRow(6), inventory: {}, npcStageSeen: {} });
   ST.npcStageUpCheck('dojo');                   // first dojo visit at C6 = Black Belt
   assert.equal(sm.npcStageSeen.dojo, 1);
@@ -138,9 +138,9 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Stone Sage (Ascension)
   assert.equal(sm.inventory.emblemHonor | 0, 1, 'Grandmaster grants an Emblem of Honor');
 
   const sm2 = setSm({ eventIndex: cityRow(4), inventory: {}, npcStageSeen: {} });
-  ST.npcStageUpCheck('evolab');                  // C4 = Ascension (stage 1; evolab is [2,4])
+  ST.npcStageUpCheck('evolab');                  // C4 = Evolution Master (stage 1; evolab is [2,4])
   assert.equal(sm2.npcStageSeen.evolab, 1);
-  assert.equal(sm2.inventory.stoneToken | 0, 1, 'Ascension grants a Stonewise Token');
+  assert.equal(sm2.inventory.stoneToken | 0, 1, 'Evolution Master grants a Stonewise Token');
 });
 
 test('city-screen chip tags advance with the arrived city', () => {
@@ -151,6 +151,6 @@ test('city-screen chip tags advance with the arrived city', () => {
   assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');
   assert.ok(renderCity(8).includes('Battle Dojo — Grandmaster'), 'C8 Dojo = Grandmaster');
-  assert.ok(renderCity(2).includes('Stone Sage — Awakening'), 'C2 Stone Sage = Awakening');
-  assert.ok(renderCity(4).includes('Stone Sage — Ascension'), 'C4 Stone Sage = Ascension');
+  assert.ok(renderCity(2).includes('Evolution Teacher'), 'C2 Evolution Tutor = Evolution Teacher');
+  assert.ok(renderCity(4).includes('Evolution Master'), 'C4 Evolution Tutor = Evolution Master');
 });

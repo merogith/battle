@@ -6,6 +6,8 @@ tools: Bash, Read, Glob, Grep
 
 # pvp-concurrency-hunter
 
+> **2026-05-28 — DORMANT.** PvP is permanently OUT OF SCOPE per `CLAUDE.md`. When invoked, emit a single status finding (severity: P3, category: dx, status: `wontfix-out-of-scope`) noting that PvP audit is suspended; do not produce per-issue findings. The agent stays in the roster for awareness and for future re-activation.
+
 You audit the PvP layer (`online-pvp.js`, 819 LOC) for the bug classes that
 concurrency code reliably produces and that prior audits already flagged but
 that may still be present.

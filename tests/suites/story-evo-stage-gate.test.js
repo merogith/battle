@@ -1,5 +1,5 @@
 // Verifies the story-mode evolution-stage gate: enemies, route wilds, and the
-// player's Stone Sage are capped by the ARRIVED city's era. Per-source curves:
+// player's Evolution Tutor are capped by the ARRIVED city's era. Per-source curves:
 //   Player & enemy : C0-1 basic · C2-3 first-evo · C4+ all
 //   Wild           : C0-4 basic · C5-6 first-evo · C7 all
 //   Professor      : C0-2 basic · C3-5 first-evo · C6 all
@@ -126,7 +126,7 @@ test('player Stone Sage: first-evos from City 2, finals from City 4 (3-layer)', 
     assert.equal(!!e.cityLocked, cityLocked, `${mon}->${evo}@C${city} cityLocked`);
   };
   expect('Bulbasaur', 'Ivysaur', 1, false, true);   // C0-1 basic-only: first-evo still city-locked
-  expect('Bulbasaur', 'Ivysaur', 2, true, false);   // Stage-1 (first-evo) unlocks at C2 (Stone Sage debut, Layer 1)
+  expect('Bulbasaur', 'Ivysaur', 2, true, false);   // Stage-1 (first-evo) unlocks at C2 (Evolution Tutor debut, Layer 1)
   expect('Bulbasaur', 'Ivysaur', 3, true, false);
   expect('Ivysaur', 'Venusaur', 3, false, true);    // Stage-2 (final) stage-locked through C3
   expect('Ivysaur', 'Venusaur', 4, true, false);    // unlocks at C4 (Stage-2 layer)

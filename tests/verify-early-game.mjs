@@ -36,19 +36,19 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   const h1 = render(1);
   check('Move Tutor present in City 1', h1.includes('Move Tutor'));
   check('Nature Rater present in City 1 (debut)', h1.includes('Nature Rater'));
-  check('Stone Sage NOT in City 1 (debuts C2)', !(h1.includes('Stone Sage') || h1.includes('Evolution Tutor')));
+  check('Evolution Tutor NOT in City 1 (debuts C2)', !(h1.includes('Evolution Teacher') || h1.includes('Evolution Master')));
 
   // --- City 1: Battle Dojo now debuts here (White Belt), per the facility matrix ---
   setup();
   const h1d = render(1);
   check('Battle Dojo present in City 1 (debut, White Belt)', h1d.includes('Battle Dojo'));
 
-  // --- City 2: Stone Sage debuts here (the "systems open up" town); Dojo carries over ---
+  // --- City 2: Evolution Tutor debuts here (the "systems open up" town); Dojo carries over ---
   setup();
   const h2c = render(2);
-  check('Stone Sage present in City 2 (debut)', h2c.includes('Stone Sage'));
+  check('Evolution Tutor present in City 2 (debut, Evolution Teacher)', h2c.includes('Evolution Teacher'));
   check('Battle Dojo present in City 2 (carried from its C1 debut)', h2c.includes('Battle Dojo'));
-  check('Stone Merchant NOT in City 2 (moved to C3)', !h2c.includes('Stone Emporium'));
+  check('Stones and Beyond NOT in City 2 (moved to C3)', !h2c.includes('Stones and Beyond'));
 
   // --- Facility NEW/visited three-tier (the "still all NEW" report) ---
   // At City 2 the Pokémart is NOT its debut city, so un-introduced it should read NEW;
@@ -120,7 +120,7 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   check('live: C1 gate CLEARS after opening Party (no manual re-render)', !gateNamesIntro(stripHtml()));
 
   // --- New-spread must-do intro gate: a facility's debut city flags it 🔴 Required
-  // until the player has met it. Battle Dojo debuts at C1; Stone Sage + Link at C2. ---
+  // until the player has met it. Battle Dojo debuts at C1; Evolution Tutor + Link at C2. ---
   const reqCount = (h) => (h.match(/🔴 Required/g) || []).length;
   setup();
   const h1req = render(1);
@@ -128,7 +128,7 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   setup();
   const h2req = render(2);
   check('C2 debut facilities carry 🔴 Required when un-introduced', reqCount(h2req) > 0, `count=${reqCount(h2req)}`);
-  check('Stone Sage chip is flagged Required at its C2 debut', /Stone Sage[\s\S]{0,260}?🔴 Required/.test(h2req));
+  check('Evolution Tutor chip is flagged Required at its C2 debut', /Evolution Teacher[\s\S]{0,260}?🔴 Required/.test(h2req));
   sm.facilityIntros = { dojo:1, evolab:1, link:1, mart:1, tutor:1, nature:1, fanclub:1, center:1 };
   const h2done = render(2);
   check('C2 Required pills clear once those facilities are introduced', reqCount(h2done) === 0, `count=${reqCount(h2done)}`);
