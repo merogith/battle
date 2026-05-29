@@ -10,19 +10,31 @@
   KOs (every 2). Tests added (faintPhase + heal). 11/11 boss tests pass.
 - [x] **5a — Villain configs** (committed): 10 full bosses → escalating faintPhase chains;
   10 mini-boss configs added; Magma/Aqua weather preserved.
-- [ ] **4 — Solo-Pokémon raid path** (NEXT, biggest/riskiest): when beat kind ∈ {raid,miniRaid},
-  substitute a SINGLE mapped species (extra.cubone→Marowak … extra.mewtwo→Mewtwo) instead of
-  `rollTrainerTeam`; boost stats to legendary-tier; scale HP via corrected `_bossHpScaleForKind`
-  (miniRaid×(maxParty−2), raid×(maxParty−1)) called with `_storyMaxPartySize()`. Intercept at
-  the foe-build in `enterBattleEvent` (~46820+, the `rollTrainerTeam` call ~46900). Needs a
-  REAL-battle verification, not just unit ticks. Species map lives in prose at STORY_SCENES 31722+.
-- [ ] **5b — Extra configs**: after 4, give extra raids multi-phase HP thresholds (raid 75/50/25,
-  miniRaid 50/25) with escalating effects; add `extra.*.miniRaid` configs.
-- [ ] **6 — mfBattle + canon villains**: wire mfBattle mechanics via the `isMysteryFinal`
-  dispatch (46789) since `mysteryBoss` is excluded from BOSS_CONFIGS injection; add
-  BEAT_CANON_TRAINER entries Flare→Lysandre, MacroCosmos→Rose, Star→Penny (need TRAINER_DATA).
-- [ ] **7 — Endgame**: Crucible sectioned layout + objective line; persistent guided Caged-God
-  tracker (🔮 N/3 · next city); separate Mystery-Figure vs Caged-God naming.
+- [x] **4 — Solo-Pokémon raid path** (committed): buildPokemon `_bossStatMult` (1.3× all stats) +
+  `_bossHpScale` (HP-only) hooks; `_bossHpScaleForKind` corrected (mini=maxParty−2, real=maxParty−1)
+  and now actually called; `_EXTRA_RAID_SPECIES` map + `_rollExtraRaidBossTeam`; intercept in
+  `_rollEnemy` (~46980). Deterministic scaling test passes. NOTE: only the numeric scaling is
+  unit-verified — the full battle-flow substitution (1-mon foe, intro framing) is NOT yet
+  real-battle tested. Worth a manual playthrough of an extra raid.
+- [x] **5a — Villain configs** (committed): faintPhase chains + mini-boss configs.
+- [x] **5b — Extra configs** (committed): `_populateExtraRaidConfigs` — raid 75/50/25
+  (surge→heal→immunity), miniRaid 50/25 (surge→immunity).
+- [ ] **6 — mfBattle + canon villains** (REMAINING):
+  - mfBattle: the Mystery Figure does NOT use the standard `onBattleEnd` beat hook — it runs via
+    `crucibleBattleSource='postHofMystery'` + `_handleCrucibleBattleEnd`. So DON'T set
+    `sm._activeBeatBattleKey='main.mfBattle'` blindly (no cleanup on that path + onBattleEnd would
+    mis-handle). Safest: in `startBattle`'s BOSS_CONFIGS init (~16853) detect the mystery battle
+    (need a battle-state flag; `event==='Mystery Figure'` is only in enterBattleEvent — propagate
+    a flag to `state`, e.g. `state._isMysteryBoss`) and attach `BOSS_CONFIGS['main.mfBattle']`
+    setting only `state._activeStoryBeatKey` (NOT `sm._activeBeatBattleKey`).
+  - canon villains: Lysandre/Rose/Penny/Cassiopeia are intentionally absent from TRAINER_DATA
+    (comment at ~42012). Adding them = authoring full signature teams + sprite + intro quotes for
+    each (Flare→Lysandre, MacroCosmos→Rose, Star→Penny) + BEAT_CANON_TRAINER entries. Content task.
+- [ ] **7 — Endgame** (REMAINING): `_renderCrucible` (~48144) sectioned layout (Challenge/Catch/
+  Train/Shop/Recover) + one objective line; persistent guided Caged-God tracker
+  (🔮 N/3 · next: City X) surfaced in the city hub + Crucible (currently only inside the
+  Pokémon Center via `_bossArcRenderSection` ~48650); separate Mystery-Figure vs Caged-God naming
+  (they ARE two different bosses). Highest user-facing value (this is the part the maintainer hits).
 
 ---
 
