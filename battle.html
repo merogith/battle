@@ -21371,7 +21371,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Slow Start: halves Speed for 5 turns after switch-in
             if (mon.ability === "Slow Start" && mon.volatile && mon.volatile.slowStartTurns > 0) spe *= 0.5;
             // Speed Boost is handled via +1 spe stage per turn in endOfTurnEffects; no multiplier needed here
-            if (_spdItemActive && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25) spe *= 1.5;
+            // (Salac Berry's Speed boost is a +1 STAGE applied on consumption — see endOfTurnEffects /
+            // pinch-berry path — NOT a passive held-item multiplier; the phantom 1.5x here was removed.)
             if (_spdItemActive && mon.item === "Quick Powder" && mon.name === "Ditto" && !mon.volatile.transformed) spe *= 2;
             if (_spdItemActive && (mon.item === "Iron Ball" || mon.item === "Macho Brace" || mon.item === "Power Anklet" || mon.item === "Power Band" || mon.item === "Power Belt" || mon.item === "Power Bracer" || mon.item === "Power Lens" || mon.item === "Power Weight")) spe = Math.floor(spe * 0.5);
             return spe;
@@ -23431,7 +23432,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // HeavyRain: Water moves can't be reduced; HarshSun: Fire moves can't be reduced
                     // (already covered by the 1.5x/0.5x above)
                 }
-                if (move.name === "SolarBeam" && w !== "Sun" && w !== "HarshSun") basePower = Math.floor(basePower * 0.5);
+                // Solar Beam / Solar Blade: half power in ADVERSE weather (Rain/Sand/Hail/Snow); full in
+                // clear weather; full + no-charge in Sun. `w` is null when clear, so guard on it being truthy.
+                if ((move.name === "Solar Beam" || move.name === "Solar Blade") && w && w !== "Sun" && w !== "HarshSun") basePower = Math.floor(basePower * 0.5);
 
                 // Terrain modifiers (only affect grounded Pokémon)
                 if (state.terrain && state.terrainTurns > 0) {
@@ -23497,7 +23500,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Rivalry" && attacker.gender !== null && defender.gender !== null) {
                     modifier *= attacker.gender === defender.gender ? 1.25 : 0.75;
                 }
-                if (attacker.status === "BRN" && move.cat === "Physical" && attacker.ability !== "Guts") modifier *= 0.5;
+                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts") modifier *= 0.5;
                 if (attacker.ability === "Tinted Lens" && typeEff < 1 && typeEff > 0) modifier *= 2;
                 // Neuroforce: x1.25 when move is super effective
                 if (attacker.ability === "Neuroforce" && typeEff > 1) modifier *= 1.25;
@@ -23508,7 +23511,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Water Bubble: halves Fire damage taken (bypassed by Mold Breaker)
                 if (_defAbilityActive && defender.ability === "Water Bubble" && move.type === "Fire") modifier *= 0.5;
                 // Ice Scales: halves Special damage taken (bypassed by Mold Breaker)
-                if (_defAbilityActive && defender.ability === "Ice Scales" && move.cat === "Special") modifier *= 0.5;
+                if (_defAbilityActive && defender.ability === "Ice Scales" && _effectiveCat === "Special") modifier *= 0.5;
                 // Purifying Salt: halves Ghost damage taken (bypassed by Mold Breaker)
                 if (_defAbilityActive && defender.ability === "Purifying Salt" && move.type === "Ghost") modifier *= 0.5;
                 // Fluffy: halves contact damage; doubles Fire damage taken (bypassed by Mold Breaker for the halving)
@@ -24081,7 +24084,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // and any move with flags.defrost / thawsTarget flag — thaws a Frozen target on hit.
                 {
                     const _thawsTargetMoves = new Set(["Scald","Hydro Steam","Steam Eruption","Scorching Sands","Matcha Gotcha","Burning Jealousy"]);
-                    const _movethaws = move.thawsTarget || (move.flags && (move.flags.defrost || move.flags.thawsTarget)) || _thawsTargetMoves.has(move.name);
+                    // Canon (Gen 2+): every damaging Fire-type move thaws a frozen target, in addition to
+                    // the flag-marked / named thaw moves (Scald, Steam Eruption, etc.).
+                    const _movethaws = move.thawsTarget || (move.flags && (move.flags.defrost || move.flags.thawsTarget)) || _thawsTargetMoves.has(move.name) || (move.type === "Fire" && move.cat !== "Status");
                     if (_movethaws && defender.status === "FRZ" && defender.currentHp > 0 && !hitSub) {
                         defender.status = null; defender.statusTurns = 0;
                         logMsg(`${defender.name} was thawed out by ${move.name}!`, 'heal');
@@ -25719,6 +25724,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${mon.name}'s Regenerator restored ${actHeal} HP!`, 'heal');
                 }
             }
+            // Badly-poison (TOX) counter resets on switch-out (Gen 2+). SLP and other status
+            // counters are governed by their own handlers and intentionally persist.
+            if (mon.status === "TOX") mon.statusTurns = 0;
             mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
             mon.volatile.confusion = 0;
             mon.volatile.leechSeed = false;
