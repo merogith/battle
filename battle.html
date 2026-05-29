@@ -45095,7 +45095,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Manage (toggle owned relics on/off; everywhere). One hub entry opens one of
         // these; these tabs switch between them so the player sees both modes exist.
         function _relicTabBar(active, cityIdx) {
-            const canBrowse = storyArtifactShopCityAllowed(cityIdx);
+            // Use the documented relic cycle [0,3,6,9] — the same predicate the hub
+            // button and the free-relic tip use — NOT the looser storyArtifactShopCityAllowed
+            // (which also allows C8's Dept Store). Keeps the Browse tab offered exactly
+            // where the hub offers it, so the merge introduces no new C8 relic path.
+            const canBrowse = [0, 3, 6, 9].includes(Math.max(0, cityIdx | 0));
             const base = 'flex:1;padding:7px 8px;font-family:inherit;font-size:12px;font-weight:bold;border-radius:4px;border:1px solid;';
             const on = 'color:#1a0022;background:#ce93d8;border-color:#ce93d8;cursor:default;';
             const off = 'color:#ce93d8;background:rgba(206,147,216,0.08);border-color:#7b1fa2;cursor:pointer;';
