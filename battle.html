@@ -13615,6 +13615,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window.__pbsGlobalEscBound = true;
             document.addEventListener('keydown', function (e) {
                 if (e.key !== 'Escape') return;
+                // game-confirm has a Promise contract — route Esc through its resolver
+                // (resolve false) instead of just hiding it, or the awaiter hangs.
+                // Checked FIRST so a source-topmost confirm isn't blindly closeModal'd.
+                const gameConfirm = document.getElementById('modal-game-confirm');
+                if (gameConfirm && !gameConfirm.classList.contains('hidden')) {
+                    e.preventDefault();
+                    window._gameConfirmResult(false);
+                    return;
+                }
                 // Find the LAST (visually topmost in source order) un-hidden modal.
                 const modals = document.querySelectorAll('.modal:not(.hidden)');
                 if (!modals.length) return;
@@ -13650,31 +13659,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._gameConfirmResolve = null;
             if (r) r(!!ok);
         };
-        if (!window._modalEscapeBound) {
-            window._modalEscapeBound = true;
-            document.addEventListener('keydown', function(e) {
-                if (e.key !== 'Escape') return;
-                // game-confirm has a Promise contract — route Esc through its
-                // resolver instead of just hiding it, otherwise the awaiter hangs.
-                const gameConfirm = document.getElementById('modal-game-confirm');
-                if (gameConfirm && !gameConfirm.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window._gameConfirmResult(false);
-                    return;
-                }
-                // Close the topmost visible modal. DOM order = stack order
-                // because openModal() pushes onto the end; the last `.modal:not(.hidden)`
-                // is what's painted on top.
-                const open = document.querySelectorAll('.modal:not(.hidden)');
-                if (open.length) {
-                    const top = open[open.length - 1];
-                    if (top.id) {
-                        e.preventDefault();
-                        window.closeModal(top.id);
-                    }
-                }
-            });
-        }
+        // Escape handling (game-confirm Promise routing + data-no-escape opt-out +
+        // close-topmost) is consolidated into the single __pbsGlobalEscBound listener
+        // above. A near-duplicate second listener used to live here and double-fired
+        // on every Escape — and, lacking the game-confirm carve-out, the first listener
+        // could closeModal() a confirm without resolving its Promise (hanging the await).
         window.showHelp = function() {
             dismissTextTooltipForModal();
             const ps = settings.partySize || 3;

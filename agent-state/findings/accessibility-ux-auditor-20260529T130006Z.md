@@ -133,7 +133,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 3aee2ffaaeaa
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Two near-duplicate global Escape keydown handlers both close the topmost modal

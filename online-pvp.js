@@ -69,6 +69,11 @@
         return { room: data };
     }
 
+    // Snapshot clone for match/battle state. structuredClone (primary path — universal
+    // in modern browsers + Node 17+) preserves Set/Map/typed arrays. The JSON fallback is
+    // LEGACY-ONLY (ancient WebViews) and assumes JSON-safe state — it silently drops
+    // Set/undefined/functions. Contract: keep cloned side state JSON-safe; any Set (e.g.
+    // revealedFoe) must be converted to an array in exportBattleSnapshot before it gets here.
     function deepClone(o) {
         return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
     }

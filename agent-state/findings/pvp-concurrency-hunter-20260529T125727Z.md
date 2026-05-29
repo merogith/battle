@@ -198,7 +198,7 @@ current_line_hint: ~72
 agents: [pvp-concurrency-hunter]
 fingerprint: a1c0ffee0007
 confidence: low
-status: open
+status: fixed-claude/focused-cori-sGNzn (documented JSON-safe contract per finding option b; structuredClone primary path already preserves Set/Map)
 ---
 
 **Title**: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` which silently drops `Set`/`undefined` in cloned state

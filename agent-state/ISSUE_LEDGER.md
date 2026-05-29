@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T19:22:00.281Z
+> **Generated**: 2026-05-29T19:32:51.529Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1448,7 +1448,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 3aee2ffaaeaa
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Two near-duplicate global Escape keydown handlers both close the topmost modal
@@ -1808,7 +1808,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: a1c0ffee0007
 confidence: low
-status: open
+status: fixed-claude/focused-cori-sGNzn (documented JSON-safe contract per finding option b; structuredClone primary path already preserves Set/Map)
 ---
 
 **Title**: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` which silently drops `Set`/`undefined` in cloned state
