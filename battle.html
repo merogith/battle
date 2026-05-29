@@ -2686,6 +2686,27 @@
             color: #e8f5c4;
         }
         .story-battle-intro-dialog { max-width: min(92vw, 400px); }
+        /* Two-sided VS battle-intro splash (showBattleIntro). Drama scales by tier
+           via the --vs-accent set inline; the screen-flash + bigger glyph are gated
+           behind .vs-big (major battles only). Motion respects prefers-reduced-motion. */
+        .vs-stage { display:flex; align-items:center; justify-content:center; gap:min(7vw,40px); width:100%; max-width:760px; }
+        .vs-fighter { width:min(40vw,200px); height:min(40vw,200px); object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.6)); }
+        .vs-fighter-player { animation: vsSlideInL 0.5s cubic-bezier(0.18,0.8,0.3,1.18) both; }
+        .vs-fighter-foe { animation: vsSlideInR 0.5s cubic-bezier(0.18,0.8,0.3,1.18) both; }
+        .vs-glyph { font-size:54px; font-weight:900; font-style:italic; line-height:1; color:#fff;
+            text-shadow:0 0 18px var(--vs-accent,#fff), 0 0 5px rgba(0,0,0,0.9); animation: vsPop 0.45s 0.32s both; }
+        .vs-big .vs-glyph { font-size:72px; }
+        .vs-flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:1; animation: vsFlash 0.55s 0.38s both; }
+        .vs-intro-dialog { animation: vsRise 0.4s 0.66s both; }
+        @keyframes vsSlideInL { from { opacity:0; transform:translateX(-120%); } to { opacity:1; transform:translateX(0); } }
+        @keyframes vsSlideInR { from { opacity:0; transform:translateX(120%); } to { opacity:1; transform:translateX(0); } }
+        @keyframes vsPop { 0% { opacity:0; transform:scale(0.2) rotate(-12deg); } 60% { opacity:1; transform:scale(1.25) rotate(3deg); } 100% { opacity:1; transform:scale(1) rotate(0); } }
+        @keyframes vsFlash { 0% { opacity:0; } 28% { opacity:0.8; } 100% { opacity:0; } }
+        @keyframes vsRise { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            .vs-fighter-player, .vs-fighter-foe, .vs-glyph, .vs-intro-dialog { animation: none !important; }
+            .vs-flash { display: none !important; }
+        }
         .story-action-btn {
             display:flex; align-items:center; gap:10px; padding:11px 14px;
             border: 2px solid #4a4f5e; border-radius: 0 !important;
@@ -46942,11 +46963,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const silentAttr = _storyQuoteIsSilent(quote)
                     ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
                     : '';
+                // VS splash: player vs opponent, accent + drama scaled by battle tier.
+                const VS_ACCENT = { 'Gym Leader':'#ffd54f', 'Rival':'#ff9800', 'Elite Trainer':'#ba68c8', 'E1':'#ba68c8', 'E2':'#ba68c8', 'E3':'#ba68c8', 'E4':'#ba68c8', 'Champion':'#ffd700', 'Victory Road':'#80cbc4', 'Basic Trainer':'#b0bec5', 'Gym Trainer':'#b0bec5' };
+                const vsAccent = (String(eventType) === 'Mystery Figure') ? '#7e57c2' : (VS_ACCENT[quoteRole] || VS_ACCENT[String(eventType)] || '#b0bec5');
+                const vsIsMajor = !(quoteRole === 'Basic Trainer' || quoteRole === 'Gym Trainer');
+                const vsPlayerSprite = _trainerSpritePath((sm && sm.trainerProfile && sm.trainerProfile.sprite) || TRAINER_DEFAULT);
                 overlay.innerHTML = `
-                    <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
+                    ${vsIsMajor ? '<div class="vs-flash" aria-hidden="true"></div>' : ''}
+                    <div class="vs-stage${vsIsMajor ? ' vs-big' : ''}" style="--vs-accent:${vsAccent};">
+                        <img class="vs-fighter vs-fighter-player" src="${_esc(vsPlayerSprite)}" onerror="this.style.visibility='hidden'" alt="">
+                        <div class="vs-glyph" aria-hidden="true">VS</div>
+                        <img class="vs-fighter vs-fighter-foe" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="">
+                    </div>
                     <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>
                     ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
-                    <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
+                    <div class="story-dialog-host story-battle-intro-dialog vs-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
                         <div class="story-dialog-box">
                             <p class="story-dialog-text"${silentAttr}>"${quote}"</p>
@@ -46956,7 +46987,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
                 document.body.appendChild(overlay);
                 try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
-                const introMs = isRivalBattle ? 3400 : 2200;
+                const introMs = isRivalBattle ? 3400 : (vsIsMajor ? 2900 : 2200);
                 setTimeout(() => {
                     try { overlay.remove(); } catch (e) {}
                     // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
