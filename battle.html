@@ -8922,7 +8922,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relic Annex</span></h3>
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
@@ -9312,9 +9312,9 @@
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
+                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             </div>
-            <p style="font-size:11px;color:#888;margin:6px 0 0;">Toggle artifacts off to disable their battle effects.</p>
+            <p style="font-size:11px;color:#888;margin:6px 0 0;">Relics rewrite battle rules for both sides. Toggle the ones you own on or off.</p>
         </div>
         <div id="story-artifact-hall-list" style="flex:1;overflow-y:auto;padding:12px;"></div>
         <div style="padding:10px;border-top:1px solid #333;">
@@ -11183,7 +11183,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Stone Sage</b> — Every region\'s evolution methods, one shop. Rare Candy waives the gold cost on a Pokémon\'s first evolution.<br>
 <b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 5,000G. Permanent for that mon.<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
-<b>Relic Annex</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides.<br>
+<b>Relics</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides (Browse to acquire, Manage to toggle).<br>
 <b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random Vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
 <b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
@@ -29934,7 +29934,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
-            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0, artifacts: 0,
+            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
             link: 2, stoneShop: 3, evolab: 2,
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
             colress: 6,
@@ -43121,14 +43121,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Department Store')) {
                 _push('shop', makeActionBtn('🏬 Department Store','dept','window.StoryMode.enterShop(\'dept\')','dept', _facOpts('dept', [{label:'Premium',tone:'info'}])));
             }
-            const _relicCityIdx = getCityIndex(ev);
-            // Relic Annex cycles in every third city per the facility matrix: C0, C3, C6, C9.
-            if ([0, 3, 6, 9].includes(_relicCityIdx)) {
-                const relicFree = (_relicCityIdx === 0 && !sm.artifactFreeClaimUsed);
-                const relicMeta = relicFree
-                    ? [{label:'1st Free',tone:'free'}]
-                    : [_costBadge(5000, ' each')];
-                _push('shop', makeActionBtn('✨ Relic Annex','relic','window.StoryMode.enterArtifactShop()','dept', _facOpts('relic', relicMeta, { soft:true })));
+            // Relics — one facility, two faces (merged from the old "Relic Annex" +
+            // "Artifact Hall"). Browse (acquire a run-wide rule) is live only in the
+            // relic cities C0/C3/C6/C9; Manage (toggle owned relics on/off) is
+            // everywhere. A single hub entry; the in-screen Browse/Manage tabs switch.
+            {
+                const _relicCity = [0, 3, 6, 9].includes(cityIdx);
+                const _relicFree = (cityIdx === 0 && !sm.artifactFreeClaimUsed);
+                const _relicOwned = (sm.artifacts || []).length;
+                const _relicMeta = _relicCity
+                    ? (_relicFree ? [{label:'1st Free',tone:'free'}] : [_costBadge(5000, ' each')])
+                    : (_relicOwned ? [{label:`${_relicOwned} held`,tone:'info'}] : [{label:'Battle rules',tone:'info'}]);
+                const _relicClick = _relicCity ? 'window.StoryMode.enterArtifactShop()' : 'window.StoryMode.enterArtifactHall()';
+                _push('shop', makeActionBtn('✨ Relics','relic',_relicClick,'dept', _facOpts('relic', _relicMeta, { soft:true })));
             }
             if (actions.includes('Poké Casino')) {
                 _push('shop', makeActionBtn('🎰 Game Corner','casino','window.StoryMode.enterCasino()','casino', _facOpts('casino', [{label:'Win prizes',tone:'good'}], { soft:true })));
@@ -43168,8 +43173,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
                 _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(5000)], { soft:true })));
             }
-            // Artifact Hall — present in every city per the matrix (the relic enable/disable hub).
-            _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
+            // (Artifact Hall folded into the single "Relics" entry above — Manage tab.)
             // Pokémon Center — PC storage + Underground. Available from C0 per the v2
             // facility matrix so the player can swap / retry from the start town after a
             // tough fight or revisit the PC right away.
@@ -43456,7 +43460,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Friendly name lookup for the "Visit X first" tooltip.
         const _FACILITY_FRIENDLY_NAME = {
             mart: 'Pokémart', tutor: 'Move Tutor', nature: 'Nature Rater',
-            center: 'Pokémon Center', relic: 'Relic Annex', artifacts: 'Artifact Hall',
+            center: 'Pokémon Center', relic: 'Relics', artifacts: 'Relics',
             link: "Bill's Cable Link", stoneShop: 'Stone Emporium', evolab: 'Stone Sage',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
@@ -43550,7 +43554,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Relic Keeper: "Three on the velvet. Pick one — and remember, the rule it carries shows up in every battle of the run, theirs as well as yours."',
                 'Relic Keeper: "Read the card before you pay. Some of these change the air of the fight. Some of them just rearrange the furniture."',
                 'Relic Keeper: "Your first piece in Pallet is on me. After that the going rate is five thousand. Worth it for the right one."',
-                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Artifact Hall has a switch."',
+                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Manage tab has a switch."',
                 'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
             ],
         };
@@ -45085,14 +45089,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openSummary(_storySumIdx);
         }
 
+        // Browse / Manage tab bar — the two faces of the merged "Relics" facility:
+        // Browse (acquire a run-wide rule; only in the relic cities C0/C3/C6/C9) and
+        // Manage (toggle owned relics on/off; everywhere). One hub entry opens one of
+        // these; these tabs switch between them so the player sees both modes exist.
+        function _relicTabBar(active, cityIdx) {
+            const canBrowse = storyArtifactShopCityAllowed(cityIdx);
+            const base = 'flex:1;padding:7px 8px;font-family:inherit;font-size:12px;font-weight:bold;border-radius:4px;border:1px solid;';
+            const on = 'color:#1a0022;background:#ce93d8;border-color:#ce93d8;cursor:default;';
+            const off = 'color:#ce93d8;background:rgba(206,147,216,0.08);border-color:#7b1fa2;cursor:pointer;';
+            const dis = 'color:#666;background:rgba(255,255,255,0.03);border-color:#444;cursor:not-allowed;';
+            const browseStyle = active === 'browse' ? on : (canBrowse ? off : dis);
+            const manageStyle = active === 'manage' ? on : off;
+            const browseClick = (active === 'browse' || !canBrowse) ? '' : "window.StoryMode.enterArtifactShop()";
+            const manageClick = active === 'manage' ? '' : "window.StoryMode.enterArtifactHall()";
+            const browseTitle = canBrowse ? 'Acquire a run-wide relic (one per shop)' : 'Relics are sold in select cities along the way';
+            return `<div style="display:flex;gap:6px;margin-bottom:12px;">
+                <button type="button" ${canBrowse ? '' : 'disabled'} onclick="${browseClick}" title="${browseTitle}" style="${base}${browseStyle}">✨ Browse</button>
+                <button type="button" onclick="${manageClick}" title="Turn the relics you own on or off" style="${base}${manageStyle}">⚙ Manage</button>
+            </div>`;
+        }
         function enterArtifactHall() {
             _markFacilitySeen('artifacts');
+            _markFacilitySeen('relic'); // merged "Relics" facility — opening either face satisfies the one intro
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
                 const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="This relic affects both you and your opponents while enabled">◆ Affects both sides</span>';
                 const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="The coin reward and curse only affect your team">◆ Your team only</span>';
                 const _hallGuidance = '<div style="border:1px solid #7b1fa2;border-radius:6px;padding:10px;margin-bottom:10px;background:rgba(123,31,162,0.12);font-size:11px;color:#d9c7e8;line-height:1.5;"><strong style="color:#ce93d8;">Relics rewrite the rules of every battle — for both sides.</strong> They arrive switched <strong>OFF</strong>. Flip one on here only when you want its effect; new trainers should leave them off until they\'ve found their footing. Toggle any relic on or off anytime.</div>';
-                el.innerHTML = _hallGuidance + ((sm.artifacts || []).map(id => {
+                el.innerHTML = _relicTabBar('manage', cityIdx) + _hallGuidance + ((sm.artifacts || []).map(id => {
                     const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
@@ -45112,7 +45138,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${off ? 'Enable Relic' : 'Disable Relic'}
                         </button>
                     </div>`;
-                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Relic Annex sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
+                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Browse tab sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
             }
             showScreen('screen-story-artifacts');
         }
@@ -48145,7 +48171,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
                     ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
                     ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
-                    ${btn(png('icons/story/story_artifacts.png'),  'Relic Annex', 'window.StoryMode.enterArtifactShop()', null, 'Buy run-wide relics. One per shop, locked for the rest of the run.')}
+                    ${btn(png('icons/story/story_artifacts.png'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
                     ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
                     ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
                     ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
@@ -50300,7 +50326,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
-                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No items in stock — you\'re on a No Item Run. Visit the <strong style="color:#ce93d8;">Relic Annex</strong> for run-wide relics instead.</div>');
+                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No items in stock — you\'re on a No Item Run. Visit <strong style="color:#ce93d8;">Relics</strong> for run-wide relics instead.</div>');
             }
             gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
@@ -50436,7 +50462,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _markFacilitySeen('relic');
             try { _storyShowOneTimeTip('relic',
-                'The Relic Annex.\n\nThree relics on the shelf, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Artifact Hall in any city will let you toggle them.'); } catch (e) {}
+                'Relics — the Browse shelf.\n\nThree relics here, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Manage tab (in any city) lets you toggle them.'); } catch (e) {}
             try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
@@ -50486,7 +50512,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>` : ''}
                 </div>`);
             }
-            gridEl.innerHTML = _artParts.join('');
+            gridEl.innerHTML = _relicTabBar('browse', cityIdx) + _artParts.join('');
             syncStoryArtifactShopBackground();
             showScreen('screen-story-artifact-shop');
             // Soft mystical chime — relic shop has a treasure-room mood.
