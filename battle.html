@@ -11724,6 +11724,82 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else _startBgTrack(_pickRandomBgIdx(-1), 0);
             }
 
+            // ── Battle-theme override layer ──────────────────────────────
+            // Story trainer battles (gym leaders, rival, Elite Four, Champion,
+            // Mystery Figure) swap the continuous field BGM for a context-
+            // appropriate battle theme, then restore the field track — exactly
+            // where it left off — when the battle ends. A win plays a short
+            // victory fanfare before the field BGM returns. Wild/casual battles
+            // are untouched. Missing/blocked themes fall back to field BGM.
+            const BATTLE_THEMES = {
+                trainer: ['music/themes/Theme1.mp3', 'music/themes/Theme2.mp3'],
+                leader:  ['music/themes/Theme3.mp3'],
+                rival:   ['music/themes/Theme4.mp3'],
+                elite:   ['music/themes/Theme2.mp3', 'music/themes/Theme3.mp3'],
+                boss:    ['music/themes/boss_climax.mp3'],
+            };
+            const VICTORY_STING = 'music/themes/victory.mp3';
+            let _battleAudio = null;
+            let _battleMood = null;
+
+            function _stopBattleAudio() {
+                if (_battleAudio) {
+                    try { _battleAudio.onended = null; _battleAudio.onerror = null; _battleAudio.pause(); } catch (e) {}
+                    _battleAudio = null;
+                }
+                _battleMood = null;
+            }
+
+            function _playBattleTheme(mood) {
+                mood = mood || 'trainer';
+                if (!settings.musicEnabled) { _battleMood = mood; return; }
+                const list = BATTLE_THEMES[mood] || BATTLE_THEMES.trainer;
+                if (!list || !list.length) return;
+                if (_battleMood === mood && _battleAudio && !_battleAudio.paused) return;
+                _stopBattleAudio();
+                // Duck the field track: persist position, then pause so it can
+                // resume seamlessly once the battle ends.
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
+                    _persistBgState(true);
+                    try { bgAudio.pause(); } catch (e) {}
+                }
+                const src = list[Math.floor(Math.random() * list.length)];
+                try {
+                    const a = new Audio(src);
+                    a.loop = true;
+                    a.volume = _musicVol;
+                    a.onerror = () => { if (_battleAudio === a) { _battleAudio = null; _battleMood = null; _resumeOrStartBg(); } };
+                    _battleAudio = a;
+                    _battleMood = mood;
+                    a.play().catch(() => {});
+                } catch (e) { _battleAudio = null; _battleMood = null; }
+            }
+
+            function _endBattleTheme(won) {
+                const wasActive = !!(_battleAudio || _battleMood);
+                _stopBattleAudio();
+                if (!wasActive) return; // intro-less / wild battle — field BGM was never ducked
+                if (won && settings.musicEnabled) {
+                    // Victory fanfare over the (still-paused) field; field resumes when it ends.
+                    try {
+                        const a = new Audio(VICTORY_STING);
+                        a.loop = false;
+                        a.volume = _musicVol;
+                        const _resume = () => { if (_battleAudio === a) { _battleAudio = null; _battleMood = null; _resumeOrStartBg(); } };
+                        a.onended = _resume;
+                        a.onerror = _resume;
+                        _battleAudio = a;
+                        _battleMood = 'victory';
+                        a.play().catch(() => {});
+                        return;
+                    } catch (e) {}
+                }
+                if (settings.musicEnabled) {
+                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
+                    else _resumeOrStartBg();
+                }
+            }
+
             return {
                 init() {
                     if (_bgStarted) return;
@@ -11752,12 +11828,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _resumeOrStartBg();
                 },
 
+                // Story battle music: start a mood-appropriate theme (see
+                // _storyBattleMoodFor) at the battle intro; stop + restore field
+                // BGM (with a victory fanfare on a win) when the battle ends.
+                playBattleTheme(mood) { _playBattleTheme(mood); },
+                endBattleTheme(won) { _endBattleTheme(won); },
+
                 toggleMusic() {
                     settings.musicEnabled = !settings.musicEnabled;
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
                     if (settings.musicEnabled) {
-                        _resumeOrStartBg();
+                        if (_battleAudio) { _battleAudio.play().catch(() => {}); }
+                        else if (_battleMood && BATTLE_THEMES[_battleMood]) { _playBattleTheme(_battleMood); }
+                        else { _resumeOrStartBg(); }
                     } else {
+                        if (_battleAudio) { try { _battleAudio.pause(); } catch (e) {} }
                         if (bgAudio) {
                             _persistBgState(true);
                             try { bgAudio.pause(); } catch (e) {}
@@ -11774,6 +11859,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _musicVol = val;
                     if (bgAudio) bgAudio.volume = _musicVol;
                     if (_nextBgAudio) _nextBgAudio.volume = _musicVol;
+                    if (_battleAudio) _battleAudio.volume = _musicVol;
                 },
 
                 setSoundVolume(val) {
@@ -46791,6 +46877,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }, idx);
         }
 
+        // Maps a story battle event type to an AudioSystem battle-theme mood.
+        function _storyBattleMoodFor(eventType) {
+            const e = String(eventType || '');
+            if (/^Gym Leader/i.test(e)) return 'leader';
+            if (e === 'Rival') return 'rival';
+            if (e === 'Champion' || e === 'Mystery Figure' || /Caged God|Boss/i.test(e)) return 'boss';
+            if (/^E[1-4]$/.test(e) || e === 'Elite Trainer' || e === 'Victory Road') return 'elite';
+            return 'trainer';
+        }
+
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
             // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
             const _runIntro = () => {
@@ -46831,6 +46927,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
                 document.body.appendChild(overlay);
+                try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
                 const introMs = isRivalBattle ? 3400 : 2200;
                 setTimeout(() => {
                     try { overlay.remove(); } catch (e) {}
@@ -46889,6 +46986,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── BATTLE END CALLBACK ───────────────────────────────────────────
         function onBattleEnd(won, title, desc) {
+            // Stop any story battle theme and restore field BGM (a win plays a
+            // victory fanfare first). Runs before the crucible/pits early-returns
+            // so every story battle-end path clears the override.
+            try { AudioSystem.endBattleTheme(won); } catch (e) {}
             // Crucible-sourced battles (Frontier / Mystery / Rival / League / Gym) bypass
             // the normal victory overlay + game-over screen and route back to their hub.
             if (sm.crucibleBattleSource) {
@@ -47267,6 +47368,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function afterBattleReturn() {
+            // Defensive: ensure any battle theme is cleared and field BGM resumes
+            // on the return-to-map path (covers forfeit / error-recovery returns
+            // where onBattleEnd may not have run).
+            try { AudioSystem.endBattleTheme(false); } catch (e) {}
             // Called from returnToHome when story mode is active.
             // If a Crucible-sourced battle just ended, onBattleEnd already handled team
             // sync + UI routing — short-circuit so processNextEvent does not advance the
