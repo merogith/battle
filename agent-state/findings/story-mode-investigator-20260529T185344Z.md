@@ -151,3 +151,64 @@ if (rivalGateActive) {
 
 **Verification**: Tip label and target match the facility's behavior.
 
+---
+severity: P3
+category: dx
+anchor_symbol: _pcRefresh
+current_line_hint: ~6659
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 4540fbc5d3fe
+confidence: high
+status: open
+---
+
+**Title**: Dead CSS selector #story-pc-tab-journal-btn — no such tab button exists in the Poké Center
+
+**Evidence**:
+```css
+#story-pc-tab-storage-btn, #story-pc-tab-underground-btn, #story-pc-tab-journal-btn { ... }
+```
+```js
+// Poké Center HTML has only storage + underground tab buttons (no journal button).
+// _pcRefresh's _tabBtns map has only { storage, underground }.
+// The rival journal (_pcRenderRivalJournalTab) now renders in the Collection screen
+// (_collectionTab === 'rival'), not the PC. The journal-btn selector is orphaned.
+```
+
+**Repro**: grep -n 'story-pc-tab-journal-btn' battle.html → only the CSS rule at ~6659; no matching element.
+
+**Blast radius**: None functional — dead style. Signals the rival journal was relocated out of the PC and the CSS wasn't cleaned up.
+
+**Fix sketch**: Drop #story-pc-tab-journal-btn from the selector list.
+
+**Verification**: grep shows the selector removed; PC tab styling unchanged.
+
+---
+severity: P3
+category: dx
+anchor_symbol: enterPokemonCenter
+current_line_hint: ~9018
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 5e12a6740351
+confidence: medium
+status: open
+---
+
+**Title**: Story facility regions use weak lowercase aria-labels ("story pokemoncenter", "story link")
+
+**Evidence**:
+```html
+<div id="screen-story-pokemoncenter" ... role="region" aria-label="story pokemoncenter" ...>
+<div id="screen-story-link" ... role="region" aria-label="story link" ...>
+```
+
+**Repro**: Screen-reader users entering these facilities hear "story pokemoncenter" / "story link" rather than the human label the screen header shows ("Pokémon Center" / "Cable Link Station").
+
+**Blast radius**: A11y only. showScreen focuses the region on entry (line ~53292), so the aria-label is the first thing announced.
+
+**Fix sketch**: Set aria-label to the displayed facility name ("Pokémon Center", "Cable Link Station"). Same pattern applies to sibling story-screen regions.
+
+**Verification**: Region announces the friendly facility name on focus.
+
