@@ -23847,6 +23847,54 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             updateUI();
                         }
                     }
+                    // On-contact / on-hit reactions for multi-hit moves — fire once per landed hit
+                    // (canon). Previously the multi-hit branch returned before the single-hit on-contact
+                    // block, so multi-hit contact moves (Double Kick, Dual Wingbeat, Twineedle, etc.) never
+                    // triggered Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Poison Touch
+                    // / Gooey / Rough Skin / Iron Barbs / Rocky Helmet / King's Rock flinch. Contact-status
+                    // abilities are Sheer-Force-gated (mirrors the single-hit contact block); the recoil
+                    // items/abilities and King's Rock flinch are not.
+                    {
+                        const _mhAtkIA = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
+                        const _mhDefIA = state.magicRoom === 0 && !(defender.volatile && defender.volatile.embargo > 0) && defender.ability !== "Klutz";
+                        const _mhContact = isContactMove(move) && attacker.ability !== "Long Reach" && attacker.item !== "Protective Pads";
+                        const _mhContactStatus = _mhContact && !(attacker.ability === "Sheer Force" && move._sheerForceBoosted);
+                        for (let _ch = 0; _ch < hitsLanded && !hitSub && defender.currentHp > 0 && attacker.currentHp > 0; _ch++) {
+                            if (_mhContactStatus) {
+                                if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
+                                if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
+                                if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
+                                if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious" && attacker.ability !== "Aroma Veil" && defender.ability !== "Aroma Veil") {
+                                    attacker.volatile.infatuated = true; logMsg(`${attacker.name} fell in love from Cute Charm!`, 'status');
+                                }
+                                if (defender.ability === "Effect Spore" && attacker.type1 !== "Grass" && attacker.type2 !== "Grass" && attacker.ability !== "Overcoat" && attacker.item !== "Safety Goggles") {
+                                    let _es = Math.random() * 100;
+                                    if (_es < 9) applyStatus(attacker, "PSN"); else if (_es < 19) applyStatus(attacker, "PAR"); else if (_es < 30) applyStatus(attacker, "SLP");
+                                }
+                                if (attacker.ability === "Poison Touch" && Math.random() < 0.3) applyStatus(defender, "PSN");
+                            }
+                            if (_mhContact && attacker.currentHp > 0) {
+                                if ((defender.ability === "Gooey" || defender.ability === "Tangling Hair")) {
+                                    changeStage(attacker, 'spe', -1);
+                                    logMsg(`${defender.name}'s ${defender.ability} lowered ${attacker.name}'s Speed!`, 'info');
+                                }
+                                if (_mhDefIA && defender.item === "Rocky Helmet" && attacker.ability !== "Magic Guard") {
+                                    let _rh = Math.min(attacker.currentHp, Math.max(1, Math.floor(attacker.maxHp / 6))); attacker.currentHp -= _rh;
+                                    logMsg(`${attacker.name} was hurt by ${defender.name}'s Rocky Helmet! (${_rh} damage)`, 'dmg');
+                                }
+                                if ((defender.ability === "Rough Skin" || defender.ability === "Iron Barbs") && attacker.ability !== "Magic Guard" && attacker.currentHp > 0) {
+                                    let _rs = Math.min(attacker.currentHp, Math.max(1, Math.floor(attacker.maxHp / 8))); attacker.currentHp -= _rs;
+                                    logMsg(`${attacker.name} was hurt by ${defender.name}'s ${defender.ability}! (${_rs} damage)`, 'dmg');
+                                }
+                            }
+                            // King's Rock / Razor Fang: 10% flinch per damaging hit
+                            if (_mhAtkIA && (attacker.item === "King's Rock" || attacker.item === "Razor Fang") && defender.currentHp > 0
+                                && defender.ability !== "Shield Dust" && defender.ability !== "Inner Focus" && defender.item !== "Covert Cloak" && Math.random() < 0.1) {
+                                defender.volatile.flinch = true;
+                            }
+                        }
+                        updateUI();
+                    }
                     return;
                 }
 
