@@ -40,7 +40,7 @@ current_line_hint: ~234
 agents: [pvp-concurrency-hunter]
 fingerprint: a1c0ffee0002
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: `applyBattleLogHtml` regex sanitizer is bypassable — remote `battle_log_html` still reaches `innerHTML`

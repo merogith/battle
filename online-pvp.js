@@ -226,25 +226,56 @@
     }
 
     // Sanitize HTML coming off the wire before injecting into the local battle log.
-    // The server-side RLS lets any client with the room id update the `data` jsonb,
-    // and the legacy `battle_log_html` field was originally set to innerHTML raw —
-    // a peer that flips a single character of html could inject script into the
-    // host's DOM. We block the common script-injection vectors below; legitimate
-    // battle-log content is plain text + <br> + a small set of <span class="...">.
+    // Remote `battle_log_html` is attacker-influenceable (a peer who knows the room
+    // id + token can write it), so it must never reach innerHTML untrusted. A regex
+    // blocklist is known-broken — backtick-quoted attrs (`<img src=`x`onerror=...>`),
+    // entity-encoded schemes (`jav&#x09;ascript:`), and namespace tricks slip past —
+    // so instead we parse the markup in an INERT document and rebuild it from an
+    // allowlist: only the formatting tags the battle log actually emits survive, and
+    // the ONLY attribute kept is a charset-validated `class`. No event handlers,
+    // href/src, style, data-*, or non-allowlisted tags survive.
     function sanitizeBattleLogHtml(raw) {
-        if (typeof raw !== 'string') return '';
-        let html = raw;
-        // Drop <script>, <style>, <iframe>, <object>, <embed>, <link>, <meta>,
-        // <form>, <input>, <textarea>, <button>, <svg> (script-bearing namespaces).
-        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
-        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*\/?>/gi, '');
-        // Drop on*= event handlers in any tag.
-        html = html.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-        // Drop javascript: / vbscript: / data: pseudo-URLs in href / src / xlink:href.
-        html = html.replace(/(href|src|xlink:href|action|formaction)\s*=\s*(?:"\s*(?:javascript|vbscript|data)\s*:[^"]*"|'\s*(?:javascript|vbscript|data)\s*:[^']*'|(?:javascript|vbscript|data)\s*:[^\s>]*)/gi, '$1=""');
-        // Drop style="" attributes — CSS can host expression() in old IE and url(javascript:) elsewhere.
-        html = html.replace(/\sstyle\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-        return html;
+        if (typeof raw !== 'string' || raw === '') return '';
+        const doc = global.document;
+        if (!doc || !doc.implementation || typeof doc.implementation.createHTMLDocument !== 'function') {
+            // No DOM to parse with (non-browser context) — refuse to emit markup.
+            return '';
+        }
+        const ALLOWED_TAGS = { DIV: 1, SPAN: 1, BR: 1, B: 1, I: 1, EM: 1, STRONG: 1, S: 1, U: 1, SMALL: 1, P: 1 };
+        // Tags whose text content must be dropped too (raw-text / script-bearing).
+        const DROP_WITH_CONTENT = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, TITLE: 1, NOSCRIPT: 1, TEMPLATE: 1, IFRAME: 1, SVG: 1, MATH: 1, OBJECT: 1, EMBED: 1, NOFRAMES: 1, XMP: 1 };
+        const CLASS_OK = /^[a-zA-Z0-9 _-]{1,200}$/;
+        // createHTMLDocument has no browsing context: <img onerror>/<script> parsed
+        // here never execute or fetch — parsing alone cannot fire the payload.
+        const inert = doc.implementation.createHTMLDocument('');
+        inert.body.innerHTML = raw;
+        const out = doc.createElement('div');
+        const rebuild = (srcNode, dstNode) => {
+            const kids = srcNode.childNodes;
+            for (let i = 0; i < kids.length; i++) {
+                const n = kids[i];
+                if (n.nodeType === 3) {
+                    dstNode.appendChild(doc.createTextNode(n.nodeValue));
+                } else if (n.nodeType === 1) {
+                    // Uppercase: HTML elements report uppercase tagName, but SVG/MathML
+                    // foreign content reports case-as-authored (e.g. "svg") — normalize
+                    // so the allowlist/drop checks catch foreign subtrees too.
+                    const tag = (n.tagName || '').toUpperCase();
+                    if (ALLOWED_TAGS[tag]) {
+                        const safe = doc.createElement(tag.toLowerCase());
+                        const cls = n.getAttribute('class');
+                        if (cls && CLASS_OK.test(cls)) safe.setAttribute('class', cls);
+                        rebuild(n, safe);
+                        dstNode.appendChild(safe);
+                    } else if (!DROP_WITH_CONTENT[tag]) {
+                        // Unknown but benign wrapper: drop the tag, keep its sanitized children.
+                        rebuild(n, dstNode);
+                    }
+                }
+            }
+        };
+        rebuild(inert.body, out);
+        return out.innerHTML;
     }
 
     function applyBattleLogHtml(html) {
