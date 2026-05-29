@@ -266,7 +266,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 87f7a13f57dd
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (intentional easy-mode economy assist; maintainer confirmed — Hard mult is explicitly floored, deliberate tuning)
 ---
 
 **Title**: Coin multiplier inverts the difficulty curve — harder modes earn less gold against tougher foes

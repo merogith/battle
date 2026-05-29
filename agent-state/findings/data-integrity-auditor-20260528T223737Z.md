@@ -7,7 +7,7 @@ file: data/builds/gen8.json
 agents: [data-integrity-auditor]
 fingerprint: 364230245444
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (unused mirror data — verified the loader reads only the gen-9 key; these older-gen entries are never read)
 ---
 
 **Title**: Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv
@@ -38,7 +38,7 @@ file: data/builds/gen5.json
 agents: [data-integrity-auditor]
 fingerprint: d5fa11ffea9f
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (unused mirror data — verified the loader reads only the gen-9 key; these older-gen entries are never read)
 ---
 
 **Title**: 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows
@@ -68,7 +68,7 @@ file: data/builds/gen4.json
 agents: [data-integrity-auditor]
 fingerprint: 51f176d8cb95
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (unused mirror data — verified the loader reads only the gen-9 key; these older-gen entries are never read)
 ---
 
 **Title**: gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive)
@@ -98,7 +98,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 0bb12c949196
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (intended — gen-9-only loader by design; the ~2800 older-gen keys are vestigial Showdown-format mirror, not read)
 ---
 
 **Title**: Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read
