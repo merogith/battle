@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T18:09:01.565Z
+> **Generated**: 2026-05-29T18:42:21.940Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -300,7 +300,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 264442eab1b8
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative

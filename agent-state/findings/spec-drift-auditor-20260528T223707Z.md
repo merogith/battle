@@ -37,7 +37,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 264442eab1b8
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative

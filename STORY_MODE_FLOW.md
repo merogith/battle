@@ -192,7 +192,7 @@ The five surviving modes use these values (`battle.html:8999–9019` for stat mu
 | Hard | 1.15 | 1.00 (floored from 0.92) |
 | Challenge (Very Hard) | 1.30 | 1.10 |
 
-Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-HoF Mystery) is applied **before** `applyFoeDifficultyScaling`, so the two stack multiplicatively. Champion HP on Hard ≈ ×1.30 × ×1.15 = ×1.495.
+Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-HoF Mystery) runs **before** `applyFoeDifficultyScaling` and stores its boost as an **additive delta** on the foe (`mon._leagueStatBonus`); difficulty scaling then merges it **additively** with the difficulty multiplier — *not* multiplicatively. e.g. Champion HP on Challenge ≈ ×(1.30 + 0.40) = ×1.70, not the old ×1.30 × ×1.40 = ×1.82 cliff. (Crucible Hard Mode's separate ×1.30 from `crucibleApplyHardModeToFoes` still stacks multiplicatively.)
 
 **Early-game softening:** `_earlyGameFoeStatMult()` applies a tiered post-build stat multiplier through the first two gyms so RNG can't brick a fresh save:
 
@@ -683,12 +683,14 @@ Random Gym Rematch, Battle Frontier, and the Crucible Wild Encounter.
 
 | Layer | Where | Multiplier |
 |---|---|---|
-| Per-event boss boost | `applyStoryLeagueFoeStatBoost` — fires for E1-4 / Champion / Mystery / league Rival | 1.22-1.50 HP |
+| Per-event boss boost | `applyStoryLeagueFoeStatBoost` — fires for E1-4 / Champion / Mystery / league Rival; stored as an **additive** delta, merged by difficulty scaling | +0.22–0.50 HP |
 | Hard Mode | `crucibleApplyHardModeToFoes` — fires after the boss boost in `startBattle` | × 1.30 HP/bulk/speed |
 | Difficulty mode | `applyFoeDifficultyScaling` — applies last | × 0.70-1.30 |
 
-Champion rematch HP on Hard Mode + hard difficulty:
-`base × 1.40 × 1.30 × 1.15 = base × 2.09`.
+Champion rematch HP on Hard Mode + hard difficulty (the boss boost merges
+**additively** with the difficulty multiplier; Crucible Hard Mode remains a
+separate multiplier):
+`base × 1.30 (Hard Mode) × (1.15 + 0.40) = base × 1.30 × 1.55 ≈ base × 2.02`.
 
 Random Gym Rematch falls outside the boss-boost filter, so the dedicated
 `crucibleApplyHardModeToFoes` (window-scoped) applies the +30% directly.
