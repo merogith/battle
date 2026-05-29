@@ -21,7 +21,7 @@ If you are a rights holder and want something removed, please open an issue.
 | Battle sprites — front/shiny (`sprites/gen5ani`, `sprites/gen5ani-shiny`) | Pokémon Showdown `ani` set, consumed via [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | CC0 1.0 (compilation; art © TPC) | Community-made BW-style animations. |
 | Battle sprites — back/back-shiny (`sprites/gen5ani-back`, `sprites/gen5ani-back-shiny`) | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) `…/other/showdown/back[/shiny]/` | CC0 1.0 (compilation; art © TPC) | Vendored via `scripts/download-back-sprites.mjs`; dex-num resolved with `@pkmn/dex`. |
 | Trainer sprites (`sprites/trainers`) | Pokémon Showdown trainer sprites | "licensing being determined" (Smogon) | Fan/community resource. |
-| Item icons (`sprites/items`) | Pokémon Showdown itemicons | as above | |
+| Item icons (`sprites/items`) | Pokémon Showdown itemicons + [PokeAPI/sprites](https://github.com/PokeAPI/sprites) `sprites/items` | © TPC (fan-ripped) | Vendored via `scripts/download-item-icons.mjs`. |
 | Item / ball icons (`sprites/pokesprite`) | [msikma/pokesprite](https://github.com/msikma/pokesprite) | **MIT** (code/data); sprite pixels © TPC | See `sprites/pokesprite/UPSTREAM_LICENSE.md`. |
 | Battle & menu backgrounds (`sprites/backgrounds`) | Generated for this project (AI image generation) | Project-owned | Prompts in `sprites/backgrounds/battle/GEMINI_PROMPTS.md`. |
 | Story scene backgrounds — original (`sprites/story/backgrounds/*.svg`) | Authored for this project | Project-owned | Hand-authored pixel/SVG scenes (lab, Crucible, Frontier, cities). |
