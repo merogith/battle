@@ -363,7 +363,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4939480dbc5f
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: `pcRelease` lacks the `unsellable` guard `pcSell` has — the boss-arc capture (Subject Zero) can be permanently released

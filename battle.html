@@ -25995,6 +25995,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return state.weather;
         }
 
+        // Confusion self-hit: a typeless 40-BP physical the user lands on itself, using
+        // its own Atk/Def *with* stat-stage modifiers (Gen 7+ / modern VGC), exactly like
+        // a normal physical hit. Pure + exported on window.__engine for regression testing.
+        function _confusionSelfHitDamage(mon) {
+            const a = mon.stats.atk * getStageMult((mon.stages && mon.stages.atk) || 0);
+            const d = mon.stats.def * getStageMult((mon.stages && mon.stages.def) || 0);
+            return Math.floor((Math.floor(Math.floor(22 * 40 * (a / d)) / 50) + 2));
+        }
         function canMove(mon, moveName = '') {
             // Sky Drop target lock: the carried Pokemon can't act while up in the sky.
             // Counter is set to 1 on the carry-turn and decremented here.
@@ -26072,7 +26080,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (mon.volatile.confusion === 0) logMsg(`${mon.name} snapped out of confusion!`, 'info');
                 else if (_statusRng() < 0.3333) {
                     // Confusion self-hit: 33% chance (Gen 7+ / modern VGC rule), 40 BP typeless physical
-                    let dmg = Math.floor((Math.floor(Math.floor(22 * 40 * (mon.stats.atk / mon.stats.def)) / 50) + 2));
+                    let dmg = _confusionSelfHitDamage(mon);
                     let actualDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actualDmg;
                     logMsg(`It hurt itself in its confusion for ${actualDmg} damage!`, 'dmg');
@@ -48680,6 +48688,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'pc') return;
+            // Bonded mons (unsellable: boss-arc / gift partners) can't be released
+            // either — mirror pcSell's guard so they can't be permanently let go.
+            if (found.slot && found.slot.unsellable === true) return;
             const name = (found.slot && found.slot.name) || 'this Pokémon';
             const evNote = _slotHasTrainedEVs(found.slot) ? ' Its EV training will be lost too.' : '';
             // Extra friction for releasing a shiny — accidentally letting go
@@ -60065,6 +60076,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ensureMoveData: ensureMoveData,
                     buildPokemon: buildPokemon,
                     getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
+                    confusionSelfHitDamage: typeof _confusionSelfHitDamage === 'function' ? _confusionSelfHitDamage : null,
                     getMonGrade: typeof getMonGrade === 'function' ? getMonGrade : null,
                     getBST: typeof getBST === 'function' ? getBST : null,
                     // AI internals — captured here at definition time so tests reach the REAL

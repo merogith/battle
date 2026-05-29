@@ -68,7 +68,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 23079ed8b640
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts

@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T18:51:59.670Z
+> **Generated**: 2026-05-29T19:16:30.214Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -746,7 +746,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 23079ed8b640
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts
@@ -1156,7 +1156,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4939480dbc5f
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: `pcRelease` lacks the `unsellable` guard `pcSell` has — the boss-arc capture (Subject Zero) can be permanently released
