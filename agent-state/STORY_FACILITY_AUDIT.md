@@ -19,6 +19,32 @@ Pokémon Fan Club · Bag · Party.
 
 ---
 
+## DEEP VERIFICATION RESULTS (2026-05-29, round 2)
+
+A second pass put the top findings through repro + reachability + root-cause analysis
+(6 deep dives: 4 agents w/ jsdom harness repros + 2 self-verified). **Three P1s held up;
+three findings were overstated and are downgraded.** Use THIS table as the source of truth
+over the original severities below.
+
+| Finding | Verdict | Reachability | Real severity |
+|---------|---------|--------------|---------------|
+| **Crucible row-id/index** (P1-1/2) | **CONFIRMED** (live repro) | Every post-game player | **P1** — League Run skips E1 & ends on Rival; Rival Rematch opens Hall-of-Fame; MF rematch dead (OOB); Gym-3 bounces. 1-line chokepoint fix (`findIndex(r=>r[0]===id)` in `_crucibleBattleSetup` ~47908). *pasteur territory.* |
+| **City-8 legendary gate** (P1-4) | **CONFIRMED** (repro) | Normal — any ≤5 party at City-8 (cap is a ceiling, PC lets you shrink to 1) | **P1** — legendary silently & permanently forfeited; route still opens. Debug seeder always fills to 6, hiding it. Fix: decouple `legendMysteryGate`/`_profLegendaryMysteryMode` from `!hasTeamRoom`/`isFull` (42534/42801/44984). *pasteur territory.* |
+| **Safari reload data-loss** (P1-6) | **CONFIRMED** (repro) | Real — any mid-run refresh/tab-close/crash | **P1** — unused balls + (free visit) free entry lost → 10,000 G lockout. No-schema mitigation: defer `freeEntryUsed=true`/`save()` until an encounter commits (`enterSafariZone` ~47747-47763). Full fix = persist `sm.safari.session` (*pasteur schema*). |
+| **Master Ball double-grant** (P1-3) | **PARTIAL → DOWNGRADE** | Not demonstrated in single-thread play | **P3** — function non-idempotent (repro: master=2), but the two callers are mutually exclusive by beat kind; `onBattleEnd` deletes its key before granting; even 2 balls = one dead un-throwable item (`bossMode` lock, not count, guards uniqueness). Latent hardening only (add `sm.trackEndGranted` guard). |
+| **`sellItem` gold exploit** (P1-5) | **PARTIAL → DOWNGRADE** | **Console-only** — UI passes catalog half-price baked into a static onclick; no input feeds it | **P3** — defense-in-depth (drop the price param, re-derive internally; also `evResetCharm` is sellable via console). PC sell path is the correct hardened model. |
+| **`showGameConfirm` resolver overwrite** (P2) | **PARTIAL → DOWNGRADE** | Console-only — UI blocked by `_storyTryBeginInteraction` + full-screen `.modal` overlay | **P3** — cheap single-flight guard worth adding, but no player-facing hang. |
+| **Casino determinism** (P2) | **CONFIRMED** (`_casinoRollPrize`/`_randPick` 50613-50664) | Normal (City5/City9) | Stands — low player harm (RNG either way); real breakage is the **deterministic-replay contract** + prize roll writes durable save state. Seed via `storyRngNext`. |
+| **Stone Shop / City2** (P1-7) | **CONFIRMED** but **recoverable** | Normal (City2 arrival) | **P2** (not data-loss) — token is a persistent voucher redeemable at City3; the bug is the misleading "shop next door" dialogue + unperformable stone-evos shown at City2. *pasteur timeline.* |
+
+**Net verified P1 backlog:** Crucible index bug, City-8 legendary gate, Safari reload —
+**all three sit in pasteur's timeline/save-schema domain** (flagged, not authored; need hand-off).
+The clearly general-session-scoped items (Casino RNG seeding, `sellItem`/`showGameConfirm`
+hardening, interaction-lock consistency) are lower severity than first reported but are
+safe for this session to fix with sign-off.
+
+---
+
 ## P1 — High impact (bug / progression / exploit / data-loss)
 
 | # | Facility | file:line | Issue |
