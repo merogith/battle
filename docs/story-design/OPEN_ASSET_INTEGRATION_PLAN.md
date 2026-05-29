@@ -187,6 +187,10 @@ All four design decisions were answered and implemented. Decisions: **Q1** scene
 
 **Honest correction recorded during build:** Q1's gen3 rips are *not* drop-in images — gen3 scenery is a tile-atlas + `.bin` tilemap, so an assembler was built (re-confirmed with the user, who approved "assembler + author the gaps"; in practice gen3 interiors covered the gaps, so no off-style CSS was needed).
 
-**Not in this pass (available next steps, lower impact / new design calls):** a "VS" trainer-intro *visual* (music shipped; the splash screen is a separate visual-direction call), item-icon completeness (8.6%→full, a clean coverage win like back sprites), facility NPC portraits, animated egg hatch, per-city distinct backdrops.
+**Follow-on polish (also delivered):**
+- **Item icons** — `scripts/download-item-icons.mjs` vendored 34 canonical PokeAPI icons; `STORY_SHOP_ITEM_SPRITE_SLUG` repointed off thematic substitutes (Fire Stone was a Flame Orb, Protein a Muscle Band, the potion tiers all shared one icon). Invented items keep substitutes. All 72 referenced slugs verified to resolve.
+- **VS splash** — `showBattleIntro` upgraded from a one-sided card to a two-sided animated VS (player slides L, foe slides R, VS glyph pop, major-battle screen-flash), accent + drama scaled by tier, `prefers-reduced-motion` fallback. Reuses existing sprites + the tier themes.
+
+**Still open (lower impact / new design calls):** facility NPC portraits, animated egg hatch, per-city distinct backdrops (gen3 has no town exteriors — needs a sourcing decision).
 
 **Validation:** each slice verified — manifest parse-check, jsdom boot of the full monolith, integration test (`catch-system` 4/4), `ffprobe` duration checks, and direct image review of every gen3 scene. Live in-browser screenshots weren't possible (Playwright's chromium isn't installed and its CDN is outside the GitHub-only network).
