@@ -8858,6 +8858,7 @@
     </div>
 
     <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="story professor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-professor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -9039,6 +9040,7 @@
     </div>
 
     <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="story crucible" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-crucible-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -9056,6 +9058,7 @@
     </div>
 
     <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="story frontier" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-frontier-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCrucible()" title="Back to The Crucible" aria-label="Back to The Crucible">&#8592;</button>
@@ -9070,6 +9073,7 @@
     </div>
 
     <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="story catch" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-catch-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -34070,7 +34074,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             shopMart: 'sprites/story/backgrounds/shop-mart.svg',
             shopDept: 'sprites/story/backgrounds/shop-dept.svg',
             linkStation: 'sprites/story/backgrounds/link-station.svg',
-            casino: 'sprites/story/backgrounds/shop-dept.svg'
+            casino: 'sprites/story/backgrounds/shop-dept.svg',
+            // gen3 pixel scene backdrops (assembled by scripts/build-story-backgrounds.mjs)
+            // for the high-drama screens that previously rendered on flat color.
+            scenes: {
+                cave: 'sprites/story/backgrounds/gen3-cave.png',
+                forest: 'sprites/story/backgrounds/gen3-forest.png',
+                safari: 'sprites/story/backgrounds/gen3-safari.png',
+                mountain: 'sprites/story/backgrounds/gen3-mountain.png',
+                cavern: 'sprites/story/backgrounds/gen3-cavern.png',
+                villain: 'sprites/story/backgrounds/gen3-villain.png',
+                mansion: 'sprites/story/backgrounds/gen3-mansion.png',
+                league: 'sprites/story/backgrounds/gen3-league.png',
+                sea: 'sprites/story/backgrounds/gen3-sea.png',
+                lab: 'sprites/story/backgrounds/gen3-lab.png'
+            }
         };
         let _storyBgManifest = null;
         function getStoryBgManifest() { return _storyBgManifest || DEFAULT_STORY_BG_MANIFEST; }
@@ -34082,6 +34100,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             layerEl.style.backgroundSize = 'cover, cover';
             layerEl.style.backgroundPosition = 'center, center';
             layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
+            // gen3 pixel scenes upscale crisply; vector SVGs are unaffected.
+            layerEl.style.imageRendering = /\.png(\?|$)/i.test(u) ? 'pixelated' : '';
+        }
+        // Generic scene-background applier for gen3 pixel backdrops (manifest `scenes`
+        // map). Used by the high-drama screens — catch / professor / mystery reveal /
+        // crucible / frontier — that previously rendered on flat color.
+        function syncStorySceneBackground(layerId, sceneKey) {
+            const scenes = getStoryBgManifest().scenes || DEFAULT_STORY_BG_MANIFEST.scenes || {};
+            applyStoryBgLayer(document.getElementById(layerId), scenes[sceneKey] || '');
         }
         function syncStoryCityBackground(cityIdx) {
             const m = getStoryBgManifest();
@@ -45442,6 +45469,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _renderProfChoices();
             showScreen('screen-story-professor');
+            // Lab backdrop for the starter pick; the dramatic villain lair for the
+            // Mystery Figure / legendary reveal that reuses this screen.
+            try { syncStorySceneBackground('story-professor-bg-layer', _profLegendaryMysteryMode ? 'villain' : 'lab'); } catch (e) {}
         }
 
         function _buildProfPickCardElement(ch, idx) {
@@ -48140,6 +48170,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderCrucible();
             showScreen('screen-story-crucible');
+            syncStorySceneBackground('story-crucible-bg-layer', 'league');
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
@@ -48275,6 +48306,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderFrontierHub();
             showScreen('screen-story-frontier');
+            syncStorySceneBackground('story-frontier-bg-layer', 'mansion');
             // Battle-prep horn — Frontier is a 6v6 stamina test.
             try { window.StoryFx && window.StoryFx.playSfx('danger', 0.4); } catch (e) {}
             try { _storyShowOneTimeTip('frontier',
@@ -49337,6 +49369,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
                     else headerEl.textContent = '🌿 Wild Encounter';
                 }
+            } catch (e) {}
+            // Scene backdrop matches the encounter mode (gen3 pixel art): the Caged
+            // God boss gets the cavern, Safari its zone, wild routes the forest.
+            try {
+                syncStorySceneBackground('story-catch-bg-layer',
+                    _catchState.bossMode ? 'cave' : (_catchState.safariMode ? 'safari' : 'forest'));
             } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
