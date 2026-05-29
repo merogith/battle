@@ -34117,12 +34117,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!layerEl) return;
             if (!imageUrl) { layerEl.style.backgroundImage = ''; return; }
             const u = String(imageUrl).replace(/"/g, '');
-            layerEl.style.backgroundImage = 'linear-gradient(180deg, rgba(6,8,14,0.72) 0%, rgba(6,8,14,0.9) 100%), url("' + u + '")';
-            layerEl.style.backgroundSize = 'cover, cover';
-            layerEl.style.backgroundPosition = 'center, center';
-            layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
-            // gen3 pixel scenes upscale crisply; vector SVGs are unaffected.
-            layerEl.style.imageRendering = /\.png(\?|$)/i.test(u) ? 'pixelated' : '';
+            if (/\.png(\?|$)/i.test(u)) {
+                // gen3 scenes are wide/landscape; on a tall portrait screen `cover`
+                // zoom-crops them into an unrecognizable sliver. Instead show the
+                // whole scene as a top hero-band (full width, native aspect) that
+                // fades into the dark UI so the content below stays readable.
+                layerEl.style.backgroundImage = 'linear-gradient(180deg, rgba(8,10,16,0.28) 0%, rgba(8,10,16,0.4) 16%, rgba(8,10,16,0.74) 31%, rgba(8,10,16,0.95) 45%, rgba(8,10,16,0.98) 100%), url("' + u + '")';
+                layerEl.style.backgroundSize = 'cover, 100% auto';
+                layerEl.style.backgroundPosition = 'center, top center';
+                layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
+                layerEl.style.imageRendering = 'pixelated'; // crisp gen3 upscale
+            } else {
+                // SVG scenes (city/shop) are abstract and tile fine under full cover.
+                layerEl.style.backgroundImage = 'linear-gradient(180deg, rgba(6,8,14,0.72) 0%, rgba(6,8,14,0.9) 100%), url("' + u + '")';
+                layerEl.style.backgroundSize = 'cover, cover';
+                layerEl.style.backgroundPosition = 'center, center';
+                layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
+                layerEl.style.imageRendering = '';
+            }
         }
         // Generic scene-background applier for gen3 pixel backdrops (manifest `scenes`
         // map). Used by the high-drama screens — catch / professor / mystery reveal /
