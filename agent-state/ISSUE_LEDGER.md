@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T17:59:18.005Z
+> **Generated**: 2026-05-29T18:04:16.497Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -222,7 +222,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 56bafb53d258
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Master Ball consumed but Caged God rejected when party 6/6 + PC 30/30 — unique ball lost, no refund
@@ -815,7 +815,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8a7d99b90173
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Regular ball consumed with no refund when a successful catch is rejected at party-full + PC-full

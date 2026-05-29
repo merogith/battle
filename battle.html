@@ -37524,6 +37524,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     cityIndexFromRowId: (...a) => cityIndexFromRowId(...a),
                     STORY_RIVAL_ROW_INTRO,
                     GYM_CITY_LEADER_EVENT,
+                    catchHandleSuccess: (...a) => _catchHandleSuccess(...a),
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
                     devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
@@ -49782,7 +49783,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
             const bossMode = !!(_catchState && _catchState.bossMode);
             if (partyFull && pcFull) {
-                _catchFinishWithMessage(`Your party (${(sm.team||[]).length}/${maxParty}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Free a slot at the Pokémon Center, then try again.`);
+                // Catch succeeded but there's nowhere to put the mon. Refund the ball
+                // (catchThrow decrements it before resolving the outcome) so "free a slot
+                // and try again" is actually possible — critical for the unique, boss-only
+                // Master Ball, which otherwise soft-locks the Caged God arc with no way to
+                // re-obtain it (ISSUE-004; also ends the regular-ball waste in ISSUE-020).
+                if (ballKey && sm.balls) sm.balls[ballKey] = (sm.balls[ballKey] | 0) + 1;
+                _catchFinishWithMessage(`Your party (${(sm.team||[]).length}/${maxParty}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full — no room to keep it. Your Ball was returned. Free a slot at the Pokémon Center, then try again.`);
                 return;
             }
             const caught = {

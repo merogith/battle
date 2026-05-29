@@ -74,7 +74,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 56bafb53d258
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Master Ball consumed but Caged God rejected when party 6/6 + PC 30/30 — unique ball lost, no refund
@@ -110,7 +110,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8a7d99b90173
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Regular ball consumed with no refund when a successful catch is rejected at party-full + PC-full
