@@ -38,7 +38,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: c1383b391838
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Cold-open / intro-rival narrative overlay is not a dialog — no role/aria-modal/label, no ESC, no focus management
@@ -69,7 +69,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: aedce7c75c51
 confidence: high
-status: open
+status: partial-claude/focused-cori-sGNzn (focus-in + dialog semantics done; shared Tab-trap deferred)
 ---
 
 **Title**: openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap

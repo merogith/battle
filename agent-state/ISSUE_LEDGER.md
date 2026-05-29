@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T19:16:30.214Z
+> **Generated**: 2026-05-29T19:22:00.281Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -673,7 +673,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: c1383b391838
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Cold-open / intro-rival narrative overlay is not a dialog — no role/aria-modal/label, no ESC, no focus management
@@ -1118,7 +1118,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: aedce7c75c51
 confidence: high
-status: open
+status: partial-claude/focused-cori-sGNzn (focus-in + dialog semantics done; shared Tab-trap deferred)
 ---
 
 **Title**: openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap
@@ -1913,7 +1913,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 8ba77baaea7f
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (verified already gated behind window.__DEBUG_SPRITE_SCALE + n===0; never logs in normal play — finding overstated)
 ---
 
 **Title**: Unguarded 'dex probe Pikachu' console.log left in the data-load path

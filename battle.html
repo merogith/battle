@@ -13591,6 +13591,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prev && prev !== document.body) window._modalFocusStack.set(id, prev);
             } catch (e) {}
             el.classList.remove('hidden');
+            // Move focus INTO the dialog (modals already declare role=dialog/aria-modal)
+            // so SR/keyboard users land inside it and the label is announced, instead of
+            // staying on the trigger behind the overlay. closeModal() restores it.
+            try { el.tabIndex = -1; el.focus(); } catch (e) {}
         };
         window.closeModal = function(id) {
             const el = document.getElementById(id);
@@ -37540,6 +37544,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     STORY_RIVAL_ROW_INTRO,
                     GYM_CITY_LEADER_EVENT,
                     catchHandleSuccess: (...a) => _catchHandleSuccess(...a),
+                    renderNarrativeOverlay: (...a) => _renderNarrativeOverlay(...a),
                     buildProfPickCardElement: (...a) => _buildProfPickCardElement(...a),
                     get pendingProfChoices() { return _pendingProfChoices; },
                     set pendingProfChoices(v) { _pendingProfChoices = v; },
@@ -46175,6 +46180,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const continueLabel = o.continueLabel || 'Continue →';
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
+            // a11y: same labeled-dialog treatment as _showStoryTutorialScene — SR users
+            // hear the scene; keyboard users can advance / ESC out (ESC gated on choices
+            // below). Accessible name from the speaker / banner.
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', name || nameplate || banner || 'Story scene');
+            ov.tabIndex = -1;
             if (toneClass) ov.classList.add(toneClass);
             const spriteHtml = sprite
                 ? `<img src="${getTrainerSprite({ spriteFile: sprite })}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
@@ -46287,6 +46299,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 dismiss();
             };
             document.body.appendChild(ov);
+            // a11y: focus the primary control so keyboard users can advance, and let
+            // Escape dismiss — but only when no choice is pending (same rule as the
+            // background-click guard). The listener lives on `ov`, so dismiss()'s
+            // ov.remove() cleans it up automatically.
+            try {
+                const _ft = ov.querySelector('button[data-narr-continue="1"]')
+                    || ov.querySelector('button[data-narr-choice-idx]') || ov;
+                if (_ft && typeof _ft.focus === 'function') _ft.focus();
+            } catch (e) {}
+            ov.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                if (choices.length && ov.querySelector('[data-narr-choices="1"]')) return;
+                e.preventDefault();
+                dismiss();
+            });
             return ov;
         }
 

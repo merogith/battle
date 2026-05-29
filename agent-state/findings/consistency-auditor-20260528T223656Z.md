@@ -164,7 +164,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 8ba77baaea7f
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (verified already gated behind window.__DEBUG_SPRITE_SCALE + n===0; never logs in normal play — finding overstated)
 ---
 
 **Title**: Unguarded 'dex probe Pikachu' console.log left in the data-load path
