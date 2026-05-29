@@ -123,6 +123,48 @@ test('immunityRound telegraphs at turn N-1 and activates on turn N', () => {
     assert.equal(foe._bossImmuneTurns, 1);
 });
 
+test('faintPhase telegraphs when the boss team faints reach the threshold', () => {
+    const state = mkBossState([
+        { type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'CORNERED' }
+    ]);
+    const foe = mkFoe(100, 100);
+    state.foeParty = [foe, mkFoe(100, 100), mkFoe(100, 100), mkFoe(100, 100), mkFoe(100, 100), mkFoe(100, 100)];
+    // Turn 1 — nobody fainted yet, no phase.
+    state.turnNumber = 1;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.equal(state._bossPendingTelegraph, null, 'no telegraph before 2 faints');
+
+    // KO two of the boss's Pokémon → threshold reached.
+    state.foeParty[1].currentHp = 0;
+    state.foeParty[2].currentHp = 0;
+    state.turnNumber = 2;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.ok(state._bossPendingTelegraph, 'telegraphs at 2 faints');
+    assert.equal(state._bossPendingTelegraph.type, 'faintPhase');
+    assert.equal(state._bossPendingTelegraph.effect, 'surge');
+
+    // Next turn activates the surge on the active foe.
+    state.turnNumber = 3;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.equal(foe._bossSurgeTurns, 3);
+});
+
+test('heal phase effect restores foe HP on activation', () => {
+    const state = mkBossState([
+        { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', magnitude: 0.25, banner: 'MEND' }
+    ]);
+    const foe = mkFoe(200, 80); // 40% HP — below the 50% threshold
+    state.turnNumber = 1;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.ok(state._bossPendingTelegraph, 'telegraphs the heal phase');
+    assert.equal(state._bossPendingTelegraph.effect, 'heal');
+    const hpBefore = foe.currentHp;
+    state.turnNumber = 2;
+    ST.bossMechanicsTurnTick(state, foe); // activate
+    assert.equal(foe.currentHp, Math.min(foe.maxHp, hpBefore + Math.floor(foe.maxHp * 0.25)));
+    assert.ok(foe.currentHp > hpBefore, 'heal should raise HP');
+});
+
 test('turn tick is a safe no-op when state has no boss mechanics', () => {
     const state = mkBossState([]);
     delete state._bossMechanics;

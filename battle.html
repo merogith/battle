@@ -42103,6 +42103,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Phase-effect dispatcher — applies one escalating mechanic when a phase
+        // (HP-threshold or faint-count) activates. "Only one active at a time" per the
+        // boss design: each phase sets/refreshes its own effect. Defaults to 'surge'
+        // so legacy single-phase configs keep their +25% damage behavior unchanged.
+        function _applyBossPhaseEffect(foeMon, effect, magnitude) {
+            switch (effect) {
+                case 'heal': {
+                    const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
+                    foeMon.currentHp = Math.min(foeMon.maxHp, (foeMon.currentHp | 0) + amt);
+                    break;
+                }
+                case 'immunity':
+                    foeMon._bossImmuneTurns = (magnitude | 0) || 1;
+                    break;
+                case 'surge':
+                default:
+                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                    break;
+            }
+        }
+
         // Called at the top of each turn (after state.turnNumber++) to process
         // active mechanics. Activates pending telegraphs from the prior turn,
         // checks HP thresholds (foe HP %), and stages immunity-round telegraphs.
@@ -42119,8 +42140,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const pending = stateRef._bossPendingTelegraph;
                 stateRef._bossPendingTelegraph = null;
                 _showBossBanner(pending.banner || 'PHASE ACTIVE', pending.accent);
-                if (pending.type === 'hpThresholdPhase') {
-                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                if (pending.type === 'hpThresholdPhase' || pending.type === 'faintPhase') {
+                    _applyBossPhaseEffect(foeMon, pending.effect || 'surge', pending.magnitude);
                 } else if (pending.type === 'immunityRound') {
                     foeMon._bossImmuneTurns = (pending.turns | 0) || 1;
                 }
@@ -42138,8 +42159,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         stateRef._bossMechanicsFired[firedKey] = true;
                         // Telegraph one turn early — banner now, effect next turn.
                         stateRef._bossPendingTelegraph = {
-                            type: 'hpThresholdPhase', banner: m.banner || 'BOSS PHASE INCOMING',
-                            accent: '#ff7043'
+                            type: 'hpThresholdPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
+                            banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
+                        };
+                        _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
+                    }
+                } else if (m.type === 'faintPhase') {
+                    // Villain trainer bosses escalate as their team is KO'd: fires when the
+                    // cumulative number of fainted foe Pokémon reaches afterFaints (every 2 by
+                    // design). afterFaints:0 gives a full boss its opening phase (turn 1→2).
+                    const need = Math.max(0, m.afterFaints | 0);
+                    const firedKey = 'faint_' + need;
+                    if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
+                    const fainted = Array.isArray(stateRef.foeParty)
+                        ? stateRef.foeParty.filter(x => x && (x.currentHp | 0) <= 0).length : 0;
+                    if (fainted >= need) {
+                        stateRef._bossMechanicsFired[firedKey] = true;
+                        stateRef._bossPendingTelegraph = {
+                            type: 'faintPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
+                            banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
                         };
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
