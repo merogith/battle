@@ -2807,6 +2807,26 @@
         /* Lead tip ("Next: …") gets a soft gold accent — that's the only "what to do now" hint we surface. */
         .story-city-tip.next { color: #ffe5a3; border-color: #8a7330; background: linear-gradient(180deg, #2a230f 0%, #1a1408 100%); box-shadow: inset -2px -2px 0 0 #1a1408, inset 2px 2px 0 0 #4a3e1a; }
         .story-city-tip.next:hover { color: #fff7cc; border-color: #ffd54f; background: linear-gradient(180deg, #322a14 0%, #20180c 100%); }
+        /* Single objective line — the one "what to do next" signal. Full-width, gold,
+           always derived from the same gate the Continue/Gym buttons use so it can't lie.
+           Everything else in the rail is a quiet, optional "Suggested" chip. */
+        .story-city-objective {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 9px 12px; min-height: 44px; box-sizing: border-box;
+            font-family: var(--battle-font) !important; font-size: 12px; line-height: 1.25;
+            color: #fff7cc; cursor: pointer; text-align: left;
+            background: linear-gradient(180deg, #2f2710 0%, #1c1408 100%);
+            border: 1px solid #c9a227; border-radius: 4px;
+            box-shadow: inset -2px -2px 0 0 #16100a, inset 2px 2px 0 0 #5a4a1e;
+            transition: border-color 0.12s, background 0.12s;
+        }
+        .story-city-objective:hover { border-color: #ffd54f; background: linear-gradient(180deg, #3a3014 0%, #241a0a 100%); }
+        .story-city-objective:active { transform: translateY(1px); }
+        .story-city-objective .obj-kicker { font-size: 9px; letter-spacing: 0.12em; font-weight: bold; color: #ffd54f; background: rgba(255,213,79,0.14); border: 1px solid rgba(255,213,79,0.4); padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+        .story-city-objective .obj-ico { width: 18px; height: 18px; flex-shrink: 0; object-fit: contain; image-rendering: auto; }
+        .story-city-objective .obj-label { flex: 1; min-width: 0; font-weight: bold; }
+        .story-city-objective .obj-go { color: #ffd54f; flex-shrink: 0; font-size: 14px; }
+        .story-city-tips-sugg { width: 100%; margin: 4px 0 0; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a9bb0; opacity: 0.75; }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
             font-size: 10px; line-height: 1; letter-spacing: 0.5px;
@@ -8902,7 +8922,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relic Annex</span></h3>
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
@@ -9292,9 +9312,9 @@
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
+                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             </div>
-            <p style="font-size:11px;color:#888;margin:6px 0 0;">Toggle artifacts off to disable their battle effects.</p>
+            <p style="font-size:11px;color:#888;margin:6px 0 0;">Relics rewrite battle rules for both sides. Toggle the ones you own on or off.</p>
         </div>
         <div id="story-artifact-hall-list" style="flex:1;overflow-y:auto;padding:12px;"></div>
         <div style="padding:10px;border-top:1px solid #333;">
@@ -11292,7 +11312,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Evolution Tutor</b> — Every region\'s evolution methods, one shop. Rare Candy waives the gold cost on a Pokémon\'s first evolution.<br>
 <b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 5,000G. Permanent for that mon.<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
-<b>Relic Annex</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides.<br>
+<b>Relics</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides (Browse to acquire, Manage to toggle).<br>
 <b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random Vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
 <b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
@@ -14851,6 +14871,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
             }
+            // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
+            // (_bossStatMult) plus a separate party-scaled HP multiplier (_bossHpScale).
+            // Applied after the per-event mult so they compound; kept off _storyStatMult
+            // because enterBattleEvent overwrites that field on every rolled team member.
+            if (build && monName !== 'Shedinja') {
+                if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
+                    const bm = build._bossStatMult;
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * bm));
+                    mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * bm)));
+                    for (const k of ['atk','def','spa','spd','spe']) mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * bm));
+                    mon._bossStatMult = bm;
+                }
+                if (typeof build._bossHpScale === 'number' && build._bossHpScale > 1) {
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * build._bossHpScale));
+                    mon.currentHp = mon.maxHp; // raid boss enters at full scaled HP
+                    mon._bossHpScale = build._bossHpScale;
+                }
+            }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
             mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
@@ -16936,14 +16974,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity-round mechanics are tracked per-turn via
                 // _storyBossMechanicsTurnTick.
                 try {
-                    const _beatKey = sm && sm._activeBeatBattleKey;
-                    const _cfg = _beatKey && typeof BOSS_CONFIGS === 'object' && BOSS_CONFIGS[_beatKey];
+                    // startBattle lives in the engine scope — the StoryMode IIFE's
+                    // `sm` / `BOSS_CONFIGS` / `_storyBossMechanicsBattleInit` are not
+                    // visible here (the sibling story calls above route through
+                    // `window.`). Reaching them by bare name threw ReferenceError on
+                    // every battle, so boss-beat mechanics never attached. Go through
+                    // the public window.StoryMode surface instead.
+                    const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
+                    const _smState = _SM && _SM.state;
+                    const _bossCfgs = _SM && _SM.BOSS_CONFIGS;
+                    const _beatKey = _smState && _smState._activeBeatBattleKey;
+                    const _cfg = _beatKey && _bossCfgs && typeof _bossCfgs === 'object' && _bossCfgs[_beatKey];
                     if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
                         state._activeStoryBeatKey = _beatKey;
                         state._bossMechanics = _cfg.mechanics.slice();
                         state._bossMechanicsFired = {};
                         state._bossPendingTelegraph = null;
-                        _storyBossMechanicsBattleInit(state);
+                        if (typeof _SM.bossMechanicsBattleInit === 'function') _SM.bossMechanicsBattleInit(state);
                     }
                 } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
             } else {
@@ -20874,7 +20921,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // count. No-op if state._bossMechanics isn't set.
                 try {
                     if (Array.isArray(state._bossMechanics) && state._bossMechanics.length && state.fActive) {
-                        _storyBossMechanicsTurnTick(state, state.fActive);
+                        // Same engine-scope reroute as the BOSS_CONFIGS init in startBattle.
+                        const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
+                        if (_SM && typeof _SM.bossMechanicsTurnTick === 'function') _SM.bossMechanicsTurnTick(state, state.fActive);
                     }
                 } catch (e) { console.warn('[Story] boss turn tick failed:', e); }
                 state.residualPhaseComplete = false;
@@ -23783,6 +23832,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 damage = Math.max(1, Math.floor(damage));
                 // Glass Cannon Pact artifact: +25% all damage, both sides
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
+                // Story boss surge phase: the boss deals +25% while its surge window is
+                // open (set by an HP-threshold phase telegraph). attacker is the boss here.
+                if (state._activeStoryBeatKey && attacker && attacker._bossSurgeTurns > 0) damage = Math.floor(damage * 1.25);
                 // Story artifact: [Type] Amplifier — attacks of that type +30%; Pokémon of that type take +15% from hits
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
@@ -30111,7 +30163,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
-            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0, artifacts: 0,
+            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
             link: 2, stoneShop: 3, evolab: 2,
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
             colress: 6,
@@ -39902,7 +39954,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Your First Fight',
                 lines: [
                     '"Two trainers, two teams, one road. That\'s a battle."',
-                    '"Tap ⚔ FIGHT to pick a move. Each one has its own PP, so the strongest hit isn\'t always the right one. Physical, Special, and Status all read off different stats — type matters more than raw level. Super-effective doubles your damage; the wrong type can half it."',
+                    '"First, the rule of this region: every Pokémon battles at Level 50. No grinding — a partner\'s strength is how it\'s *built*: its nature, its trained stats, the moves you give it. I\'ll point each one out as we go."',
+                    '"Tap ⚔ FIGHT to pick a move. Each one has its own PP, so the strongest hit isn\'t always the right one. Physical, Special, and Status all read off different stats — type matters more than brute force. Super-effective doubles your damage; the wrong type can half it."',
                     '"🔴 POKÉMON swaps your active partner — it costs your turn, so use it on a read. 🎒 BAG burns an item. 🏃 RUN forfeits the fight and a slice of gold. Keep that HP bar green."'
                 ]
             },
@@ -41791,37 +41844,96 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // when the player triggers that battle. SceneKey-indexed so PR-5b
         // battle injection can look it up directly.
         const BOSS_CONFIGS = {
-            // Villain track bosses (10) — Road 7 climax. Phase 3 at 25% HP.
-            'villain.rocket.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALLED IN' }] },
-            'villain.magma.boss':     { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMAL HEAT' }] },
-            'villain.aqua.boss':      { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMORDIAL RAIN' }] },
-            'villain.galactic.boss':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DISTORTION' }] },
-            'villain.plasma.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'PRIORITY LOCK' }] },
-            'villain.flare.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WEAPON' }] },
-            'villain.skull.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DEAL' }] },
-            'villain.yell.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'SPOTLIGHT' }] },
-            'villain.macroCosmos.boss': { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE BRAND' }] },
-            'villain.star.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE TEAM' }] },
-            // Extra track raids (8) — Road 6 climax. Phase 3 mechanics from CSV.
-            'extra.cubone.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'A REMEMBERED PLACE' }] },
-            'extra.yamask.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WAKE' }] },
-            'extra.hypno.raid':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LULLABY' }] },
-            'extra.phantump.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE GROVE' }] },
-            'extra.mimikyu.raid':   { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE AUDIENCE' }] },
-            'extra.drifloon.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE CLIMB' }] },
-            'extra.parasect.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE SOIL' }] },
-            'extra.mewtwo.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LAB REMEMBERED' }] },
-            // Mystery Figure (apex) — HP threshold + immunity round + field lock.
-            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
+            // Villain track — trainer-vs-trainer. Escalating FAINT-count phases (one
+            // mechanic active at a time, harder each step). Full boss opens with a phase
+            // (afterFaints:0) then escalates every 2 KOs (surge → immunity → surge). Mini
+            // boss starts plain and gets one phase after 2 KOs. Magma/Aqua also field-lock
+            // their signature weather (contestable — the player can still override it).
+            'villain.rocket.boss':      { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALLED IN' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'NO WITNESSES' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: "BOSS'S ORDERS" }] },
+            'villain.rocket.miniBoss':  { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'MUSCLE' }] },
+            'villain.magma.boss':       { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIMAL HEAT' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'MAGMA SHELL' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ERUPTION' }] },
+            'villain.magma.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'HEAT HAZE' }] },
+            'villain.aqua.boss':        { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIMORDIAL RAIN' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'UNDERTOW' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'TIDAL CRASH' }] },
+            'villain.aqua.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'RIPTIDE' }] },
+            'villain.galactic.boss':    { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'DISTORTION' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'STILLNESS' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'NEW WORLD' }] },
+            'villain.galactic.miniBoss':{ mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'COMMANDER' }] },
+            'villain.plasma.boss':      { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIORITY LOCK' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'COLD ARMOR' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'IDEALS' }] },
+            'villain.plasma.miniBoss':  { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SAGE' }] },
+            'villain.flare.boss':       { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'THE WEAPON' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'PERFECTION' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ULTIMATE' }] },
+            'villain.flare.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'ELEGANCE' }] },
+            'villain.skull.boss':       { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'DEAL' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'BIG BAD' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BOSS UP' }] },
+            'villain.skull.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'GRUNT' }] },
+            'villain.yell.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'SPOTLIGHT' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'ENCORE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'GIGANTAMAX' }] },
+            'villain.yell.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'CHEER' }] },
+            'villain.macroCosmos.boss': { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE BRAND' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'CHAIRMAN' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ETERNATUS' }] },
+            'villain.macroCosmos.miniBoss': { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SPONSOR' }] },
+            'villain.star.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE TEAM' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'SCHEDULE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BIG BOSS' }] },
+            'villain.star.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SQUAD' }] },
+            // Extra track — SOLO legendary-tier Pokémon raids (Road 6). Configs for both
+            // raid (75/50/25) and miniRaid (50/25) are populated below the table by
+            // _populateExtraRaidConfigs (kept DRY across the 8 bosses).
+            // Mystery Figure (apex) — HP threshold + immunity round. Attached via the
+            // isMysteryFinal dispatch (mysteryBoss is excluded from the beat-key path).
+            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
         };
 
-        // Mini-raid / raid HP scaling — extra arcs only. Mini = (partySize - 1) ×
-        // base HP; full raid = partySize × base HP. Wired by PR-5b battle setup.
+        // Populate the 8 extra-track raids (solo Pokémon bosses): escalating HP-threshold
+        // phases — real raid 75/50/25 (surge → heal → immunity), mini raid 50/25
+        // (surge → immunity). One mechanic active at a time; banner is the boss's signature.
+        (function _populateExtraRaidConfigs() {
+            const banners = {
+                cubone: 'A REMEMBERED PLACE', yamask: 'THE WAKE', hypno: 'THE LULLABY', phantump: 'THE GROVE',
+                mimikyu: 'THE AUDIENCE', drifloon: 'THE CLIMB', parasect: 'THE SOIL', mewtwo: 'THE LAB REMEMBERED'
+            };
+            for (const k in banners) {
+                const b = banners[k];
+                BOSS_CONFIGS['extra.' + k + '.raid'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.75, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
+                BOSS_CONFIGS['extra.' + k + '.miniRaid'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
+            }
+        })();
+
+        // Mini-raid / raid HP scaling — extra (solo-Pokémon) arcs only. The boss is ONE
+        // legendary-tier Pokémon, so its HP is multiplied to survive a full player party:
+        // mini boss = (maxParty - 2) × base HP, real boss = (maxParty - 1) × base HP.
+        // partySize is the player's MAX party size (_storyMaxPartySize). Wired by the
+        // extra-raid foe-substitution path in enterBattleEvent.
         function _bossHpScaleForKind(kind, partySize) {
             const p = Math.max(1, partySize | 0);
-            if (kind === 'miniRaid') return Math.max(1, p - 1);
-            if (kind === 'raid') return p;
+            if (kind === 'miniRaid') return Math.max(1, p - 2);
+            if (kind === 'raid') return Math.max(1, p - 1);
             return 1; // bosses + battles use single-target scaling
+        }
+
+        // Solo-Pokémon raid bosses (extra track): scene-key stem → the legendary-tier
+        // species the prose names. These fights are ONE scaled Pokémon, not a trainer team.
+        const _EXTRA_RAID_SPECIES = {
+            cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
+            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
+        };
+        // Build the single-mon foe team for an extra raid/miniRaid beat. Returns the
+        // standard [{name, build}] draft shape (one element), or null to fall back to the
+        // normal trainer roll. Legendary-tier stats (_bossStatMult) + party-scaled HP
+        // (_bossHpScale) are applied by buildPokemon at fight start.
+        function _rollExtraRaidBossTeam(sceneKey) {
+            try {
+                const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)$/.exec(String(sceneKey || ''));
+                if (!m) return null;
+                const species = _EXTRA_RAID_SPECIES[m[1]];
+                if (!species || typeof makeBuild !== 'function') return null;
+                const build = _withStoryPlayerGimmickGate(() => makeBuild(species));
+                if (!build) return null;
+                const maxParty = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                build._bossStatMult = 1.3;                                 // legendary-tier stats
+                build._bossHpScale = _bossHpScaleForKind(m[2], maxParty);  // party-scaled bulk
+                return [{ name: species, build: build }];
+            } catch (e) { console.warn('[Story] extra raid boss roll failed:', e); return null; }
         }
 
         // ── BOSS_CONFIGS live wiring (PR-A polish) ────────────────────────
@@ -41873,26 +41985,50 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Phase-effect dispatcher — applies one escalating mechanic when a phase
+        // (HP-threshold or faint-count) activates. "Only one active at a time" per the
+        // boss design: each phase sets/refreshes its own effect. Defaults to 'surge'
+        // so legacy single-phase configs keep their +25% damage behavior unchanged.
+        function _applyBossPhaseEffect(foeMon, effect, magnitude) {
+            switch (effect) {
+                case 'heal': {
+                    const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
+                    foeMon.currentHp = Math.min(foeMon.maxHp, (foeMon.currentHp | 0) + amt);
+                    break;
+                }
+                case 'immunity':
+                    foeMon._bossImmuneTurns = (magnitude | 0) || 1;
+                    break;
+                case 'surge':
+                default:
+                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                    break;
+            }
+        }
+
         // Called at the top of each turn (after state.turnNumber++) to process
         // active mechanics. Activates pending telegraphs from the prior turn,
         // checks HP thresholds (foe HP %), and stages immunity-round telegraphs.
         function _storyBossMechanicsTurnTick(stateRef, foeMon) {
             if (!stateRef || !Array.isArray(stateRef._bossMechanics) || !foeMon) return;
-            // 1. Activate any telegraph queued from the prior turn.
+            // 1. Decrement timers set by a PRIOR turn's activation FIRST — before this
+            //    turn's activation below — so a timer freshly set this turn survives into
+            //    this turn's damage phase. (Decrementing after activation zeroed a
+            //    just-set immunity/surge on the same tick: the off-by-one bug.)
+            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
+            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
+            // 2. Activate any telegraph queued from the prior turn.
             if (stateRef._bossPendingTelegraph) {
                 const pending = stateRef._bossPendingTelegraph;
                 stateRef._bossPendingTelegraph = null;
                 _showBossBanner(pending.banner || 'PHASE ACTIVE', pending.accent);
-                if (pending.type === 'hpThresholdPhase') {
-                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                if (pending.type === 'hpThresholdPhase' || pending.type === 'faintPhase') {
+                    _applyBossPhaseEffect(foeMon, pending.effect || 'surge', pending.magnitude);
                 } else if (pending.type === 'immunityRound') {
                     foeMon._bossImmuneTurns = (pending.turns | 0) || 1;
                 }
                 // fieldLock activates at battle-init, not from telegraph.
             }
-            // 2. Decrement active per-turn effect timers.
-            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
-            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
             // 3. Walk mechanics, queue new telegraphs for next turn.
             for (const m of stateRef._bossMechanics) {
                 if (!m || !m.type) continue;
@@ -41905,8 +42041,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         stateRef._bossMechanicsFired[firedKey] = true;
                         // Telegraph one turn early — banner now, effect next turn.
                         stateRef._bossPendingTelegraph = {
-                            type: 'hpThresholdPhase', banner: m.banner || 'BOSS PHASE INCOMING',
-                            accent: '#ff7043'
+                            type: 'hpThresholdPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
+                            banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
+                        };
+                        _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
+                    }
+                } else if (m.type === 'faintPhase') {
+                    // Villain trainer bosses escalate as their team is KO'd: fires when the
+                    // cumulative number of fainted foe Pokémon reaches afterFaints (every 2 by
+                    // design). afterFaints:0 gives a full boss its opening phase (turn 1→2).
+                    const need = Math.max(0, m.afterFaints | 0);
+                    const firedKey = 'faint_' + need;
+                    if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
+                    const fainted = Array.isArray(stateRef.foeParty)
+                        ? stateRef.foeParty.filter(x => x && (x.currentHp | 0) <= 0).length : 0;
+                    if (fainted >= need) {
+                        stateRef._bossMechanicsFired[firedKey] = true;
+                        stateRef._bossPendingTelegraph = {
+                            type: 'faintPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
+                            banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
                         };
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
@@ -42399,7 +42552,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyRunSceneMark('city0-coldopen');
                         const _coldOv = document.createElement('div');
                         _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
-                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on her bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
+                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on the bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
                         _coldOv.onclick = function (e) { if (e.target === _coldOv) _coldDismiss(); };
@@ -42443,7 +42596,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
+                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens the bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
             }
             // Per docs/EVOLUTION_FLOW_REBUILD.md §10: City 2 is the unlock band for
             // Cable Link, Evolution Tutor, and Stones and Beyond. Chain Bill → Granny
@@ -42620,16 +42773,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // outline so the eye can find it without us having to flash a badge.
             const suggestedFacilities = new Set();
             const tipsEl = document.getElementById('story-city-tips');
+            // `tips` now holds only optional "Suggested" chips. The single must-do
+            // "what to do next" (Professor / Gym / route / …) is the one objective
+            // line built and rendered after the gates are known, below.
             const tips = [];
-            // Must-do chip always leads — Professor is a hard gate on Continue Route / Gym.
-            if (hasProf && !profUsedHere) {
-                tips.push({
-                    iconPath: 'icons/story/' + (legendMysteryGate ? 'story_mystery.png' : 'story_professor.png') + '?v=20260516',
-                    label: legendMysteryGate ? 'Required: Talk to the Mystery Figure' : 'Required: Visit the Professor',
-                    click: 'window.StoryMode.enterProfessor()',
-                    urgent: true,
-                });
-            }
             // True next thing the player will see when they leave town. The wild
             // interrupt chain fires *before* the next trainer when leaving a city
             // for a different city (see `_shouldFireWildBeforeBattle`), so the
@@ -42637,8 +42784,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // post-gym hub heading into a Rival route says "Wild → Rival", not
             // a flat "Battle Your Rival" that lied about the next two screens.
             const _willFireWildNext = _storyNextBatIdx >= 0 && _shouldFireWildBeforeBattle(_storyNextBatIdx);
-            // "Next:" is always first when a battle is queued — clearest answer to the
-            // ten-second "what now?" question on entering any city.
+            // Rich label for the next queued battle — feeds the single objective line
+            // below (was the old competing "Next:" chip).
+            let nextBattleLabel = '';
             if (_storyNextBat) {
                 const nxId = _storyNextBat[0] | 0;
                 const nxEvent = String(_storyNextBat[2] || '');
@@ -42662,13 +42810,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const theme = _resolveThemeForBattleRow(nxId);
                 const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                 if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
-                // When wilds will fire first, surface the journey in order: the
-                // grass before the gate. Keeps the chip honest without becoming
-                // a paragraph — "🌿 Wild → ⚔ Rival" reads in one glance.
-                const _nextChipText = _willFireWildNext
-                    ? `Next: 🌿 Wild Pokémon → ${nextLabel}`
-                    : `Next: ${nextLabel}`;
-                tips.push({ kind: 'next', iconPath: 'icons/story/story_route.png?v=20260516', label: _nextChipText, click: 'window.StoryMode.proceedToNextBattle()' });
+                // When wilds fire first, surface the journey in order — the grass
+                // before the gate — so the one objective stays honest:
+                // "🌿 Wild → ⚔ Rival" reads in one glance.
+                nextBattleLabel = _willFireWildNext ? `🌿 Wild Pokémon → ${nextLabel}` : nextLabel;
             }
             if (rivalGateActive) {
                 const _healTipLabel = _willFireWildNext
@@ -42733,17 +42878,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_ehN > 0) parts.push(`${_ehN} Emblem of Honor`);
                 tips.push({ iconPath: _acN > 0 ? 'sprites/pokesprite/items/ability-capsule.png' : 'sprites/pokesprite/items/emblem-of-honor.png', label: `${parts.join(' + ')} — free dojo swap`, click: "window.StoryMode.enterTutor('loadout')" });
             }
-            // Cap the rail at 3 — "Next:" plus the two most relevant follow-ups. More than
-            // that pushes the action grid below the fold on phone portrait.
-            if (tipsEl) {
-                tipsEl.innerHTML = tips.slice(0, 4).map(t => {
-                    const _kindCls = t.kind ? ` ${t.kind}` : '';
-                    const _icoHtml = t.iconPath
-                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
-                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
-                    return `<button type="button" class="story-city-tip${_kindCls}${t.urgent ? ' urgent' : ''}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
-                }).join('');
-            }
+            // (The tip rail — single objective line + optional Suggested chips — is
+            // rendered after the gate flags are known, just before the action grid.)
 
             const btn = document.getElementById('story-action-buttons');
             if (!btn) return;
@@ -42912,14 +43048,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Department Store')) {
                 _push('shop', makeActionBtn('🏬 Department Store','dept','window.StoryMode.enterShop(\'dept\')','dept', _facOpts('dept', [{label:'Premium',tone:'info'}])));
             }
-            const _relicCityIdx = getCityIndex(ev);
-            // Relic Annex cycles in every third city per the facility matrix: C0, C3, C6, C9.
-            if ([0, 3, 6, 9].includes(_relicCityIdx)) {
-                const relicFree = (_relicCityIdx === 0 && !sm.artifactFreeClaimUsed);
-                const relicMeta = relicFree
-                    ? [{label:'1st Free',tone:'free'}]
-                    : [_costBadge(5000, ' each')];
-                _push('shop', makeActionBtn('✨ Relic Annex','relic','window.StoryMode.enterArtifactShop()','dept', _facOpts('relic', relicMeta, { soft:true })));
+            // Relics — one facility, two faces (merged from the old "Relic Annex" +
+            // "Artifact Hall"). Browse (acquire a run-wide rule) is live only in the
+            // relic cities C0/C3/C6/C9; Manage (toggle owned relics on/off) is
+            // everywhere. A single hub entry; the in-screen Browse/Manage tabs switch.
+            {
+                const _relicCity = [0, 3, 6, 9].includes(cityIdx);
+                const _relicFree = (cityIdx === 0 && !sm.artifactFreeClaimUsed);
+                const _relicOwned = (sm.artifacts || []).length;
+                const _relicMeta = _relicCity
+                    ? (_relicFree ? [{label:'1st Free',tone:'free'}] : [_costBadge(5000, ' each')])
+                    : (_relicOwned ? [{label:`${_relicOwned} held`,tone:'info'}] : [{label:'Battle rules',tone:'info'}]);
+                const _relicClick = _relicCity ? 'window.StoryMode.enterArtifactShop()' : 'window.StoryMode.enterArtifactHall()';
+                _push('shop', makeActionBtn('✨ Relics','relic',_relicClick,'dept', _facOpts('relic', _relicMeta, { soft:true })));
             }
             if (actions.includes('Poké Casino')) {
                 _push('shop', makeActionBtn('🎰 Game Corner','casino','window.StoryMode.enterCasino()','casino', _facOpts('casino', [{label:'Win prizes',tone:'good'}], { soft:true })));
@@ -42959,8 +43100,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
                 _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(5000)], { soft:true })));
             }
-            // Artifact Hall — present in every city per the matrix (the relic enable/disable hub).
-            _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
+            // (Artifact Hall folded into the single "Relics" entry above — Manage tab.)
             // Pokémon Center — PC storage + Underground. Available from C0 per the v2
             // facility matrix so the player can swap / retry from the start town after a
             // tough fight or revisit the PC right away.
@@ -43033,26 +43173,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const countHtml = n > 1 ? `<span class="story-action-section-count">(${n})</span>` : '';
                 return `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">${title}${countHtml}</div>${_sections[key]}`;
             };
-            // Phase 4.7 — city briefing banner. When the player arrives at a city that
-            // still has REQUIRED facility intros pending (PC / Mart / Professor / Tutor /
-            // …), prepend a small priority-ordered banner so the order is unambiguous
-            // before they touch anything. Same priority used by the disabled "Continue
-            // Route" tooltip (_pendingFacilityIntrosHere is already sorted) — this just
-            // surfaces it at the top of the screen instead of buried in a tooltip.
-            let briefingHtml = '';
-            if (Array.isArray(_pendingIntros) && _pendingIntros.length) {
-                const items = _pendingIntros.map((k, i) => {
-                    const name = _FACILITY_FRIENDLY_NAME[k] || k;
-                    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,193,7,0.12);border:1px solid rgba(255,193,7,0.45);color:#ffd54f;font-size:11px;padding:2px 8px;border-radius:11px;font-weight:bold;">${i + 1}. ${_esc(name)}</span>`;
-                }).join(' ');
-                briefingHtml = `<div style="margin:0 0 8px;padding:10px 12px;background:rgba(255,193,7,0.06);border:1px solid rgba(255,193,7,0.32);border-radius:6px;">
-                    <div style="font-size:11px;color:#ffd54f;font-weight:bold;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">🔴 Visit before leaving — in this order</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">${items}</div>
-                </div>`;
+            // ── The single objective line ───────────────────────────────────────
+            // ONE honest "what to do next", derived from the SAME gate flags the
+            // Continue / Gym / League buttons use below — so the breadcrumb can never
+            // disagree with what's actually unlocked. This replaces a stack of four
+            // signals that each partitioned "next" differently and contradicted on
+            // City 0: a "Required:" chip, a "Next:" chip, the numbered "Visit before
+            // leaving — in this order" banner, and the "Next Step (N)" count.
+            let objective = null;
+            const _profPending = hasProf && !profUsedHere;
+            if (_profPending && legendMysteryGate) {
+                objective = { kicker: 'STORY', icon: 'story_mystery.png', label: 'Talk to the Mystery Figure', click: 'window.StoryMode.enterProfessor()' };
+            } else if (_profPending) {
+                objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
+                    label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
+                    click: 'window.StoryMode.enterProfessor()' };
+            } else if (hasGym && !gymBeat) {
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Enter the Gym', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasLeague) {
+                objective = { kicker: 'NEXT', icon: 'story_league.png', label: 'Enter the Pokémon League', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasVR) {
+                objective = { kicker: 'NEXT', icon: 'story_vr.png', label: 'Climb Victory Road', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasTrainerRoad) {
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Pre-League Trainers', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (routeBlockedByIntros && _pendingNames.length) {
+                const _firstKey = _pendingIntros[0];
+                objective = { kicker: 'NEW HERE', icon: 'story_route.png', label: `See the new ${_pendingNames[0]} before you go`, click: _FACILITY_ENTER_CALL[_firstKey] || 'window.StoryMode.enterCity()' };
+            } else if (_storyNextBat) {
+                objective = { kicker: 'NEXT', icon: 'story_route.png', label: nextBattleLabel || 'Continue your journey', click: 'window.StoryMode.proceedToNextBattle()' };
             }
-            btn.innerHTML = briefingHtml
-                          + _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
-                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
+            if (tipsEl) {
+                let _railHtml = '';
+                if (objective) {
+                    const _oico = objective.icon ? `<img class="obj-ico" src="icons/story/${objective.icon}?v=20260516" alt="" width="18" height="18" decoding="async">` : '';
+                    _railHtml += `<button type="button" class="story-city-objective" onclick="${objective.click}"><span class="obj-kicker">${objective.kicker}</span>${_oico}<span class="obj-label">${objective.label}</span><span class="obj-go">▶</span></button>`;
+                }
+                // Remaining tips are optional, quieter suggestions (cap 3 so the action
+                // grid stays above the fold on phone portrait).
+                const _sugg = tips.slice(0, 3);
+                if (objective && _sugg.length) _railHtml += `<div class="story-city-tips-sugg">Suggested</div>`;
+                _railHtml += _sugg.map(t => {
+                    const _icoHtml = t.iconPath
+                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
+                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
+                    return `<button type="button" class="story-city-tip" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
+                }).join('');
+                tipsEl.innerHTML = _railHtml;
+            }
+            // Section headers. "Story" leads (Professor / Gym / route / Fight Club);
+            // the "(N)" suffix is a count of options, which read as a step-ordinal only
+            // under the old "Next Step" name — the objective line above is the step now.
+            btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Story')
+                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal &amp; Team')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
@@ -43215,11 +43387,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Friendly name lookup for the "Visit X first" tooltip.
         const _FACILITY_FRIENDLY_NAME = {
             mart: 'Pokémart', tutor: 'Move Tutor', nature: 'Nature Rater',
-            center: 'Pokémon Center', relic: 'Relic Annex', artifacts: 'Artifact Hall',
+            center: 'Pokémon Center', relic: 'Relics', artifacts: 'Relics',
             link: "Bill's Cable Link", stoneShop: 'Stones and Beyond', evolab: 'Evolution Tutor',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
             bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club',
+        };
+        // Facility key → the onclick that opens it, so the single objective line can
+        // deep-link to a pending first-visit facility. Mirrors the button onclicks in
+        // renderCityActions (one source for both keeps them from drifting apart).
+        const _FACILITY_ENTER_CALL = {
+            center: "window.StoryMode.enterPokemonCenter()", mart: "window.StoryMode.enterShop('mart')",
+            professor: "window.StoryMode.enterProfessor()", tutor: "window.StoryMode.enterTutor('moves')",
+            dojo: "window.StoryMode.enterTutor('loadout')", nature: "window.StoryMode.enterTutor('nature')",
+            evolab: "window.StoryMode.enterEvolutionLab()", dept: "window.StoryMode.enterShop('dept')",
+            casino: "window.StoryMode.enterCasino()", safari: "window.StoryMode.enterSafariZone()",
+            evtrainer: "window.StoryMode.enterEVTrainer()", fanclub: "window.StoryMode.enterFanClub()",
+            daycare: "window.StoryMode.enterDaycare()", pits: "window.StoryMode.enterPits()",
+            stoneShop: "window.StoryMode.enterStoneShop()", link: "window.StoryMode.enterLink()",
+            colress: "window.StoryMode.enterColress()", relic: "window.StoryMode.enterArtifactShop()",
+            artifacts: "window.StoryMode.enterArtifactHall()", bag: "window.StoryMode.openCityBag()",
+            party: "window.StoryMode.openPartyModal()",
         };
         function _friendlyJoin(names) {
             if (!names.length) return '';
@@ -43293,7 +43481,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Relic Keeper: "Three on the velvet. Pick one — and remember, the rule it carries shows up in every battle of the run, theirs as well as yours."',
                 'Relic Keeper: "Read the card before you pay. Some of these change the air of the fight. Some of them just rearrange the furniture."',
                 'Relic Keeper: "Your first piece in Pallet is on me. After that the going rate is five thousand. Worth it for the right one."',
-                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Artifact Hall has a switch."',
+                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Manage tab has a switch."',
                 'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
             ],
         };
@@ -44828,14 +45016,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openSummary(_storySumIdx);
         }
 
+        // Browse / Manage tab bar — the two faces of the merged "Relics" facility:
+        // Browse (acquire a run-wide rule; only in the relic cities C0/C3/C6/C9) and
+        // Manage (toggle owned relics on/off; everywhere). One hub entry opens one of
+        // these; these tabs switch between them so the player sees both modes exist.
+        function _relicTabBar(active, cityIdx) {
+            // Use the documented relic cycle [0,3,6,9] — the same predicate the hub
+            // button and the free-relic tip use — NOT the looser storyArtifactShopCityAllowed
+            // (which also allows C8's Dept Store). Keeps the Browse tab offered exactly
+            // where the hub offers it, so the merge introduces no new C8 relic path.
+            const canBrowse = [0, 3, 6, 9].includes(Math.max(0, cityIdx | 0));
+            const base = 'flex:1;padding:7px 8px;font-family:inherit;font-size:12px;font-weight:bold;border-radius:4px;border:1px solid;';
+            const on = 'color:#1a0022;background:#ce93d8;border-color:#ce93d8;cursor:default;';
+            const off = 'color:#ce93d8;background:rgba(206,147,216,0.08);border-color:#7b1fa2;cursor:pointer;';
+            const dis = 'color:#666;background:rgba(255,255,255,0.03);border-color:#444;cursor:not-allowed;';
+            const browseStyle = active === 'browse' ? on : (canBrowse ? off : dis);
+            const manageStyle = active === 'manage' ? on : off;
+            const browseClick = (active === 'browse' || !canBrowse) ? '' : "window.StoryMode.enterArtifactShop()";
+            const manageClick = active === 'manage' ? '' : "window.StoryMode.enterArtifactHall()";
+            const browseTitle = canBrowse ? 'Acquire a run-wide relic (one per shop)' : 'Relics are sold in select cities along the way';
+            return `<div style="display:flex;gap:6px;margin-bottom:12px;">
+                <button type="button" ${canBrowse ? '' : 'disabled'} onclick="${browseClick}" title="${browseTitle}" style="${base}${browseStyle}">✨ Browse</button>
+                <button type="button" onclick="${manageClick}" title="Turn the relics you own on or off" style="${base}${manageStyle}">⚙ Manage</button>
+            </div>`;
+        }
         function enterArtifactHall() {
             _markFacilitySeen('artifacts');
+            _markFacilitySeen('relic'); // merged "Relics" facility — opening either face satisfies the one intro
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
                 const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="This relic affects both you and your opponents while enabled">◆ Affects both sides</span>';
                 const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="The coin reward and curse only affect your team">◆ Your team only</span>';
                 const _hallGuidance = '<div style="border:1px solid #7b1fa2;border-radius:6px;padding:10px;margin-bottom:10px;background:rgba(123,31,162,0.12);font-size:11px;color:#d9c7e8;line-height:1.5;"><strong style="color:#ce93d8;">Relics rewrite the rules of every battle — for both sides.</strong> They arrive switched <strong>OFF</strong>. Flip one on here only when you want its effect; new trainers should leave them off until they\'ve found their footing. Toggle any relic on or off anytime.</div>';
-                el.innerHTML = _hallGuidance + ((sm.artifacts || []).map(id => {
+                el.innerHTML = _relicTabBar('manage', cityIdx) + _hallGuidance + ((sm.artifacts || []).map(id => {
                     const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
@@ -44855,7 +45069,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${off ? 'Enable Relic' : 'Disable Relic'}
                         </button>
                     </div>`;
-                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Relic Annex sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
+                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Browse tab sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
             }
             showScreen('screen-story-artifacts');
         }
@@ -46568,9 +46782,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             showBattleIntro(trainer, event, async () => {
-                const _rollEnemy = () => isMysteryFinal
-                    ? rollMysteryFigureFinalBossTeam(6, sg)
-                    : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                const _rollEnemy = () => {
+                    if (isMysteryFinal) return rollMysteryFigureFinalBossTeam(6, sg);
+                    // Extra track: raid / miniRaid beats fight as ONE scaled legendary-tier
+                    // Pokémon, not a rolled trainer team.
+                    const _raidTeam = _rollExtraRaidBossTeam(sm._activeBeatBattleKey);
+                    if (_raidTeam) return _raidTeam;
+                    return rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                };
                 // Static-roll spec: every non-rival fight is a pure function of
                 // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
                 // The rival stays dynamic — it re-rolls off the LIVE party to counter it.
@@ -47888,7 +48107,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
                     ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
                     ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
-                    ${btn(png('icons/story/story_artifacts.png'),  'Relic Annex', 'window.StoryMode.enterArtifactShop()', null, 'Buy run-wide relics. One per shop, locked for the rest of the run.')}
+                    ${btn(png('icons/story/story_artifacts.png'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
                     ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
                     ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
                     ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
@@ -50033,7 +50252,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
-                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No items in stock — you\'re on a No Item Run. Visit the <strong style="color:#ce93d8;">Relic Annex</strong> for run-wide relics instead.</div>');
+                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No items in stock — you\'re on a No Item Run. Visit <strong style="color:#ce93d8;">Relics</strong> for run-wide relics instead.</div>');
             }
             gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
@@ -50169,7 +50388,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _markFacilitySeen('relic');
             try { _storyShowOneTimeTip('relic',
-                'The Relic Annex.\n\nThree relics on the shelf, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Artifact Hall in any city will let you toggle them.'); } catch (e) {}
+                'Relics — the Browse shelf.\n\nThree relics here, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Manage tab (in any city) lets you toggle them.'); } catch (e) {}
             try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
@@ -50219,7 +50438,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>` : ''}
                 </div>`);
             }
-            gridEl.innerHTML = _artParts.join('');
+            gridEl.innerHTML = _relicTabBar('browse', cityIdx) + _artParts.join('');
             syncStoryArtifactShopBackground();
             showScreen('screen-story-artifact-shop');
             // Soft mystical chime — relic shop has a treasure-room mood.
@@ -59273,6 +59492,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             get state() { return sm; },
+            // Boss-mechanics live wiring — startBattle (init) + the locked turn
+            // resolver reach these through window.StoryMode.*; previously only the
+            // test harness exposed them, so production boss mechanics never attached.
+            get BOSS_CONFIGS() { return BOSS_CONFIGS; },
+            bossMechanicsBattleInit: (s) => _storyBossMechanicsBattleInit(s),
+            bossMechanicsTurnTick: (s, m) => _storyBossMechanicsTurnTick(s, m),
+            showBossBanner: (t, a) => _showBossBanner(t, a),
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,

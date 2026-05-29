@@ -79,8 +79,10 @@ test('hpThresholdPhase activates surge on the NEXT turn (1-turn telegraph)', () 
     state.turnNumber = 2;
     ST.bossMechanicsTurnTick(state, foe);
     assert.equal(state._bossPendingTelegraph, null);
-    // After activation, surge starts at 3 and immediately decrements to 2 in the same tick.
-    assert.equal(foe._bossSurgeTurns, 2);
+    // Surge engages THIS turn and lasts 3 turns of +25% damage. The timer is set
+    // after the pre-activation decrement, so it reads 3 right after activation.
+    // (Was 2 under the same-tick off-by-one this fix corrects.)
+    assert.equal(foe._bossSurgeTurns, 3);
 });
 
 test('hpThresholdPhase only telegraphs once per threshold (does not refire)', () => {
@@ -115,8 +117,86 @@ test('immunityRound telegraphs at turn N-1 and activates on turn N', () => {
     state.turnNumber = 5;
     ST.bossMechanicsTurnTick(state, foe);
     assert.equal(state._bossPendingTelegraph, null);
-    // Immunity activates with 1 turn, decrements to 0 within the same tick.
-    assert.equal(foe._bossImmuneTurns, 0);
+    // Immunity is engaged for THIS turn's damage phase — the clamp checks > 0 — so it
+    // reads 1 right after activation and decrements to 0 on the next tick. (Was 0 under
+    // the same-tick off-by-one, which meant the immunity clamp never actually fired.)
+    assert.equal(foe._bossImmuneTurns, 1);
+});
+
+test('faintPhase telegraphs when the boss team faints reach the threshold', () => {
+    const state = mkBossState([
+        { type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'CORNERED' }
+    ]);
+    const foe = mkFoe(100, 100);
+    state.foeParty = [foe, mkFoe(100, 100), mkFoe(100, 100), mkFoe(100, 100), mkFoe(100, 100), mkFoe(100, 100)];
+    // Turn 1 — nobody fainted yet, no phase.
+    state.turnNumber = 1;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.equal(state._bossPendingTelegraph, null, 'no telegraph before 2 faints');
+
+    // KO two of the boss's Pokémon → threshold reached.
+    state.foeParty[1].currentHp = 0;
+    state.foeParty[2].currentHp = 0;
+    state.turnNumber = 2;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.ok(state._bossPendingTelegraph, 'telegraphs at 2 faints');
+    assert.equal(state._bossPendingTelegraph.type, 'faintPhase');
+    assert.equal(state._bossPendingTelegraph.effect, 'surge');
+
+    // Next turn activates the surge on the active foe.
+    state.turnNumber = 3;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.equal(foe._bossSurgeTurns, 3);
+});
+
+test('heal phase effect restores foe HP on activation', () => {
+    const state = mkBossState([
+        { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', magnitude: 0.25, banner: 'MEND' }
+    ]);
+    const foe = mkFoe(200, 80); // 40% HP — below the 50% threshold
+    state.turnNumber = 1;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.ok(state._bossPendingTelegraph, 'telegraphs the heal phase');
+    assert.equal(state._bossPendingTelegraph.effect, 'heal');
+    const hpBefore = foe.currentHp;
+    state.turnNumber = 2;
+    ST.bossMechanicsTurnTick(state, foe); // activate
+    assert.equal(foe.currentHp, Math.min(foe.maxHp, hpBefore + Math.floor(foe.maxHp * 0.25)));
+    assert.ok(foe.currentHp > hpBefore, 'heal should raise HP');
+});
+
+test('solo raid boss scaling: _bossStatMult boosts stats; _bossHpScale multiplies HP only', () => {
+    const mk = ST.makeBuild || W.makeBuild;
+    const buildPokemon = W.buildPokemon;
+    assert.equal(typeof buildPokemon, 'function', 'buildPokemon reachable on window');
+    assert.equal(typeof mk, 'function', 'makeBuild reachable');
+    const base = mk('Marowak');
+    assert.ok(base, 'makeBuild returned a build');
+    // Same base build, cloned — only the boss fields differ → clean comparison.
+    const plainBuild = JSON.parse(JSON.stringify(base));
+    const bossBuild = JSON.parse(JSON.stringify(base));
+    bossBuild._bossStatMult = 1.3;  // legendary-tier all-stat boost
+    bossBuild._bossHpScale = 5;     // raid scale (maxParty 6 - 1)
+    const plain = buildPokemon('Marowak', plainBuild);
+    const boss = buildPokemon('Marowak', bossBuild);
+    // HP: ×1.3 (stat mult) then ×5 (HP scale), each floored, in that order.
+    const expHp = Math.floor(Math.floor(plain.maxHp * 1.3) * 5);
+    assert.equal(boss.maxHp, expHp, `boss HP should be floor(floor(${plain.maxHp}*1.3)*5)`);
+    assert.equal(boss.currentHp, boss.maxHp, 'boss enters at full scaled HP');
+    // Offensive stat: ×1.3 only (HP scale does not touch stats).
+    assert.equal(boss.stats.atk, Math.max(1, Math.floor(plain.stats.atk * 1.3)), 'atk boosted by stat mult only');
+});
+
+test('extra raids are populated with escalating multi-phase HP configs', () => {
+    const c = ST.BOSS_CONFIGS;
+    const raid = c['extra.mewtwo.raid'];
+    assert.ok(raid && raid.mechanics.length === 3, 'real raid has 3 HP phases');
+    assert.equal(raid.mechanics.map(m => m.at).join(','), '0.75,0.5,0.25');
+    assert.equal(raid.mechanics.map(m => m.effect).join(','), 'surge,heal,immunity');
+    const mini = c['extra.mewtwo.miniRaid'];
+    assert.ok(mini && mini.mechanics.length === 2, 'mini raid has 2 HP phases');
+    assert.equal(mini.mechanics.map(m => m.at).join(','), '0.5,0.25');
+    assert.equal(mini.mechanics.map(m => m.effect).join(','), 'surge,immunity');
 });
 
 test('turn tick is a safe no-op when state has no boss mechanics', () => {

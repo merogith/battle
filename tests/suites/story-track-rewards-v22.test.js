@@ -126,10 +126,13 @@ test('BOSS_MECHANICS records activations on a battle context', () => {
     assert.equal(battle._mechanics[0].bannerText, 'TEST BANNER');
 });
 
-test('bossHpScaleForKind matches design (miniRaid=p-1, raid=p, else=1)', () => {
-    assert.equal(ST.bossHpScaleForKind('miniRaid', 5), 4);
-    assert.equal(ST.bossHpScaleForKind('miniRaid', 1), 1);  // clamped at min 1
-    assert.equal(ST.bossHpScaleForKind('raid', 6), 6);
+test('bossHpScaleForKind matches design (miniRaid=maxParty-2, raid=maxParty-1, else=1)', () => {
+    // Solo raid boss HP scale: the boss is one Pokémon facing a full party, so HP is
+    // multiplied by (maxParty-2) for a mini boss and (maxParty-1) for a real boss.
+    assert.equal(ST.bossHpScaleForKind('miniRaid', 6), 4); // 6-2
+    assert.equal(ST.bossHpScaleForKind('raid', 6), 5);     // 6-1
+    assert.equal(ST.bossHpScaleForKind('miniRaid', 2), 1); // clamped at min 1 (2-2 -> 0 -> 1)
+    assert.equal(ST.bossHpScaleForKind('raid', 1), 1);     // clamped at min 1
     assert.equal(ST.bossHpScaleForKind('boss', 6), 1);
     assert.equal(ST.bossHpScaleForKind('battle', 6), 1);
 });
