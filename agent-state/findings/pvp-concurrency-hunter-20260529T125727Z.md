@@ -7,7 +7,7 @@ current_line_hint: ~67
 agents: [pvp-concurrency-hunter]
 fingerprint: a1c0ffee0001
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Per-room host/guest tokens are stored inside world-readable `data` jsonb — token auth is self-defeating
