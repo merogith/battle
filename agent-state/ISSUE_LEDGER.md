@@ -1,7 +1,7 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-28T22:37:42.928Z
-> **Source**: `agent-state/findings/*.md` (23 unique findings after dedup)
+> **Generated**: 2026-05-29T12:52:38.999Z
+> **Source**: `agent-state/findings/*.md` (31 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
 
@@ -14,43 +14,54 @@ status, edit the corresponding finding file and re-run.
 | Severity | Count |
 |---|---|
 | P0 | 0 |
-| P1 | 5 |
-| P2 | 7 |
-| P3 | 11 |
-| **Total** | **23** |
+| P1 | 6 |
+| P2 | 10 |
+| P3 | 15 |
+| **Total** | **31** |
 
 | Category | Count |
 |---|---|
+| balance | 1 |
+| bug | 2 |
 | data | 5 |
 | dx | 4 |
-| inconsistency | 13 |
+| inconsistency | 14 |
 | refactor | 1 |
+| test-gap | 4 |
 
 ## TOC
 
 - [ISSUE-001] [P1] League foe boost now stacks ADDITIVELY with difficulty; spec §8/§15c documents multiplicative — `applyFoeDifficultyScaling` (inconsistency)
 - [ISSUE-002] [P1] Fresh story run starts with 0 Poké Balls; spec promises 5 in three places — `balls` (inconsistency)
-- [ISSUE-003] [P1] canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift — `canMove` (inconsistency)
-- [ISSUE-004] [P1] parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift — `parseMoveEffects` (inconsistency)
-- [ISSUE-005] [P1] Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init — `startBattle` (inconsistency)
-- [ISSUE-006] [P2] STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists — `catchMode` (inconsistency)
-- [ISSUE-007] [P2] Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv — `convertSmogonSet` (data)
-- [ISSUE-008] [P2] gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive) — `fetchSmogonSetsForGen` (data)
-- [ISSUE-009] [P2] Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants — `FOE_STAT_NERF_BY_CITY` (inconsistency)
-- [ISSUE-010] [P2] online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8× — `reportWinIfConfigured` (refactor)
-- [ISSUE-011] [P2] Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES — `STORY_WILD_GRADE_BY_CITY` (inconsistency)
-- [ISSUE-012] [P2] G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor" — `storyStripGrade4IfPartyMature` (inconsistency)
-- [ISSUE-013] [P3] CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines — `CODEBASE_MAP` (dx)
-- [ISSUE-014] [P3] 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows — `convertSmogonSet` (data)
-- [ISSUE-015] [P3] 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool — `LEADER_VICTORY_LINES` (inconsistency)
-- [ISSUE-016] [P3] `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html) — `loadBuildsCSV` (data)
-- [ISSUE-017] [P3] Unguarded 'dex probe Pikachu' console.log left in the data-load path — `loadGameData` (dx)
-- [ISSUE-018] [P3] Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read — `loadGameData` (data)
-- [ISSUE-019] [P3] 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX — `MOVE_SFX_MAP` (inconsistency)
-- [ISSUE-020] [P3] Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast — `MYSTERY_FIGURE_IDENTITIES` (inconsistency)
-- [ISSUE-021] [P3] STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G — `SAFARI_ENTRY_COST` (inconsistency)
-- [ISSUE-022] [P3] SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20 — `SAVE_VER` (dx)
-- [ISSUE-023] [P3] Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols — `STORY_EVENTS_RAW` (dx)
+- [ISSUE-003] [P1] Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns — `canMove` (bug)
+- [ISSUE-004] [P1] canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift — `canMove` (inconsistency)
+- [ISSUE-005] [P1] parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift — `parseMoveEffects` (inconsistency)
+- [ISSUE-006] [P1] Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init — `startBattle` (inconsistency)
+- [ISSUE-007] [P2] Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts — `canMove` (bug)
+- [ISSUE-008] [P2] STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists — `catchMode` (inconsistency)
+- [ISSUE-009] [P2] Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv — `convertSmogonSet` (data)
+- [ISSUE-010] [P2] 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap — `describe('Status moves')` (test-gap)
+- [ISSUE-011] [P2] gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive) — `fetchSmogonSetsForGen` (data)
+- [ISSUE-012] [P2] Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants — `FOE_STAT_NERF_BY_CITY` (inconsistency)
+- [ISSUE-013] [P2] online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8× — `reportWinIfConfigured` (refactor)
+- [ISSUE-014] [P2] Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4 — `setConfusionDuration` (balance)
+- [ISSUE-015] [P2] Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES — `STORY_WILD_GRADE_BY_CITY` (inconsistency)
+- [ISSUE-016] [P2] G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor" — `storyStripGrade4IfPartyMature` (inconsistency)
+- [ISSUE-017] [P3] CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines — `CODEBASE_MAP` (dx)
+- [ISSUE-018] [P3] 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows — `convertSmogonSet` (data)
+- [ISSUE-019] [P3] 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool — `LEADER_VICTORY_LINES` (inconsistency)
+- [ISSUE-020] [P3] `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html) — `loadBuildsCSV` (data)
+- [ISSUE-021] [P3] Unguarded 'dex probe Pikachu' console.log left in the data-load path — `loadGameData` (dx)
+- [ISSUE-022] [P3] Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read — `loadGameData` (data)
+- [ISSUE-023] [P3] 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX — `MOVE_SFX_MAP` (inconsistency)
+- [ISSUE-024] [P3] Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast — `MYSTERY_FIGURE_IDENTITIES` (inconsistency)
+- [ISSUE-025] [P3] Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound) — `parseMoveEffects` (inconsistency)
+- [ISSUE-026] [P3] STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G — `SAFARI_ENTRY_COST` (inconsistency)
+- [ISSUE-027] [P3] SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20 — `SAVE_VER` (dx)
+- [ISSUE-028] [P3] 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles — `spread-damaging` (test-gap)
+- [ISSUE-029] [P3] 46 volatile-status moves are it.todo but assert with one mon.volatile flag check — `status-volatile` (test-gap)
+- [ISSUE-030] [P3] Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols — `STORY_EVENTS_RAW` (dx)
+- [ISSUE-031] [P3] 28 conditional-BP moves need per-move precondition tuning before damage assertion — `variable-power-conditional` (test-gap)
 
 ---
 
@@ -124,10 +135,48 @@ sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };   // line 34815
 
 ---
 
-## <a id="ISSUE-003"></a> ISSUE-003: canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift
+## <a id="ISSUE-003"></a> ISSUE-003: Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns
 
 ---
 id: ISSUE-003
+severity: P1
+category: bug
+anchor_symbol: canMove
+current_line_hint: ~26025
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: ae180cf0e424
+confidence: high
+status: open
+---
+
+**Title**: Sleep wakes & acts on the same turn (off-by-one): ~1/3 of sleeps cost the target 0 turns
+
+**Evidence**:
+```js
+if (mon.status === "SLP") {
+    mon.statusTurns++;                       // increment BEFORE the check
+    let wakeThreshold = mon.sleepDuration || 2;
+    if (mon.statusTurns >= wakeThreshold) { mon.status = null; ...; return true; } // wakes AND acts
+```
+`applyStatus` sets `mon.sleepDuration = Math.floor(Math.random()*3)+1` (range 1-3). With duration=1, the very first `canMove` call increments to 1, `1 >= 1` is true, the mon wakes and `return true` lets it act immediately — losing zero turns. For duration 2/3 it loses 1/2 turns. Showdown sleep always costs at least 1 lost turn (effective loss = duration), this engine loses `duration-1` (range 0-2).
+
+**Repro**: `node scripts/debug/_repro/sleep.mjs` (seed Math.random to pin duration). Output:
+`dur1 (r=0.0): {"dur":1,"turns":["WOKE+acted","awake-can-act"]}` — slept 0 turns.
+`dur2 (r=0.4): {"turns":["slept(no action)","WOKE+acted",...]}` — slept 1 turn.
+
+**Blast radius**: Every sleep-inducing move (Spore, Sleep Powder, Hypnosis, Sing, Lovely Kiss, Yawn, Rest). Spore/Hypnosis setup-fodder and stall lines are ~33% weaker than canon; Rest users wake a turn early. AI threat/setup math (getBestMove, aiThreatScore) assumes canonical sleep length.
+
+**Fix sketch**: Either set `sleepDuration` to 2-4 (so effective loss is 1-3), or move the wake check so the mon cannot act on the turn it wakes when the counter first reaches the threshold (decrement-then-check with the act-on-wake semantics matching Showdown). Pick one and align with the HUD counter.
+
+**Verification**: Re-run `scripts/debug/_repro/sleep.mjs`: duration=1 must show one `slept(no action)` before `WOKE+acted`. Add a node:test asserting a freshly-slept mon cannot act on its first turn.
+
+---
+
+## <a id="ISSUE-004"></a> ISSUE-004: canMove() paralysis + confusion self-hit rolls use bare Math.random() — seeded-replay drift
+
+---
+id: ISSUE-004
 severity: P1
 category: inconsistency
 anchor_symbol: canMove
@@ -162,10 +211,10 @@ else if (Math.random() < 0.3333) { /* hurt itself in confusion */ }             
 
 ---
 
-## <a id="ISSUE-004"></a> ISSUE-004: parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift
+## <a id="ISSUE-005"></a> ISSUE-005: parseMoveEffects() secondary-effect / Tri Attack / Stench rolls use bare Math.random() — RNG drift
 
 ---
-id: ISSUE-004
+id: ISSUE-005
 severity: P1
 category: inconsistency
 anchor_symbol: parseMoveEffects
@@ -198,10 +247,10 @@ if (Math.random() * 100 >= _sg(_secChance)) continue;   // bare — every second
 
 ---
 
-## <a id="ISSUE-005"></a> ISSUE-005: Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init
+## <a id="ISSUE-006"></a> ISSUE-006: Bare `sm` in startBattle is a ReferenceError — story boss/raid mechanics silently never init
 
 ---
-id: ISSUE-005
+id: ISSUE-006
 severity: P1
 category: inconsistency
 anchor_symbol: startBattle
@@ -236,10 +285,43 @@ try {
 
 ---
 
-## <a id="ISSUE-006"></a> ISSUE-006: STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists
+## <a id="ISSUE-007"></a> ISSUE-007: Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts
 
 ---
-id: ISSUE-006
+id: ISSUE-007
+severity: P2
+category: bug
+anchor_symbol: canMove
+current_line_hint: ~26066
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: 23079ed8b640
+confidence: medium
+status: open
+---
+
+**Title**: Confusion self-hit ignores the confused mon's Atk/Def stat-stage boosts
+
+**Evidence**:
+```js
+let dmg = Math.floor((Math.floor(Math.floor(22 * 40 * (mon.stats.atk / mon.stats.def)) / 50) + 2));
+```
+Uses raw `mon.stats.atk` / `mon.stats.def` with no `getStageMult(mon.stages.atk/def)`. In Showdown the 40-BP typeless self-hit uses the confused Pokemon's current (boosted) Attack and Defense. A +6 Atk sweeper self-hits for far less than canon; a -Def mon self-hits for less than it should.
+
+**Repro**: Swords Dance x3 a mon, confuse it, force self-hit (pin RNG < 0.3333). Self-hit damage matches the unboosted value, not the +6 Atk value.
+
+**Blast radius**: Confusion damage on boosted/screened sweepers. Minor but a real divergence from canon damage.
+
+**Fix sketch**: Multiply A and D by `getStageMult(mon.stages.atk)` and `getStageMult(mon.stages.def)` respectively in the self-hit damage line, mirroring the main damage block's stage handling.
+
+**Verification**: Repro script comparing self-hit damage at +0 vs +6 Atk; the boosted case must be larger.
+
+---
+
+## <a id="ISSUE-008"></a> ISSUE-008: STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists
+
+---
+id: ISSUE-008
 severity: P2
 category: inconsistency
 anchor_symbol: catchMode
@@ -272,10 +354,10 @@ grep catchMode battle.html -> 0 matches.
 
 ---
 
-## <a id="ISSUE-007"></a> ISSUE-007: Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv
+## <a id="ISSUE-009"></a> ISSUE-009: Fallback build mirror (gen*.json) carries 213 builds with illegal EV totals >510 absent from authoritative builds.csv
 
 ---
-id: ISSUE-007
+id: ISSUE-009
 severity: P2
 category: data
 anchor_symbol: convertSmogonSet
@@ -308,10 +390,100 @@ status: open
 
 ---
 
-## <a id="ISSUE-008"></a> ISSUE-008: gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive)
+## <a id="ISSUE-010"></a> ISSUE-010: 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap
 
 ---
-id: ISSUE-008
+id: ISSUE-010
+severity: P2
+category: test-gap
+anchor_symbol: describe('Status moves')
+file: tests/moves/by-category/status.test.js
+agents: [test-coverage-filler]
+fingerprint: 187e8bbb9b4b
+confidence: high
+status: open
+---
+
+**Title**: 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap
+
+**Evidence**:
+```text
+status.test.js   210 todo   special.test.js  74 todo   physical.test.js  67 todo   TOTAL 351
+Verified: grep -cE "it\.todo\(" on each file. Every TODO move resolved in data/moves.json (0 not-found).
+Harness primitives confirmed live: mon.stages{atk..eva}, mon.status (slp/par/brn/psn/tox),
+mon.currentHp/maxHp, mon.volatile{confusion,taunt,leechSeed,aquaRing,stockpile,perishCount,...},
+state.weather, state.trickRoom, state.pSide/fSide{reflect,lightScreen,spikes,...}. Seed 0 forces
+secondary effects (Power-Up Punch -> atk +1). Spread (allAdjacentFoes) moves hit the lone foe and drop HP.
+```
+
+**Repro**: `for f in tests/moves/by-category/{status,special,physical}.test.js; do grep -cE "it\.todo\(" $f; done` -> 210, 74, 67. Probe harness with `node --test` against `tests/helpers/load-engine.js` (mkMon/runTurn).
+
+**Blast radius**: Move-coverage confidence. 516 of 867 generated tests already auto-assert; these 351 are the long tail of preconditioned mechanics. Clustering by setup-shape (not by file/category) lets one harness primitive retire a whole batch.
+
+**Fix sketch**: Convert clusters in cheapest-first order. The full setup-shape taxonomy table (cluster id, count, representative moves, shared harness setup, effort/value) is below. Orchestrator drives `/fix-todo-test <cluster-id>` one cluster per invocation, writing to `tests/moves/by-category/_drafts/<id>.test.js` (never editing the generated files).
+
+**Verification**: After each cluster draft, `node --test tests/moves/by-category/_drafts/<id>.test.js` must pass; a failing assertion is a candidate engine bug, not a bad test.
+
+
+## Setup-shape cluster taxonomy (all 351 TODOs, 31 clusters)
+
+Effort = harness work to build the precondition + assert. Value = TODOs retired per unit effort.
+
+| Cluster id | Count | Files | Shared harness setup | Assert | Effort | Value |
+|---|---|---|---|---|---|---|
+| spread-damaging | 66 | sp:50 ph:17 (subset of spread-target) | none (spread move hits lone foe in singles); seed 0 for secondaries | defender.currentHp dropped; + secondary status/boost/volatile where declared | LOW | **HIGHEST** |
+| status-volatile | 46 | st:46 | runTurn the move | target/self mon.volatile.<flag> set (confusion, taunt, leechSeed, protect, aquaRing, stockpile, perishCount, ingrain, magnetRise, encore, disable, focusEnergy, destinyBond...) | LOW | **HIGH** |
+| variable-power-conditional | 28 | sp:5 ph:23 | build precondition (weight/speed ratio, user burned/asleep, prior turn, HP%) then compare BP/damage | damage scales with condition (Low Kick/Gyro Ball/Heavy Slam by weight; Facade x2 when brn; Reversal/Flail at low HP; Return/Frustration friendship; Fake Out/First Impression turn 1) | MED-HIGH | MED |
+| self-heal | 18 | st:18 | pre-damage the user (set currentHp < maxHp), runTurn | user.currentHp increases toward maxHp (Recover/Roost/Wish/Synthesis weather-scaled/Rest -> slp+full) | LOW-MED | **HIGH** |
+| charge | 17 | st:1 sp:5 ph:11 | run turn 1 (charge), assert mon.volatile.charging set; turn 2 deals damage (Power Herb / seed for skip) | turn1 no damage + charging flag; turn2 HP drop (Solar Beam, Fly, Dig, Phantom Force, Sky Drop...) | MED | MED |
+| side-condition | 15 | st:15 | runTurn the move | state.pSide/fSide flag set (reflect, lightScreen, auroraVeil, safeguard, mist, tailwind, lightScreen turns; Quick/Wide/Crafty/Mat protect-side) | LOW | **HIGH** |
+| field-effect | 14 | st:14 | runTurn the move | state.<field> set (trickRoom, magicRoom, wonderRoom, gravity; Haze clears stages; Perish Song sets perishCount on all; Mud/Water Sport) | LOW-MED | MED |
+| ally-target | 12 | st:12 | SKIP in singles harness (target adjacentAlly/allies/adjacentAllyOrSelf) | leave as todo OR assert no-op/self path (Howl self atk+1; Helping Hand needs doubles) | (skip) | LOW |
+| move-copy-call | 12 | st:12 | give user the copy move + a known move to copy; runTurn | called move's effect fires (Metronome/Assist/Copycat/Sleep Talk/Mirror Move/Mimic/Sketch); some need 2 actors | HIGH | LOW |
+| status-infliction | 12 | st:12 | runTurn on healthy foe (seed 0 to land accuracy) | defender.status === expected (Toxic->TOX, Thunder Wave->par, Will-O-Wisp->brn, Spore/Sleep Powder/Hypnosis->slp, Poison Powder->psn) | LOW | **HIGH** |
+| fixed-damage | 10 | sp:7 ph:3 | runTurn; compute expected | exact HP loss (Dragon Rage=40, Sonic Boom=20, Night Shade/Seismic Toss=level, Super Fang=half, Psywave var, Endeavor->match, Final Gambit->user HP) | LOW-MED | MED |
+| stat-swap-copy | 9 | st:9 | pre-set attacker/defender stages, runTurn | stages/stats swapped or copied (Psych Up copies foe stages; Power/Guard Swap; Heart Swap; Speed Swap; Topsy-Turvy inverts; Pain Split averages HP) | MED | MED |
+| type-change | 8 | st:8 | runTurn | mon.type1/type2 changed (Soak->Water, Conversion->move type, Camouflage->terrain, Forest's Curse/Trick-or-Treat add type, Reflect Type) | LOW-MED | MED |
+| ability-manipulation | 8 | st:8 | give defender a known ability, runTurn | mon.ability changed (Skill Swap exchanges, Role Play copies, Worry Seed->Insomnia, Simple Beam->Simple, Entrainment, Gastro Acid suppresses, Doodle) | MED | LOW |
+| item-manipulation | 8 | st:5 ph:2,sp | give items, runTurn | mon.item moved/removed (Trick/Switcheroo swap, Bestow gives, Recycle restores, Fling throws+effect, Natural Gift type from berry, Stuff Cheeks) | MED | LOW |
+| weather-set | 6 | st:6 | runTurn | state.weather === expected + weatherTurns (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape, Chilly Reception switches) | LOW | **HIGH** |
+| switch-pivot | 5 | st:5 | needs >1 party mon to observe switch | tricky in singles; Teleport/Parting Shot pivot, Baton Pass carries stages, Healing/Lunar/Revival need bench | HIGH | LOW |
+| counter-like | 5 | sp:1 ph:4 | foe must hit user first (priority/order), then move returns damage | Counter=2x phys taken, Mirror Coat=2x spec, Metal Burst/Comeuppance=1.5x, Bide stores 2 turns | HIGH | LOW |
+| terrain-set | 4 | st:4 | runTurn | state terrain field set (Electric/Grassy/Misty/Psychic Terrain) | LOW | MED |
+| hazard-set | 4 | st:4 | runTurn | state.fSide flag/count (spikes, toxicSpikes layers, stealthRock, stickyWeb) | LOW | MED |
+| signature-ohko | 4 | sp:1 ph:3 | runTurn with seed forcing accuracy roll | defender.currentHp === 0 (Sheer Cold, Fissure, Horn Drill, Guillotine) | LOW-MED | MED |
+| trapping | 3 | st:3 | runTurn | defender.volatile.partialTrap/trapped set (Mean Look, Block, Spider Web) | LOW | MED |
+| turn-order | 2 | st:2 | needs doubles to observe (After You, Quash) | skip in singles | (skip) | LOW |
+| hazard-clear | 2 | st:2 | pre-set hazards on side, runTurn | hazards cleared (Defog also drops screens; Tidy Up clears+boosts) | LOW-MED | MED |
+| transform-form | 2 | st:2 | runTurn (Transform copies foe; Psycho Shift moves user status to foe) | user stats/moves/type match foe (Transform); foe gains user's status (Psycho Shift) | MED | LOW |
+| force-switch | 2 | st:2 | needs foe bench to observe forced switch (Roar, Whirlwind) | tricky in singles; assert log/fail-on-single | MED | LOW |
+| self-type-removal | 2 | sp:1 ph:1 | user must be the move's type; runTurn | user loses that type after (Burn Up removes Fire, Double Shock removes Electric) + deals damage | MED | LOW |
+| delayed-damage | 2 | sp:2 | runTurn turn 1 (no immediate dmg), advance 2 turns | damage lands turn 3 (Future Sight, Doom Desire) via state.fSide futureSight | MED | LOW |
+| damaging-special-handling | 2 | ph:2 | set terrain then runTurn | Ice Spinner/Steel Roller remove terrain + deal damage | MED | LOW |
+| status-boost-misc | 1 | st:1 | doubles ally-target (Decorate +2 atk/+2 spa to ally) | skip in singles | (skip) | LOW |
+| secondary-volatile | 1 | sp:1 | Snore needs user asleep | user.status=slp, runTurn, foe HP drop + flinch chance | MED | LOW |
+
+### Recommended execution order (cheapest setup -> most expensive)
+
+1. **spread-damaging (66)** — zero precondition; reuse the existing damaging-move template.
+2. **status-volatile (46)** — single runTurn, assert one `mon.volatile.<flag>`.
+3. **status-infliction (12) + side-condition (15) + weather-set (6) + terrain-set (4) + hazard-set (4)** — all single-runTurn state assertions; batch as one "single-turn-state" pass (41) but split to respect the 25-40 limit (e.g. side+weather+terrain+hazard = 29; status-infliction separate).
+4. **self-heal (18)** — one extra setup line (pre-damage user).
+5. **fixed-damage (10) + signature-ohko (4) + trapping (3) + hazard-clear (2)** — exact-value / pre-state asserts.
+6. **type-change (8) + stat-swap-copy (9) + field-effect (14)** — moderate state setup.
+7. **charge (17)** — two-turn sequencing.
+8. **variable-power-conditional (28)** — per-move precondition tuning; split into 2 batches.
+9. **counter-like (5) + delayed-damage (2) + transform-form (2) + move-copy-call (12) + ability/item-manipulation (16)** — multi-actor / multi-turn; lowest value.
+10. **SKIP clusters (doubles-only): ally-target (12), turn-order (2), force-switch (2), switch-pivot (5), status-boost-misc Decorate (1)** — singles harness cannot construct the precondition; leave as todo per the anti-pattern rule rather than write placeholder assertions.
+
+Net: clusters 1-3 retire **143 TODOs (41%)** with near-zero new harness machinery. Adding self-heal + step-5 reaches **180 (51%)**. ~22 TODOs are honestly unbuildable in a singles harness and should stay todo.
+
+---
+
+## <a id="ISSUE-011"></a> ISSUE-011: gen4.json mirror has a Gen-9-only `teratypes` field on a Gen-4 build (Quagsire/pu/Defensive)
+
+---
+id: ISSUE-011
 severity: P2
 category: data
 anchor_symbol: fetchSmogonSetsForGen
@@ -343,10 +515,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-009"></a> ISSUE-009: Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants
+## <a id="ISSUE-012"></a> ISSUE-012: Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants
 
 ---
-id: ISSUE-009
+id: ISSUE-012
 severity: P2
 category: inconsistency
 anchor_symbol: FOE_STAT_NERF_BY_CITY
@@ -376,10 +548,10 @@ const FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]; // index = city; City >=3 -> 1
 
 ---
 
-## <a id="ISSUE-010"></a> ISSUE-010: online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8×
+## <a id="ISSUE-013"></a> ISSUE-013: online-pvp.js repeats the "fetch room data blob + error-check + extract prev" block 8×
 
 ---
-id: ISSUE-010
+id: ISSUE-013
 severity: P2
 category: refactor
 anchor_symbol: reportWinIfConfigured
@@ -411,10 +583,43 @@ const prev = row.data;
 
 ---
 
-## <a id="ISSUE-011"></a> ISSUE-011: Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES
+## <a id="ISSUE-014"></a> ISSUE-014: Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4
 
 ---
-id: ISSUE-011
+id: ISSUE-014
+severity: P2
+category: balance
+anchor_symbol: setConfusionDuration
+current_line_hint: ~26817
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: b13dc1abcb62
+confidence: medium
+status: open
+---
+
+**Title**: Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4
+
+**Evidence**:
+```js
+defender.volatile.confusion = Math.floor(_confRng()*3)+2;   // 2,3,4 — never 1
+```
+Every confusion-set site (Confuse Ray ~26817, Swagger ~26983, Flatter ~26989, fatigue ~21405, secondary ~27368, G-Max ~24776/24840) uses `floor(rng*3)+2`. canMove decrements then checks, so the holder is exposed for 2-4 move attempts; canon is 1-4 (minimum one exposed attempt).
+
+**Repro**: Confuse Ray a target repeatedly across seeds; observed confusion counter is always in {2,3,4}, never 1. Compare to Showdown's 1-4.
+
+**Blast radius**: Confusion-based stall/disruption (Confuse Ray, Swagger, Flatter) is slightly stronger than canon (no 1-turn rolls). Affects balance, not correctness-breaking.
+
+**Fix sketch**: Change to `Math.floor(rng*4)+1` (1-4) at all confusion-set sites to match Showdown, keeping the decrement-then-check loop.
+
+**Verification**: Statistical check over many seeds that the rolled duration spans {1,2,3,4}.
+
+---
+
+## <a id="ISSUE-015"></a> ISSUE-015: Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES
+
+---
+id: ISSUE-015
 severity: P2
 category: inconsistency
 anchor_symbol: STORY_WILD_GRADE_BY_CITY
@@ -447,10 +652,10 @@ function _wildGradeWeightsForCity(city) { ... }
 
 ---
 
-## <a id="ISSUE-012"></a> ISSUE-012: G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor"
+## <a id="ISSUE-016"></a> ISSUE-016: G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor"
 
 ---
-id: ISSUE-012
+id: ISSUE-016
 severity: P2
 category: inconsistency
 anchor_symbol: storyStripGrade4IfPartyMature
@@ -483,10 +688,10 @@ function storyStripGrade4IfPartyMature(gw) {
 
 ---
 
-## <a id="ISSUE-013"></a> ISSUE-013: CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines
+## <a id="ISSUE-017"></a> ISSUE-017: CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines
 
 ---
-id: ISSUE-013
+id: ISSUE-017
 severity: P3
 category: dx
 anchor_symbol: CODEBASE_MAP
@@ -517,10 +722,10 @@ Actual: 60,040 lines; SAVE_VER 22; STORY_EVENTS_RAW @ 29828; SAFARI_ENTRY_COST 1
 
 ---
 
-## <a id="ISSUE-014"></a> ISSUE-014: 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows
+## <a id="ISSUE-018"></a> ISSUE-018: 6 builds in the gen*.json mirror are missing the `nature` field; the authoritative builds.csv has zero blank-nature rows
 
 ---
-id: ISSUE-014
+id: ISSUE-018
 severity: P3
 category: data
 anchor_symbol: convertSmogonSet
@@ -552,10 +757,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-015"></a> ISSUE-015: 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool
+## <a id="ISSUE-019"></a> ISSUE-019: 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool
 
 ---
-id: ISSUE-015
+id: ISSUE-019
 severity: P3
 category: inconsistency
 anchor_symbol: LEADER_VICTORY_LINES
@@ -589,10 +794,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-016"></a> ISSUE-016: `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html)
+## <a id="ISSUE-020"></a> ISSUE-020: `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html)
 
 ---
-id: ISSUE-016
+id: ISSUE-020
 severity: P3
 category: data
 anchor_symbol: loadBuildsCSV
@@ -623,10 +828,10 @@ i: !itemPicked ? '' : itemPicked === 'No Item' ? 'NO_ITEM' : itemPicked,
 
 ---
 
-## <a id="ISSUE-017"></a> ISSUE-017: Unguarded 'dex probe Pikachu' console.log left in the data-load path
+## <a id="ISSUE-021"></a> ISSUE-021: Unguarded 'dex probe Pikachu' console.log left in the data-load path
 
 ---
-id: ISSUE-017
+id: ISSUE-021
 severity: P3
 category: dx
 anchor_symbol: loadGameData
@@ -661,10 +866,10 @@ if (n === 0) {
 
 ---
 
-## <a id="ISSUE-018"></a> ISSUE-018: Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read
+## <a id="ISSUE-022"></a> ISSUE-022: Engine loads only the `"9"` gen key from each data JSON; ~2800 older-gen `inherit:true` delta entries are shipped but never read
 
 ---
-id: ISSUE-018
+id: ISSUE-022
 severity: P3
 category: data
 anchor_symbol: loadGameData
@@ -697,10 +902,10 @@ const abilitiesJSON= abilitiesJSONOrig['9']|| {};
 
 ---
 
-## <a id="ISSUE-019"></a> ISSUE-019: 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX
+## <a id="ISSUE-023"></a> ISSUE-023: 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX
 
 ---
-id: ISSUE-019
+id: ISSUE-023
 severity: P3
 category: inconsistency
 anchor_symbol: MOVE_SFX_MAP
@@ -732,10 +937,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-020"></a> ISSUE-020: Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast
+## <a id="ISSUE-024"></a> ISSUE-024: Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast
 
 ---
-id: ISSUE-020
+id: ISSUE-024
 severity: P3
 category: inconsistency
 anchor_symbol: MYSTERY_FIGURE_IDENTITIES
@@ -766,10 +971,44 @@ const MYSTERY_FIGURE_IDENTITIES = { the_first: { sprite: 'Red', reveal: 'The Fir
 
 ---
 
-## <a id="ISSUE-021"></a> ISSUE-021: STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G
+## <a id="ISSUE-025"></a> ISSUE-025: Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound)
 
 ---
-id: ISSUE-021
+id: ISSUE-025
+severity: P3
+category: inconsistency
+anchor_symbol: parseMoveEffects
+current_line_hint: ~23640
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: b0a0252096e0
+confidence: low
+status: open
+---
+
+**Title**: Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound)
+
+**Evidence**:
+```js
+let modifier = stab * typeEff * crit * rng * lifeOrb;   // ...then many more *= mods...
+let damage = Math.floor((Math.floor(Math.floor(22 * basePower * (A / D)) / 50) + 2) * modifier);
+```
+Showdown applies STAB, type, crit, burn, item, and the 0.85-1.0 roll as discrete chained `pokeRound`/floor steps, re-flooring after each. This engine multiplies them together and floors once. Result drifts by ±1-2 HP versus Showdown in some matchups (documented as "COMPETITIVE FIX" so likely intentional). Immunity (typeEff===0) is correctly short-circuited to 0 at line 23631 before the `Math.max(1, ...)`, so the classic "immune -> 1 damage" bug is NOT present.
+
+**Repro**: `node --test tests/suites/damage-formula.test.js` passes (tests accept ranges). Precise per-roll comparison vs Showdown calc would show occasional ±1.
+
+**Blast radius**: Sub-HP-point damage drift; can shift a borderline OHKO/2HKO in rare cases. Low impact at Lv50 ranges.
+
+**Fix sketch**: If exact Showdown parity is desired, re-floor after each modifier group (pokeRound). Otherwise document as an accepted deviation in tests/reports/deviations.md.
+
+**Verification**: Cross-check a set of known Showdown damage rolls against engine output for borderline KOs.
+
+---
+
+## <a id="ISSUE-026"></a> ISSUE-026: STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G
+
+---
+id: ISSUE-026
 severity: P3
 category: inconsistency
 anchor_symbol: SAFARI_ENTRY_COST
@@ -798,10 +1037,10 @@ const SAFARI_ENTRY_COST = 10000;   // battle.html:47912
 
 ---
 
-## <a id="ISSUE-022"></a> ISSUE-022: SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20
+## <a id="ISSUE-027"></a> ISSUE-027: SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20
 
 ---
-id: ISSUE-022
+id: ISSUE-027
 severity: P3
 category: dx
 anchor_symbol: SAVE_VER
@@ -831,10 +1070,78 @@ const SAVE_VER = 22;   // battle.html:34133
 
 ---
 
-## <a id="ISSUE-023"></a> ISSUE-023: Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols
+## <a id="ISSUE-028"></a> ISSUE-028: 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles
 
 ---
-id: ISSUE-023
+id: ISSUE-028
+severity: P3
+category: test-gap
+anchor_symbol: spread-damaging
+file: tests/moves/by-category/special.test.js
+agents: [test-coverage-filler]
+fingerprint: adc6cc9a5517
+confidence: high
+status: open
+---
+
+**Title**: 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles
+
+**Evidence**:
+```js
+// generate-move-tests.js marks target:'allAdjacentFoes'/'allAdjacent' as todo (needs doubles),
+// but the singles harness applies the move to the single foe and HP drops:
+await runTurn({ playerMon: atk, foeMon: def }); // Earthquake: def.currentHp 145 -> 115
+assert.ok(def.currentHp < before); // passes today
+```
+
+**Repro**: Probe harness ran Earthquake (spread Ground move) in singles: defender HP fell 145->115. 32 of these 66 also have a declared `secondary` (14 status, 12 boost, 4 volatile) that fires with seed 0.
+
+**Blast radius**: Largest single cluster (66/351). Examples: Surf, Blizzard, Heat Wave, Hyper Voice, Rock Slide, Earthquake, Explosion, Discharge (par), Lava Plume (brn), Muddy Water, Sludge Wave (psn), Bulldoze (spe drop).
+
+**Fix sketch**: `/fix-todo-test spread-damaging` -> draft asserting defender HP drop for all 66, plus secondary status/boost/volatile assertion (seed 0) for the 32 that declare one. Spread mechanics (0.75x in doubles) are NOT assertable in singles — note that limitation, don't fake it.
+
+**Verification**: `node --test tests/moves/by-category/_drafts/spread-damaging.test.js` all green.
+
+---
+
+## <a id="ISSUE-029"></a> ISSUE-029: 46 volatile-status moves are it.todo but assert with one mon.volatile flag check
+
+---
+id: ISSUE-029
+severity: P3
+category: test-gap
+anchor_symbol: status-volatile
+file: tests/moves/by-category/status.test.js
+agents: [test-coverage-filler]
+fingerprint: 9ea53f271f71
+confidence: high
+status: open
+---
+
+**Title**: 46 volatile-status moves are it.todo but assert with one mon.volatile flag check
+
+**Evidence**:
+```js
+// Confuse Ray probe:
+await runTurn({ playerMon: atk, foeMon: def });
+// def.volatile.confusion === 1  (and taunt, leechSeed, aquaRing, stockpile, protect,
+// perishCount, ingrain, encore, disable, focusEnergy, destinyBond all live on mon.volatile)
+```
+
+**Repro**: Probe set Confuse Ray -> `def.volatile.confusion === 1`. `mon.volatile` exposes ~80 flags covering this entire cluster.
+
+**Blast radius**: 46 status moves: Confuse Ray, Taunt, Leech Seed, Substitute, Protect/Detect/King's Shield/Spiky Shield/Baneful Bunker/Obstruct/Silk Trap/Burning Bulwark, Encore, Disable, Aqua Ring, Ingrain, Magnet Rise, Stockpile, Focus Energy, Destiny Bond, Yawn, Torment, Embargo, Foresight, Nightmare, Endure, Follow Me/Rage Powder/Spotlight, etc.
+
+**Fix sketch**: `/fix-todo-test status-volatile` -> draft mapping each move to its expected `mon.volatile.<flag>` (target vs self). Protect-family: assert the volatile is set after use AND that a follow-up move is blocked. Yawn/Nightmare/Leech Seed: assert the flag; defer multi-turn tick to a separate pass.
+
+**Verification**: `node --test tests/moves/by-category/_drafts/status-volatile.test.js` all green.
+
+---
+
+## <a id="ISSUE-030"></a> ISSUE-030: Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols
+
+---
+id: ISSUE-030
 severity: P3
 category: dx
 anchor_symbol: STORY_EVENTS_RAW
@@ -866,5 +1173,39 @@ Separately, several spec function-name anchors are RENAMED in code (feature pres
 **Fix sketch**: Run `npm run debug:spec-drift` and bulk-update the docs' line numbers (or strip them in favor of symbol names per the spec's own anchor-drift note). Fix the 5 renamed-symbol anchors above so find-anchor resolves them.
 
 **Verification**: `node scripts/debug/spec-drift.mjs` reports 0 drifted refs after update; the 5 renamed symbols resolve via `symbol-index.mjs --lookup`.
+
+---
+
+## <a id="ISSUE-031"></a> ISSUE-031: 28 conditional-BP moves need per-move precondition tuning before damage assertion
+
+---
+id: ISSUE-031
+severity: P3
+category: test-gap
+anchor_symbol: variable-power-conditional
+file: tests/moves/by-category/physical.test.js
+agents: [test-coverage-filler]
+fingerprint: 668afcfbc625
+confidence: medium
+status: open
+---
+
+**Title**: 28 conditional-BP moves need per-move precondition tuning before damage assertion
+
+**Evidence**:
+```text
+Low Kick/Grass Knot -> defender weight; Heat Crash/Heavy Slam -> weight ratio;
+Gyro Ball/Electro Ball -> speed ratio; Facade -> 2x when user brn/par/psn;
+Reversal/Flail -> user HP%; Return/Frustration -> friendship; Fake Out/First
+Impression -> only turn 1; Sucker Punch/Upper Hand -> foe must attack.
+```
+
+**Repro**: data/moves.json declares no fixed basePower for these (`basePowerCallback`); damage must be compared against a constructed condition rather than asserted as a constant.
+
+**Blast radius**: 28 moves split sp:5 / ph:23. Highest-effort damaging cluster; several preconditions (turn-1 Fake Out, foe-attacks Sucker Punch) overlap counter-like setup.
+
+**Fix sketch**: Split into two `/fix-todo-test` batches (weight/speed-scaled vs status/HP/turn-scaled). For each, build two scenarios bracketing the condition and assert damage ordering (low vs high), not absolute BP. Leave any move whose condition can't be built in singles as todo.
+
+**Verification**: `node --test tests/moves/by-category/_drafts/variable-power-conditional-*.test.js` green; assertions compare relative damage across the two bracketed scenarios.
 
 ---
