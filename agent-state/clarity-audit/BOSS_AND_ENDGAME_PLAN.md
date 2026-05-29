@@ -47,13 +47,62 @@ bossMechanicsBattleInit, bossMechanicsTurnTick}` — but those exist **only** on
   below **50%** HP) + a 1-in-5 immunity round → potential difficulty spike.
 - Villain/extra raids (18 of 19) get surge at 25% HP but otherwise vanilla bulk.
 
-## OPEN DESIGN DECISIONS (→ maintainer questions)
-- **D-Bulk**: wire `_bossHpScaleForKind` for all bosses (real boss bulk) / mechanics-only
-  (vanilla bulk) / final-boss-only.
-- **D-Surge**: surge magnitude (+25% default / +40% / +15%).
-- **D-Weather**: hard-lock boss weather (denies player weather counter-play) vs contestable.
-- **D-Hunt** (endgame, below).
-- Recommend regardless: telegraph log lines (clarity), fix all 3 bugs, keep one-turn-ahead warnings.
+## MAINTAINER DECISIONS (received 2026-05-29) → REFINED PHASE DESIGN
+
+The maintainer replaced the simple A/B/C calls with a **phase-based framework**. Taxonomy:
+
+- **Main story** battles → regular trainer fights, NO boss mechanics.
+- **Villain story** → trainer-vs-trainer fights with **faint-count phases**. Each faction has
+  `villain.<f>.miniBoss` (mini) + `villain.<f>.boss` (full). Mini starts plain, triggers a
+  mechanic after X faints; full starts with one mechanic active, triggers a new one after X
+  faints. Escalating difficulty, **only one mechanic active at a time**.
+- **Extra story** → single legendary-tier **Pokémon bosses** with **HP-threshold phases**.
+  Each mon has `extra.<m>.miniRaid` (mini) + `extra.<m>.raid` (real). Real = phases at
+  **75% / 50% / 25%**; mini = **50% / 25%**. One mechanic per phase, escalating, one active.
+- **Weather lock**: CONTESTABLE (player can override boss weather).
+- **Caged God**: keep the 3-city lead hunt, fully GUIDED (persistent tracker + prompt).
+
+### HP scaling for extra Pokémon bosses (correct the formula + actually call it)
+- Maintainer spec: **miniRaid HP × (maxParty − 2)**, **raid HP × (maxParty − 1)**, using the
+  player's MAX party size (`_storyMaxPartySize()` = clamp(2+badges,2,6)), clamped ≥1.
+- Current code (`_bossHpScaleForKind`, 42047) is miniRaid=(p−1)/raid=(p) AND is **never called**
+  → fix the formula + wire it into the extra-raid battle setup. Villain trainer bosses are full
+  teams → no single-target HP scaling.
+
+### Phase engine (generalize the existing tick, 42106)
+- Today each `hpThresholdPhase` fires the SAME `_bossSurgeTurns=3` (+25%). Generalize so each
+  phase carries WHICH effect to activate (escalating). Multi-threshold already dedupes via
+  `_bossMechanicsFired`.
+- Add a new trigger type **`faintPhase`** for villain trainers: fires when the foe's cumulative
+  faint count crosses X (need a foe-faint counter on stateRef). Full boss = phase 0 at battle
+  start + a phase every X faints; mini = first phase after X faints.
+
+### Two mechanic POOLS (maintainer's "simple must-have" + "best-fitting")
+**Pool A — simple/must-have (ship FIRST to test flow, telegraphed, one-active):**
+1. Offensive stat surge (+1 stage Atk or SpA) — gentlest, phase 1.
+2. Speed surge (+Spe, boss outspeeds).
+3. Heal (boss restores ~25% maxHP at the phase transition) — dramatic.
+4. Damage surge (+25% outgoing for N turns) — the existing `_bossSurgeTurns`.
+5. Immunity round (no damage for 1 turn, telegraphed) — scariest, final phase.
+6. Weather/terrain set (contestable) — thematic openers (Magma=Sun, Aqua=Rain).
+
+Proposed simplest escalation (all bosses, for flow test): P1 stat surge → P2 damage surge →
+P3 immunity round (+ Magma/Aqua open with their weather). Magnitudes per maintainer:
+extra real boss phases 75/50/25, mini 50/25; villain faint-phases TBD by team size.
+
+**Pool B — best-fitting/thematic (LATER, per-boss):** the banners already hint these —
+Galactic "DISTORTION" (Trick Room), Plasma "PRIORITY LOCK", Flare "THE WEAPON", etc.
+
+### Roster (being enumerated by sub-agent — confirm teams/species/sizes before build)
+- Villain: 10 factions × {miniBoss, boss} trainer fights (likely 1 faction per run via variant).
+- Extra: 8 mons × {miniRaid, raid} single-Pokémon (Cubone…Mewtwo).
+- `main.mfBattle`: apex (trainer or Pokémon — pending) — keep HP-phase 0.50 + immunity.
+
+### OPEN PARAMS to confirm after roster lands
+- Faint cadence X for villain bosses (every 1 vs every 2 faints) — depends on team sizes.
+- Ship Pool A simplest-escalation first (maintainer said "simplest to test flow"), assign
+  Pool B per-boss later — confirm.
+- Recommend regardless: fix all 3 bugs, telegraph log lines, keep one-turn-ahead warnings.
 
 ---
 
