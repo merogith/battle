@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-29T18:42:21.940Z
+> **Generated**: 2026-05-29T18:49:16.205Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -186,7 +186,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: a448d3578603
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Professor "Choose This Pokémon" pick cards are click-only divs — keyboard/SR users can't select a starter/team mon

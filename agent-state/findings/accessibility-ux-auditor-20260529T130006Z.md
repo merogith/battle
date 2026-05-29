@@ -7,7 +7,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: a448d3578603
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Professor "Choose This Pokémon" pick cards are click-only divs — keyboard/SR users can't select a starter/team mon

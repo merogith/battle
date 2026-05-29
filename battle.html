@@ -37525,6 +37525,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     STORY_RIVAL_ROW_INTRO,
                     GYM_CITY_LEADER_EVENT,
                     catchHandleSuccess: (...a) => _catchHandleSuccess(...a),
+                    buildProfPickCardElement: (...a) => _buildProfPickCardElement(...a),
+                    get pendingProfChoices() { return _pendingProfChoices; },
+                    set pendingProfChoices(v) { _pendingProfChoices = v; },
+                    get profSelectedIdx() { return _profSelectedIdx; },
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
                     devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
@@ -45404,6 +45408,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // confusing on the pick screen. Removed per the opening-flow spec.
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
+            // Keyboard/SR parity with renderDraft — the card itself is the selectable
+            // control, not just a click target (ISSUE-003).
+            card.setAttribute('role', 'button');
+            card.tabIndex = 0;
+            card.setAttribute('aria-label', `${ch.name}, Grade ${tier}, BST ${getBST(ch.name)} — choose for your team`);
             card.innerHTML = `
                 <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                 <div class="draft-card-body">
@@ -45420,6 +45429,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="draft-card-moves">${movesHtml}</div>
                 </div>`;
             card.onclick = (e) => { if (e.target.closest('button, .hover-text, .type-badge, .draft-card-moves')) return; profSelectChoice(idx); };
+            card.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                if (e.target.closest('button, .hover-text, .type-badge, .draft-card-moves')) return;
+                e.preventDefault(); profSelectChoice(idx);
+            });
             return card;
         }
 
