@@ -15008,9 +15008,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
             }
             // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
-            // (_bossStatMult) plus a separate party-scaled HP multiplier (_bossHpScale).
-            // Applied after the per-event mult so they compound; kept off _storyStatMult
-            // because enterBattleEvent overwrites that field on every rolled team member.
+            // (_bossStatMult, applied to HP + stats) and a party-scaled HP multiplier
+            // (_bossHpScale). NOTE — these COMPOUND on HP: _bossStatMult multiplies maxHp
+            // too, so effective raid HP ≈ _bossStatMult × _bossHpScale × base (at maxParty 6:
+            // 1.3 × 5 ≈ 6.5× base HP, NOT the bare ×5 that _bossHpScale alone implies). That
+            // total is a balance number (user-owned, tunable); this block is deliberately
+            // honest about the compounding. Kept off _storyStatMult because enterBattleEvent
+            // overwrites that field on every rolled team member.
             if (build && monName !== 'Shedinja') {
                 if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
                     const bm = build._bossStatMult;
@@ -17119,13 +17123,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
                     const _smState = _SM && _SM.state;
                     const _bossCfgs = _SM && _SM.BOSS_CONFIGS;
-                    const _beatKey = _smState && _smState._activeBeatBattleKey;
+                    let _beatKey = _smState && _smState._activeBeatBattleKey;
+                    // The post-HoF Mystery Figure runs via the crucible end-flow, not the
+                    // beat-key path (mysteryBoss is excluded from _activeBattleBeatForCurrentRow),
+                    // so its declared 'main.mfBattle' mechanics were orphaned. Detect it by foe
+                    // role and attach them. Only the ephemeral battle state is set below
+                    // (state._activeStoryBeatKey) — sm._activeBeatBattleKey stays untouched, so
+                    // the mystery's own victory handling isn't double-processed.
+                    if (_smState && _smState.currentTrainerData && _smState.currentTrainerData.role === 'Mystery Figure') {
+                        _beatKey = 'main.mfBattle';
+                    }
                     const _cfg = _beatKey && _bossCfgs && typeof _bossCfgs === 'object' && _bossCfgs[_beatKey];
                     if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
                         state._activeStoryBeatKey = _beatKey;
                         state._bossMechanics = _cfg.mechanics.slice();
                         state._bossMechanicsFired = {};
-                        state._bossPendingTelegraph = null;
+                        state._bossPendingTelegraphs = [];
+                        state._bossSurgeTurns = 0;
+                        state._bossImmuneTurns = 0;
                         if (typeof _SM.bossMechanicsBattleInit === 'function') _SM.bossMechanicsBattleInit(state);
                     }
                 } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
@@ -23970,7 +23985,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
                 // Story boss surge phase: the boss deals +25% while its surge window is
                 // open (set by an HP-threshold phase telegraph). attacker is the boss here.
-                if (state._activeStoryBeatKey && attacker && attacker._bossSurgeTurns > 0) damage = Math.floor(damage * 1.25);
+                if (state._activeStoryBeatKey && state._bossSurgeTurns > 0 && attacker === state.fActive) damage = Math.floor(damage * 1.25);
                 // Story artifact: [Type] Amplifier — attacks of that type +30%; Pokémon of that type take +15% from hits
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
@@ -24229,7 +24244,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity activates this turn). Status moves still apply
                 // (paralysis / sleep / poison tick normally). One-turn-ahead
                 // warning matches the fair-telegraph design.
-                if (state._activeStoryBeatKey && defender._bossImmuneTurns > 0 && move.cat !== "Status") {
+                if (state._activeStoryBeatKey && state._bossImmuneTurns > 0 && defender === state.fActive && move.cat !== "Status") {
                     logMsg(`${defender.name} braces — the attack does no damage!`, 'info');
                     hitSub = true; // skip damage application
                 }
@@ -42158,7 +42173,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // (HP-threshold or faint-count) activates. "Only one active at a time" per the
         // boss design: each phase sets/refreshes its own effect. Defaults to 'surge'
         // so legacy single-phase configs keep their +25% damage behavior unchanged.
-        function _applyBossPhaseEffect(foeMon, effect, magnitude) {
+        function _applyBossPhaseEffect(stateRef, foeMon, effect, magnitude) {
             switch (effect) {
                 case 'heal': {
                     const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
@@ -42166,13 +42181,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     break;
                 }
                 case 'immunity':
-                    foeMon._bossImmuneTurns = (magnitude | 0) || 1;
+                    // Boss-side timer on the battle STATE (not the mon) so it survives a
+                    // boss switch and protects whoever the boss's active mon is.
+                    stateRef._bossImmuneTurns = (magnitude | 0) || 1;
                     break;
                 case 'surge':
                 default:
-                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                    stateRef._bossSurgeTurns = 3; // +25% boss-side damage for 3 turns
                     break;
             }
+        }
+
+        // Telegraphs are QUEUED, not held in a single slot: two mechanics can cross the
+        // same turn (e.g. mfBattle's HP-threshold surge + the every-5 immunity round); a
+        // lone slot let the second clobber the first AND consume its fired-flag, so the
+        // dropped phase never activated. A queue drains all of them.
+        function _bossQueueTelegraph(stateRef, t) {
+            if (!Array.isArray(stateRef._bossPendingTelegraphs)) stateRef._bossPendingTelegraphs = [];
+            stateRef._bossPendingTelegraphs.push(t);
         }
 
         // Called at the top of each turn (after state.turnNumber++) to process
@@ -42184,17 +42210,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //    turn's activation below — so a timer freshly set this turn survives into
             //    this turn's damage phase. (Decrementing after activation zeroed a
             //    just-set immunity/surge on the same tick: the off-by-one bug.)
-            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
-            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
-            // 2. Activate any telegraph queued from the prior turn.
-            if (stateRef._bossPendingTelegraph) {
-                const pending = stateRef._bossPendingTelegraph;
-                stateRef._bossPendingTelegraph = null;
+            if (stateRef._bossSurgeTurns > 0) stateRef._bossSurgeTurns--;
+            if (stateRef._bossImmuneTurns > 0) stateRef._bossImmuneTurns--;
+            // 2. Activate ALL telegraphs queued last turn (drain the queue).
+            const _pendingQ = Array.isArray(stateRef._bossPendingTelegraphs) ? stateRef._bossPendingTelegraphs : [];
+            stateRef._bossPendingTelegraphs = [];
+            for (const pending of _pendingQ) {
+                if (!pending) continue;
                 _showBossBanner(pending.banner || 'PHASE ACTIVE', pending.accent);
                 if (pending.type === 'hpThresholdPhase' || pending.type === 'faintPhase') {
-                    _applyBossPhaseEffect(foeMon, pending.effect || 'surge', pending.magnitude);
+                    _applyBossPhaseEffect(stateRef, foeMon, pending.effect || 'surge', pending.magnitude);
                 } else if (pending.type === 'immunityRound') {
-                    foeMon._bossImmuneTurns = (pending.turns | 0) || 1;
+                    stateRef._bossImmuneTurns = (pending.turns | 0) || 1;
                 }
                 // fieldLock activates at battle-init, not from telegraph.
             }
@@ -42209,10 +42236,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (hpPct <= at) {
                         stateRef._bossMechanicsFired[firedKey] = true;
                         // Telegraph one turn early — banner now, effect next turn.
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'hpThresholdPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
                             banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
                 } else if (m.type === 'faintPhase') {
@@ -42223,13 +42250,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const firedKey = 'faint_' + need;
                     if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
                     const fainted = Array.isArray(stateRef.foeParty)
-                        ? stateRef.foeParty.filter(x => x && (x.currentHp | 0) <= 0).length : 0;
+                        ? stateRef.foeParty.filter(x => x && x !== foeMon && (x.currentHp | 0) <= 0).length : 0;
                     if (fainted >= need) {
                         stateRef._bossMechanicsFired[firedKey] = true;
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'faintPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
                             banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
                 } else if (m.type === 'immunityRound') {
@@ -42241,10 +42268,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const firedKey = 'imm_' + t;
                         if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
                         stateRef._bossMechanicsFired[firedKey] = true;
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'immunityRound', banner: m.banner || 'BOSS IS PREPARING',
                             turns: (m.turns | 0) || 1, accent: '#90caf9'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS IS PREPARING') + ' (next turn)', '#90caf9');
                     }
                 }
@@ -48157,26 +48184,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (b < 3) return _SAFARI_GRADE_CURVE_BY_BADGES[3];
             return _SAFARI_GRADE_CURVE_BY_BADGES[b];
         }
-        function enterSafariZone() {
+        async function enterSafariZone() {
             if (!sm.safari || typeof sm.safari !== 'object') sm.safari = { freeEntryUsed: false };
             const isFree = !sm.safari.freeEntryUsed;
-            if (!isFree && (sm.gold | 0) < SAFARI_ENTRY_COST) {
-                try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST.toLocaleString()}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
-                return;
+            if (!isFree) {
+                if ((sm.gold | 0) < SAFARI_ENTRY_COST) {
+                    try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST.toLocaleString()}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
+                    return;
+                }
+                // Paid entry — confirm before charging. At 10,000G a misclick is
+                // devastating, so gate it behind the same confirm modal the other
+                // paid facilities use.
+                let ok = true;
+                try {
+                    if (typeof window.showGameConfirm === 'function') {
+                        ok = await window.showGameConfirm(`Enter the Safari Zone for ${SAFARI_ENTRY_COST.toLocaleString()}G?\n\n${SAFARI_BALLS_PER_SESSION} Safari Balls, up to ${SAFARI_MAX_ENCOUNTERS} encounters. Unused balls are refunded at the gate; the entry fee is not.`);
+                    }
+                } catch (e) {}
+                if (!ok) return;
             }
+            // Mark the facility seen on entry (free OR paid). Safari was the only
+            // facility that never called _markFacilitySeen, so its first-visit intro
+            // and the Leave-City gate kept re-firing even after the free first entry
+            // — the entry "didn't count". Now it does.
+            try { _markFacilitySeen('safari'); } catch (e) {}
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                // Story-embedded tutorial — Warden cameo. Replaces the prior
-                // free-entry alert. Dedupe is per-run: freeEntryUsed gates free
-                // entry to once per run, and the scene routes through
+                // Story-embedded tutorial — Warden cameo. Dedupe is per-run via
                 // sm.scenesShown so a fresh run replays the Warden intro.
                 _enqueueIntroTutorial('firstSafari');
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
                 try { _storyTrackSpend(SAFARI_ENTRY_COST); } catch (e) {}
             }
-            // Gate-open chime — soft achievement ping so the safari trip starts with
-            // a beat. Sits under the welcome-alert dismiss so it doesn't clash.
+            // Gate-open chime — soft achievement ping so the safari trip starts with a beat.
             try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.8); } catch (e) {}
             _safariBeginSession();
             try { save(); } catch (e) {}
@@ -48246,8 +48287,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // A post-game city unlocked after Hall of Fame. Every facility, every battle
         // type, plus an endless-ladder Battle Frontier with per-round stat scaling and
         // a top-10 highscore. Accessed from the city action button "🧨 The Crucible".
-        const _CRUCIBLE_GYM_ROWS = [5, 11, 18, 24, 31, 38, 46, 53]; // GL1..GL8 in STORY_EVENTS_RAW
-        const _CRUCIBLE_LEAGUE_ROWS = [60, 61, 62, 63, 64];          // E1..E4 + Champion
+        // Crucible rematch targets — ARRAY INDICES into STORY_EVENTS_RAW (NOT row ids).
+        // Derived by scanning events by name because row id != array index in the late
+        // game (rival rows are spliced out of id-order). The old hardcoded row-id lists
+        // pointed the buttons at the wrong rows: Mystery Figure → out of bounds (dead
+        // button), Rival → Hall of Fame screen, League Run → skipped E1, Gym Rematch →
+        // City3 ~1/8. Mirrors GYM_CITY_LEADER_EVENT's derive-from-events approach.
+        const _CRUCIBLE_BATTLE_IDX = (function buildCrucibleBattleIndices() {
+            const gym = [];
+            for (let n = 1; n <= 8; n++) if (GYM_CITY_LEADER_EVENT[n] != null) gym.push(GYM_CITY_LEADER_EVENT[n]);
+            const leagueByName = {};
+            let championIdx = -1, rivalIdx = -1, mysteryIdx = -1;
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const row = STORY_EVENTS_RAW[i];
+                if (!row || row[1] !== 'Battle') continue;
+                const name = String(row[2] || '');
+                if (name === 'E1' || name === 'E2' || name === 'E3' || name === 'E4' || name === 'Champion') {
+                    leagueByName[name] = i;
+                    if (name === 'Champion') championIdx = i;
+                } else if (name === 'Mystery Figure') {
+                    mysteryIdx = i;
+                } else if (name === 'Rival' && championIdx >= 0 && rivalIdx < 0) {
+                    rivalIdx = i; // league rival = the first Rival after the Champion
+                }
+            }
+            const league = ['E1', 'E2', 'E3', 'E4', 'Champion'].map(n => leagueByName[n]).filter(x => x != null);
+            return { gym: gym, league: league, rival: rivalIdx, mystery: mysteryIdx };
+        })();
+        const _CRUCIBLE_GYM_ROWS = _CRUCIBLE_BATTLE_IDX.gym;     // GL1..GL8 array indices
+        const _CRUCIBLE_LEAGUE_ROWS = _CRUCIBLE_BATTLE_IDX.league; // E1..E4 + Champion array indices
         function _ensureFrontierState() {
             if (!sm.frontier || typeof sm.frontier !== 'object') {
                 sm.frontier = { currentStreak: 0, currentRound: 1, highscores: [], active: false };
@@ -48264,7 +48332,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure, rival rematches, gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
+                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\n🔮 If the Caged God hunt is open, it sits at the very top: collect its three Underground leads right here, then enter the Cage to capture the specimen. (The Mystery Figure is a separate masked trainer — not the Caged God.)\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -48289,7 +48357,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
             const hardOn = !!sm.crucibleHardMode;
+            // Post-game quest: the Caged God hunt. Surfaced here (the post-game Underground
+            // hub) so it's discoverable and reachable — previously it only appeared inside
+            // a Pokémon Center of Cities 2/5/8, which the post-game can't travel back to.
+            const cagedGodHtml = _bossArcRenderSection(true);
             body.innerHTML = `
+                ${cagedGodHtml ? `<h4 style="color:#ce93d8;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Post-Game Quest</h4>${cagedGodHtml}<div style="height:18px;"></div>` : ''}
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
                 <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 10px;background:rgba(40,0,0,${hardOn ? '0.55' : '0.25'});border:1px solid ${hardOn ? '#ff5252' : '#5a2a2a'};cursor:pointer;font-size:11px;color:${hardOn ? '#ffcdd2' : '#bba'};">
                     <input type="checkbox" ${hardOn ? 'checked' : ''} onchange="window.StoryMode.toggleCrucibleHardMode(this.checked)" style="margin:0;cursor:pointer;">
@@ -48297,27 +48370,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
                     ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
-                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
+                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked trainer (a 6-mon trainer fight). Distinct from the Caged God hunt above.')}
                     ${btn('🌀',                                     'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
                     ${btn(png('icons/story/story_league.png'),     'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
                     ${btn(png('icons/story/story_gym.png'),        'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
                     ${btn(png('icons/story/story_route.png'),      'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581', 'Roll a wild Pokémon and try to catch it.')}
                 </div>
-                <h4 style="color:#90caf9;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
-                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
-                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
-                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
-                    ${btn(png('icons/story/story_artifacts.png'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
+                <h4 style="color:#90caf9;margin:0 0 10px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
+                <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Train &amp; Evolve</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
                     ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
                     ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
                     ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
                     ${btn(png('icons/story/story_dojo.png'),       'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
                     ${btn(png('icons/story/story_colress.png'),    'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
                     ${btn(png('icons/story/story_professor.png'),  'Evolution Tutor (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
-                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
+                </div>
+                <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Shop</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
+                    ${btn(png('icons/story/story_artifacts.png'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
                     ${btn('🎰',                                     'Poké Game Corner', 'window.StoryMode.enterCasino()', null, 'Coin Flip · Slots · Roulette. Big wins drop Vitamins + Vouchers.')}
+                </div>
+                <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Catch, Store &amp; Trade</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
+                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
+                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
                 </div>
             `;
         }
@@ -48337,8 +48417,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Skip wild-route interrupt for Crucible battles.
             enterBattleEvent(ev, true);
         }
-        function crucibleMysteryFight() { _crucibleBattleSetup(STORY_POST_HOF_MYSTERY_ROW, 'mystery'); }
-        function crucibleRivalFight()   { _crucibleBattleSetup(STORY_LEAGUE_RIVAL_ROW, 'rival'); }
+        function crucibleMysteryFight() { _crucibleBattleSetup(_CRUCIBLE_BATTLE_IDX.mystery, 'mystery'); }
+        function crucibleRivalFight()   { _crucibleBattleSetup(_CRUCIBLE_BATTLE_IDX.rival, 'rival'); }
         function crucibleLeagueRun() {
             sm.crucibleLeagueRun = { currentStage: 0 };
             _crucibleBattleSetup(_CRUCIBLE_LEAGUE_ROWS[0], 'league');
@@ -48678,10 +48758,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const L = sm.bossArc.leads;
             const all = !!(L.ledger && L.recording && L.key);
             if (all && !sm.bossArc.cageUnlocked) {
-                sm.bossArc.cageUnlocked = true;
                 if (!sm.bossArc.boss) {
                     sm.bossArc.boss = _bossArcRollLegendary();
                 }
+                if (!sm.bossArc.boss) {
+                    // No legendary in the enabled generations — do NOT flip cageUnlocked.
+                    // (Flipping it left a permanent dead "Enter the Cage — ???" button that
+                    // bossEnterCage could never resolve.) Warn once; this re-checks whenever
+                    // leads change or a Center re-renders, so enabling a gen later still works.
+                    if (!sm.bossArc._sealedWarned) {
+                        sm.bossArc._sealedWarned = true;
+                        try { save(); } catch (e) {}
+                        try { window.showGameAlert && window.showGameAlert('The Cage stays sealed — no legendary Pokémon exists in your enabled generations. Enable a generation that has one (Settings) to face the Caged God.'); } catch (e) {}
+                    }
+                    return;
+                }
+                sm.bossArc._sealedWarned = false;
+                sm.bossArc.cageUnlocked = true;
                 try { save(); } catch (e) {}
                 // Big-moment alert — the audit noted players could miss the cage opening
                 // because the button just silently appeared.
@@ -48718,7 +48811,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
             return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
         }
-        function _bossArcRenderSection() {
+        function _bossArcRenderSection(hubMode) {
             _bossArcEnsureState();
             if (!sm.bossArc.available || sm.bossArc.cleared) return '';
             const L = sm.bossArc.leads;
@@ -48745,7 +48838,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
             </div>`;
 
-            if (localLeadKey && !L[localLeadKey]) {
+            if (hubMode && !allLeads) {
+                // Crucible hub = the post-game Underground: the whole broker network is
+                // reachable here, so any uncollected lead can be pulled (each still plays
+                // its broker scene). Keeps the 3-city lore in the labels.
+                const _leadCity = { ledger: 2, recording: 5, key: 8 };
+                for (const k of ['ledger', 'recording', 'key']) {
+                    if (L[k]) continue;
+                    const flav = _BOSS_LEAD_FLAVOR[k];
+                    html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${k}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)} <span style="color:#9a8aa8;">· City ${_leadCity[k]}</span></button>`;
+                }
+            } else if (localLeadKey && !L[localLeadKey]) {
                 const flav = _BOSS_LEAD_FLAVOR[localLeadKey];
                 html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${localLeadKey}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)}</button>`;
             } else if (localLeadKey && L[localLeadKey]) {
@@ -48775,6 +48878,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _bossArcCheckCageUnlock();
                 try { save(); } catch (e) {}
                 try { _pcRefresh(); } catch (e) {}
+                // Collected from the Crucible hub? Re-render it so the tracker updates.
+                try { if (sm.atCrucible) _renderCrucible(); } catch (e) {}
             };
             // Promote the lead from a plain window.alert() to the standard
             // narrative overlay. Per-variant body line is used when the

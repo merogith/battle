@@ -19,7 +19,7 @@ function mkBossState(mechanics) {
         _activeStoryBeatKey: 'villain.rocket.boss',
         _bossMechanics: mechanics.slice(),
         _bossMechanicsFired: {},
-        _bossPendingTelegraph: null,
+        _bossPendingTelegraphs: [], _bossSurgeTurns: 0, _bossImmuneTurns: 0,
     };
 }
 function mkFoe(maxHp, currentHp) {
@@ -53,15 +53,15 @@ test('hpThresholdPhase telegraphs at first turn the threshold is crossed', () =>
     state.turnNumber = 1;
     const foe = mkFoe(100, 50);
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(state._bossPendingTelegraph, null, 'should not telegraph above threshold');
+    assert.equal(state._bossPendingTelegraphs.length, 0, 'should not telegraph above threshold');
 
     // Turn 2, foe damaged to 20% HP — below threshold, queue telegraph.
     foe.currentHp = 20;
     state.turnNumber = 2;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.ok(state._bossPendingTelegraph, 'should queue telegraph at threshold');
-    assert.equal(state._bossPendingTelegraph.type, 'hpThresholdPhase');
-    assert.equal(state._bossPendingTelegraph.banner, 'CALLED IN');
+    assert.ok(state._bossPendingTelegraphs.length, 'should queue telegraph at threshold');
+    assert.equal(state._bossPendingTelegraphs[0].type, 'hpThresholdPhase');
+    assert.equal(state._bossPendingTelegraphs[0].banner, 'CALLED IN');
 });
 
 test('hpThresholdPhase activates surge on the NEXT turn (1-turn telegraph)', () => {
@@ -72,17 +72,17 @@ test('hpThresholdPhase activates surge on the NEXT turn (1-turn telegraph)', () 
     // Turn 1 — crosses 50%, queues telegraph.
     state.turnNumber = 1;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.ok(state._bossPendingTelegraph);
-    assert.equal(foe._bossSurgeTurns, 0);
+    assert.ok(state._bossPendingTelegraphs.length);
+    assert.equal(state._bossSurgeTurns | 0, 0);
 
-    // Turn 2 — telegraph activates → foe gets surge for 3 turns.
+    // Turn 2 — telegraph activates → boss-side surge for 3 turns.
     state.turnNumber = 2;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(state._bossPendingTelegraph, null);
-    // Surge engages THIS turn and lasts 3 turns of +25% damage. The timer is set
-    // after the pre-activation decrement, so it reads 3 right after activation.
-    // (Was 2 under the same-tick off-by-one this fix corrects.)
-    assert.equal(foe._bossSurgeTurns, 3);
+    assert.equal(state._bossPendingTelegraphs.length, 0);
+    // Surge engages THIS turn for 3 turns of +25% damage. The boss-side timer (on state,
+    // so it survives a boss switch) is set after the pre-activation decrement, so it reads
+    // 3 right after activation.
+    assert.equal(state._bossSurgeTurns, 3);
 });
 
 test('hpThresholdPhase only telegraphs once per threshold (does not refire)', () => {
@@ -99,7 +99,7 @@ test('hpThresholdPhase only telegraphs once per threshold (does not refire)', ()
     // Turn 3 — foe still below 50%, should NOT re-telegraph.
     state.turnNumber = 3;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(state._bossPendingTelegraph, null, 'should not re-telegraph an already-fired threshold');
+    assert.equal(state._bossPendingTelegraphs.length, 0, 'should not re-telegraph an already-fired threshold');
 });
 
 test('immunityRound telegraphs at turn N-1 and activates on turn N', () => {
@@ -110,17 +110,17 @@ test('immunityRound telegraphs at turn N-1 and activates on turn N', () => {
     // Turn 4 (everyN-1=4 for everyN=5) — telegraph.
     state.turnNumber = 4;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.ok(state._bossPendingTelegraph, 'should telegraph at turn 4 for everyN=5');
-    assert.equal(state._bossPendingTelegraph.type, 'immunityRound');
+    assert.ok(state._bossPendingTelegraphs.length, 'should telegraph at turn 4 for everyN=5');
+    assert.equal(state._bossPendingTelegraphs[0].type, 'immunityRound');
 
     // Turn 5 — activates, immunity engaged.
     state.turnNumber = 5;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(state._bossPendingTelegraph, null);
-    // Immunity is engaged for THIS turn's damage phase — the clamp checks > 0 — so it
-    // reads 1 right after activation and decrements to 0 on the next tick. (Was 0 under
-    // the same-tick off-by-one, which meant the immunity clamp never actually fired.)
-    assert.equal(foe._bossImmuneTurns, 1);
+    assert.equal(state._bossPendingTelegraphs.length, 0);
+    // Immunity is engaged for THIS turn's damage phase — the clamp checks > 0 — so the
+    // boss-side timer (on state) reads 1 right after activation and decrements to 0 next
+    // tick. (Was 0 under the same-tick off-by-one, so the clamp never fired.)
+    assert.equal(state._bossImmuneTurns, 1);
 });
 
 test('faintPhase telegraphs when the boss team faints reach the threshold', () => {
@@ -132,21 +132,21 @@ test('faintPhase telegraphs when the boss team faints reach the threshold', () =
     // Turn 1 — nobody fainted yet, no phase.
     state.turnNumber = 1;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(state._bossPendingTelegraph, null, 'no telegraph before 2 faints');
+    assert.equal(state._bossPendingTelegraphs.length, 0, 'no telegraph before 2 faints');
 
-    // KO two of the boss's Pokémon → threshold reached.
+    // KO two of the boss's BENCH Pokémon → threshold reached (active mon excluded).
     state.foeParty[1].currentHp = 0;
     state.foeParty[2].currentHp = 0;
     state.turnNumber = 2;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.ok(state._bossPendingTelegraph, 'telegraphs at 2 faints');
-    assert.equal(state._bossPendingTelegraph.type, 'faintPhase');
-    assert.equal(state._bossPendingTelegraph.effect, 'surge');
+    assert.ok(state._bossPendingTelegraphs.length, 'telegraphs at 2 faints');
+    assert.equal(state._bossPendingTelegraphs[0].type, 'faintPhase');
+    assert.equal(state._bossPendingTelegraphs[0].effect, 'surge');
 
-    // Next turn activates the surge on the active foe.
+    // Next turn activates the boss-side surge.
     state.turnNumber = 3;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(foe._bossSurgeTurns, 3);
+    assert.equal(state._bossSurgeTurns, 3);
 });
 
 test('heal phase effect restores foe HP on activation', () => {
@@ -156,13 +156,33 @@ test('heal phase effect restores foe HP on activation', () => {
     const foe = mkFoe(200, 80); // 40% HP — below the 50% threshold
     state.turnNumber = 1;
     ST.bossMechanicsTurnTick(state, foe);
-    assert.ok(state._bossPendingTelegraph, 'telegraphs the heal phase');
-    assert.equal(state._bossPendingTelegraph.effect, 'heal');
+    assert.ok(state._bossPendingTelegraphs.length, 'telegraphs the heal phase');
+    assert.equal(state._bossPendingTelegraphs[0].effect, 'heal');
     const hpBefore = foe.currentHp;
     state.turnNumber = 2;
     ST.bossMechanicsTurnTick(state, foe); // activate
     assert.equal(foe.currentHp, Math.min(foe.maxHp, hpBefore + Math.floor(foe.maxHp * 0.25)));
     assert.ok(foe.currentHp > hpBefore, 'heal should raise HP');
+});
+
+test('telegraph queue keeps BOTH phases when two mechanics cross the same turn', () => {
+    // mfBattle-style: HP-threshold surge + immunity every 5 turns. On turn 4 the immunity
+    // telegraphs (everyN-1) AND the foe is already below 50%, so the HP phase also fires.
+    // A single telegraph slot dropped one (and ate its fired-flag); the queue keeps both.
+    const state = mkBossState([
+        { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: 'THE FIRST' },
+        { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }
+    ]);
+    const foe = mkFoe(100, 40); // below 50%
+    state.turnNumber = 4;
+    ST.bossMechanicsTurnTick(state, foe);
+    const types = state._bossPendingTelegraphs.map(t => t.type).sort().join(',');
+    assert.equal(types, 'hpThresholdPhase,immunityRound', 'both phases queued, neither dropped');
+    // Turn 5 — both activate (boss-side timers).
+    state.turnNumber = 5;
+    ST.bossMechanicsTurnTick(state, foe);
+    assert.equal(state._bossSurgeTurns, 3, 'surge applied');
+    assert.equal(state._bossImmuneTurns, 1, 'immunity applied');
 });
 
 test('solo raid boss scaling: _bossStatMult boosts stats; _bossHpScale multiplies HP only', () => {
@@ -205,7 +225,7 @@ test('turn tick is a safe no-op when state has no boss mechanics', () => {
     const foe = mkFoe(100, 100);
     // Should not throw.
     ST.bossMechanicsTurnTick(state, foe);
-    assert.equal(state._bossPendingTelegraph, null);
+    assert.equal(state._bossPendingTelegraphs.length, 0);
 });
 
 test('BOSS_CONFIGS data ties into real beat sceneKeys', () => {

@@ -19,22 +19,29 @@
 - [x] **5a — Villain configs** (committed): faintPhase chains + mini-boss configs.
 - [x] **5b — Extra configs** (committed): `_populateExtraRaidConfigs` — raid 75/50/25
   (surge→heal→immunity), miniRaid 50/25 (surge→immunity).
-- [ ] **6 — mfBattle + canon villains** (REMAINING):
-  - mfBattle: the Mystery Figure does NOT use the standard `onBattleEnd` beat hook — it runs via
-    `crucibleBattleSource='postHofMystery'` + `_handleCrucibleBattleEnd`. So DON'T set
-    `sm._activeBeatBattleKey='main.mfBattle'` blindly (no cleanup on that path + onBattleEnd would
-    mis-handle). Safest: in `startBattle`'s BOSS_CONFIGS init (~16853) detect the mystery battle
-    (need a battle-state flag; `event==='Mystery Figure'` is only in enterBattleEvent — propagate
-    a flag to `state`, e.g. `state._isMysteryBoss`) and attach `BOSS_CONFIGS['main.mfBattle']`
-    setting only `state._activeStoryBeatKey` (NOT `sm._activeBeatBattleKey`).
-  - canon villains: Lysandre/Rose/Penny/Cassiopeia are intentionally absent from TRAINER_DATA
-    (comment at ~42012). Adding them = authoring full signature teams + sprite + intro quotes for
-    each (Flare→Lysandre, MacroCosmos→Rose, Star→Penny) + BEAT_CANON_TRAINER entries. Content task.
-- [ ] **7 — Endgame** (REMAINING): `_renderCrucible` (~48144) sectioned layout (Challenge/Catch/
-  Train/Shop/Recover) + one objective line; persistent guided Caged-God tracker
-  (🔮 N/3 · next: City X) surfaced in the city hub + Crucible (currently only inside the
-  Pokémon Center via `_bossArcRenderSection` ~48650); separate Mystery-Figure vs Caged-God naming
-  (they ARE two different bosses). Highest user-facing value (this is the part the maintainer hits).
+- [x] **6a — mfBattle wiring** (committed, post-merge): startBattle attaches `main.mfBattle` by
+  foe role (Mystery Figure) to the EPHEMERAL battle state only — no `sm._activeBeatBattleKey`, so
+  the crucible end-flow isn't double-processed. The apex's declared HP-phase + immunity now fire.
+- [ ] **6b — Canon villains (Lysandre/Rose/Penny)** — NOT DONE, handed off:
+  (1) `BEAT_CANON_TRAINER` is **pasteur's domain** (canon trainer overrides);
+  (2) the sprites (Lysandre/Rose/Penny/Cassiopeia.png) **don't exist** in `sprites/trainers/`
+  (only Xerosic/AZ exist for Flare). Needs sprite assets + pasteur sign-off. They currently fall
+  back to a random Elite Trainer (functional, just unnamed).
+- [x] **7a — Endgame: Caged God discoverable + reachable** (committed, post-merge): FLOW BUG —
+  the hunt's leads were gated to Cities 2/5/8 Pokémon Centers, but the post-game can't travel
+  there, so the Caged God was unreachable. Now surfaced at the top of the Crucible (post-game
+  Underground hub) via `_bossArcRenderSection(hubMode)`; leads collectable hub-side (bossCollectLead
+  was already city-agnostic); Mystery-Figure-vs-Caged-God naming clarified; 3-city lore kept in labels.
+- [x] **7b — Crucible facility sub-sectioning** (committed, branch claude/endgame-crucible):
+  the flat 13-button Facilities grid is now three labeled sub-groups — Train & Evolve / Shop /
+  Catch, Store & Trade. Directly addresses the "confusing menu". No buttons changed.
+
+## ROLE-BOUNDARY NOTES (for pasteur review)
+- 6a touches the Mystery Figure battle (pasteur owns "MF dispatch") but only ATTACHES the
+  already-declared boss-mechanics config to the ephemeral battle state — no dispatch/timeline change.
+- 7a touches the post-game Caged God arc UI. Conservative: UI rendering + reusing the city-agnostic
+  `bossCollectLead`; NO timeline/save-schema change. Flagged per "flow bugs MUST be flagged" since
+  it made a shipped feature unreachable.
 
 ---
 
