@@ -52,7 +52,7 @@ live percentage. (Open decision O5 if the user wants it shown.)
 
 ---
 
-## 3. Probability model **[user-confirmed]**
+## 3. Probability model **[user-confirmed 2026-05-30]**
 
 The encounter chance **starts at 50% and only halves when an encounter is
 generated.** A *miss* leaves the chance unchanged. Hard cap of **3 attempts** per
@@ -71,8 +71,17 @@ route.
 This reconciles the two readings in the brainstorm CSV: "50/25/12.5" is the
 all-hits path; "50/50/50" is the all-misses path — same rule.
 
-**Mixed example:** tap 1 @ 50% → **hit** → tap 2 now @ 25% → **miss** → tap 3
-still @ 25%.
+**Worked examples — the user's two canonical scenarios (verbatim intent):**
+
+- **A — encounter each time:** Attempt 1 @ **50%**, the try is consumed → a wild
+  encounter, so the next chance is now **25%** → another encounter (2 spent), so
+  the last try is **12.5%**. The rate steps down on *each* encounter.
+- **B — miss, then hit:** Attempt 1 @ **50%** → **miss** (1 spent) → can retry,
+  and because the first failed it is **still 50%** → 2nd try, this time an
+  encounter happens → 1 try left at **25%**. A failed search never lowers the rate.
+
+After all 3 tries are spent — no matter the outcomes — the player can only **Move On**
+to the city.
 
 Rules:
 - **Every tap consumes one of the 3 attempts**, hit or miss.
