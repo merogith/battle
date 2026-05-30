@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-30T16:03:39.550Z
+> **Generated**: 2026-05-30T16:27:55.236Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1267,7 +1267,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: b13dc1abcb62
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4
@@ -1411,7 +1411,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c6add40f42ff
 confidence: medium
-status: open
+status: wontfix-claude/focused-cori-sGNzn (eggs legitimately occupy party slots per mainline; foe-sizing correctly uses fighters; counting fighters for the cap would overflow physical slots)
 ---
 
 **Title**: Party-cap "full" check counts eggs (`sm.team.length`) while foe-sizing / sell guards count only fighters
@@ -1484,7 +1484,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: ba4c93ea58e7
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Catch-tutorial ball gate counts the Master Ball, which can never be thrown outside boss mode
@@ -1554,7 +1554,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 5af7ce667724
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Comment claims foe sizing matches player team length, but code uses the badge curve
@@ -1592,7 +1592,7 @@ file: scripts/debug/perf-bench.mjs
 agents: [performance-profiler]
 fingerprint: a05e7c14d3b9
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (profiler confirmed non-leaking; informational)
 ---
 
 **Title**: Memory growth across 70 turns is non-leaking (flat ~104 MB post-GC) — prior "benign linear ~25 KB/turn" re-confirmed (no super-linear retention)
@@ -1669,7 +1669,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 0681a2dce375
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Catch flee/wobble flavor messages use `Math.random()` instead of `storyRngNext()`, breaking seed determinism
@@ -1738,7 +1738,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 89b458f3ac60
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: A future-version save shows "Continue Run" but silently bounces to the menu with no explanation
@@ -1842,7 +1842,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 81701f439dcc
 confidence: medium
-status: open
+status: wontfix-claude/focused-cori-sGNzn (intentional role-pool fallback per finding; 60 per-name intro pools is content authoring, out of scope)
 ---
 
 **Title**: 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool
@@ -1879,7 +1879,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: a937264b3e0e
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn (documented the NO_ITEM sentinel contract at the declaration)
 ---
 
 **Title**: `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html)
@@ -1987,7 +1987,7 @@ file: move-sfx-map.js
 agents: [consistency-auditor]
 fingerprint: 6d3450d7cd4d
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX
@@ -2056,7 +2056,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: b0a0252096e0
 confidence: low
-status: open
+status: fixed-claude/focused-cori-sGNzn (documented as accepted deviation in tests/reports/deviations.md)
 ---
 
 **Title**: Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound)
@@ -2090,7 +2090,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 4f7a0c2b9e18
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (profiler confirmed GC/JIT jitter, not a perf bug)
 ---
 
 **Title**: parseMoveEffects per-move variance (308× raw) is GC/JIT jitter, NOT a pathological move — real per-move cost ~0.014 ms
@@ -2127,7 +2127,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: c2a8f0341e77
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (profiler confirmed GC/jsdom jitter, not a perf bug)
 ---
 
 **Title**: Turn-loop tail (p95 ~30 ms, max ~46 ms vs ~6–20 ms median) is GC/jsdom-timer jitter, not a localizable per-turn hot path

@@ -172,7 +172,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: ba4c93ea58e7
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Catch-tutorial ball gate counts the Master Ball, which can never be thrown outside boss mode
@@ -201,7 +201,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 0681a2dce375
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Catch flee/wobble flavor messages use `Math.random()` instead of `storyRngNext()`, breaking seed determinism
@@ -300,7 +300,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 5af7ce667724
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Comment claims foe sizing matches player team length, but code uses the badge curve
@@ -333,7 +333,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 89b458f3ac60
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: A future-version save shows "Continue Run" but silently bounces to the menu with no explanation
@@ -399,7 +399,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c6add40f42ff
 confidence: medium
-status: open
+status: wontfix-claude/focused-cori-sGNzn (eggs legitimately occupy party slots per mainline; foe-sizing correctly uses fighters; counting fighters for the cap would overflow physical slots)
 ---
 
 **Title**: Party-cap "full" check counts eggs (`sm.team.length`) while foe-sizing / sell guards count only fighters

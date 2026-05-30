@@ -134,7 +134,7 @@ file: move-sfx-map.js
 agents: [consistency-auditor]
 fingerprint: 6d3450d7cd4d
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: 'All Out Pummeling' SFX entry is dead; canonical 'All-Out Pummeling' plays Counter SFX
@@ -197,7 +197,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 81701f439dcc
 confidence: medium
-status: open
+status: wontfix-claude/focused-cori-sGNzn (intentional role-pool fallback per finding; 60 per-name intro pools is content authoring, out of scope)
 ---
 
 **Title**: 60 gym leaders (and Champion Hau) have per-name victory lines but no per-name intro pool

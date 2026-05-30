@@ -39,7 +39,7 @@ current_line_hint: ~23826
 agents: [performance-profiler]
 fingerprint: c2a8f0341e77
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (profiler confirmed GC/jsdom jitter, not a perf bug)
 ---
 
 **Title**: Turn-loop tail (p95 ~30 ms, max ~46 ms vs ~6–20 ms median) is GC/jsdom-timer jitter, not a localizable per-turn hot path
@@ -104,7 +104,7 @@ current_line_hint: ~26076
 agents: [performance-profiler]
 fingerprint: 4f7a0c2b9e18
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (profiler confirmed GC/JIT jitter, not a perf bug)
 ---
 
 **Title**: parseMoveEffects per-move variance (308× raw) is GC/JIT jitter, NOT a pathological move — real per-move cost ~0.014 ms
@@ -136,7 +136,7 @@ current_line_hint: ~78
 agents: [performance-profiler]
 fingerprint: a05e7c14d3b9
 confidence: high
-status: open
+status: wontfix-claude/focused-cori-sGNzn (profiler confirmed non-leaking; informational)
 ---
 
 **Title**: Memory growth across 70 turns is non-leaking (flat ~104 MB post-GC) — prior "benign linear ~25 KB/turn" re-confirmed (no super-linear retention)

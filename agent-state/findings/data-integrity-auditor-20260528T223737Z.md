@@ -129,7 +129,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: a937264b3e0e
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn (documented the NO_ITEM sentinel contract at the declaration)
 ---
 
 **Title**: `No Item` held-slot sentinel is a code-only string; it has no entry in items.json (enum lives only in battle.html)

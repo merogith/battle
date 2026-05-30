@@ -40,7 +40,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: b13dc1abcb62
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Confusion duration is always 2-4 turns (engine uses floor(rng*3)+2), Showdown is 1-4
@@ -96,7 +96,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: b0a0252096e0
 confidence: low
-status: open
+status: fixed-claude/focused-cori-sGNzn (documented as accepted deviation in tests/reports/deviations.md)
 ---
 
 **Title**: Damage formula folds all modifiers into one multiply + single floor (no per-step pokeRound)

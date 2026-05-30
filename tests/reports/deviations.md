@@ -25,6 +25,21 @@ that has no VGC analog.
 - **Rationale**: Story-mode artifact for type-themed runs
 - **Test impact**: only active when `state.mode === 'story' && state._typeAmplifierType` set; tests run with story mode off by default
 
+## Damage Formula Rounding (single-floor)
+
+### Modifier folding
+- **Effect**: STAB, type effectiveness, crit, burn, held-item, and the 0.85–1.0 damage roll
+  are multiplied together into one `modifier` and the engine floors **once**:
+  `Math.floor((Math.floor(Math.floor(22 * basePower * (A/D)) / 50) + 2) * modifier)`.
+  Pokémon Showdown instead re-floors (`pokeRound`) after each discrete modifier group.
+- **Engine**: `parseMoveEffects` damage block (the `let modifier = stab * typeEff * crit * rng * lifeOrb …` fold).
+- **Rationale**: Deliberate (commented "COMPETITIVE FIX") — simpler/faster and stable across the
+  Lv50 ranges this game uses. Drifts by **±1–2 HP** vs Showdown in rare matchups, which can shift
+  a borderline OHKO/2HKO. Type immunity (`typeEff === 0`) is short-circuited to 0 before the
+  `Math.max(1, …)`, so the "immune → 1 damage" bug is NOT present.
+- **Test impact**: `damage-formula.test.js` asserts ranges (not exact per-roll parity), so this
+  deviation is accepted. Exact Showdown parity would require per-step `pokeRound`.
+
 ## Fixed-Damage Overrides
 
 These are VGC-accurate but worth noting as exceptions to the standard damage formula.

@@ -10451,6 +10451,10 @@
                     const abilityPicked = _csvPickOption(abilityRaw, '');
                     const naturePicked  = _csvPickOption(natureRaw, 'Hardy');
                     const buildObj = {
+                        // Empty-held-item sentinel: CSV value "No Item" -> runtime token 'NO_ITEM'
+                        // (empty string = "not specified"). 'NO_ITEM' is code-only and intentionally
+                        // has NO items.json entry — any code that looks mon.item up in items.json must
+                        // special-case 'NO_ITEM' (treat as no held item) the same way.
                         i: !itemPicked ? '' : itemPicked === 'No Item' ? 'NO_ITEM' : itemPicked,
                         a: abilityPicked || '',
                         n: naturePicked || 'Hardy',
@@ -39015,7 +39019,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function continueRun() {
-            if (!load()) { showMenu(true); return; }
+            if (!load()) {
+                // load() rejects a save written by a NEWER build (version > SAVE_VER), but
+                // hasSave() (which gates the Continue button) only checks presence — so the
+                // button can appear for such a save. Tell the player why instead of bouncing
+                // silently to the menu (the save is left intact, not cleared).
+                try {
+                    const raw = localStorage.getItem(SAVE_KEY);
+                    const d = raw ? JSON.parse(raw) : null;
+                    if (d && typeof d.version === 'number' && d.version > SAVE_VER) {
+                        window.showGameAlert("This save was created by a newer version of the game, so it can't be loaded here. Update to continue this run.");
+                    }
+                } catch (e) {}
+                showMenu(true);
+                return;
+            }
             resetProfessorPickSession();
             applyMechanicsToSettings();
             processNextEvent();
@@ -45798,8 +45816,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // more slot up to 6 at four badges. Wild catches and Professor gifts
         // that would exceed the cap still succeed — they land in the PC. So
         // a player can always *catch*, they just can't *field* more than
-        // the cap until the next badge. Foe sizing matches player team
-        // length (see `_storyEnemyPartySize`) so the two stay locked
+        // the cap until the next badge. Foe sizing follows the same badge curve
+        // (`_storyEnemyPartySize` = min(6, 2+badges); player team *length* only
+        // matters for the intro-Rival exception), so foe and player party scale
         // together on the same progression clock.
         function _storyMaxPartySize() {
             const badges = (sm && sm.badges) | 0;
@@ -46102,7 +46121,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Player must have at least one Poké Ball (starting kit gives 5,
             // so this is just a safety net).
             const balls = sm.balls || {};
-            const totalBalls = (balls.poke | 0) + (balls.great | 0) + (balls.ultra | 0) + (balls.master | 0);
+            // Master Ball is boss-locked (refused outside the Caged God), so it can't
+            // satisfy the tutorial's "has a throwable ball" gate — count poke/great/ultra only.
+            const totalBalls = (balls.poke | 0) + (balls.great | 0) + (balls.ultra | 0);
             if (totalBalls <= 0) return false;
             return true;
         }
@@ -49780,7 +49801,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             `${enc.name} bolted!`,
                             `${enc.name} fled — too quick to follow.`
                         ];
-                    fleeMessage = fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)];
+                    fleeMessage = fleeMsgs[Math.floor(((sm && sm.active) ? storyRngNext() : Math.random()) * fleeMsgs.length)];
                 } else {
                     outcome = 'wobble';
                 }
@@ -49820,7 +49841,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 `${enc.name} bursts the ball open mid-roll.`,
                 `Almost had them. ${enc.name} flares the seal and breaks loose.`,
             ];
-            _catchState.message = wobbleMsgs[Math.floor(Math.random() * wobbleMsgs.length)];
+            _catchState.message = wobbleMsgs[Math.floor(((sm && sm.active) ? storyRngNext() : Math.random()) * wobbleMsgs.length)];
             _catchRender();
         }
         function _catchHandleSuccess(enc, ballKey) {
@@ -50079,7 +50100,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     `Angered, ${name} sprinted away — gone for good.`,
                     `${name} hissed at the rock and vanished into the wild!`
                 ];
-            _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
+            _catchFinishWithMessage(fleeMsgs[Math.floor(((sm && sm.active) ? storyRngNext() : Math.random()) * fleeMsgs.length)]);
             return true;
         }
         // Safari Bait — calms the wild Pokémon. Decreases catch chance and the
