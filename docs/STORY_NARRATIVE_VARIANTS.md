@@ -23,6 +23,14 @@ The system reuses everything the codebase already has:
 * Existing trainer sprites, type-themed menu backgrounds, SFX library
 
 No new save schema. `sm.storyLine` already exists at v17. No new battle mechanics.
+
+> **⚠️ v22 update — Mystery Figure roster collapsed.** The multi-identity
+> `MYSTERY_FIGURE_IDENTITIES` cast described below (per-variant `cyrus` / `ghetsis` / `n` /
+> `ex_rocket` / `dr_proxy` biases, etc.) was **retired in the v22 3-track collapse**
+> (`STORY_3TRACK_IMPL_PLAN.md` decision 5). Code now ships exactly one identity — `the_first`
+> (sprite `Red`, reveal "The First"). The per-variant "Mystery Figure bias" lines below are
+> **historical design intent, not current behavior** — don't re-introduce the retired
+> identities without first reviving the roster in code.
 No new item types. No new species data. **Pure additive narrative.**
 
 ---

@@ -15,7 +15,7 @@ This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`]
 
 ---
 
-## 1. Poké Balls (cheap, catch-mode only)
+## 1. Poké Balls (cheap; available after the catch tutorial)
 
 | Item | Price | Role |
 |------|-------|------|
@@ -24,7 +24,7 @@ This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`]
 | Ultra Ball | **500** | Best standard ball; keep farming affordable |
 | Master Ball | **~2000–3000** (tune) | Guaranteed; still cheap vs old 50k — limit **1 per run** or **2** if too easy |
 
-**Sold at:** Poké Mart **only when** `catchMode` is on (new rows beside legal items). **Not** in Department Store (keeps mart = consumables + balls).
+**Sold at:** Poké Mart **only after** `catchTutorialDone` is set, i.e. once the intro-rival catch tutorial is complete (new rows beside legal items). **Not** in Department Store (keeps mart = consumables + balls). *(There is no `catchMode` toggle — catching is always on after the tutorial.)*
 
 **Inventory:** `sm.inventory.pokeball / greatBall / ultraBall / masterBall`; teach `enterShop('mart')` + bag + wild encounter UI to consume on throw.
 
@@ -34,7 +34,7 @@ This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`]
 
 | Access | Rule |
 |--------|------|
-| **Every city hub** | Button: `PC Box` when `catchMode` **or** `sm.pcBox.length > 0` (so late toggles still work). |
+| **Every city hub** | Button: `PC Box` when `catchTutorialDone` **or** `sm.pcBox.length > 0`. |
 | **Not** on route / in battle | Same pattern as Mart — city `renderCityActions` only. |
 
 **Flow fit:** After any catch, if party is 6 and PC has space → auto-deposit; if **PC full + party full** → catch **fails** (already decided).
@@ -100,7 +100,7 @@ This is a **single NPC encounter system**, not a full shop. It gives high-risk o
 
 | Trigger | From **run itinerary** (not random %): e.g. after **badge 3** or **City3** segment |
 |--------|----------------------------------|
-| **Fee** | ~500G entry (tune) |
+| **Fee** | **10,000G** entry (`SAFARI_ENTRY_COST`) |
 | **Twist** | **Type restriction** (e.g. only Fire / only Water / “cave” = Rock+Ground pool) — **good grade odds** (bias G2–G3 in pool) |
 | **Mechanic** | Bait / Mud / Ball **or** quick-catch — pick one and stick to it for v1 |
 
@@ -110,7 +110,7 @@ Resolves **before** the next `STORY_EVENTS_RAW` battle on that segment.
 
 ## 5. Wild encounters
 
-| Roll | **50% per route battle slot** (indices like 1–3, 8–10, …) when `catchMode` on |
+| Roll | **50% per route battle slot** (indices like 1–3, 8–10, …) once `catchTutorialDone` is set |
 |------|----------------------------------|
 | Species | Grade from current event weights ∩ **enabled gens** |
 
@@ -146,7 +146,7 @@ Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat 
 | `proceedToNextBattle` order | Queue: **itinerary beat** → **wild** → **wager prompt** → set `eventIndex` to route battle → `enterBattleEvent`. |
 | Save mid-beat | Persist `sm.itineraryProgress`, `sm.storyScriptState`, `sm.pendingWager`, `sm.traderOfferByCity`. |
 | Full PC + party | Wild catch fails; **do not show wager** if winning transfer has nowhere to go. |
-| `eventsOn` off | No itinerary, no wager, no safari, no black market unlock; **catch + PC + balls** still work if `catchMode` on. |
+| `eventsOn` off | No itinerary, no wager, no safari, no black market unlock; **catch + PC + balls** still work once `catchTutorialDone` is set. |
 | Mystery Figure / Rival | Unchanged vanilla flow; new buttons only add **parallel** actions on city screen. |
 | Professor forced in City6–8 | Black Market / PC do not replace Mystery gate; **legendary gate** still blocks route until visited. |
 

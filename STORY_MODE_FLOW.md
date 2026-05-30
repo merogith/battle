@@ -18,6 +18,25 @@ writing — they will drift as work proceeds.
 > and `npm run debug:anchors`). The symbol name is the durable anchor; the line
 > number is point-in-time only.
 
+> **⚠️ Constant / symbol drift — code is authoritative (read before tuning).**
+> Some constants/symbols below were renamed or never shipped under the documented name:
+> - **Wild grade curve**: ships as `STORY_WILD_GRADE_BY_CITY` (city-keyed, via
+>   `_wildGradeWeightsForCity`) — there is no `_WILD_GRADE_CURVE_BY_BADGES`. The badge-keyed
+>   wild tables in §3/§13/§15f/§15g describe a model that does not ship; the live curve advances
+>   on **city arrival**, not badge count.
+> - **Early-game foe softening**: ships as `FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]`
+>   (city-indexed, City ≥3 → 1.0) plus a separate `_stageGatedFoeStatMult`. The four
+>   `*_FOE_STAT_MULT` constants in §8/§15f do not exist, and there is no per-Gym-Leader exemption.
+> - **G4 strip** (`storyStripGrade4IfPartyMature`): gated on a party-size latch
+>   (`sm.partyEverReached2`), **not** `sm.badges` — the badge thresholds in §12/§15f are aspirational.
+> - **Save schema**: `SAVE_VER = 22` (v21 = relative egg-hatch, v22 = 3-track collapse).
+>   Migration sections below stop at v20; `agent-state/CODEBASE_MAP.md` carries the current list.
+> - **Renamed symbols** (feature ships under the new name; the old name won't resolve via find-anchor):
+>   `_storyMaxSigGradeForGw` → `_storySigGradeCeiling`;
+>   `_daycareHatch` → `_daycareRunSecret` / `_daycareRollHatchSpecies`;
+>   `enterStoneEmporium` → `enterStoneShop`;
+>   `_seedFanClubAcrossCities` → no such function (Fan Club is seeded inline in `renderCityActions`).
+
 ---
 
 ## 1. One-screen summary

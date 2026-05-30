@@ -67,7 +67,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 02e46f6ff336
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (corrected via STORY_MODE_FLOW top-of-doc drift banner; inline tables flagged superseded)
 ---
 
 **Title**: Early-game softening uses city-indexed [0.80,0.85,0.90]; spec §8/§15f names badge/event constants
@@ -95,7 +95,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: c199cd9db37a
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (corrected via STORY_MODE_FLOW top-of-doc drift banner)
 ---
 
 **Title**: G4-strip keys on party-size (partyEverReached2), not badges; contradicts spec's "most important refactor"
@@ -126,7 +126,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 4b355ba97b85
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (corrected via STORY_MODE_FLOW top-of-doc drift banner; inline tables flagged superseded)
 ---
 
 **Title**: Wild grade curve is city-keyed STORY_WILD_GRADE_BY_CITY; spec names badge-keyed _WILD_GRADE_CURVE_BY_BADGES
@@ -157,7 +157,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: c26048440b8d
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: STORY_FEATURES_INTEGRATION "shipped" sections gate balls/PC/wild on catchMode; no such setting exists
@@ -188,7 +188,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 44622866c38b
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: STORY_FEATURES_INTEGRATION §4 lists Safari fee ~500G; code + canonical flow say 10,000G
@@ -215,7 +215,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: e72599329786
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Mystery Figure roster collapsed to single 'the_first' (v22); STORY_NARRATIVE_VARIANTS still documents 9-identity cast
@@ -244,7 +244,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 5614d348ca6e
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (CODEBASE_MAP refreshed; STORY_MODE_FLOW banner notes v21/v22)
 ---
 
 **Title**: SAVE_VER is 22 with v21/v22 migrations; spec + ANCHOR_INDEX + CODEBASE_MAP stop at 15-20
@@ -272,7 +272,7 @@ file: agent-state/CODEBASE_MAP.md
 agents: [spec-drift-auditor]
 fingerprint: ae3dcf22fd06
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: CODEBASE_MAP guardrails grossly stale: claims 29,908 lines / CSS 16-4156; file is 60,040 lines
@@ -301,7 +301,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 6321f44e5d84
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (5 renamed-symbol anchors corrected in banner; line numbers handled by the symbol-first anchor policy)
 ---
 
 **Title**: Doc battle.html:LINE anchors stale across specs (18/50 drifted) + several renamed symbols
