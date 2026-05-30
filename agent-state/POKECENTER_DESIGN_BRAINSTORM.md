@@ -171,6 +171,37 @@ path AND tightening #1-#3 are the same job. Concretely, an exploit-safe Concept 
 - init `tired=0` on catch/gift builds (fixes #4 — behavior-preserving, consistency).
 Items #3/#4 are pure-consistency general-session fixes; #1 touches retreat flow (pasteur courtesy).
 
+## 6e. Navigation model — you CANNOT freely backtrack (corrects a common assumption)
+
+Verified by direct read: the run is a **strict linear forward march** via `sm.eventIndex`.
+The city hub has only forward actions (facilities + "Leave City"/"Continue Route", 30037+).
+**No world map, no fly, no revisit-earlier-town affordance exists anywhere.**
+
+"Return to a city" happens in only three involuntary cases:
+1. **Game-over** (you LOST a battle) → button `story-gameover-btn-center` "Return to last city —
+   heal & replan" (heals + clears fatigue; free on Normal). battle.html:9286, refresh at 44598.
+2. **Boss-cage retreat** (`bossRetreatToCity`, 49380).
+3. **Closing the game** (autosave warps to last city, 59258).
+
+Retreat snaps to `lastStoryCityEventIndexAtOrBefore` (44583) = the city you JUST left, not an
+arbitrary earlier one. So **the only free fatigue-clear-by-return requires LOSING a fight** —
+a self-punishing path, not a casual launder. (This softens 6d#1: it's "lose on purpose," not
+"round-trip anytime.")
+
+### Design implication — the Gameboy "backtrack to heal" loop is NOT needed here
+Classic games needed backtrack-to-Center because HP/PP attrition persisted. This game deleted
+that (full-heal between battles, FLOW:34), so there is **no HP reason to ever go back**, and
+fatigue auto-clears forward at the next gym. **Re-adding a backtrack-heal loop would re-introduce
+exactly the tedium the design removed — do NOT.** Instead the Center should be a **forward-path
+rest stop you pass through** in the hub you're already in: an opt-in "top off fatigue before the
+road" convenience, never a mandatory round-trip.
+
+### The honest fork this raises
+If fatigue auto-clears at the next gym AND you can't backtrack, does fatigue earn its place?
+- **Keep it** only if the Center becomes its visible forward management point (Concept A).
+- Otherwise **delete it** (Concept D) — a 3% invisible tax with no interaction is better removed
+  than left vestigial. This is now a real, defensible option, not just a completeness entry.
+
 ## 7. Open questions for you
 - Free Rest (A) or costed Rest as a real choice (B)?
 - Should Fatigue be made *perceptible* (maxwell magnitude bump) or stay a gentle invisible-ish nudge?
