@@ -28516,10 +28516,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Flame Orb / Toxic Orb: apply status AFTER status damage so the holder does
             // not take a tick of burn/poison damage on the activation turn (canonical Gen 5+).
-            // applyStatus is a no-op if the holder already has a non-volatile status, so this
-            // does not double-apply when the orb status persists across turns.
-            if (_monItemActive && mon.currentHp > 0 && mon.item === "Flame Orb") applyStatus(mon, "BRN");
-            if (_monItemActive && mon.currentHp > 0 && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
+            // The `!mon.status` guard skips the call once the orb has applied its status: the orb
+            // is never consumed, so without it applyStatus would re-fire every end-of-turn and log
+            // "is already affected by ..." for the rest of the battle.
+            if (_monItemActive && mon.currentHp > 0 && !mon.status && mon.item === "Flame Orb") applyStatus(mon, "BRN");
+            if (_monItemActive && mon.currentHp > 0 && !mon.status && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
 
             // 4. Binding/Trap Damage
             // Leech Seed — Magic Guard prevents the drain (so the seeder also heals nothing).
