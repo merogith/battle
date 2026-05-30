@@ -48,7 +48,7 @@ catch screen):
   still." beat, then the prompt reappears (the tap is still spent — see §3).
 
 Flavor note: canon hides encounter odds, so the button does **not** display the
-live percentage. (Open decision O5 if the user wants it shown.)
+live percentage. **[user-confirmed: hidden]**
 
 ---
 
@@ -256,7 +256,7 @@ in one place:
 | `WANDER_MAX_TAPS` | `3` | Max "Search the Tall Grass" taps per route. |
 | `WANDER_BASE_RATE` | `0.50` | Encounter chance on the first search. |
 | `WANDER_RATE_DECAY` | `0.5` | Multiplier applied to the rate per **hit**. |
-| `STORY_WILDS_PER_ROUTE_NODE` | `2` (unchanged) | Forced wilds before the route — see O1. |
+| `STORY_WILDS_PER_ROUTE_NODE` | `2` | Forced wilds before the route (unchanged). **[user-confirmed]** |
 
 All four are **balance numbers** → user sign-off before ship (`CLAUDE.md`).
 
@@ -264,10 +264,14 @@ All four are **balance numbers** → user sign-off before ship (`CLAUDE.md`).
 
 ## 10. UX & edge cases
 
-- **Party 6/6 and PC full:** catching is impossible. Recommend disabling "Search
-  the Tall Grass" with a hint ("No room — sell or release at a Pokémon Center
-  first") rather than letting the player burn taps on un-catchable encounters.
-  Mirrors the existing full-box modal (`STORY_MODE_FLOW.md §3`). (Confirm — O3.)
+- **Party 6/6 and PC full — Search stays available [user-confirmed].** The action
+  is **never gated on box space**: the player can always "Search the Tall Grass."
+  When full, a generated encounter still fires and the **catch fails with the
+  existing full-box modal** (`STORY_MODE_FLOW.md §3`), exactly like a normal
+  full-box route wild. Documented consequence: the tap is still consumed, and if an
+  encounter was generated the rate still halves — a full-box player can spend
+  wander attempts on wilds they can't keep. That is the intended "always doable"
+  behavior.
 - **Flee / run:** inside a wander-triggered catch screen, flee-on-miss and the Run
   button behave exactly as a normal route wild. The encounter still counts as a
   **hit** (rate already halved when generated). The prompt reappears afterward.
@@ -286,11 +290,11 @@ All four are **balance numbers** → user sign-off before ship (`CLAUDE.md`).
 
 | # | Decision | Recommendation |
 |---|---|---|
-| O1 | How many **forced** wilds remain before the wander loop? Today 2. CSV shows ~2 scripted "Wild Encounter" beats/road, so 2 forced + 3 wander is consistent; 1 forced + 3 wander is a lighter mandatory beat. | Keep **2** (no behavior change to forced wilds). |
+| O1 | Forced wild count before the wander loop. | **Decided: keep 2.** |
 | O2 | Hook point — arrival-transition (faithful to CSV ordering) vs route-entry (simpler). | **Arrival-transition** (§4). |
-| O3 | Disable Search when party+PC full, vs allow + fail-with-modal? | **Disable + hint.** |
+| O3 | Gate Search on box space, vs always available? | **Decided: always available** — never disabled; catch fails with the existing modal when full. |
 | O4 | Does the rate decay floor at 12.5%, or keep halving if `WANDER_MAX_TAPS` is ever raised? | Floor is implicit at 3 taps; keep formula `base × decay^hits` (self-floors). |
-| O5 | Show the live odds on the button, or hide (canon)? | **Hide.** |
+| O5 | Show live odds on the button, or hide? | **Decided: hide** (canon). |
 | O6 | Confirm save migration slots cleanly into the v22→v23 ladder in `loadStory`. | pasteur to verify. |
 
 ---
