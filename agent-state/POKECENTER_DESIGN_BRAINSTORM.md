@@ -202,6 +202,48 @@ If fatigue auto-clears at the next gym AND you can't backtrack, does fatigue ear
 - Otherwise **delete it** (Concept D) — a 3% invisible tax with no interaction is better removed
   than left vestigial. This is now a real, defensible option, not just a completeness entry.
 
+## 6f. TIMELINE PROOF — fatigue is nearly inert in the shipped run
+
+Reconstructed the whole main timeline (`STORY_EVENTS_RAW`, rows 0-66) and simulated fatigue
+against the real iconic/non-iconic rules. Routes between cities are SHORT: every inter-city
+segment has only **2 non-iconic fights** (Basic/Elite), except the very last (City8→City9) which
+has 3 Elite Trainers. Gym Trainers are iconic (clear on entry), so they reset fatigue mid-route.
+
+**Results across the entire main story:**
+- Fights that are ever FELT with tired>0: **9 total** (out of ~50). Eight of them at −1%, one at −2%.
+- **Max debuff ever experienced in a real fight: −2%, exactly once** (the 3rd Elite before the League).
+- **tired=3 is mathematically UNREACHABLE** in the shipped timeline — there is no 4-long
+  non-iconic chain anywhere, so the cap-3 system and the modal's "up to 3 stacks" never happen.
+
+**Conclusion:** fatigue is not just "subtle" — in the actual shipped run it is **effectively
+inert**: a −1% nudge the player meets 8 times and a −2% nudge once, with no stack ever exceeding
+2, all invisible. Combined with 6e (no backtrack; auto-clears at next gym), the mechanic does
+essentially nothing the player can perceive, manage, or even reach the top of.
+
+This makes the fork in 6e decisive: as shipped, fatigue does not earn its complexity. The two
+honest paths are **(A)** make it visible AND give it a forward management point at the Center so
+it becomes a real (if light) system — which likely also means letting routes be long enough that
+tired can climb [maxwell/pasteur, timeline], or **(D)** delete it and give the Poké Center a
+*different* reason to exist.
+
+## 6g. If not fatigue — what SHOULD make the Poké Center matter?
+
+Since HP auto-heals, fatigue is near-inert, and you can't backtrack, the Center needs a *forward*
+purpose the player passes through. Candidate roles (all opt-in, low-friction, fit the no-attrition
+philosophy) — for discussion, not yet speced:
+- **Fatigue management hub** (Concept A/B) — only works if fatigue is first made to matter (6f).
+- **PP / move-point restore** — VERIFIED MOOT: PP is re-initialized fresh from move data every
+  battle build (`pp: md.pp, maxPp: md.pp`, battle.html:10107), so PP auto-refills like HP and does
+  NOT persist. The classic Center PP-restore job services nothing here either.
+- **Box/Daycare access + a light "rest" social beat** — lean into it as the *hub* facility
+  (storage, Pokédex, Nurse flavor) rather than a mechanical service; make it the comfortable
+  "home base" screen, honest about being convenience not necessity.
+- **Status-cure / consumable vendor** niche distinct from the Mart.
+
+Recommendation unchanged at the top level: **decide first whether fatigue lives or dies (6f fork).**
+If it lives → Concept A (visible + Center forward-clear). If it dies → repurpose the Center around
+PP/box/home-base, and remove the inert fatigue tax + its false-promise modal.
+
 ## 7. Open questions for you
 - Free Rest (A) or costed Rest as a real choice (B)?
 - Should Fatigue be made *perceptible* (maxwell magnitude bump) or stay a gentle invisible-ish nudge?
