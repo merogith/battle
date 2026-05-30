@@ -103,6 +103,41 @@ design upgrade that makes the Center a genuine decision, gated on pasteur/maxwel
 3. Honest modal copy.
 4. Then, with your OK: the Center "Rest" button (A3).
 
+## 6b. DESIGN VERDICT — is Fatigue good design? (user asked directly)
+
+**No, not as built.** Against the bar for an attrition mechanic (visibility + perceptible
+stakes + a player choice) fatigue scores zero of three:
+1. Invisible (no pip/HUD/summary; `_tiredAtBattleStart` written-never-read).
+2. Imperceptible (~3% sits inside the 15% damage-roll variance) — and the user has chosen to
+   **keep magnitude subtle**, which permanently rules out fatigue ever being a *felt combat*
+   mechanic. This constraint must drive the design.
+3. No agency (auto-clears at next gym regardless of player action).
+4. Punishment-only (invisible stick, no carrot).
+5. Whole-party + unavoidable (can't rotate/play around it).
+6. False-promise + clashes with the "attrition removed" pillar.
+
+**Implication of "keep it subtle":** do NOT try to make the 3% debuff matter in battle — it
+can't. Repurpose fatigue as **light visible texture**, not a strategic layer.
+
+### Recommended design: "Freshness" (same tiny numbers, positive framing)
+- Keep magnitude tiny (user's call). Numbers aren't the point.
+- **Make it visible** — party-list pips + battle-nameplate chip. Fixes the cardinal sin,
+  general-session, no balance change.
+- **Reframe positively:** mons are **"Fresh"** by default; grinding makes them **"Worn"**; the
+  Poké Center **Rest** restores Fresh. Identical mechanic, reads as upkeep/care not tax.
+- **The Center gets one clear honest verb (Rest)** — the only persistent resource left to
+  service in a full-heal game.
+
+This is **Concept A**, and with subtle magnitude it is the correct ceiling. Deeper variants
+(costed rest, felt magnitude, rest-bonus buff) are NOT recommended: they add friction the
+"attrition removed" pillar rejects, or balance numbers the user vetoed, for a 3% effect that
+shouldn't be a pillar.
+
+### Explicitly do NOT:
+- add a rest-bonus buff (new positive balance number, scope creep),
+- make Rest cost gold (friction the no-attrition pillar rejects),
+- bump magnitude (user vetoed).
+
 ## 7. Open questions for you
 - Free Rest (A) or costed Rest as a real choice (B)?
 - Should Fatigue be made *perceptible* (maxwell magnitude bump) or stay a gentle invisible-ish nudge?
