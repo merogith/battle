@@ -30062,6 +30062,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Worker', type:'Steel', sigs:['Aron','Beldum','Shieldon','Klink','Skarmory'], charGen:4, pkmGens:[4,5], spriteFile:'Worker' },
           { role:'Basic Trainer', name:'Worker Snow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Worker-Snow' },
           { role:'Elite Trainer', name:'Xerosic', type:'Poison', sigs:['Crobat','Malamar','Lucario','Manectric','Drapion'], charGen:6, pkmGens:[5,6], spriteFile:'Xerosic' },
+          // Gen 6–9 villain admins / bosses (wired once their sprites landed). Canon signature teams.
+          { role:'Elite Trainer', name:'Lysandre', type:'Fire',     sigs:['Pyroar','Gyarados','Honchkrow','Mienshao','Murkrow'],            charGen:6, pkmGens:[1,2,5,6], spriteFile:'Lysandre' },
+          { role:'Elite Trainer', name:'Aliana',   type:'Dark',     sigs:['Mightyena','Liepard','Krookodile','Drapion','Weavile'],          charGen:6, pkmGens:[4,5,6],   spriteFile:'Aliana' },
+          { role:'Elite Trainer', name:'Celosia',  type:'Electric', sigs:['Manectric','Heliolisk','Galvantula','Eelektross','Rotom'],       charGen:6, pkmGens:[4,5,6],   spriteFile:'Celosia' },
+          { role:'Elite Trainer', name:'Mable',    type:'Fire',     sigs:['Houndoom','Chandelure','Talonflame','Pyroar','Heatmor'],         charGen:6, pkmGens:[4,5,6],   spriteFile:'Mable' },
+          { role:'Elite Trainer', name:'Rose',     type:'Steel',    sigs:['Copperajah','Ferrothorn','Perrserker','Klinklang','Escavalier'], charGen:8, pkmGens:[5,8],     spriteFile:'Rose' },
+          { role:'Elite Trainer', name:'Oleana',   type:'Poison',   sigs:['Garbodor','Salazzle','Tsareena','Froslass','Milotic'],           charGen:8, pkmGens:[4,5,7,8], spriteFile:'Oleana' },
+          { role:'Elite Trainer', name:'Penny',    type:'Mixed',    sigs:['Umbreon','Sylveon','Vaporeon','Jolteon','Leafeon'],              charGen:9, pkmGens:[1,2,4,6], spriteFile:'Penny' },
+          { role:'Elite Trainer', name:'Giacomo',  type:'Dark',     sigs:['Revavroom','Pawmot','Mabosstiff','Houndstone','Kingambit'],      charGen:9, pkmGens:[9],       spriteFile:'Giacomo' },
+          { role:'Elite Trainer', name:'Mela',     type:'Fire',     sigs:['Revavroom','Torkoal','Armarouge','Ceruledge','Scovillain'],      charGen:9, pkmGens:[3,9],     spriteFile:'Mela' },
+          { role:'Elite Trainer', name:'Atticus',  type:'Poison',   sigs:['Revavroom','Grafaiai','Clodsire','Skuntank','Toxicroak'],        charGen:9, pkmGens:[4,9],     spriteFile:'Atticus' },
+          { role:'Elite Trainer', name:'Ortega',   type:'Fairy',    sigs:['Revavroom','Dachsbun','Tinkaton','Grimmsnarl','Mimikyu'],        charGen:9, pkmGens:[7,8,9],   spriteFile:'Ortega' },
+          { role:'Elite Trainer', name:'Eri',      type:'Fighting', sigs:['Revavroom','Annihilape','Lucario','Hawlucha','Quaquaval'],       charGen:9, pkmGens:[4,6,9],   spriteFile:'Eri' },
           { role:'Elite Trainer', name:'Yellow', type:'Mixed', sigs:['Pikachu','Butterfree','Clefable','Vileplume','Rattata','Pidgeotto'], charGen:1, pkmGens:[1], spriteFile:'Yellow' },
           { role:'Basic Trainer', name:'Young Athlete', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Young_Athlete' },
           { role:'Basic Trainer', name:'Young Athlete F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Young_Athlete~F' },
@@ -37593,8 +37606,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Cyrus','Ghetsis','Guzma','Maxie','Archie','Tabitha','Courtney','Matt','Shelly',
             'Mars','Jupiter','Saturn','Archer','Ariana','Petrel','Proton',
             'Bryony','Xerosic','Colress',
-            'Plumeria','Lusamine','Faba'
+            'Plumeria','Lusamine','Faba',
+            // Gen 6–9 leads (wired once their sprites landed):
+            'Lysandre','Aliana','Celosia','Mable',               // Team Flare (Kalos)
+            'Rose','Oleana',                                     // Macro Cosmos (Galar)
+            'Penny','Giacomo','Mela','Atticus','Ortega','Eri',   // Team Star (Paldea)
         ]);
+        // Per late-game Elite-Trainer slot, the chance (quadratic in badges
+        // cleared) of biasing the pick toward STORY_ELITE_VILLAIN_NAMES — the
+        // "villain gauntlet" lean before the League. Soft: selectTrainerForRole
+        // falls back to the full Elite pool if the gen filter leaves no villain.
+        // BALANCE: user-tunable (0 disables the bias).
+        const STORY_VILLAIN_GAUNTLET_ODDS = 0.6;
         function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType, nameWhitelist) {
             const rk = roleKey.toLowerCase().trim();
             // 'Gym Trainer 1' and 'Gym Trainer 2' draw from the Basic Trainer pool (matching gym leader typing via preferredType).
@@ -37852,6 +37875,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 if (event === 'Mystery Figure') return;
+                let _eliteWhitelist = null;
                 // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
                 const theme = _resolveThemeForBattleRow(idx);
                 if (theme) {
@@ -37878,6 +37902,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             return;
                         }
                     }
+                    // Villain-gauntlet lean: bias remaining late-game Elite slots toward
+                    // iconic villain admins/bosses (soft — selectTrainerForRole falls back
+                    // if the active gen filter leaves no villain candidate).
+                    if (rng() < ramp * ramp * STORY_VILLAIN_GAUNTLET_ODDS) {
+                        _eliteWhitelist = STORY_ELITE_VILLAIN_NAMES;
+                    }
                 }
                 // Pre-Gym-1 route fodder: the lone Basic Trainer between intro rival and
                 // City 1 should *always* be a classic route trainer (Youngster, Bug
@@ -37893,7 +37923,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // fall through to standard picker if the filter somehow empties
                 }
-                const t = selectTrainerForRole(event, eg, usedBase);
+                const t = selectTrainerForRole(event, eg, usedBase, null, _eliteWhitelist);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
                     usedBase.add(_baseTrainerName(t.name));
@@ -41813,13 +41843,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // assignment is overridden to this canon character. The existing
         // trainer roller picks up the character's signature Pokémon (Giovanni's
         // Rhydon, Cyrus's Weavile, etc.), delivering iconic encounters without
-        // mutating the timeline. Entries omitted for villains whose canon
-        // character isn't in TRAINER_DATA (Lysandre / Rose / Penny / Cassiopeia)
-        // — those still trigger BOSS_CONFIGS mechanics + tier rewards but
-        // field whatever the natural Elite Trainer roll produces. Future
-        // polish PR can add those canon characters to TRAINER_DATA.
+        // mutating the timeline. All 10 villain teams' boss + mini-boss beats
+        // now resolve to a canon character — the Gen 6–9 leads (Lysandre, Rose,
+        // Penny/Cassiopeia, Oleana, Team Star crew) were added to TRAINER_DATA
+        // with canon signature teams once their sprites landed.
         const BEAT_CANON_TRAINER = {
-            // Villain bosses (Road 7 climax) — 7 named, 3 fall back to random Elite.
+            // Villain bosses (Road 7 climax) — all 10 named.
             'villain.rocket.boss':    'Giovanni',
             'villain.magma.boss':     'Maxie',
             'villain.aqua.boss':      'Archie',
@@ -41827,7 +41856,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.plasma.boss':    'Ghetsis',
             'villain.skull.boss':     'Guzma',
             'villain.yell.boss':      'Piers',
-            // Villain admins (Road 6 mini-boss) — 8 named, 2 fall back.
+            'villain.flare.boss':         'Lysandre',
+            'villain.macroCosmos.boss':   'Rose',
+            'villain.star.boss':          'Penny',
+            // Villain admins (Road 6 mini-boss) — all 10 named.
             'villain.rocket.miniBoss':   'Proton',
             'villain.magma.miniBoss':    'Tabitha',
             'villain.aqua.miniBoss':     'Shelly',
@@ -41836,6 +41868,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.flare.miniBoss':    'Bryony',
             'villain.skull.miniBoss':    'Plumeria',
             'villain.yell.miniBoss':     'Marnie',
+            'villain.macroCosmos.miniBoss': 'Oleana',
+            'villain.star.miniBoss':        'Giacomo',
         };
 
         // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
