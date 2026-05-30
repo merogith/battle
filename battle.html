@@ -11333,19 +11333,19 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Move Tutor</b> — Swap any move slot for any move the species can legally learn.<br>
 <b>Nature Rater</b> — Re-pick a nature for the +10%/-10% spread you actually want.<br>
 <b>Battle Dojo</b> — Swap held item and/or ability.<br>
-<b>EV Trainer (Buck)</b> — Apply EV spreads (510 cap, 252 per stat). A Vitamin Pack waives the gold cost.<br>
+<b>EV Trainer (Buck)</b> — Apply EV spreads (510 cap, 252 per stat). An EV Voucher waives the gold cost.<br>
 <b>Evolution Tutor</b> — Every region\'s evolution methods, one shop. Rare Candy waives the gold cost on a Pokémon\'s first evolution.<br>
 <b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 5,000G. Permanent for that mon.<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
 <b>Relics</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides (Browse to acquire, Manage to toggle).<br>
-<b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random Vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
+<b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random IV vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
 <b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
 After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure. The <b>Caged God</b> boss arc needs three corrupted-Center leads scattered through the post-game, then the Master Ball.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Useful Habits</h3>
 • Tap any Pokémon name in battle, yours or the foe\'s, for the full build summary.<br>
 • The <b>🎯 Next:</b> chip in the city tip rail jumps you to your next required fight.<br>
-• Vouchers — Rare Candy, Vitamin Pack — show in the bag and on tutor / evolve buttons. They waive the gold cost on one use.<br>
+• Vouchers — Rare Candy, EV Voucher — show in the bag and on tutor / evolve buttons. They waive the gold cost on one use.<br>
 • Difficulty also adjusts the coin reward: Very Easy 1.6× → Hard 1.0× (Hard floors the penalty). Pick the mode that fits the run you want, not the one that looks hardest on the menu.</div>`,
             menu: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Game Modes</h3>
 <b style="color:#4caf50;">Player vs AI</b> — Draft 3 Pokémon from a random pool, then take them into a single battle against the computer.<br>
@@ -14977,21 +14977,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe)
             };
 
-            // Fatigue debuff: 1% per stack on all combat stats AND starting HP (max 3 stacks).
-            // Max HP is unchanged so heals still ceiling at the species' full value — the mon
-            // simply enters the fight not-full. Iconic battles auto-clear stacks before entry
-            // (see `_storyClearTiredness`), so gyms/league/mystery/pits never feel this.
-            const _tiredStacks = Math.max(0, Math.min(3, (build.tired | 0)));
-            if (_tiredStacks > 0) {
-                const _mul = 1 - 0.01 * _tiredStacks;
-                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * _mul));
-                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * _mul));
-                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * _mul));
-                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * _mul));
-                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * _mul));
-                mon.currentHp = Math.max(1, Math.floor(mon.maxHp * _mul));
-                mon._tiredAtBattleStart = _tiredStacks;
-            }
+            // Fatigue/Tiredness was cut (Path D): it was an invisible, near-inert ~1-2% tax
+            // that auto-cleared at the next gym and could never reach its own cap in the shipped
+            // timeline. The `build.tired` save field is left intact-but-inert for save
+            // compatibility (pasteur-owned schema); nothing reads it for battle stats anymore.
             // Phase 4.4 — per-event enemy stat multiplier (set by enterBattleEvent's
             // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
             // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
@@ -30213,6 +30202,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Worker', type:'Steel', sigs:['Aron','Beldum','Shieldon','Klink','Skarmory'], charGen:4, pkmGens:[4,5], spriteFile:'Worker' },
           { role:'Basic Trainer', name:'Worker Snow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Worker-Snow' },
           { role:'Elite Trainer', name:'Xerosic', type:'Poison', sigs:['Crobat','Malamar','Lucario','Manectric','Drapion'], charGen:6, pkmGens:[5,6], spriteFile:'Xerosic' },
+          // Gen 6–9 villain admins / bosses (wired once their sprites landed). Canon signature teams.
+          { role:'Elite Trainer', name:'Lysandre', type:'Fire',     sigs:['Pyroar','Gyarados','Honchkrow','Mienshao','Murkrow'],            charGen:6, pkmGens:[1,2,5,6], spriteFile:'Lysandre' },
+          { role:'Elite Trainer', name:'Aliana',   type:'Dark',     sigs:['Mightyena','Liepard','Krookodile','Drapion','Weavile'],          charGen:6, pkmGens:[4,5,6],   spriteFile:'Aliana' },
+          { role:'Elite Trainer', name:'Celosia',  type:'Electric', sigs:['Manectric','Heliolisk','Galvantula','Eelektross','Rotom'],       charGen:6, pkmGens:[4,5,6],   spriteFile:'Celosia' },
+          { role:'Elite Trainer', name:'Mable',    type:'Fire',     sigs:['Houndoom','Chandelure','Talonflame','Pyroar','Heatmor'],         charGen:6, pkmGens:[4,5,6],   spriteFile:'Mable' },
+          { role:'Elite Trainer', name:'Rose',     type:'Steel',    sigs:['Copperajah','Ferrothorn','Perrserker','Klinklang','Escavalier'], charGen:8, pkmGens:[5,8],     spriteFile:'Rose' },
+          { role:'Elite Trainer', name:'Oleana',   type:'Poison',   sigs:['Garbodor','Salazzle','Tsareena','Froslass','Milotic'],           charGen:8, pkmGens:[4,5,7,8], spriteFile:'Oleana' },
+          { role:'Elite Trainer', name:'Penny',    type:'Mixed',    sigs:['Umbreon','Sylveon','Vaporeon','Jolteon','Leafeon'],              charGen:9, pkmGens:[1,2,4,6], spriteFile:'Penny' },
+          { role:'Elite Trainer', name:'Giacomo',  type:'Dark',     sigs:['Revavroom','Pawmot','Mabosstiff','Houndstone','Kingambit'],      charGen:9, pkmGens:[9],       spriteFile:'Giacomo' },
+          { role:'Elite Trainer', name:'Mela',     type:'Fire',     sigs:['Revavroom','Torkoal','Armarouge','Ceruledge','Scovillain'],      charGen:9, pkmGens:[3,9],     spriteFile:'Mela' },
+          { role:'Elite Trainer', name:'Atticus',  type:'Poison',   sigs:['Revavroom','Grafaiai','Clodsire','Skuntank','Toxicroak'],        charGen:9, pkmGens:[4,9],     spriteFile:'Atticus' },
+          { role:'Elite Trainer', name:'Ortega',   type:'Fairy',    sigs:['Revavroom','Dachsbun','Tinkaton','Grimmsnarl','Mimikyu'],        charGen:9, pkmGens:[7,8,9],   spriteFile:'Ortega' },
+          { role:'Elite Trainer', name:'Eri',      type:'Fighting', sigs:['Revavroom','Annihilape','Lucario','Hawlucha','Quaquaval'],       charGen:9, pkmGens:[4,6,9],   spriteFile:'Eri' },
           { role:'Elite Trainer', name:'Yellow', type:'Mixed', sigs:['Pikachu','Butterfree','Clefable','Vileplume','Rattata','Pidgeotto'], charGen:1, pkmGens:[1], spriteFile:'Yellow' },
           { role:'Basic Trainer', name:'Young Athlete', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Young_Athlete' },
           { role:'Basic Trainer', name:'Young Athlete F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Young_Athlete~F' },
@@ -37785,8 +37787,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Cyrus','Ghetsis','Guzma','Maxie','Archie','Tabitha','Courtney','Matt','Shelly',
             'Mars','Jupiter','Saturn','Archer','Ariana','Petrel','Proton',
             'Bryony','Xerosic','Colress',
-            'Plumeria','Lusamine','Faba'
+            'Plumeria','Lusamine','Faba',
+            // Gen 6–9 leads (wired once their sprites landed):
+            'Lysandre','Aliana','Celosia','Mable',               // Team Flare (Kalos)
+            'Rose','Oleana',                                     // Macro Cosmos (Galar)
+            'Penny','Giacomo','Mela','Atticus','Ortega','Eri',   // Team Star (Paldea)
         ]);
+        // Per late-game Elite-Trainer slot, the chance (quadratic in badges
+        // cleared) of biasing the pick toward STORY_ELITE_VILLAIN_NAMES — the
+        // "villain gauntlet" lean before the League. Soft: selectTrainerForRole
+        // falls back to the full Elite pool if the gen filter leaves no villain.
+        // BALANCE: user-tunable (0 disables the bias).
+        const STORY_VILLAIN_GAUNTLET_ODDS = 0.6;
         function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType, nameWhitelist) {
             const rk = roleKey.toLowerCase().trim();
             // 'Gym Trainer 1' and 'Gym Trainer 2' draw from the Basic Trainer pool (matching gym leader typing via preferredType).
@@ -38044,6 +38056,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 if (event === 'Mystery Figure') return;
+                let _eliteWhitelist = null;
                 // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
                 const theme = _resolveThemeForBattleRow(idx);
                 if (theme) {
@@ -38070,6 +38083,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             return;
                         }
                     }
+                    // Villain-gauntlet lean: bias remaining late-game Elite slots toward
+                    // iconic villain admins/bosses (soft — selectTrainerForRole falls back
+                    // if the active gen filter leaves no villain candidate).
+                    if (rng() < ramp * ramp * STORY_VILLAIN_GAUNTLET_ODDS) {
+                        _eliteWhitelist = STORY_ELITE_VILLAIN_NAMES;
+                    }
                 }
                 // Pre-Gym-1 route fodder: the lone Basic Trainer between intro rival and
                 // City 1 should *always* be a classic route trainer (Youngster, Bug
@@ -38085,7 +38104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // fall through to standard picker if the filter somehow empties
                 }
-                const t = selectTrainerForRole(event, eg, usedBase);
+                const t = selectTrainerForRole(event, eg, usedBase, null, _eliteWhitelist);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
                     usedBase.add(_baseTrainerName(t.name));
@@ -40289,11 +40308,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Effort Values — the invisible reps your Pokémon never got from grinding wilds."',
                     '"252 in the two stats that matter, 4 in a third — that\'s the classic spread. I can lay it down in an afternoon for a fee. Defensive mons want HP plus a defense; sweepers want the offensive stat plus speed."',
-                    '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads. Take a Vitamin Pack — first preset is on me."'
+                    '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads. Take an EV Voucher — first preset is on me."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ vitamin: 1 }); } catch (e) {}
-                    try { window.showGameAlert && window.showGameAlert('Received 1 Vitamin Pack — waives the gold on one EV preset application.'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 EV Voucher — waives the gold on one EV preset application.'); } catch (e) {}
                 }
             },
             firstFanClub: {
@@ -42005,13 +42024,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // assignment is overridden to this canon character. The existing
         // trainer roller picks up the character's signature Pokémon (Giovanni's
         // Rhydon, Cyrus's Weavile, etc.), delivering iconic encounters without
-        // mutating the timeline. Entries omitted for villains whose canon
-        // character isn't in TRAINER_DATA (Lysandre / Rose / Penny / Cassiopeia)
-        // — those still trigger BOSS_CONFIGS mechanics + tier rewards but
-        // field whatever the natural Elite Trainer roll produces. Future
-        // polish PR can add those canon characters to TRAINER_DATA.
+        // mutating the timeline. All 10 villain teams' boss + mini-boss beats
+        // now resolve to a canon character — the Gen 6–9 leads (Lysandre, Rose,
+        // Penny/Cassiopeia, Oleana, Team Star crew) were added to TRAINER_DATA
+        // with canon signature teams once their sprites landed.
         const BEAT_CANON_TRAINER = {
-            // Villain bosses (Road 7 climax) — 7 named, 3 fall back to random Elite.
+            // Villain bosses (Road 7 climax) — all 10 named.
             'villain.rocket.boss':    'Giovanni',
             'villain.magma.boss':     'Maxie',
             'villain.aqua.boss':      'Archie',
@@ -42019,7 +42037,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.plasma.boss':    'Ghetsis',
             'villain.skull.boss':     'Guzma',
             'villain.yell.boss':      'Piers',
-            // Villain admins (Road 6 mini-boss) — 8 named, 2 fall back.
+            'villain.flare.boss':         'Lysandre',
+            'villain.macroCosmos.boss':   'Rose',
+            'villain.star.boss':          'Penny',
+            // Villain admins (Road 6 mini-boss) — all 10 named.
             'villain.rocket.miniBoss':   'Proton',
             'villain.magma.miniBoss':    'Tabitha',
             'villain.aqua.miniBoss':     'Shelly',
@@ -42028,6 +42049,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.flare.miniBoss':    'Bryony',
             'villain.skull.miniBoss':    'Plumeria',
             'villain.yell.miniBoss':     'Marnie',
+            'villain.macroCosmos.miniBoss': 'Oleana',
+            'villain.star.miniBoss':        'Giacomo',
         };
 
         // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
@@ -43019,9 +43042,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // "🌿 Wild → ⚔ Rival" reads in one glance.
                 nextBattleLabel = _willFireWildNext ? `🌿 Wild Pokémon → ${nextLabel}` : nextLabel;
             }
-            // (Removed: the "Heal — your rival is at the route gate" suggestion.
-            // Story battles auto-restore HP/PP between fights, so the Pokémon
-            // Center never heals — the tip was false information and is gone.)
+            if (rivalGateActive) {
+                // Team is always battle-fresh (full-heal between fights), so this points to
+                // team prep / PC at the Center rather than a heal the facility doesn't perform.
+                const _healTipLabel = _willFireWildNext
+                    ? 'Prep your team — your rival waits at the end of the road'
+                    : 'Prep your team — your rival is at the route gate';
+                tips.push({ iconPath: 'icons/story/story_route.png?v=20260516', label: _healTipLabel, click: 'window.StoryMode.enterPokemonCenter()' });
+            }
             const hasTeam = sm.team && sm.team.length > 0;
             if (hasTeam) {
                 if (actions.includes('Battle Dojo')) {
@@ -43058,9 +43086,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (_vtN > 0 && actions.includes('EV Trainer') && sm.team.length) {
                 suggestedFacilities.add('evtrainer');
-                tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
+                tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} EV Voucher${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
             } else if (_vtN > 0 && !actions.includes('EV Trainer') && sm.team.length) {
-                tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
+                tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} EV Voucher${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
             }
             // New voucher tips: facility-only (keeps the 4-tip rail uncluttered;
             // bag is one click away if you want a city-wide reminder).
@@ -43313,7 +43341,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('train', makeActionBtn('💖 Pokémon Fan Club','fanclub','window.StoryMode.enterFanClub()','training', _facOpts('fanclub', _fcMeta, { soft:true })));
             }
             if (actions.includes('Nature Rater') && _tutorTeam) {
-                _push('train', makeActionBtn('📛 Nature Rater','nature','window.StoryMode.enterTutor(\'nature\')','training', _facOpts('nature', [_costBadge(2000, '+')], { soft:true })));
+                _push('train', makeActionBtn('📛 Nature Rater','nature','window.StoryMode.enterTutor(\'nature\')','training', _facOpts('nature', [_costBadge(2000)], { soft:true })));
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
@@ -43453,7 +43481,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the "(N)" suffix is a count of options, which read as a step-ordinal only
             // under the old "Next Step" name — the objective line above is the step now.
             btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Story')
-                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal &amp; Team')
+                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Team &amp; Storage')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
@@ -43700,7 +43728,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Buck: "Effort Values are the work nobody sees. Two hundred fifty-two per stat, five-ten total. After that the body says no."',
                 'Buck: "Pick a preset and I\'ll spread it. Most players underspend here, then wonder why their sweeper wakes up dead."',
                 'Buck: "A trained Pokémon outlasts a strong one. I\'ve been saying it for twenty years and the math hasn\'t shifted."',
-                'Buck: "Five thousand gold a spread, free with a Vitamin Pack. Gyms and Pokédex milestones drop those — keep an eye out."',
+                'Buck: "Five thousand gold a spread, free with an EV Voucher. Gyms and Pokédex milestones drop those — keep an eye out."',
                 'Buck: "Training sticks for life. PC, party, evolutions — the work travels. Sell or release the mon and it walks out the door with them."',
             ],
             colress: [
@@ -43832,17 +43860,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slot.statusTurns = 0;
                 slot.pp = null;
                 slot.consumedItem = false;
-                // PokeCenter / iconic-fight resets also clear fatigue. (Tiredness lives on the
-                // build, not the slot, so wipe it there too — applies to every party member
-                // regardless of whether they were in the last fight.)
-                if (slot.build && typeof slot.build === 'object') slot.build.tired = 0;
             });
         }
 
-        // List of event names that auto-heal and reset fatigue before+after the fight.
-        // Wild routes and randomized trainer encounters (Basic / Elite Trainer events) leave
-        // fatigue on the survivors. Gym leaders, league, mystery, boss arc, rival, and Pit
-        // fights are all "iconic" — full reset on entry, full reset on exit.
+        // Fatigue/Tiredness was cut (Path D). It was an invisible, near-inert ~1-2% tax that
+        // auto-cleared at the next gym and could never reach its own cap in the shipped timeline.
+        // These functions are kept as inert no-ops so any remaining call sites stay safe; nothing
+        // accrues, clears, or displays fatigue anymore. The `build.tired` save field and its
+        // migration are intentionally left intact-but-unused for save compatibility (the schema
+        // is pasteur-owned). Removing them is a separate pasteur task.
         function _storyEventIsIconicFight(eventName) {
             if (!eventName) return false;
             const s = String(eventName);
@@ -43857,55 +43883,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || s === 'Crucible'
                 || s === 'Frontier';
         }
-
-        // Apply (or clear) fatigue on every active team member. Bench mons are *also*
-        // touched on iconic-clear so a player can't game it by rotating to the bench.
-        function _storyApplyTiredness(eventName) {
-            if (!sm.team || !sm.team.length) return;
-            if (_storyEventIsIconicFight(eventName)) {
-                // Iconic fights wipe stacks (already wiped on entry — this is the post-clear).
-                sm.team.forEach(slot => { if (slot && slot.build) slot.build.tired = 0; });
-                return;
-            }
-            // Non-iconic fight: +1 stack to every party member that holds a build.
-            sm.team.forEach(slot => {
-                if (!slot || !slot.build) return;
-                slot.build.tired = Math.min(3, ((slot.build.tired | 0) + 1));
-            });
-            // Defer the first-time intro to after the victory overlay dismisses by setting
-            // a one-shot queue flag — `afterBattleReturn()` picks it up and fires the modal
-            // once the city screen is back up.
-            try {
-                if (!sm.flags) sm.flags = {};
-                if (!sm.flags.seenTirednessIntro) sm.flags._tirednessIntroQueued = true;
-            } catch (e) {}
-        }
-
-        function _storyClearTirednessForIconic() {
-            if (!sm.team) return;
-            sm.team.forEach(slot => { if (slot && slot.build) slot.build.tired = 0; });
-        }
-
-        // Single-shot fatigue intro modal — fires the first time a team member earns a stack.
-        function _storyShowTirednessIntro() {
-            try {
-                const ov = document.createElement('div');
-                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
-                ov.innerHTML = ''
-                    + '<div style="max-width:420px;width:100%;background:linear-gradient(180deg,rgba(28,40,60,0.98),rgba(12,18,30,0.98));border:1px solid #4dd0e1;padding:18px 20px;color:#e0f7fa;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 8px 28px rgba(0,0,0,0.65);">'
-                    +   '<div style="font-size:13px;color:#4dd0e1;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">⚕ Pokémon Center Bulletin</div>'
-                    +   '<div style="margin-bottom:10px;">Your team looks worn out from that fight.</div>'
-                    +   '<div style="margin-bottom:10px;">Battling drains them. They build up <strong style="color:#ffd54f;">Fatigue</strong> — each stack docks 1% of stats and starting HP, up to <strong>3</strong> stacks.</div>'
-                    +   '<div style="margin-bottom:10px;">A short stay at a <strong style="color:#aed581;">Pokémon Center</strong> restores HP, PP, status, <em>and</em> clears Fatigue. Gym Leaders, the League, and other iconic fights always start fresh, so you don\'t need to grind heals before them.</div>'
-                    +   '<div style="text-align:right;margin-top:6px;"><button type="button" id="story-tiredness-intro-ok" style="padding:8px 16px;background:#4dd0e1;color:#001b1e;border:none;font-weight:bold;cursor:pointer;font-family:inherit;font-size:12px;">Got it ▶▶</button></div>'
-                    + '</div>';
-                document.body.appendChild(ov);
-                const close = () => { try { ov.remove(); } catch (e) {} };
-                ov.addEventListener('click', e => { if (e.target === ov) close(); });
-                const btn = ov.querySelector('#story-tiredness-intro-ok');
-                if (btn) btn.onclick = close;
-            } catch (e) { console.warn('[Story] tiredness intro', e); }
-        }
+        function _storyApplyTiredness(_eventName) { /* fatigue cut — no-op */ }
+        function _storyClearTirednessForIconic() { /* fatigue cut — no-op */ }
+        function _storyShowTirednessIntro() { /* fatigue cut — no-op */ }
 
         // ─────────────────────────────────────────────────────────────────────
         // STORY SCENE RUNNER — lightweight branching dialogue / choice overlay
@@ -44181,7 +44161,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sh = !!(slot.build && slot.build._isShiny);
             const grade = getMonGrade(slot.name, getBST(slot.name));
             return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,32,0.6);border:1px solid #2c3a3a;">
-                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${sh ? '✦ ' : ''}${_esc(slot.nickname || slot.name)} ${slot.nickname ? `<span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : ''} <span style="font-size:9px;color:#888;">T${grade}</span></span>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${sh ? '✦ ' : ''}${_esc(slot.nickname || slot.name)} ${slot.nickname ? `<span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : ''} <span style="font-size:9px;color:#888;">G${grade}</span></span>
                 <button type="button" data-daycare-drop="${_esc(slot.id)}" ${canDrop ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:4px 10px;background:transparent;color:${canDrop?'#aed581':'#555'};border:1px solid ${canDrop?'#aed581':'#444'};cursor:${canDrop?'pointer':'not-allowed'};">Drop Off</button>
             </div>`;
         }
@@ -44499,7 +44479,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const bonusTotal = ['hp','atk','def','spa','spd','spe'].reduce((a,k)=>a+(bonus[k]|0),0);
                 return `<div data-pits-pick="${_esc(s.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${picked?'rgba(255,82,82,0.18)':'rgba(20,12,12,0.6)'};border:1px solid ${picked?'#ff5252':'#5a1818'};cursor:pointer;">
                     <span style="font-size:11px;color:#888;width:18px;">${picked ? (picks.indexOf(s.id)+1) : '·'}</span>
-                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh?'color:#ffd54f;':''}">${sh?'✦ ':''}${_esc(s.nickname || s.name)} <span style="font-size:9px;color:#888;">T${grade}</span>${bonusTotal > 0 ? ` <span style="color:#80cbc4;font-size:9px;" title="Permanent stat bonus">+${bonusTotal}</span>` : ''}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh?'color:#ffd54f;':''}">${sh?'✦ ':''}${_esc(s.nickname || s.name)} <span style="font-size:9px;color:#888;">G${grade}</span>${bonusTotal > 0 ? ` <span style="color:#80cbc4;font-size:9px;" title="Permanent stat bonus">+${bonusTotal}</span>` : ''}</span>
                 </div>`;
             }).filter(Boolean).join('');
             const ready = picks.length === 3;
@@ -44645,7 +44625,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<div role="listitem" aria-label="${_esc(nm)}${opts.picked ? ', sent in' : ''}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;width:62px;background:${opts.picked ? 'rgba(255,82,82,0.18)' : 'rgba(20,12,12,0.5)'};border:1px solid ${opts.picked ? accent : '#3a1414'};opacity:${opts.dim ? 0.4 : 1};">
                 ${sp ? `<img src="${sp}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.display='none'">` : ''}
                 <span style="font-size:10px;color:#ffcdd2;text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${_esc(nm)}</span>
-                <span style="font-size:8px;color:#888;">T${grade}${opts.picked ? ` <span style="color:${accent};">▶IN</span>` : ''}</span>
+                <span style="font-size:8px;color:#888;">G${grade}${opts.picked ? ` <span style="color:${accent};">▶IN</span>` : ''}</span>
             </div>`;
         }
         function _pitsRenderDraftHTML(round, trio, idx, total) {
@@ -45182,7 +45162,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary" aria-label="View ${_esc(String(t.nickname || t.name))} summary">
                         <div class="draft-card-sprite">
                             <img src="${getSprite(spriteDisplayName(t), !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
-                            <span class="tier-badge bg-tier-${g}" title="Power tier (1 = strongest pool tier, 4 = cutest/weakest)">T${g}</span>
+                            <span class="tier-badge bg-tier-${g}" title="Grade (1 = strongest pool tier, 4 = cutest/weakest)">G${g}</span>
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
@@ -45764,7 +45744,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (bonded) slot.title = 'Bonded — cannot be replaced';
                     slot.innerHTML = `
                         <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
-                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
+                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Grade (1–4)">G${g}</span></div>`;
                     if (!bonded) slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
                 });
@@ -46043,7 +46023,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casinoChip500: 5, wishingPiece: 6
         };
         const VOUCHER_DRAW_EXCLUDE = new Set(['rareCandy']); // scarce — never in the uniform pool
-        const VOUCHER_LABEL = { rareCandy:'Rare Candy', vitamin:'Vitamin Pack', heartScale:'Heart Scale',
+        const VOUCHER_LABEL = { rareCandy:'Rare Candy', vitamin:'EV Voucher', heartScale:'Heart Scale',
             mint:'Mint', abilityCapsule:'Ability Capsule', emblemHonor:'Emblem of Honor', wishingPiece:'Wishing Piece',
             linkDiscount50:"Bill's Discount Card", stoneToken:'Stonewise Token', casinoChip500:'Lucky Chip' };
         const _IV_VITAMIN_KEYS = ['hpUp', 'protein', 'iron', 'calcium', 'zinc', 'carbos'];
@@ -46184,11 +46164,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { n: 25,  reward: { ultraBall:1, hpUp:1, carbos:1, gold:2000 },
               msg:'25 species in the Pokédex — a quarter-region survey. +1 Ultra Ball, +1 HP Up, +1 Carbos, +2,000G.' },
             { n: 50,  reward: { ultraBall:2, vitamin:1, heartScale:1, protein:1, calcium:1 },
-              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves a Vitamin Pack, a Heart Scale, two Ultra Balls, and a paired Protein/Calcium bundle on the bench.' },
+              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves an EV Voucher, a Heart Scale, two Ultra Balls, and a paired Protein/Calcium bundle on the bench.' },
             { n: 75,  reward: { rareCandy:2, emblemHonor:1, iron:1, zinc:1, gold:5000 },
               msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +1 Emblem of Honor, +1 Iron, +1 Zinc, +5,000G.' },
             { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1, mint:1, abilityCapsule:1, hpUp:1, protein:1, iron:1, calcium:1, zinc:1, carbos:1 },
-              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Ability Capsule, and one of every perm-boost vitamin (+1 each).' }
+              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 EV Voucher, +1 Mint, +1 Ability Capsule, and one of every perm-boost vitamin (+1 each).' }
         ];
         function _storyCheckPokedexMilestones() {
             if (!sm.pokedex || !Array.isArray(sm.pokedex.caught)) return;
@@ -47338,7 +47318,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((sm.badges | 0) === 4 && !sm.staticDrops.vitaminRouteMidgame && /^(Basic Trainer|Elite Trainer)$/.test(en)) {
                     _storyGrantBundle({ vitamin: 1 });
                     sm.staticDrops.vitaminRouteMidgame = true;
-                    _victoryRewardLines.push('💊 A traveler dropped a Vitamin Pack in the tall grass — +1 Vitamin Pack.');
+                    _victoryRewardLines.push('💊 A traveler dropped an EV Voucher in the tall grass — +1 EV Voucher.');
                 }
                 // EV training line goes last so item / vitamin loot reads first on the card.
                 if (_evRewardLine) _victoryRewardLines.push(_evRewardLine);
@@ -47387,10 +47367,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 } catch (e) { console.warn('[Story] beat-battle victory hook failed:', e); }
-                // Fatigue: stash the just-completed event name so afterBattleReturn() can
-                // apply (or clear) tiredness *after* the team resync from state.playerParty
-                // — applying it here would be clobbered when the sync rewrites sm.team.
-                sm._pendingTirednessFor = event;
+                // (Fatigue/Tiredness was cut — no per-battle stack to stash here anymore.)
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
                 sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
                 save();
@@ -47594,27 +47571,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
-            // Fatigue: apply now that sm.team has been resynced from the in-battle snapshot.
-            // Iconic events wipe stacks; non-iconic events add +1 and queue the first-time
-            // intro. Stashed in onBattleEnd because that's where the event name is known.
-            try {
-                const _pend = sm._pendingTirednessFor;
-                if (_pend) {
-                    sm._pendingTirednessFor = null;
-                    _storyApplyTiredness(_pend);
-                    save();
-                }
-            } catch (e) { console.warn('[Story] tiredness apply', e); }
+            // (Fatigue/Tiredness was cut — no per-battle stack to apply, and no intro modal.)
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
-            // Queued fatigue tutorial — pops once the city screen lands.
-            try {
-                if (sm.flags && sm.flags._tirednessIntroQueued && !sm.flags.seenTirednessIntro) {
-                    sm.flags._tirednessIntroQueued = false;
-                    sm.flags.seenTirednessIntro = true;
-                    save();
-                    setTimeout(() => { try { _storyShowTirednessIntro(); } catch (e) {} }, 400);
-                }
-            } catch (e) {}
             processNextEvent();
         }
 
@@ -48714,7 +48672,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (e) {}
                 try {
                     window.showGameAlert && window.showGameAlert(won
-                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.\n\n+3 Ultra Balls, +2 Rare Candies, +3 Vitamin Packs, +3 of every vitamin (+18 perm-boosts total), +5,000G.'
+                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.\n\n+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.'
                         : 'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
                 } catch (e) {}
                 continuePostGame();
@@ -51170,7 +51128,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         const _CASINO_VOUCHER_LABELS = {
             heartScale: 'Heart Scale', mint: 'Mint',
-            rareCandy: 'Rare Candy', vitamin: 'Vitamin Pack',
+            rareCandy: 'Rare Candy', vitamin: 'EV Voucher',
             abilityCapsule: 'Ability Capsule', emblemHonor: 'Emblem of Honor',
             // Intro-vouchers granted by the new onboarding scenes (see docs/EVOLUTION_FLOW_REBUILD.md §3).
             // These never drop from the casino — registered here so the inventory/bag UI shares one label map.
@@ -53252,7 +53210,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // or facility action (same effect as paying the gold cost).
             const _voucherItems = [
                 { id:'rareCandy',      name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Evolution Tutor to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',        name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' },
+                { id:'vitamin',        name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">EV Voucher', desc:'Waives the gold cost of one EV preset at the EV Trainer (+252 / +252 spread) — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Distinct from IV vitamins (Protein, Iron, …), which raise IVs at the Fan Club.' },
                 { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to teach any move to any Pokémon for free — same effect as paying 1,500G. Earned from gym leaders + Pokédex milestones. The classic move-tutor coin from real games.' },
                 { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. The new nature sticks through PC, evolution, the works.' },
                 { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from gym leaders + Pokédex milestones. Hidden Abilities included, just like the dojo\'s gold path.' },
@@ -53415,7 +53373,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ← Back to Bag
                 </button>
                 <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
-                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No party mons.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No Pokémon in your party.</div>'}</div>
                 ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
                 <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
             `;
@@ -53513,7 +53471,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ← Back to Bag
                 </button>
                 <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
-                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No party mons.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No Pokémon in your party.</div>'}</div>
                 ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
                 <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
             `;
@@ -59412,8 +59370,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evTrainerHelpBannerHtml() {
             const vN = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaLine = vN > 0
-                ? `<span style="color:#f8bbd0;font-weight:bold;"><img src="sprites/pokesprite/items/protein.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
-                : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
+                ? `<span style="color:#f8bbd0;font-weight:bold;"><img src="sprites/pokesprite/items/protein.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${vN} EV Voucher${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
+                : `<span style="color:#9aa3b0;">No EV Vouchers yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; EV Vouchers (from gym victories &amp; Pokédex milestones) apply one for free.`;
             // Collapsed by default on every entry — the explainer eats the
             // whole first screen on phones and pushes the preset cards below
             // the fold. Players opt-in via the "How EVs work" toggle.
@@ -59703,8 +59661,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 `<span class="tx-pill">${total} EVs</span>`,
             ].filter(Boolean).join('');
             const vitaBtn = (hasVitamin && !vitaDisabled)
-                ? `<button type="button" class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset" style="color:#f8bbd0;border-color:#f8bbd0;font-size:10px;padding:3px 6px;">
-                    <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Vitamin (${vitaCount})
+                ? `<button type="button" class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 EV Voucher (you have ${vitaCount}) — free preset" style="color:#f8bbd0;border-color:#f8bbd0;font-size:10px;padding:3px 6px;">
+                    <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Voucher (${vitaCount})
                 </button>`
                 : '';
             const goldDisabled = cantAfford || isCurrent;
@@ -59848,7 +59806,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!mon || !mon.build) return;
                 _storyEnsureInventory();
                 if ((sm.inventory.vitamin | 0) <= 0) {
-                    window.showGameAlert('No Vitamin Packs in your bag.');
+                    window.showGameAlert('No EV Vouchers in your bag.');
                     return;
                 }
                 const meta = _evTrainerMetaCache[idx] || [];
@@ -59858,7 +59816,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
                 const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
                 const remaining = (sm.inventory.vitamin | 0) - 1;
-                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to apply "${preset.label}" EVs to ${mon.name}?\nOverwrites the current spread → ${spreadLabel}\nSaves ${EVTRAINER_COST.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
+                const ok = await window.showGameConfirm(`💊 Use 1 EV Voucher to apply "${preset.label}" EVs to ${mon.name}?\nOverwrites the current spread → ${spreadLabel}\nSaves ${EVTRAINER_COST.toLocaleString()}G. EV Vouchers left after use: ${remaining}.`);
                 if (!ok) return;
                 sm.inventory.vitamin = Math.max(0, remaining);
                 if (sm.inventory.vitamin <= 0) delete sm.inventory.vitamin;

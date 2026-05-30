@@ -1,6 +1,7 @@
 // Verifies v20 per-build mechanics resolve correctly through buildPokemon:
-//   • build.bonus stacks on top of IVs, hardcapped at effective IV 41
-//   • build.tired docks 1% per stack from combat stats AND starting HP
+//   • build.bonus stacks on top of IVs, hardcapped at effective IV 41 (Fight Club — LIVE)
+//   • build.tired is INERT — Fatigue/Tiredness was cut (Path D). The field persists in the
+//     save for compatibility but no longer affects battle stats or starting HP.
 // Run: node --test tests/suites/story-pit-bonus-fatigue.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,27 +58,28 @@ test('low-IV mon + bonus never exceeds the IV41 cap either', () => {
   assert.equal(ceil.stats.atk, expectedAtk, 'effective IV 41 produces the expected atk');
 });
 
-test('tired stacks dock stats and starting HP by 1% each', () => {
+test('tired is INERT — fatigue was cut, stats and HP unchanged at any stack', () => {
   const fresh = build('Garchomp');
   const tired3 = build('Garchomp', { tired: 3 });
-  // 3 stacks → ×0.97 on combat stats and a 0.97 starting-HP multiplier.
-  assert.equal(tired3.stats.atk, Math.max(1, Math.floor(fresh.stats.atk * 0.97)), 'atk docked 3%');
-  assert.equal(tired3.stats.spe, Math.max(1, Math.floor(fresh.stats.spe * 0.97)), 'spe docked 3%');
-  // Max HP is unchanged; only the starting (current) HP is reduced.
-  assert.equal(tired3.maxHp, fresh.maxHp, 'maxHp unchanged by fatigue');
-  assert.equal(tired3.currentHp, Math.max(1, Math.floor(fresh.maxHp * 0.97)), 'starting HP docked 3%');
+  // Fatigue (Path D) no longer docks anything. tired:3 must equal a fresh build.
+  assert.equal(tired3.stats.atk, fresh.stats.atk, 'atk NOT docked — fatigue cut');
+  assert.equal(tired3.stats.spe, fresh.stats.spe, 'spe NOT docked — fatigue cut');
+  assert.equal(tired3.maxHp, fresh.maxHp, 'maxHp unchanged');
+  assert.equal(tired3.currentHp, fresh.currentHp, 'starting HP NOT docked — fatigue cut');
+  assert.equal(tired3.currentHp, tired3.maxHp, 'tired mon still enters at full HP');
+  assert.equal(tired3._tiredAtBattleStart, undefined, 'no fatigue marker stamped');
 });
 
-test('tired clamps at 3 stacks', () => {
-  const tired3 = build('Garchomp', { tired: 3 });
+test('tired value is ignored regardless of magnitude', () => {
+  const fresh = build('Garchomp');
   const tired99 = build('Garchomp', { tired: 99 });
-  assert.equal(tired99.stats.atk, tired3.stats.atk, 'fatigue clamps at 3 stacks');
-  assert.equal(tired99.currentHp, tired3.currentHp, 'fatigue HP clamps at 3 stacks');
+  assert.equal(tired99.stats.atk, fresh.stats.atk, 'any tired value is inert');
+  assert.equal(tired99.currentHp, fresh.currentHp, 'any tired value leaves HP full');
 });
 
-test('bonus and tired compose (bonus raises, then fatigue docks)', () => {
+test('bonus still applies; tired no longer composes with it', () => {
   const both = build('Garchomp', { bonus: { hp:5, atk:5, def:5, spa:5, spd:5, spe:5 }, tired: 2 });
   const boostedFresh = build('Garchomp', { bonus: { hp:5, atk:5, def:5, spa:5, spd:5, spe:5 } });
-  assert.equal(both.stats.atk, Math.max(1, Math.floor(boostedFresh.stats.atk * 0.98)), 'fatigue applies after bonus');
-  assert.ok(both.stats.atk > build('Garchomp', { tired: 2 }).stats.atk, 'still ahead of a non-bonused tired mon');
+  // Fatigue cut → a tired+bonus build equals the same bonus build with no tired.
+  assert.equal(both.stats.atk, boostedFresh.stats.atk, 'bonus still raises; fatigue no longer docks');
 });
