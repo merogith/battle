@@ -26435,7 +26435,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.statusTurns++;
                 let wakeThreshold = mon.sleepDuration || 2;
                 if (mon.ability === "Early Bird") wakeThreshold = Math.ceil(wakeThreshold / 2);
-                if (mon.statusTurns >= wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
+                // Wake only AFTER sleeping through `sleepDuration` of the mon's own turns (Gen 5+
+                // semantics): the mon must miss exactly `sleepDuration` turns, then wakes and acts
+                // on the next. `>=` here woke a turn early — Rest's 2 played as 1 lost turn, and a
+                // rolled natural duration of 1 cost the target 0 turns.
+                if (mon.statusTurns > wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
                 if (moveName === "Snore" || moveName === "Sleep Talk") return true; // Can use these while asleep
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }
