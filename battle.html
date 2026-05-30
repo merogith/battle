@@ -47965,26 +47965,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (b < 3) return _SAFARI_GRADE_CURVE_BY_BADGES[3];
             return _SAFARI_GRADE_CURVE_BY_BADGES[b];
         }
-        function enterSafariZone() {
+        async function enterSafariZone() {
             if (!sm.safari || typeof sm.safari !== 'object') sm.safari = { freeEntryUsed: false };
             const isFree = !sm.safari.freeEntryUsed;
-            if (!isFree && (sm.gold | 0) < SAFARI_ENTRY_COST) {
-                try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST.toLocaleString()}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
-                return;
+            if (!isFree) {
+                if ((sm.gold | 0) < SAFARI_ENTRY_COST) {
+                    try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST.toLocaleString()}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
+                    return;
+                }
+                // Paid entry — confirm before charging. At 10,000G a misclick is
+                // devastating, so gate it behind the same confirm modal the other
+                // paid facilities use.
+                let ok = true;
+                try {
+                    if (typeof window.showGameConfirm === 'function') {
+                        ok = await window.showGameConfirm(`Enter the Safari Zone for ${SAFARI_ENTRY_COST.toLocaleString()}G?\n\n${SAFARI_BALLS_PER_SESSION} Safari Balls, up to ${SAFARI_MAX_ENCOUNTERS} encounters. Unused balls are refunded at the gate; the entry fee is not.`);
+                    }
+                } catch (e) {}
+                if (!ok) return;
             }
+            // Mark the facility seen on entry (free OR paid). Safari was the only
+            // facility that never called _markFacilitySeen, so its first-visit intro
+            // and the Leave-City gate kept re-firing even after the free first entry
+            // — the entry "didn't count". Now it does.
+            try { _markFacilitySeen('safari'); } catch (e) {}
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                // Story-embedded tutorial — Warden cameo. Replaces the prior
-                // free-entry alert. Dedupe is per-run: freeEntryUsed gates free
-                // entry to once per run, and the scene routes through
+                // Story-embedded tutorial — Warden cameo. Dedupe is per-run via
                 // sm.scenesShown so a fresh run replays the Warden intro.
                 _enqueueIntroTutorial('firstSafari');
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
                 try { _storyTrackSpend(SAFARI_ENTRY_COST); } catch (e) {}
             }
-            // Gate-open chime — soft achievement ping so the safari trip starts with
-            // a beat. Sits under the welcome-alert dismiss so it doesn't clash.
+            // Gate-open chime — soft achievement ping so the safari trip starts with a beat.
             try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.8); } catch (e) {}
             _safariBeginSession();
             try { save(); } catch (e) {}
@@ -48054,8 +48068,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // A post-game city unlocked after Hall of Fame. Every facility, every battle
         // type, plus an endless-ladder Battle Frontier with per-round stat scaling and
         // a top-10 highscore. Accessed from the city action button "🧨 The Crucible".
-        const _CRUCIBLE_GYM_ROWS = [5, 11, 18, 24, 31, 38, 46, 53]; // GL1..GL8 in STORY_EVENTS_RAW
-        const _CRUCIBLE_LEAGUE_ROWS = [60, 61, 62, 63, 64];          // E1..E4 + Champion
+        // Crucible rematch targets — ARRAY INDICES into STORY_EVENTS_RAW (NOT row ids).
+        // Derived by scanning events by name because row id != array index in the late
+        // game (rival rows are spliced out of id-order). The old hardcoded row-id lists
+        // pointed the buttons at the wrong rows: Mystery Figure → out of bounds (dead
+        // button), Rival → Hall of Fame screen, League Run → skipped E1, Gym Rematch →
+        // City3 ~1/8. Mirrors GYM_CITY_LEADER_EVENT's derive-from-events approach.
+        const _CRUCIBLE_BATTLE_IDX = (function buildCrucibleBattleIndices() {
+            const gym = [];
+            for (let n = 1; n <= 8; n++) if (GYM_CITY_LEADER_EVENT[n] != null) gym.push(GYM_CITY_LEADER_EVENT[n]);
+            const leagueByName = {};
+            let championIdx = -1, rivalIdx = -1, mysteryIdx = -1;
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const row = STORY_EVENTS_RAW[i];
+                if (!row || row[1] !== 'Battle') continue;
+                const name = String(row[2] || '');
+                if (name === 'E1' || name === 'E2' || name === 'E3' || name === 'E4' || name === 'Champion') {
+                    leagueByName[name] = i;
+                    if (name === 'Champion') championIdx = i;
+                } else if (name === 'Mystery Figure') {
+                    mysteryIdx = i;
+                } else if (name === 'Rival' && championIdx >= 0 && rivalIdx < 0) {
+                    rivalIdx = i; // league rival = the first Rival after the Champion
+                }
+            }
+            const league = ['E1', 'E2', 'E3', 'E4', 'Champion'].map(n => leagueByName[n]).filter(x => x != null);
+            return { gym: gym, league: league, rival: rivalIdx, mystery: mysteryIdx };
+        })();
+        const _CRUCIBLE_GYM_ROWS = _CRUCIBLE_BATTLE_IDX.gym;     // GL1..GL8 array indices
+        const _CRUCIBLE_LEAGUE_ROWS = _CRUCIBLE_BATTLE_IDX.league; // E1..E4 + Champion array indices
         function _ensureFrontierState() {
             if (!sm.frontier || typeof sm.frontier !== 'object') {
                 sm.frontier = { currentStreak: 0, currentRound: 1, highscores: [], active: false };
@@ -48156,8 +48197,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Skip wild-route interrupt for Crucible battles.
             enterBattleEvent(ev, true);
         }
-        function crucibleMysteryFight() { _crucibleBattleSetup(STORY_POST_HOF_MYSTERY_ROW, 'mystery'); }
-        function crucibleRivalFight()   { _crucibleBattleSetup(STORY_LEAGUE_RIVAL_ROW, 'rival'); }
+        function crucibleMysteryFight() { _crucibleBattleSetup(_CRUCIBLE_BATTLE_IDX.mystery, 'mystery'); }
+        function crucibleRivalFight()   { _crucibleBattleSetup(_CRUCIBLE_BATTLE_IDX.rival, 'rival'); }
         function crucibleLeagueRun() {
             sm.crucibleLeagueRun = { currentStage: 0 };
             _crucibleBattleSetup(_CRUCIBLE_LEAGUE_ROWS[0], 'league');
