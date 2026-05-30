@@ -14872,9 +14872,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
             }
             // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
-            // (_bossStatMult) plus a separate party-scaled HP multiplier (_bossHpScale).
-            // Applied after the per-event mult so they compound; kept off _storyStatMult
-            // because enterBattleEvent overwrites that field on every rolled team member.
+            // (_bossStatMult, applied to HP + stats) and a party-scaled HP multiplier
+            // (_bossHpScale). NOTE — these COMPOUND on HP: _bossStatMult multiplies maxHp
+            // too, so effective raid HP ≈ _bossStatMult × _bossHpScale × base (at maxParty 6:
+            // 1.3 × 5 ≈ 6.5× base HP, NOT the bare ×5 that _bossHpScale alone implies). That
+            // total is a balance number (user-owned, tunable); this block is deliberately
+            // honest about the compounding. Kept off _storyStatMult because enterBattleEvent
+            // overwrites that field on every rolled team member.
             if (build && monName !== 'Shedinja') {
                 if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
                     const bm = build._bossStatMult;
@@ -16998,7 +17002,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         state._activeStoryBeatKey = _beatKey;
                         state._bossMechanics = _cfg.mechanics.slice();
                         state._bossMechanicsFired = {};
-                        state._bossPendingTelegraph = null;
+                        state._bossPendingTelegraphs = [];
+                        state._bossSurgeTurns = 0;
+                        state._bossImmuneTurns = 0;
                         if (typeof _SM.bossMechanicsBattleInit === 'function') _SM.bossMechanicsBattleInit(state);
                     }
                 } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
@@ -23843,7 +23849,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
                 // Story boss surge phase: the boss deals +25% while its surge window is
                 // open (set by an HP-threshold phase telegraph). attacker is the boss here.
-                if (state._activeStoryBeatKey && attacker && attacker._bossSurgeTurns > 0) damage = Math.floor(damage * 1.25);
+                if (state._activeStoryBeatKey && state._bossSurgeTurns > 0 && attacker === state.fActive) damage = Math.floor(damage * 1.25);
                 // Story artifact: [Type] Amplifier — attacks of that type +30%; Pokémon of that type take +15% from hits
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
@@ -24102,7 +24108,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity activates this turn). Status moves still apply
                 // (paralysis / sleep / poison tick normally). One-turn-ahead
                 // warning matches the fair-telegraph design.
-                if (state._activeStoryBeatKey && defender._bossImmuneTurns > 0 && move.cat !== "Status") {
+                if (state._activeStoryBeatKey && state._bossImmuneTurns > 0 && defender === state.fActive && move.cat !== "Status") {
                     logMsg(`${defender.name} braces — the attack does no damage!`, 'info');
                     hitSub = true; // skip damage application
                 }
@@ -41998,7 +42004,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // (HP-threshold or faint-count) activates. "Only one active at a time" per the
         // boss design: each phase sets/refreshes its own effect. Defaults to 'surge'
         // so legacy single-phase configs keep their +25% damage behavior unchanged.
-        function _applyBossPhaseEffect(foeMon, effect, magnitude) {
+        function _applyBossPhaseEffect(stateRef, foeMon, effect, magnitude) {
             switch (effect) {
                 case 'heal': {
                     const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
@@ -42006,13 +42012,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     break;
                 }
                 case 'immunity':
-                    foeMon._bossImmuneTurns = (magnitude | 0) || 1;
+                    // Boss-side timer on the battle STATE (not the mon) so it survives a
+                    // boss switch and protects whoever the boss's active mon is.
+                    stateRef._bossImmuneTurns = (magnitude | 0) || 1;
                     break;
                 case 'surge':
                 default:
-                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                    stateRef._bossSurgeTurns = 3; // +25% boss-side damage for 3 turns
                     break;
             }
+        }
+
+        // Telegraphs are QUEUED, not held in a single slot: two mechanics can cross the
+        // same turn (e.g. mfBattle's HP-threshold surge + the every-5 immunity round); a
+        // lone slot let the second clobber the first AND consume its fired-flag, so the
+        // dropped phase never activated. A queue drains all of them.
+        function _bossQueueTelegraph(stateRef, t) {
+            if (!Array.isArray(stateRef._bossPendingTelegraphs)) stateRef._bossPendingTelegraphs = [];
+            stateRef._bossPendingTelegraphs.push(t);
         }
 
         // Called at the top of each turn (after state.turnNumber++) to process
@@ -42024,17 +42041,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //    turn's activation below — so a timer freshly set this turn survives into
             //    this turn's damage phase. (Decrementing after activation zeroed a
             //    just-set immunity/surge on the same tick: the off-by-one bug.)
-            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
-            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
-            // 2. Activate any telegraph queued from the prior turn.
-            if (stateRef._bossPendingTelegraph) {
-                const pending = stateRef._bossPendingTelegraph;
-                stateRef._bossPendingTelegraph = null;
+            if (stateRef._bossSurgeTurns > 0) stateRef._bossSurgeTurns--;
+            if (stateRef._bossImmuneTurns > 0) stateRef._bossImmuneTurns--;
+            // 2. Activate ALL telegraphs queued last turn (drain the queue).
+            const _pendingQ = Array.isArray(stateRef._bossPendingTelegraphs) ? stateRef._bossPendingTelegraphs : [];
+            stateRef._bossPendingTelegraphs = [];
+            for (const pending of _pendingQ) {
+                if (!pending) continue;
                 _showBossBanner(pending.banner || 'PHASE ACTIVE', pending.accent);
                 if (pending.type === 'hpThresholdPhase' || pending.type === 'faintPhase') {
-                    _applyBossPhaseEffect(foeMon, pending.effect || 'surge', pending.magnitude);
+                    _applyBossPhaseEffect(stateRef, foeMon, pending.effect || 'surge', pending.magnitude);
                 } else if (pending.type === 'immunityRound') {
-                    foeMon._bossImmuneTurns = (pending.turns | 0) || 1;
+                    stateRef._bossImmuneTurns = (pending.turns | 0) || 1;
                 }
                 // fieldLock activates at battle-init, not from telegraph.
             }
@@ -42049,10 +42067,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (hpPct <= at) {
                         stateRef._bossMechanicsFired[firedKey] = true;
                         // Telegraph one turn early — banner now, effect next turn.
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'hpThresholdPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
                             banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
                 } else if (m.type === 'faintPhase') {
@@ -42063,13 +42081,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const firedKey = 'faint_' + need;
                     if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
                     const fainted = Array.isArray(stateRef.foeParty)
-                        ? stateRef.foeParty.filter(x => x && (x.currentHp | 0) <= 0).length : 0;
+                        ? stateRef.foeParty.filter(x => x && x !== foeMon && (x.currentHp | 0) <= 0).length : 0;
                     if (fainted >= need) {
                         stateRef._bossMechanicsFired[firedKey] = true;
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'faintPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
                             banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
                 } else if (m.type === 'immunityRound') {
@@ -42081,10 +42099,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const firedKey = 'imm_' + t;
                         if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
                         stateRef._bossMechanicsFired[firedKey] = true;
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'immunityRound', banner: m.banner || 'BOSS IS PREPARING',
                             turns: (m.turns | 0) || 1, accent: '#90caf9'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS IS PREPARING') + ' (next turn)', '#90caf9');
                     }
                 }
@@ -48537,10 +48555,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const L = sm.bossArc.leads;
             const all = !!(L.ledger && L.recording && L.key);
             if (all && !sm.bossArc.cageUnlocked) {
-                sm.bossArc.cageUnlocked = true;
                 if (!sm.bossArc.boss) {
                     sm.bossArc.boss = _bossArcRollLegendary();
                 }
+                if (!sm.bossArc.boss) {
+                    // No legendary in the enabled generations — do NOT flip cageUnlocked.
+                    // (Flipping it left a permanent dead "Enter the Cage — ???" button that
+                    // bossEnterCage could never resolve.) Warn once; this re-checks whenever
+                    // leads change or a Center re-renders, so enabling a gen later still works.
+                    if (!sm.bossArc._sealedWarned) {
+                        sm.bossArc._sealedWarned = true;
+                        try { save(); } catch (e) {}
+                        try { window.showGameAlert && window.showGameAlert('The Cage stays sealed — no legendary Pokémon exists in your enabled generations. Enable a generation that has one (Settings) to face the Caged God.'); } catch (e) {}
+                    }
+                    return;
+                }
+                sm.bossArc._sealedWarned = false;
+                sm.bossArc.cageUnlocked = true;
                 try { save(); } catch (e) {}
                 // Big-moment alert — the audit noted players could miss the cage opening
                 // because the button just silently appeared.
