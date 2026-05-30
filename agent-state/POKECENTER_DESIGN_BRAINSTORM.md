@@ -244,6 +244,33 @@ Recommendation unchanged at the top level: **decide first whether fatigue lives 
 If it lives → Concept A (visible + Center forward-clear). If it dies → repurpose the Center around
 PP/box/home-base, and remove the inert fatigue tax + its false-promise modal.
 
+## DECISION + IMPLEMENTATION (2026 — Path D, shipped)
+
+**User chose Path D: cut the inert fatigue tax; repurpose the Center as an honest home-base hub.**
+
+Implemented on `claude/gallant-keller-ojSWi` (general-session scope):
+- **Fatigue debuff removed** from `buildPokemon` (was battle.html:14824-14838) — `build.tired` no
+  longer docks stats or starting HP; `_tiredAtBattleStart` marker deleted.
+- **Accrual + clear + intro modal cut** — `_storyApplyTiredness`, `_storyClearTirednessForIconic`,
+  `_storyShowTirednessIntro` reduced to inert no-op stubs; post-battle stash (`_pendingTirednessFor`)
+  and intro-queue plumbing in `onBattleEnd`/`afterBattleReturn` removed.
+- **Save schema left intact-but-inert** — `build.tired` field + `migrateStoryPreV20` backfill kept
+  for save compatibility (pasteur-owned schema; ripping it is a separate pasteur task). Nothing
+  reads it for gameplay anymore.
+- **Center repurposed honestly** — the false-promise fatigue modal is gone; the Nurse dialogue was
+  already honest ("team's already healed — the road takes care of that"). City-hub copy fixed:
+  rival tip "Heal —" → "Prep your team —"; hub section "Heal & Team" → "Team & Storage". The Center
+  is now framed as what it is: PC storage + Underground + first-aid gift (convenience, not a heal
+  service).
+- **Regression tests updated** — `tests/suites/story-pit-bonus-fatigue.test.js` rewritten: Fight
+  Club `bonus` tests kept (still live), `tired` tests now assert fatigue is INERT. All 7 pass; full
+  affected-suite sweep (battle-summary, build-coherence, battle-injection, enemy-stat-mult,
+  daycare-pits, fight-club ×2) green.
+
+Remaining (NOT done — out of general-session scope): physically removing the `build.tired` save
+field + migration is a pasteur task; optional further Center home-base polish (PC scroll, a11y) is
+tracked in IMPLEMENTATION_PLAN.md.
+
 ## 7. Open questions for you
 - Free Rest (A) or costed Rest as a real choice (B)?
 - Should Fatigue be made *perceptible* (maxwell magnitude bump) or stay a gentle invisible-ish nudge?

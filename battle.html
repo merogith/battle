@@ -14821,21 +14821,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe)
             };
 
-            // Fatigue debuff: 1% per stack on all combat stats AND starting HP (max 3 stacks).
-            // Max HP is unchanged so heals still ceiling at the species' full value — the mon
-            // simply enters the fight not-full. Iconic battles auto-clear stacks before entry
-            // (see `_storyClearTiredness`), so gyms/league/mystery/pits never feel this.
-            const _tiredStacks = Math.max(0, Math.min(3, (build.tired | 0)));
-            if (_tiredStacks > 0) {
-                const _mul = 1 - 0.01 * _tiredStacks;
-                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * _mul));
-                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * _mul));
-                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * _mul));
-                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * _mul));
-                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * _mul));
-                mon.currentHp = Math.max(1, Math.floor(mon.maxHp * _mul));
-                mon._tiredAtBattleStart = _tiredStacks;
-            }
+            // Fatigue/Tiredness was cut (Path D): it was an invisible, near-inert ~1-2% tax
+            // that auto-cleared at the next gym and could never reach its own cap in the shipped
+            // timeline. The `build.tired` save field is left intact-but-inert for save
+            // compatibility (pasteur-owned schema); nothing reads it for battle stats anymore.
             // Phase 4.4 — per-event enemy stat multiplier (set by enterBattleEvent's
             // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
             // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
@@ -42671,9 +42660,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 tips.push({ kind: 'next', iconPath: 'icons/story/story_route.png?v=20260516', label: _nextChipText, click: 'window.StoryMode.proceedToNextBattle()' });
             }
             if (rivalGateActive) {
+                // Team is always battle-fresh (full-heal between fights), so this points to
+                // team prep / PC at the Center rather than a heal the facility doesn't perform.
                 const _healTipLabel = _willFireWildNext
-                    ? 'Heal — your rival waits at the end of the road'
-                    : 'Heal — your rival is at the route gate';
+                    ? 'Prep your team — your rival waits at the end of the road'
+                    : 'Prep your team — your rival is at the route gate';
                 tips.push({ iconPath: 'icons/story/story_route.png?v=20260516', label: _healTipLabel, click: 'window.StoryMode.enterPokemonCenter()' });
             }
             const hasTeam = sm.team && sm.team.length > 0;
@@ -42953,7 +42944,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('train', makeActionBtn('💖 Pokémon Fan Club','fanclub','window.StoryMode.enterFanClub()','training', _facOpts('fanclub', _fcMeta, { soft:true })));
             }
             if (actions.includes('Nature Rater') && _tutorTeam) {
-                _push('train', makeActionBtn('📛 Nature Rater','nature','window.StoryMode.enterTutor(\'nature\')','training', _facOpts('nature', [_costBadge(2000, '+')], { soft:true })));
+                _push('train', makeActionBtn('📛 Nature Rater','nature','window.StoryMode.enterTutor(\'nature\')','training', _facOpts('nature', [_costBadge(2000)], { soft:true })));
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
@@ -43052,7 +43043,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             btn.innerHTML = briefingHtml
                           + _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
-                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
+                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Team & Storage')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
@@ -43396,17 +43387,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slot.statusTurns = 0;
                 slot.pp = null;
                 slot.consumedItem = false;
-                // PokeCenter / iconic-fight resets also clear fatigue. (Tiredness lives on the
-                // build, not the slot, so wipe it there too — applies to every party member
-                // regardless of whether they were in the last fight.)
-                if (slot.build && typeof slot.build === 'object') slot.build.tired = 0;
             });
         }
 
-        // List of event names that auto-heal and reset fatigue before+after the fight.
-        // Wild routes and randomized trainer encounters (Basic / Elite Trainer events) leave
-        // fatigue on the survivors. Gym leaders, league, mystery, boss arc, rival, and Pit
-        // fights are all "iconic" — full reset on entry, full reset on exit.
+        // Fatigue/Tiredness was cut (Path D). It was an invisible, near-inert ~1-2% tax that
+        // auto-cleared at the next gym and could never reach its own cap in the shipped timeline.
+        // These functions are kept as inert no-ops so any remaining call sites stay safe; nothing
+        // accrues, clears, or displays fatigue anymore. The `build.tired` save field and its
+        // migration are intentionally left intact-but-unused for save compatibility (the schema
+        // is pasteur-owned). Removing them is a separate pasteur task.
         function _storyEventIsIconicFight(eventName) {
             if (!eventName) return false;
             const s = String(eventName);
@@ -43421,55 +43410,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || s === 'Crucible'
                 || s === 'Frontier';
         }
-
-        // Apply (or clear) fatigue on every active team member. Bench mons are *also*
-        // touched on iconic-clear so a player can't game it by rotating to the bench.
-        function _storyApplyTiredness(eventName) {
-            if (!sm.team || !sm.team.length) return;
-            if (_storyEventIsIconicFight(eventName)) {
-                // Iconic fights wipe stacks (already wiped on entry — this is the post-clear).
-                sm.team.forEach(slot => { if (slot && slot.build) slot.build.tired = 0; });
-                return;
-            }
-            // Non-iconic fight: +1 stack to every party member that holds a build.
-            sm.team.forEach(slot => {
-                if (!slot || !slot.build) return;
-                slot.build.tired = Math.min(3, ((slot.build.tired | 0) + 1));
-            });
-            // Defer the first-time intro to after the victory overlay dismisses by setting
-            // a one-shot queue flag — `afterBattleReturn()` picks it up and fires the modal
-            // once the city screen is back up.
-            try {
-                if (!sm.flags) sm.flags = {};
-                if (!sm.flags.seenTirednessIntro) sm.flags._tirednessIntroQueued = true;
-            } catch (e) {}
-        }
-
-        function _storyClearTirednessForIconic() {
-            if (!sm.team) return;
-            sm.team.forEach(slot => { if (slot && slot.build) slot.build.tired = 0; });
-        }
-
-        // Single-shot fatigue intro modal — fires the first time a team member earns a stack.
-        function _storyShowTirednessIntro() {
-            try {
-                const ov = document.createElement('div');
-                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
-                ov.innerHTML = ''
-                    + '<div style="max-width:420px;width:100%;background:linear-gradient(180deg,rgba(28,40,60,0.98),rgba(12,18,30,0.98));border:1px solid #4dd0e1;padding:18px 20px;color:#e0f7fa;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 8px 28px rgba(0,0,0,0.65);">'
-                    +   '<div style="font-size:13px;color:#4dd0e1;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">⚕ Pokémon Center Bulletin</div>'
-                    +   '<div style="margin-bottom:10px;">Your team looks worn out from that fight.</div>'
-                    +   '<div style="margin-bottom:10px;">Battling drains them. They build up <strong style="color:#ffd54f;">Fatigue</strong> — each stack docks 1% of stats and starting HP, up to <strong>3</strong> stacks.</div>'
-                    +   '<div style="margin-bottom:10px;">A short stay at a <strong style="color:#aed581;">Pokémon Center</strong> restores HP, PP, status, <em>and</em> clears Fatigue. Gym Leaders, the League, and other iconic fights always start fresh, so you don\'t need to grind heals before them.</div>'
-                    +   '<div style="text-align:right;margin-top:6px;"><button type="button" id="story-tiredness-intro-ok" style="padding:8px 16px;background:#4dd0e1;color:#001b1e;border:none;font-weight:bold;cursor:pointer;font-family:inherit;font-size:12px;">Got it ▶▶</button></div>'
-                    + '</div>';
-                document.body.appendChild(ov);
-                const close = () => { try { ov.remove(); } catch (e) {} };
-                ov.addEventListener('click', e => { if (e.target === ov) close(); });
-                const btn = ov.querySelector('#story-tiredness-intro-ok');
-                if (btn) btn.onclick = close;
-            } catch (e) { console.warn('[Story] tiredness intro', e); }
-        }
+        function _storyApplyTiredness(_eventName) { /* fatigue cut — no-op */ }
+        function _storyClearTirednessForIconic() { /* fatigue cut — no-op */ }
+        function _storyShowTirednessIntro() { /* fatigue cut — no-op */ }
 
         // ─────────────────────────────────────────────────────────────────────
         // STORY SCENE RUNNER — lightweight branching dialogue / choice overlay
@@ -46889,10 +46832,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 } catch (e) { console.warn('[Story] beat-battle victory hook failed:', e); }
-                // Fatigue: stash the just-completed event name so afterBattleReturn() can
-                // apply (or clear) tiredness *after* the team resync from state.playerParty
-                // — applying it here would be clobbered when the sync rewrites sm.team.
-                sm._pendingTirednessFor = event;
+                // (Fatigue/Tiredness was cut — no per-battle stack to stash here anymore.)
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
                 sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
                 save();
@@ -47092,27 +47032,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
-            // Fatigue: apply now that sm.team has been resynced from the in-battle snapshot.
-            // Iconic events wipe stacks; non-iconic events add +1 and queue the first-time
-            // intro. Stashed in onBattleEnd because that's where the event name is known.
-            try {
-                const _pend = sm._pendingTirednessFor;
-                if (_pend) {
-                    sm._pendingTirednessFor = null;
-                    _storyApplyTiredness(_pend);
-                    save();
-                }
-            } catch (e) { console.warn('[Story] tiredness apply', e); }
+            // (Fatigue/Tiredness was cut — no per-battle stack to apply, and no intro modal.)
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
-            // Queued fatigue tutorial — pops once the city screen lands.
-            try {
-                if (sm.flags && sm.flags._tirednessIntroQueued && !sm.flags.seenTirednessIntro) {
-                    sm.flags._tirednessIntroQueued = false;
-                    sm.flags.seenTirednessIntro = true;
-                    save();
-                    setTimeout(() => { try { _storyShowTirednessIntro(); } catch (e) {} }, 400);
-                }
-            } catch (e) {}
             processNextEvent();
         }
 
