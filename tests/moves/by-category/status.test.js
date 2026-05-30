@@ -3,8 +3,8 @@
 //
 // Category: Status
 // Total moves: 269
-// Auto-asserted: 59
-// TODO (manual fill-in required): 210
+// Auto-asserted: 65
+// TODO (manual fill-in required): 204
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -147,8 +147,12 @@ describe('Status moves', () => {
     // TODO: assert Camouflage's declared behavior
   });
 
-  it.todo('Captivate' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Captivate's declared behavior
+  it('Captivate' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Captivate', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.equal(defender.stages.spa, -2, 'spa stage should be -2');
   });
 
   it.todo('Celebrate' + ' [0 BP Normal Status]', async () => {
@@ -447,8 +451,12 @@ describe('Status moves', () => {
     // TODO: assert Gravity's declared behavior
   });
 
-  it.todo('Growl' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Growl's declared behavior
+  it('Growl' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Growl', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.equal(defender.stages.atk, -1, 'atk stage should be -1');
   });
 
   it('Growth' + ' [0 BP Normal Status]', async () => {
@@ -587,8 +595,12 @@ describe('Status moves', () => {
     // TODO: assert Leech Seed's declared behavior
   });
 
-  it.todo('Leer' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Leer's declared behavior
+  it('Leer' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Leer', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.equal(defender.stages.def, -1, 'def stage should be -1');
   });
 
   it.todo('Life Dew' + ' [0 BP Water Status]', async () => {
@@ -1099,8 +1111,12 @@ describe('Status moves', () => {
     // TODO: assert Strength Sap's declared behavior
   });
 
-  it.todo('String Shot' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert String Shot's declared behavior
+  it('String Shot' + ' [0 BP Bug Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['String Shot', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.equal(defender.stages.spe, -2, 'spe stage should be -2');
   });
 
   it.todo('Stuff Cheeks' + ' [0 BP Normal Status]', async () => {
@@ -1139,8 +1155,12 @@ describe('Status moves', () => {
     // TODO: assert Sweet Kiss's declared behavior
   });
 
-  it.todo('Sweet Scent' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Sweet Scent's declared behavior
+  it('Sweet Scent' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sweet Scent', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.equal(defender.stages.eva, -2, 'evasion stage should be -2');
   });
 
   it.todo('Switcheroo' + ' [0 BP Dark Status]', async () => {
@@ -1167,8 +1187,12 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spa, 3, 'spa stage should be 3');
   });
 
-  it.todo('Tail Whip' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Tail Whip's declared behavior
+  it('Tail Whip' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Tail Whip', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.equal(defender.stages.def, -1, 'def stage should be -1');
   });
 
   it.todo('Tailwind' + ' [0 BP Flying Status]', async () => {

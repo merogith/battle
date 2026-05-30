@@ -91,7 +91,7 @@ file: tests/moves/by-category/special.test.js
 agents: [test-coverage-filler]
 fingerprint: adc6cc9a5517
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: 66 allAdjacentFoes damaging moves are it.todo but assertable as plain HP-drop in singles
@@ -149,7 +149,7 @@ file: tests/moves/by-category/physical.test.js
 agents: [test-coverage-filler]
 fingerprint: 668afcfbc625
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn (damage-dealing subset auto-asserted; OHKO + Endeavor/Final Gambit stay manual by design)
 ---
 
 **Title**: 28 conditional-BP moves need per-move precondition tuning before damage assertion

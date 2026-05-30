@@ -26,8 +26,10 @@ const NEEDS_MANUAL_SETUP = new Set([
   'Solar Beam', 'Solar Blade', 'Sky Attack', 'Razor Wind', 'Skull Bash',
   'Bounce', 'Dig', 'Dive', 'Fly', 'Phantom Force', 'Shadow Force',
   'Geomancy', 'Meteor Beam', 'Electro Shot', 'Freeze Shock', 'Ice Burn', 'Sky Drop',
-  // User-type preconditions
-  'Burn Up', 'Double Shock', 'Snore',
+  // User-type / consumption preconditions
+  'Burn Up', 'Double Shock', 'Snore', 'Belch',
+  // Powder move — the generic Grass-type defender (Sceptile) is immune
+  'Cotton Spore',
   // Delayed damage
   'Future Sight', 'Doom Desire',
   // Need terrain
@@ -36,9 +38,9 @@ const NEEDS_MANUAL_SETUP = new Set([
   'Counter', 'Mirror Coat', 'Metal Burst', 'Bide', 'Last Resort',
   'Fake Out', 'First Impression', 'Sucker Punch', 'Upper Hand', 'Pursuit',
   'Revenge', 'Avalanche', 'Assurance', 'Focus Punch', 'Beat Up',
-  // Variable damage
-  'Magnitude', 'Crush Grip', 'Wring Out', 'Hard Press', 'Low Kick', 'Grass Knot',
-  'Heat Crash', 'Heavy Slam', 'Electro Ball', 'Gyro Ball', 'Reversal', 'Flail',
+  // Variable damage: most still deal nonzero damage to a full-HP defender, so they are
+  // asserted as ordinary damaging moves. Endeavor (fails when the user's HP is higher —
+  // true for Mew vs Sceptile) and Final Gambit (user faints; see deviations.md) stay manual.
   'Endeavor', 'Final Gambit',
   // OHKO
   'Sheer Cold', 'Fissure', 'Horn Drill', 'Guillotine',
@@ -51,10 +53,10 @@ function buildAssertionLines(move) {
   if (NEEDS_MANUAL_SETUP.has(move.name)) {
     return { setup: '', assert: '', isTodo: true };
   }
-  // Ally / multi-foe targets require a doubles harness; mark as todo.
-  if (move.target === 'adjacentAlly' || move.target === 'allyTeam'
-      || move.target === 'allies' || move.target === 'allAdjacentFoes'
-      || move.target === 'allAdjacent') {
+  // Ally-targeting moves need a doubles harness (no single foe to assert on). Foe-spread
+  // moves (allAdjacentFoes / allAdjacent) hit the lone foe in the singles harness, so a
+  // damaging one still drops the defender's HP — let it fall through to the damaging branch.
+  if (move.target === 'adjacentAlly' || move.target === 'allyTeam' || move.target === 'allies') {
     return { setup: '', assert: '', isTodo: true };
   }
   if (move.category === 'Status') {

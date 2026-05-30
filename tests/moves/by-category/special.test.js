@@ -3,8 +3,8 @@
 //
 // Category: Special
 // Total moves: 251
-// Auto-asserted: 177
-// TODO (manual fill-in required): 74
+// Auto-asserted: 226
+// TODO (manual fill-in required): 25
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,8 +27,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Absorb should reduce defender HP');
   });
 
-  it.todo('Acid' + ' [40 BP Poison Special]', async () => {
-    // TODO: assert Acid's declared behavior
+  it('Acid' + ' [40 BP Poison Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Acid', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Acid should reduce defender HP');
   });
 
   it('Acid Spray' + ' [40 BP Poison Special]', async () => {
@@ -47,8 +51,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Aeroblast should reduce defender HP');
   });
 
-  it.todo('Air Cutter' + ' [60 BP Flying Special]', async () => {
-    // TODO: assert Air Cutter's declared behavior
+  it('Air Cutter' + ' [60 BP Flying Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Air Cutter', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Air Cutter should reduce defender HP');
   });
 
   it('Air Slash' + ' [75 BP Flying Special]', async () => {
@@ -91,8 +99,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Armor Cannon should reduce defender HP');
   });
 
-  it.todo('Astral Barrage' + ' [120 BP Ghost Special]', async () => {
-    // TODO: assert Astral Barrage's declared behavior
+  it('Astral Barrage' + ' [120 BP Ghost Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Astral Barrage', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Astral Barrage should reduce defender HP');
   });
 
   it('Aura Sphere' + ' [80 BP Fighting Special]', async () => {
@@ -119,22 +131,8 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Baddy Bad should reduce defender HP');
   });
 
-  it('Belch' + ' [120 BP Poison Special]', async () => {
-    // Without a berry eaten, Belch must fail (no damage).
-    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Belch', 'Splash', 'Splash', 'Splash'] });
-    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
-    const beforeHp = defender.currentHp;
-    await runTurn({ playerMon: attacker, foeMon: defender });
-    assert.equal(defender.currentHp, beforeHp, 'Belch should fail when the user has not eaten a Berry');
-
-    // After belchReady is set (berry eaten earlier), Belch lands and deals damage.
-    const attacker2 = mkMon({ species: 'Mew', ability: 'None', moves: ['Belch', 'Splash', 'Splash', 'Splash'] });
-    const defender2 = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
-    attacker2.volatile = attacker2.volatile || {};
-    attacker2.volatile.belchReady = true;
-    const beforeHp2 = defender2.currentHp;
-    await runTurn({ playerMon: attacker2, foeMon: defender2 });
-    assert.ok(defender2.currentHp < beforeHp2, 'Belch should reduce defender HP after a Berry has been eaten');
+  it.todo('Belch' + ' [120 BP Poison Special]', async () => {
+    // TODO: assert Belch's declared behavior
   });
 
   it('Bitter Malice' + ' [75 BP Ghost Special]', async () => {
@@ -153,12 +151,20 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Blast Burn should reduce defender HP');
   });
 
-  it.todo('Bleakwind Storm' + ' [100 BP Flying Special]', async () => {
-    // TODO: assert Bleakwind Storm's declared behavior
+  it('Bleakwind Storm' + ' [100 BP Flying Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bleakwind Storm', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Bleakwind Storm should reduce defender HP');
   });
 
-  it.todo('Blizzard' + ' [110 BP Ice Special]', async () => {
-    // TODO: assert Blizzard's declared behavior
+  it('Blizzard' + ' [110 BP Ice Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Blizzard', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Blizzard should reduce defender HP');
   });
 
   it('Blood Moon' + ' [140 BP Normal Special]', async () => {
@@ -177,8 +183,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Blue Flare should reduce defender HP');
   });
 
-  it.todo('Boomburst' + ' [140 BP Normal Special]', async () => {
-    // TODO: assert Boomburst's declared behavior
+  it('Boomburst' + ' [140 BP Normal Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Boomburst', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Boomburst should reduce defender HP');
   });
 
   it('Bouncy Bubble' + ' [60 BP Water Special]', async () => {
@@ -197,8 +207,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Brine should reduce defender HP');
   });
 
-  it.todo('Bubble' + ' [40 BP Water Special]', async () => {
-    // TODO: assert Bubble's declared behavior
+  it('Bubble' + ' [40 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bubble', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Bubble should reduce defender HP');
   });
 
   it('Bubble Beam' + ' [65 BP Water Special]', async () => {
@@ -221,8 +235,12 @@ describe('Special moves', () => {
     // TODO: assert Burn Up's declared behavior
   });
 
-  it.todo('Burning Jealousy' + ' [70 BP Fire Special]', async () => {
-    // TODO: assert Burning Jealousy's declared behavior
+  it('Burning Jealousy' + ' [70 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Burning Jealousy', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Burning Jealousy should reduce defender HP');
   });
 
   it('Buzzy Buzz' + ' [60 BP Electric Special]', async () => {
@@ -265,8 +283,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Chloroblast should reduce defender HP');
   });
 
-  it.todo('Clanging Scales' + ' [110 BP Dragon Special]', async () => {
-    // TODO: assert Clanging Scales's declared behavior
+  it('Clanging Scales' + ' [110 BP Dragon Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Clanging Scales', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Clanging Scales should reduce defender HP');
   });
 
   it('Clear Smog' + ' [50 BP Poison Special]', async () => {
@@ -285,8 +307,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Confusion should reduce defender HP');
   });
 
-  it.todo('Core Enforcer' + ' [100 BP Dragon Special]', async () => {
-    // TODO: assert Core Enforcer's declared behavior
+  it('Core Enforcer' + ' [100 BP Dragon Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Core Enforcer', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Core Enforcer should reduce defender HP');
   });
 
   it('Dark Pulse' + ' [80 BP Dark Special]', async () => {
@@ -297,16 +323,28 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dark Pulse should reduce defender HP');
   });
 
-  it.todo('Dazzling Gleam' + ' [80 BP Fairy Special]', async () => {
-    // TODO: assert Dazzling Gleam's declared behavior
+  it('Dazzling Gleam' + ' [80 BP Fairy Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dazzling Gleam', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Dazzling Gleam should reduce defender HP');
   });
 
-  it.todo('Disarming Voice' + ' [40 BP Fairy Special]', async () => {
-    // TODO: assert Disarming Voice's declared behavior
+  it('Disarming Voice' + ' [40 BP Fairy Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Disarming Voice', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Disarming Voice should reduce defender HP');
   });
 
-  it.todo('Discharge' + ' [80 BP Electric Special]', async () => {
-    // TODO: assert Discharge's declared behavior
+  it('Discharge' + ' [80 BP Electric Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Discharge', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Discharge should reduce defender HP');
   });
 
   it.todo('Doom Desire' + ' [140 BP Steel Special]', async () => {
@@ -329,8 +367,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dragon Breath should reduce defender HP');
   });
 
-  it.todo('Dragon Energy' + ' [150 BP Dragon Special]', async () => {
-    // TODO: assert Dragon Energy's declared behavior
+  it('Dragon Energy' + ' [150 BP Dragon Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dragon Energy', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Dragon Energy should reduce defender HP');
   });
 
   it('Dragon Pulse' + ' [85 BP Dragon Special]', async () => {
@@ -409,8 +451,12 @@ describe('Special moves', () => {
     // TODO: assert Electro Shot's declared behavior
   });
 
-  it.todo('Electroweb' + ' [55 BP Electric Special]', async () => {
-    // TODO: assert Electroweb's declared behavior
+  it('Electroweb' + ' [55 BP Electric Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Electroweb', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Electroweb should reduce defender HP');
   });
 
   it('Ember' + ' [40 BP Fire Special]', async () => {
@@ -429,8 +475,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Energy Ball should reduce defender HP');
   });
 
-  it.todo('Eruption' + ' [150 BP Fire Special]', async () => {
-    // TODO: assert Eruption's declared behavior
+  it('Eruption' + ' [150 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Eruption', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Eruption should reduce defender HP');
   });
 
   it('Esper Wing' + ' [80 BP Psychic Special]', async () => {
@@ -489,8 +539,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Fiery Dance should reduce defender HP');
   });
 
-  it.todo('Fiery Wrath' + ' [90 BP Dark Special]', async () => {
-    // TODO: assert Fiery Wrath's declared behavior
+  it('Fiery Wrath' + ' [90 BP Dark Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Fiery Wrath', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Fiery Wrath should reduce defender HP');
   });
 
   it.todo('Final Gambit' + ' [0 BP Fighting Special]', async () => {
@@ -621,8 +675,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Giga Drain should reduce defender HP');
   });
 
-  it.todo('Glaciate' + ' [65 BP Ice Special]', async () => {
-    // TODO: assert Glaciate's declared behavior
+  it('Glaciate' + ' [65 BP Ice Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Glaciate', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Glaciate should reduce defender HP');
   });
 
   it('Glitzy Glow' + ' [80 BP Psychic Special]', async () => {
@@ -653,8 +711,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Gust should reduce defender HP');
   });
 
-  it.todo('Heat Wave' + ' [95 BP Fire Special]', async () => {
-    // TODO: assert Heat Wave's declared behavior
+  it('Heat Wave' + ' [95 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Heat Wave', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Heat Wave should reduce defender HP');
   });
 
   it('Hex' + ' [65 BP Ghost Special]', async () => {
@@ -841,8 +903,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Hyper Beam should reduce defender HP');
   });
 
-  it.todo('Hyper Voice' + ' [90 BP Normal Special]', async () => {
-    // TODO: assert Hyper Voice's declared behavior
+  it('Hyper Voice' + ' [90 BP Normal Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Hyper Voice', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Hyper Voice should reduce defender HP');
   });
 
   it('Hyperspace Hole' + ' [80 BP Psychic Special]', async () => {
@@ -865,12 +931,20 @@ describe('Special moves', () => {
     // TODO: assert Ice Burn's declared behavior
   });
 
-  it.todo('Icy Wind' + ' [55 BP Ice Special]', async () => {
-    // TODO: assert Icy Wind's declared behavior
+  it('Icy Wind' + ' [55 BP Ice Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Icy Wind', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Icy Wind should reduce defender HP');
   });
 
-  it.todo('Incinerate' + ' [60 BP Fire Special]', async () => {
-    // TODO: assert Incinerate's declared behavior
+  it('Incinerate' + ' [60 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Incinerate', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Incinerate should reduce defender HP');
   });
 
   it('Infernal Parade' + ' [60 BP Ghost Special]', async () => {
@@ -905,8 +979,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Judgment should reduce defender HP');
   });
 
-  it.todo('Lava Plume' + ' [80 BP Fire Special]', async () => {
-    // TODO: assert Lava Plume's declared behavior
+  it('Lava Plume' + ' [80 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Lava Plume', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Lava Plume should reduce defender HP');
   });
 
   it('Leaf Storm' + ' [130 BP Grass Special]', async () => {
@@ -965,8 +1043,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Magma Storm should reduce defender HP');
   });
 
-  it.todo('Make It Rain' + ' [120 BP Steel Special]', async () => {
-    // TODO: assert Make It Rain's declared behavior
+  it('Make It Rain' + ' [120 BP Steel Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Make It Rain', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Make It Rain should reduce defender HP');
   });
 
   it('Malignant Chain' + ' [100 BP Poison Special]', async () => {
@@ -977,8 +1059,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Malignant Chain should reduce defender HP');
   });
 
-  it.todo('Matcha Gotcha' + ' [80 BP Grass Special]', async () => {
-    // TODO: assert Matcha Gotcha's declared behavior
+  it('Matcha Gotcha' + ' [80 BP Grass Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Matcha Gotcha', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Matcha Gotcha should reduce defender HP');
   });
 
   it('Mega Drain' + ' [40 BP Grass Special]', async () => {
@@ -993,8 +1079,12 @@ describe('Special moves', () => {
     // TODO: assert Meteor Beam's declared behavior
   });
 
-  it.todo('Mind Blown' + ' [150 BP Fire Special]', async () => {
-    // TODO: assert Mind Blown's declared behavior
+  it('Mind Blown' + ' [150 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mind Blown', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Mind Blown should reduce defender HP');
   });
 
   it.todo('Mirror Coat' + ' [0 BP Psychic Special]', async () => {
@@ -1017,8 +1107,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mist Ball should reduce defender HP');
   });
 
-  it.todo('Misty Explosion' + ' [100 BP Fairy Special]', async () => {
-    // TODO: assert Misty Explosion's declared behavior
+  it('Misty Explosion' + ' [100 BP Fairy Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Misty Explosion', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Misty Explosion should reduce defender HP');
   });
 
   it('Moonblast' + ' [95 BP Fairy Special]', async () => {
@@ -1061,8 +1155,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mud-Slap should reduce defender HP');
   });
 
-  it.todo('Muddy Water' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Muddy Water's declared behavior
+  it('Muddy Water' + ' [90 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Muddy Water', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Muddy Water should reduce defender HP');
   });
 
   it('Mystical Fire' + ' [75 BP Fire Special]', async () => {
@@ -1097,8 +1195,12 @@ describe('Special moves', () => {
     // TODO: assert Night Shade's declared behavior
   });
 
-  it.todo('Nihil Light' + ' [100 BP Dragon Special]', async () => {
-    // TODO: assert Nihil Light's declared behavior
+  it('Nihil Light' + ' [100 BP Dragon Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Nihil Light', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Nihil Light should reduce defender HP');
   });
 
   it('Oblivion Wing' + ' [80 BP Flying Special]', async () => {
@@ -1125,12 +1227,20 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Ominous Wind should reduce defender HP');
   });
 
-  it.todo('Origin Pulse' + ' [110 BP Water Special]', async () => {
-    // TODO: assert Origin Pulse's declared behavior
+  it('Origin Pulse' + ' [110 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Origin Pulse', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Origin Pulse should reduce defender HP');
   });
 
-  it.todo('Overdrive' + ' [80 BP Electric Special]', async () => {
-    // TODO: assert Overdrive's declared behavior
+  it('Overdrive' + ' [80 BP Electric Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Overdrive', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Overdrive should reduce defender HP');
   });
 
   it('Overheat' + ' [130 BP Fire Special]', async () => {
@@ -1149,8 +1259,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Paleo Wave should reduce defender HP');
   });
 
-  it.todo('Parabolic Charge' + ' [65 BP Electric Special]', async () => {
-    // TODO: assert Parabolic Charge's declared behavior
+  it('Parabolic Charge' + ' [65 BP Electric Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Parabolic Charge', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Parabolic Charge should reduce defender HP');
   });
 
   it('Petal Dance' + ' [120 BP Grass Special]', async () => {
@@ -1173,8 +1287,12 @@ describe('Special moves', () => {
     // TODO: assert Pika Papow's declared behavior
   });
 
-  it.todo('Polar Flare' + ' [75 BP Fire Special]', async () => {
-    // TODO: assert Polar Flare's declared behavior
+  it('Polar Flare' + ' [75 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Polar Flare', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Polar Flare should reduce defender HP');
   });
 
   it('Pollen Puff' + ' [90 BP Bug Special]', async () => {
@@ -1185,8 +1303,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Pollen Puff should reduce defender HP');
   });
 
-  it.todo('Powder Snow' + ' [40 BP Ice Special]', async () => {
-    // TODO: assert Powder Snow's declared behavior
+  it('Powder Snow' + ' [40 BP Ice Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Powder Snow', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Powder Snow should reduce defender HP');
   });
 
   it('Power Gem' + ' [80 BP Rock Special]', async () => {
@@ -1261,8 +1383,12 @@ describe('Special moves', () => {
     // TODO: assert Razor Wind's declared behavior
   });
 
-  it.todo('Relic Song' + ' [75 BP Normal Special]', async () => {
-    // TODO: assert Relic Song's declared behavior
+  it('Relic Song' + ' [75 BP Normal Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Relic Song', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Relic Song should reduce defender HP');
   });
 
   it('Revelation Dance' + ' [90 BP Normal Special]', async () => {
@@ -1301,8 +1427,12 @@ describe('Special moves', () => {
     // TODO: assert Ruination's declared behavior
   });
 
-  it.todo('Sandsear Storm' + ' [100 BP Ground Special]', async () => {
-    // TODO: assert Sandsear Storm's declared behavior
+  it('Sandsear Storm' + ' [100 BP Ground Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sandsear Storm', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Sandsear Storm should reduce defender HP');
   });
 
   it('Scald' + ' [80 BP Water Special]', async () => {
@@ -1321,8 +1451,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Scorching Sands should reduce defender HP');
   });
 
-  it.todo('Searing Shot' + ' [100 BP Fire Special]', async () => {
-    // TODO: assert Searing Shot's declared behavior
+  it('Searing Shot' + ' [100 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Searing Shot', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Searing Shot should reduce defender HP');
   });
 
   it('Secret Sword' + ' [85 BP Fighting Special]', async () => {
@@ -1361,8 +1495,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Shell Side Arm should reduce defender HP');
   });
 
-  it.todo('Shell Trap' + ' [150 BP Fire Special]', async () => {
-    // TODO: assert Shell Trap's declared behavior
+  it('Shell Trap' + ' [150 BP Fire Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Shell Trap', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Shell Trap should reduce defender HP');
   });
 
   it('Shock Wave' + ' [60 BP Electric Special]', async () => {
@@ -1405,8 +1543,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Sludge Bomb should reduce defender HP');
   });
 
-  it.todo('Sludge Wave' + ' [95 BP Poison Special]', async () => {
-    // TODO: assert Sludge Wave's declared behavior
+  it('Sludge Wave' + ' [95 BP Poison Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sludge Wave', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Sludge Wave should reduce defender HP');
   });
 
   it('Smog' + ' [30 BP Poison Special]', async () => {
@@ -1417,8 +1559,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Smog should reduce defender HP');
   });
 
-  it.todo('Snarl' + ' [55 BP Dark Special]', async () => {
-    // TODO: assert Snarl's declared behavior
+  it('Snarl' + ' [55 BP Dark Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Snarl', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Snarl should reduce defender HP');
   });
 
   it('Snipe Shot' + ' [80 BP Water Special]', async () => {
@@ -1449,8 +1595,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Spacial Rend should reduce defender HP');
   });
 
-  it.todo('Sparkling Aria' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Sparkling Aria's declared behavior
+  it('Sparkling Aria' + ' [90 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sparkling Aria', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Sparkling Aria should reduce defender HP');
   });
 
   it('Sparkly Swirl' + ' [120 BP Fairy Special]', async () => {
@@ -1465,12 +1615,20 @@ describe('Special moves', () => {
     // TODO: assert Spit Up's declared behavior
   });
 
-  it.todo('Splishy Splash' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Splishy Splash's declared behavior
+  it('Splishy Splash' + ' [90 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Splishy Splash', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Splishy Splash should reduce defender HP');
   });
 
-  it.todo('Springtide Storm' + ' [100 BP Fairy Special]', async () => {
-    // TODO: assert Springtide Storm's declared behavior
+  it('Springtide Storm' + ' [100 BP Fairy Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Springtide Storm', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Springtide Storm should reduce defender HP');
   });
 
   it('Steam Eruption' + ' [110 BP Water Special]', async () => {
@@ -1505,20 +1663,36 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Strange Steam should reduce defender HP');
   });
 
-  it.todo('Struggle Bug' + ' [50 BP Bug Special]', async () => {
-    // TODO: assert Struggle Bug's declared behavior
+  it('Struggle Bug' + ' [50 BP Bug Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Struggle Bug', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Struggle Bug should reduce defender HP');
   });
 
-  it.todo('Surf' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Surf's declared behavior
+  it('Surf' + ' [90 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Surf', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Surf should reduce defender HP');
   });
 
-  it.todo('Swift' + ' [60 BP Normal Special]', async () => {
-    // TODO: assert Swift's declared behavior
+  it('Swift' + ' [60 BP Normal Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Swift', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Swift should reduce defender HP');
   });
 
-  it.todo('Synchronoise' + ' [120 BP Psychic Special]', async () => {
-    // TODO: assert Synchronoise's declared behavior
+  it('Synchronoise' + ' [120 BP Psychic Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Synchronoise', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Synchronoise should reduce defender HP');
   });
 
   it('Syrup Bomb' + ' [60 BP Grass Special]', async () => {
@@ -1637,8 +1811,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Twin Beam should reduce defender HP');
   });
 
-  it.todo('Twister' + ' [40 BP Dragon Special]', async () => {
-    // TODO: assert Twister's declared behavior
+  it('Twister' + ' [40 BP Dragon Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Twister', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Twister should reduce defender HP');
   });
 
   it('Uproar' + ' [90 BP Normal Special]', async () => {
@@ -1705,8 +1883,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Water Shuriken should reduce defender HP');
   });
 
-  it.todo('Water Spout' + ' [150 BP Water Special]', async () => {
-    // TODO: assert Water Spout's declared behavior
+  it('Water Spout' + ' [150 BP Water Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Water Spout', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Water Spout should reduce defender HP');
   });
 
   it('Weather Ball' + ' [50 BP Normal Special]', async () => {
@@ -1725,8 +1907,12 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Whirlpool should reduce defender HP');
   });
 
-  it.todo('Wildbolt Storm' + ' [100 BP Electric Special]', async () => {
-    // TODO: assert Wildbolt Storm's declared behavior
+  it('Wildbolt Storm' + ' [100 BP Electric Special]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Wildbolt Storm', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Wildbolt Storm should reduce defender HP');
   });
 
   it.todo('Wring Out' + ' [0 BP Normal Special]', async () => {

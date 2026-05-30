@@ -3,8 +3,8 @@
 //
 // Category: Physical
 // Total moves: 347
-// Auto-asserted: 280
-// TODO (manual fill-in required): 67
+// Auto-asserted: 296
+// TODO (manual fill-in required): 51
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -295,8 +295,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Brave Bird should reduce defender HP');
   });
 
-  it.todo('Breaking Swipe' + ' [60 BP Dragon Physical]', async () => {
-    // TODO: assert Breaking Swipe's declared behavior
+  it('Breaking Swipe' + ' [60 BP Dragon Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Breaking Swipe', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Breaking Swipe should reduce defender HP');
   });
 
   it('Brick Break' + ' [75 BP Fighting Physical]', async () => {
@@ -307,8 +311,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Brick Break should reduce defender HP');
   });
 
-  it.todo('Brutal Swing' + ' [60 BP Dark Physical]', async () => {
-    // TODO: assert Brutal Swing's declared behavior
+  it('Brutal Swing' + ' [60 BP Dark Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Brutal Swing', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Brutal Swing should reduce defender HP');
   });
 
   it('Bug Bite' + ' [60 BP Bug Physical]', async () => {
@@ -319,8 +327,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Bug Bite should reduce defender HP');
   });
 
-  it.todo('Bulldoze' + ' [60 BP Ground Physical]', async () => {
-    // TODO: assert Bulldoze's declared behavior
+  it('Bulldoze' + ' [60 BP Ground Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bulldoze', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Bulldoze should reduce defender HP');
   });
 
   it('Bullet Punch' + ' [40 BP Steel Physical]', async () => {
@@ -487,8 +499,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Darkest Lariat should reduce defender HP');
   });
 
-  it.todo('Diamond Storm' + ' [100 BP Rock Physical]', async () => {
-    // TODO: assert Diamond Storm's declared behavior
+  it('Diamond Storm' + ' [100 BP Rock Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Diamond Storm', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Diamond Storm should reduce defender HP');
   });
 
   it.todo('Dig' + ' [80 BP Ground Physical]', async () => {
@@ -663,8 +679,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dynamic Punch should reduce defender HP');
   });
 
-  it.todo('Earthquake' + ' [100 BP Ground Physical]', async () => {
-    // TODO: assert Earthquake's declared behavior
+  it('Earthquake' + ' [100 BP Ground Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Earthquake', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Earthquake should reduce defender HP');
   });
 
   it('Egg Bomb' + ' [100 BP Normal Physical]', async () => {
@@ -679,8 +699,12 @@ describe('Physical moves', () => {
     // TODO: assert Endeavor's declared behavior
   });
 
-  it.todo('Explosion' + ' [250 BP Normal Physical]', async () => {
-    // TODO: assert Explosion's declared behavior
+  it('Explosion' + ' [250 BP Normal Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Explosion', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Explosion should reduce defender HP');
   });
 
   it('Extreme Speed' + ' [80 BP Normal Physical]', async () => {
@@ -935,8 +959,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Gigaton Hammer should reduce defender HP');
   });
 
-  it.todo('Glacial Lance' + ' [120 BP Ice Physical]', async () => {
-    // TODO: assert Glacial Lance's declared behavior
+  it('Glacial Lance' + ' [120 BP Ice Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Glacial Lance', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Glacial Lance should reduce defender HP');
   });
 
   it('Glaive Rush' + ' [120 BP Dragon Physical]', async () => {
@@ -1239,8 +1267,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Kowtow Cleave should reduce defender HP');
   });
 
-  it.todo('Lands Wrath' + ' [90 BP Ground Physical]', async () => {
-    // TODO: assert Land's Wrath's declared behavior
+  it('Lands Wrath' + ' [90 BP Ground Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Lands Wrath', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Lands Wrath should reduce defender HP');
   });
 
   it('Lash Out' + ' [75 BP Dark Physical]', async () => {
@@ -1411,8 +1443,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mighty Cleave should reduce defender HP');
   });
 
-  it.todo('Mortal Spin' + ' [30 BP Poison Physical]', async () => {
-    // TODO: assert Mortal Spin's declared behavior
+  it('Mortal Spin' + ' [30 BP Poison Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mortal Spin', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Mortal Spin should reduce defender HP');
   });
 
   it('Mountain Gale' + ' [100 BP Ice Physical]', async () => {
@@ -1507,8 +1543,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Peck should reduce defender HP');
   });
 
-  it.todo('Petal Blizzard' + ' [90 BP Grass Physical]', async () => {
-    // TODO: assert Petal Blizzard's declared behavior
+  it('Petal Blizzard' + ' [90 BP Grass Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Petal Blizzard', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Petal Blizzard should reduce defender HP');
   });
 
   it.todo('Phantom Force' + ' [90 BP Ghost Physical]', async () => {
@@ -1635,8 +1675,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Power-Up Punch should reduce defender HP');
   });
 
-  it.todo('Precipice Blades' + ' [120 BP Ground Physical]', async () => {
-    // TODO: assert Precipice Blades's declared behavior
+  it('Precipice Blades' + ' [120 BP Ground Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Precipice Blades', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Precipice Blades should reduce defender HP');
   });
 
   it.todo('Present' + ' [0 BP Normal Physical]', async () => {
@@ -1739,8 +1783,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Rapid Spin should reduce defender HP');
   });
 
-  it.todo('Razor Leaf' + ' [55 BP Grass Physical]', async () => {
-    // TODO: assert Razor Leaf's declared behavior
+  it('Razor Leaf' + ' [55 BP Grass Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Razor Leaf', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Razor Leaf should reduce defender HP');
   });
 
   it('Razor Shell' + ' [75 BP Water Physical]', async () => {
@@ -1787,8 +1835,12 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Rock Climb should reduce defender HP');
   });
 
-  it.todo('Rock Slide' + ' [75 BP Rock Physical]', async () => {
-    // TODO: assert Rock Slide's declared behavior
+  it('Rock Slide' + ' [75 BP Rock Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Rock Slide', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Rock Slide should reduce defender HP');
   });
 
   it('Rock Smash' + ' [40 BP Fighting Physical]', async () => {
@@ -1915,8 +1967,12 @@ describe('Physical moves', () => {
     // TODO: assert Seismic Toss's declared behavior
   });
 
-  it.todo('Self-Destruct' + ' [200 BP Normal Physical]', async () => {
-    // TODO: assert Self-Destruct's declared behavior
+  it('Self-Destruct' + ' [200 BP Normal Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Self-Destruct', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Self-Destruct should reduce defender HP');
   });
 
   it('Shadow Bone' + ' [85 BP Ghost Physical]', async () => {
@@ -2263,12 +2319,20 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Thief should reduce defender HP');
   });
 
-  it.todo('Thousand Arrows' + ' [90 BP Ground Physical]', async () => {
-    // TODO: assert Thousand Arrows's declared behavior
+  it('Thousand Arrows' + ' [90 BP Ground Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Thousand Arrows', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Thousand Arrows should reduce defender HP');
   });
 
-  it.todo('Thousand Waves' + ' [90 BP Ground Physical]', async () => {
-    // TODO: assert Thousand Waves's declared behavior
+  it('Thousand Waves' + ' [90 BP Ground Physical]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Thousand Waves', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeHp = defender.currentHp;
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.currentHp < beforeHp, 'Thousand Waves should reduce defender HP');
   });
 
   it('Thrash' + ' [120 BP Normal Physical]', async () => {
