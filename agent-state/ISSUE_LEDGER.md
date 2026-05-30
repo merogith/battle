@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-30T20:59:38.174Z
+> **Generated**: 2026-05-30T21:12:21.910Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -884,7 +884,7 @@ file: tests/moves/by-category/status.test.js
 agents: [test-coverage-filler]
 fingerprint: 187e8bbb9b4b
 confidence: high
-status: open
+status: partial-claude/focused-cori-sGNzn (top 3 mechanical clusters auto-asserted: 351->264 it.todo, 87 converted; remaining are preconditioned moves needing per-move setup)
 ---
 
 **Title**: 351 it.todo() move tests cluster into 31 setup-shapes; 9 clusters retire 70% of the gap
@@ -2261,7 +2261,7 @@ file: tests/moves/by-category/status.test.js
 agents: [test-coverage-filler]
 fingerprint: 9ea53f271f71
 confidence: high
-status: open
+status: partial-claude/focused-cori-sGNzn (reliable volatiles auto-asserted via generator allowlist; precondition/immunity/single-turn volatiles stay todo by harness limit)
 ---
 
 **Title**: 46 volatile-status moves are it.todo but assert with one mon.volatile flag check

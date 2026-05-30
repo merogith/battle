@@ -48,6 +48,29 @@ const NEEDS_MANUAL_SETUP = new Set([
   'Decorate',
 ]);
 
+// Volatile-status moves whose volatile reliably applies in the generic singles harness
+// (Mew attacker vs Sceptile defender, one turn, no precondition). Maps the move's
+// `volatileStatus` -> the engine's mon.volatile key. Deliberately conservative: volatiles
+// needing a precondition (Nightmare/Encore/Disable/Attract/non-Ghost Curse), a non-Grass
+// target (Leech Seed / powder), or that clear at end of turn (Protect family) stay todo.
+const VOLATILE_ASSERT = {
+  confusion: 'confusion',      // Confuse Ray, Supersonic, Sweet Kiss, Teeter Dance
+  taunt: 'taunt',              // Taunt
+  torment: 'torment',          // Torment
+  focusenergy: 'focusEnergy',  // Focus Energy (self)
+  aquaring: 'aquaRing',        // Aqua Ring (self)
+  ingrain: 'ingrain',          // Ingrain (self)
+  magnetrise: 'magnetRise',    // Magnet Rise (self)
+  embargo: 'embargo',          // Embargo (foe)
+  healblock: 'healBlock',      // Heal Block (foe)
+  telekinesis: 'telekinesis',  // Telekinesis (foe)
+  tarshot: 'tarShot',          // Tar Shot (foe)
+  octolock: 'octolock',        // Octolock (foe)
+  foresight: 'identified',     // Foresight / Odor Sleuth (foe)
+  // (Miracle Eye omitted — only sets `identified` for Dark-type targets, which the
+  //  generic Grass-type defender is not.)
+};
+
 function buildAssertionLines(move) {
   // Returns { setup, assert, isTodo } — the assertion body and whether it's a todo.
   if (NEEDS_MANUAL_SETUP.has(move.name)) {
@@ -72,7 +95,17 @@ function buildAssertionLines(move) {
         isTodo: false,
       };
     }
-    // Status move without boosts: skeleton only
+    // Volatile-status moves with a reliably-testable volatile (see VOLATILE_ASSERT).
+    const volKey = VOLATILE_ASSERT[move.volatileStatus];
+    if (volKey) {
+      const recipient = move.target === 'self' ? 'attacker' : 'defender';
+      return {
+        setup: '',
+        assert: `assert.ok(${recipient}.volatile.${volKey}, '${safeName(move.name)} should set volatile.${volKey}');`,
+        isTodo: false,
+      };
+    }
+    // Status move without boosts / no testable volatile: skeleton only
     return { setup: '', assert: '', isTodo: true };
   }
   if (move.basePower > 0) {

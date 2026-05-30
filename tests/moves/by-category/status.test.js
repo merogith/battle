@@ -3,8 +3,8 @@
 //
 // Category: Status
 // Total moves: 269
-// Auto-asserted: 65
-// TODO (manual fill-in required): 204
+// Auto-asserted: 81
+// TODO (manual fill-in required): 188
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,8 +55,12 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spd, 2, 'spd stage should be 2');
   });
 
-  it.todo('Aqua Ring' + ' [0 BP Water Status]', async () => {
-    // TODO: assert Aqua Ring's declared behavior
+  it('Aqua Ring' + ' [0 BP Water Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Aqua Ring', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(attacker.volatile.aquaRing, 'Aqua Ring should set volatile.aquaRing');
   });
 
   it.todo('Aromatherapy' + ' [0 BP Grass Status]', async () => {
@@ -207,8 +211,12 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spa, -1, 'spa stage should be -1');
   });
 
-  it.todo('Confuse Ray' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Confuse Ray's declared behavior
+  it('Confuse Ray' + ' [0 BP Ghost Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Confuse Ray', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.confusion, 'Confuse Ray should set volatile.confusion');
   });
 
   it.todo('Conversion' + ' [0 BP Normal Status]', async () => {
@@ -339,8 +347,12 @@ describe('Status moves', () => {
     // TODO: assert Electrify's declared behavior
   });
 
-  it.todo('Embargo' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Embargo's declared behavior
+  it('Embargo' + ' [0 BP Dark Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Embargo', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.embargo, 'Embargo should set volatile.embargo');
   });
 
   it.todo('Encore' + ' [0 BP Normal Status]', async () => {
@@ -407,16 +419,24 @@ describe('Status moves', () => {
     // TODO: assert Flower Shield's declared behavior
   });
 
-  it.todo('Focus Energy' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Focus Energy's declared behavior
+  it('Focus Energy' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Focus Energy', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(attacker.volatile.focusEnergy, 'Focus Energy should set volatile.focusEnergy');
   });
 
   it.todo('Follow Me' + ' [0 BP Normal Status]', async () => {
     // TODO: assert Follow Me's declared behavior
   });
 
-  it.todo('Foresight' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Foresight's declared behavior
+  it('Foresight' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Foresight', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.identified, 'Foresight should set volatile.identified');
   });
 
   it.todo('Forests Curse' + ' [0 BP Grass Status]', async () => {
@@ -503,8 +523,12 @@ describe('Status moves', () => {
     // TODO: assert Heal Bell's declared behavior
   });
 
-  it.todo('Heal Block' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Heal Block's declared behavior
+  it('Heal Block' + ' [0 BP Psychic Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Heal Block', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.healBlock, 'Heal Block should set volatile.healBlock');
   });
 
   it.todo('Heal Order' + ' [0 BP Bug Status]', async () => {
@@ -551,8 +575,12 @@ describe('Status moves', () => {
     // TODO: assert Imprison's declared behavior
   });
 
-  it.todo('Ingrain' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Ingrain's declared behavior
+  it('Ingrain' + ' [0 BP Grass Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Ingrain', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(attacker.volatile.ingrain, 'Ingrain should set volatile.ingrain');
   });
 
   it.todo('Instruct' + ' [0 BP Psychic Status]', async () => {
@@ -643,8 +671,12 @@ describe('Status moves', () => {
     // TODO: assert Magic Room's declared behavior
   });
 
-  it.todo('Magnet Rise' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Magnet Rise's declared behavior
+  it('Magnet Rise' + ' [0 BP Electric Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Magnet Rise', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(attacker.volatile.magnetRise, 'Magnet Rise should set volatile.magnetRise');
   });
 
   it.todo('Magnetic Flux' + ' [0 BP Electric Status]', async () => {
@@ -775,12 +807,20 @@ describe('Status moves', () => {
     // TODO: assert Obstruct's declared behavior
   });
 
-  it.todo('Octolock' + ' [0 BP Fighting Status]', async () => {
-    // TODO: assert Octolock's declared behavior
+  it('Octolock' + ' [0 BP Fighting Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Octolock', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.octolock, 'Octolock should set volatile.octolock');
   });
 
-  it.todo('Odor Sleuth' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Odor Sleuth's declared behavior
+  it('Odor Sleuth' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Odor Sleuth', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.identified, 'Odor Sleuth should set volatile.identified');
   });
 
   it.todo('Pain Split' + ' [0 BP Normal Status]', async () => {
@@ -1135,8 +1175,12 @@ describe('Status moves', () => {
     // TODO: assert Sunny Day's declared behavior
   });
 
-  it.todo('Supersonic' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Supersonic's declared behavior
+  it('Supersonic' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Supersonic', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.confusion, 'Supersonic should set volatile.confusion');
   });
 
   it('Swagger' + ' [0 BP Normal Status]', async () => {
@@ -1151,8 +1195,12 @@ describe('Status moves', () => {
     // TODO: assert Swallow's declared behavior
   });
 
-  it.todo('Sweet Kiss' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Sweet Kiss's declared behavior
+  it('Sweet Kiss' + ' [0 BP Fairy Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sweet Kiss', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.confusion, 'Sweet Kiss should set volatile.confusion');
   });
 
   it('Sweet Scent' + ' [0 BP Normal Status]', async () => {
@@ -1211,8 +1259,12 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spe, -1, 'spe stage should be -1');
   });
 
-  it.todo('Taunt' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Taunt's declared behavior
+  it('Taunt' + ' [0 BP Dark Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Taunt', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.taunt, 'Taunt should set volatile.taunt');
   });
 
   it('Tearful Look' + ' [0 BP Normal Status]', async () => {
@@ -1227,12 +1279,20 @@ describe('Status moves', () => {
     // TODO: assert Teatime's declared behavior
   });
 
-  it.todo('Teeter Dance' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Teeter Dance's declared behavior
+  it('Teeter Dance' + ' [0 BP Normal Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Teeter Dance', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.confusion, 'Teeter Dance should set volatile.confusion');
   });
 
-  it.todo('Telekinesis' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Telekinesis's declared behavior
+  it('Telekinesis' + ' [0 BP Psychic Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Telekinesis', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.telekinesis, 'Telekinesis should set volatile.telekinesis');
   });
 
   it.todo('Teleport' + ' [0 BP Psychic Status]', async () => {
@@ -1259,8 +1319,12 @@ describe('Status moves', () => {
     // TODO: assert Topsy-Turvy's declared behavior
   });
 
-  it.todo('Torment' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Torment's declared behavior
+  it('Torment' + ' [0 BP Dark Status]', async () => {
+    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Torment', 'Splash', 'Splash', 'Splash'] });
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+
+    await runTurn({ playerMon: attacker, foeMon: defender });
+    assert.ok(defender.volatile.torment, 'Torment should set volatile.torment');
   });
 
   it.todo('Toxic' + ' [0 BP Poison Status]', async () => {
