@@ -11905,11 +11905,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // where it left off — when the battle ends. A win plays a short
             // victory fanfare before the field BGM returns. Wild/casual battles
             // are untouched. Missing/blocked themes fall back to field BGM.
+            //
+            // Theme1–4 were the title-screen "new adventure" jingles — full-length
+            // songs, not combat loops — and read badly under a fight, so they've
+            // been retired from battle and moved to the character-creation screen
+            // (see INTRO_THEMES / _playIntroTheme).
+            //
+            // Major fights (gym leaders, rival, Elite Four / Victory Road, Champion,
+            // Mystery Figure) get the single dramatic boss track. Ordinary route/gym
+            // trainers ('trainer') keep the calm rotating field BGM — an empty list
+            // skips the swap entirely: no duck, no theme, and no victory fanfare on
+            // the win (the fanfare is gated on a theme having played). That keeps the
+            // boss theme + fanfare reserved for fights that earn them and avoids
+            // fatiguing the player across dozens of filler battles. Per-mood keys are
+            // kept so a per-tier track is a one-line change; set `trainer` to
+            // ['music/themes/boss_climax.mp3'] to put every trainer fight back on it.
             const BATTLE_THEMES = {
-                trainer: ['music/themes/Theme1.mp3', 'music/themes/Theme2.mp3'],
-                leader:  ['music/themes/Theme3.mp3'],
-                rival:   ['music/themes/Theme4.mp3'],
-                elite:   ['music/themes/Theme2.mp3', 'music/themes/Theme3.mp3'],
+                trainer: [],
+                leader:  ['music/themes/boss_climax.mp3'],
+                rival:   ['music/themes/boss_climax.mp3'],
+                elite:   ['music/themes/boss_climax.mp3'],
                 boss:    ['music/themes/boss_climax.mp3'],
             };
             const VICTORY_STING = 'music/themes/victory.mp3';
@@ -11974,6 +11989,60 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // ── Character-creation theme ─────────────────────────────────
+            // The retired Theme1–4 "new adventure" jingles live here now: one is
+            // picked at random while the player is on the trainer-creation screen,
+            // ducking the field BGM. The field track resumes when the jingle ends,
+            // when the player commits (Begin Adventure → onStoryNewJourney), or when
+            // they back out (cancelTrainerCreate → stopIntroTheme). loop = false so
+            // a long jingle never traps the player in title music.
+            const INTRO_THEMES = [
+                'music/themes/Theme1.mp3',
+                'music/themes/Theme2.mp3',
+                'music/themes/Theme3.mp3',
+                'music/themes/Theme4.mp3',
+            ];
+            let _introAudio = null;
+
+            function _stopIntroAudio() {
+                if (_introAudio) {
+                    try { _introAudio.onended = null; _introAudio.onerror = null; _introAudio.pause(); } catch (e) {}
+                    _introAudio = null;
+                }
+            }
+
+            function _playIntroTheme() {
+                if (!settings.musicEnabled) return;
+                if (_introAudio && !_introAudio.paused) return; // already rolling
+                _stopIntroAudio();
+                // Duck the field track: persist position, then pause so it resumes
+                // seamlessly once the creation theme ends or the player leaves.
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
+                    _persistBgState(true);
+                    try { bgAudio.pause(); } catch (e) {}
+                }
+                const src = INTRO_THEMES[Math.floor(Math.random() * INTRO_THEMES.length)];
+                try {
+                    const a = new Audio(src);
+                    a.loop = false;
+                    a.volume = _musicVol;
+                    const _resume = () => { if (_introAudio === a) { _introAudio = null; _resumeOrStartBg(); } };
+                    a.onended = _resume;
+                    a.onerror = _resume;
+                    _introAudio = a;
+                    a.play().catch(() => {});
+                } catch (e) { _introAudio = null; }
+            }
+
+            function _endIntroTheme() {
+                const was = !!_introAudio;
+                _stopIntroAudio();
+                if (was && settings.musicEnabled) {
+                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
+                    else _resumeOrStartBg();
+                }
+            }
+
             return {
                 init() {
                     if (_bgStarted) return;
@@ -11992,7 +12061,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 },
 
                 onStoryNewJourney() {
-                    // Keep BGM rolling across new-journey transitions for an uninterrupted experience.
+                    // A new adventure is starting: stop the character-creation theme
+                    // (if any) and make sure the field BGM is rolling again so the
+                    // hand-off into the game is uninterrupted.
+                    _stopIntroAudio();
+                    if (settings.musicEnabled) {
+                        if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
+                        else _resumeOrStartBg();
+                    }
                     _persistBgState(true);
                 },
 
@@ -12008,14 +12084,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 playBattleTheme(mood) { _playBattleTheme(mood); },
                 endBattleTheme(won) { _endBattleTheme(won); },
 
+                // Character-creation screen theme: a random Theme1–4 jingle that
+                // ducks the field BGM while the player builds their trainer.
+                playIntroTheme() { _playIntroTheme(); },
+                stopIntroTheme() { _endIntroTheme(); },
+
                 toggleMusic() {
                     settings.musicEnabled = !settings.musicEnabled;
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
                     if (settings.musicEnabled) {
-                        if (_battleAudio) { _battleAudio.play().catch(() => {}); }
-                        else if (_battleMood && BATTLE_THEMES[_battleMood]) { _playBattleTheme(_battleMood); }
+                        if (_introAudio) { _introAudio.play().catch(() => {}); }
+                        else if (_battleAudio) { _battleAudio.play().catch(() => {}); }
+                        else if (_battleMood && BATTLE_THEMES[_battleMood] && BATTLE_THEMES[_battleMood].length) { _playBattleTheme(_battleMood); }
                         else { _resumeOrStartBg(); }
                     } else {
+                        if (_introAudio) { try { _introAudio.pause(); } catch (e) {} }
                         if (_battleAudio) { try { _battleAudio.pause(); } catch (e) {} }
                         if (bgAudio) {
                             _persistBgState(true);
@@ -12034,6 +12117,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (bgAudio) bgAudio.volume = _musicVol;
                     if (_nextBgAudio) _nextBgAudio.volume = _musicVol;
                     if (_battleAudio) _battleAudio.volume = _musicVol;
+                    if (_introAudio) _introAudio.volume = _musicVol;
                 },
 
                 setSoundVolume(val) {
@@ -38331,8 +38415,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const warn = document.getElementById('story-create-warning');
             if (warn) warn.textContent = '';
             setTimeout(() => { try { if (nameInput) nameInput.focus(); } catch (e) {} }, 80);
+            // Play one of the retired "new adventure" jingles (random Theme1–4) while
+            // the player builds their trainer; field BGM ducks and resumes on Begin
+            // (onStoryNewJourney) / Back (stopIntroTheme) / when the jingle ends.
+            try { AudioSystem.playIntroTheme(); } catch (e) {}
         }
         function cancelTrainerCreate() {
+            try { AudioSystem.stopIntroTheme(); } catch (e) {}
             showMenu(true);
         }
         function _trainerStepSprite(delta) {
