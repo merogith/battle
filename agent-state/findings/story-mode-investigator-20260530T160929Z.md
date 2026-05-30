@@ -331,3 +331,291 @@ From inside the Crucible, opening the "Pokémon Center" facility renders the Und
 
 **Verification**: Inside the Crucible, the Caged God appears exactly once (the top quest section), never as a "no lead here" dead block.
 
+---
+severity: P3
+category: design
+anchor_symbol: _bossArcRenderSection
+current_line_hint: ~48579
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 90bad6000f2f
+confidence: high
+status: open
+---
+
+**Title**: Non-hub Caged God render path is effectively dead post-HoF (player can never be at City 2/5/8)
+
+**Evidence**:
+```js
+} else if (localLeadKey && L[localLeadKey]) {
+    html += `<div ...>Lead collected.</div>`;
+} else if (!allLeads) {
+    html += `<div ...>No lead here. Try City 2, 5, or 8.</div>`;
+}
+```
+The non-hub branch (hubMode falsy, from a real city's PC Underground tab) keys the offered lead on `cityIndexFromEventIndex(sm.eventIndex)`. But the boss arc only becomes available post-HoF, and post-HoF the player is parked at the last visited city (City 9 region) with no backward city travel — exactly the reachability gap the maintainer surfaced the Crucible hub path to fix. So this branch only ever renders "No lead here. Try City 2, 5, or 8.", which is misleading (you literally cannot travel there).
+
+**Repro**: Post-HoF, open any city's Pokémon Center → Underground tab. Always shows "No lead here."
+
+**Blast radius**: Player confusion + dead code. The branch was written for an intra-run collection model that the post-game-only gating made unreachable.
+
+**Fix sketch**: Either (a) drop the non-hub branch entirely and only render the Caged God in the Crucible (single source), or (b) if the maintainer ever wants intra-run lead collection, the boss arc would need to be available pre-HoF — a larger design change. Pairs with the Crucible-double-render finding (suppress when `sm.atCrucible`).
+
+**Verification**: No "No lead here. Try City 2, 5, or 8." dead text is reachable in normal post-HoF flow.
+
+---
+severity: P3
+category: design
+anchor_symbol: crucibleGymPick
+current_line_hint: ~48165
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: f93740a17e98
+confidence: medium
+status: open
+---
+
+**Title**: Crucible rematch pickers use bare Math.random — breaks the seeded-replay contract for post-game
+
+**Evidence**:
+```js
+function crucibleGymPick() {
+    const row = _CRUCIBLE_GYM_ROWS[Math.floor(Math.random() * _CRUCIBLE_GYM_ROWS.length)];
+    _crucibleBattleSetup(row, 'gym');
+}
+// also: _rollFrontierTeam / crucibleWildEncounter / _bossArcRollLegendary fall back to
+// Math.random when sm.active is true-but-storyRngNext-path-not-taken
+```
+CLAUDE.md architecture rule: "Use seeded RNG (storyRngNext) everywhere user-visible, never bare Math.random()." Crucible gym selection picks the opponent via `Math.random`. Several post-game rolls (frontier team, wild encounter species) also use `Math.random` — some of those are *intentionally* unseeded (wild species, see `_pickWildSpeciesRandom` comment), but the gym pick and frontier team are user-visible battle setups that arguably should be seeded for shared-seed reproducibility.
+
+**Repro**: Crucible → Random Gym Rematch repeatedly on the same seed → different leaders. (Likely acceptable for an endless rematch hub, but inconsistent with the stated determinism contract.)
+
+**Blast radius**: Determinism/replay contract in the post-game. Low practical impact (post-game is freeform), but worth a maintainer decision on whether the Crucible is exempt from the seeded-RNG rule.
+
+**Fix sketch**: Either route Crucible battle-setup rolls through `storyRngNext`, or add an explicit "post-game hub is intentionally unseeded" note next to `_CRUCIBLE_GYM_ROWS` so future audits stop flagging it.
+
+**Verification**: Documented decision or seeded picks.
+
+---
+severity: P3
+category: inconsistency
+anchor_symbol: showVictoryOverlay
+current_line_hint: ~49869
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: fc1331e5a296
+confidence: low
+status: open
+---
+
+**Title**: Subject Zero stored to PC (party-full at cage) shows "Subject Zero" nickname but is never auto-fielded — easy to miss the capstone mon
+
+**Evidence**:
+```js
+if (!partyFull) {
+    sm.team.push(caught);
+} else if (bossMode) {
+    sm.pcBox.push(caught);   // capstone reward silently sent to PC, no swap prompt
+}
+```
+The boss-arc catch deliberately skips the party-swap prompt ("the story beat needs the unique mon in your hand right now") — but if the party is already at the cap (6/6 post-HoF), Subject Zero goes to the PC with no prompt and the success message still reads as if it joined. A player at 6/6 finishes the climactic arc and the legendary is in storage, not their hand — undercutting the intended "in your hand right now" beat.
+
+**Repro**: Post-HoF with a full 6/6 party, complete the cage. Subject Zero lands in PC, not party.
+
+**Blast radius**: Endgame payoff framing. Narrow (only at 6/6), low severity.
+
+**Fix sketch**: When party is full in bossMode, offer the same swap prompt as normal catches (or auto-swap the lowest-BST non-unsellable mon to PC and field Subject Zero), and adjust the success message to say where it went.
+
+**Verification**: At 6/6, the player is told Subject Zero is in the PC, or is given a swap choice.
+
+---
+severity: P3
+category: dx
+anchor_symbol: STORY_MODE_AUDIT
+current_line_hint: docs/STORY_MODE_AUDIT.md
+file: docs/STORY_MODE_AUDIT.md
+agents: [story-mode-investigator]
+fingerprint: bd78781b71ff
+confidence: high
+status: open
+---
+
+**Title**: docs/STORY_MODE_AUDIT.md is stale — most of its flagged issues are now fixed (SAVE_VER 14→22)
+
+**Evidence**:
+Prior audit cites SAVE_VER=14, 68 rows, line numbers in the 21k–28k range, "Mystery Figure sprite unconditionally Cyrus", "GYM_CITY_LEADER_EVENT hard-coded map", "RIVAL_ATTACK_TYPE_DECAY ÷30", "Hard pays ×0.92", "league boost stacks multiplicatively", "mystery prof breaks if party < 6". Verified this session against current code (SAVE_VER=22):
+- GYM_CITY_LEADER_EVENT is now DERIVED from STORY_EVENTS_RAW at boot (1.3 fixed).
+- Mystery Figure is a deliberate single identity "The First" / Red sprite (4.x / 1.x fixed by design).
+- RIVAL_ATTACK_TYPE_DECAY removed; rival uses a scored cycling counter-type pool (1.2 fixed).
+- Hard coin mult floored at ×1.00, Challenge ×1.10 (2.1 fixed).
+- League boost now stacks ADDITIVELY, killing the cliff (2.5 fixed).
+- Professor "full" is cap-aware via `_storyMaxPartySize`, swap flow intact (1.9 fixed).
+- Per-leader victory lines exist (LEADER_VICTORY_LINES, data-driven) (Fun #1 fixed).
+- Post-HoF Mystery win now grants a real bundle, not a dead-end reward (2.6 fixed).
+
+**Repro**: Compare doc claims to current anchors via find-anchor.
+
+**Blast radius**: Audit hygiene — future agents re-flag fixed issues if they trust the doc. Several prior-audit items genuinely remain (e.g. casino still a coin-flip + slots/roulette only, signature-mon probability still per-trainer) and should be re-triaged separately.
+
+**Fix sketch**: Add a "STATUS as of SAVE_VER 22 / branch endgame-crucible" header to the audit doc marking the resolved items, or migrate the still-open ones into ISSUE_LEDGER.md and archive the doc.
+
+**Verification**: The doc no longer presents fixed issues as open.
+
+---
+severity: P0
+category: bug
+anchor_symbol: crucibleMysteryFight
+current_line_hint: ~48159
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 691dcd5cb693
+confidence: high
+status: open
+---
+
+**Title**: Crucible "Mystery Figure" button is dead — STORY_POST_HOF_MYSTERY_ROW (67) is out of bounds as an array index
+
+**Evidence**:
+```js
+const STORY_POST_HOF_MYSTERY_ROW = 67;           // this is a ROW ID
+function crucibleMysteryFight() { _crucibleBattleSetup(STORY_POST_HOF_MYSTERY_ROW, 'mystery'); }
+// _crucibleBattleSetup:  sm.eventIndex = targetEventIdx|0;  const ev = STORY_EVENTS_RAW[sm.eventIndex];
+//                        if (!ev) { sm.crucibleBattleSource = null; enterCrucible(); return; }
+```
+`STORY_EVENTS_RAW` has 67 entries (array indices 0–66). The Mystery Figure row has **row id 67** but sits at **array index 66**. `_crucibleBattleSetup` assigns `sm.eventIndex = 67` then reads `STORY_EVENTS_RAW[67]` → `undefined` → bails straight back to `enterCrucible()`. The button does nothing.
+
+**Repro** (jsdom): `StoryMode.crucibleMysteryFight()` with a post-HoF sm → `sm.eventIndex` becomes 67, `crucibleBattleSource` reset to null, screen returns to Crucible. Confirmed: `STORY_EVENTS_RAW[67] === undefined`; Mystery Figure is at index 66.
+
+**Blast radius**: The Crucible Mystery Figure encore (the maintainer's named priority: "Mystery Figure post-HoF climax + rematch"). The *first* climax via `continuePostGame` works because it uses `findIndex` (resolves to 66); only the Crucible replay button is broken. `continuePostGame` and `_storyMilestoneKeyForEvent` compare `rowIdx === STORY_POST_HOF_MYSTERY_ROW` against `ev[0]` (the row id), so the constant value 67 is correct *there* — the bug is feeding a row-id into the array-index-expecting `_crucibleBattleSetup`.
+
+**Fix sketch**: Resolve the array index by name/row-id inside the Crucible setup, e.g. `const idx = STORY_EVENTS_RAW.findIndex(r => r && (r[0]|0) === STORY_POST_HOF_MYSTERY_ROW);` and pass `idx`. Best: make `_crucibleBattleSetup` accept a row id and resolve internally, so all four callers are fixed at once (see sibling findings).
+
+**Verification**: Crucible → Mystery Figure launches the masked-trainer fight; `crucibleBattleSource === 'mystery'` after entry.
+
+---
+severity: P0
+category: bug
+anchor_symbol: crucibleRivalFight
+current_line_hint: ~48160
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 9e4b435d44de
+confidence: high
+status: open
+---
+
+**Title**: Crucible "Rival Rematch" targets the Hall of Fame row — STORY_LEAGUE_RIVAL_ROW (65) is a row id, not the array index (64)
+
+**Evidence**:
+```js
+const STORY_LEAGUE_RIVAL_ROW = 65;               // ROW ID
+function crucibleRivalFight() { _crucibleBattleSetup(STORY_LEAGUE_RIVAL_ROW, 'rival'); }
+// enterBattleEvent(ev,...):  if (ev[1] !== 'Battle') { ... if (ev[1]==='Hall of Fame'){ showHallOfFame(); return; } }
+```
+The league Rival has row id 65 but sits at **array index 64**. Array index 65 is the **Hall of Fame** row. `_crucibleBattleSetup(65)` sets `sm.eventIndex = 65`, reads the HoF row (which is truthy, so the `!ev` guard passes), and hands it to `enterBattleEvent`, whose non-Battle branch calls `showHallOfFame()`. The Rival Rematch button shows the Hall of Fame screen instead of a rival fight.
+
+**Repro** (jsdom): `StoryMode.crucibleRivalFight()` → `sm.eventIndex = 65` → `STORY_EVENTS_RAW[65]` = `["Hall of Fame", ...]`. Confirmed the actual league Rival is at array index 64.
+
+**Blast radius**: Crucible Rival Rematch (maintainer-named post-game feature). Same root cause as the Mystery and League findings.
+
+**Fix sketch**: Resolve via row id: `STORY_EVENTS_RAW.findIndex(r => r && (r[0]|0) === STORY_LEAGUE_RIVAL_ROW)` (= 64) before passing to setup; or make `_crucibleBattleSetup` row-id-based.
+
+**Verification**: Crucible → Rival Rematch launches the league rival 6v6, not the HoF screen.
+
+---
+severity: P0
+category: bug
+anchor_symbol: _CRUCIBLE_LEAGUE_ROWS
+current_line_hint: ~48057
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 307c0fad776a
+confidence: high
+status: open
+---
+
+**Title**: Crucible League Run + Random Gym Rematch use row ids as array indices — wrong opponents (skips E1, runs into Rival; can launch City3)
+
+**Evidence**:
+```js
+const _CRUCIBLE_GYM_ROWS   = [5, 11, 18, 24, 31, 38, 46, 53]; // labelled "GL1..GL8" — these are ROW IDS
+const _CRUCIBLE_LEAGUE_ROWS = [60, 61, 62, 63, 64];          // labelled "E1..E4 + Champion" — ROW IDS
+// consumed as array indices:  _crucibleBattleSetup(_CRUCIBLE_LEAGUE_ROWS[0]) -> sm.eventIndex = 60 -> STORY_EVENTS_RAW[60]
+```
+Resolved against the array (length 67):
+- `_CRUCIBLE_LEAGUE_ROWS` as array indices = **E2, E3, E4, Champion, Rival** — the League Run starts at E2 (skips E1) and ends on the post-Champion *Rival* as a bogus 5th "league" stage. (E1 is at array index 59, Champion at 63.)
+- `_CRUCIBLE_GYM_ROWS[2] = 18` → array index 18 = **City3** (a City row). A Random Gym Rematch that rolls Gym 3 (1/8 chance) hands a City row to `enterBattleEvent`, which calls `enterCity()` — dumping the player into City3's hub instead of a gym fight. (Gym Leader 3 is at array index 17.) Indices 5/11/24/31/38/46/53 happen to coincide with their rows, so 7 of 8 gyms work by luck; only GL3 is misrouted.
+
+**Repro** (jsdom): `StoryMode.crucibleLeagueRun()` → `sm.eventIndex = 60` → `STORY_EVENTS_RAW[60][2] === 'E2'`. `_CRUCIBLE_GYM_ROWS[2] = 18` → `STORY_EVENTS_RAW[18][1] === 'City'`.
+
+**Blast radius**: Crucible League Run and Random Gym Rematch (post-game hub the maintainer just sub-sectioned). The league-chain bug compounds via `_handleCrucibleBattleEnd` which advances `_CRUCIBLE_LEAGUE_ROWS[stage+1]` (also indices). Root cause is shared with the Mystery/Rival findings: row id ≠ array index after the Rival rows (ids 12/39/65) and City3 were spliced out of id-order in the literal.
+
+**Fix sketch**: Derive all four constants from `STORY_EVENTS_RAW` by event name at boot, mirroring `GYM_CITY_LEADER_EVENT`'s `buildGymCityLeaderMap` pattern — e.g. build `{1: arrIdx, ...}` for `Gym Leader N`, and `[E1idx,E2idx,E3idx,E4idx,Champion idx]` for the league. This makes them shift-proof. Add a boot-time assertion that each resolved index's `row[2]` matches the expected event name.
+
+**Verification**: League Run = E1→E2→E3→E4→Champion (5 stages, no Rival); every Random Gym Rematch launches a Gym Leader battle (never a City/HoF screen).
+
+---
+severity: P2
+category: bug
+anchor_symbol: continuePostGame
+current_line_hint: ~53483
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 86b897ccf02f
+confidence: low
+status: open
+---
+
+**Title**: Pre-boss-arc post-HoF saves may never receive the Master Ball / boss arc if parked at a city row on load
+
+**Evidence**:
+```js
+// migrateStoryPreV15: pre-boss-arc saves have no sm.bossArc -> climax flag = false
+sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);  // => false
+// continuePostGame (the only place bossArc.available + Master Ball are granted) is
+// reached ONLY from the HoF screen Continue button or after the climax battle.
+// continueRun() -> processNextEvent(); if sm.eventIndex is parked on a City row,
+// it just enterCity() — continuePostGame never fires.
+```
+A save made on a pre-boss-arc build that had already cleared the Champion and snapped `eventIndex` back to a city (the old post-HoF behavior) would migrate with `postHofMysteryClimaxDone = false`, but on load `processNextEvent` routes to `enterCity()` and never re-shows the HoF Continue button. The climax never fires → boss arc + Master Ball never granted → the Crucible button (gated on `sm.bossArc.available`) never appears → the player has no access to ANY post-game content.
+
+**Repro**: Hard to construct without an archived pre-v15 post-HoF save; depends on exactly where the old champion-victory flow parked `eventIndex` (HoF row = recoverable via `showHallOfFame`; city row = stranded). Marked low confidence pending an old-save artifact.
+
+**Blast radius**: Migration completeness for the oldest post-HoF saves. Population is likely small (boss arc shipped at v15), but the failure mode is total post-game lockout with no recovery path.
+
+**Fix sketch**: In `load()` (or a vN migration), detect "league cleared but boss arc never granted" (e.g. `sm.badges >= 8` and a champion-clear marker true, `postHofMysteryClimaxDone` false, `bossArc` absent) and either route through `continuePostGame` once or grant the Master Ball + `bossArc.available` directly.
+
+**Verification**: An archived pre-v15 post-HoF save loads into a state where the Crucible/Caged God are reachable.
+
+---
+severity: P3
+category: design
+anchor_symbol: enterCrucible
+current_line_hint: ~48118
+file: battle.html
+agents: [story-mode-investigator]
+fingerprint: 75a751b3f4d7
+confidence: medium
+status: open
+---
+
+**Title**: Crucible sub-sections improve wayfinding but the orientation tip + "Mystery vs Caged God" disambiguation still lean on long alert text
+
+**Evidence**:
+```js
+<h4>Post-Game Quest</h4> ... <h4>Battles</h4> ... <h4>Facilities</h4>
+//   Train & Evolve / Shop / Catch, Store & Trade sub-headers (good)
+// but disambiguation is carried by button title= tooltips + a multi-paragraph
+// _storyShowOneTimeTip('crucible', '...The Mystery Figure is a separate masked
+//   trainer — not the Caged God...') and the orientation tip in continuePostGame.
+```
+The maintainer's sub-sectioning (Post-Game Quest / Battles / Facilities{Train&Evolve, Shop, Catch}) is a clear improvement. Remaining friction: (1) the Mystery-Figure-vs-Caged-God distinction is only explained in a one-time alert + a hover tooltip — on a touch device with the tip dismissed, the two purple "mystery"-flavored affordances (Caged God section + Mystery Figure button) read as the same thing; (2) there is no persistent inline caption under the Mystery Figure button repeating "separate from the Caged God hunt above."
+
+**Repro**: Post-HoF on touch, dismiss the orientation tip, open Crucible → the Mystery Figure button and the Caged God quest box both use purple/🔮-🥷 styling with no persistent on-screen text linking/distinguishing them.
+
+**Blast radius**: Post-game wayfinding (maintainer-named concern). Low severity; purely additive copy.
+
+**Fix sketch**: Add a one-line persistent caption under the Mystery Figure button ("A masked 6-mon trainer rematch — not the Caged God quest above") and/or a small "?" affordance that re-opens the disambiguation tip on demand. Consider a different accent color for the Caged God section vs the Mystery button.
+
+**Verification**: A player who never reads the alert can still tell the two purple affordances apart from on-screen text alone.
+
