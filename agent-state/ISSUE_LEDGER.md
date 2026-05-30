@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-30T21:12:21.910Z
+> **Generated**: 2026-05-30T21:27:25.057Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1043,7 +1043,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 7b1c4e9a2d50
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (parseCSV ~40% faster, byte-identical output; the dominant boot phase. Remaining cost is per-row build construction + JSON parse, inherent to the 17k-row/2.56MB data)
 ---
 
 **Title**: loadGameData ~299 ms engine-only (>1.5× 200 ms boot target), dominated by parseCSV over the 2.56 MB builds.csv

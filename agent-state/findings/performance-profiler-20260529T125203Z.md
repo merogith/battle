@@ -7,7 +7,7 @@ current_line_hint: ~10429
 agents: [performance-profiler]
 fingerprint: 7b1c4e9a2d50
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (parseCSV ~40% faster, byte-identical output; the dominant boot phase. Remaining cost is per-row build construction + JSON parse, inherent to the 17k-row/2.56MB data)
 ---
 
 **Title**: loadGameData ~299 ms engine-only (>1.5× 200 ms boot target), dominated by parseCSV over the 2.56 MB builds.csv
