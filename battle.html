@@ -2686,6 +2686,27 @@
             color: #e8f5c4;
         }
         .story-battle-intro-dialog { max-width: min(92vw, 400px); }
+        /* Two-sided VS battle-intro splash (showBattleIntro). Drama scales by tier
+           via the --vs-accent set inline; the screen-flash + bigger glyph are gated
+           behind .vs-big (major battles only). Motion respects prefers-reduced-motion. */
+        .vs-stage { display:flex; align-items:center; justify-content:center; gap:min(7vw,40px); width:100%; max-width:760px; }
+        .vs-fighter { width:min(40vw,200px); height:min(40vw,200px); object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.6)); }
+        .vs-fighter-player { animation: vsSlideInL 0.5s cubic-bezier(0.18,0.8,0.3,1.18) both; }
+        .vs-fighter-foe { animation: vsSlideInR 0.5s cubic-bezier(0.18,0.8,0.3,1.18) both; }
+        .vs-glyph { font-size:54px; font-weight:900; font-style:italic; line-height:1; color:#fff;
+            text-shadow:0 0 18px var(--vs-accent,#fff), 0 0 5px rgba(0,0,0,0.9); animation: vsPop 0.45s 0.32s both; }
+        .vs-big .vs-glyph { font-size:72px; }
+        .vs-flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:1; animation: vsFlash 0.55s 0.38s both; }
+        .vs-intro-dialog { animation: vsRise 0.4s 0.66s both; }
+        @keyframes vsSlideInL { from { opacity:0; transform:translateX(-120%); } to { opacity:1; transform:translateX(0); } }
+        @keyframes vsSlideInR { from { opacity:0; transform:translateX(120%); } to { opacity:1; transform:translateX(0); } }
+        @keyframes vsPop { 0% { opacity:0; transform:scale(0.2) rotate(-12deg); } 60% { opacity:1; transform:scale(1.25) rotate(3deg); } 100% { opacity:1; transform:scale(1) rotate(0); } }
+        @keyframes vsFlash { 0% { opacity:0; } 28% { opacity:0.8; } 100% { opacity:0; } }
+        @keyframes vsRise { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            .vs-fighter-player, .vs-fighter-foe, .vs-glyph, .vs-intro-dialog { animation: none !important; }
+            .vs-flash { display: none !important; }
+        }
         .story-action-btn {
             display:flex; align-items:center; gap:10px; padding:11px 14px;
             border: 2px solid #4a4f5e; border-radius: 0 !important;
@@ -2807,6 +2828,26 @@
         /* Lead tip ("Next: …") gets a soft gold accent — that's the only "what to do now" hint we surface. */
         .story-city-tip.next { color: #ffe5a3; border-color: #8a7330; background: linear-gradient(180deg, #2a230f 0%, #1a1408 100%); box-shadow: inset -2px -2px 0 0 #1a1408, inset 2px 2px 0 0 #4a3e1a; }
         .story-city-tip.next:hover { color: #fff7cc; border-color: #ffd54f; background: linear-gradient(180deg, #322a14 0%, #20180c 100%); }
+        /* Single objective line — the one "what to do next" signal. Full-width, gold,
+           always derived from the same gate the Continue/Gym buttons use so it can't lie.
+           Everything else in the rail is a quiet, optional "Suggested" chip. */
+        .story-city-objective {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 9px 12px; min-height: 44px; box-sizing: border-box;
+            font-family: var(--battle-font) !important; font-size: 12px; line-height: 1.25;
+            color: #fff7cc; cursor: pointer; text-align: left;
+            background: linear-gradient(180deg, #2f2710 0%, #1c1408 100%);
+            border: 1px solid #c9a227; border-radius: 4px;
+            box-shadow: inset -2px -2px 0 0 #16100a, inset 2px 2px 0 0 #5a4a1e;
+            transition: border-color 0.12s, background 0.12s;
+        }
+        .story-city-objective:hover { border-color: #ffd54f; background: linear-gradient(180deg, #3a3014 0%, #241a0a 100%); }
+        .story-city-objective:active { transform: translateY(1px); }
+        .story-city-objective .obj-kicker { font-size: 9px; letter-spacing: 0.12em; font-weight: bold; color: #ffd54f; background: rgba(255,213,79,0.14); border: 1px solid rgba(255,213,79,0.4); padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+        .story-city-objective .obj-ico { width: 18px; height: 18px; flex-shrink: 0; object-fit: contain; image-rendering: auto; }
+        .story-city-objective .obj-label { flex: 1; min-width: 0; font-weight: bold; }
+        .story-city-objective .obj-go { color: #ffd54f; flex-shrink: 0; font-size: 14px; }
+        .story-city-tips-sugg { width: 100%; margin: 4px 0 0; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a9bb0; opacity: 0.75; }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
             font-size: 10px; line-height: 1; letter-spacing: 0.5px;
@@ -8858,6 +8899,7 @@
     </div>
 
     <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="story professor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-professor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -8902,7 +8944,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relic Annex</span></h3>
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
@@ -9039,6 +9081,7 @@
     </div>
 
     <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="story crucible" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-crucible-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -9056,6 +9099,7 @@
     </div>
 
     <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="story frontier" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-frontier-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCrucible()" title="Back to The Crucible" aria-label="Back to The Crucible">&#8592;</button>
@@ -9070,6 +9114,7 @@
     </div>
 
     <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="story catch" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-catch-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -9292,9 +9337,9 @@
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
+                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             </div>
-            <p style="font-size:11px;color:#888;margin:6px 0 0;">Toggle artifacts off to disable their battle effects.</p>
+            <p style="font-size:11px;color:#888;margin:6px 0 0;">Relics rewrite battle rules for both sides. Toggle the ones you own on or off.</p>
         </div>
         <div id="story-artifact-hall-list" style="flex:1;overflow-y:auto;padding:12px;"></div>
         <div style="padding:10px;border-top:1px solid #333;">
@@ -11292,7 +11337,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Evolution Tutor</b> — Every region\'s evolution methods, one shop. Rare Candy waives the gold cost on a Pokémon\'s first evolution.<br>
 <b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 5,000G. Permanent for that mon.<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
-<b>Relic Annex</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides.<br>
+<b>Relics</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides (Browse to acquire, Manage to toggle).<br>
 <b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random IV vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
 <b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
@@ -11853,6 +11898,82 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else _startBgTrack(_pickRandomBgIdx(-1), 0);
             }
 
+            // ── Battle-theme override layer ──────────────────────────────
+            // Story trainer battles (gym leaders, rival, Elite Four, Champion,
+            // Mystery Figure) swap the continuous field BGM for a context-
+            // appropriate battle theme, then restore the field track — exactly
+            // where it left off — when the battle ends. A win plays a short
+            // victory fanfare before the field BGM returns. Wild/casual battles
+            // are untouched. Missing/blocked themes fall back to field BGM.
+            const BATTLE_THEMES = {
+                trainer: ['music/themes/Theme1.mp3', 'music/themes/Theme2.mp3'],
+                leader:  ['music/themes/Theme3.mp3'],
+                rival:   ['music/themes/Theme4.mp3'],
+                elite:   ['music/themes/Theme2.mp3', 'music/themes/Theme3.mp3'],
+                boss:    ['music/themes/boss_climax.mp3'],
+            };
+            const VICTORY_STING = 'music/themes/victory.mp3';
+            let _battleAudio = null;
+            let _battleMood = null;
+
+            function _stopBattleAudio() {
+                if (_battleAudio) {
+                    try { _battleAudio.onended = null; _battleAudio.onerror = null; _battleAudio.pause(); } catch (e) {}
+                    _battleAudio = null;
+                }
+                _battleMood = null;
+            }
+
+            function _playBattleTheme(mood) {
+                mood = mood || 'trainer';
+                if (!settings.musicEnabled) { _battleMood = mood; return; }
+                const list = BATTLE_THEMES[mood] || BATTLE_THEMES.trainer;
+                if (!list || !list.length) return;
+                if (_battleMood === mood && _battleAudio && !_battleAudio.paused) return;
+                _stopBattleAudio();
+                // Duck the field track: persist position, then pause so it can
+                // resume seamlessly once the battle ends.
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
+                    _persistBgState(true);
+                    try { bgAudio.pause(); } catch (e) {}
+                }
+                const src = list[Math.floor(Math.random() * list.length)];
+                try {
+                    const a = new Audio(src);
+                    a.loop = true;
+                    a.volume = _musicVol;
+                    a.onerror = () => { if (_battleAudio === a) { _battleAudio = null; _battleMood = null; _resumeOrStartBg(); } };
+                    _battleAudio = a;
+                    _battleMood = mood;
+                    a.play().catch(() => {});
+                } catch (e) { _battleAudio = null; _battleMood = null; }
+            }
+
+            function _endBattleTheme(won) {
+                const wasActive = !!(_battleAudio || _battleMood);
+                _stopBattleAudio();
+                if (!wasActive) return; // intro-less / wild battle — field BGM was never ducked
+                if (won && settings.musicEnabled) {
+                    // Victory fanfare over the (still-paused) field; field resumes when it ends.
+                    try {
+                        const a = new Audio(VICTORY_STING);
+                        a.loop = false;
+                        a.volume = _musicVol;
+                        const _resume = () => { if (_battleAudio === a) { _battleAudio = null; _battleMood = null; _resumeOrStartBg(); } };
+                        a.onended = _resume;
+                        a.onerror = _resume;
+                        _battleAudio = a;
+                        _battleMood = 'victory';
+                        a.play().catch(() => {});
+                        return;
+                    } catch (e) {}
+                }
+                if (settings.musicEnabled) {
+                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
+                    else _resumeOrStartBg();
+                }
+            }
+
             return {
                 init() {
                     if (_bgStarted) return;
@@ -11881,12 +12002,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _resumeOrStartBg();
                 },
 
+                // Story battle music: start a mood-appropriate theme (see
+                // _storyBattleMoodFor) at the battle intro; stop + restore field
+                // BGM (with a victory fanfare on a win) when the battle ends.
+                playBattleTheme(mood) { _playBattleTheme(mood); },
+                endBattleTheme(won) { _endBattleTheme(won); },
+
                 toggleMusic() {
                     settings.musicEnabled = !settings.musicEnabled;
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
                     if (settings.musicEnabled) {
-                        _resumeOrStartBg();
+                        if (_battleAudio) { _battleAudio.play().catch(() => {}); }
+                        else if (_battleMood && BATTLE_THEMES[_battleMood]) { _playBattleTheme(_battleMood); }
+                        else { _resumeOrStartBg(); }
                     } else {
+                        if (_battleAudio) { try { _battleAudio.pause(); } catch (e) {} }
                         if (bgAudio) {
                             _persistBgState(true);
                             try { bgAudio.pause(); } catch (e) {}
@@ -11903,6 +12033,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _musicVol = val;
                     if (bgAudio) bgAudio.volume = _musicVol;
                     if (_nextBgAudio) _nextBgAudio.volume = _musicVol;
+                    if (_battleAudio) _battleAudio.volume = _musicVol;
                 },
 
                 setSoundVolume(val) {
@@ -11959,31 +12090,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sfx.play().catch(() => {});
                 },
 
-                playCry(pokemonName, volume) {
+                playCry(pokemonName, volume, playbackRate) {
                     if (!settings.soundEnabled || !pokemonName) return;
-                    const sid = (typeof toShowdownSpriteId === 'function')
-                        ? toShowdownSpriteId(pokemonName.replace(/-Mega(-[XY])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, ''))
-                        : pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
-                    // Local-first: ~1200 cries ship in music/cries/ (works offline, no
-                    // third-party dependency). Fall back to the Showdown CDN only if a
-                    // species' local file is missing.
-                    const cry = new Audio(`music/cries/${sid}.mp3`);
-                    cry.volume = _soundVol * (volume || 0.5);
-                    cry.onerror = () => {
-                        const fb = new Audio(`https://play.pokemonshowdown.com/audio/cries/${sid}.mp3`);
-                        fb.volume = _soundVol * (volume || 0.5);
-                        fb.play().catch(() => {});
+                    const vol = _soundVol * (volume || 0.5);
+                    // Walk the local-first fallback chain (exact forme → base species → CDN),
+                    // advancing on each load error. cryCandidates() guarantees a vendored
+                    // base-species cry sits ahead of the CDN, so formes stay audible offline.
+                    const list = (typeof cryCandidates === 'function')
+                        ? cryCandidates(pokemonName)
+                        : [`music/cries/${pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '')}.mp3`];
+                    const playAt = (i) => {
+                        if (i >= list.length) return null;
+                        const a = new Audio(list[i]);
+                        a.volume = vol;
+                        if (playbackRate) a.playbackRate = playbackRate;
+                        a.onerror = () => { playAt(i + 1); };
+                        a.play().catch(() => {});
+                        return a;
                     };
-                    cry.play().catch(() => {});
-                    return cry;
+                    return playAt(0);
                 },
 
                 playFaintCry(pokemonName) {
                     if (!settings.soundEnabled || !pokemonName) return;
-                    const cry = this.playCry(pokemonName, 0.4);
-                    if (cry) {
-                        cry.playbackRate = 0.65;
-                    }
+                    // playbackRate is threaded through the fallback chain so the slowed faint
+                    // cry applies to whichever candidate actually plays (not just the first).
+                    this.playCry(pokemonName, 0.4, 0.65);
                     setTimeout(() => this.playUiSfx('faint', 0.7), 300);
                 }
             };
@@ -13368,8 +13500,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const LOCAL_SPRITE_MANIFEST = {
             'gen5ani': new Set(["abomasnow","abomasnow-mega","abra","absol","absol-mega","accelgor","aegislash","aerodactyl","aerodactyl-mega","aggron","aggron-mega","aipom","alakazam","alakazam-mega","alcremie","alcremie-gmax","alomomola","altaria","altaria-mega","amaura","ambipom","amoonguss","ampharos","ampharos-mega","anorith","appletun-gmax","araquanid","arbok","arcanine","arceus","arceus-bug","arceus-dark","arceus-dragon","arceus-electric","arceus-fairy","arceus-fighting","arceus-fire","arceus-flying","arceus-ghost","arceus-grass","arceus-ground","arceus-ice","arceus-poison","arceus-psychic","arceus-rock","arceus-steel","arceus-water","archen","archeops","arctovish","ariados","armaldo","aron","articuno","articuno-galar","audino","audino-mega","aurumoth","avalugg","axew","azelf","azumarill","azurill","bagon","baltoy","banette","banette-mega","barboach","barraskewda","basculegion","basculegion-f","basculin","bastiodon","beartic","beautifly","beedrill","beedrill-mega","beheeyem","beldum","bellossom","bellsprout","bergmite","bewear","bibarel","bidoof","binacle","bisharp","blacephalon","blastoise","blastoise-gmax","blastoise-mega","blaziken","blaziken-mega","blissey","blitzle","bonsly","bouffalant","bounsweet","braixen","braviary","breloom","bronzong","bronzor","bruxish","budew","buizel","bulbasaur","buneary","burmy","butterfree","butterfree-gmax","buzzwole","cacnea","cacturne","calyrex","calyrex-ice","camerupt","camerupt-mega","carbink","carnivine","carracosta","carvanha","castform","cawmodore","celebi","celesteela","centiskorch-gmax","chandelure","chansey","charizard","charizard-gmax","charizard-megax","charizard-megay","charjabug","charmander","charmeleon","chatot","cherrim","cherubi","chesnaught","chewtle","chikorita","chimchar","chimecho","chinchou","chingling","cinccino","cinderace-gmax","clamperl","clauncher","clawitzer","claydol","clefable","clefairy","cleffa","clodsire","cloyster","coalossal","coalossal-gmax","cobalion","cofagrigus","colossoil","combusken","comfey","conkeldurr","copperajah-gmax","corphish","corsola","corsola-galar","corviknight","corviknight-gmax","cottonee","crabominable","crabrawler","cradily","cranidos","crawdaunt","cresselia","croagunk","crobat","croconaw","crustle","cryogonal","cubchoo","cubone","cursola","cutiefly","cyndaquil","darkrai","darmanitan","darmanitan-zen","darumaka","dedenne","deerling","deino","delcatty","delibird","deoxys","deoxys-attack","deoxys-defense","deoxys-speed","dewgong","dewott","dewpider","dhelmise","dialga","dialga-origin","diancie","diancie-mega","diglett","diglett-alola","ditto","dodrio","doduo","donphan","dracovish","dracozolt","dragalge","dragapult","dragonair","dragonite","drakloak","drampa","drapion","dratini","drednaw","drednaw-gmax","drifblim","drifloon","drilbur","drowzee","druddigon","dubwool","ducklett","dugtrio","dugtrio-alola","dunsparce","duosion","duraludon","duraludon-gmax","durant","dusclops","dusknoir","duskull","dustox","dwebble","eelektrik","eelektross","eevee","eevee-gmax","eiscue","ekans","eldegoss","electabuzz","electivire","electrike","electrode","elekid","elgyem","emboar","emolga","empoleon","entei","escavalier","espeon","eternatus","eternatus-eternamax","excadrill","exeggcute","exeggutor","exeggutor-alola","exploud","falinks","farfetchd","farfetchd-galar","fearow","fennekin","feraligatr","ferroseed","ferrothorn","finneon","flabebe","flapple-gmax","flareon","fletchinder","fletchling","floatzel","florges","fluttermane","flygon","fomantis","foongus","forretress","fraxure","frillish","froakie","froslass","frosmoth","furret","gabite","gallade","gallade-mega","galvantula","garbodor","garbodor-gmax","garchomp","garchomp-mega","gardevoir","gardevoir-mega","gastly","gastrodon","genesect","gengar","gengar-gmax","gengar-mega","geodude","geodude-alola","gholdengo","gible","gigalith","girafarig","giratina","giratina-origin","glaceon","glalie","glalie-mega","glameow","glastrier","gligar","glimmet","gliscor","gloom","golbat","goldeen","golduck","golem","golem-alola","golett","golurk","goodra","goodra-hisui","goomy","gorebyss","gothita","gothitelle","gothorita","gougingfire","granbull","graveler","greattusk","greninja","grimer","grimer-alola","grimmsnarl","grimmsnarl-gmax","grookey","grotle","groudon","groudon-primal","grovyle","growlithe","grubbin","grumpig","gulpin","gumshoos","gurdurr","gyarados","gyarados-mega","happiny","hariyama","hatterene","hatterene-gmax","haunter","haxorus","heatmor","heatran","helioptile","heracross","heracross-mega","hippopotas","hippowdon","hitmonchan","hitmonlee","hitmontop","honchkrow","honedge","hoopa","hoopa-unbound","hoothoot","hoppip","horsea","houndoom","houndoom-mega","houndour","huntail","hydrapple","hydreigon","hypno","igglybuff","illumise","impidimp","incineroar","indeedee","indeedee-f","infernape","inkay","inteleon","inteleon-gmax","ironhands","ironmoth","ironthorns","ironvaliant","ivysaur","jellicent","jirachi","jolteon","joltik","jumpluff","jynx","kabuto","kabutops","kadabra","kakuna","kangaskhan","kangaskhan-mega","karrablast","kartana","kecleon","keldeo","kingdra","kingler","kingler-gmax","klang","klefki","klink","klinklang","koffing","komala","krabby","kricketot","kricketune","krokorok","krookodile","kyogre","kyogre-primal","kyurem","kyurem-black","kyurem-white","lairon","lampent","landorus","landorus-therian","lanturn","lapras","lapras-gmax","larvesta","larvitar","latias","latias-mega","latios","latios-mega","leafeon","leavanny","ledian","ledyba","lickilicky","lickitung","liepard","lileep","lilligant","lilligant-hisui","lillipup","linoone","linoone-galar","litleo","litten","litwick","lopunny","lopunny-mega","lotad","lucario","lucario-mega","ludicolo","lugia","lumineon","lunala","lunatone","lurantis","luvdisc","luxray","lycanroc","lycanroc-dusk","lycanroc-midnight","machamp","machamp-gmax","machoke","machop","magby","magcargo","magearna","magikarp","magmar","magmortar","magnemite","magneton","magnezone","makuhita","malaconda","malamar","mamoswine","manaphy","mandibuzz","manectric","manectric-mega","mankey","mantine","mantyke","maractus","mareep","marill","marowak","marowak-alola","marshadow","marshtomp","masquerain","maushold","maushold-four","mawile","mawile-mega","medicham","medicham-mega","meditite","meganium","melmetal","melmetal-gmax","meloetta","meltan","meowth","meowth-alola","meowth-gmax","mesprit","metagross","metagross-mega","metang","mew","mewtwo","mewtwo-megax","mewtwo-megay","mienfoo","mienshao","mightyena","milotic","miltank","mimejr","mimikyu","minccino","minior","minun","miraidon","misdreavus","mismagius","mollux","moltres","monferno","morelull","morpeko","mothim","mrmime","mrrime","mudbray","mudkip","mudsdale","muk","muk-alola","munchlax","munna","murkrow","musharna","naganadel","natu","necrozma","necrozma-ultra","necturna","nidoking","nidoqueen","nihilego","nincada","ninetales","ninetales-alola","ninjask","noctowl","noibat","noivern","nosepass","numel","obstagoon","octillery","oddish","omanyte","omastar","onix","orbeetle-gmax","oricorio-pau","oricorio-sensu","oshawott","overqwil","pachirisu","pajantom","palkia","palossand","palpitoad","pancham","pangoro","panpour","pansage","pansear","paras","parasect","patrat","pawniard","pelipper","perrserker","persian","persian-alola","petilil","phanpy","phantump","pheromosa","phione","pichu","pidgeot","pidgeot-mega","pidgey","pidove","pignite","pikachu","pikachu-gmax","pikachu-starter","pikipek","piloswine","pincurchin","pineco","pinsir","pinsir-mega","piplup","plasmanta","plusle","politoed","poliwag","poliwrath","ponyta","ponyta-galar","poochyena","porygon","porygon2","primarina","primeape","prinplup","probopass","psyduck","purrloin","purugly","pyroar","pyukumuku","quagsire","quilladin","qwilfish","raboot","raichu","raichu-alola","raikou","ralts","rampardos","rapidash","raticate","raticate-alola","rattata","rattata-alola","rayquaza","rayquaza-mega","regice","regidrago","regigigas","regirock","registeel","relicanth","remoraid","reshiram","reuniclus","rhydon","rhyhorn","rhyperior","ribombee","rillaboom-gmax","riolu","rockruff","roggenrola","roselia","roserade","rotom","rotom-fan","rotom-frost","rotom-heat","rotom-mow","rotom-wash","rowlet","rufflet","runerigus","sableye","sableye-mega","salamence","salamence-mega","samurott","samurott-hisui","sandaconda","sandaconda-gmax","sandile","sandshrew","sandshrew-alola","sandslash","sandslash-alola","sandygast","sawk","sawsbuck","sceptile","sceptile-mega","scizor","scizor-mega","scolipede","scorbunny","scrafty","scraggy","scyther","seadra","seaking","seedot","seel","seismitoad","sentret","serperior","servine","seviper","sewaddle","sharpedo","sharpedo-mega","shaymin","shaymin-sky","shedinja","shelgon","shellder","shellos","shelmet","shieldon","shiftry","shiinotic","shinx","shroomish","shuckle","shuppet","sigilyph","silvally","silvally-bug","silvally-dark","silvally-dragon","silvally-electric","silvally-fairy","silvally-fighting","silvally-fire","silvally-flying","silvally-ghost","silvally-grass","silvally-ground","silvally-ice","silvally-poison","silvally-psychic","silvally-rock","silvally-steel","silvally-water","simipour","simisage","simisear","skarmory","skiddo","skitty","skorupi","skuntank","slaking","slakoth","sliggoo","sliggoo-hisui","slowbro","slowbro-galar","slowbro-mega","slowking","slowking-galar","slowpoke","slugma","slurpuff","smeargle","smoochum","sneasel","snivy","snorlax","snorlax-gmax","snorunt","snover","snubbull","solgaleo","solosis","solrock","spearow","spheal","spinarak","spinda","spiritomb","spoink","spritzee","squirtle","stakataka","stantler","staraptor","staravia","starly","starmie","staryu","steelix","steelix-mega","stonjourner","stoutland","stufful","stunfisk","stunky","sudowoodo","suicune","sunflora","sunkern","surskit","swablu","swalot","swampert","swampert-mega","swanna","swellow","swinub","swirlix","swoobat","sylveon","taillow","talonflame","tangela","tangrowth","tapubulu","tapukoko","tapulele","tatsugiri","tauros","teddiursa","tentacool","tentacruel","tepig","terapagos","terrakion","throh","thundurus","thundurus-therian","thwackey","timburr","tirtouga","togedemaru","togekiss","togepi","togetic","tomohawk","torchic","torkoal","tornadus","tornadus-therian","torterra","totodile","toucannon","toxapex","toxicroak","toxtricity","toxtricity-gmax","toxtricity-lowkey-gmax","trapinch","treecko","trevenant","tropius","trubbish","turtonator","turtwig","tympole","typenull","typhlosion","tyranitar","tyranitar-mega","tyrantrum","tyrogue","tyrunt","umbreon","unfezant","unown","ursaluna","ursaluna-bloodmoon","ursaring","urshifu-gmax","urshifu-rapidstrike-gmax","uxie","vanillite","vanilluxe","vaporeon","venipede","venomoth","venonat","venusaur","venusaur-gmax","venusaur-mega","vespiquen","vibrava","victini","victreebel","vigoroth","vikavolt","vileplume","virizion","vivillon","volbeat","volcanion","volcarona","volkraken","voltorb","vullaby","vulpix","wailmer","wailord","walrein","wartortle","watchog","weavile","weedle","weepinbell","weezing","weezing-galar","whimsicott","whirlipede","whiscash","whismur","wigglytuff","wimpod","wingull","wishiwashi","wobbuffet","woobat","wooper","wooper-paldea","wormadam","wormadam-sandy","wormadam-trash","wynaut","xatu","xerneas","xurkitree","yamask","yanma","yanmega","yungoos","yveltal","zacian","zacian-crowned","zamazenta","zamazenta-crowned","zangoose","zapdos","zapdos-galar","zebstrika","zekrom","zeraora","zigzagoon","zoroark","zoroark-hisui","zorua","zubat","zweilous","zygarde","zygarde-10"]),
             'gen5ani-shiny': new Set(["abomasnow","abomasnow-mega","abra","absol","absol-mega","accelgor","aegislash","aerodactyl","aerodactyl-mega","aggron","aggron-mega","aipom","alakazam","alakazam-mega","alcremie","alcremie-gmax","alomomola","altaria","altaria-mega","amaura","ambipom","amoonguss","ampharos","ampharos-mega","anorith","appletun-gmax","araquanid","arbok","arcanine","arceus","arceus-bug","arceus-dark","arceus-dragon","arceus-electric","arceus-fairy","arceus-fighting","arceus-fire","arceus-flying","arceus-ghost","arceus-grass","arceus-ground","arceus-ice","arceus-poison","arceus-psychic","arceus-rock","arceus-steel","arceus-water","archen","archeops","arctovish","ariados","armaldo","aron","articuno","articuno-galar","audino","audino-mega","aurumoth","avalugg","axew","azelf","azumarill","azurill","bagon","baltoy","banette","banette-mega","barboach","barraskewda","basculegion","basculegion-f","basculin","bastiodon","beartic","beautifly","beedrill","beedrill-mega","beheeyem","beldum","bellossom","bellsprout","bergmite","bewear","bibarel","bidoof","binacle","bisharp","blacephalon","blastoise","blastoise-gmax","blastoise-mega","blaziken","blaziken-mega","blissey","blitzle","bonsly","bouffalant","bounsweet","braixen","braviary","breloom","bronzong","bronzor","bruxish","budew","buizel","bulbasaur","buneary","burmy","butterfree","butterfree-gmax","buzzwole","cacnea","cacturne","calyrex","calyrex-ice","camerupt","camerupt-mega","carbink","carnivine","carracosta","carvanha","castform","cawmodore","celebi","celesteela","centiskorch-gmax","chandelure","chansey","charizard","charizard-gmax","charizard-megax","charizard-megay","charjabug","charmander","charmeleon","chatot","cherrim","cherubi","chewtle","chikorita","chimchar","chimecho","chinchou","chingling","cinccino","cinderace-gmax","clamperl","clauncher","clawitzer","claydol","clefable","clefairy","cleffa","clodsire","cloyster","coalossal","coalossal-gmax","cobalion","cofagrigus","colossoil","combusken","comfey","conkeldurr","copperajah-gmax","corphish","corsola","corsola-galar","corviknight","corviknight-gmax","cottonee","crabominable","crabrawler","cradily","cranidos","crawdaunt","cresselia","croagunk","crobat","croconaw","crustle","cryogonal","cubchoo","cubone","cursola","cutiefly","cyndaquil","darkrai","darmanitan","darmanitan-zen","darumaka","dedenne","deerling","deino","delcatty","delibird","deoxys","deoxys-attack","deoxys-defense","deoxys-speed","dewgong","dewott","dewpider","dhelmise","dialga","dialga-origin","diancie","diancie-mega","diglett","diglett-alola","ditto","dodrio","doduo","donphan","dracovish","dracozolt","dragalge","dragapult","dragonair","dragonite","drakloak","drampa","drapion","dratini","drednaw","drednaw-gmax","drifblim","drifloon","drilbur","drowzee","druddigon","dubwool","ducklett","dugtrio","dugtrio-alola","dunsparce","duosion","duraludon","duraludon-gmax","durant","dusclops","dusknoir","duskull","dustox","dwebble","eelektrik","eelektross","eevee","eevee-gmax","eiscue","ekans","eldegoss","electabuzz","electivire","electrike","electrode","elekid","elgyem","emboar","emolga","empoleon","entei","escavalier","espeon","eternatus","eternatus-eternamax","excadrill","exeggcute","exeggutor","exeggutor-alola","exploud","farfetchd","farfetchd-galar","fearow","fennekin","feraligatr","ferroseed","ferrothorn","finneon","flabebe","flapple-gmax","flareon","fletchinder","fletchling","floatzel","florges","fluttermane","flygon","fomantis","foongus","forretress","fraxure","frillish","froakie","froslass","frosmoth","furret","gabite","gallade","gallade-mega","galvantula","garbodor","garbodor-gmax","garchomp","garchomp-mega","gardevoir","gardevoir-mega","gastly","gastrodon","genesect","gengar","gengar-gmax","gengar-mega","geodude","geodude-alola","gholdengo","gible","gigalith","girafarig","giratina","giratina-origin","glaceon","glalie","glalie-mega","glameow","glastrier","gligar","glimmet","gliscor","gloom","golbat","goldeen","golduck","golem","golem-alola","golett","golurk","goodra","goodra-hisui","goomy","gorebyss","gothita","gothitelle","gothorita","gougingfire","granbull","graveler","greattusk","greninja","grimer","grimer-alola","grimmsnarl","grimmsnarl-gmax","grookey","grotle","groudon","groudon-primal","grovyle","growlithe","grubbin","grumpig","gulpin","gumshoos","gurdurr","gyarados","gyarados-mega","happiny","hariyama","hatterene","hatterene-gmax","haunter","haxorus","heatmor","heatran","helioptile","heracross","heracross-mega","hippopotas","hippowdon","hitmonchan","hitmonlee","hitmontop","honchkrow","honedge","hoopa","hoopa-unbound","hoothoot","hoppip","horsea","houndoom","houndoom-mega","houndour","huntail","hydrapple","hydreigon","hypno","igglybuff","illumise","impidimp","incineroar","indeedee","indeedee-f","infernape","inkay","inteleon","inteleon-gmax","ironhands","ironmoth","ironthorns","ironvaliant","ivysaur","jellicent","jirachi","jolteon","joltik","jumpluff","jynx","kabuto","kabutops","kadabra","kakuna","kangaskhan","kangaskhan-mega","karrablast","kartana","kecleon","keldeo","kingdra","kingler","kingler-gmax","klang","klefki","klink","klinklang","koffing","komala","krabby","kricketot","kricketune","krokorok","krookodile","kyogre","kyogre-primal","kyurem","kyurem-black","kyurem-white","lairon","lampent","landorus","landorus-therian","lanturn","lapras","lapras-gmax","larvesta","larvitar","latias","latias-mega","latios","latios-mega","leafeon","leavanny","ledian","ledyba","lickilicky","lickitung","liepard","lileep","lilligant","lilligant-hisui","lillipup","linoone","linoone-galar","litleo","litten","litwick","lopunny","lopunny-mega","lotad","lucario","lucario-mega","ludicolo","lugia","lumineon","lunala","lunatone","lurantis","luvdisc","luxray","lycanroc","lycanroc-dusk","lycanroc-midnight","machamp","machamp-gmax","machoke","machop","magby","magcargo","magearna","magikarp","magmar","magmortar","magnemite","magneton","magnezone","makuhita","malaconda","malamar","mamoswine","manaphy","mandibuzz","manectric","manectric-mega","mankey","mantine","mantyke","maractus","mareep","marill","marowak","marowak-alola","marshadow","marshtomp","masquerain","maushold","maushold-four","mawile","mawile-mega","medicham","medicham-mega","meditite","meganium","melmetal","melmetal-gmax","meloetta","meltan","meowth","meowth-alola","meowth-gmax","mesprit","metagross","metagross-mega","metang","mew","mewtwo","mewtwo-megax","mewtwo-megay","mienfoo","mienshao","mightyena","milotic","miltank","mimejr","mimikyu","minccino","minior","minun","miraidon","misdreavus","mismagius","mollux","moltres","monferno","morelull","morpeko","mothim","mrmime","mrrime","mudbray","mudkip","mudsdale","muk","muk-alola","munchlax","munna","murkrow","musharna","naganadel","natu","necrozma","necrozma-ultra","necturna","nidoking","nidoqueen","nihilego","nincada","ninetales","ninetales-alola","ninjask","noctowl","noibat","nosepass","numel","obstagoon","octillery","oddish","omanyte","omastar","onix","orbeetle-gmax","oricorio-pau","oricorio-sensu","oshawott","overqwil","pachirisu","pajantom","palkia","palossand","palpitoad","pancham","pangoro","panpour","pansage","pansear","paras","parasect","patrat","pawniard","pelipper","perrserker","persian","persian-alola","petilil","phanpy","phantump","pheromosa","phione","pichu","pidgeot","pidgeot-mega","pidgey","pidove","pignite","pikachu","pikachu-gmax","pikachu-starter","pikipek","piloswine","pincurchin","pineco","pinsir","pinsir-mega","piplup","plasmanta","plusle","politoed","poliwag","poliwrath","ponyta","ponyta-galar","poochyena","porygon","porygon2","primarina","primeape","prinplup","probopass","psyduck","purrloin","purugly","pyroar","pyukumuku","quagsire","quilladin","qwilfish","raboot","raichu","raichu-alola","raikou","ralts","rampardos","rapidash","raticate","raticate-alola","rattata","rattata-alola","rayquaza","rayquaza-mega","regice","regidrago","regigigas","regirock","registeel","relicanth","remoraid","reshiram","reuniclus","rhydon","rhyhorn","rhyperior","ribombee","rillaboom-gmax","riolu","rockruff","roggenrola","roselia","roserade","rotom","rotom-fan","rotom-frost","rotom-heat","rotom-mow","rotom-wash","rowlet","rufflet","runerigus","sableye","sableye-mega","salamence","salamence-mega","samurott","samurott-hisui","sandaconda","sandaconda-gmax","sandile","sandshrew","sandshrew-alola","sandslash","sandslash-alola","sandygast","sawk","sawsbuck","sceptile","sceptile-mega","scizor","scizor-mega","scolipede","scorbunny","scrafty","scraggy","scyther","seadra","seaking","seedot","seel","seismitoad","sentret","serperior","servine","seviper","sewaddle","sharpedo","sharpedo-mega","shaymin","shaymin-sky","shedinja","shelgon","shellder","shellos","shelmet","shieldon","shiftry","shiinotic","shinx","shroomish","shuckle","shuppet","sigilyph","silvally","silvally-bug","silvally-dark","silvally-dragon","silvally-electric","silvally-fairy","silvally-fighting","silvally-fire","silvally-flying","silvally-ghost","silvally-grass","silvally-ground","silvally-ice","silvally-poison","silvally-psychic","silvally-rock","silvally-steel","silvally-water","simipour","simisage","simisear","skarmory","skiddo","skitty","skorupi","skuntank","slaking","slakoth","sliggoo","sliggoo-hisui","slowbro","slowbro-galar","slowbro-mega","slowking","slowking-galar","slowpoke","slugma","slurpuff","smeargle","smoochum","sneasel","snivy","snorlax","snorlax-gmax","snorunt","snover","snubbull","solgaleo","solosis","solrock","spearow","spheal","spinarak","spinda","spiritomb","spoink","spritzee","squirtle","stakataka","stantler","staraptor","staravia","starly","starmie","staryu","steelix","steelix-mega","stonjourner","stoutland","stufful","stunfisk","stunky","sudowoodo","suicune","sunflora","sunkern","surskit","swablu","swalot","swampert","swampert-mega","swanna","swellow","swinub","swirlix","swoobat","sylveon","taillow","talonflame","tangela","tangrowth","tapubulu","tapukoko","tapulele","tatsugiri","tauros","teddiursa","tentacool","tentacruel","tepig","terapagos","terrakion","throh","thundurus","thundurus-therian","thwackey","timburr","tirtouga","togedemaru","togekiss","togepi","togetic","tomohawk","torchic","torkoal","tornadus","tornadus-therian","torterra","totodile","toucannon","toxapex","toxicroak","toxtricity","toxtricity-gmax","toxtricity-lowkey-gmax","trapinch","treecko","trevenant","tropius","trubbish","turtonator","turtwig","tympole","typenull","typhlosion","tyranitar","tyranitar-mega","tyrantrum","tyrogue","tyrunt","umbreon","unfezant","unown","ursaluna","ursaluna-bloodmoon","ursaring","urshifu-gmax","urshifu-rapidstrike-gmax","uxie","vanillite","vanilluxe","vaporeon","venipede","venomoth","venonat","venusaur","venusaur-gmax","venusaur-mega","vespiquen","vibrava","victini","victreebel","vigoroth","vikavolt","vileplume","virizion","vivillon","volbeat","volcanion","volcarona","volkraken","voltorb","vullaby","vulpix","wailmer","wailord","walrein","wartortle","watchog","weavile","weedle","weepinbell","weezing","weezing-galar","whimsicott","whirlipede","whiscash","whismur","wigglytuff","wimpod","wingull","wishiwashi","wobbuffet","woobat","wooper","wooper-paldea","wormadam","wormadam-sandy","wormadam-trash","wynaut","xatu","xerneas","xurkitree","yamask","yanma","yanmega","yungoos","yveltal","zacian","zacian-crowned","zamazenta","zamazenta-crowned","zangoose","zapdos","zapdos-galar","zebstrika","zekrom","zeraora","zigzagoon","zoroark","zoroark-hisui","zorua","zubat","zweilous","zygarde","zygarde-10"]),
-            'gen5ani-back': new Set(["abomasnow-mega","absol-mega","aerodactyl-mega","aggron-mega","alakazam-mega","alcremie-gmax","altaria-mega","ampharos-mega","appletun-gmax","audino-mega","banette-mega","beedrill-mega","blastoise-mega","blaziken-mega","butterfree-gmax","camerupt-mega","centiskorch-gmax","charizard-gmax","charizard-megax","charizard-megay","coalossal-gmax","copperajah-gmax","corviknight-gmax","diancie-mega","drednaw-gmax","duraludon-gmax","eevee-gmax","eternatus-eternamax","flapple-gmax","gallade-mega","garbodor-gmax","garchomp-mega","gardevoir-mega","gengar-gmax","gengar-mega","glalie-mega","grimmsnarl-gmax","groudon-primal","gyarados-mega","hatterene-gmax","heracross-mega","houndoom-mega","kangaskhan-mega","kingler-gmax","kyogre-primal","lapras-gmax","latias-mega","latios-mega","lopunny-mega","lucario-mega","machamp-gmax","manectric-mega","mawile-mega","medicham-mega","melmetal-gmax","meowth-gmax","metagross-mega","mewtwo-megax","mewtwo-megay","orbeetle-gmax","pidgeot-mega","pikachu-gmax","pinsir-mega","rayquaza-mega","sableye-mega","salamence-mega","sandaconda-gmax","sceptile-mega","scizor-mega","sharpedo-mega","slowbro-mega","snorlax-gmax","steelix-mega","swampert-mega","toxtricity-gmax","toxtricity-lowkey-gmax","tyranitar-mega","venusaur-mega"]),
-            'gen5ani-back-shiny': new Set(["abomasnow-mega","absol-mega","aerodactyl-mega","aggron-mega","alakazam-mega","alcremie-gmax","altaria-mega","ampharos-mega","appletun-gmax","audino-mega","banette-mega","beedrill-mega","blastoise-mega","blaziken-mega","butterfree-gmax","camerupt-mega","centiskorch-gmax","charizard-gmax","charizard-megax","charizard-megay","coalossal-gmax","copperajah-gmax","corviknight-gmax","diancie-mega","drednaw-gmax","duraludon-gmax","eevee-gmax","eternatus-eternamax","flapple-gmax","gallade-mega","garbodor-gmax","garchomp-mega","gardevoir-mega","gengar-gmax","gengar-mega","glalie-mega","grimmsnarl-gmax","groudon-primal","gyarados-mega","hatterene-gmax","heracross-mega","houndoom-mega","kangaskhan-mega","kingler-gmax","kyogre-primal","lapras-gmax","latias-mega","latios-mega","lopunny-mega","lucario-mega","machamp-gmax","manectric-mega","mawile-mega","medicham-mega","melmetal-gmax","meowth-gmax","metagross-mega","mewtwo-megax","mewtwo-megay","orbeetle-gmax","pidgeot-mega","pikachu-gmax","pinsir-mega","rayquaza-mega","sableye-mega","salamence-mega","sandaconda-gmax","sceptile-mega","scizor-mega","sharpedo-mega","slowbro-mega","snorlax-gmax","steelix-mega","swampert-mega","toxtricity-gmax","toxtricity-lowkey-gmax","tyranitar-mega","venusaur-mega"]),
+            'gen5ani-back': new Set(["abomasnow","abomasnow-mega","abra","absol","absol-mega","accelgor","aegislash","aerodactyl","aerodactyl-mega","aggron","aggron-mega","aipom","alakazam","alakazam-mega","alcremie","alcremie-gmax","alomomola","altaria","altaria-mega","amaura","ambipom","amoonguss","ampharos","ampharos-mega","anorith","appletun-gmax","araquanid","arbok","arcanine","arceus","archen","archeops","arctovish","ariados","armaldo","aron","articuno","audino","audino-mega","avalugg","axew","azelf","azumarill","azurill","bagon","baltoy","banette","banette-mega","barboach","barraskewda","basculegion","basculin","bastiodon","beartic","beautifly","beedrill","beedrill-mega","beheeyem","beldum","bellossom","bellsprout","bergmite","bewear","bibarel","bidoof","binacle","bisharp","blacephalon","blastoise","blastoise-mega","blaziken","blaziken-mega","blissey","blitzle","bonsly","bouffalant","bounsweet","braixen","braviary","breloom","bronzong","bronzor","bruxish","budew","buizel","bulbasaur","buneary","burmy","butterfree","butterfree-gmax","buzzwole","cacnea","cacturne","calyrex","camerupt","camerupt-mega","carbink","carnivine","carracosta","carvanha","castform","celebi","celesteela","centiskorch-gmax","chandelure","chansey","charizard","charizard-gmax","charizard-megax","charizard-megay","charjabug","charmander","charmeleon","chatot","cherrim","cherubi","chesnaught","chewtle","chikorita","chimchar","chimecho","chinchou","chingling","cinccino","clamperl","clauncher","clawitzer","claydol","clefable","clefairy","cleffa","clodsire","cloyster","coalossal","coalossal-gmax","cobalion","cofagrigus","combusken","comfey","conkeldurr","copperajah-gmax","corphish","corsola","corviknight","corviknight-gmax","cottonee","crabominable","crabrawler","cradily","cranidos","crawdaunt","cresselia","croagunk","crobat","croconaw","crustle","cryogonal","cubchoo","cubone","cursola","cutiefly","cyndaquil","darkrai","darmanitan","darumaka","dedenne","deerling","deino","delcatty","delibird","deoxys","dewgong","dewott","dewpider","dhelmise","dialga","diancie","diancie-mega","diglett","ditto","dodrio","doduo","donphan","dracovish","dracozolt","dragalge","dragapult","dragonair","dragonite","drakloak","drampa","drapion","dratini","drednaw","drednaw-gmax","drifblim","drifloon","drilbur","drowzee","druddigon","dubwool","ducklett","dugtrio","dunsparce","duosion","duraludon","duraludon-gmax","durant","dusclops","dusknoir","duskull","dustox","dwebble","eelektrik","eelektross","eevee","eevee-gmax","eiscue","ekans","eldegoss","electabuzz","electivire","electrike","electrode","elekid","elgyem","emboar","emolga","empoleon","entei","escavalier","espeon","eternatus","eternatus-eternamax","excadrill","exeggcute","exeggutor","exploud","falinks","farfetchd","fearow","fennekin","feraligatr","ferroseed","ferrothorn","finneon","flabebe","flapple-gmax","flareon","fletchinder","fletchling","floatzel","florges","fluttermane","flygon","fomantis","foongus","forretress","fraxure","frillish","froakie","froslass","frosmoth","furret","gabite","gallade","gallade-mega","galvantula","garbodor","garbodor-gmax","garchomp","garchomp-mega","gardevoir","gardevoir-mega","gastly","gastrodon","genesect","gengar","gengar-gmax","gengar-mega","geodude","gholdengo","gible","gigalith","girafarig","giratina","glaceon","glalie","glalie-mega","glameow","glastrier","gligar","glimmet","gliscor","gloom","golbat","goldeen","golduck","golem","golett","golurk","goodra","goomy","gorebyss","gothita","gothitelle","gothorita","gougingfire","granbull","graveler","greattusk","greninja","grimer","grimmsnarl","grimmsnarl-gmax","grookey","grotle","groudon","groudon-primal","grovyle","growlithe","grubbin","grumpig","gulpin","gumshoos","gurdurr","gyarados","gyarados-mega","happiny","hariyama","hatterene","hatterene-gmax","haunter","haxorus","heatmor","heatran","helioptile","heracross","heracross-mega","hippopotas","hippowdon","hitmonchan","hitmonlee","hitmontop","honchkrow","honedge","hoopa","hoothoot","hoppip","horsea","houndoom","houndoom-mega","houndour","huntail","hydrapple","hydreigon","hypno","igglybuff","illumise","impidimp","incineroar","indeedee","infernape","inkay","inteleon","ivysaur","jellicent","jirachi","jolteon","joltik","jumpluff","jynx","kabuto","kabutops","kadabra","kakuna","kangaskhan","kangaskhan-mega","karrablast","kartana","kecleon","keldeo","kingdra","kingler","kingler-gmax","klang","klefki","klink","klinklang","koffing","komala","krabby","kricketot","kricketune","krokorok","krookodile","kyogre","kyogre-primal","kyurem","lairon","lampent","landorus","lanturn","lapras","lapras-gmax","larvesta","larvitar","latias","latias-mega","latios","latios-mega","leafeon","leavanny","ledian","ledyba","lickilicky","lickitung","liepard","lileep","lilligant","lillipup","linoone","litleo","litten","litwick","lopunny","lopunny-mega","lotad","lucario","lucario-mega","ludicolo","lugia","lumineon","lunala","lunatone","lurantis","luvdisc","luxray","lycanroc","machamp","machamp-gmax","machoke","machop","magby","magcargo","magearna","magikarp","magmar","magmortar","magnemite","magneton","magnezone","makuhita","malamar","mamoswine","manaphy","mandibuzz","manectric","manectric-mega","mankey","mantine","mantyke","maractus","mareep","marill","marowak","marshadow","marshtomp","masquerain","maushold","mawile","mawile-mega","medicham","medicham-mega","meditite","meganium","melmetal","melmetal-gmax","meloetta","meltan","meowth","meowth-gmax","mesprit","metagross","metagross-mega","metang","mew","mewtwo","mewtwo-megax","mewtwo-megay","mienfoo","mienshao","mightyena","milotic","miltank","mimejr","mimikyu","minccino","minior","minun","misdreavus","mismagius","moltres","monferno","morelull","morpeko","mothim","mrmime","mrrime","mudbray","mudkip","mudsdale","muk","munchlax","munna","murkrow","musharna","naganadel","natu","necrozma","nidoking","nidoqueen","nihilego","nincada","ninetales","ninjask","noctowl","noibat","noivern","nosepass","numel","obstagoon","octillery","oddish","omanyte","omastar","onix","orbeetle-gmax","oshawott","overqwil","pachirisu","palkia","palossand","palpitoad","pancham","pangoro","panpour","pansage","pansear","paras","parasect","patrat","pawniard","pelipper","perrserker","persian","petilil","phanpy","phantump","pheromosa","phione","pichu","pidgeot","pidgeot-mega","pidgey","pidove","pignite","pikachu","pikachu-gmax","pikipek","piloswine","pincurchin","pineco","pinsir","pinsir-mega","piplup","plusle","politoed","poliwag","poliwrath","ponyta","poochyena","porygon","porygon2","primarina","primeape","prinplup","probopass","psyduck","purrloin","purugly","pyroar","pyukumuku","quagsire","quilladin","qwilfish","raboot","raichu","raikou","ralts","rampardos","rapidash","raticate","rattata","rayquaza","rayquaza-mega","regice","regidrago","regigigas","regirock","registeel","relicanth","remoraid","reshiram","reuniclus","rhydon","rhyhorn","rhyperior","ribombee","riolu","rockruff","roggenrola","roselia","roserade","rotom","rowlet","rufflet","runerigus","sableye","sableye-mega","salamence","salamence-mega","samurott","sandaconda","sandaconda-gmax","sandile","sandshrew","sandslash","sandygast","sawk","sawsbuck","sceptile","sceptile-mega","scizor","scizor-mega","scolipede","scorbunny","scrafty","scraggy","scyther","seadra","seaking","seedot","seel","seismitoad","sentret","serperior","servine","seviper","sewaddle","sharpedo","sharpedo-mega","shaymin","shedinja","shelgon","shellder","shellos","shelmet","shieldon","shiftry","shiinotic","shinx","shroomish","shuckle","shuppet","sigilyph","silvally","simipour","simisage","simisear","skarmory","skiddo","skitty","skorupi","skuntank","slaking","slakoth","sliggoo","slowbro","slowbro-mega","slowking","slowpoke","slugma","slurpuff","smeargle","smoochum","sneasel","snivy","snorlax","snorlax-gmax","snorunt","snover","snubbull","solgaleo","solosis","solrock","spearow","spheal","spinarak","spinda","spiritomb","spoink","spritzee","squirtle","stakataka","stantler","staraptor","staravia","starly","starmie","staryu","steelix","steelix-mega","stonjourner","stoutland","stufful","stunfisk","stunky","sudowoodo","suicune","sunflora","sunkern","surskit","swablu","swalot","swampert","swampert-mega","swanna","swellow","swinub","swirlix","swoobat","sylveon","taillow","talonflame","tangela","tangrowth","tapubulu","tapukoko","tapulele","tatsugiri","tauros","teddiursa","tentacool","tentacruel","tepig","terrakion","throh","thundurus","thwackey","timburr","tirtouga","togedemaru","togekiss","togepi","togetic","torchic","torkoal","tornadus","torterra","totodile","toucannon","toxapex","toxicroak","toxtricity","toxtricity-gmax","toxtricity-lowkey-gmax","trapinch","treecko","trevenant","tropius","trubbish","turtonator","turtwig","tympole","typenull","typhlosion","tyranitar","tyranitar-mega","tyrantrum","tyrogue","tyrunt","umbreon","unfezant","unown","ursaluna","ursaring","uxie","vanillite","vanilluxe","vaporeon","venipede","venomoth","venonat","venusaur","venusaur-mega","vespiquen","vibrava","victini","victreebel","vigoroth","vikavolt","vileplume","virizion","vivillon","volbeat","volcanion","volcarona","voltorb","vullaby","vulpix","wailmer","wailord","walrein","wartortle","watchog","weavile","weedle","weepinbell","weezing","whimsicott","whirlipede","whiscash","whismur","wigglytuff","wimpod","wingull","wishiwashi","wobbuffet","woobat","wooper","wormadam","wynaut","xatu","xerneas","xurkitree","yamask","yanma","yanmega","yungoos","yveltal","zacian","zamazenta","zangoose","zapdos","zebstrika","zekrom","zeraora","zigzagoon","zoroark","zorua","zubat","zweilous","zygarde"]),
+            'gen5ani-back-shiny': new Set(["abomasnow","abomasnow-mega","abra","absol","absol-mega","accelgor","aegislash","aerodactyl","aerodactyl-mega","aggron","aggron-mega","aipom","alakazam","alakazam-mega","alcremie","alcremie-gmax","alomomola","altaria","altaria-mega","amaura","ambipom","amoonguss","ampharos","ampharos-mega","anorith","appletun-gmax","araquanid","arbok","arcanine","arceus","archen","archeops","arctovish","ariados","armaldo","aron","articuno","audino","audino-mega","avalugg","axew","azelf","azumarill","azurill","bagon","baltoy","banette","banette-mega","barboach","barraskewda","basculegion","basculin","bastiodon","beartic","beautifly","beedrill","beedrill-mega","beheeyem","beldum","bellossom","bellsprout","bergmite","bewear","bibarel","bidoof","binacle","bisharp","blacephalon","blastoise","blastoise-mega","blaziken","blaziken-mega","blissey","blitzle","bonsly","bouffalant","bounsweet","braixen","braviary","breloom","bronzong","bronzor","bruxish","budew","buizel","bulbasaur","buneary","burmy","butterfree","butterfree-gmax","buzzwole","cacnea","cacturne","calyrex","camerupt","camerupt-mega","carbink","carnivine","carracosta","carvanha","castform","celebi","celesteela","centiskorch-gmax","chandelure","chansey","charizard","charizard-gmax","charizard-megax","charizard-megay","charjabug","charmander","charmeleon","chatot","cherrim","cherubi","chesnaught","chewtle","chikorita","chimchar","chimecho","chinchou","chingling","cinccino","clamperl","clauncher","clawitzer","claydol","clefable","clefairy","cleffa","clodsire","cloyster","coalossal","coalossal-gmax","cobalion","cofagrigus","combusken","comfey","conkeldurr","copperajah-gmax","corphish","corsola","corviknight","corviknight-gmax","cottonee","crabominable","crabrawler","cradily","cranidos","crawdaunt","cresselia","croagunk","crobat","croconaw","crustle","cryogonal","cubchoo","cubone","cursola","cutiefly","cyndaquil","darkrai","darmanitan","darumaka","dedenne","deerling","deino","delcatty","delibird","deoxys","dewgong","dewott","dewpider","dhelmise","dialga","diancie","diancie-mega","diglett","ditto","dodrio","doduo","donphan","dracovish","dracozolt","dragalge","dragapult","dragonair","dragonite","drakloak","drampa","drapion","dratini","drednaw","drednaw-gmax","drifblim","drifloon","drilbur","drowzee","druddigon","dubwool","ducklett","dugtrio","dunsparce","duosion","duraludon","duraludon-gmax","durant","dusclops","dusknoir","duskull","dustox","dwebble","eelektrik","eelektross","eevee","eevee-gmax","eiscue","ekans","eldegoss","electabuzz","electivire","electrike","electrode","elekid","elgyem","emboar","emolga","empoleon","entei","escavalier","espeon","eternatus","eternatus-eternamax","excadrill","exeggcute","exeggutor","exploud","falinks","farfetchd","fearow","fennekin","feraligatr","ferroseed","ferrothorn","finneon","flabebe","flapple-gmax","flareon","fletchinder","fletchling","floatzel","florges","fluttermane","flygon","fomantis","foongus","forretress","fraxure","frillish","froakie","froslass","frosmoth","furret","gabite","gallade","gallade-mega","galvantula","garbodor","garbodor-gmax","garchomp","garchomp-mega","gardevoir","gardevoir-mega","gastly","gastrodon","genesect","gengar","gengar-gmax","gengar-mega","geodude","gholdengo","gible","gigalith","girafarig","giratina","glaceon","glalie","glalie-mega","glameow","glastrier","gligar","glimmet","gliscor","gloom","golbat","goldeen","golduck","golem","golett","golurk","goodra","goomy","gorebyss","gothita","gothitelle","gothorita","gougingfire","granbull","graveler","greattusk","greninja","grimer","grimmsnarl","grimmsnarl-gmax","grookey","grotle","groudon","groudon-primal","grovyle","growlithe","grubbin","grumpig","gulpin","gumshoos","gurdurr","gyarados","gyarados-mega","happiny","hariyama","hatterene","hatterene-gmax","haunter","haxorus","heatmor","heatran","helioptile","heracross","heracross-mega","hippopotas","hippowdon","hitmonchan","hitmonlee","hitmontop","honchkrow","honedge","hoopa","hoothoot","hoppip","horsea","houndoom","houndoom-mega","houndour","huntail","hydrapple","hydreigon","hypno","igglybuff","illumise","impidimp","incineroar","indeedee","infernape","inkay","inteleon","ivysaur","jellicent","jirachi","jolteon","joltik","jumpluff","jynx","kabuto","kabutops","kadabra","kakuna","kangaskhan","kangaskhan-mega","karrablast","kartana","kecleon","keldeo","kingdra","kingler","kingler-gmax","klang","klefki","klink","klinklang","koffing","komala","krabby","kricketot","kricketune","krokorok","krookodile","kyogre","kyogre-primal","kyurem","lairon","lampent","landorus","lanturn","lapras","lapras-gmax","larvesta","larvitar","latias","latias-mega","latios","latios-mega","leafeon","leavanny","ledian","ledyba","lickilicky","lickitung","liepard","lileep","lilligant","lillipup","linoone","litleo","litten","litwick","lopunny","lopunny-mega","lotad","lucario","lucario-mega","ludicolo","lugia","lumineon","lunala","lunatone","lurantis","luvdisc","luxray","lycanroc","machamp","machamp-gmax","machoke","machop","magby","magcargo","magearna","magikarp","magmar","magmortar","magnemite","magneton","magnezone","makuhita","malamar","mamoswine","manaphy","mandibuzz","manectric","manectric-mega","mankey","mantine","mantyke","maractus","mareep","marill","marowak","marshadow","marshtomp","masquerain","maushold","mawile","mawile-mega","medicham","medicham-mega","meditite","meganium","melmetal","melmetal-gmax","meloetta","meltan","meowth","meowth-gmax","mesprit","metagross","metagross-mega","metang","mew","mewtwo","mewtwo-megax","mewtwo-megay","mienfoo","mienshao","mightyena","milotic","miltank","mimejr","mimikyu","minccino","minior","minun","misdreavus","mismagius","moltres","monferno","morelull","morpeko","mothim","mrmime","mrrime","mudbray","mudkip","mudsdale","muk","munchlax","munna","murkrow","musharna","naganadel","natu","necrozma","nidoking","nidoqueen","nihilego","nincada","ninetales","ninjask","noctowl","noibat","noivern","nosepass","numel","obstagoon","octillery","oddish","omanyte","omastar","onix","orbeetle-gmax","oshawott","overqwil","pachirisu","palkia","palossand","palpitoad","pancham","pangoro","panpour","pansage","pansear","paras","parasect","patrat","pawniard","pelipper","perrserker","persian","petilil","phanpy","phantump","pheromosa","phione","pichu","pidgeot","pidgeot-mega","pidgey","pidove","pignite","pikachu","pikachu-gmax","pikipek","piloswine","pincurchin","pineco","pinsir","pinsir-mega","piplup","plusle","politoed","poliwag","poliwrath","ponyta","poochyena","porygon","porygon2","primarina","primeape","prinplup","probopass","psyduck","purrloin","purugly","pyroar","pyukumuku","quagsire","quilladin","qwilfish","raboot","raichu","raikou","ralts","rampardos","rapidash","raticate","rattata","rayquaza","rayquaza-mega","regice","regidrago","regigigas","regirock","registeel","relicanth","remoraid","reshiram","reuniclus","rhydon","rhyhorn","rhyperior","ribombee","riolu","rockruff","roggenrola","roselia","roserade","rotom","rowlet","rufflet","runerigus","sableye","sableye-mega","salamence","salamence-mega","samurott","sandaconda","sandaconda-gmax","sandile","sandshrew","sandslash","sandygast","sawk","sawsbuck","sceptile","sceptile-mega","scizor","scizor-mega","scolipede","scorbunny","scrafty","scraggy","scyther","seadra","seaking","seedot","seel","seismitoad","sentret","serperior","servine","seviper","sewaddle","sharpedo","sharpedo-mega","shaymin","shedinja","shelgon","shellder","shellos","shelmet","shieldon","shiftry","shiinotic","shinx","shroomish","shuckle","shuppet","sigilyph","silvally","simipour","simisage","simisear","skarmory","skiddo","skitty","skorupi","skuntank","slaking","slakoth","sliggoo","slowbro","slowbro-mega","slowking","slowpoke","slugma","slurpuff","smeargle","smoochum","sneasel","snivy","snorlax","snorlax-gmax","snorunt","snover","snubbull","solgaleo","solosis","solrock","spearow","spheal","spinarak","spinda","spiritomb","spoink","spritzee","squirtle","stakataka","stantler","staraptor","staravia","starly","starmie","staryu","steelix","steelix-mega","stonjourner","stoutland","stufful","stunfisk","stunky","sudowoodo","suicune","sunflora","sunkern","surskit","swablu","swalot","swampert","swampert-mega","swanna","swellow","swinub","swirlix","swoobat","sylveon","taillow","talonflame","tangela","tangrowth","tapubulu","tapukoko","tapulele","tatsugiri","tauros","teddiursa","tentacool","tentacruel","tepig","terrakion","throh","thundurus","thwackey","timburr","tirtouga","togedemaru","togekiss","togepi","togetic","torchic","torkoal","tornadus","torterra","totodile","toucannon","toxapex","toxicroak","toxtricity","toxtricity-gmax","toxtricity-lowkey-gmax","trapinch","treecko","trevenant","tropius","trubbish","turtonator","turtwig","tympole","typenull","typhlosion","tyranitar","tyranitar-mega","tyrantrum","tyrogue","tyrunt","umbreon","unfezant","unown","ursaluna","ursaring","uxie","vanillite","vanilluxe","vaporeon","venipede","venomoth","venonat","venusaur","venusaur-mega","vespiquen","vibrava","victini","victreebel","vigoroth","vikavolt","vileplume","virizion","vivillon","volbeat","volcanion","volcarona","voltorb","vullaby","vulpix","wailmer","wailord","walrein","wartortle","watchog","weavile","weedle","weepinbell","weezing","whimsicott","whirlipede","whiscash","whismur","wigglytuff","wimpod","wingull","wishiwashi","wobbuffet","woobat","wooper","wormadam","wynaut","xatu","xerneas","xurkitree","yamask","yanma","yanmega","yungoos","yveltal","zacian","zamazenta","zangoose","zapdos","zebstrika","zekrom","zeraora","zigzagoon","zoroark","zorua","zubat","zweilous","zygarde"]),
         };
         // LOCAL_SPRITE_MANIFEST_END
         // PokeAPI National-Dex form IDs (>=10000) for Mega/Primal/Gmax forms.
@@ -13418,6 +13550,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 .replace(/-mega-x/g, '-megax').replace(/-mega-y/g, '-megay')
                 .replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/-$/, '');
             return SPRITE_ID_ALIASES[normalized] || normalized;
+        }
+        // Ordered cry-audio fallback chain for a species/forme display name.
+        // Local-first: ~1200 base-species cries ship in music/cries/ (offline, no third-party
+        // dependency). Regional / alternate formes (Goodra-Hisui, Moltres-Galar, Darmanitan-Galar-Zen,
+        // …) are NOT vendored individually, so we walk toward the base species' local cry — which is
+        // guaranteed to exist — before ever touching the CDN. This keeps every forme audible offline.
+        function cryCandidates(name) {
+            // Mega / Gmax / Primal gimmicks share the base species' cry.
+            const core = String(name || '').replace(/-Mega(-[XY])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, '');
+            const out = [];
+            const seen = new Set();
+            const pushLocal = (n) => {
+                const u = `music/cries/${toShowdownSpriteId(n)}.mp3`;
+                if (!seen.has(u)) { seen.add(u); out.push(u); }
+            };
+            pushLocal(core);
+            // Strip trailing "-Forme" words (Hisui, Galar, Therian, Zen, Ash, …) one at a time until
+            // we reach the base species. Numeric/base formes that ship their own cry (Zygarde-10) win
+            // on the first candidate, so this only fires when the exact forme cry is absent.
+            let nm = core, prev;
+            do { prev = nm; nm = nm.replace(/-[A-Z][a-z]+$/, ''); if (nm !== prev) pushLocal(nm); } while (nm !== prev);
+            // CDN last resort — only reached if no local file matched. Showdown cry ids drop hyphens.
+            out.push(`https://play.pokemonshowdown.com/audio/cries/${toShowdownSpriteId(core).replace(/-/g, '')}.mp3`);
+            return out;
         }
         function _spriteDirFor(shiny, back) {
             if (back && shiny) return 'gen5ani-back-shiny';
@@ -14839,6 +14995,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * m));
                 }
                 mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
+            }
+            // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
+            // (_bossStatMult, applied to HP + stats) and a party-scaled HP multiplier
+            // (_bossHpScale). NOTE — these COMPOUND on HP: _bossStatMult multiplies maxHp
+            // too, so effective raid HP ≈ _bossStatMult × _bossHpScale × base (at maxParty 6:
+            // 1.3 × 5 ≈ 6.5× base HP, NOT the bare ×5 that _bossHpScale alone implies). That
+            // total is a balance number (user-owned, tunable); this block is deliberately
+            // honest about the compounding. Kept off _storyStatMult because enterBattleEvent
+            // overwrites that field on every rolled team member.
+            if (build && monName !== 'Shedinja') {
+                if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
+                    const bm = build._bossStatMult;
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * bm));
+                    mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * bm)));
+                    for (const k of ['atk','def','spa','spd','spe']) mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * bm));
+                    mon._bossStatMult = bm;
+                }
+                if (typeof build._bossHpScale === 'number' && build._bossHpScale > 1) {
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * build._bossHpScale));
+                    mon.currentHp = mon.maxHp; // raid boss enters at full scaled HP
+                    mon._bossHpScale = build._bossHpScale;
+                }
             }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
@@ -16925,14 +17103,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity-round mechanics are tracked per-turn via
                 // _storyBossMechanicsTurnTick.
                 try {
-                    const _beatKey = sm && sm._activeBeatBattleKey;
-                    const _cfg = _beatKey && typeof BOSS_CONFIGS === 'object' && BOSS_CONFIGS[_beatKey];
+                    // startBattle lives in the engine scope — the StoryMode IIFE's
+                    // `sm` / `BOSS_CONFIGS` / `_storyBossMechanicsBattleInit` are not
+                    // visible here (the sibling story calls above route through
+                    // `window.`). Reaching them by bare name threw ReferenceError on
+                    // every battle, so boss-beat mechanics never attached. Go through
+                    // the public window.StoryMode surface instead.
+                    const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
+                    const _smState = _SM && _SM.state;
+                    const _bossCfgs = _SM && _SM.BOSS_CONFIGS;
+                    let _beatKey = _smState && _smState._activeBeatBattleKey;
+                    // The post-HoF Mystery Figure runs via the crucible end-flow, not the
+                    // beat-key path (mysteryBoss is excluded from _activeBattleBeatForCurrentRow),
+                    // so its declared 'main.mfBattle' mechanics were orphaned. Detect it by foe
+                    // role and attach them. Only the ephemeral battle state is set below
+                    // (state._activeStoryBeatKey) — sm._activeBeatBattleKey stays untouched, so
+                    // the mystery's own victory handling isn't double-processed.
+                    if (_smState && _smState.currentTrainerData && _smState.currentTrainerData.role === 'Mystery Figure') {
+                        _beatKey = 'main.mfBattle';
+                    }
+                    const _cfg = _beatKey && _bossCfgs && typeof _bossCfgs === 'object' && _bossCfgs[_beatKey];
                     if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
                         state._activeStoryBeatKey = _beatKey;
                         state._bossMechanics = _cfg.mechanics.slice();
                         state._bossMechanicsFired = {};
-                        state._bossPendingTelegraph = null;
-                        _storyBossMechanicsBattleInit(state);
+                        state._bossPendingTelegraphs = [];
+                        state._bossSurgeTurns = 0;
+                        state._bossImmuneTurns = 0;
+                        if (typeof _SM.bossMechanicsBattleInit === 'function') _SM.bossMechanicsBattleInit(state);
                     }
                 } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
             } else {
@@ -20863,7 +21061,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // count. No-op if state._bossMechanics isn't set.
                 try {
                     if (Array.isArray(state._bossMechanics) && state._bossMechanics.length && state.fActive) {
-                        _storyBossMechanicsTurnTick(state, state.fActive);
+                        // Same engine-scope reroute as the BOSS_CONFIGS init in startBattle.
+                        const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
+                        if (_SM && typeof _SM.bossMechanicsTurnTick === 'function') _SM.bossMechanicsTurnTick(state, state.fActive);
                     }
                 } catch (e) { console.warn('[Story] boss turn tick failed:', e); }
                 state.residualPhaseComplete = false;
@@ -23772,6 +23972,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 damage = Math.max(1, Math.floor(damage));
                 // Glass Cannon Pact artifact: +25% all damage, both sides
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
+                // Story boss surge phase: the boss deals +25% while its surge window is
+                // open (set by an HP-threshold phase telegraph). attacker is the boss here.
+                if (state._activeStoryBeatKey && state._bossSurgeTurns > 0 && attacker === state.fActive) damage = Math.floor(damage * 1.25);
                 // Story artifact: [Type] Amplifier — attacks of that type +30%; Pokémon of that type take +15% from hits
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
@@ -24030,7 +24233,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity activates this turn). Status moves still apply
                 // (paralysis / sleep / poison tick normally). One-turn-ahead
                 // warning matches the fair-telegraph design.
-                if (state._activeStoryBeatKey && defender._bossImmuneTurns > 0 && move.cat !== "Status") {
+                if (state._activeStoryBeatKey && state._bossImmuneTurns > 0 && defender === state.fActive && move.cat !== "Status") {
                     logMsg(`${defender.name} braces — the attack does no damage!`, 'info');
                     hitSub = true; // skip damage application
                 }
@@ -29999,6 +30202,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Worker', type:'Steel', sigs:['Aron','Beldum','Shieldon','Klink','Skarmory'], charGen:4, pkmGens:[4,5], spriteFile:'Worker' },
           { role:'Basic Trainer', name:'Worker Snow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Worker-Snow' },
           { role:'Elite Trainer', name:'Xerosic', type:'Poison', sigs:['Crobat','Malamar','Lucario','Manectric','Drapion'], charGen:6, pkmGens:[5,6], spriteFile:'Xerosic' },
+          // Gen 6–9 villain admins / bosses (wired once their sprites landed). Canon signature teams.
+          { role:'Elite Trainer', name:'Lysandre', type:'Fire',     sigs:['Pyroar','Gyarados','Honchkrow','Mienshao','Murkrow'],            charGen:6, pkmGens:[1,2,5,6], spriteFile:'Lysandre' },
+          { role:'Elite Trainer', name:'Aliana',   type:'Dark',     sigs:['Mightyena','Liepard','Krookodile','Drapion','Weavile'],          charGen:6, pkmGens:[4,5,6],   spriteFile:'Aliana' },
+          { role:'Elite Trainer', name:'Celosia',  type:'Electric', sigs:['Manectric','Heliolisk','Galvantula','Eelektross','Rotom'],       charGen:6, pkmGens:[4,5,6],   spriteFile:'Celosia' },
+          { role:'Elite Trainer', name:'Mable',    type:'Fire',     sigs:['Houndoom','Chandelure','Talonflame','Pyroar','Heatmor'],         charGen:6, pkmGens:[4,5,6],   spriteFile:'Mable' },
+          { role:'Elite Trainer', name:'Rose',     type:'Steel',    sigs:['Copperajah','Ferrothorn','Perrserker','Klinklang','Escavalier'], charGen:8, pkmGens:[5,8],     spriteFile:'Rose' },
+          { role:'Elite Trainer', name:'Oleana',   type:'Poison',   sigs:['Garbodor','Salazzle','Tsareena','Froslass','Milotic'],           charGen:8, pkmGens:[4,5,7,8], spriteFile:'Oleana' },
+          { role:'Elite Trainer', name:'Penny',    type:'Mixed',    sigs:['Umbreon','Sylveon','Vaporeon','Jolteon','Leafeon'],              charGen:9, pkmGens:[1,2,4,6], spriteFile:'Penny' },
+          { role:'Elite Trainer', name:'Giacomo',  type:'Dark',     sigs:['Revavroom','Pawmot','Mabosstiff','Houndstone','Kingambit'],      charGen:9, pkmGens:[9],       spriteFile:'Giacomo' },
+          { role:'Elite Trainer', name:'Mela',     type:'Fire',     sigs:['Revavroom','Torkoal','Armarouge','Ceruledge','Scovillain'],      charGen:9, pkmGens:[3,9],     spriteFile:'Mela' },
+          { role:'Elite Trainer', name:'Atticus',  type:'Poison',   sigs:['Revavroom','Grafaiai','Clodsire','Skuntank','Toxicroak'],        charGen:9, pkmGens:[4,9],     spriteFile:'Atticus' },
+          { role:'Elite Trainer', name:'Ortega',   type:'Fairy',    sigs:['Revavroom','Dachsbun','Tinkaton','Grimmsnarl','Mimikyu'],        charGen:9, pkmGens:[7,8,9],   spriteFile:'Ortega' },
+          { role:'Elite Trainer', name:'Eri',      type:'Fighting', sigs:['Revavroom','Annihilape','Lucario','Hawlucha','Quaquaval'],       charGen:9, pkmGens:[4,6,9],   spriteFile:'Eri' },
           { role:'Elite Trainer', name:'Yellow', type:'Mixed', sigs:['Pikachu','Butterfree','Clefable','Vileplume','Rattata','Pidgeotto'], charGen:1, pkmGens:[1], spriteFile:'Yellow' },
           { role:'Basic Trainer', name:'Young Athlete', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Young_Athlete' },
           { role:'Basic Trainer', name:'Young Athlete F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Young_Athlete~F' },
@@ -30100,7 +30316,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
-            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0, artifacts: 0,
+            mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
             link: 2, stoneShop: 3, evolab: 2,
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
             colress: 6,
@@ -33755,7 +33971,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             shopMart: 'sprites/story/backgrounds/shop-mart.svg',
             shopDept: 'sprites/story/backgrounds/shop-dept.svg',
             linkStation: 'sprites/story/backgrounds/link-station.svg',
-            casino: 'sprites/story/backgrounds/shop-dept.svg'
+            casino: 'sprites/story/backgrounds/shop-dept.svg',
+            // gen3 pixel scene backdrops (assembled by scripts/build-story-backgrounds.mjs)
+            // for the high-drama screens that previously rendered on flat color.
+            scenes: {
+                cave: 'sprites/story/backgrounds/gen3-cave.png',
+                forest: 'sprites/story/backgrounds/gen3-forest.png',
+                safari: 'sprites/story/backgrounds/gen3-safari.png',
+                mountain: 'sprites/story/backgrounds/gen3-mountain.png',
+                cavern: 'sprites/story/backgrounds/gen3-cavern.png',
+                villain: 'sprites/story/backgrounds/gen3-villain.png',
+                mansion: 'sprites/story/backgrounds/gen3-mansion.png',
+                league: 'sprites/story/backgrounds/gen3-league.png',
+                sea: 'sprites/story/backgrounds/gen3-sea.png',
+                lab: 'sprites/story/backgrounds/gen3-lab.png'
+            }
         };
         let _storyBgManifest = null;
         function getStoryBgManifest() { return _storyBgManifest || DEFAULT_STORY_BG_MANIFEST; }
@@ -33763,10 +33993,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!layerEl) return;
             if (!imageUrl) { layerEl.style.backgroundImage = ''; return; }
             const u = String(imageUrl).replace(/"/g, '');
-            layerEl.style.backgroundImage = 'linear-gradient(180deg, rgba(6,8,14,0.72) 0%, rgba(6,8,14,0.9) 100%), url("' + u + '")';
-            layerEl.style.backgroundSize = 'cover, cover';
-            layerEl.style.backgroundPosition = 'center, center';
-            layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
+            if (/\.png(\?|$)/i.test(u)) {
+                // gen3 scenes are wide/landscape; on a tall portrait screen `cover`
+                // zoom-crops them into an unrecognizable sliver. Instead show the
+                // whole scene as a top hero-band (full width, native aspect) that
+                // fades into the dark UI so the content below stays readable.
+                layerEl.style.backgroundImage = 'linear-gradient(180deg, rgba(8,10,16,0.34) 0%, rgba(8,10,16,0.44) 22%, rgba(8,10,16,0.68) 38%, rgba(8,10,16,0.93) 52%, rgba(8,10,16,0.98) 100%), url("' + u + '")';
+                layerEl.style.backgroundSize = 'cover, 132% auto';
+                layerEl.style.backgroundPosition = 'center, top center';
+                layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
+                layerEl.style.imageRendering = 'pixelated'; // crisp gen3 upscale
+            } else {
+                // SVG scenes (city/shop) are abstract and tile fine under full cover.
+                layerEl.style.backgroundImage = 'linear-gradient(180deg, rgba(6,8,14,0.72) 0%, rgba(6,8,14,0.9) 100%), url("' + u + '")';
+                layerEl.style.backgroundSize = 'cover, cover';
+                layerEl.style.backgroundPosition = 'center, center';
+                layerEl.style.backgroundRepeat = 'no-repeat, no-repeat';
+                layerEl.style.imageRendering = '';
+            }
+        }
+        // Generic scene-background applier for gen3 pixel backdrops (manifest `scenes`
+        // map). Used by the high-drama screens — catch / professor / mystery reveal /
+        // crucible / frontier — that previously rendered on flat color.
+        function syncStorySceneBackground(layerId, sceneKey) {
+            const scenes = getStoryBgManifest().scenes || DEFAULT_STORY_BG_MANIFEST.scenes || {};
+            applyStoryBgLayer(document.getElementById(layerId), scenes[sceneKey] || '');
         }
         function syncStoryCityBackground(cityIdx) {
             const m = getStoryBgManifest();
@@ -33817,15 +34068,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         })();
         // Official item artwork filenames (PokeAPI / Gen3-style sprites in sprites/items/*.png)
         const STORY_SHOP_ITEM_SPRITE_SLUG = {
-            potion:'max-potion', superPotion:'max-potion', hyperPotion:'max-potion',
+            potion:'potion', superPotion:'super-potion', hyperPotion:'hyper-potion',
             maxPotion:'max-potion', fullRestore:'full-restore', fullHeal:'full-heal',
-            ether:'ether', elixir:'elixir', maxElixir:'max-ether',
+            ether:'ether', elixir:'elixir', maxElixir:'max-elixir',
             xAttack:'x-attack', xDefense:'x-defense', xSpAtk:'x-sp-atk', xSpDef:'x-sp-def',
             xSpeed:'x-speed', xAccuracy:'x-accuracy', direHit:'dire-hit', guardSpec:'guard-spec',
             revivalHerb:'revival-herb', revive:'revive', maxRevive:'max-revive',
-            // Permanent stat-boost vitamins — each maps to a thematically appropriate sprite.
-            hpUp:'big-root', protein:'muscle-band', iron:'iron-ball',
-            calcium:'wise-glasses', zinc:'mental-herb', carbos:'quick-claw',
+            // Permanent stat-boost vitamins — canonical PokeAPI icons.
+            hpUp:'hp-up', protein:'protein', iron:'iron',
+            calcium:'calcium', zinc:'zinc', carbos:'carbos',
             sunOrb:'heat-rock', rainOrb:'damp-rock', hailOrb:'icy-rock', sandOrb:'smooth-rock',
             electricOrb:'electric-seed', grassyOrb:'grassy-seed', psychicOrb:'psychic-seed', mistyOrb:'misty-seed',
             emergencyTeleporter:'escape-rope',
@@ -33836,18 +34087,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             eternalHailCrown:'icy-rock', eternalSandTotem:'smooth-rock', thunderstoneEarrings:'electric-seed',
             verdantCore:'grassy-seed', astralAntenna:'psychic-seed', moonveilIncense:'misty-seed',
             glassCannonPact:'life-orb', reapersToll:'spell-tag', cursedCoinPouch:'amulet-coin',
-            // Stones and Beyond catalog — thematic substitutes from existing in-tree art
-            // (sprites/items/ has no dedicated stone icons). Each slug picks an icon
-            // that reads as the stone's element / item flavor at a glance.
-            fireStone:'flame-orb', waterStone:'mystic-water', thunderStone:'magnet',
-            leafStone:'miracle-seed', moonStone:'misty-seed', sunStone:'heat-rock',
-            iceStone:'never-melt-ice', shinyStone:'silver-powder',
-            duskStone:'spell-tag', dawnStone:'bright-powder',
-            metalCoat:'iron-ball', dragonScale:'dragon-fang', kingsRock:'hard-stone',
-            upGrade:'wide-lens', dubiousDisc:'scope-lens', protector:'expert-belt',
-            electirizer:'magnet', magmarizer:'charcoal', reaperCloth:'black-belt',
-            deepSeaTooth:'poison-barb', deepSeaScale:'silver-powder',
-            prismScale:'bright-powder', sachet:'silk-scarf', whippedDream:'soft-sand'
+            // Evolution stones + evolution items — canonical PokeAPI icons.
+            fireStone:'fire-stone', waterStone:'water-stone', thunderStone:'thunder-stone',
+            leafStone:'leaf-stone', moonStone:'moon-stone', sunStone:'sun-stone',
+            iceStone:'ice-stone', shinyStone:'shiny-stone',
+            duskStone:'dusk-stone', dawnStone:'dawn-stone',
+            metalCoat:'metal-coat', dragonScale:'dragon-scale', kingsRock:'kings-rock',
+            upGrade:'up-grade', dubiousDisc:'dubious-disc', protector:'protector',
+            electirizer:'electirizer', magmarizer:'magmarizer', reaperCloth:'reaper-cloth',
+            deepSeaTooth:'deep-sea-tooth', deepSeaScale:'deep-sea-scale',
+            prismScale:'prism-scale', sachet:'sachet', whippedDream:'whipped-dream'
         };
         const STORY_SHOP_ICON_HTML = {
             _default: '<img class="story-shop-item-img" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="30" height="30" loading="lazy" decoding="async">'
@@ -37530,8 +37779,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Cyrus','Ghetsis','Guzma','Maxie','Archie','Tabitha','Courtney','Matt','Shelly',
             'Mars','Jupiter','Saturn','Archer','Ariana','Petrel','Proton',
             'Bryony','Xerosic','Colress',
-            'Plumeria','Lusamine','Faba'
+            'Plumeria','Lusamine','Faba',
+            // Gen 6–9 leads (wired once their sprites landed):
+            'Lysandre','Aliana','Celosia','Mable',               // Team Flare (Kalos)
+            'Rose','Oleana',                                     // Macro Cosmos (Galar)
+            'Penny','Giacomo','Mela','Atticus','Ortega','Eri',   // Team Star (Paldea)
         ]);
+        // Per late-game Elite-Trainer slot, the chance (quadratic in badges
+        // cleared) of biasing the pick toward STORY_ELITE_VILLAIN_NAMES — the
+        // "villain gauntlet" lean before the League. Soft: selectTrainerForRole
+        // falls back to the full Elite pool if the gen filter leaves no villain.
+        // BALANCE: user-tunable (0 disables the bias).
+        const STORY_VILLAIN_GAUNTLET_ODDS = 0.6;
         function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType, nameWhitelist) {
             const rk = roleKey.toLowerCase().trim();
             // 'Gym Trainer 1' and 'Gym Trainer 2' draw from the Basic Trainer pool (matching gym leader typing via preferredType).
@@ -37789,6 +38048,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 if (event === 'Mystery Figure') return;
+                let _eliteWhitelist = null;
                 // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
                 const theme = _resolveThemeForBattleRow(idx);
                 if (theme) {
@@ -37815,6 +38075,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             return;
                         }
                     }
+                    // Villain-gauntlet lean: bias remaining late-game Elite slots toward
+                    // iconic villain admins/bosses (soft — selectTrainerForRole falls back
+                    // if the active gen filter leaves no villain candidate).
+                    if (rng() < ramp * ramp * STORY_VILLAIN_GAUNTLET_ODDS) {
+                        _eliteWhitelist = STORY_ELITE_VILLAIN_NAMES;
+                    }
                 }
                 // Pre-Gym-1 route fodder: the lone Basic Trainer between intro rival and
                 // City 1 should *always* be a classic route trainer (Youngster, Bug
@@ -37830,7 +38096,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // fall through to standard picker if the filter somehow empties
                 }
-                const t = selectTrainerForRole(event, eg, usedBase);
+                const t = selectTrainerForRole(event, eg, usedBase, null, _eliteWhitelist);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
                     usedBase.add(_baseTrainerName(t.name));
@@ -39891,7 +40157,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Your First Fight',
                 lines: [
                     '"Two trainers, two teams, one road. That\'s a battle."',
-                    '"Tap ⚔ FIGHT to pick a move. Each one has its own PP, so the strongest hit isn\'t always the right one. Physical, Special, and Status all read off different stats — type matters more than raw level. Super-effective doubles your damage; the wrong type can half it."',
+                    '"First, the rule of this region: every Pokémon battles at Level 50. No grinding — a partner\'s strength is how it\'s *built*: its nature, its trained stats, the moves you give it. I\'ll point each one out as we go."',
+                    '"Tap ⚔ FIGHT to pick a move. Each one has its own PP, so the strongest hit isn\'t always the right one. Physical, Special, and Status all read off different stats — type matters more than brute force. Super-effective doubles your damage; the wrong type can half it."',
                     '"🔴 POKÉMON swaps your active partner — it costs your turn, so use it on a read. 🎒 BAG burns an item. 🏃 RUN forfeits the fight and a slice of gold. Keep that HP bar green."'
                 ]
             },
@@ -41749,13 +42016,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // assignment is overridden to this canon character. The existing
         // trainer roller picks up the character's signature Pokémon (Giovanni's
         // Rhydon, Cyrus's Weavile, etc.), delivering iconic encounters without
-        // mutating the timeline. Entries omitted for villains whose canon
-        // character isn't in TRAINER_DATA (Lysandre / Rose / Penny / Cassiopeia)
-        // — those still trigger BOSS_CONFIGS mechanics + tier rewards but
-        // field whatever the natural Elite Trainer roll produces. Future
-        // polish PR can add those canon characters to TRAINER_DATA.
+        // mutating the timeline. All 10 villain teams' boss + mini-boss beats
+        // now resolve to a canon character — the Gen 6–9 leads (Lysandre, Rose,
+        // Penny/Cassiopeia, Oleana, Team Star crew) were added to TRAINER_DATA
+        // with canon signature teams once their sprites landed.
         const BEAT_CANON_TRAINER = {
-            // Villain bosses (Road 7 climax) — 7 named, 3 fall back to random Elite.
+            // Villain bosses (Road 7 climax) — all 10 named.
             'villain.rocket.boss':    'Giovanni',
             'villain.magma.boss':     'Maxie',
             'villain.aqua.boss':      'Archie',
@@ -41763,7 +42029,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.plasma.boss':    'Ghetsis',
             'villain.skull.boss':     'Guzma',
             'villain.yell.boss':      'Piers',
-            // Villain admins (Road 6 mini-boss) — 8 named, 2 fall back.
+            'villain.flare.boss':         'Lysandre',
+            'villain.macroCosmos.boss':   'Rose',
+            'villain.star.boss':          'Penny',
+            // Villain admins (Road 6 mini-boss) — all 10 named.
             'villain.rocket.miniBoss':   'Proton',
             'villain.magma.miniBoss':    'Tabitha',
             'villain.aqua.miniBoss':     'Shelly',
@@ -41772,6 +42041,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.flare.miniBoss':    'Bryony',
             'villain.skull.miniBoss':    'Plumeria',
             'villain.yell.miniBoss':     'Marnie',
+            'villain.macroCosmos.miniBoss': 'Oleana',
+            'villain.star.miniBoss':        'Giacomo',
         };
 
         // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
@@ -41780,37 +42051,96 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // when the player triggers that battle. SceneKey-indexed so PR-5b
         // battle injection can look it up directly.
         const BOSS_CONFIGS = {
-            // Villain track bosses (10) — Road 7 climax. Phase 3 at 25% HP.
-            'villain.rocket.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALLED IN' }] },
-            'villain.magma.boss':     { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMAL HEAT' }] },
-            'villain.aqua.boss':      { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMORDIAL RAIN' }] },
-            'villain.galactic.boss':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DISTORTION' }] },
-            'villain.plasma.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'PRIORITY LOCK' }] },
-            'villain.flare.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WEAPON' }] },
-            'villain.skull.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DEAL' }] },
-            'villain.yell.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'SPOTLIGHT' }] },
-            'villain.macroCosmos.boss': { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE BRAND' }] },
-            'villain.star.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE TEAM' }] },
-            // Extra track raids (8) — Road 6 climax. Phase 3 mechanics from CSV.
-            'extra.cubone.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'A REMEMBERED PLACE' }] },
-            'extra.yamask.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WAKE' }] },
-            'extra.hypno.raid':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LULLABY' }] },
-            'extra.phantump.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE GROVE' }] },
-            'extra.mimikyu.raid':   { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE AUDIENCE' }] },
-            'extra.drifloon.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE CLIMB' }] },
-            'extra.parasect.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE SOIL' }] },
-            'extra.mewtwo.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LAB REMEMBERED' }] },
-            // Mystery Figure (apex) — HP threshold + immunity round + field lock.
-            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
+            // Villain track — trainer-vs-trainer. Escalating FAINT-count phases (one
+            // mechanic active at a time, harder each step). Full boss opens with a phase
+            // (afterFaints:0) then escalates every 2 KOs (surge → immunity → surge). Mini
+            // boss starts plain and gets one phase after 2 KOs. Magma/Aqua also field-lock
+            // their signature weather (contestable — the player can still override it).
+            'villain.rocket.boss':      { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALLED IN' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'NO WITNESSES' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: "BOSS'S ORDERS" }] },
+            'villain.rocket.miniBoss':  { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'MUSCLE' }] },
+            'villain.magma.boss':       { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIMAL HEAT' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'MAGMA SHELL' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ERUPTION' }] },
+            'villain.magma.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'HEAT HAZE' }] },
+            'villain.aqua.boss':        { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIMORDIAL RAIN' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'UNDERTOW' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'TIDAL CRASH' }] },
+            'villain.aqua.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'RIPTIDE' }] },
+            'villain.galactic.boss':    { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'DISTORTION' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'STILLNESS' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'NEW WORLD' }] },
+            'villain.galactic.miniBoss':{ mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'COMMANDER' }] },
+            'villain.plasma.boss':      { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'PRIORITY LOCK' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'COLD ARMOR' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'IDEALS' }] },
+            'villain.plasma.miniBoss':  { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SAGE' }] },
+            'villain.flare.boss':       { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'THE WEAPON' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'PERFECTION' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ULTIMATE' }] },
+            'villain.flare.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'ELEGANCE' }] },
+            'villain.skull.boss':       { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'DEAL' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'BIG BAD' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BOSS UP' }] },
+            'villain.skull.miniBoss':   { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'GRUNT' }] },
+            'villain.yell.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'SPOTLIGHT' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'ENCORE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'GIGANTAMAX' }] },
+            'villain.yell.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'CHEER' }] },
+            'villain.macroCosmos.boss': { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE BRAND' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'CHAIRMAN' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'ETERNATUS' }] },
+            'villain.macroCosmos.miniBoss': { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SPONSOR' }] },
+            'villain.star.boss':        { mechanics: [{ type: 'faintPhase', afterFaints: 0, effect: 'surge', banner: 'CALL THE TEAM' }, { type: 'faintPhase', afterFaints: 2, effect: 'immunity', banner: 'SCHEDULE' }, { type: 'faintPhase', afterFaints: 4, effect: 'surge', banner: 'BIG BOSS' }] },
+            'villain.star.miniBoss':    { mechanics: [{ type: 'faintPhase', afterFaints: 2, effect: 'surge', banner: 'SQUAD' }] },
+            // Extra track — SOLO legendary-tier Pokémon raids (Road 6). Configs for both
+            // raid (75/50/25) and miniRaid (50/25) are populated below the table by
+            // _populateExtraRaidConfigs (kept DRY across the 8 bosses).
+            // Mystery Figure (apex) — HP threshold + immunity round. Attached via the
+            // isMysteryFinal dispatch (mysteryBoss is excluded from the beat-key path).
+            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
         };
 
-        // Mini-raid / raid HP scaling — extra arcs only. Mini = (partySize - 1) ×
-        // base HP; full raid = partySize × base HP. Wired by PR-5b battle setup.
+        // Populate the 8 extra-track raids (solo Pokémon bosses): escalating HP-threshold
+        // phases — real raid 75/50/25 (surge → heal → immunity), mini raid 50/25
+        // (surge → immunity). One mechanic active at a time; banner is the boss's signature.
+        (function _populateExtraRaidConfigs() {
+            const banners = {
+                cubone: 'A REMEMBERED PLACE', yamask: 'THE WAKE', hypno: 'THE LULLABY', phantump: 'THE GROVE',
+                mimikyu: 'THE AUDIENCE', drifloon: 'THE CLIMB', parasect: 'THE SOIL', mewtwo: 'THE LAB REMEMBERED'
+            };
+            for (const k in banners) {
+                const b = banners[k];
+                BOSS_CONFIGS['extra.' + k + '.raid'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.75, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
+                BOSS_CONFIGS['extra.' + k + '.miniRaid'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
+            }
+        })();
+
+        // Mini-raid / raid HP scaling — extra (solo-Pokémon) arcs only. The boss is ONE
+        // legendary-tier Pokémon, so its HP is multiplied to survive a full player party:
+        // mini boss = (maxParty - 2) × base HP, real boss = (maxParty - 1) × base HP.
+        // partySize is the player's MAX party size (_storyMaxPartySize). Wired by the
+        // extra-raid foe-substitution path in enterBattleEvent.
         function _bossHpScaleForKind(kind, partySize) {
             const p = Math.max(1, partySize | 0);
-            if (kind === 'miniRaid') return Math.max(1, p - 1);
-            if (kind === 'raid') return p;
+            if (kind === 'miniRaid') return Math.max(1, p - 2);
+            if (kind === 'raid') return Math.max(1, p - 1);
             return 1; // bosses + battles use single-target scaling
+        }
+
+        // Solo-Pokémon raid bosses (extra track): scene-key stem → the legendary-tier
+        // species the prose names. These fights are ONE scaled Pokémon, not a trainer team.
+        const _EXTRA_RAID_SPECIES = {
+            cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
+            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
+        };
+        // Build the single-mon foe team for an extra raid/miniRaid beat. Returns the
+        // standard [{name, build}] draft shape (one element), or null to fall back to the
+        // normal trainer roll. Legendary-tier stats (_bossStatMult) + party-scaled HP
+        // (_bossHpScale) are applied by buildPokemon at fight start.
+        function _rollExtraRaidBossTeam(sceneKey) {
+            try {
+                const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)$/.exec(String(sceneKey || ''));
+                if (!m) return null;
+                const species = _EXTRA_RAID_SPECIES[m[1]];
+                if (!species || typeof makeBuild !== 'function') return null;
+                const build = _withStoryPlayerGimmickGate(() => makeBuild(species));
+                if (!build) return null;
+                const maxParty = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                build._bossStatMult = 1.3;                                 // legendary-tier stats
+                build._bossHpScale = _bossHpScaleForKind(m[2], maxParty);  // party-scaled bulk
+                return [{ name: species, build: build }];
+            } catch (e) { console.warn('[Story] extra raid boss roll failed:', e); return null; }
         }
 
         // ── BOSS_CONFIGS live wiring (PR-A polish) ────────────────────────
@@ -41862,26 +42192,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Phase-effect dispatcher — applies one escalating mechanic when a phase
+        // (HP-threshold or faint-count) activates. "Only one active at a time" per the
+        // boss design: each phase sets/refreshes its own effect. Defaults to 'surge'
+        // so legacy single-phase configs keep their +25% damage behavior unchanged.
+        function _applyBossPhaseEffect(stateRef, foeMon, effect, magnitude) {
+            switch (effect) {
+                case 'heal': {
+                    const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
+                    foeMon.currentHp = Math.min(foeMon.maxHp, (foeMon.currentHp | 0) + amt);
+                    break;
+                }
+                case 'immunity':
+                    // Boss-side timer on the battle STATE (not the mon) so it survives a
+                    // boss switch and protects whoever the boss's active mon is.
+                    stateRef._bossImmuneTurns = (magnitude | 0) || 1;
+                    break;
+                case 'surge':
+                default:
+                    stateRef._bossSurgeTurns = 3; // +25% boss-side damage for 3 turns
+                    break;
+            }
+        }
+
+        // Telegraphs are QUEUED, not held in a single slot: two mechanics can cross the
+        // same turn (e.g. mfBattle's HP-threshold surge + the every-5 immunity round); a
+        // lone slot let the second clobber the first AND consume its fired-flag, so the
+        // dropped phase never activated. A queue drains all of them.
+        function _bossQueueTelegraph(stateRef, t) {
+            if (!Array.isArray(stateRef._bossPendingTelegraphs)) stateRef._bossPendingTelegraphs = [];
+            stateRef._bossPendingTelegraphs.push(t);
+        }
+
         // Called at the top of each turn (after state.turnNumber++) to process
         // active mechanics. Activates pending telegraphs from the prior turn,
         // checks HP thresholds (foe HP %), and stages immunity-round telegraphs.
         function _storyBossMechanicsTurnTick(stateRef, foeMon) {
             if (!stateRef || !Array.isArray(stateRef._bossMechanics) || !foeMon) return;
-            // 1. Activate any telegraph queued from the prior turn.
-            if (stateRef._bossPendingTelegraph) {
-                const pending = stateRef._bossPendingTelegraph;
-                stateRef._bossPendingTelegraph = null;
+            // 1. Decrement timers set by a PRIOR turn's activation FIRST — before this
+            //    turn's activation below — so a timer freshly set this turn survives into
+            //    this turn's damage phase. (Decrementing after activation zeroed a
+            //    just-set immunity/surge on the same tick: the off-by-one bug.)
+            if (stateRef._bossSurgeTurns > 0) stateRef._bossSurgeTurns--;
+            if (stateRef._bossImmuneTurns > 0) stateRef._bossImmuneTurns--;
+            // 2. Activate ALL telegraphs queued last turn (drain the queue).
+            const _pendingQ = Array.isArray(stateRef._bossPendingTelegraphs) ? stateRef._bossPendingTelegraphs : [];
+            stateRef._bossPendingTelegraphs = [];
+            for (const pending of _pendingQ) {
+                if (!pending) continue;
                 _showBossBanner(pending.banner || 'PHASE ACTIVE', pending.accent);
-                if (pending.type === 'hpThresholdPhase') {
-                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                if (pending.type === 'hpThresholdPhase' || pending.type === 'faintPhase') {
+                    _applyBossPhaseEffect(stateRef, foeMon, pending.effect || 'surge', pending.magnitude);
                 } else if (pending.type === 'immunityRound') {
-                    foeMon._bossImmuneTurns = (pending.turns | 0) || 1;
+                    stateRef._bossImmuneTurns = (pending.turns | 0) || 1;
                 }
                 // fieldLock activates at battle-init, not from telegraph.
             }
-            // 2. Decrement active per-turn effect timers.
-            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
-            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
             // 3. Walk mechanics, queue new telegraphs for next turn.
             for (const m of stateRef._bossMechanics) {
                 if (!m || !m.type) continue;
@@ -41893,10 +42259,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (hpPct <= at) {
                         stateRef._bossMechanicsFired[firedKey] = true;
                         // Telegraph one turn early — banner now, effect next turn.
-                        stateRef._bossPendingTelegraph = {
-                            type: 'hpThresholdPhase', banner: m.banner || 'BOSS PHASE INCOMING',
-                            accent: '#ff7043'
-                        };
+                        _bossQueueTelegraph(stateRef, {
+                            type: 'hpThresholdPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
+                            banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
+                        });
+                        _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
+                    }
+                } else if (m.type === 'faintPhase') {
+                    // Villain trainer bosses escalate as their team is KO'd: fires when the
+                    // cumulative number of fainted foe Pokémon reaches afterFaints (every 2 by
+                    // design). afterFaints:0 gives a full boss its opening phase (turn 1→2).
+                    const need = Math.max(0, m.afterFaints | 0);
+                    const firedKey = 'faint_' + need;
+                    if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
+                    const fainted = Array.isArray(stateRef.foeParty)
+                        ? stateRef.foeParty.filter(x => x && x !== foeMon && (x.currentHp | 0) <= 0).length : 0;
+                    if (fainted >= need) {
+                        stateRef._bossMechanicsFired[firedKey] = true;
+                        _bossQueueTelegraph(stateRef, {
+                            type: 'faintPhase', effect: m.effect || 'surge', magnitude: m.magnitude,
+                            banner: m.banner || 'BOSS PHASE INCOMING', accent: '#ff7043'
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
                     }
                 } else if (m.type === 'immunityRound') {
@@ -41908,10 +42291,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const firedKey = 'imm_' + t;
                         if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
                         stateRef._bossMechanicsFired[firedKey] = true;
-                        stateRef._bossPendingTelegraph = {
+                        _bossQueueTelegraph(stateRef, {
                             type: 'immunityRound', banner: m.banner || 'BOSS IS PREPARING',
                             turns: (m.turns | 0) || 1, accent: '#90caf9'
-                        };
+                        });
                         _showBossBanner('⚠ ' + (m.banner || 'BOSS IS PREPARING') + ' (next turn)', '#90caf9');
                     }
                 }
@@ -42388,7 +42771,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyRunSceneMark('city0-coldopen');
                         const _coldOv = document.createElement('div');
                         _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
-                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on her bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
+                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on the bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
                         _coldOv.onclick = function (e) { if (e.target === _coldOv) _coldDismiss(); };
@@ -42432,7 +42815,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
+                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens the bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
             }
             // Per docs/EVOLUTION_FLOW_REBUILD.md §10: City 2 is the unlock band for
             // Cable Link, Evolution Tutor, and Stones and Beyond. Chain Bill → Granny
@@ -42609,16 +42992,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // outline so the eye can find it without us having to flash a badge.
             const suggestedFacilities = new Set();
             const tipsEl = document.getElementById('story-city-tips');
+            // `tips` now holds only optional "Suggested" chips. The single must-do
+            // "what to do next" (Professor / Gym / route / …) is the one objective
+            // line built and rendered after the gates are known, below.
             const tips = [];
-            // Must-do chip always leads — Professor is a hard gate on Continue Route / Gym.
-            if (hasProf && !profUsedHere) {
-                tips.push({
-                    iconPath: 'icons/story/' + (legendMysteryGate ? 'story_mystery.png' : 'story_professor.png') + '?v=20260516',
-                    label: legendMysteryGate ? 'Required: Talk to the Mystery Figure' : 'Required: Visit the Professor',
-                    click: 'window.StoryMode.enterProfessor()',
-                    urgent: true,
-                });
-            }
             // True next thing the player will see when they leave town. The wild
             // interrupt chain fires *before* the next trainer when leaving a city
             // for a different city (see `_shouldFireWildBeforeBattle`), so the
@@ -42626,8 +43003,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // post-gym hub heading into a Rival route says "Wild → Rival", not
             // a flat "Battle Your Rival" that lied about the next two screens.
             const _willFireWildNext = _storyNextBatIdx >= 0 && _shouldFireWildBeforeBattle(_storyNextBatIdx);
-            // "Next:" is always first when a battle is queued — clearest answer to the
-            // ten-second "what now?" question on entering any city.
+            // Rich label for the next queued battle — feeds the single objective line
+            // below (was the old competing "Next:" chip).
+            let nextBattleLabel = '';
             if (_storyNextBat) {
                 const nxId = _storyNextBat[0] | 0;
                 const nxEvent = String(_storyNextBat[2] || '');
@@ -42651,13 +43029,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const theme = _resolveThemeForBattleRow(nxId);
                 const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                 if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
-                // When wilds will fire first, surface the journey in order: the
-                // grass before the gate. Keeps the chip honest without becoming
-                // a paragraph — "🌿 Wild → ⚔ Rival" reads in one glance.
-                const _nextChipText = _willFireWildNext
-                    ? `Next: 🌿 Wild Pokémon → ${nextLabel}`
-                    : `Next: ${nextLabel}`;
-                tips.push({ kind: 'next', iconPath: 'icons/story/story_route.png?v=20260516', label: _nextChipText, click: 'window.StoryMode.proceedToNextBattle()' });
+                // When wilds fire first, surface the journey in order — the grass
+                // before the gate — so the one objective stays honest:
+                // "🌿 Wild → ⚔ Rival" reads in one glance.
+                nextBattleLabel = _willFireWildNext ? `🌿 Wild Pokémon → ${nextLabel}` : nextLabel;
             }
             if (rivalGateActive) {
                 // Team is always battle-fresh (full-heal between fights), so this points to
@@ -42724,17 +43099,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_ehN > 0) parts.push(`${_ehN} Emblem of Honor`);
                 tips.push({ iconPath: _acN > 0 ? 'sprites/pokesprite/items/ability-capsule.png' : 'sprites/pokesprite/items/emblem-of-honor.png', label: `${parts.join(' + ')} — free dojo swap`, click: "window.StoryMode.enterTutor('loadout')" });
             }
-            // Cap the rail at 3 — "Next:" plus the two most relevant follow-ups. More than
-            // that pushes the action grid below the fold on phone portrait.
-            if (tipsEl) {
-                tipsEl.innerHTML = tips.slice(0, 4).map(t => {
-                    const _kindCls = t.kind ? ` ${t.kind}` : '';
-                    const _icoHtml = t.iconPath
-                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
-                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
-                    return `<button type="button" class="story-city-tip${_kindCls}${t.urgent ? ' urgent' : ''}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
-                }).join('');
-            }
+            // (The tip rail — single objective line + optional Suggested chips — is
+            // rendered after the gate flags are known, just before the action grid.)
 
             const btn = document.getElementById('story-action-buttons');
             if (!btn) return;
@@ -42903,14 +43269,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Department Store')) {
                 _push('shop', makeActionBtn('🏬 Department Store','dept','window.StoryMode.enterShop(\'dept\')','dept', _facOpts('dept', [{label:'Premium',tone:'info'}])));
             }
-            const _relicCityIdx = getCityIndex(ev);
-            // Relic Annex cycles in every third city per the facility matrix: C0, C3, C6, C9.
-            if ([0, 3, 6, 9].includes(_relicCityIdx)) {
-                const relicFree = (_relicCityIdx === 0 && !sm.artifactFreeClaimUsed);
-                const relicMeta = relicFree
-                    ? [{label:'1st Free',tone:'free'}]
-                    : [_costBadge(5000, ' each')];
-                _push('shop', makeActionBtn('✨ Relic Annex','relic','window.StoryMode.enterArtifactShop()','dept', _facOpts('relic', relicMeta, { soft:true })));
+            // Relics — one facility, two faces (merged from the old "Relic Annex" +
+            // "Artifact Hall"). Browse (acquire a run-wide rule) is live only in the
+            // relic cities C0/C3/C6/C9; Manage (toggle owned relics on/off) is
+            // everywhere. A single hub entry; the in-screen Browse/Manage tabs switch.
+            {
+                const _relicCity = [0, 3, 6, 9].includes(cityIdx);
+                const _relicFree = (cityIdx === 0 && !sm.artifactFreeClaimUsed);
+                const _relicOwned = (sm.artifacts || []).length;
+                const _relicMeta = _relicCity
+                    ? (_relicFree ? [{label:'1st Free',tone:'free'}] : [_costBadge(5000, ' each')])
+                    : (_relicOwned ? [{label:`${_relicOwned} held`,tone:'info'}] : [{label:'Battle rules',tone:'info'}]);
+                const _relicClick = _relicCity ? 'window.StoryMode.enterArtifactShop()' : 'window.StoryMode.enterArtifactHall()';
+                _push('shop', makeActionBtn('✨ Relics','relic',_relicClick,'dept', _facOpts('relic', _relicMeta, { soft:true })));
             }
             if (actions.includes('Poké Casino')) {
                 _push('shop', makeActionBtn('🎰 Game Corner','casino','window.StoryMode.enterCasino()','casino', _facOpts('casino', [{label:'Win prizes',tone:'good'}], { soft:true })));
@@ -42950,8 +43321,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
                 _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(5000)], { soft:true })));
             }
-            // Artifact Hall — present in every city per the matrix (the relic enable/disable hub).
-            _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
+            // (Artifact Hall folded into the single "Relics" entry above — Manage tab.)
             // Pokémon Center — PC storage + Underground. Available from C0 per the v2
             // facility matrix so the player can swap / retry from the start town after a
             // tough fight or revisit the PC right away.
@@ -43024,26 +43394,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const countHtml = n > 1 ? `<span class="story-action-section-count">(${n})</span>` : '';
                 return `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">${title}${countHtml}</div>${_sections[key]}`;
             };
-            // Phase 4.7 — city briefing banner. When the player arrives at a city that
-            // still has REQUIRED facility intros pending (PC / Mart / Professor / Tutor /
-            // …), prepend a small priority-ordered banner so the order is unambiguous
-            // before they touch anything. Same priority used by the disabled "Continue
-            // Route" tooltip (_pendingFacilityIntrosHere is already sorted) — this just
-            // surfaces it at the top of the screen instead of buried in a tooltip.
-            let briefingHtml = '';
-            if (Array.isArray(_pendingIntros) && _pendingIntros.length) {
-                const items = _pendingIntros.map((k, i) => {
-                    const name = _FACILITY_FRIENDLY_NAME[k] || k;
-                    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,193,7,0.12);border:1px solid rgba(255,193,7,0.45);color:#ffd54f;font-size:11px;padding:2px 8px;border-radius:11px;font-weight:bold;">${i + 1}. ${_esc(name)}</span>`;
-                }).join(' ');
-                briefingHtml = `<div style="margin:0 0 8px;padding:10px 12px;background:rgba(255,193,7,0.06);border:1px solid rgba(255,193,7,0.32);border-radius:6px;">
-                    <div style="font-size:11px;color:#ffd54f;font-weight:bold;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">🔴 Visit before leaving — in this order</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">${items}</div>
-                </div>`;
+            // ── The single objective line ───────────────────────────────────────
+            // ONE honest "what to do next", derived from the SAME gate flags the
+            // Continue / Gym / League buttons use below — so the breadcrumb can never
+            // disagree with what's actually unlocked. This replaces a stack of four
+            // signals that each partitioned "next" differently and contradicted on
+            // City 0: a "Required:" chip, a "Next:" chip, the numbered "Visit before
+            // leaving — in this order" banner, and the "Next Step (N)" count.
+            let objective = null;
+            const _profPending = hasProf && !profUsedHere;
+            if (_profPending && legendMysteryGate) {
+                objective = { kicker: 'STORY', icon: 'story_mystery.png', label: 'Talk to the Mystery Figure', click: 'window.StoryMode.enterProfessor()' };
+            } else if (_profPending) {
+                objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
+                    label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
+                    click: 'window.StoryMode.enterProfessor()' };
+            } else if (hasGym && !gymBeat) {
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Enter the Gym', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasLeague) {
+                objective = { kicker: 'NEXT', icon: 'story_league.png', label: 'Enter the Pokémon League', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasVR) {
+                objective = { kicker: 'NEXT', icon: 'story_vr.png', label: 'Climb Victory Road', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasTrainerRoad) {
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Pre-League Trainers', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (routeBlockedByIntros && _pendingNames.length) {
+                const _firstKey = _pendingIntros[0];
+                objective = { kicker: 'NEW HERE', icon: 'story_route.png', label: `See the new ${_pendingNames[0]} before you go`, click: _FACILITY_ENTER_CALL[_firstKey] || 'window.StoryMode.enterCity()' };
+            } else if (_storyNextBat) {
+                objective = { kicker: 'NEXT', icon: 'story_route.png', label: nextBattleLabel || 'Continue your journey', click: 'window.StoryMode.proceedToNextBattle()' };
             }
-            btn.innerHTML = briefingHtml
-                          + _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
-                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Team & Storage')
+            if (tipsEl) {
+                let _railHtml = '';
+                if (objective) {
+                    const _oico = objective.icon ? `<img class="obj-ico" src="icons/story/${objective.icon}?v=20260516" alt="" width="18" height="18" decoding="async">` : '';
+                    _railHtml += `<button type="button" class="story-city-objective" onclick="${objective.click}"><span class="obj-kicker">${objective.kicker}</span>${_oico}<span class="obj-label">${objective.label}</span><span class="obj-go">▶</span></button>`;
+                }
+                // Remaining tips are optional, quieter suggestions (cap 3 so the action
+                // grid stays above the fold on phone portrait).
+                const _sugg = tips.slice(0, 3);
+                if (objective && _sugg.length) _railHtml += `<div class="story-city-tips-sugg">Suggested</div>`;
+                _railHtml += _sugg.map(t => {
+                    const _icoHtml = t.iconPath
+                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
+                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
+                    return `<button type="button" class="story-city-tip" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
+                }).join('');
+                tipsEl.innerHTML = _railHtml;
+            }
+            // Section headers. "Story" leads (Professor / Gym / route / Fight Club);
+            // the "(N)" suffix is a count of options, which read as a step-ordinal only
+            // under the old "Next Step" name — the objective line above is the step now.
+            btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Story')
+                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Team &amp; Storage')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
@@ -43206,11 +43608,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Friendly name lookup for the "Visit X first" tooltip.
         const _FACILITY_FRIENDLY_NAME = {
             mart: 'Pokémart', tutor: 'Move Tutor', nature: 'Nature Rater',
-            center: 'Pokémon Center', relic: 'Relic Annex', artifacts: 'Artifact Hall',
+            center: 'Pokémon Center', relic: 'Relics', artifacts: 'Relics',
             link: "Bill's Cable Link", stoneShop: 'Stones and Beyond', evolab: 'Evolution Tutor',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
             bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club',
+        };
+        // Facility key → the onclick that opens it, so the single objective line can
+        // deep-link to a pending first-visit facility. Mirrors the button onclicks in
+        // renderCityActions (one source for both keeps them from drifting apart).
+        const _FACILITY_ENTER_CALL = {
+            center: "window.StoryMode.enterPokemonCenter()", mart: "window.StoryMode.enterShop('mart')",
+            professor: "window.StoryMode.enterProfessor()", tutor: "window.StoryMode.enterTutor('moves')",
+            dojo: "window.StoryMode.enterTutor('loadout')", nature: "window.StoryMode.enterTutor('nature')",
+            evolab: "window.StoryMode.enterEvolutionLab()", dept: "window.StoryMode.enterShop('dept')",
+            casino: "window.StoryMode.enterCasino()", safari: "window.StoryMode.enterSafariZone()",
+            evtrainer: "window.StoryMode.enterEVTrainer()", fanclub: "window.StoryMode.enterFanClub()",
+            daycare: "window.StoryMode.enterDaycare()", pits: "window.StoryMode.enterPits()",
+            stoneShop: "window.StoryMode.enterStoneShop()", link: "window.StoryMode.enterLink()",
+            colress: "window.StoryMode.enterColress()", relic: "window.StoryMode.enterArtifactShop()",
+            artifacts: "window.StoryMode.enterArtifactHall()", bag: "window.StoryMode.openCityBag()",
+            party: "window.StoryMode.openPartyModal()",
         };
         function _friendlyJoin(names) {
             if (!names.length) return '';
@@ -43284,7 +43702,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Relic Keeper: "Three on the velvet. Pick one — and remember, the rule it carries shows up in every battle of the run, theirs as well as yours."',
                 'Relic Keeper: "Read the card before you pay. Some of these change the air of the fight. Some of them just rearrange the furniture."',
                 'Relic Keeper: "Your first piece in Pallet is on me. After that the going rate is five thousand. Worth it for the right one."',
-                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Artifact Hall has a switch."',
+                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Manage tab has a switch."',
                 'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
             ],
         };
@@ -44771,14 +45189,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openSummary(_storySumIdx);
         }
 
+        // Browse / Manage tab bar — the two faces of the merged "Relics" facility:
+        // Browse (acquire a run-wide rule; only in the relic cities C0/C3/C6/C9) and
+        // Manage (toggle owned relics on/off; everywhere). One hub entry opens one of
+        // these; these tabs switch between them so the player sees both modes exist.
+        function _relicTabBar(active, cityIdx) {
+            // Use the documented relic cycle [0,3,6,9] — the same predicate the hub
+            // button and the free-relic tip use — NOT the looser storyArtifactShopCityAllowed
+            // (which also allows C8's Dept Store). Keeps the Browse tab offered exactly
+            // where the hub offers it, so the merge introduces no new C8 relic path.
+            const canBrowse = [0, 3, 6, 9].includes(Math.max(0, cityIdx | 0));
+            const base = 'flex:1;padding:7px 8px;font-family:inherit;font-size:12px;font-weight:bold;border-radius:4px;border:1px solid;';
+            const on = 'color:#1a0022;background:#ce93d8;border-color:#ce93d8;cursor:default;';
+            const off = 'color:#ce93d8;background:rgba(206,147,216,0.08);border-color:#7b1fa2;cursor:pointer;';
+            const dis = 'color:#666;background:rgba(255,255,255,0.03);border-color:#444;cursor:not-allowed;';
+            const browseStyle = active === 'browse' ? on : (canBrowse ? off : dis);
+            const manageStyle = active === 'manage' ? on : off;
+            const browseClick = (active === 'browse' || !canBrowse) ? '' : "window.StoryMode.enterArtifactShop()";
+            const manageClick = active === 'manage' ? '' : "window.StoryMode.enterArtifactHall()";
+            const browseTitle = canBrowse ? 'Acquire a run-wide relic (one per shop)' : 'Relics are sold in select cities along the way';
+            return `<div style="display:flex;gap:6px;margin-bottom:12px;">
+                <button type="button" ${canBrowse ? '' : 'disabled'} onclick="${browseClick}" title="${browseTitle}" style="${base}${browseStyle}">✨ Browse</button>
+                <button type="button" onclick="${manageClick}" title="Turn the relics you own on or off" style="${base}${manageStyle}">⚙ Manage</button>
+            </div>`;
+        }
         function enterArtifactHall() {
             _markFacilitySeen('artifacts');
+            _markFacilitySeen('relic'); // merged "Relics" facility — opening either face satisfies the one intro
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
                 const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="This relic affects both you and your opponents while enabled">◆ Affects both sides</span>';
                 const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="The coin reward and curse only affect your team">◆ Your team only</span>';
                 const _hallGuidance = '<div style="border:1px solid #7b1fa2;border-radius:6px;padding:10px;margin-bottom:10px;background:rgba(123,31,162,0.12);font-size:11px;color:#d9c7e8;line-height:1.5;"><strong style="color:#ce93d8;">Relics rewrite the rules of every battle — for both sides.</strong> They arrive switched <strong>OFF</strong>. Flip one on here only when you want its effect; new trainers should leave them off until they\'ve found their footing. Toggle any relic on or off anytime.</div>';
-                el.innerHTML = _hallGuidance + ((sm.artifacts || []).map(id => {
+                el.innerHTML = _relicTabBar('manage', cityIdx) + _hallGuidance + ((sm.artifacts || []).map(id => {
                     const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
@@ -44798,7 +45242,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${off ? 'Enable Relic' : 'Disable Relic'}
                         </button>
                     </div>`;
-                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Relic Annex sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
+                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Browse tab sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
             }
             showScreen('screen-story-artifacts');
         }
@@ -45104,6 +45548,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _renderProfChoices();
             showScreen('screen-story-professor');
+            // Lab backdrop for the starter pick; the dramatic villain lair for the
+            // Mystery Figure / legendary reveal that reuses this screen.
+            try { syncStorySceneBackground('story-professor-bg-layer', _profLegendaryMysteryMode ? 'villain' : 'lab'); } catch (e) {}
         }
 
         function _buildProfPickCardElement(ch, idx) {
@@ -46511,9 +46958,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             showBattleIntro(trainer, event, async () => {
-                const _rollEnemy = () => isMysteryFinal
-                    ? rollMysteryFigureFinalBossTeam(6, sg)
-                    : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                const _rollEnemy = () => {
+                    if (isMysteryFinal) return rollMysteryFigureFinalBossTeam(6, sg);
+                    // Extra track: raid / miniRaid beats fight as ONE scaled legendary-tier
+                    // Pokémon, not a rolled trainer team.
+                    const _raidTeam = _rollExtraRaidBossTeam(sm._activeBeatBattleKey);
+                    if (_raidTeam) return _raidTeam;
+                    return rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                };
                 // Static-roll spec: every non-rival fight is a pure function of
                 // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
                 // The rival stays dynamic — it re-rolls off the LIVE party to counter it.
@@ -46537,6 +46989,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyRecordSignatureEncounter(trainer, frozenTeam); } catch (e) {}
                 startFight(frozenTeam);
             }, idx);
+        }
+
+        // Maps a story battle event type to an AudioSystem battle-theme mood.
+        function _storyBattleMoodFor(eventType) {
+            const e = String(eventType || '');
+            if (/^Gym Leader/i.test(e)) return 'leader';
+            if (e === 'Rival') return 'rival';
+            if (e === 'Champion' || e === 'Mystery Figure' || /Caged God|Boss/i.test(e)) return 'boss';
+            if (/^E[1-4]$/.test(e) || e === 'Elite Trainer' || e === 'Victory Road') return 'elite';
+            return 'trainer';
         }
 
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
@@ -46566,11 +47028,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const silentAttr = _storyQuoteIsSilent(quote)
                     ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
                     : '';
+                // VS splash: player vs opponent, accent + drama scaled by battle tier.
+                const VS_ACCENT = { 'Gym Leader':'#ffd54f', 'Rival':'#ff9800', 'Elite Trainer':'#ba68c8', 'E1':'#ba68c8', 'E2':'#ba68c8', 'E3':'#ba68c8', 'E4':'#ba68c8', 'Champion':'#ffd700', 'Victory Road':'#80cbc4', 'Basic Trainer':'#b0bec5', 'Gym Trainer':'#b0bec5' };
+                const vsAccent = (String(eventType) === 'Mystery Figure') ? '#7e57c2' : (VS_ACCENT[quoteRole] || VS_ACCENT[String(eventType)] || '#b0bec5');
+                const vsIsMajor = !(quoteRole === 'Basic Trainer' || quoteRole === 'Gym Trainer');
+                const vsPlayerSprite = _trainerSpritePath((sm && sm.trainerProfile && sm.trainerProfile.sprite) || TRAINER_DEFAULT);
                 overlay.innerHTML = `
-                    <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
+                    ${vsIsMajor ? '<div class="vs-flash" aria-hidden="true"></div>' : ''}
+                    <div class="vs-stage${vsIsMajor ? ' vs-big' : ''}" style="--vs-accent:${vsAccent};">
+                        <img class="vs-fighter vs-fighter-player" src="${_esc(vsPlayerSprite)}" onerror="this.style.visibility='hidden'" alt="">
+                        <div class="vs-glyph" aria-hidden="true">VS</div>
+                        <img class="vs-fighter vs-fighter-foe" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="">
+                    </div>
                     <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>
                     ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
-                    <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
+                    <div class="story-dialog-host story-battle-intro-dialog vs-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
                         <div class="story-dialog-box">
                             <p class="story-dialog-text"${silentAttr}>"${quote}"</p>
@@ -46579,7 +47051,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
                 document.body.appendChild(overlay);
-                const introMs = isRivalBattle ? 3400 : 2200;
+                try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                const introMs = isRivalBattle ? 3400 : (vsIsMajor ? 2900 : 2200);
                 setTimeout(() => {
                     try { overlay.remove(); } catch (e) {}
                     // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
@@ -46637,6 +47110,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── BATTLE END CALLBACK ───────────────────────────────────────────
         function onBattleEnd(won, title, desc) {
+            // Stop any story battle theme and restore field BGM (a win plays a
+            // victory fanfare first). Runs before the crucible/pits early-returns
+            // so every story battle-end path clears the override.
+            try { AudioSystem.endBattleTheme(won); } catch (e) {}
             // Crucible-sourced battles (Frontier / Mystery / Rival / League / Gym) bypass
             // the normal victory overlay + game-over screen and route back to their hub.
             if (sm.crucibleBattleSource) {
@@ -47012,6 +47489,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function afterBattleReturn() {
+            // Defensive: ensure any battle theme is cleared and field BGM resumes
+            // on the return-to-map path (covers forfeit / error-recovery returns
+            // where onBattleEnd may not have run).
+            try { AudioSystem.endBattleTheme(false); } catch (e) {}
             // Called from returnToHome when story mode is active.
             // If a Crucible-sourced battle just ended, onBattleEnd already handled team
             // sync + UI routing — short-circuit so processNextEvent does not advance the
@@ -47658,26 +48139,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (b < 3) return _SAFARI_GRADE_CURVE_BY_BADGES[3];
             return _SAFARI_GRADE_CURVE_BY_BADGES[b];
         }
-        function enterSafariZone() {
+        async function enterSafariZone() {
             if (!sm.safari || typeof sm.safari !== 'object') sm.safari = { freeEntryUsed: false };
             const isFree = !sm.safari.freeEntryUsed;
-            if (!isFree && (sm.gold | 0) < SAFARI_ENTRY_COST) {
-                try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST.toLocaleString()}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
-                return;
+            if (!isFree) {
+                if ((sm.gold | 0) < SAFARI_ENTRY_COST) {
+                    try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST.toLocaleString()}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
+                    return;
+                }
+                // Paid entry — confirm before charging. At 10,000G a misclick is
+                // devastating, so gate it behind the same confirm modal the other
+                // paid facilities use.
+                let ok = true;
+                try {
+                    if (typeof window.showGameConfirm === 'function') {
+                        ok = await window.showGameConfirm(`Enter the Safari Zone for ${SAFARI_ENTRY_COST.toLocaleString()}G?\n\n${SAFARI_BALLS_PER_SESSION} Safari Balls, up to ${SAFARI_MAX_ENCOUNTERS} encounters. Unused balls are refunded at the gate; the entry fee is not.`);
+                    }
+                } catch (e) {}
+                if (!ok) return;
             }
+            // Mark the facility seen on entry (free OR paid). Safari was the only
+            // facility that never called _markFacilitySeen, so its first-visit intro
+            // and the Leave-City gate kept re-firing even after the free first entry
+            // — the entry "didn't count". Now it does.
+            try { _markFacilitySeen('safari'); } catch (e) {}
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                // Story-embedded tutorial — Warden cameo. Replaces the prior
-                // free-entry alert. Dedupe is per-run: freeEntryUsed gates free
-                // entry to once per run, and the scene routes through
+                // Story-embedded tutorial — Warden cameo. Dedupe is per-run via
                 // sm.scenesShown so a fresh run replays the Warden intro.
                 _enqueueIntroTutorial('firstSafari');
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
                 try { _storyTrackSpend(SAFARI_ENTRY_COST); } catch (e) {}
             }
-            // Gate-open chime — soft achievement ping so the safari trip starts with
-            // a beat. Sits under the welcome-alert dismiss so it doesn't clash.
+            // Gate-open chime — soft achievement ping so the safari trip starts with a beat.
             try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.8); } catch (e) {}
             _safariBeginSession();
             try { save(); } catch (e) {}
@@ -47747,8 +48242,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // A post-game city unlocked after Hall of Fame. Every facility, every battle
         // type, plus an endless-ladder Battle Frontier with per-round stat scaling and
         // a top-10 highscore. Accessed from the city action button "🧨 The Crucible".
-        const _CRUCIBLE_GYM_ROWS = [5, 11, 18, 24, 31, 38, 46, 53]; // GL1..GL8 in STORY_EVENTS_RAW
-        const _CRUCIBLE_LEAGUE_ROWS = [60, 61, 62, 63, 64];          // E1..E4 + Champion
+        // Crucible rematch targets — ARRAY INDICES into STORY_EVENTS_RAW (NOT row ids).
+        // Derived by scanning events by name because row id != array index in the late
+        // game (rival rows are spliced out of id-order). The old hardcoded row-id lists
+        // pointed the buttons at the wrong rows: Mystery Figure → out of bounds (dead
+        // button), Rival → Hall of Fame screen, League Run → skipped E1, Gym Rematch →
+        // City3 ~1/8. Mirrors GYM_CITY_LEADER_EVENT's derive-from-events approach.
+        const _CRUCIBLE_BATTLE_IDX = (function buildCrucibleBattleIndices() {
+            const gym = [];
+            for (let n = 1; n <= 8; n++) if (GYM_CITY_LEADER_EVENT[n] != null) gym.push(GYM_CITY_LEADER_EVENT[n]);
+            const leagueByName = {};
+            let championIdx = -1, rivalIdx = -1, mysteryIdx = -1;
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const row = STORY_EVENTS_RAW[i];
+                if (!row || row[1] !== 'Battle') continue;
+                const name = String(row[2] || '');
+                if (name === 'E1' || name === 'E2' || name === 'E3' || name === 'E4' || name === 'Champion') {
+                    leagueByName[name] = i;
+                    if (name === 'Champion') championIdx = i;
+                } else if (name === 'Mystery Figure') {
+                    mysteryIdx = i;
+                } else if (name === 'Rival' && championIdx >= 0 && rivalIdx < 0) {
+                    rivalIdx = i; // league rival = the first Rival after the Champion
+                }
+            }
+            const league = ['E1', 'E2', 'E3', 'E4', 'Champion'].map(n => leagueByName[n]).filter(x => x != null);
+            return { gym: gym, league: league, rival: rivalIdx, mystery: mysteryIdx };
+        })();
+        const _CRUCIBLE_GYM_ROWS = _CRUCIBLE_BATTLE_IDX.gym;     // GL1..GL8 array indices
+        const _CRUCIBLE_LEAGUE_ROWS = _CRUCIBLE_BATTLE_IDX.league; // E1..E4 + Champion array indices
         function _ensureFrontierState() {
             if (!sm.frontier || typeof sm.frontier !== 'object') {
                 sm.frontier = { currentStreak: 0, currentRound: 1, highscores: [], active: false };
@@ -47761,10 +48283,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderCrucible();
             showScreen('screen-story-crucible');
+            syncStorySceneBackground('story-crucible-bg-layer', 'league');
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure, rival rematches, gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
+                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\n🔮 If the Caged God hunt is open, it sits at the very top: collect its three Underground leads right here, then enter the Cage to capture the specimen. (The Mystery Figure is a separate masked trainer — not the Caged God.)\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -47789,7 +48312,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
             const hardOn = !!sm.crucibleHardMode;
+            // Post-game quest: the Caged God hunt. Surfaced here (the post-game Underground
+            // hub) so it's discoverable and reachable — previously it only appeared inside
+            // a Pokémon Center of Cities 2/5/8, which the post-game can't travel back to.
+            const cagedGodHtml = _bossArcRenderSection(true);
             body.innerHTML = `
+                ${cagedGodHtml ? `<h4 style="color:#ce93d8;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Post-Game Quest</h4>${cagedGodHtml}<div style="height:18px;"></div>` : ''}
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
                 <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 10px;background:rgba(40,0,0,${hardOn ? '0.55' : '0.25'});border:1px solid ${hardOn ? '#ff5252' : '#5a2a2a'};cursor:pointer;font-size:11px;color:${hardOn ? '#ffcdd2' : '#bba'};">
                     <input type="checkbox" ${hardOn ? 'checked' : ''} onchange="window.StoryMode.toggleCrucibleHardMode(this.checked)" style="margin:0;cursor:pointer;">
@@ -47797,27 +48325,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
                     ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
-                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
+                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked trainer (a 6-mon trainer fight). Distinct from the Caged God hunt above.')}
                     ${btn('🌀',                                     'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
                     ${btn(png('icons/story/story_league.png'),     'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
                     ${btn(png('icons/story/story_gym.png'),        'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
                     ${btn(png('icons/story/story_route.png'),      'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581', 'Roll a wild Pokémon and try to catch it.')}
                 </div>
-                <h4 style="color:#90caf9;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
-                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
-                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
-                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
-                    ${btn(png('icons/story/story_artifacts.png'),  'Relic Annex', 'window.StoryMode.enterArtifactShop()', null, 'Buy run-wide relics. One per shop, locked for the rest of the run.')}
+                <h4 style="color:#90caf9;margin:0 0 10px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
+                <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Train &amp; Evolve</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
                     ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
                     ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
                     ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
                     ${btn(png('icons/story/story_dojo.png'),       'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
                     ${btn(png('icons/story/story_colress.png'),    'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
                     ${btn(png('icons/story/story_professor.png'),  'Evolution Tutor (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
-                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
+                </div>
+                <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Shop</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
+                    ${btn(png('icons/story/story_artifacts.png'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
                     ${btn('🎰',                                     'Poké Game Corner', 'window.StoryMode.enterCasino()', null, 'Coin Flip · Slots · Roulette. Big wins drop Vitamins + Vouchers.')}
+                </div>
+                <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Catch, Store &amp; Trade</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
+                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
+                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
                 </div>
             `;
         }
@@ -47837,8 +48372,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Skip wild-route interrupt for Crucible battles.
             enterBattleEvent(ev, true);
         }
-        function crucibleMysteryFight() { _crucibleBattleSetup(STORY_POST_HOF_MYSTERY_ROW, 'mystery'); }
-        function crucibleRivalFight()   { _crucibleBattleSetup(STORY_LEAGUE_RIVAL_ROW, 'rival'); }
+        function crucibleMysteryFight() { _crucibleBattleSetup(_CRUCIBLE_BATTLE_IDX.mystery, 'mystery'); }
+        function crucibleRivalFight()   { _crucibleBattleSetup(_CRUCIBLE_BATTLE_IDX.rival, 'rival'); }
         function crucibleLeagueRun() {
             sm.crucibleLeagueRun = { currentStage: 0 };
             _crucibleBattleSetup(_CRUCIBLE_LEAGUE_ROWS[0], 'league');
@@ -47896,6 +48431,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderFrontierHub();
             showScreen('screen-story-frontier');
+            syncStorySceneBackground('story-frontier-bg-layer', 'mansion');
             // Battle-prep horn — Frontier is a 6v6 stamina test.
             try { window.StoryFx && window.StoryFx.playSfx('danger', 0.4); } catch (e) {}
             try { _storyShowOneTimeTip('frontier',
@@ -48177,10 +48713,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const L = sm.bossArc.leads;
             const all = !!(L.ledger && L.recording && L.key);
             if (all && !sm.bossArc.cageUnlocked) {
-                sm.bossArc.cageUnlocked = true;
                 if (!sm.bossArc.boss) {
                     sm.bossArc.boss = _bossArcRollLegendary();
                 }
+                if (!sm.bossArc.boss) {
+                    // No legendary in the enabled generations — do NOT flip cageUnlocked.
+                    // (Flipping it left a permanent dead "Enter the Cage — ???" button that
+                    // bossEnterCage could never resolve.) Warn once; this re-checks whenever
+                    // leads change or a Center re-renders, so enabling a gen later still works.
+                    if (!sm.bossArc._sealedWarned) {
+                        sm.bossArc._sealedWarned = true;
+                        try { save(); } catch (e) {}
+                        try { window.showGameAlert && window.showGameAlert('The Cage stays sealed — no legendary Pokémon exists in your enabled generations. Enable a generation that has one (Settings) to face the Caged God.'); } catch (e) {}
+                    }
+                    return;
+                }
+                sm.bossArc._sealedWarned = false;
+                sm.bossArc.cageUnlocked = true;
                 try { save(); } catch (e) {}
                 // Big-moment alert — the audit noted players could miss the cage opening
                 // because the button just silently appeared.
@@ -48217,7 +48766,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
             return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
         }
-        function _bossArcRenderSection() {
+        function _bossArcRenderSection(hubMode) {
             _bossArcEnsureState();
             if (!sm.bossArc.available || sm.bossArc.cleared) return '';
             const L = sm.bossArc.leads;
@@ -48244,7 +48793,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
             </div>`;
 
-            if (localLeadKey && !L[localLeadKey]) {
+            if (hubMode && !allLeads) {
+                // Crucible hub = the post-game Underground: the whole broker network is
+                // reachable here, so any uncollected lead can be pulled (each still plays
+                // its broker scene). Keeps the 3-city lore in the labels.
+                const _leadCity = { ledger: 2, recording: 5, key: 8 };
+                for (const k of ['ledger', 'recording', 'key']) {
+                    if (L[k]) continue;
+                    const flav = _BOSS_LEAD_FLAVOR[k];
+                    html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${k}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)} <span style="color:#9a8aa8;">· City ${_leadCity[k]}</span></button>`;
+                }
+            } else if (localLeadKey && !L[localLeadKey]) {
                 const flav = _BOSS_LEAD_FLAVOR[localLeadKey];
                 html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${localLeadKey}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)}</button>`;
             } else if (localLeadKey && L[localLeadKey]) {
@@ -48274,6 +48833,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _bossArcCheckCageUnlock();
                 try { save(); } catch (e) {}
                 try { _pcRefresh(); } catch (e) {}
+                // Collected from the Crucible hub? Re-render it so the tracker updates.
+                try { if (sm.atCrucible) _renderCrucible(); } catch (e) {}
             };
             // Promote the lead from a plain window.alert() to the standard
             // narrative overlay. Per-variant body line is used when the
@@ -48948,6 +49509,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
                     else headerEl.textContent = '🌿 Wild Encounter';
                 }
+            } catch (e) {}
+            // Scene backdrop matches the encounter mode (gen3 pixel art): the Caged
+            // God boss gets the cavern, Safari its zone, wild routes the forest.
+            try {
+                syncStorySceneBackground('story-catch-bg-layer',
+                    _catchState.bossMode ? 'cave' : (_catchState.safariMode ? 'safari' : 'forest'));
             } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
@@ -49954,7 +50521,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
-                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No items in stock — you\'re on a No Item Run. Visit the <strong style="color:#ce93d8;">Relic Annex</strong> for run-wide relics instead.</div>');
+                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No items in stock — you\'re on a No Item Run. Visit <strong style="color:#ce93d8;">Relics</strong> for run-wide relics instead.</div>');
             }
             gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
@@ -50090,7 +50657,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _markFacilitySeen('relic');
             try { _storyShowOneTimeTip('relic',
-                'The Relic Annex.\n\nThree relics on the shelf, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Artifact Hall in any city will let you toggle them.'); } catch (e) {}
+                'Relics — the Browse shelf.\n\nThree relics here, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Manage tab (in any city) lets you toggle them.'); } catch (e) {}
             try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
@@ -50140,7 +50707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>` : ''}
                 </div>`);
             }
-            gridEl.innerHTML = _artParts.join('');
+            gridEl.innerHTML = _relicTabBar('browse', cityIdx) + _artParts.join('');
             syncStoryArtifactShopBackground();
             showScreen('screen-story-artifact-shop');
             // Soft mystical chime — relic shop has a treasure-room mood.
@@ -59194,6 +59761,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             get state() { return sm; },
+            // Boss-mechanics live wiring — startBattle (init) + the locked turn
+            // resolver reach these through window.StoryMode.*; previously only the
+            // test harness exposed them, so production boss mechanics never attached.
+            get BOSS_CONFIGS() { return BOSS_CONFIGS; },
+            bossMechanicsBattleInit: (s) => _storyBossMechanicsBattleInit(s),
+            bossMechanicsTurnTick: (s, m) => _storyBossMechanicsTurnTick(s, m),
+            showBossBanner: (t, a) => _showBossBanner(t, a),
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
@@ -59740,6 +60314,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     aiBestSwitch: typeof aiBestSwitch === 'function' ? aiBestSwitch : null,
                     aiPredictPlayerSwitchIn: typeof aiPredictPlayerSwitchIn === 'function' ? aiPredictPlayerSwitchIn : null,
                     getMoveEffectiveness: typeof getMoveEffectiveness === 'function' ? getMoveEffectiveness : null,
+                    cryCandidates: typeof cryCandidates === 'function' ? cryCandidates : null,
+                    toShowdownSpriteId: typeof toShowdownSpriteId === 'function' ? toShowdownSpriteId : null,
                     get state() { return state; },
                     set state(v) { state = v; },
                     get settings() { return settings; },
