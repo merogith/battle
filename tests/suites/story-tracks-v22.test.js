@@ -12,8 +12,8 @@ const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
 
-test('SAVE_VER bumped to 22', () => {
-    assert.equal(W.__STORY_SAVE_VER, 22);
+test('SAVE_VER bumped to 23 (v23 adds sm.wanderByEventIdx)', () => {
+    assert.equal(W.__STORY_SAVE_VER, 23);
 });
 
 test('VILLAIN_TRACKS pool has the 10 canon teams', () => {

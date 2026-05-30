@@ -34234,7 +34234,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 22;
+        const SAVE_VER = 23;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV20 against a saved `version`).
@@ -34992,7 +34992,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:true, zOn:true, dynaOn:true, teraOn:true, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
-                   artifactsDisabled:[], storyCityVisit:null, citiesArrived:{},
+                   artifactsDisabled:[], storyCityVisit:null, citiesArrived:{}, wanderByEventIdx:{},
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                    deptShopPurchasedByCity:{}, facilityIntros:{}, scenesShown:{},
                    storyDifficulty:'normal', runSeed:null,
@@ -35296,6 +35296,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!('currentEnemyLock' in sm)) sm.currentEnemyLock = null;
                 if (!('storyCityVisit' in sm)) sm.storyCityVisit = null;
                 if (!sm.citiesArrived || typeof sm.citiesArrived !== 'object') sm.citiesArrived = {};
+                if (!sm.wanderByEventIdx || typeof sm.wanderByEventIdx !== 'object') sm.wanderByEventIdx = {};
                 // Back-fill arrival flags for cities the player has already passed through.
                 // Without this, every previously visited city would pop a fresh welcome
                 // overlay the next time the player returns to it on a migrated save.
@@ -37668,6 +37669,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     filterSigsByGradeCeiling: (...a) => _filterSigsByGradeCeiling(...a),
                     storySigGradeCeiling: (...a) => _storySigGradeCeiling(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
+                    // Wander Around (route-exit optional wild search) — test handles.
+                    get WANDER_MAX_TAPS() { return WANDER_MAX_TAPS; },
+                    get WANDER_BASE_RATE() { return WANDER_BASE_RATE; },
+                    get WANDER_RATE_DECAY() { return WANDER_RATE_DECAY; },
+                    wanderRate: (st) => _wanderRate(st),
+                    wanderSimulate: (u) => _wanderSimulate(u),
+                    shouldOfferWander: (c) => _shouldOfferWander(c),
+                    showWanderScreen: (k, c, d, m) => _showWanderScreen(k, c, d, m),
+                    wanderState: (k) => _wanderState(k),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
                     // 3-track story-mode (v22+) test handles.
@@ -39101,6 +39111,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 version: SAVE_VER,
                 storyCityVisit: null,
                 citiesArrived: {},
+                wanderByEventIdx: {},
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
@@ -42881,6 +42892,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.cityRerollsUsed = {};
                 sm.storyCityVisit = cidx;
                 try { save(); } catch (e) { console.warn('[Story] enterCity save', e); }
+            }
+            // Wander Around — optional route-exit wild search before a *new* city.
+            // Same gate as the arrival screen below (first arrival per run), so it
+            // fires once per genuine new-city crossing, additive to the forced route
+            // wilds. Suppressed before Pallet/League and on roaming-legendary routes.
+            // On "Move On" it marks the route done and re-enters enterCity, which
+            // then shows the arrival screen. See docs/story-design/WANDER_AROUND_SPEC.md.
+            if ((!sm.citiesArrived || !sm.citiesArrived[cidx]) && _shouldOfferWander(cidx)) {
+                const _wkey = sm.eventIndex | 0;
+                const _wst = sm.wanderByEventIdx && sm.wanderByEventIdx[_wkey];
+                if (!(_wst && _wst.done)) {
+                    try {
+                        _showWanderScreen(_wkey, cidx, function () { enterCity(); });
+                        return;
+                    } catch (e) { console.warn('[Story] wander screen failed, continuing', e); }
+                }
             }
             // First arrival in a city (per run) — show a welcome overlay with the
             // city's identity + flavor before dropping the player into the hub. The
@@ -49221,6 +49248,163 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const prior = _wildSeenCount(battleIdx);
             sm.wildSeenByEventIdx[battleIdx] = prior + d;
             try { save(); } catch (e) {}
+        }
+
+        // ── Wander Around (optional route-exit wild search) ──────────────
+        // Before arriving at a NEW city, the player may "Search the Tall Grass"
+        // up to WANDER_MAX_TAPS times. The encounter chance starts at
+        // WANDER_BASE_RATE and halves (× WANDER_RATE_DECAY) only when an encounter
+        // is *generated* — a miss leaves it unchanged. Additive to the forced
+        // route wilds (STORY_WILDS_PER_ROUTE_NODE); never fires before Pallet /
+        // League or on a roaming-legendary route. All rolls are seeded
+        // (storyRngNext via _withEventSeededRng) for deterministic replays.
+        // Spec: docs/story-design/WANDER_AROUND_SPEC.md.
+        const WANDER_MAX_TAPS = 3;       // searches per route             [user-confirmed]
+        const WANDER_BASE_RATE = 0.50;   // first-search chance            [user-confirmed]
+        const WANDER_RATE_DECAY = 0.5;   // × rate per generated encounter [user-confirmed]
+
+        /** Per-route wander state, keyed by the arriving City row index.
+         *  `{ taps, hits, done }`; absent ⇒ a fresh route (50%, 3 searches). */
+        function _wanderState(key) {
+            if (!sm.wanderByEventIdx || typeof sm.wanderByEventIdx !== 'object') sm.wanderByEventIdx = {};
+            let st = sm.wanderByEventIdx[key];
+            if (!st || typeof st !== 'object') { st = {}; sm.wanderByEventIdx[key] = st; }
+            if (typeof st.taps !== 'number') st.taps = 0;
+            if (typeof st.hits !== 'number') st.hits = 0;
+            if (typeof st.done !== 'boolean') st.done = false;
+            return st;
+        }
+        /** Current encounter chance: base × decay^(encounters generated so far). */
+        function _wanderRate(st) {
+            const hits = (st && typeof st.hits === 'number') ? st.hits : 0;
+            return WANDER_BASE_RATE * Math.pow(WANDER_RATE_DECAY, hits);
+        }
+        /** Pure model simulator (test surface): one uniform [0,1) per tap →
+         *  [{tap,rate,hit}], halving the rate only after a hit, capped at MAX.
+         *  Shares the WANDER_* constants with the live screen, so a test on this
+         *  validates the shipped probability logic, not a re-implementation. */
+        function _wanderSimulate(uniforms) {
+            const u = Array.isArray(uniforms) ? uniforms : [];
+            const out = [];
+            let hits = 0;
+            for (let t = 0; t < WANDER_MAX_TAPS && t < u.length; t++) {
+                const rate = WANDER_BASE_RATE * Math.pow(WANDER_RATE_DECAY, hits);
+                const hit = u[t] < rate;
+                if (hit) hits++;
+                out.push({ tap: t + 1, rate: rate, hit: hit });
+            }
+            return out;
+        }
+        /** Does the route→city arrival at `cidx` offer a wander beat? No before
+         *  Pallet (0) or the League (9); suppressed while a roaming legendary is
+         *  pending (Victory Road) — that interrupt owns the route's wild. */
+        function _shouldOfferWander(cidx) {
+            cidx = cidx | 0;
+            if (cidx < 1 || cidx > 8) return false;
+            try {
+                if (sm.roamingLegendary && sm.roamingLegendary.pending && sm.roamingLegendary.pending.name) return false;
+            } catch (e) {}
+            return true;
+        }
+        /** The optional "Search the Tall Grass / Move On" prompt. Self-managing
+         *  loop: each search rolls a seeded encounter; on a hit it hands off to the
+         *  shared catch screen and re-opens on resolution. "Move On" (or once the
+         *  3rd search is spent) marks the route done and calls `onDone` (→ enterCity,
+         *  which then shows the city arrival screen). `lastMiss` only tunes the
+         *  flavor line and is intentionally not persisted. */
+        function _showWanderScreen(key, cidx, onDone, lastMiss) {
+            const st = _wanderState(key);
+            const finish = function () {
+                st.done = true;
+                try { save(); } catch (e) {}
+                try { onDone && onDone(); } catch (e) { console.error('[Story] wander onDone', e); }
+            };
+            if (st.done) { try { onDone && onDone(); } catch (e) {} return; }
+            // Hide any live screen (e.g. a just-resolved catch screen) so the opaque
+            // overlay never sits over a focusable, off-screen surface.
+            try { document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden')); } catch (e) {}
+
+            const canSearch = st.taps < WANDER_MAX_TAPS;
+            const remaining = Math.max(0, WANDER_MAX_TAPS - st.taps);
+            let message;
+            if (!canSearch) {
+                message = 'You’ve combed the grass as much as you can. The road into town is waiting.';
+            } else if (lastMiss) {
+                message = 'The grass falls still — nothing this time. You could try once more, or move on.';
+            } else if (st.taps > 0) {
+                message = 'The grass keeps rustling. Search it again, or head on into town.';
+            } else {
+                message = 'Tall grass lines the last stretch of road. You could search it for a wild Pokémon — or move on to town.';
+            }
+
+            const ov = document.createElement('div');
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', 'On the route — tall grass');
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;background:linear-gradient(180deg, rgba(10,26,14,0.96) 0%, rgba(4,10,6,0.98) 100%);';
+            const searchBtnHtml = canSearch
+                ? '<button type="button" data-wander-search="1" style="padding:10px 22px;background:#2e6b34;color:#fff;border:1px solid #6abf6f;border-radius:4px;cursor:pointer;font-weight:bold;">🌿 Search the Tall Grass</button>'
+                : '<button type="button" disabled aria-disabled="true" style="padding:10px 22px;background:#2a2a2a;color:#777;border:1px solid #444;border-radius:4px;cursor:not-allowed;">🌿 Search the Tall Grass</button>';
+            ov.innerHTML =
+                '<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">— On the Route —</div>' +
+                '<div style="font-size:40px;line-height:1;" aria-hidden="true">🌿</div>' +
+                '<div class="story-dialog-host" style="max-width:520px;width:100%;">' +
+                    '<div class="story-dialog-box"><p class="story-dialog-text" style="margin:0;">' + message + '</p></div>' +
+                '</div>' +
+                '<div style="color:#9bbf9b;font-size:11px;letter-spacing:0.04em;">Searches remaining: ' + remaining + ' / ' + WANDER_MAX_TAPS + '</div>' +
+                '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px;">' +
+                    searchBtnHtml +
+                    '<button type="button" data-wander-moveon="1" style="padding:10px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Move On →</button>' +
+                '</div>';
+
+            let closed = false;
+            let escHandler = null;
+            const cleanup = function () {
+                if (escHandler) { try { document.removeEventListener('keydown', escHandler); } catch (e) {} escHandler = null; }
+                try { ov.remove(); } catch (e) {}
+            };
+            const moveOn = function () {
+                if (closed) return; closed = true;
+                cleanup();
+                finish();
+            };
+            const search = function () {
+                if (closed) return; closed = true;
+                cleanup();
+                st.taps += 1;
+                const rate = _wanderRate(st);
+                const findSeed = 900000 + (key | 0) * 10 + (st.taps - 1);
+                const found = _withEventSeededRng(findSeed, function () { return window.storyRngNext() < rate; });
+                if (found) {
+                    const encSeed = 910000 + (key | 0) * 10 + (st.hits | 0);
+                    let enc = null;
+                    try { enc = _withEventSeededRng(encSeed, function () { return rollWildEncounter(storySettingsGens()); }); }
+                    catch (e) { console.error('[Story] wander encounter roll failed', e); enc = null; }
+                    if (enc) {
+                        st.hits += 1;          // a generated encounter halves the next search
+                        try { save(); } catch (e) {}
+                        try {
+                            enterCatchEncounter(enc, function () { _showWanderScreen(key, cidx, onDone, false); }, {});
+                        } catch (e) {
+                            console.error('[Story] wander catch screen failed', e);
+                            _showWanderScreen(key, cidx, onDone, false);
+                        }
+                        return;
+                    }
+                    // Empty pool ⇒ no encounter generated ⇒ treat as a miss (rate holds).
+                }
+                try { save(); } catch (e) {}
+                _showWanderScreen(key, cidx, onDone, true);   // re-open (auto-disables Search at the cap)
+            };
+
+            const searchBtn = ov.querySelector('button[data-wander-search="1"]');
+            if (searchBtn) searchBtn.onclick = function (e) { e.stopPropagation(); search(); };
+            const moveBtn = ov.querySelector('button[data-wander-moveon="1"]');
+            if (moveBtn) moveBtn.onclick = function (e) { e.stopPropagation(); moveOn(); };
+            escHandler = function (e) { if (e.key === 'Escape') { e.preventDefault(); moveOn(); } };
+            document.addEventListener('keydown', escHandler);
+            document.body.appendChild(ov);
+            try { const _f = searchBtn || moveBtn; _f && _f.focus(); } catch (e) {}
         }
 
         /** "Up next" label for transition screens — the catch screen, the
