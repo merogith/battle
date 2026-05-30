@@ -36,8 +36,8 @@ If you are a rights holder and want something removed, please open an issue.
 | Pokémon cries (`music/cries`) | Showdown / PokémonDB lineage | © TPC (fan-ripped) | Community-standard; not openly licensed. |
 | Move SFX (`music/battle_anims`, `music/moves`) | Showdown move SFX | © TPC (fan-ripped) | |
 | UI SFX (`music/ui_sfx`) | Project / mixed | see per-file where applicable | |
-| Background & theme music (`music/background`, `music/themes/Theme*.mp3`) | Project-supplied | Project-managed | Re-encoded to 128 kbps for size; see hygiene notes. |
-| Battle boss theme (`music/themes/boss_climax.mp3`) | "A Night of Dizzy Spells" — **Eric Skiff** (*Resistor Anthems*), via [Tuxemon](https://github.com/Tuxemon/Tuxemon) | **CC-BY 3.0** | Used for Champion / Mystery Figure battles. Attribution required — keep this credit. |
+| Background & theme music (`music/background`, `music/themes/Theme*.mp3`) | Project-supplied | Project-managed | `background1–3` = field BGM; `Theme1–4` = character-creation ("new adventure") theme (random pick). Re-encoded to 128 kbps for size; see hygiene notes. |
+| Battle boss theme (`music/themes/boss_climax.mp3`) | "A Night of Dizzy Spells" — **Eric Skiff** (*Resistor Anthems*), via [Tuxemon](https://github.com/Tuxemon/Tuxemon) | **CC-BY 3.0** | Used for all story trainer battles (route/gym trainers, gym leaders, rival, Elite Four, Champion / Mystery Figure). Attribution required — keep this credit. |
 | Victory fanfare (`music/themes/victory.mp3`) | OpenGameArt "JRPG" collection (Yubatake / "yd"), via [Tuxemon](https://github.com/Tuxemon/Tuxemon) | **CC-BY 3.0** (verify per-track on OGA) | Played on a story battle win. Attribution required. |
 
 ## Data / tooling
