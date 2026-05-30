@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-30T21:27:25.057Z
+> **Generated**: 2026-05-30T21:38:29.880Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1630,7 +1630,7 @@ file: scripts/debug/perf-bench.mjs
 agents: [performance-profiler]
 fingerprint: 9d33b6e8c1a4
 confidence: high
-status: open
+status: fixed-claude/focused-cori-sGNzn (exposed makeWildBuild on __storyTest; added benchRollTrainerTeam + benchMakeWildBuild to perf-bench — both now measured, 0.17ms / 0.09ms, within target)
 ---
 
 **Title**: perf-bench covers boot/turn/parseMove/memory but cannot benchmark rollTrainerTeam, makeWildBuild, or build power tiers (not exposed on window/__engine)

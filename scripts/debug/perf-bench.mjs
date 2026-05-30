@@ -111,6 +111,39 @@ function classify(median, target) {
   return '🚨 >2× over target';
 }
 
+async function benchRollTrainerTeam(harness, trials = 50) {
+  const ST = harness.window && harness.window.__storyTest;
+  if (!ST || typeof ST.rollTrainerTeam !== 'function' || typeof ST.getTrainerData !== 'function') return null;
+  const trainers = ST.getTrainerData() || [];
+  const trainer = trainers.find(t => t && Array.isArray(t.sigs) && t.sigs.length) || trainers[0];
+  if (!trainer) return null;
+  const gw = { g1: 0, g2: 0, g3: 50, g4: 50 };
+  const gens = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const run = () => { try { ST.rollTrainerTeam(trainer, 3, gw, gens, trainer.role, 0); } catch (e) { /* roll edge skipped */ } };
+  for (let i = 0; i < 2; i++) run(); // warm-up
+  const samples = [];
+  for (let i = 0; i < trials; i++) {
+    const t0 = process.hrtime.bigint();
+    run();
+    samples.push(Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+  return samples;
+}
+
+async function benchMakeWildBuild(harness, trials = 200) {
+  const ST = harness.window && harness.window.__storyTest;
+  if (!ST || typeof ST.makeWildBuild !== 'function') return null;
+  const species = ['Pikachu', 'Charizard', 'Snorlax', 'Gengar', 'Dragonite', 'Tyranitar'];
+  const samples = [];
+  for (let i = 0; i < trials; i++) {
+    const sp = species[i % species.length];
+    const t0 = process.hrtime.bigint();
+    try { ST.makeWildBuild(sp); } catch (e) { /* build edge skipped */ }
+    samples.push(Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+  return samples;
+}
+
 async function main() {
   const out = [];
   const ts = new Date().toISOString();
@@ -155,6 +188,21 @@ async function main() {
   out.push(`| Max | ${Math.max(...parseSamples).toFixed(3)} |`);
   out.push('');
   out.push(`Target: < 0.5 ms per call. Result: ${classify(median(parseSamples), 0.5)}`);
+  out.push('');
+
+  process.stderr.write('[perf] roll pipeline (rollTrainerTeam, makeWildBuild)...\n');
+  const rollSamples = await benchRollTrainerTeam(harness, 50);
+  const wildSamples = await benchMakeWildBuild(harness, 200);
+  out.push('## Roll pipeline');
+  out.push('');
+  out.push('| Function | Median ms | IQR | Max | Target |');
+  out.push('|---|---|---|---|---|');
+  out.push(rollSamples
+    ? `| rollTrainerTeam (party 3) | ${median(rollSamples).toFixed(2)} | ${iqr(rollSamples).toFixed(2)} | ${Math.max(...rollSamples).toFixed(2)} | < 50 ms — ${classify(median(rollSamples), 50)} |`
+    : '| rollTrainerTeam | — | — | — | not reachable (window.__storyTest absent) |');
+  out.push(wildSamples
+    ? `| makeWildBuild | ${median(wildSamples).toFixed(3)} | ${iqr(wildSamples).toFixed(3)} | ${Math.max(...wildSamples).toFixed(3)} | < 5 ms — ${classify(median(wildSamples), 5)} |`
+    : '| makeWildBuild | — | — | — | not reachable (window.__storyTest absent) |');
   out.push('');
 
   process.stderr.write('[perf] memory growth (60 turns)...\n');
