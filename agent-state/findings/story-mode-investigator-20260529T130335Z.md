@@ -139,7 +139,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c40dff087d5b
 confidence: medium
-status: open
+status: wontfix-claude/focused-cori-sGNzn (intentional + documented: migration comment deems the mid-run partial-arc acceptable/additive, and PR-1 tests assert fill-on-migrate; surfaced for product review rather than overriding a tested design)
 ---
 
 **Title**: v22 migration rolls fresh villain/extra tracks on mid-run saves → road-anchored intro beats silently never fire

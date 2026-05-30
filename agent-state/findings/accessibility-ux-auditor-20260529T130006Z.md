@@ -69,7 +69,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: aedce7c75c51
 confidence: high
-status: partial-claude/focused-cori-sGNzn (focus-in + dialog semantics done; shared Tab-trap deferred)
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap
@@ -102,7 +102,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 3d270f248237
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Story tutorial overlay is a proper dialog but lacks a focus trap (Tab escapes to background)

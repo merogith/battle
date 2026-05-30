@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-30T16:27:55.236Z
+> **Generated**: 2026-05-30T16:41:20.467Z
 > **Source**: `agent-state/findings/*.md` (61 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1080,7 +1080,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c40dff087d5b
 confidence: medium
-status: open
+status: wontfix-claude/focused-cori-sGNzn (intentional + documented: migration comment deems the mid-run partial-arc acceptable/additive, and PR-1 tests assert fill-on-migrate; surfaced for product review rather than overriding a tested design)
 ---
 
 **Title**: v22 migration rolls fresh villain/extra tracks on mid-run saves → road-anchored intro beats silently never fire
@@ -1118,7 +1118,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: aedce7c75c51
 confidence: high
-status: partial-claude/focused-cori-sGNzn (focus-in + dialog semantics done; shared Tab-trap deferred)
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: openModal saves/restores trigger focus but never moves focus INTO the dialog, and no modal has a focus trap
@@ -1518,7 +1518,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 3d270f248237
 confidence: medium
-status: open
+status: fixed-claude/focused-cori-sGNzn
 ---
 
 **Title**: Story tutorial overlay is a proper dialog but lacks a focus trap (Tab escapes to background)
