@@ -105,11 +105,27 @@ test('base species sprites resolve to local when present', () => {
   assert.strictEqual(s.getSprite('Mr. Mime', false, false), 'sprites/gen5ani/mrmime.gif');
 });
 
-test('base species back sprites fall through to Showdown URL (not bundled locally)', () => {
+test('base species back sprites resolve to local when bundled', () => {
+  // Back + back-shiny sprites for base species are now vendored locally (Q3:
+  // full back-sprite coverage). getSprite must prefer the on-disk gif.
   const s = makeContext();
   Object.keys(s._spriteCache).forEach(k => delete s._spriteCache[k]);
-  const url = s.getSprite('Charizard', false, true);
-  assert.ok(url.startsWith('https://play.pokemonshowdown.com/sprites/gen5ani-back/'), `expected Showdown URL, got ${url}`);
+  assert.strictEqual(s.getSprite('Charizard', false, true), 'sprites/gen5ani-back/charizard.gif');
+  Object.keys(s._spriteCache).forEach(k => delete s._spriteCache[k]);
+  assert.strictEqual(s.getSprite('Charizard', true, true), 'sprites/gen5ani-back-shiny/charizard.gif');
+});
+
+test('un-bundled back sprites fall through to Showdown URL', () => {
+  // Species without a vendored back gif (e.g. newer-gen mons not in the local
+  // manifest) must still fall through to the remote Showdown back sprite.
+  const s = makeContext();
+  Object.keys(s._spriteCache).forEach(k => delete s._spriteCache[k]);
+  const backManifest = s.LOCAL_SPRITE_MANIFEST['gen5ani-back'];
+  const unbundled = ['Meowscarada', 'Poltchageist', 'Gholdengo', 'Tinkaton']
+    .find(n => !backManifest.has(s.toShowdownSpriteId(n)));
+  assert.ok(unbundled, 'expected at least one un-bundled back-sprite species for this test');
+  const url = s.getSprite(unbundled, false, true);
+  assert.ok(url.startsWith('https://play.pokemonshowdown.com/sprites/gen5ani-back/'), `expected Showdown URL for ${unbundled}, got ${url}`);
 });
 
 test('unknown species falls through to Showdown URL', () => {
