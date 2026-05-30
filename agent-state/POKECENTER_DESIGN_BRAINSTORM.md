@@ -148,6 +148,29 @@ only thing that stays species-full. **This strengthens the Center-Rest case:** t
 small, persistent HP+fatigue residue between non-iconic fights that a Center Rest could
 legitimately clear. (Magnitude stays subtle per the user's call — this is texture, not a cliff.)
 
+## 6d. Exploit-proofing sweep — fatigue-clear is wired to the WRONG places
+
+A new mechanic must account for these (the incentive gradient is currently backwards):
+
+| # | Issue | Sev | Evidence |
+|---|---|---|---|
+| 1 | **Paid retreat clears ALL fatigue free on Normal** (fee = 0) — cheapest clear in the game | HIGH exploit | `_storyApplyRetreatToCity` 44579 → 43402; fee 0 at 43378/43382 |
+| 2 | **Accrual is win-only; losing/fleeing/retreating clears** — optimizer is rewarded for throwing fights | MED asymmetry | stash in `if(won)` at 46895; else at 46914 |
+| 3 | **Evolution silently wipes fatigue** (rebuild drops `tired`) — free launderer | MED bug | `_evoLabApplyEvolution` 52173/52264, no `tired` in whitelist |
+| 4 | **Catch / professor-gift mons start `tired=undefined`** (eggs/pits init 0) — masked by `\|0` clamps | LOW latent | 49555 / 45326 vs 43563 / 43977 |
+| 5 | start-HP debuff erased by one potion (maxHp untouched) | LOW no-op | 14836 vs 52574 |
+| OK | PC deposit/withdraw preserves fatigue; migration/clamp robust | — | 48406-48428; 34468/35111 |
+
+**Design implication:** fatigue-clear is bolted onto three incidental paths (iconic fights,
+retreat, evolution) but NOT the Center the game tells players to use. A visible fatigue meter
+(Concept A) would EXPOSE the retreat exploit — so making the Center the intended/legible clear
+path AND tightening #1-#3 are the same job. Concretely, an exploit-safe Concept A should:
+- make the Center the canonical Rest/clear (fixes #2 false-promise),
+- gate retreat's fatigue-clear behind the actual *loss* recovery flow, not a launder (fixes #1),
+- carry `tired` through evolution's build rebuild (fixes #3 — behavior-preserving),
+- init `tired=0` on catch/gift builds (fixes #4 — behavior-preserving, consistency).
+Items #3/#4 are pure-consistency general-session fixes; #1 touches retreat flow (pasteur courtesy).
+
 ## 7. Open questions for you
 - Free Rest (A) or costed Rest as a real choice (B)?
 - Should Fatigue be made *perceptible* (maxwell magnitude bump) or stay a gentle invisible-ish nudge?
