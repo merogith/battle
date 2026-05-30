@@ -11,7 +11,7 @@ const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
 
-test('BEAT_CANON_TRAINER registers all 7 named villain bosses', () => {
+test('BEAT_CANON_TRAINER registers all 10 named villain bosses', () => {
     const map = ST.BEAT_CANON_TRAINER;
     assert.equal(map['villain.rocket.boss'],   'Giovanni');
     assert.equal(map['villain.magma.boss'],    'Maxie');
@@ -20,9 +20,12 @@ test('BEAT_CANON_TRAINER registers all 7 named villain bosses', () => {
     assert.equal(map['villain.plasma.boss'],   'Ghetsis');
     assert.equal(map['villain.skull.boss'],    'Guzma');
     assert.equal(map['villain.yell.boss'],     'Piers');
+    assert.equal(map['villain.flare.boss'],       'Lysandre');
+    assert.equal(map['villain.macroCosmos.boss'], 'Rose');
+    assert.equal(map['villain.star.boss'],        'Penny');
 });
 
-test('BEAT_CANON_TRAINER registers all 8 named villain admins (mini-bosses)', () => {
+test('BEAT_CANON_TRAINER registers all 10 named villain admins (mini-bosses)', () => {
     const map = ST.BEAT_CANON_TRAINER;
     assert.equal(map['villain.rocket.miniBoss'],   'Proton');
     assert.equal(map['villain.magma.miniBoss'],    'Tabitha');
@@ -32,13 +35,15 @@ test('BEAT_CANON_TRAINER registers all 8 named villain admins (mini-bosses)', ()
     assert.equal(map['villain.flare.miniBoss'],    'Bryony');
     assert.equal(map['villain.skull.miniBoss'],    'Plumeria');
     assert.equal(map['villain.yell.miniBoss'],     'Marnie');
+    assert.equal(map['villain.macroCosmos.miniBoss'], 'Oleana');
+    assert.equal(map['villain.star.miniBoss'],        'Giacomo');
 });
 
-test('BEAT_CANON_TRAINER omits Lysandre / Rose / Cassiopeia (not in TRAINER_DATA)', () => {
-    const map = ST.BEAT_CANON_TRAINER;
-    assert.equal(map['villain.flare.boss'],       undefined);
-    assert.equal(map['villain.macroCosmos.boss'], undefined);
-    assert.equal(map['villain.star.boss'],        undefined);
+test('Gen 6-9 leads (Lysandre / Rose / Penny / Oleana / Giacomo) are now TRAINER_DATA rows', () => {
+    const names = new Set(ST.getTrainerData().map(t => t.name));
+    for (const n of ['Lysandre', 'Rose', 'Penny', 'Oleana', 'Giacomo']) {
+        assert.ok(names.has(n), `${n} should be a TRAINER_DATA row`);
+    }
 });
 
 test('every BEAT_CANON_TRAINER name resolves to a real TRAINER_DATA entry', () => {
@@ -60,7 +65,7 @@ test('BEAT_CANON_TRAINER only contains keys with boss/miniBoss/raid/mfBattle kin
     }
 });
 
-test('all 17 named entries map to distinct canon trainers (no dupes)', () => {
+test('all 20 named entries map to distinct canon trainers (no dupes)', () => {
     const map = ST.BEAT_CANON_TRAINER;
     const names = Object.values(map);
     const set = new Set(names);
