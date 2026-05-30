@@ -11909,13 +11909,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Theme1–4 were the title-screen "new adventure" jingles — full-length
             // songs, not combat loops — and read badly under a fight, so they've
             // been retired from battle and moved to the character-creation screen
-            // (see INTRO_THEMES / _playIntroTheme). Every mood now uses the single
-            // looping boss track, so all story trainer battles share one dramatic
-            // theme. Per-mood keys are kept so re-introducing a per-tier track is a
-            // one-line change. To put ordinary route/gym trainers back on the calm
-            // field BGM instead, set `trainer: []` — an empty list skips the swap.
+            // (see INTRO_THEMES / _playIntroTheme).
+            //
+            // Major fights (gym leaders, rival, Elite Four / Victory Road, Champion,
+            // Mystery Figure) get the single dramatic boss track. Ordinary route/gym
+            // trainers ('trainer') keep the calm rotating field BGM — an empty list
+            // skips the swap entirely: no duck, no theme, and no victory fanfare on
+            // the win (the fanfare is gated on a theme having played). That keeps the
+            // boss theme + fanfare reserved for fights that earn them and avoids
+            // fatiguing the player across dozens of filler battles. Per-mood keys are
+            // kept so a per-tier track is a one-line change; set `trainer` to
+            // ['music/themes/boss_climax.mp3'] to put every trainer fight back on it.
             const BATTLE_THEMES = {
-                trainer: ['music/themes/boss_climax.mp3'],
+                trainer: [],
                 leader:  ['music/themes/boss_climax.mp3'],
                 rival:   ['music/themes/boss_climax.mp3'],
                 elite:   ['music/themes/boss_climax.mp3'],
@@ -12089,7 +12095,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (settings.musicEnabled) {
                         if (_introAudio) { _introAudio.play().catch(() => {}); }
                         else if (_battleAudio) { _battleAudio.play().catch(() => {}); }
-                        else if (_battleMood && BATTLE_THEMES[_battleMood]) { _playBattleTheme(_battleMood); }
+                        else if (_battleMood && BATTLE_THEMES[_battleMood] && BATTLE_THEMES[_battleMood].length) { _playBattleTheme(_battleMood); }
                         else { _resumeOrStartBg(); }
                     } else {
                         if (_introAudio) { try { _introAudio.pause(); } catch (e) {} }
