@@ -37733,6 +37733,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                     txStarredPool: (...a) => _txStarredPool(...a),
                     txStageCountRule: (...a) => _txStageCountRule(...a),
+                    // Facilities-before-gym gate + per-fight balance (this PR).
+                    grantBattleEVs: (...a) => _grantBattleEVs(...a),
+                    get EV_GAIN_ACTIVE() { return EV_GAIN_ACTIVE; },
+                    storyTrainerLootVitamins: (...a) => _storyTrainerLootVitamins(...a),
+                    isFacilityRequiredHere: (...a) => _isFacilityRequiredHere(...a),
+                    isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
+                    pendingFacilityIntrosHere: (...a) => _pendingFacilityIntrosHere(...a),
+                    showVictoryOverlay: (...a) => showVictoryOverlay(...a),
                 };
             } catch (e) {}
         }
@@ -43228,11 +43236,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             const gymBeat = !!(sm.gymCleared[cityIdx]);
             const gymRoutePending = (hasGym || hasVR || hasTrainerRoad) && !gymBeat;
-            // Block gym/league until professor is visited in this city (when professor is available)
+            // Pending facility intros for this city — first-time debuts AND staged
+            // NPC tier-ups (Dojo / Move Tutor / Evolution Tutor) the player hasn't
+            // seen yet. Computed up here so the gym gate can require them too.
+            const _pendingIntros = _pendingFacilityIntrosHere(cityIdx, actions);
+            const _pendingNames = _pendingIntros.map(k => _FACILITY_FRIENDLY_NAME[k] || k);
+            const _introsPending = _pendingIntros.length > 0;
+            const _pendingLabel = _friendlyJoin(_pendingNames);
+            // Block gym/league until the Professor is visited in this city (when one
+            // is available). The gym / Victory Road / pre-League challenge is ALSO
+            // blocked until the city's new + upgraded facilities have been seen — so
+            // the player meets every facility BEFORE the gym and is fully done with
+            // town once the gym falls.
             const gymBlocked = hasProf && !profUsedHere;
+            const _challengeBlocked = gymBlocked || _introsPending;
             if (hasGym) {
-                if (gymBlocked) {
-                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter the Gym <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
+                if (_challengeBlocked) {
+                    const _why = gymBlocked ? 'Visit Professor first' : `Visit ${_esc(_pendingLabel)} first`;
+                    const _gymTitle = gymBlocked ? 'Talk to the Professor first' : `See ${_esc(_pendingLabel)} before the gym — new or upgraded in town.`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="${_gymTitle}" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter the Gym <span style="font-size:10px;color:#aaa;">(${_why})</span></span></button>`);
                 } else {
                     // "Enter the Gym" — a gym challenge runs through 1–2 Gym
                     // Trainers before the Leader's chamber. The old "Challenge
@@ -43251,12 +43273,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // legendary-gate message above; everywhere else falls back to the generic
             // "Visit Professor first" hint.
             const routeBlockedByProfessor = gymBlocked && !routeBlockedByMysteryGate;
-            // Per docs/EVOLUTION_FLOW_REBUILD.md §8: pending facility intros block
-            // Leave City on the debut city for each facility. Once the player has
-            // visited that facility anywhere in the run, the gate stops firing.
-            const _pendingIntros = _pendingFacilityIntrosHere(cityIdx, actions);
-            const _pendingNames = _pendingIntros.map(k => _FACILITY_FRIENDLY_NAME[k] || k);
-            const routeBlockedByIntros = _pendingIntros.length > 0
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §8: pending facility intros (computed
+            // above as _pendingIntros — first-time debuts + staged tier-ups) block
+            // Leave City on that facility's city. Once the player visits it, the gate
+            // stops firing. The gym gate already fronts this in gym cities; this is the
+            // backstop for gym-less hubs.
+            const routeBlockedByIntros = _introsPending
                 && !routeBlockedByMysteryGate && !routeBlockedByProfessor && !gymRoutePending;
             if (actions.includes('Leave City')) {
                 if (gymRoutePending) {
@@ -43306,15 +43328,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             if (hasVR) {
-                if (gymBlocked) {
-                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
+                if (_challengeBlocked) {
+                    const _why = gymBlocked ? 'Visit Professor first' : `Visit ${_esc(_pendingLabel)} first`;
+                    const _vrTitle = gymBlocked ? 'Talk to the Professor first' : `See ${_esc(_pendingLabel)} before Victory Road.`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="${_vrTitle}" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(${_why})</span></span></button>`);
                 } else {
                     _push('quest', makeActionBtn('⚔ Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             if (hasTrainerRoad) {
-                if (gymBlocked) {
-                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League Trainers <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
+                if (_challengeBlocked) {
+                    const _why = gymBlocked ? 'Visit Professor first' : `Visit ${_esc(_pendingLabel)} first`;
+                    const _trTitle = gymBlocked ? 'Talk to the Professor first' : `See ${_esc(_pendingLabel)} before the pre-League trainers.`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="${_trTitle}" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League Trainers <span style="font-size:10px;color:#aaa;">(${_why})</span></span></button>`);
                 } else {
                     _push('quest', makeActionBtn('⚔ Pre-League Trainers','tr','window.StoryMode.proceedToNextBattle()','primary'));
                 }
@@ -43498,6 +43524,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
                     label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
                     click: 'window.StoryMode.enterProfessor()' };
+            } else if (_introsPending && _pendingNames.length) {
+                // Facilities come BEFORE the gym: surface the new/upgraded facility as
+                // the objective so the player meets it first. A first-time facility
+                // reads "See the new X"; a returning facility that just leveled up
+                // reads "X leveled up — drop in".
+                const _firstKey = _pendingIntros[0];
+                const _firstSeen = !!(sm.facilityIntros && sm.facilityIntros[_firstKey]);
+                objective = {
+                    kicker: _firstSeen ? 'UPGRADED' : 'NEW HERE',
+                    icon: 'story_route.png',
+                    label: _firstSeen ? `${_pendingNames[0]} leveled up — drop in` : `See the new ${_pendingNames[0]} before you go`,
+                    click: _FACILITY_ENTER_CALL[_firstKey] || 'window.StoryMode.enterCity()',
+                };
             } else if (hasGym && !gymBeat) {
                 objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Enter the Gym', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (hasLeague) {
@@ -43506,9 +43545,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 objective = { kicker: 'NEXT', icon: 'story_vr.png', label: 'Climb Victory Road', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (hasTrainerRoad) {
                 objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Pre-League Trainers', click: 'window.StoryMode.proceedToNextBattle()' };
-            } else if (routeBlockedByIntros && _pendingNames.length) {
-                const _firstKey = _pendingIntros[0];
-                objective = { kicker: 'NEW HERE', icon: 'story_route.png', label: `See the new ${_pendingNames[0]} before you go`, click: _FACILITY_ENTER_CALL[_firstKey] || 'window.StoryMode.enterCity()' };
             } else if (_storyNextBat) {
                 objective = { kicker: 'NEXT', icon: 'story_route.png', label: nextBattleLabel || 'Continue your journey', click: 'window.StoryMode.proceedToNextBattle()' };
             }
@@ -43644,10 +43680,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // city" if (a) its action button appears in this city AND (b) the player
         // has not yet introduced themselves anywhere in the run AND (c) this city
         // is the FACILITY_DEBUT_CITY for that key (the canonical debut location).
+        // Staged facilities (Dojo / Move Tutor / Evolution Tutor) re-introduce
+        // themselves each time they cross into a higher tier (Black Belt, Expert,
+        // Evolution Master, …). A tier-up the player hasn't seen yet is a pending
+        // "must-see" intro — it joins the same force-visit gate as a first-time
+        // intro so the upgrade can't be missed. Stage 0 (debut) has no tier-up line
+        // (that's the first-visit beat's job), so the debut never double-gates.
+        function _isFacilityStageUpPendingHere(cityIdx, key) {
+            if (!sm || cityIdx < 0) return false;
+            if (!NPC_STAGE_CITY[key]) return false; // only staged facilities tier-up
+            const cur = _npcStageForCity(key, cityIdx);
+            const seen = (sm.npcStageSeen && typeof sm.npcStageSeen[key] === 'number') ? sm.npcStageSeen[key] : -1;
+            if (cur <= seen) return false;
+            const introMap = _NPC_STAGE_INTRO[key] || {};
+            for (let s = seen + 1; s <= cur; s++) { if (introMap[s]) return true; }
+            return false;
+        }
         function _isFacilityRequiredHere(cityIdx, key, actionList) {
             if (!sm || cityIdx < 0) return false;
-            if (sm.facilityIntros && sm.facilityIntros[key]) return false;
-            if (FACILITY_DEBUT_CITY[key] !== cityIdx) return false;
             if (!Array.isArray(actionList)) return false;
             // Map facility key → required action label so we only gate on actions
             // that are actually present in this city's action list.
@@ -43663,8 +43713,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             const label = _required[key];
             if (label === undefined) return false;
-            if (label === null) return true; // implicit facility, requirement satisfied by being in the city
-            return actionList.indexOf(label) !== -1;
+            // Facility must actually be present in this city (implicit = label null).
+            const presentHere = (label === null) || (actionList.indexOf(label) !== -1);
+            if (!presentHere) return false;
+            // (A) First-ever introduction, pending at the facility's debut city.
+            const firstTimePending = !(sm.facilityIntros && sm.facilityIntros[key]) && (FACILITY_DEBUT_CITY[key] === cityIdx);
+            // (B) Staged facility crossing into a new tier the player hasn't seen.
+            return firstTimePending || _isFacilityStageUpPendingHere(cityIdx, key);
         }
         // Returns the list of facility-key strings that need introducing in the
         // current city BEFORE Leave City unlocks. Empty array = no gate.
@@ -46121,16 +46176,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
         // IV-vitamin loot count for non-bundle fights (leaders/elites/bosses return
-        // 0 — their vitamins live in GYM_VICTORY_REWARDS). Weak < strong. Tuned so a
-        // full run yields ~120-150 vitamins total (enough to max a 6-mon team's key
-        // stats with surplus) when combined with the bundle + milestone drops.
+        // 0 — their vitamins live in GYM_VICTORY_REWARDS). Weak < strong. Counts are
+        // +50% (round up) over the original 1/1/2 · 1/3 spread, so per-fight drops are
+        // more generous; a full run now nets well above the prior ~120-150 vitamins
+        // when combined with the bundle + milestone drops.
         function _storyTrainerLootVitamins(eventName) {
             const e = String(eventName || '');
             if (/^Gym Leader \d$/i.test(e) || /^E[1-4]$/i.test(e) || /Champion/i.test(e) || /Mystery Figure/i.test(e)) return 0;
-            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 1 : 3;
-            if (/Elite Trainer/i.test(e)) return 2;
-            if (/Gym Trainer/i.test(e)) return 1;
-            if (/Basic Trainer/i.test(e)) return 1;
+            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 2 : 5;
+            if (/Elite Trainer/i.test(e)) return 3;
+            if (/Gym Trainer/i.test(e)) return 2;
+            if (/Basic Trainer/i.test(e)) return 2;
             return 0;
         }
         function _storyRewardItemSummary(r, voucherKeys) {
@@ -47250,27 +47306,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
                 const en = String(event || '');
-                // Battle EV training — flat per-battle EV gain to the team
-                // (active mons get the full amount, bench gets half; boss
-                // fights pay double). The active-mon set is populated by
-                // startBattle / switch / forced-switch hooks in battle.html's
-                // script-top scope; if a path skipped it, fall back to "lead
-                // mon only".
+                // Post-victory reward lines — collected here and rendered ON the
+                // victory card (see showVictoryOverlay). Previously each reward fired
+                // a showGameAlert toast that the z-index:9999 victory overlay painted
+                // over, so loot / EV / bundle drops were invisible behind the card.
+                // Now they're threaded onto the card itself.
+                const _victoryRewardLines = [];
+                let _evRewardLine = '';
+                // Battle EV training — flat per-battle EV gain to the whole team
+                // (active and bench gain the SAME amount now; boss fights pay double).
+                // The active-mon set is populated by startBattle / switch /
+                // forced-switch hooks in battle.html's script-top scope; if a path
+                // skipped it, fall back to "lead mon only".
                 try {
                     const activeIdxSet = (window._battleActiveStoryIdxSet instanceof Set)
                         ? window._battleActiveStoryIdxSet
                         : new Set([0]);
                     const evReport = _grantBattleEVs(en, sm.team, activeIdxSet);
                     if (evReport && evReport.length) {
-                        const _STAT_SHORT = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe' };
-                        const lines = evReport.map(r => {
-                            const parts = Object.entries(r.gained)
-                                .filter(([_, v]) => v > 0)
-                                .map(([k, v]) => `+${v} ${_STAT_SHORT[k] || k}`)
-                                .join(' / ');
-                            return `${r.name}${r.active ? '' : ' (bench)'}: ${parts}`;
-                        }).join('\n');
-                        window.showGameAlert && window.showGameAlert('🏋️ Training:\n' + lines);
+                        const _evCls = _classifyTrainerEvent(en);
+                        const _evEach = _evCls ? (EV_GAIN_ACTIVE[_evCls] | 0) : 0;
+                        _evRewardLine = `🏋️ EV training · +${_evEach} EVs to each of your ${evReport.length} Pokémon`;
                     }
                 } catch (e) { console.warn('[Story] battle-EV grant failed', e); }
                 // Themed victory rewards — one bundle per Gym Leader / Elite milestone
@@ -47290,7 +47346,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             sm.staticDrops[_rwdKey] = true;
                             if (en === 'Gym Leader 4') sm.staticDrops.ultraGl4 = true;
                             if (en === 'E2')           sm.staticDrops.ultraE2  = true;
-                            try { window.showGameAlert && window.showGameAlert('🎁 ' + r.msg); } catch (e) {}
+                            _victoryRewardLines.push('🎁 ' + r.msg);
                         }
                     }
                 }
@@ -47304,7 +47360,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _got = _storyGrantRandomVitamins(_lootN);
                         try {
                             const _ls = Object.keys(_got).map(k => '+' + _got[k] + ' ' + (_IV_VITAMIN_LABEL[k] || k)).join(', ');
-                            if (_ls) window.showGameAlert && window.showGameAlert('💊 Loot: ' + _ls + '.');
+                            if (_ls) _victoryRewardLines.push('💊 Loot: ' + _ls);
                         } catch (e) {}
                     }
                 }
@@ -47351,8 +47407,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((sm.badges | 0) === 4 && !sm.staticDrops.vitaminRouteMidgame && /^(Basic Trainer|Elite Trainer)$/.test(en)) {
                     _storyGrantBundle({ vitamin: 1 });
                     sm.staticDrops.vitaminRouteMidgame = true;
-                    try { window.showGameAlert && window.showGameAlert('💊 A traveler dropped an EV Voucher in the tall grass. +1 EV Voucher.'); } catch (e) {}
+                    _victoryRewardLines.push('💊 A traveler dropped an EV Voucher in the tall grass — +1 EV Voucher.');
                 }
+                // EV training line goes last so item / vitamin loot reads first on the card.
+                if (_evRewardLine) _victoryRewardLines.push(_evRewardLine);
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // route from City 8 to the League city after the Gym 8 victory (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
@@ -47416,7 +47474,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else {
                         processNextEvent();
                     }
-                }, event, idx);
+                }, event, idx, _victoryRewardLines);
             } else {
                 // No Death Run tracking — counted once per lost main-path story
                 // battle (forfeit + normal loss both fire this branch). Crucible-
@@ -47607,7 +47665,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
-        function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx) {
+        function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx, rewardLines) {
             const ov = document.createElement('div');
             ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
             // a11y: announce as a dialog with the title as label so SR users
@@ -47772,6 +47830,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${badgeFlavor}
                 <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
                 <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div>
+                ${(Array.isArray(rewardLines) && rewardLines.length) ? `<div style="display:flex;flex-direction:column;gap:3px;margin-top:2px;max-width:380px;">${rewardLines.map(l => `<div style="font-size:12px;color:#d7c98a;line-height:1.4;">${_esc(l)}</div>`).join('')}</div>` : ''}
                 ${_upNextHtml ? `<div style="margin-top:4px;">${_upNextHtml}</div>` : ''}
                 </div>`;
             const conf = ov.querySelector('.story-fx-confetti');
@@ -49324,12 +49383,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // the full yield, bench mons get half (Exp. Share flavor). The EV
         // Trainer in City 4+ still polishes spreads — pre-optimizer training
         // is now visible, additive progress instead of "zero until 5,000G".
-        // EV granted to an ACTIVE mon per trainer win (flat per battle, not
-        // per foe — simpler and not dependent on faint-path bookkeeping).
-        // Bench mons get half (rounded down). Boss fights pay double.
+        // EV granted per trainer win (flat per battle, not per foe — simpler and
+        // not dependent on faint-path bookkeeping). The WHOLE team gains the same
+        // amount (active and bench alike — no reduced bench share). Boss fights pay
+        // double. Values are +50% over the original 4/8 spread.
         const EV_GAIN_ACTIVE = Object.freeze({
-            REGULAR: 4,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
-            BOSS:    8,  // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
+            REGULAR: 6,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
+            BOSS:    12, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
         });
         function _classifyTrainerEvent(eventName) {
             const en = String(eventName || '');
@@ -49383,7 +49443,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!cls) return null;
             const activeAmt = EV_GAIN_ACTIVE[cls] | 0;
             if (activeAmt <= 0) return null;
-            const benchAmt = Math.floor(activeAmt / 2);
+            // Whole team gains the same EV — bench mons get the full share now.
+            const benchAmt = activeAmt;
             const report = [];
             for (let i = 0; i < team.length; i++) {
                 const mon = team[i];
@@ -54539,6 +54600,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 1: 'Evolution Master: "Your bond has deepened; the final forms will ascend at your word. Take this token — one free pick from the shop, gratis."',
             },
         };
+        // Sprite for each staged-NPC tier-up re-intro (mirrors the facility's
+        // first-visit tutorial sprite so the upgraded master is recognizable).
+        const _NPC_STAGE_SPRITE = { dojo: 'Blackbelt', tutor: 'Veteran', evolab: 'Aroma_Lady' };
         function _npcStageUpCheck(key) {
             if (!sm || !key || !NPC_STAGE_CITY[key]) return;
             if (!sm.npcStageSeen || typeof sm.npcStageSeen !== 'object') sm.npcStageSeen = {};
@@ -54556,8 +54620,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const rest = {}; for (const k of Object.keys(gift)) if (k !== 'stoneToken') rest[k] = gift[k];
                 if (Object.keys(rest).length) { try { _storyGrantBundle(rest); } catch (e) {} }
             }
+            // Tier-up re-introduction — a real intro scene (sprite + nameplate + line),
+            // not a bare alert, so the upgrade reads like the first-visit beat. The
+            // force-visit gate (_isFacilityStageUpPendingHere) makes it must-see; the
+            // gift above still lands (the line mentions it). Routed through IntroQueue
+            // so it sequences cleanly with any other intro firing on the same tick.
             const line = (_NPC_STAGE_INTRO[key] || {})[cur];
-            if (line) { try { window.showGameAlert && window.showGameAlert(line); } catch (e) {} }
+            if (line) {
+                const scene = {
+                    sprite: _NPC_STAGE_SPRITE[key] || 'Oak',
+                    name: _npcStageName(key, cur),
+                    nameplate: _FACILITY_FRIENDLY_NAME[key] || _npcStageName(key, cur),
+                    lines: [line.replace(/^[^"]*"/, '"')],
+                };
+                try {
+                    IntroQueue.enqueue({
+                        priority: INTRO_PRIORITY.facility_first_time,
+                        run: (done) => { try { _showStoryTutorialScene(scene, done); } catch (e) { done(); } },
+                    });
+                } catch (e) {
+                    try { _showStoryTutorialScene(scene, function () {}); } catch (e2) {}
+                }
+            }
             try { save(); } catch (e) {}
         }
 
