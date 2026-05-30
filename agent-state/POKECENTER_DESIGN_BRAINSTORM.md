@@ -138,6 +138,16 @@ shouldn't be a pillar.
 - make Rest cost gold (friction the no-attrition pillar rejects),
 - bump magnitude (user vetoed).
 
+## 6c. Late finding — "auto-heal between battles" is itself partly false
+
+Harness-confirmed: once a mon is fatigued, each battle rebuilds it with
+`currentHp = floor((1 − 0.01·stacks)·maxHp)` (14810 sets full, 14836 docks it). So a 3-stack
+mon enters EVERY route fight at ~97% HP (e.g. 177/183), never full — contradicting both the
+modal and the code comment at 47368 ("the party already heals between battles"). maxHp is the
+only thing that stays species-full. **This strengthens the Center-Rest case:** there is a real,
+small, persistent HP+fatigue residue between non-iconic fights that a Center Rest could
+legitimately clear. (Magnitude stays subtle per the user's call — this is texture, not a cliff.)
+
 ## 7. Open questions for you
 - Free Rest (A) or costed Rest as a real choice (B)?
 - Should Fatigue be made *perceptible* (maxwell magnitude bump) or stay a gentle invisible-ish nudge?
