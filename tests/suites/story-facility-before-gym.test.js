@@ -88,6 +88,21 @@ test('vitamin loot: per-fight counts are +50% (round up); leaders still bundle',
   assert.equal(ST.storyTrainerLootVitamins('Champion'), 0);
 });
 
+// ── Loot + EV share one rank vocabulary (single classifier) ──────────────────
+test('vitamin loot is keyed by the same rank classes as the EV curve', () => {
+  // Both reward tables are keyed off _classifyTrainerEvent, so they must share
+  // the same class set — guards against a future rank being added to one table
+  // and forgotten in the other.
+  assert.deepEqual(
+    Object.keys(ST.VITAMIN_LOOT_BY_CLASS).sort(),
+    Object.keys(ST.EV_GAIN_ACTIVE).sort(),
+    'loot and EV tables share the same class keys (REGULAR/ACE/BOSS)'
+  );
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.REGULAR, 3, 'REGULAR loot = 3 (Basic/Gym)');
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.ACE, 5, 'ACE loot = 5 (Elite)');
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.BOSS, 0, 'BOSS loot = 0 (bundled in GYM_VICTORY_REWARDS)');
+});
+
 // ── 3-track beat EV upgrade — villain/extra boss trains like a Gym Leader ─────
 test('beat EV: miniBoss/miniRaid beats grant ACE EV (14), boss-tier beats grant BOSS EV (18); battle falls through', () => {
   // The kind→class map upgrades narrative beats to match their rank.
