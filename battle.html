@@ -37846,6 +37846,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                     txStarredPool: (...a) => _txStarredPool(...a),
                     txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
+                    txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
+                    txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
                     buildPokemon: (...a) => buildPokemon(...a),
                     txStageCountRule: (...a) => _txStageCountRule(...a),
                     // Facilities-before-gym gate + per-fight balance (this PR).
@@ -58392,6 +58394,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cards = filtItems.length
                     ? filtItems.map(it => _txItemCardHtml(it, itemCtx)).join('')
                     : `<div class="tx-grid-empty">${emptyMsg}</div>`;
+                // Phase 5b — curated "Best items" panel mirrors the move tutor: a
+                // role-balanced shortlist (offense / defense / speed / utility) as the
+                // easy default so items read as quick as abilities/natures. Candidates
+                // are filtered to the items UNLOCKED at the current Dojo tier, so the
+                // panel never points at a 🔒 item the player can't equip yet.
+                let itemRecsPanel = '';
+                try {
+                    const searchingItems = !!(_txState.search && _txState.search.items);
+                    if (!sPool.sparse && _txState.filter.recOnly.items && !searchingItems) {
+                        const tierCap = _dojoStage + 1;
+                        const unlockedItems = items.filter(it => (typeof _dojoItemTier === 'function' ? _dojoItemTier(it) : 1) <= tierCap);
+                        const recEntries = _txItemRecsByPurpose(unlockedItems, mon, b, t.name)
+                            .map(e => ({ purpose: e.purpose, value: e.item, reason: e.reason, kind: 'item' }));
+                        if (recEntries.length) {
+                            itemRecsPanel = _txRecsPanelHtml('Best items for ' + t.name, recEntries, pendingItem,
+                                'Tap to preview — one held item per Pokémon. Browse the full list below.');
+                        }
+                    }
+                } catch (e) {}
                 const toolbar = _txToolbarHtml('items', {
                     placeholder: 'Search items (e.g. leftovers, choice, sash)',
                     count: filtItems.length, countLabel: 'items',
@@ -58404,7 +58425,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + _txActiveFiltersHtml('items') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('items') + itemRecsPanel + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
             // Ability tab content
@@ -58416,6 +58437,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
                     : `<div class="tx-grid-empty">${emptyMsg}</div>`;
+                // Phase 5b — curated "Best abilities" panel. Candidates are filtered to
+                // what's UNLOCKED at the current Dojo stage (Hidden → Black Belt,
+                // Awakened → Grandmaster) so it never points at a 🔒 pick. The one-line
+                // reason is the real win here: bare ability cards never explained WHY.
+                let abilRecsPanel = '';
+                try {
+                    const searchingAbils = !!(_txState.search && _txState.search.abilities);
+                    if (!sPool.sparse && _txState.filter.recOnly.abilities && !searchingAbils) {
+                        const unlockedAbils = abils.filter(a => {
+                            if (awakenSet.has(a)) return _dojoStage >= 2;
+                            if (a === _haName) return _dojoStage >= 1;
+                            return true;
+                        });
+                        const recEntries = _txAbilityRecsByPurpose(unlockedAbils, mon, b, t.name)
+                            .map(e => ({ purpose: e.purpose, value: e.ability, reason: e.reason, kind: 'ability',
+                                extraHtml: e.hidden ? ' <span class="tx-pill tx-pill--ha" style="margin-left:6px;font-size:0.7em;">Hidden</span>' : '' }));
+                        if (recEntries.length) {
+                            abilRecsPanel = _txRecsPanelHtml('Best abilities for ' + t.name, recEntries, pendingAbility,
+                                'Tap to preview — one ability per Pokémon. Browse the full list below.');
+                        }
+                    }
+                } catch (e) {}
                 const toolbar = _txToolbarHtml('abilities', {
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
@@ -58426,7 +58469,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + abilRecsPanel + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
