@@ -278,7 +278,7 @@ status, edit the corresponding finding file and re-run.
 - [ISSUE-240] [P3] `enterProfessor` reuses `_pendingProfChoices` across city visits at the same cityIdx — stale picks may persist past spec'd one-shot pool — `enterProfessor` (bug)
 - [ISSUE-241] [P3] Professor flavor quote uses bare Math.random(), breaking seeded replay determinism — `enterProfessor` (bug)
 - [ISSUE-242] [P3] Empty-choices Professor path shows status but renders no body buttons — `enterProfessor` (bug)
-- [ISSUE-243] [P3] Exp Share Voucher item (3TRACK_IMPL_PLAN PR-5) never shipped; `sm.inventory.expShareVoucher` is dead init — `expShareVoucher` (inconsistency)
+- [ISSUE-243] [P3] CONFIRMED FIXED — EXP-Share gift shipped; `sm.inventory.expShareVoucher` revived as the live wallet, raid reward grants 6 distributable level-ups (≤3/mon) — `applyExpShareLevel` (inconsistency)
 - [ISSUE-244] [P3] Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map — `FACILITY_DEBUT_CITY` (data)
 - [ISSUE-245] [P3] Crucible-reachable Frontier surrender uses raw window.confirm — drops fullscreen, breaks modal convention — `frontierSurrender` (dx)
 - [ISSUE-246] [P3] Gauntlet score readout is a plain div with no live region — score changes are silent to SR — `gauntlet-score` (a11y)
@@ -9556,36 +9556,37 @@ if (!choices.length) {
 
 ---
 
-## <a id="ISSUE-243"></a> ISSUE-243: Exp Share Voucher item (3TRACK_IMPL_PLAN PR-5) never shipped; `sm.inventory.expShareVoucher` is dead init
+## <a id="ISSUE-243"></a> ISSUE-243: EXP-Share gift shipped — `sm.inventory.expShareVoucher` revived as the live wallet (was dead init)
 
 ---
 id: ISSUE-243
 severity: P3
 category: inconsistency
-anchor_symbol: expShareVoucher
-current_line_hint: ~38778
+anchor_symbol: applyExpShareLevel
+current_line_hint: ~53896
 file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 70fdae9ad188
 confidence: high
-status: open
+status: fixed
 ---
 
-**Title**: Exp Share Voucher item (3TRACK_IMPL_PLAN PR-5) never shipped; `sm.inventory.expShareVoucher` is dead init
+**Title**: EXP-Share gift shipped — `sm.inventory.expShareVoucher` revived as the live wallet (was dead init)
 
-**Evidence**:
+**Resolution**: The extra-arc raid reward now grants the EXP-Share gift — 6 distributable level-ups, ≤3 per mon — handed over by a grateful NPC, replacing the 6-vitamin stand-in in `_storyGrantTrackEndReward`. `sm.inventory.expShareVoucher` is now the live wallet (read/written by the Bag picker), and per-mon count lives in `build.expShareLevels`. Applying a unit is a REAL level-up: the mon's level climbs 50 → 53 and `buildPokemon` recomputes it at that real level via the canonical Pokémon stat formula (base-proportional growth), so the original "+N levels" design lands authentically — with NO engine-wide change, since `_lv` defaults to 50 and every non-gifted mon stays byte-for-byte identical. Bag UI: `openExpShareGift` / `applyExpShareLevel`; grant is idempotent per sceneKey via `sm._trackRewardGranted`.
+
+**Evidence (shipped)**:
 ```
-docs/story-design/STORY_3TRACK_IMPL_PLAN.md:551 "function applyExpShareVoucher(monId, levels) { … mon.level += n … }"
-battle.html:38778  expShareVoucher:0,   // init only — never read/written elsewhere
+battle.html  buildPokemon ~15056   const _lv = 50 + clamp(build.expShareLevels,0,3)  // real-level stat recompute
+battle.html  applyExpShareLevel ~53896 / openExpShareGift  // Bag picker, party+PC, ≤3/mon
+battle.html  _storyGrantTrackEndReward  // extra.*.raid → expShareVoucher += 6 (idempotent)
 ```
 
-**Repro**: The plan (PR-5, lines 546–564, tests 572–573) specs an Exp Share Voucher wallet + Bag modal + `applyExpShareVoucher`. In code, `expShareVoucher` is initialized to 0 and never referenced again (`grep -n expShareVoucher battle.html` → one line). The extra-raid reward instead grants 6 random vitamins (`_storyGrantTrackEndReward`, ~41770), with an in-code comment explaining the flat-L100 game has no per-mon level system so the voucher couldn't land.
+**Tests**: `tests/suites/story-exp-share-gift-v22.test.js` (grant, apply, +3 cap + refusal, PC mon, empty wallet, JSON save round-trip, Lv math); `story-track-rewards-v22.test.js` updated to the new contract incl. idempotency. Garchomp stats cross-checked against the canonical formula (L50→L53: HP 183→193, Atk 200→211, Spe 154→162).
 
-**Blast radius**: Doc describes a whole item + UI + 2 tests that don't exist; the dead save field is harmless but confuses schema readers.
+**Note**: `applyExpShareVoucher`/`mon.level += n` from STORY_3TRACK_IMPL_PLAN PR-5 was not used verbatim (the engine has no per-mon level field); the equivalent lands via `build.expShareLevels` + the real-level recompute. STORY_3TRACK_IMPL_PLAN PR-5 should be updated to match (pending doc-reconciliation pass).
 
-**Fix sketch**: Update STORY_3TRACK_IMPL_PLAN.md PR-5 to record that the Exp Share Voucher was replaced by a 6-vitamin bundle (flat-L100 rationale), and either remove the dead `expShareVoucher:0` init or note it as reserved.
-
-**Verification**: Plan reflects the shipped vitamin-bundle reward; no doc references an unbuilt `applyExpShareVoucher`.
+**Shipped in**: branch `claude/relaxed-bell-2X3Ys`.
 
 ---
 
