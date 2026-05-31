@@ -653,3 +653,13 @@ keeps a run from going one-note:
 - **Beat text length — LOCKED: terse default, long when earned.** A few sharp sentences per beat for
   momentum; marquee beats (a boss, The First reveal, a raid's death) earn a longer / multi-page
   treatment.
+
+## IV.12 Production decisions (locked)
+
+- **MF final battle — LOCKED: a genuine hard wall.** The First fights all-out and you win because you've
+  truly *grown* — the "loses to you forever" is his meta-sacrifice across loops, **not** a thrown match.
+  (The prefight canon "You're going to win this one. The next one too. That's the problem." — he *knows*
+  the outcome and still makes you earn it.) Difficulty *magnitude* is maxwell-owned; this locks the
+  *intent*: a real late-game peak, never scripted-soft.
+- **Dark / +18 content — LOCKED: always-on, no toggle.** One uncompromised vision; every run rolls its
+  extra arc. No clean-mode switch, no opt-in / opt-out. "It's art; no concerns."
