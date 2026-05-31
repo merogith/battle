@@ -15045,20 +15045,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const bn = bonus ? Math.max(0, Math.min(10, bonus[stat] | 0)) : 0;
                 return Math.min(41, b + bn);
             };
-            // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 60
-            mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60;
+            // EXP-Share gift (extra-arc raid reward): a gifted mon computes at its
+            // REAL level via the canonical Pokémon stat formula — Lv 50 + applied
+            // level-ups (capped at +3). `_lv` defaults to 50 for every non-gifted
+            // mon, so the math below is byte-for-byte identical for the whole roster
+            // except gifted Pokémon — and stat growth is base-proportional, exactly
+            // like real leveling. (The in-battle mega/form/transform recomputes
+            // below stay at Lv50 — consistent with how they already drop the Fight
+            // Club bonus layer; the gift's HP, computed here, is preserved across them.)
+            const _esLvls = Math.max(0, Math.min(3, (build && (build.expShareLevels | 0)) || 0));
+            const _lv = 50 + _esLvls;
+            // HP: floor((2 * base + IV + floor(EV/4)) * L/100) + L + 10   (L=50 ⇒ +60)
+            mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * _lv / 100) + _lv + 10;
             mon.currentHp = mon.maxHp;
 
-            // Other stats: floor((floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 5) * nature)
+            // Other stats: floor((floor((2 * base + IV + floor(EV/4)) * L/100) + 5) * nature)
             let nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
             let n = natureModifiers[mon.nature];
             if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
             mon.stats = {
-                atk: Math.floor((Math.floor((2 * base.atk + getIV('atk') + Math.floor((evs.atk||0)/4)) * 50 / 100) + 5) * nMults.atk),
-                def: Math.floor((Math.floor((2 * base.def + getIV('def') + Math.floor((evs.def||0)/4)) * 50 / 100) + 5) * nMults.def),
-                spa: Math.floor((Math.floor((2 * base.spa + getIV('spa') + Math.floor((evs.spa||0)/4)) * 50 / 100) + 5) * nMults.spa),
-                spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * 50 / 100) + 5) * nMults.spd),
-                spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe)
+                atk: Math.floor((Math.floor((2 * base.atk + getIV('atk') + Math.floor((evs.atk||0)/4)) * _lv / 100) + 5) * nMults.atk),
+                def: Math.floor((Math.floor((2 * base.def + getIV('def') + Math.floor((evs.def||0)/4)) * _lv / 100) + 5) * nMults.def),
+                spa: Math.floor((Math.floor((2 * base.spa + getIV('spa') + Math.floor((evs.spa||0)/4)) * _lv / 100) + 5) * nMults.spa),
+                spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * _lv / 100) + 5) * nMults.spd),
+                spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * _lv / 100) + 5) * nMults.spe)
             };
 
             // Fatigue/Tiredness was cut (Path D): it was an invisible, near-inert ~1-2% tax
@@ -18801,11 +18811,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? `${abilityNow}<span style="color:#888;font-size:9px;display:block;">was: ${abilityOrig}</span>`
                     : abilityNow;
 
-                // Gender + level summary (level is locked at Lv50 in this game).
+                // Gender + level summary. Battles run at Lv50; the EXP-Share
+                // gift raises the *displayed* level (50 → 53) as a real-feeling
+                // level-up while the stat gain rides build.bonus. (Lv math mirrors
+                // EXP_SHARE_BASE_LEVEL / EXP_SHARE_MAX_PER_MON, which are scoped to
+                // the StoryMode module; this summary render runs in the outer
+                // engine scope, so the 50/3 are inlined here at the one display site.)
                 let metaBits = '';
                 if (s.gender === 'M') metaBits += '<span style="color:#64b5f6;">♂</span>';
                 else if (s.gender === 'F') metaBits += '<span style="color:#f48fb1;">♀</span>';
-                metaBits += '<span style="color:#888;">Lv50</span>';
+                const _esLv = Math.max(0, Math.min(3, bd ? (bd.expShareLevels | 0) : 0));
+                metaBits += _esLv > 0
+                    ? `<span style="color:#80deea;font-weight:bold;">Lv${50 + _esLv}</span>`
+                    : '<span style="color:#888;">Lv50</span>';
 
                 document.getElementById('sum-page-1').innerHTML = `
                     <div class="sum-stats-grid">${statBars}</div>
@@ -33059,6 +33077,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         ];
         const PERM_BOOST_IDS = new Set(PERM_BOOST_ITEMS.map(v => v.id));
         const PERM_BOOST_STAT_LABEL = { hp:'HP', atk:'Atk', def:'Def', spa:'Sp.Atk', spd:'Sp.Def', spe:'Spe' };
+
+        // ── EXP-Share gift (extra-arc raid reward — revives ISSUE-243) ─────
+        // A bounded "level-up" gift handed over by a grateful NPC after a
+        // flagship raid is laid to rest: EXP_SHARE_GIFT_UNITS distributable
+        // units, max EXP_SHARE_MAX_PER_MON per Pokémon, spendable on any
+        // party OR PC mon. It IS a real level-up: the gifted mon's level climbs
+        // 50 → 53 and buildPokemon recomputes it at that real level via the
+        // canonical Pokémon stat formula (see ~15056) — so stats grow
+        // base-proportionally, exactly like mainline leveling, with no separate
+        // bonus layer. For every non-gifted mon the level defaults to 50, so
+        // their stats are byte-for-byte unchanged. expShareLevels is the single
+        // source of truth for both the displayed level and the stats. Magnitude
+        // (how many levels, the cap) is maintainer/maxwell-owned. Wallet lives in
+        // sm.inventory.expShareVoucher (already in the persisted inventory shape
+        // — reviving its USE needs no migration); per-mon count lives in
+        // build.expShareLevels (additive, |0-default — back-fill-safe, no
+        // SAVE_VER bump). Double-grant is blocked by sm._trackRewardGranted
+        // (see _storyGrantTrackEndReward).
+        const EXP_SHARE_GIFT_UNITS     = 6;   // units granted per flagship raid laid-to-rest
+        const EXP_SHARE_MAX_PER_MON    = 3;   // cap of level-ups per Pokémon
+        const EXP_SHARE_BASE_LEVEL     = 50;  // every mon battles at Lv50 — the display + formula base
+
+        // Display + formula level for a player mon's build = Lv50 + EXP-Share
+        // levels applied (clamped). This is the real level buildPokemon computes
+        // the gifted mon at; for every other mon it resolves to 50.
+        function _monDisplayLevel(build) {
+            const lv = build ? (build.expShareLevels | 0) : 0;
+            return EXP_SHARE_BASE_LEVEL + Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, lv));
+        }
+        function _expShareWallet() { return (sm.inventory && sm.inventory.expShareVoucher) | 0; }
         // Legacy hooks — kept so old callers still resolve, but always read zero now
         // that vitamins target IVs directly. The v19 migration converts any leftover
         // permBoosts back into vitamin inventory, so this should never see non-zero
@@ -37770,6 +37818,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     gymLeaderGoldBaselineForCity: (n) => _storyGymLeaderGoldBaselineForCity(n),
                     // Track-end rewards + boss mechanics (PR-5).
                     grantTrackEndReward: (beat) => _storyGrantTrackEndReward(beat),
+                    // EXP-Share gift (extra-raid reward — ISSUE-243).
+                    applyExpShareLevel: (src, idx) => applyExpShareLevel(src, idx),
+                    monDisplayLevel: (build) => _monDisplayLevel(build),
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
                     get BOSS_CONFIGS() { return BOSS_CONFIGS; },
                     bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
@@ -42118,47 +42169,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── Track-end reward grants (PR-5) — Master Ball on villain boss
-        // victory; Exp Share Voucher ×6 on extra raid victory. Called from the
-        // beat-fired hook (currently piggy-backs on _playStoryBeatQueue's mark
-        // step; will fire from PR-5b's battle-injection victory hook once it
-        // lands). The two flagship rewards land at Road 7 / end-of-arc per
-        // design decisions 6 + 7.
+        // victory; EXP-Share gift on extra raid victory. Fires from the
+        // battle-injection victory hook in onBattleEnd (the boss/raid regexes
+        // never match an event-kind beat, so the shared _playStoryBeatQueue
+        // call is a safe no-op for scene beats). Both flagship rewards land at
+        // Road 7 / end-of-arc per design decisions 6 + 7. Idempotent: each
+        // sceneKey grants at most once (sm._trackRewardGranted), so the public
+        // StoryMode/__storyTest surface and any double victory-hook can't
+        // duplicate the unique Master Ball or the EXP-Share gift.
         function _storyGrantTrackEndReward(beat) {
             if (!beat || !beat.sceneKey) return null;
             const sk = beat.sceneKey;
-            // Villain track boss → Master Ball.
+            if (!sm._trackRewardGranted || typeof sm._trackRewardGranted !== 'object') sm._trackRewardGranted = {};
+            if (sm._trackRewardGranted[sk]) return null;
+            // Villain track boss → Master Ball (salvaged villain tech).
             if (/^villain\.[a-zA-Z]+\.boss$/.test(sk)) {
                 if (!sm.balls) sm.balls = { poke:0, great:0, ultra:0, master:0 };
                 sm.balls.master = (sm.balls.master | 0) + 1;
+                sm._trackRewardGranted[sk] = true;
                 try { save(); } catch (e) {}
                 try { window.showGameAlert && window.showGameAlert('🎯 You found a MASTER BALL among the spoils.'); } catch (e) {}
                 return { kind: 'masterball', count: 1 };
             }
-            // Extra track raid → Exp Share bundle: 6 random vitamin packs.
-            // The game runs at flat L100 (no per-mon level system) so the
-            // original "+6 distributable levels" design couldn't land as
-            // designed. The vitamin bundle is the game's actual currency for
-            // mid-run growth (each vitamin = a free EV preset at the EV
-            // Trainer). 6 random vitamins = ~+30 EVs distributed across
-            // stats, comparable to ~1.5 vitamin packs — a generous payoff.
+            // Extra track raid → EXP-Share gift: EXP_SHARE_GIFT_UNITS distributable
+            // level-ups, in fiction the dead trainer's own EXP Share, handed over
+            // by a grateful NPC (NOT a creature drop). Revives ISSUE-243 — the
+            // wallet is sm.inventory.expShareVoucher; the player spends units on
+            // any party/PC mon from the Bag (openExpShareGift → applyExpShareLevel),
+            // each a real "level up" delivered through the build.bonus layer with
+            // no engine change. The alert below is the minimal in-engine framing;
+            // the full grateful-NPC delivery scene is pasteur's to author (B33).
             if (/^extra\.[a-zA-Z]+\.raid$/.test(sk)) {
                 if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
-                const VITAMIN_KEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
-                const rng = (sm && sm.active && typeof window.storyRngNext === 'function')
-                    ? window.storyRngNext : Math.random;
-                const granted = {};
-                for (let i = 0; i < 6; i++) {
-                    const v = VITAMIN_KEYS[(rng() * VITAMIN_KEYS.length) | 0];
-                    sm.inventory[v] = (sm.inventory[v] | 0) + 1;
-                    granted[v] = (granted[v] | 0) + 1;
-                }
+                sm.inventory.expShareVoucher = (sm.inventory.expShareVoucher | 0) + EXP_SHARE_GIFT_UNITS;
+                sm._trackRewardGranted[sk] = true;
                 try { save(); } catch (e) {}
-                try {
-                    const parts = Object.entries(granted)
-                        .map(([k, n]) => `+${n} ${k.toUpperCase()}`).join(', ');
-                    window.showGameAlert && window.showGameAlert('🎓 EXP SHARE bundle — ' + parts + '. Apply at the EV Trainer.');
-                } catch (e) {}
-                return { kind: 'expShareBundle', granted };
+                try { window.showGameAlert && window.showGameAlert(`🎓 A grieving trainer presses an EXP SHARE into your hands — ${EXP_SHARE_GIFT_UNITS} level-ups to give. Open your Bag to share them.`); } catch (e) {}
+                return { kind: 'expShareGift', units: EXP_SHARE_GIFT_UNITS };
             }
             return null;
         }
@@ -53622,6 +53669,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;border:1px solid #444;">Voucher</span>`;
                 bagEl.appendChild(div);
             });
+            // EXP Share — the dead trainer's gift from a flagship raid. Bounded
+            // distributable level-ups (≤3 per mon); surfaces a Use button that
+            // opens the party/PC roster picker. Earned-only, not sellable.
+            {
+                const _expQty = _expShareWallet();
+                if (_expQty > 0) {
+                    hasAny = true;
+                    const div = document.createElement('div');
+                    div.className = 'story-bag-item';
+                    div.style.cursor = 'default';
+                    div.innerHTML = `<div class="story-bag-item-text">
+                        <div class="name"><span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#80deea;">🎓</span>EXP Share <span style="color:#9ab;font-size:10px;">(+1 level, max +${EXP_SHARE_MAX_PER_MON}/mon)</span></div>
+                        <div class="qty">×${_expQty}</div>
+                        <div class="eff">A grateful trainer's keepsake. Give a level-up to any party or PC Pokémon — raises every stat a little.</div>
+                    </div>
+                    <button onclick="event.stopPropagation();window.StoryMode.openExpShareGift()"
+                        style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
+                        Use
+                    </button>`;
+                    bagEl.appendChild(div);
+                }
+            }
             // Vitamins lift IVs by +3 per use, capped at the natural 31. Each
             // surfaces a Use button that opens the roster picker; the picker
             // mutates ivs[stat] in place (no permBoost layer). The Pokémon Fan
@@ -53809,6 +53878,97 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Best-effort refresh of the Fan Club roster if open.
             try { if (typeof renderFanClubRoster === 'function') renderFanClubRoster(); } catch (e) {}
+        }
+
+        // ── EXP-SHARE GIFT ────────────────────────────────────────────────
+        // Apply one EXP-Share level-up to the chosen party/PC mon: bump its
+        // level (+1, cap +3) and spend one wallet unit. The stat gain is NOT a
+        // separate bonus — buildPokemon recomputes the mon at its real level
+        // (50 + expShareLevels) via the canonical Pokémon formula, so stats grow
+        // base-proportionally the moment the build is rebuilt. expShareLevels is
+        // the single source of truth for both the displayed level and the stats.
+        function applyExpShareLevel(source, idx) {
+            if (_expShareWallet() <= 0) return;
+            let mon = null;
+            if (source === 'team') mon = sm.team && sm.team[idx];
+            else if (source === 'pc') mon = sm.pcBox && sm.pcBox[idx];
+            if (!mon || !mon.build) return;
+            const cur = Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, mon.build.expShareLevels | 0));
+            if (cur >= EXP_SHARE_MAX_PER_MON) {
+                try { window.showGameAlert && window.showGameAlert(`${mon.name} is already at Lv${EXP_SHARE_BASE_LEVEL + EXP_SHARE_MAX_PER_MON} — the EXP Share can't push it further.`); } catch (e) {}
+                return;
+            }
+            mon.build.expShareLevels = cur + 1;
+            // Spend one unit from the wallet (already in the persisted inventory shape).
+            if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
+            sm.inventory.expShareVoucher = Math.max(0, _expShareWallet() - 1);
+            const newLv = EXP_SHARE_BASE_LEVEL + mon.build.expShareLevels;
+            try { save(); } catch (e) {}
+            try { updateHUD && updateHUD(); } catch (e) {}
+            try { window.StoryFx && window.StoryFx.playSfx('levelUp', 0.7); } catch (e) {}
+            try { window.showGameAlert && window.showGameAlert(`${mon.name} grew to Lv${newLv}! (EXP Share — ${_expShareWallet()} unit${_expShareWallet() === 1 ? '' : 's'} left)`); } catch (e) {}
+            // Re-open the picker if we came from the bag and units remain.
+            const _bagModalEl = document.getElementById('modal-story-bag');
+            const _bagWasOpen = !!(_bagModalEl && !_bagModalEl.classList.contains('hidden'));
+            if (_bagWasOpen) {
+                if (_expShareWallet() > 0) openExpShareGift();
+                else openCityBag();
+            }
+        }
+        // Repaint the city-bag modal with a roster picker for the EXP-Share
+        // gift. Each row shows the mon's current level + how many of its 3
+        // level-ups are used, and previews Lv → Lv+1. Mirrors openPermBoostPicker.
+        function openExpShareGift() {
+            const wallet = _expShareWallet();
+            if (wallet <= 0) { try { window.showGameAlert && window.showGameAlert('No EXP Share units left to give.'); } catch (e) {} return; }
+            const modal = document.getElementById('modal-story-bag');
+            const bagEl = document.getElementById('story-bag-grid');
+            if (!bagEl || !modal) return;
+            const team = Array.isArray(sm.team) ? sm.team : [];
+            const pcBox = Array.isArray(sm.pcBox) ? sm.pcBox : [];
+            bagEl.style.gridTemplateColumns = '1fr';
+            const h3 = modal.querySelector('h3');
+            if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">EXP Share — ' + wallet + ' unit' + (wallet === 1 ? '' : 's') + ' left';
+            const rowHtml = (mon, idx, source) => {
+                if (!mon || !mon.build) return '';
+                const used = Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, mon.build.expShareLevels | 0));
+                const curLv = EXP_SHARE_BASE_LEVEL + used;
+                const atCap = used >= EXP_SHARE_MAX_PER_MON;
+                const tone = atCap ? '#555' : '#fff';
+                const disabled = atCap ? 'pointer-events:none;opacity:0.45;' : 'cursor:pointer;';
+                const isShiny = !!(mon.build && mon.build._isShiny);
+                const sprite = (typeof getSprite === 'function') ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), isShiny) : '';
+                const where = source === 'pc' ? '<span style="color:#888;font-size:9px;">[PC]</span>' : '';
+                const shinyMark = isShiny ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
+                const nameTone = isShiny && !atCap ? 'color:#ffd54f;' : '';
+                const onClick = atCap ? '' : `onclick="window.StoryMode.applyExpShareLevel('${source}',${idx})"`;
+                const previewHtml = atCap
+                    ? `<span style="color:#888;">Lv${curLv} — MAX (+${EXP_SHARE_MAX_PER_MON})</span>`
+                    : `<span style="color:#9ab;">Lv${curLv}</span> <span style="color:#80deea;">→ Lv${curLv + 1}</span> <span style="color:#777;">(${used}/${EXP_SHARE_MAX_PER_MON} used)</span>`;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid ${isShiny ? '#a47800' : '#333'};border-radius:6px;color:${tone};${disabled}" ${onClick}>
+                    ${sprite ? `<img src="${sprite}" data-shiny="${isShiny ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;${isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" alt="">` : ''}
+                    <div style="flex:1;">
+                        <div style="font-weight:bold;${nameTone}">${shinyMark}${mon.name} ${where}</div>
+                        <div style="font-size:10px;">${previewHtml}</div>
+                    </div>
+                </div>`;
+            };
+            const partyRows = team.map((m,i) => rowHtml(m, i, 'team')).join('');
+            const pcRows = pcBox.map((m,i) => rowHtml(m, i, 'pc')).join('');
+            bagEl.innerHTML = `
+                <div style="font-size:11px;color:#9ab;margin-bottom:8px;line-height:1.5;">
+                    A dead trainer's EXP Share. Give a level-up to any Pokémon — party or PC — up to <b style="color:#fff;">+${EXP_SHARE_MAX_PER_MON} levels each</b>. Each level-up raises every stat a little. Unspent units stay in your bag.
+                </div>
+                <button onclick="window.StoryMode.openCityBag()"
+                    style="font-size:11px;padding:4px 10px;margin-bottom:10px;color:#9ab;border:1px solid #9ab;background:transparent;border-radius:4px;cursor:pointer;align-self:flex-start;">
+                    ← Back to Bag
+                </button>
+                <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No Pokémon in your party.</div>'}</div>
+                ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
+                <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
+            `;
+            modal.classList.remove('hidden');
         }
 
         // ── EV RESET CHARM ───────────────────────────────────────────────
@@ -60266,6 +60426,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casinoRoulPlaceChip, casinoRoulClear, casinoRoulRepeat, casinoRoulSpin,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
             openPermBoostPicker, applyPermBoost, removePermBoost,
+            openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
