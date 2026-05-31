@@ -24221,6 +24221,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (parentalBondActive) { attacker.volatile.parentalBondHit = false; logMsg(`${attacker.name}'s Parental Bond struck again!`, 'info'); }
                     let actualDamage = totalDmg;
                     defender.tookDamageThisTurn = true;
+                    // Rage Fist: each landed strike of a multi-hit move counts as a separate hit taken.
+                    if (actualDamage > 0) defender.volatile.timesHit = (defender.volatile.timesHit || 0) + hitsLanded;
                     if (move.cat === "Physical") defender.volatile.lastPhysicalDmg = actualDamage;
                     if (move.cat === "Special") defender.volatile.lastSpecialDmg = actualDamage;
                     if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
@@ -24384,6 +24386,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Track for Counter/Mirror Coat (store on the mon that took the hit)
                     if (move.cat === "Physical") defender.volatile.lastPhysicalDmg = actualDamage;
                     if (move.cat === "Special") defender.volatile.lastSpecialDmg = actualDamage;
+                    // Rage Fist: count damaging hits taken on the mon that was hit (powers up its Rage Fist).
+                    // Resets on switch via the volatile reset; substitute-absorbed hits don't reach this branch.
+                    if (actualDamage > 0) defender.volatile.timesHit = (defender.volatile.timesHit || 0) + 1;
                     // Step 3: Hit flash on the target sprite (enhanced for gimmick moves)
                     let targetSprite = document.getElementById(!isPlayer ? 'foe-sprite' : 'player-sprite');
                     let attackerSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
