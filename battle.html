@@ -37845,6 +37845,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorGetPoolForMon: (...a) => _tutorGetPoolForMon(...a),
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                     txStarredPool: (...a) => _txStarredPool(...a),
+                    txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
+                    buildPokemon: (...a) => buildPokemon(...a),
                     txStageCountRule: (...a) => _txStageCountRule(...a),
                     // Facilities-before-gym gate + per-fight balance (this PR).
                     grantBattleEVs: (...a) => _grantBattleEVs(...a),
@@ -58258,6 +58260,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const sparseBanner = _txSparseBannerHtml(t.name);
 
+            // Phase 5 — curated "Best picks" shortlist (role-balanced: best STAB,
+            // coverage, setup, status, recovery, priority) surfaced as the EASY default
+            // view, so the no-filter first page reads "pick a few → a coherent set"
+            // instead of a 30-card wall. Revives _txMoveRecsByPurpose + _txRecsPanelHtml
+            // (their CSS + click handler already shipped, just never wired). Drawn from
+            // the stage-gated `mergedMoves`, so every pick is teachable here. Hidden once
+            // the player searches or hits ★ Show all — then the full grid takes over.
+            let recsPanel = '';
+            try {
+                const searchingMoves = !!(_txState.search && _txState.search.moves);
+                if (!sPool.sparse && _txState.filter.recOnly.moves && !searchingMoves) {
+                    const recEntries = _txMoveRecsByPurpose(mergedMoves, mon, b, t.name)
+                        .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
+                    if (recEntries.length) {
+                        recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
+                            'Tap to preview — grab 3–4 for a solid set, or browse the full list below.');
+                    }
+                }
+            } catch (e) {}
+
             const toolbar = _txToolbarHtml('moves', {
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
                 count: filtered.length,
@@ -58302,7 +58324,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
-                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
+                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + recsPanel + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
                 </div>
             </div>`;
         }
