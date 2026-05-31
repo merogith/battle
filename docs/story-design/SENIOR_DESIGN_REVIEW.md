@@ -514,6 +514,15 @@ maxwell's to tune).
 - **Arc loss handling — LOCKED: dark loss line, then win-to-progress.** Losing a *key* arc battle fires
   a creepy, character-voiced loss outro (tone intact), but the arc still gates on a win — one extra
   writing pass per beat, not a full branch.
+- **Arc legibility — LOCKED: discover through play, NO tracker UI.** No case-file / journal; the story
+  lives only in the beats as they fire. **Consequence:** the entire flow-legibility load now rests on the
+  **aftermath-hook chaining** (IV.5) being unmistakable — every hook must make "what's next & why"
+  obvious *in-fiction*, since there is no menu to check. This raises the writing bar on hooks; it does
+  *not* reintroduce a tracker.
+- **Loop scaling — LOCKED: same pool, reshuffled.** Every run draws the same arc library by seeded RNG;
+  **no Run#-gated content** (nothing is ever "missed"). The **only** Run#-aware narrative element is The
+  First's escalating weariness (above) — so the world resets *identically* each loop and only The First
+  notices. **The sameness is the horror;** don't add NG+ content gates that would dilute it.
 - **Difficulty feel — structure locked, numbers pending.** Gimmick ladder is set (IV.3); per-region
   move/EV stacking (IV.4) is maxwell's to confirm so "kaizo late game" lands without a mid-game wall.
 
@@ -538,6 +547,10 @@ clear *why am I fighting this* and *what comes next*.
 - **Treatment — LOCKED: satirical deconstruction.** Take the known creepypasta premise and twist it into
   commentary / subversion — *not* a faithful retelling, *not* generic mood-horror. Most original voice,
   least derivative, most "new."
+- **Main-spine surface tone — LOCKED: clean, then gut-punch.** The *main* quest plays like a hopeful
+  champion run with only faint unease (an odd line, a portrait that's almost yours) so The First reveal
+  detonates as a true gut-punch — maximizing the iceberg payoff. (Distinct from the extra track, which is
+  dark on contact.)
 - Reconciles with the §1 charter: the recognizable Pokémon **surface** still frames the run; the extra
   track is the iceberg's dark water beneath it.
 
@@ -552,8 +565,10 @@ have partial wiring in `_storyGrantTrackEndReward` (battle.html:42101):
   variable** — the original `mon.level += n` couldn't land, so the reward silently became *6 random
   vitamins* (the stand-in at 42119-42136). The maintainer's framing — *"like Fight Club +10 permanent
   stats, a late-game permanent buff"* — gives the correct, shippable implementation:
-  - **6 "level-units," distributable** across the player's mons however they want ("one level-56 mon, or
-    spread thin"), each unit ≈ one level's worth of stats.
+  - **6 "level-units," distributed across party/PC** with a **per-mon cap of 3 units** (≈ +3 levels'
+    worth). The 3-cap means a full 6-unit spend **necessarily lands on ≥2 mons** (the maintainer's "pick
+    2, not 1") — blocking a single-mon snowball. Over-cap units are **refunded**, not wasted. *(Strongest
+    single outcome ≈ a "level-53," not "level-56.")*
   - Implement as a **permanent STAT layer, not a level increment** — reuse the existing **`permBoost`
     layer** (battle.html:34777, "flat +1..+10 permBoost") and the **Fight-Club persisted +stat bonus**
     (44839, "+2/stat/round, clamp +10"). This sidesteps the no-per-mon-level blocker that killed the
