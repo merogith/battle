@@ -43551,12 +43551,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _isFacilitySeen(cityIdx, key) {
             return !!(sm.facilitiesSeen && sm.facilitiesSeen[cityIdx] && sm.facilitiesSeen[cityIdx][key]);
         }
+        // Daycare hard-gate (designer rule): the Daycare intro is REQUIRED at City 2
+        // (the one-time egg intro) and at City 6 (the Fight-Club trigger). City 4 stays
+        // an optional suggestion. Tracked PER-CITY via _isFacilitySeen so seeing it at
+        // C2 does not satisfy the C6 requirement. Opening the Daycare once
+        // (enterDaycare → _markFacilitySeen at entry) clears the gate even without
+        // depositing a Pokémon, so it can never soft-lock. C6 only gates once the
+        // Fight-Club secret is actually available (6+ badges, not yet unlocked) so the
+        // pre-gym C6 hub (5 badges) is never blocked.
+        function _isDaycareGateActiveHere(cityIdx) {
+            if (!sm) return false;
+            if (cityIdx !== 2 && cityIdx !== 6) return false;
+            if (typeof _daycareIsUnlocked !== 'function' || !_daycareIsUnlocked()) return false;
+            if (typeof _pitsIsEndgame === 'function' && _pitsIsEndgame()) return false;
+            if (_isFacilitySeen(cityIdx, 'daycare')) return false;
+            if (cityIdx === 2) return true;
+            // cityIdx === 6 — only required when the Fight-Club secret can fire.
+            const badges = sm.badges | 0;
+            const fcUnlocked = !!(sm.pits && sm.pits.fightClubUnlocked);
+            return badges >= 6 && !fcUnlocked;
+        }
         // Per docs/EVOLUTION_FLOW_REBUILD.md §8.3-§8.4: a facility is "required this
         // city" if (a) its action button appears in this city AND (b) the player
         // has not yet introduced themselves anywhere in the run AND (c) this city
         // is the FACILITY_DEBUT_CITY for that key (the canonical debut location).
         function _isFacilityRequiredHere(cityIdx, key, actionList) {
             if (!sm || cityIdx < 0) return false;
+            // Daycare uses its own per-city gate (C2 + C6), not the single-debut model.
+            if (key === 'daycare') return _isDaycareGateActiveHere(cityIdx);
             if (sm.facilityIntros && sm.facilityIntros[key]) return false;
             if (FACILITY_DEBUT_CITY[key] !== cityIdx) return false;
             if (!Array.isArray(actionList)) return false;
@@ -43597,6 +43619,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const key of Object.keys(FACILITY_DEBUT_CITY)) {
                 if (_isFacilityRequiredHere(cityIdx, key, actionList)) pending.push(key);
             }
+            // Daycare is not a FACILITY_DEBUT_CITY key (dynamic button), so add its
+            // per-city C2/C6 hard-gate separately.
+            if (_isDaycareGateActiveHere(cityIdx) && pending.indexOf('daycare') === -1) pending.push('daycare');
             // Sort by the city-intro priority order so the player sees PC first, then
             // Mart, then Professor, etc. — matches the "forced visit + intro" UX.
             pending.sort((a, b) => {
@@ -43612,7 +43637,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             link: "Bill's Cable Link", stoneShop: 'Stones and Beyond', evolab: 'Evolution Tutor',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
-            bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club',
+            bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club', daycare: 'Daycare Inn',
         };
         // Facility key → the onclick that opens it, so the single objective line can
         // deep-link to a pending first-visit facility. Mirrors the button onclicks in
