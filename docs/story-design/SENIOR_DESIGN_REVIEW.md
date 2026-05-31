@@ -620,3 +620,21 @@ keeps a run from going one-note:
   handwriting in your Pokédex, "tell The First we said hi") sit at **notice-but-rationalize** — itchy
   enough to pay off on the reveal, deniable enough to keep the surface clean. This **confirms** PR-7;
   don't escalate them into accumulating dread (the main-spine tone we set aside).
+
+## IV.10 Arc delivery, pacing & resolution (locked)
+
+- **Arc engagement — LOCKED: mix.** Key arc beats (grunt / admin / boss; raid beats) **auto-fire as the
+  player travels** the road — no menu, unbroken chain (matches the no-tracker lock). Smaller atmosphere /
+  flavor beats are **opt-in**. So every arc's *spine* is guaranteed; its *texture* is discoverable.
+- **Villain arc pacing — LOCKED: spread across the run.** grunt **early-mid** → admin **mid** → boss
+  **~Road 7**, so the arc breathes across the journey and its boss **scales into a late wall** (matches
+  the spread+ramp pacing, IV.5). Extra-track raids likewise spread; the flagship raid lands late.
+- **Extra-track source — LOCKED: lean on known lore, deconstructed.** Each extra arc starts from its
+  Pokémon's famous dark reading — `cubone`/Marowak orphan-grief, `hypno` (Hypno's Lullaby), `parasect`
+  (cordyceps), `mewtwo` (lab experiment), `phantump` (dead child), plus `yamask` / `mimikyu` /
+  `drifloon` — then **twists / subverts** it (the IV.6 satirical-deconstruction treatment). Recognition
+  + our spin.
+- **Raid resolution — LOCKED: laid to rest, no catch.** Defeating a victim-raid is a **release** — the
+  creature dies or moves on and the player mourns; it is **not** catchable. Pure pathos; keeps rewards
+  lore-only (IV.7) and protects train-don't-catch. (The flagship extra raid still grants the EXP-Share
+  gift on victory; the *creature itself* is never kept.)
