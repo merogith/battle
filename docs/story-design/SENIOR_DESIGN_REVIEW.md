@@ -581,5 +581,26 @@ have partial wiring in `_storyGrantTrackEndReward` (battle.html:42101):
   like Fight Club's +10), not farmable — consistent with the §1 "earned-unlock" charter. Flagged so a
   future audit doesn't mistake it for re-opening level grinding.
 - **Needs the standard game-behavior sign-off** (new mechanic) **+ a SAVE_VER bump** (new persisted
-  wallet + per-mon buff field). **Magnitude is maxwell-owned** (stats-per-unit, party-only vs party+PC,
-  cap interaction).
+  wallet + per-mon buff field). Wallet/cap rules are **locked** (6 units, ≤3/mon, party+PC, refund over
+  cap); only the **stats-per-unit magnitude** stays maxwell-owned.
+
+## IV.8 Track treatments, voice & framing (locked)
+
+The two secondary tracks get **different source-treatments and different voices** — the range is what
+keeps a run from going one-note:
+
+| Track | Source | Treatment | Voice |
+|---|---|---|---|
+| **Villain** | **Canon teams** (Rocket, Macro Cosmos, Team Star, …) | **Canon-faithful premise, dark/satiric retelling** — follow the team's *own* canon story beats, add twists + darker additions (e.g. "Team Rocket as a dark corporate"). Premises/story points track canon; the tone is ours. | **Satiric / sharp** — darkly comic; it bites. |
+| **Extra** | **Creepypasta** (Lavender Town, Buried Alive, …) | **Satirical deconstruction** (IV.6) — twist / subvert the premise, *not* a faithful retell. | **Bleak / sincere** — grotesque horror, no comic relief. |
+
+- **Satire targets (all four in scope, realized *through* the canon teams):** tech / techno-autocracy,
+  influencer / clout culture, institutional rot, wellness / cult grift. Each canon team carries whichever
+  fits its identity (Rocket → corporate/tech, Star → youth/cult, Macro Cosmos → corporate/institutional,
+  …) — the satire is **distributed across the roster, not a single soapbox.**
+- **Raid framing — LOCKED: victims / tragedies.** A solo-boss Pokémon is something **pitiable** —
+  cursed, grieving, experimented-on (the Marowak-grief / Lavender lineage). The player fights something
+  to *mourn*, not a monster to beat. (Reinforces why raids live in the extra/horror track.)
+- **The apocalypse — LOCKED: never shown.** The First says the world ends; we **never depict it.** It
+  stays a referenced absence (the warning; the Frontier's "welcome back, try not to remember too
+  clearly"). Ambiguity > spectacle; reinforces the "sameness is the horror" lock (IV.5).
