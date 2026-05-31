@@ -506,8 +506,14 @@ maxwell's to tune).
   dialogue → battle intro ("stop, or I'll kill you" / "die trying") → outro ("you didn't find the
   leader today — next time, he finds you") → boss event.* Each beat seeds the next; the ordinary
   fights are the chain's links.
-- **MF / NG+ awareness — LOCKED: escalating, loop-aware tally.** The Mystery Figure references prior
-  runs with a line **keyed to run count** (the loop #N escalation), not a single static haunt.
+- **MF / NG+ awareness — LOCKED: escalating, loop-aware tally, wearier each cycle.** The Mystery Figure
+  references prior runs with a line **keyed to run count** (the loop #N escalation), not a static haunt.
+  The MF is canon **The First** — future-you, training the younger you by *losing on purpose* to outrun
+  an apocalypse, who already "sounds less certain each cycle" (`main.mfReveal`, battle.html:32388). The
+  escalation **deepens that exhaustion / loss of faith** as Run # climbs.
+- **Arc loss handling — LOCKED: dark loss line, then win-to-progress.** Losing a *key* arc battle fires
+  a creepy, character-voiced loss outro (tone intact), but the arc still gates on a win — one extra
+  writing pass per beat, not a full branch.
 - **Difficulty feel — structure locked, numbers pending.** Gimmick ladder is set (IV.3); per-region
   move/EV stacking (IV.4) is maxwell's to confirm so "kaizo late game" lands without a mid-game wall.
 
@@ -529,5 +535,36 @@ clear *why am I fighting this* and *what comes next*.
 - **The bar is *art, not edge*.** The goal is **thought-provoking and sarcastic/satiric** — Pokémon as
   the canvas for something grotesque-but-meaningful (the Lavender Town / Buried Alive lineage). Creepy
   *that makes you think*, never shock for shock's sake.
+- **Treatment — LOCKED: satirical deconstruction.** Take the known creepypasta premise and twist it into
+  commentary / subversion — *not* a faithful retelling, *not* generic mood-horror. Most original voice,
+  least derivative, most "new."
 - Reconciles with the §1 charter: the recognizable Pokémon **surface** still frames the run; the extra
   track is the iceberg's dark water beneath it.
+
+## IV.7 Arc capstone rewards (locked + revival of the cut EXP-Share gift)
+
+Base arc reward = **lore/story only** (IV.5). On top of that, **two flagship capstones** — both already
+have partial wiring in `_storyGrantTrackEndReward` (battle.html:42101):
+
+- **Villain boss → Master Ball.** *Already shipped* (42105-42110). Keep as-is.
+- **Extra raid → "EXP-Share gift": a 6-use distributable permanent buff.** This **revives the PR-5
+  "EXP Share Voucher ×6"** that was cut (ledger **ISSUE-243**) because the game has **no per-mon level
+  variable** — the original `mon.level += n` couldn't land, so the reward silently became *6 random
+  vitamins* (the stand-in at 42119-42136). The maintainer's framing — *"like Fight Club +10 permanent
+  stats, a late-game permanent buff"* — gives the correct, shippable implementation:
+  - **6 "level-units," distributable** across the player's mons however they want ("one level-56 mon, or
+    spread thin"), each unit ≈ one level's worth of stats.
+  - Implement as a **permanent STAT layer, not a level increment** — reuse the existing **`permBoost`
+    layer** (battle.html:34777, "flat +1..+10 permBoost") and the **Fight-Club persisted +stat bonus**
+    (44839, "+2/stat/round, clamp +10"). This sidesteps the no-per-mon-level blocker that killed the
+    original voucher. *"We already have most of the systems to handle it."*
+  - **Reframes ISSUE-243** from "won't-fix / doc-only (replaced by vitamins)" to **"revive as a
+    permBoost-based gift."**
+
+**Reconciliation flags (for the next session):**
+- **Not a violation of "no level grind."** It's a *bounded, earned, late-game* spike (6 units, one arc,
+  like Fight Club's +10), not farmable — consistent with the §1 "earned-unlock" charter. Flagged so a
+  future audit doesn't mistake it for re-opening level grinding.
+- **Needs the standard game-behavior sign-off** (new mechanic) **+ a SAVE_VER bump** (new persisted
+  wallet + per-mon buff field). **Magnitude is maxwell-owned** (stats-per-unit, party-only vs party+PC,
+  cap interaction).
