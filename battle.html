@@ -37793,6 +37793,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
                     pendingFacilityIntrosHere: (...a) => _pendingFacilityIntrosHere(...a),
                     showVictoryOverlay: (...a) => showVictoryOverlay(...a),
+                    // Catch-screen handles (Master Ball unlock regression coverage).
+                    get catchState() { return _catchState; },
+                    set catchState(v) { _catchState = v; },
+                    catchRender: () => _catchRender(),
+                    catchBallButton: (ballKey) => document.querySelector('#story-catch-body [data-ball-type="' + ballKey + '"]'),
                 };
             } catch (e) {}
         }
@@ -50147,11 +50152,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const display = _BALL_DISPLAY[k];
                     const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
                     const pct = Math.round(chance * 100);
-                    // The unique Master Ball is reserved for the Caged God boss fight; outside
-                    // boss mode it renders locked so it can't be wasted on a route/Crucible wild
-                    // (which would soft-lock that 1%-rate capture).
-                    const masterLocked = (k === 'master' && !_catchState.bossMode);
-                    const canThrow = have > 0 && !masterLocked;
+                    // Master Ball is a normal guaranteed-catch ball — usable on any
+                    // encounter, not reserved/locked for the Caged God boss. (It still
+                    // reads as the guaranteed throw via the purple glow + ✨ below.)
+                    const canThrow = have > 0;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
                     // Master Ball gets a dedicated CSS class so the button
                     // glows purple and carries a ✨ marker — its guaranteed-
@@ -50159,7 +50163,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // resolution. Other balls render exactly as before.
                     const masterCls = (k === 'master' && canThrow) ? ' story-catch-ball--master' : '';
                     const masterMark = (k === 'master' && canThrow) ? '<span style="margin-left:6px;color:#ce93d8;text-shadow:0 0 6px rgba(206,147,216,0.85);">✨</span>' : '';
-                    const rightLabel = masterLocked ? '<span style="color:#ce93d8;font-size:10px;" title="Saved for the Caged God">🔒 boss</span>' : `<span style="color:#fff;">${pct}%</span>`;
+                    const rightLabel = `<span style="color:#fff;">${pct}%</span>`;
                     return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} data-ball-type="${k}" class="story-catch-ball${masterCls}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
                         <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong>${masterMark} <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
                         ${rightLabel}
@@ -50295,13 +50299,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _safariSession.ballsLeft = Math.max(0, (_safariSession.ballsLeft | 0) - 1);
             } else {
                 if (_catchState.safariMode) return;
-                // Safety net behind the locked button: never spend the unique Master Ball on
-                // anything but the Caged God boss — otherwise that 1%-rate capture soft-locks.
-                if (ballKey === 'master' && !_catchState.bossMode) {
-                    try { window.showToast('Save the Master Ball for the Caged God.'); }
-                    catch (e) { try { window.showGameAlert('Save the Master Ball for the Caged God.'); } catch (_) {} }
-                    return;
-                }
                 if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
                 sm.balls[ballKey] = (sm.balls[ballKey] | 0) - 1;
             }
