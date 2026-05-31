@@ -15104,7 +15104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
-            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
+            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
             mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
             mon.turnCount = 0;
             mon.fakeOutOk = true;
@@ -21178,8 +21178,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.pActive) { state.pActive.volatile.lastPhysicalDmg = 0; state.pActive.volatile.lastSpecialDmg = 0; }
                 if (state.fActive) { state.fActive.volatile.lastPhysicalDmg = 0; state.fActive.volatile.lastSpecialDmg = 0; }
                 // Reset per-turn flags for Lash Out / Payback / Bolt Beak / Retaliate / etc.
-                if (state.pActive && state.pActive.volatile) { state.pActive.volatile.statLoweredThisTurn = false; state.pActive.volatile.hasMoved = false; state.pActive.volatile.lastMoveFailed = false; }
-                if (state.fActive && state.fActive.volatile) { state.fActive.volatile.statLoweredThisTurn = false; state.fActive.volatile.hasMoved = false; state.fActive.volatile.lastMoveFailed = false; }
+                // statLoweredThisTurn is intra-turn (Lash Out) so it resets here. lastMoveFailed is a
+                // CROSS-turn signal (Stomping Tantrum / Temper Flare) — it must NOT be wiped at turn start,
+                // or the "double power if your last move failed" check can never see a true value. It is
+                // instead snapshotted + cleared per-move at move-commit time (see performAction). The dead
+                // `hasMoved` field (never set true, never read) was removed.
+                if (state.pActive && state.pActive.volatile) { state.pActive.volatile.statLoweredThisTurn = false; }
+                if (state.fActive && state.fActive.volatile) { state.fActive.volatile.statLoweredThisTurn = false; }
                 if (state.playerParty) state.playerParty.forEach(m => { if (m && m._faintedLastTurn === 'aged') m._faintedLastTurn = false; else if (m && m._faintedLastTurn === true) m._faintedLastTurn = 'aged'; });
                 if (state.foeParty) state.foeParty.forEach(m => { if (m && m._faintedLastTurn === 'aged') m._faintedLastTurn = false; else if (m && m._faintedLastTurn === true) m._faintedLastTurn = 'aged'; });
 
@@ -21879,6 +21884,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             attacker.volatile._skipLockMgmtFinalize = true;
             // Stomping Tantrum / Temper Flare check: previous move failed
             attacker.volatile.lastMoveFailed = true;
+            // A miss / failure breaks the Fury Cutter & Echoed Voice consecutive-use chains.
+            attacker.volatile.furyCutterCount = 0;
+            attacker.volatile.echoedVoiceCount = 0;
         }
 
         /**
@@ -21922,6 +21930,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.volatile.metronomeLastMove === move.name) attacker.volatile.metronomeCount = Math.min(5, (attacker.volatile.metronomeCount | 0) + 1);
                 else { attacker.volatile.metronomeCount = 0; attacker.volatile.metronomeLastMove = move.name; }
             }
+            // Stomping Tantrum / Temper Flare: snapshot whether the PREVIOUS move attempt failed (cross-turn
+            // signal), then clear the live flag so a move that connects this turn leaves it false.
+            // registerMoveConnectionFailure re-sets lastMoveFailed = true if THIS move fails, carrying the
+            // signal forward to next turn's snapshot. Read at base-power calc via _prevMoveFailed.
+            attacker.volatile._prevMoveFailed = !!attacker.volatile.lastMoveFailed;
+            attacker.volatile.lastMoveFailed = false;
+            // Fury Cutter / Echoed Voice: per-user consecutive-use power ramp (same pattern as metronomeCount).
+            // Increment on a repeat use, reset to 0 on any different move. registerMoveConnectionFailure also
+            // resets them on a miss/failure so a whiff breaks the chain.
+            attacker.volatile.furyCutterCount = (move && move.name === "Fury Cutter") ? (attacker.volatile.furyCutterCount | 0) + 1 : 0;
+            attacker.volatile.echoedVoiceCount = (move && move.name === "Echoed Voice") ? (attacker.volatile.echoedVoiceCount | 0) + 1 : 0;
             if (move.name === '__StoryItemPass') {
                 logMsg(`${attacker.name}'s turn was spent using an item.`, 'info');
                 await sleep(400);
@@ -23405,6 +23424,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     basePower = 30 * Math.pow(2, n);
                     if (attacker.volatile.defenseCurled) basePower *= 2;
                 }
+                // Fury Cutter: 40 BP, doubles on each consecutive use, capped at 160 (40/80/160).
+                if (move.name === "Fury Cutter") {
+                    const _fc = Math.max(1, attacker.volatile.furyCutterCount | 0);
+                    basePower = Math.min(160, 40 * Math.pow(2, _fc - 1));
+                }
+                // Echoed Voice: 40 BP, +40 per consecutive use, capped at 200 (40/80/120/160/200).
+                if (move.name === "Echoed Voice") {
+                    const _ev = Math.max(1, attacker.volatile.echoedVoiceCount | 0);
+                    basePower = Math.min(200, 40 * _ev);
+                }
                 // Variable-power moves
                 if (move.name === "Return") basePower = 102; // assume max happiness
                 if (move.name === "Frustration") basePower = 102; // assume min happiness
@@ -23581,7 +23610,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (move.name === "Revenge" && attacker.tookDamageThisTurn) basePower = basePower * 2;
                 if (move.name === "Lash Out" && attacker.volatile && attacker.volatile.statLoweredThisTurn) basePower = basePower * 2;
-                if ((move.name === "Stomping Tantrum" || move.name === "Temper Flare") && attacker.volatile && attacker.volatile.lastMoveFailed) basePower = basePower * 2;
+                if ((move.name === "Stomping Tantrum" || move.name === "Temper Flare") && attacker.volatile && attacker.volatile._prevMoveFailed) basePower = basePower * 2;
                 if (move.name === "Assurance" && defender.tookDamageThisTurn) basePower = basePower * 2;
                 if (["Behemoth Blade","Behemoth Bash","Dynamax Cannon"].includes(move.name) && defender.dynamaxed) basePower = basePower * 2;
                 if (move.name === "Last Respects") {
@@ -24224,6 +24253,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (parentalBondActive) { attacker.volatile.parentalBondHit = false; logMsg(`${attacker.name}'s Parental Bond struck again!`, 'info'); }
                     let actualDamage = totalDmg;
                     defender.tookDamageThisTurn = true;
+                    // Rage Fist: each landed strike of a multi-hit move counts as a separate hit taken.
+                    if (actualDamage > 0) defender.volatile.timesHit = (defender.volatile.timesHit || 0) + hitsLanded;
                     if (move.cat === "Physical") defender.volatile.lastPhysicalDmg = actualDamage;
                     if (move.cat === "Special") defender.volatile.lastSpecialDmg = actualDamage;
                     if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
@@ -24387,6 +24418,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Track for Counter/Mirror Coat (store on the mon that took the hit)
                     if (move.cat === "Physical") defender.volatile.lastPhysicalDmg = actualDamage;
                     if (move.cat === "Special") defender.volatile.lastSpecialDmg = actualDamage;
+                    // Rage Fist: count damaging hits taken on the mon that was hit (powers up its Rage Fist).
+                    // Resets on switch via the volatile reset; substitute-absorbed hits don't reach this branch.
+                    if (actualDamage > 0) defender.volatile.timesHit = (defender.volatile.timesHit || 0) + 1;
                     // Step 3: Hit flash on the target sprite (enhanced for gimmick moves)
                     let targetSprite = document.getElementById(!isPlayer ? 'foe-sprite' : 'player-sprite');
                     let attackerSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
