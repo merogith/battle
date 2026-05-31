@@ -1,0 +1,120 @@
+9286:            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
+10436:            'No Retreat','Victory Dance','Tail Glow','Growth','Work Up','Curse',
+14635:            const idx = sm.eventIndex | 0;
+14662:            const idx = sm.eventIndex | 0;
+14695:            const idx = sm.eventIndex | 0;
+14824:            // Fatigue debuff: 1% per stack on all combat stats AND starting HP (max 3 stacks).
+14840:            // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
+14841:            // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
+17044:        /** 6v6 preset: charge / two-turn / recharge / fatigue moves vs defensive AI. Open battle.html?testbattle=charge6 or #charge6 */
+19487:            const _bigSetup = ["Belly Drum","Shell Smash","Quiver Dance","Dragon Dance","Swords Dance","Nasty Plot","Calm Mind","Bulk Up","Coil","Geomancy","Tidy Up","Shift Gear","Clangorous Soul","Tail Glow","Cosmic Power","Victory Dance","No Retreat"];
+21523:            const inFatigueLock = attacker.volatile.lockMove && lockingMovesSet.has(attacker.volatile.lockMove);
+21524:            if (isLockingMoveThisTurn || inFatigueLock) {
+21536:                                logMsg(`${attacker.name}'s Own Tempo prevented confusion from fatigue!`, 'info');
+21538:                                const _confFatigueRng = storyAwareRng();
+21539:                                attacker.volatile.confusion = Math.floor(_confFatigueRng() * 3) + 2;
+21540:                                logMsg(`${attacker.name} became confused due to fatigue!`, 'status');
+21561:        /** Outrage / Thrash / Petal Dance / Uproar / Raging Fury — fatigue lock cleared only on disruption that should end the rampage (not Rollout). */
+21572:        /** Flinch, sleep, full para, etc.: ends rampage lock without fatigue confusion (handled in finalizeLockingAndRollout only on natural end). */
+21592:         * (Not used when the move is fully blocked by Protect in the usual way — that still “uses” the turn for lock fatigue.)
+21667:            // Outrage-style fatigue locks + two-turn charge cleanup live in shared helpers (see OUTRAGE_FAMILY_LOCKS).
+24845:                // Also switch even if defender fainted (KO'd by the pivot move) — attacker still retreats
+26848:            if (move.name === "No Retreat") {
+26849:                if (attacker.volatile.noRetreatUsed) { logMsg(`But it failed!`, 'info'); return; }
+26850:                attacker.volatile.noRetreatUsed = true;
+26853:                logMsg(`${attacker.name} cannot retreat now!`, 'info');
+32093:        function storyBattleZeroBasedRank(eventIndexInRaw) {
+32097:                if (i === eventIndexInRaw) return r;
+32103:        function storyProgressCoinMultForEventIndex(eventIndexInRaw) {
+32104:            const rank = storyBattleZeroBasedRank(eventIndexInRaw);
+32625:            if (_isPostGymHubAtEventIdx(sm.eventIndex | 0)) return false;
+33157:        /** Same battle index `proceedToNextBattle` would pick from the current hub (`sm.eventIndex`), including `currentEnemyLock` rematches. */
+33160:            const ei = sm.eventIndex | 0;
+33662:            const cap = (sm.eventIndex | 0);
+33682:                ? getStoryDisplayTownNameForCityRow(STORY_EVENTS_RAW[sm.eventIndex])
+34368:            if (typeof sm.eventIndex === 'number') sm.eventIndex = clamp(migrateStoryRowIdPreV8ToCurrent(sm.eventIndex));
+34625:         *  so mark it done if eventIndex has already advanced beyond row 1
+34630:                sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
+34663:            if (typeof sm.eventIndex === 'number') sm.eventIndex = shift(sm.eventIndex);
+34668:        let sm = { active:false, eventIndex:0, badges:0, gold:2000, casinoStats:{}, team:[],
+34806:            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+34864:        // that triggers fatigue-confusion, thaw, Swagger/Flatter, secondary
+35170:                if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
+35171:                    console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
+35172:                    sm.eventIndex = _cap;
+35581:        // cityIndexFromEventIndex (a route battle's DEPARTING city — so the route INTO
+35704:            return _storyEvoStageCapForCity(cityIndexFromEventIndex(rowIdx));
+35883:                try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
+35890:            const evt = eventType || (sm && STORY_EVENTS_RAW[sm.eventIndex] && STORY_EVENTS_RAW[sm.eventIndex][2]) || '';
+36312:            'No Retreat','Victory Dance','Tail Glow','Growth','Work Up','Curse',
+36659:                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) _foeCity = cityIndexFromEventIndex(storyRowIdx);
+36931:        //       build._storyStatMult LAST in its compute order (nature → fatigue →
+37323:                    cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
+38709:                active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, casinoStats:{}, team:[],
+40490:        // retreat/game-over flavor, Hall of Fame card, and the post-HoF
+40905:        // ── H: per-variant retreat / game-over hint. Two short lines —
+40907:        const _VARIANT_RETREAT_LINES = {
+40938:        function _variantRetreatLine(kind) {
+40940:            const tbl = _VARIANT_RETREAT_LINES[v.id];
+41200:                    { label: 'Turn around and walk back one screen.', value: 'back', reply: ['You walk back one screen. The flicker follows.','The save file logs: TRAINER RETREATED / TEXTURE COHERENT IN ALL DIRECTIONS.'] }
+41610:            const road = _roadForArrayIdx(sm.eventIndex);
+41676:            const road = _roadForArrayIdx(sm.eventIndex);
+41973:                const cityIdx = (typeof cityIndexFromEventIndex === 'function')
+41974:                    ? cityIndexFromEventIndex(sm ? sm.eventIndex : 0) : 1;
+42074:            if (typeof sm.eventIndex !== 'number' || sm.eventIndex < 0 || sm.eventIndex > _capIdx) {
+42075:                console.warn('[Story] processNextEvent: invalid eventIndex — clamping', sm.eventIndex);
+42076:                sm.eventIndex = _capIdx;
+42079:            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+42100:                    const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+42101:                    sm.eventIndex = lastCityEv;
+42140:            sm.eventIndex = STORY_EVENTS_RAW.findIndex(row => row && row[0] === 55);
+42141:            if (sm.eventIndex < 0) sm.eventIndex = 56;
+42178:            sm.eventIndex = STORY_EVENTS_RAW.findIndex(row => row && row[0] === 40);
+42179:            if (sm.eventIndex < 0) sm.eventIndex = 41;
+42262:            sm.eventIndex = hofIdx;
+42307:            sm.eventIndex = CHAMPION_STORY_IDX;
+42390:            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+42395:            if (cidx === 0 && sm.eventIndex === 0) {
+42462:            const cityEv = STORY_EVENTS_RAW[sm.eventIndex];
+42847:                        const _currCityName = String((STORY_EVENTS_RAW[sm.eventIndex] || [])[2] || '');
+43062:        window.__renderCityActionsForTest = function (eventIndex) {
+43063:            try { if (sm) sm.eventIndex = eventIndex | 0; renderCityActions(STORY_EVENTS_RAW[eventIndex | 0]); }
+43140:            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+43333:        function cityIndexFromEventIndex(ei) {
+43341:        function lastStoryCityEventIndexAtOrBefore(ei) {
+43371:        // Retreat-to-city after a loss is free on Normal and below. Only
+43373:        function _storyDifficultyHasFreeRetreat(diff) {
+43377:        function _storyGoldFeeAppliesForRetreat() {
+43378:            return !_storyDifficultyHasFreeRetreat();
+43381:        function _storyCalcRetreatGoldFee() {
+43382:            if (!_storyGoldFeeAppliesForRetreat()) return 0;
+43399:                // PokeCenter / iconic-fight resets also clear fatigue. (Tiredness lives on the
+43406:        // List of event names that auto-heal and reset fatigue before+after the fight.
+43408:        // fatigue on the survivors. Gym leaders, league, mystery, boss arc, rival, and Pit
+43425:        // Apply (or clear) fatigue on every active team member. Bench mons are *also*
+43453:        // Single-shot fatigue intro modal — fires the first time a team member earns a stack.
+43462:                    +   '<div style="margin-bottom:10px;">Battling drains them. They build up <strong style="color:#ffd54f;">Fatigue</strong> — each stack docks 1% of stats and starting HP, up to <strong>3</strong> stacks.</div>'
+43463:                    +   '<div style="margin-bottom:10px;">A short stay at a <strong style="color:#aed581;">Pokémon Center</strong> restores HP, PP, status, <em>and</em> clears Fatigue. Gym Leaders, the League, and other iconic fights always start fresh, so you don\'t need to grind heals before them.</div>'
+43570:            const curCity = cityIndexFromEventIndex(sm.eventIndex | 0);
+43617:                const ev = STORY_EVENTS_RAW[sm.eventIndex];
+43781:            const eggSlot = _makeEggSlot(eggSpecies, cityIndexFromEventIndex(sm.eventIndex | 0));
+44137:            // Pits = iconic; clear fatigue on the bracket party (and rest too — the iconic
+44275:            // Iconic exit: heal + clear fatigue.
+44441:            // Iconic exit: heal + clear fatigue on whoever's left (the three who watched).
+44465:                const curCity = cityIndexFromEventIndex(sm.eventIndex | 0);
+44560:        // Shared mutation for "retreat to last city": pulls the in-battle party
+44562:        // on normal / easy / very easy via `_storyCalcRetreatGoldFee`), warps
+44563:        // `sm.eventIndex` to the last city row, and clears mid-battle locks.
+44569:        function _storyApplyRetreatToCity() {
+44578:            } catch (e) { console.warn('[Story] retreat team sync', e); }
+44580:            const fee = _storyCalcRetreatGoldFee();
+44582:            const failedBattleIdx = sm.eventIndex;
+44583:            sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+44587:            // counter to the new party. (A mid-fight reload doesn't go through retreat, so the
+44598:        function refreshStoryGameOverRetreatUI() {
+44599:            const targetIdx = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+44605:            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+44622:                    if (_storyDifficultyHasFreeRetreat()) {
+44625:                        const fee = _storyCalcRetreatGoldFee();
+44630:            // Per-variant retreat/concede flavor — appended as an italic
+44639:                    const line = _variantRetreatLine(kind);
