@@ -604,3 +604,19 @@ keeps a run from going one-note:
 - **The apocalypse — LOCKED: never shown.** The First says the world ends; we **never depict it.** It
   stays a referenced absence (the warning; the Frontier's "welcome back, try not to remember too
   clearly"). Ambiguity > spectacle; reinforces the "sameness is the horror" lock (IV.5).
+
+## IV.9 Surface characters & loop-seed calibration (locked)
+
+- **Professor — LOCKED: morally gray, *not* evil; open to interpretation.** Stays a usable, warm-enough
+  quest-hub (the letter→professor trust beat works), but is **never resolved as villain or saint** — the
+  player reads their complicity/knowledge for themselves. Gray and unresolved, *not* a betrayal twist.
+- **Rival — LOCKED: a tragic figure the system grinds down.** A striver who plays by the rules and loses
+  anyway — the human cost of the dystopia, set against the player's looping persistence. (pasteur owns
+  the canon character; this is the agreed direction.)
+- **Player character — LOCKED: self-insert, minimal fixed identity.** Keep the protagonist a near-blank
+  the player projects onto (own name/choices) so "you become The First" lands as personally as possible.
+  The twist is about *you*.
+- **Loop-seed calibration — LOCKED: deniable.** The PR-7 anomaly seeds ("Welcome Back" sticker,
+  handwriting in your Pokédex, "tell The First we said hi") sit at **notice-but-rationalize** — itchy
+  enough to pay off on the reveal, deniable enough to keep the surface clean. This **confirms** PR-7;
+  don't escalate them into accumulating dread (the main-spine tone we set aside).
