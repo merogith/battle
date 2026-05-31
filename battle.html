@@ -22718,7 +22718,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let fsD = defender.stats.spd;
                 let fsStab = calcSTAB(attacker, move);
                 let fsDmg = Math.max(1, Math.floor(Math.floor((Math.floor((22 * move.pow * fsA / fsD) / 50) + 2)) * fsStab));
-                defender.volatile.futureSightTurns = 2;
+                // Strikes "two turns later" — end of turn N+2. The end-of-turn tick (runWishHealing)
+                // also fires on this cast turn, so the counter must be 3: one more than Wish's 2,
+                // which is a next-turn effect (Wish:2 :: FutureSight:3). 2 here struck a turn early.
+                defender.volatile.futureSightTurns = 3;
                 defender.volatile.futureSightDmg = fsDmg;
                 defender.volatile.futureSightName = move.name;
                 logMsg(`${attacker.name} foresaw an attack!`, 'info');
@@ -26508,7 +26511,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.statusTurns++;
                 let wakeThreshold = mon.sleepDuration || 2;
                 if (mon.ability === "Early Bird") wakeThreshold = Math.ceil(wakeThreshold / 2);
-                if (mon.statusTurns >= wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
+                // Wake only AFTER sleeping through `sleepDuration` of the mon's own turns (Gen 5+
+                // semantics): the mon must miss exactly `sleepDuration` turns, then wakes and acts
+                // on the next. `>=` here woke a turn early — Rest's 2 played as 1 lost turn, and a
+                // rolled natural duration of 1 cost the target 0 turns.
+                if (mon.statusTurns > wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
                 if (moveName === "Snore" || moveName === "Sleep Talk") return true; // Can use these while asleep
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }
@@ -28582,10 +28589,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Flame Orb / Toxic Orb: apply status AFTER status damage so the holder does
             // not take a tick of burn/poison damage on the activation turn (canonical Gen 5+).
-            // applyStatus is a no-op if the holder already has a non-volatile status, so this
-            // does not double-apply when the orb status persists across turns.
-            if (_monItemActive && mon.currentHp > 0 && mon.item === "Flame Orb") applyStatus(mon, "BRN");
-            if (_monItemActive && mon.currentHp > 0 && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
+            // The `!mon.status` guard skips the call once the orb has applied its status: the orb
+            // is never consumed, so without it applyStatus would re-fire every end-of-turn and log
+            // "is already affected by ..." for the rest of the battle.
+            if (_monItemActive && mon.currentHp > 0 && !mon.status && mon.item === "Flame Orb") applyStatus(mon, "BRN");
+            if (_monItemActive && mon.currentHp > 0 && !mon.status && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
 
             // 4. Binding/Trap Damage
             // Leech Seed — Magic Guard prevents the drain (so the seeder also heals nothing).
