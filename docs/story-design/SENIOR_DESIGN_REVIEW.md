@@ -443,9 +443,19 @@ encounter. **One rule fixes both "dialogue in a gym" and "raid mechanics in a gy
 - **Villain `battle1/2` → re-skinned grunt:** force the rolled trainer to the villain's grunt pool +
   primary type + name ("Team Rocket Grunt"), so prose matches the fight. *(Reuse the trainer roller;
   no new mechanics.)*
-- **Simple-boss flag (default ON this pass):** gate the fancy `BOSS_CONFIGS` mechanics
-  (faintPhase / weather-lock) behind `STORY_SIMPLE_BOSSES`; while ON, run plain themed fights,
-  slightly nerfed, uniform — easy to test. Turn richer mechanics on later, per boss, when in scope.
+- **Boss gimmick tiers (LOCKED — graduated 0/2/3, not a flat on/off):** difficulty, reward, and
+  gimmick count scale with the arc role. Gimmicks stay **small/basic** (a 1-turn immunity, a damage
+  bump, a single heal) and **trigger off the boss's *own* Pokémon fainting**:
+
+  | Arc role | Difficulty / reward | Gimmicks | Trigger |
+  |---|---|---|---|
+  | **Grunt** (`battle1/2`) | Ace-Trainer tier | **0** | — |
+  | **Mini / admin** (`miniBoss` / `miniRaid`) | Gym-Leader tier | **2** | both arm after **2** of its Pokémon faint |
+  | **Real boss** (`boss` / `raid`) | Gym-Leader tier | **3** | **1 active from turn 1**, +2 more after **2** of its Pokémon faint |
+
+  This **replaces the earlier flat `STORY_SIMPLE_BOSSES` "all gimmicks off" idea** — the mechanics stay
+  *simple*, but the count is now a deliberate **0 / 2 / 3** ladder keyed to arc role. (Difficulty numbers
+  stay maxwell-owned; the mechanics themselves need the standard game-behavior sign-off before code.)
 - **Boss item-usage cap:** in `buildFoeStoryInventoryForBattle`, cap heal/revive to **1**, used once
   with a telegraphed banner ("SECOND WIND") — a beat, not a stall.
 
@@ -478,12 +488,46 @@ exact bpCaps / archetype lists;** I provide the table + wiring map. *Note:* the 
 "egg/learnt/transfer only" gate is the right instinct but the wrong axis — **power/archetype/count**
 controls difficulty, not move *category*. This table supersedes it.
 
-## IV.5 Open creative questions (to shape together — not yet locked)
+## IV.5 Resolved creative direction (locked this session)
 
-- **Arc cadence:** exact beat-per-road schedule for each locked arc (villain & extra), and whether an
-  extra raid *replaces* a route-trainer row or *inserts* a node.
-- **Aftermath-hook tone:** how explicit is the forward hook? (subtle mood line vs. "next: Cerulean Gym").
-- **MF / NG+ awareness:** how overtly should the Mystery Figure reference past runs — a single haunting
-  line, or an escalating tally ("loop #N")?
-- **Difficulty feel target** per region once move-curve + EV-curve stack (maxwell), to confirm the
-  "kaizo" late game lands without a mid-game wall.
+Every open question below is now answered (user-owned design calls; the difficulty *numbers* stay
+maxwell's to tune).
+
+- **Arc cadence — LOCKED.** Villain arc = a **light 3-fight chain** (grunt → mini/admin → boss); the
+  extra arc carries raid beats. A raid **inserts its own node** — it does *not* replace a route-trainer
+  row. Pacing is **spread + ramped, not a fixed per-road rotation:** early cities/roads skew
+  **tutorial**, then arcs **layer up and overlap** (several can develop at once) as the run advances,
+  with **story bosses scaling alongside the EV/move curve** so mid/late bosses read as genuine walls.
+  Arcs may share a road or not, as the pacing needs.
+- **Aftermath-hook tone — LOCKED: serialized story-chaining, *not* a progression sign-post.** The
+  forward hook advances the *storyline* by cause→effect, in **character voice**, **darker tone** —
+  never "next: Cerulean Gym." Canonical shape: *grunt drops a letter → "I should take this to the
+  professor" → next event: professor reads it, names the HQ → travel-to-HQ event → confrontation
+  dialogue → battle intro ("stop, or I'll kill you" / "die trying") → outro ("you didn't find the
+  leader today — next time, he finds you") → boss event.* Each beat seeds the next; the ordinary
+  fights are the chain's links.
+- **MF / NG+ awareness — LOCKED: escalating, loop-aware tally.** The Mystery Figure references prior
+  runs with a line **keyed to run count** (the loop #N escalation), not a single static haunt.
+- **Difficulty feel — structure locked, numbers pending.** Gimmick ladder is set (IV.3); per-region
+  move/EV stacking (IV.4) is maxwell's to confirm so "kaizo late game" lands without a mid-game wall.
+
+## IV.6 Arc narrative model + dark-track creative charter
+
+**Three concurrent storylines per run (LOCKED):** **main** (always) **+ 1 rolled villain arc + 1
+rolled extra arc**, interleaved per IV.5's spread-and-ramp pacing.
+
+**Serialized chaining is the connective tissue.** An arc is *not* a set of isolated fights — each
+beat's aftermath-hook **seeds the next beat**, so a run reads as a single followable thread (event →
+dialogue → battle → outro → next event). This is what turns "~65 battles" into "a story you walk
+through," and it directly answers the maintainer's flow-confusion concern: at any moment there is a
+clear *why am I fighting this* and *what comes next*.
+
+**Dark-track creative charter (the extra arcs):**
+- **Text-only** — no new visual gore; the prose carries it.
+- **In-bounds:** grotesque, gore, deep, weird, creepy, raw, adult themes. The game is **+18** with no
+  release constraints, so the ceiling is craft, not content policy.
+- **The bar is *art, not edge*.** The goal is **thought-provoking and sarcastic/satiric** — Pokémon as
+  the canvas for something grotesque-but-meaningful (the Lavender Town / Buried Alive lineage). Creepy
+  *that makes you think*, never shock for shock's sake.
+- Reconciles with the §1 charter: the recognizable Pokémon **surface** still frames the run; the extra
+  track is the iceberg's dark water beneath it.
