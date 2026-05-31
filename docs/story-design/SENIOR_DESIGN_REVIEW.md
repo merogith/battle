@@ -386,3 +386,104 @@ landed design — not re-litigated here:**
 **Excel bible updated** (`design/STORY_MASTER.xlsx`, re-verified vs SAVE_VER 23): added a
 **"Battle EV Gain"** sheet; rewrote the **Ball Economy** Master row; marked the **Mismatches**
 double-grant row **FIXED**; bumped **Save Schema** to v23.
+
+---
+
+# Part IV — Locked spec (the implementable core; numbers still maxwell/user-owned)
+
+Decisions confirmed this session: **tiered encounter framing**; design locked before code (branches
+merging). This part is precise enough to implement mechanically once the branch dust settles.
+
+## IV.1 Battle-tier table (which rows get the full 5-part arc)
+
+**Tier A — story-significant → full arc** *(event → pre-line → BATTLE → post-line → aftermath-hook)*:
+
+| Row(s) (array idx) | Fight |
+|---|---|
+| 1 | Intro Rival |
+| 5, 11, 17, 24, 31, 38, 46, 53 | Gym Leaders 1–8 |
+| 19, 40 | Mid-run Rivals |
+| 59, 60, 61, 62 | Elite Four |
+| 63 | Champion |
+| 64 | League Rival |
+| 66 | Mystery Figure |
+| *(injected)* | villain `boss` / `miniBoss` / `battle1-2`; extra `raid` / `miniRaid` |
+
+**Tier B — filler → lightweight** *(1 challenge line → BATTLE → 1 defeat line; no event wrapper,
+no beat eligibility)*: all Basic Trainers, all Gym-approach Trainers (Gym Trainer 1/2), all Ace
+Trainers (the renamed "Elite Trainer" rows 34/42/48/49/55-57).
+
+**Mapping to existing rails** (so this is wiring, not a new system):
+- (1) event → a road **event beat** or **cold-open** (`STORY_COLD_OPENS` / `_resolveActiveRoadBeats`)
+- (2) pre-line → `getTrainerQuoteForBattle`
+- (3) battle → existing
+- (4) post-line → `LEADER/ELITE/CHAMPION_VICTORY_LINES` / rival aftermath
+- (5) aftermath-hook → `STORY_POST_SCENES` (already auto-extracts "Post-fight—…"); **add the forward
+  hook sentence here** ("…the road bends toward the coast / the next badge / the figure in the mask").
+
+## IV.2 Eligibility-gate rule (kills the flow confusion + the raid-mechanic leak)
+
+A road/track beat is eligible to attach to timeline row `R` **iff** all hold:
+1. `R.type === 'Battle'` **and** `R` is a **Tier-B road trainer** (Basic / Ace) — *never* a
+   Gym-Trainer, Gym-Leader, or Rival row;
+2. `R`'s road equals the beat's `roadAnchor`, where road is computed so a gym city's **approach
+   rows do NOT inherit the previous road** (fix `_ROAD_BY_ARRAY_IDX` so the post-leader hub +
+   gym-approach trainers reset to `null`/own-road, not carry `currentGym`);
+3. the beat is unfired.
+
+Tier-A fights instead receive their **own** scripted beat by row/sceneKey (no spillover). Net:
+a road trainer is unmistakably a road trainer; a villain/raid beat only ever fires on its themed
+encounter. **One rule fixes both "dialogue in a gym" and "raid mechanics in a gym."**
+
+## IV.3 Arc theming (so the 3 arcs deliver, bosses stay simple)
+
+- **Extra `raid` / `miniRaid` → SOLO Pokémon boss** (not a trainer). Add an `extra.*.raid → species`
+  map (cubone→Marowak, hypno→Hypno, drifloon→Drifblim, mewtwo→Mewtwo, …); spawn via the solo-boss /
+  forced-encounter path so the `BOSS_CONFIGS` HP-phase mechanics finally have a themed body.
+- **Villain `battle1/2` → re-skinned grunt:** force the rolled trainer to the villain's grunt pool +
+  primary type + name ("Team Rocket Grunt"), so prose matches the fight. *(Reuse the trainer roller;
+  no new mechanics.)*
+- **Simple-boss flag (default ON this pass):** gate the fancy `BOSS_CONFIGS` mechanics
+  (faintPhase / weather-lock) behind `STORY_SIMPLE_BOSSES`; while ON, run plain themed fights,
+  slightly nerfed, uniform — easy to test. Turn richer mechanics on later, per boss, when in scope.
+- **Boss item-usage cap:** in `buildFoeStoryInventoryForBattle`, cap heal/revive to **1**, used once
+  with a telegraphed banner ("SECOND WIND") — a beat, not a stall.
+
+## IV.4 Move-driven pacing curve (config-ready for maxwell)
+
+Replace the smooth move gradient with a **legible per-region capability budget**, applied
+**symmetrically to foes *and* player-obtainable builds** (so the player's own early team is weak →
+the slow start is *felt*). Layers **on top of** the new EV curve (early = EV-poor + move-poor →
+genuine slow start; late = EV-rich + full meta → kaizo spike).
+
+```
+STORY_MOVE_BUDGET_BY_CITY = [
+  // city: { bpCap, allow: [archetypes] }    one NEW capability unlocks per region
+  C0:{ bpCap:60,  allow:[STAB, status1] },                 // "Tackle & Growl"
+  C1:{ bpCap:60,  allow:[STAB, status1] },
+  C2:{ bpCap:75,  allow:[+coverage] },                     // spike: off-type damage
+  C3:{ bpCap:90,  allow:[+setup1] },                       // spike: one boosting move
+  C4:{ bpCap:100, allow:[+hazard/screen] },                // spike: team support
+  C5:{ bpCap:110, allow:[+priority, +weather/terrain] },   // spike: tempo/field
+  C6:{ bpCap:120, allow:[+recovery, +setup2] },            // spike: bulk wars
+  C7+:{ bpCap:full, allow:[ALL] },                         // full meta
+]
+```
+
+Implementation hooks that already exist: `_storyDowngradeMovesForTier` (bpCap + archetype strip),
+`_storyGateFoeMovesByCity` (foe move-tag gate), and the optimization gradient. The *player* side
+needs the same gate applied to professor-gift / wild / catch builds (`makeWildBuild`, gift roll) and
+to the Move-Tutor "Inner Strength" pool — otherwise only foes feel the curve. **maxwell owns the
+exact bpCaps / archetype lists;** I provide the table + wiring map. *Note:* the designer's earlier
+"egg/learnt/transfer only" gate is the right instinct but the wrong axis — **power/archetype/count**
+controls difficulty, not move *category*. This table supersedes it.
+
+## IV.5 Open creative questions (to shape together — not yet locked)
+
+- **Arc cadence:** exact beat-per-road schedule for each locked arc (villain & extra), and whether an
+  extra raid *replaces* a route-trainer row or *inserts* a node.
+- **Aftermath-hook tone:** how explicit is the forward hook? (subtle mood line vs. "next: Cerulean Gym").
+- **MF / NG+ awareness:** how overtly should the Mystery Figure reference past runs — a single haunting
+  line, or an escalating tally ("loop #N")?
+- **Difficulty feel target** per region once move-curve + EV-curve stack (maxwell), to confirm the
+  "kaizo" late game lands without a mid-game wall.
