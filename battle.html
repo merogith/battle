@@ -37788,6 +37788,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Facilities-before-gym gate + per-fight balance (this PR).
                     grantBattleEVs: (...a) => _grantBattleEVs(...a),
                     get EV_GAIN_ACTIVE() { return EV_GAIN_ACTIVE; },
+                    get BEAT_EV_CLASS() { return BEAT_EV_CLASS; },
+                    get VITAMIN_LOOT_BY_CLASS() { return VITAMIN_LOOT_BY_CLASS; },
                     storyTrainerLootVitamins: (...a) => _storyTrainerLootVitamins(...a),
                     isFacilityRequiredHere: (...a) => _isFacilityRequiredHere(...a),
                     isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
@@ -46076,8 +46078,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // unlocked* voucher pool (_storyRollVouchers), so a voucher can never
         // arrive before its facility (fixes the EV-Trainer-voucher-at-City-1
         // leak). IV-vitamin counts here + the per-trainer loot drop
-        // (_storyTrainerLootVitamins) + dex milestones total ~120-150
-        // vitamins/run — enough to max a 6-mon team's key stats with surplus.
+        // (_storyTrainerLootVitamins, +50% as of the general buff) + dex milestones
+        // total ~150-200 vitamins/run — enough to max a 6-mon team's key stats with
+        // surplus.
         // `flavor` is a one-line prefix; the item list is generated from the
         // actual contents by _storyRewardItemSummary, so the message never
         // promises an item it didn't grant.
@@ -46249,19 +46252,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return out;
         }
-        // IV-vitamin loot count for non-bundle fights (leaders/elites/bosses return
-        // 0 — their vitamins live in GYM_VICTORY_REWARDS). Weak < strong. Counts are
-        // +50% (round up) over the original 1/1/2 · 1/3 spread, so per-fight drops are
-        // more generous; a full run now nets well above the prior ~120-150 vitamins
-        // when combined with the bundle + milestone drops.
+        // Per-fight IV-vitamin loot ("every trainer loots"), keyed by trainer rank.
+        // Rank detection is shared with the EV curve via _classifyTrainerEvent, and
+        // the per-rank counts live in VITAMIN_LOOT_BY_CLASS (beside EV_GAIN_ACTIVE)
+        // so loot and EV speak one rank vocabulary. REGULAR/ACE pay 3/5 — a +50%
+        // (round up) general buff over the prior 2/2/3 · 2/5 spread (itself +50%
+        // over the original 1/1/2 · 1/3), so per-fight drops are more generous; a
+        // full run nets well above the prior vitamin totals once bundle + milestone
+        // drops are added. Two BOSS-class exceptions are resolved here, not via the
+        // shared table: Gym Leaders / Elite Four / Champion / Mystery Figure bundle
+        // their vitamins in GYM_VICTORY_REWARDS (so BOSS loot is 0), and the Rival
+        // loots per-fight on a badge-scaled ramp (3 → 8) — matched before
+        // classifying. An unrecognized event → null → 0.
         function _storyTrainerLootVitamins(eventName) {
             const e = String(eventName || '');
-            if (/^Gym Leader \d$/i.test(e) || /^E[1-4]$/i.test(e) || /Champion/i.test(e) || /Mystery Figure/i.test(e)) return 0;
-            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 2 : 5;
-            if (/Elite Trainer/i.test(e)) return 3;
-            if (/Gym Trainer/i.test(e)) return 2;
-            if (/Basic Trainer/i.test(e)) return 2;
-            return 0;
+            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 3 : 8;
+            const cls = _classifyTrainerEvent(e);
+            return cls ? (VITAMIN_LOOT_BY_CLASS[cls] | 0) : 0;
         }
         function _storyRewardItemSummary(r, voucherKeys) {
             const parts = [];
@@ -47388,7 +47395,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _victoryRewardLines = [];
                 let _evRewardLine = '';
                 // Battle EV training — flat per-battle EV gain to the whole team
-                // (active and bench gain the SAME amount now; boss fights pay double).
+                // (active and bench gain the SAME amount now; boss-tier fights —
+                // and villain/extra boss/raid/mysteryBoss beats — pay double).
                 // The active-mon set is populated by startBattle / switch /
                 // forced-switch hooks in battle.html's script-top scope; if a path
                 // skipped it, fall back to "lead mon only".
@@ -47396,9 +47404,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const activeIdxSet = (window._battleActiveStoryIdxSet instanceof Set)
                         ? window._battleActiveStoryIdxSet
                         : new Set([0]);
-                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet);
+                    // 3-track beat EV upgrade: a villain/extra boss should train
+                    // the team like a Gym Leader (BOSS), not like the Basic/Elite
+                    // row it attached to. Resolve the in-flight beat's kind — the
+                    // same key the tier-reward hook reads below — and pass the
+                    // matching class so the displayed + granted amounts agree.
+                    let _beatEvClass = null;
+                    try {
+                        if (sm._activeBeatBattleKey) {
+                            const _evBeat = _findBeatBySceneKey(sm._activeBeatBattleKey);
+                            if (_evBeat && _evBeat.kind) _beatEvClass = BEAT_EV_CLASS[_evBeat.kind] || null;
+                        }
+                    } catch (e) {}
+                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet, _beatEvClass);
                     if (evReport && evReport.length) {
-                        const _evCls = _classifyTrainerEvent(en);
+                        const _evCls = _beatEvClass || _classifyTrainerEvent(en);
                         const _evEach = _evCls ? (EV_GAIN_ACTIVE[_evCls] | 0) : 0;
                         _evRewardLine = `🏋️ EV training · +${_evEach} EVs to each of your ${evReport.length} Pokémon`;
                     }
@@ -49616,18 +49636,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // is now visible, additive progress instead of "zero until 5,000G".
         // EV granted per trainer win (flat per battle, not per foe — simpler and
         // not dependent on faint-path bookkeeping). The WHOLE team gains the same
-        // amount (active and bench alike — no reduced bench share). Boss fights pay
-        // double. Values are +50% over the original 4/8 spread.
+        // amount (active and bench alike — no reduced bench share). Three tiers so
+        // the EV reward matches trainer rank: a basic fight pays REGULAR, an
+        // Ace/Elite trainer (and villain/extra miniBoss/miniRaid beats) pay ACE,
+        // and a Gym-Leader-tier fight pays BOSS. Values are 9/14/18 — REGULAR/BOSS
+        // are a +50% general buff over the prior 6/12 (itself +50% over the original
+        // 4/8 spread); ACE (14, ~1.5× a basic fight) is the middle tier, added on
+        // user direction.
         const EV_GAIN_ACTIVE = Object.freeze({
-            REGULAR: 6,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
-            BOSS:    12, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
+            REGULAR: 9,  // Basic Trainer, Gym Trainer 1/2
+            ACE:     14, // Elite Trainer; villain/extra miniBoss & miniRaid beats
+            BOSS:    18, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
+        });
+        // Per-fight IV-vitamin drop, keyed by the SAME rank classes as the EV
+        // table above — one rank vocabulary for both reward systems, with
+        // _classifyTrainerEvent as the single source of truth. Consumed by
+        // _storyTrainerLootVitamins. Two BOSS-class exceptions are handled there:
+        // Gym Leaders / E1-4 / Champion / MF carry their vitamins in
+        // GYM_VICTORY_REWARDS (so BOSS loot here is 0, not dripped per-fight), and
+        // the Rival loots per-fight on a badge-scaled ramp (3 → 8) rather than via
+        // this table. Counts are user-owned balance numbers.
+        const VITAMIN_LOOT_BY_CLASS = Object.freeze({
+            REGULAR: 3, // Basic Trainer, Gym Trainer 1/2
+            ACE:     5, // Elite Trainer
+            BOSS:    0, // bundled in GYM_VICTORY_REWARDS instead of dripped per-fight
+        });
+        // 3-track beat → EV class. A villain/extra beat attaches to whatever
+        // Basic/Elite-Trainer row it lands on; this map UPGRADES the narrative
+        // beats so the EV reward matches the beat's rank instead of the row it
+        // happened to land on. miniBoss / miniRaid pay ACE (mid-tier, like an
+        // Ace/Elite trainer); boss / raid / mysteryBoss pay BOSS (Gym-Leader EV).
+        // A plain `battle` beat has no entry and falls through to the row's own
+        // class via _classifyTrainerEvent.
+        // (Owned by the maxwell EV-curve lineage; added on user direction so
+        // villain/extra beats reward-match the trainer rank they represent.)
+        const BEAT_EV_CLASS = Object.freeze({
+            miniBoss:    'ACE',
+            miniRaid:    'ACE',
+            boss:        'BOSS',
+            raid:        'BOSS',
+            mysteryBoss: 'BOSS',
         });
         function _classifyTrainerEvent(eventName) {
             const en = String(eventName || '');
             if (/^Gym Leader\s*\d$/.test(en)) return 'BOSS';
             if (/^(E[1-4]|Champion|Rival|Mystery Figure)$/.test(en)) return 'BOSS';
             if (/^Gym Trainer\s*\d?$/.test(en)) return 'REGULAR';
-            if (en === 'Elite Trainer') return 'REGULAR';
+            if (en === 'Elite Trainer') return 'ACE';
             if (en === 'Basic Trainer') return 'REGULAR';
             return null;
         }
@@ -49667,10 +49722,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // no EVs were granted. Crucible / Frontier / Mystery battles bypass
         // (crucibleBattleSource is set). Wild Pokémon route through a
         // separate catch-EV system and never call this.
-        function _grantBattleEVs(eventName, team, activeIdxSet) {
+        function _grantBattleEVs(eventName, team, activeIdxSet, classOverride) {
             if (!sm || sm.crucibleBattleSource) return null;
             if (!Array.isArray(team) || team.length === 0) return null;
-            const cls = _classifyTrainerEvent(eventName);
+            const cls = classOverride || _classifyTrainerEvent(eventName);
             if (!cls) return null;
             const activeAmt = EV_GAIN_ACTIVE[cls] | 0;
             if (activeAmt <= 0) return null;

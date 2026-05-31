@@ -6,8 +6,8 @@
 //     pending "must-see" intro that joins the same force-visit gate.
 //   • Item 4 — post-victory reward lines render ON the victory card (no longer
 //     buried behind the z-index overlay as a toast).
-//   • Item 5 — per-fight EV is +50% (6 / 12) and the whole team gains the same.
-//   • Item 6 — per-fight vitamin loot counts are +50% (round up).
+//   • Item 5 — per-fight EV is buffed to 9 / 18 (a +50% general buff) and the whole team gains the same.
+//   • Item 6 — per-fight vitamin loot counts get a +50% (round up) general buff.
 //   node --test tests/suites/story-facility-before-gym.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,9 +41,10 @@ function setSm(extra = {}) {
 }
 
 // ── Item 5 — per-fight EV ────────────────────────────────────────────────────
-test('EV gain: +50% (REGULAR 6 / BOSS 12) and the whole team gains the same', () => {
-  assert.equal(ST.EV_GAIN_ACTIVE.REGULAR, 6, 'REGULAR EV is 6 (was 4, +50%)');
-  assert.equal(ST.EV_GAIN_ACTIVE.BOSS, 12, 'BOSS EV is 12 (was 8, +50%)');
+test('EV gain: three tiers (REGULAR 9 / ACE 14 / BOSS 18) and the whole team gains the same', () => {
+  assert.equal(ST.EV_GAIN_ACTIVE.REGULAR, 9, 'REGULAR EV is 9 (was 6, +50% general buff)');
+  assert.equal(ST.EV_GAIN_ACTIVE.ACE, 14, 'ACE EV is 14 (middle tier — Elite/Ace trainers & miniBoss/miniRaid beats)');
+  assert.equal(ST.EV_GAIN_ACTIVE.BOSS, 18, 'BOSS EV is 18 (was 12, +50% general buff)');
   const sum = (g) => g.hp + g.atk + g.def + g.spa + g.spd + g.spe;
 
   const team = [
@@ -53,7 +54,7 @@ test('EV gain: +50% (REGULAR 6 / BOSS 12) and the whole team gains the same', ()
   setSm({ team });
   const reg = ST.grantBattleEVs('Basic Trainer', team, new Set([0])); // mon 0 active, mon 1 bench
   assert.ok(reg && reg.length === 2, 'every team member is trained, active and bench alike');
-  for (const r of reg) assert.equal(sum(r.gained), 6, `${r.name} (active=${r.active}) gains 6 EVs — bench no longer halved`);
+  for (const r of reg) assert.equal(sum(r.gained), 9, `${r.name} (active=${r.active}) gains 9 EVs — bench no longer halved`);
 
   const team2 = [
     { name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } },
@@ -61,22 +62,76 @@ test('EV gain: +50% (REGULAR 6 / BOSS 12) and the whole team gains the same', ()
   ];
   setSm({ team: team2 });
   const boss = ST.grantBattleEVs('Gym Leader 1', team2, new Set([0]));
-  for (const r of boss) assert.equal(sum(r.gained), 12, `${r.name} gains 12 EVs on a boss fight`);
+  for (const r of boss) assert.equal(sum(r.gained), 18, `${r.name} gains 18 EVs on a boss fight`);
+
+  const team3 = [
+    { name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } },
+    { name: 'Snorlax', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } },
+  ];
+  setSm({ team: team3 });
+  const ace = ST.grantBattleEVs('Elite Trainer', team3, new Set([0]));
+  for (const r of ace) assert.equal(sum(r.gained), 14, `${r.name} gains 14 EVs on an Elite (Ace) Trainer fight`);
 });
 
 // ── Item 6 — per-fight vitamin loot ──────────────────────────────────────────
 test('vitamin loot: per-fight counts are +50% (round up); leaders still bundle', () => {
   setSm({ badges: 0 });
-  assert.equal(ST.storyTrainerLootVitamins('Basic Trainer'), 2, 'Basic 1→2');
-  assert.equal(ST.storyTrainerLootVitamins('Gym Trainer 1'), 2, 'Gym Trainer 1→2');
-  assert.equal(ST.storyTrainerLootVitamins('Elite Trainer'), 3, 'Elite 2→3');
-  assert.equal(ST.storyTrainerLootVitamins('Rival'), 2, 'Rival before 1st badge 1→2');
+  assert.equal(ST.storyTrainerLootVitamins('Basic Trainer'), 3, 'Basic 2→3');
+  assert.equal(ST.storyTrainerLootVitamins('Gym Trainer 1'), 3, 'Gym Trainer 2→3');
+  assert.equal(ST.storyTrainerLootVitamins('Elite Trainer'), 5, 'Elite 3→5');
+  assert.equal(ST.storyTrainerLootVitamins('Rival'), 3, 'Rival before 1st badge 2→3');
   setSm({ badges: 1 });
-  assert.equal(ST.storyTrainerLootVitamins('Rival'), 5, 'Rival after 1st badge 3→5');
+  assert.equal(ST.storyTrainerLootVitamins('Rival'), 8, 'Rival after 1st badge 5→8');
   // Leaders / elites / bosses carry vitamins in the victory bundle, not here.
   assert.equal(ST.storyTrainerLootVitamins('Gym Leader 1'), 0);
   assert.equal(ST.storyTrainerLootVitamins('E1'), 0);
   assert.equal(ST.storyTrainerLootVitamins('Champion'), 0);
+});
+
+// ── Loot + EV share one rank vocabulary (single classifier) ──────────────────
+test('vitamin loot is keyed by the same rank classes as the EV curve', () => {
+  // Both reward tables are keyed off _classifyTrainerEvent, so they must share
+  // the same class set — guards against a future rank being added to one table
+  // and forgotten in the other.
+  assert.deepEqual(
+    Object.keys(ST.VITAMIN_LOOT_BY_CLASS).sort(),
+    Object.keys(ST.EV_GAIN_ACTIVE).sort(),
+    'loot and EV tables share the same class keys (REGULAR/ACE/BOSS)'
+  );
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.REGULAR, 3, 'REGULAR loot = 3 (Basic/Gym)');
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.ACE, 5, 'ACE loot = 5 (Elite)');
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.BOSS, 0, 'BOSS loot = 0 (bundled in GYM_VICTORY_REWARDS)');
+});
+
+// ── 3-track beat EV upgrade — villain/extra boss trains like a Gym Leader ─────
+test('beat EV: miniBoss/miniRaid beats grant ACE EV (14), boss-tier beats grant BOSS EV (18); battle falls through', () => {
+  // The kind→class map upgrades narrative beats to match their rank.
+  assert.equal(ST.BEAT_EV_CLASS.miniBoss, 'ACE', 'miniBoss beat pays the ACE middle tier');
+  assert.equal(ST.BEAT_EV_CLASS.miniRaid, 'ACE', 'miniRaid beat pays the ACE middle tier');
+  assert.equal(ST.BEAT_EV_CLASS.boss, 'BOSS');
+  assert.equal(ST.BEAT_EV_CLASS.raid, 'BOSS');
+  assert.equal(ST.BEAT_EV_CLASS.mysteryBoss, 'BOSS');
+  assert.equal(ST.BEAT_EV_CLASS.battle, undefined, 'battle beat keeps the row class (REGULAR)');
+
+  const sum = (g) => g.hp + g.atk + g.def + g.spa + g.spd + g.spe;
+  // A villain boss beat lands on a Basic-Trainer row, but the BOSS override
+  // trains the team like a Gym Leader (18) instead of a basic fight (9).
+  const team = [{ name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } }];
+  setSm({ team });
+  const upgraded = ST.grantBattleEVs('Basic Trainer', team, new Set([0]), 'BOSS');
+  for (const r of upgraded) assert.equal(sum(r.gained), 18, 'boss-beat override grants 18 EV on a Basic-Trainer row');
+
+  // A miniBoss/miniRaid beat pays the ACE middle tier (14) regardless of the row.
+  const teamAce = [{ name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } }];
+  setSm({ team: teamAce });
+  const aceBeat = ST.grantBattleEVs('Basic Trainer', teamAce, new Set([0]), 'ACE');
+  for (const r of aceBeat) assert.equal(sum(r.gained), 14, 'miniBoss-beat override grants 14 EV on a Basic-Trainer row');
+
+  // No override → the row's own class (Basic Trainer = REGULAR = 9).
+  const team2 = [{ name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } }];
+  setSm({ team: team2 });
+  const plain = ST.grantBattleEVs('Basic Trainer', team2, new Set([0]));
+  for (const r of plain) assert.equal(sum(r.gained), 9, 'no override → basic-trainer EV (9)');
 });
 
 // ── Item 2 — staged tier-up is a pending must-see intro ───────────────────────
