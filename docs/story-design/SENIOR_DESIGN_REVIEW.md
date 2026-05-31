@@ -201,3 +201,188 @@ The design docs no longer match the code, which is how mismatches breed:
 - §2.1 / §2.2 / §2.3 — these are pasteur's story-flow lane; per `CLAUDE.md` I flag and prep diffs but don't ship without a hand-off.
 
 *No game-behavior change has been made. This document is analysis only.*
+
+---
+
+# Part II — Review-session direction (working notes, subject to confirmation)
+
+Captured live from the design discussion. These reflect the *designer's* (user's) stated
+intent; numbers and structural forks still need final sign-off before any diff ships.
+
+## II.0 Corrected diagnosis of the 3-track injection (supersedes §2.2 + the bible's Event-Flow sheet)
+
+The code has moved past the spreadsheet. Actual current state:
+
+| Beat kind | Canon trainer? | Insert-kind? | Result today |
+|---|---|---|---|
+| `villain.*.boss` (Road 7) | ✅ all 10 (`:42180`) | ✅ | **Themed fight** (Giovanni…) + phase mechanics. Works. |
+| `villain.*.miniBoss` (Road 6) | ✅ all 10 (`:42191`) | ✅ | **Themed fight** (Proton…). Works. *(bible says "dead" — stale)* |
+| `extra.*.raid` (Road 6) | ❌ none | ✅ | **BROKEN** — phase mechanics (`:42252`) attach to a *generic rolled trainer*. → "raid mechanics in a normal/gym fight." |
+| `extra.*.miniRaid` | ❌ none | ❌ | Prose only; generic trainer; miniRaid mechanics may still attach by sceneKey. |
+| `villain.*.battle1/2` | ❌ | ❌ | Generic trainer + villain prose. Not themed. |
+| `main.mfBattle` (post-HoF) | n/a (isMysteryFinal dispatch) | n/a | **Themed mirror fight.** Works. |
+
+Plus the eligibility leak (§2.1): `currentGym` only ticks at the Gym-Leader row (`:41865`), so
+any unfired road beat — **including raid `BOSS_CONFIGS` mechanics** — can fire on the next
+city's gym-approach trainers and on the mid-run rival duels. **This single bug produces both
+reported symptoms:** "story dialogue in a gym" *and* "gym battle randomly spawns raid mechanics."
+
+## II.1 Confirmed creative direction (from the designer)
+
+- **Meta-frame:** every run = a different parallel universe (Pokémon games as a sci-fi multiverse);
+  NG+ = the next universe. The player "always makes runs."
+- **3 simultaneous arcs per run:**
+  1. **MAIN / Mystery Figure** — *static* (same every run). "The First" is **you, from beyond
+     universes**, who mastered everything and returns to test whether *this* you is ready for the
+     "galactic level." The **mirror team is intentional and correct** — do not restore legendaries
+     (confirms §6). Currently under-developed; wants a few battles + dialogues to carry it.
+  2. **VILLAIN** — rolled from a pool, **locked at run start**, its own dialogue arc + regular
+     battles + a boss (some mechanic triggers).
+  3. **EXTRA** — rolled, locked at start. Dark/gore/creepy **retellings of fan creepypastas +
+     reddit/4chan dark & meme stories**, each a unique arc of **mini raids + one main raid**.
+- **Bosses/raids: keep SIMPLE for now** — vanilla, uniform, slightly nerfed, easy to test.
+  Fancy per-boss mechanics are **out of scope** this pass.
+- **"Caged God" is retired** — legacy name from an early draft. The post-game capture should fold
+  into the MF frame, not an orphaned arc.
+- **Master Ball:** exactly **one**, granted from a story line, **usable on anything** (no restriction).
+  → remove the double-grant.
+- **Naming:** rename the route **"Elite Trainer" → "Ace Trainer"** (rows 34/42/48/49/56–58). The
+  current label collides with the **Elite Four**; the internal difficulty class is already
+  "ACE/ELITE", so this aligns the UI to the model. Pure label/text — low risk.
+- **Economy:** keep **auto-heal**; direction is **"gold = mastery" (lean out)**, but preserve
+  item-relevance in marquee fights (foes use items there). Nerf **early-game movesets** so early
+  healing items matter. **×2 price** on the strong consumables (Mega/Ultra featured items + Revive/
+  Max Revive/Revival Herb) — they're too cheap to abuse for their power.
+- **Pacing goal:** Game-Boy-Pokémon vibe, simplified. A **slow, weak start** ramping like a
+  competitive-Pokémon onboarding pipeline — introduce one new mechanic per region, with **power
+  spikes** → a "kaizo" late game. **No levels → build composition (moves, grade, evo stage, stats,
+  EV/IV, items) is the entire pacing lever.** Overall scaling (weak→strong) is already liked.
+- **Known pain:** early game too strong **because of moves**; build/move generation needs design
+  attention; flow feels confusing/buggy; story doesn't "feel strong" yet.
+
+## II.2 Proposal A — Move-driven pacing curve (the core lever)
+
+The designer's instinct (gate to egg/learnt/transfer early) is the *right goal, wrong axis*:
+move **category** doesn't control power (an egg move can be a 120-BP nuke). The power levers are
+**BP cap + archetype + coverage count**, which the engine already has (`_storyDowngradeMovesForTier`,
+`bpCap`, `_storyGateFoeMovesByCity`, the optimization gradient). Reframe them from a *smooth gradient*
+into a **legible, spiky "one new capability per region"** budget, applied to **both** foes and
+player-obtainable builds (so the player's *own* early team feels the slow start):
+
+| Region | New capability (the "spike") | BP cap | Archetypes allowed |
+|---|---|---|---|
+| C0–C1 | STAB + 1 status. "Tackle & Growl" era. | ~60 | STAB only |
+| C2 | **Coverage** (off-type damage) | 75 | +coverage |
+| C3 | **Setup** (one boosting move) | 90 | +setup |
+| C4 | **Hazards / Screens** (support) | 100 | +hazard/screen |
+| C5 | **Priority + weather/terrain** | 110 | +priority/+field |
+| C6 | **Recovery + 2nd setup** (bulk wars) | 120 | +recovery |
+| C7+ | Full meta — no gate | full | all |
+
+This simultaneously (a) fixes "early too OP due to moves," (b) delivers the "pipeline + power-spike
+kaizo" feel, (c) gives each region a distinct *texture* (echoes `DESIGN_FEEDBACK §1.1`), and (d) is
+legible — the player learns one tool per gym, like real Pokémon onboarding.
+**Lane: maxwell (move-tag index / build tiers).** I can draft the archetype-by-city table as a
+config for maxwell to own the numbers.
+
+## II.3 Proposal B — Flow + 3-arc fix (the clarity lever)
+
+1. **Eligibility gate (kills both symptoms):** road beats fire ONLY on genuine road-trainer rows —
+   never Gym-Trainer / Gym-Leader / Rival rows. Anchor those `null` or filter them in
+   `_resolveActiveRoadBeats` + the battle-entry hook. *(pasteur lane.)*
+2. **Extra raids → solo Pokémon bosses, not trainers.** Give each `extra.*.raid` a raid *species*
+   (Marowak for cubone, etc.) spawned as a solo boss (reuse the MF/forced-catch solo path), so the
+   raid mechanics finally have a themed body. This is the structural fix for the extra track.
+3. **Villain `battle1/2` → re-skinned grunts.** When no canon trainer, theme the rolled trainer to
+   the villain's grunt pool + type + name (a real "Rocket Grunt"), so the fight matches the prose.
+4. **Bosses simple for now:** gate the fancy `BOSS_CONFIGS` mechanics (faintPhase/weather-lock)
+   behind a flag, default OFF this pass — run plain themed fights, slightly nerfed.
+5. **Boss item-usage:** cap heal/revive to ~1, **telegraphed** (banner "SECOND WIND"), so it's a
+   dramatic beat, not a stall (ties to `DESIGN_FEEDBACK §1.5`).
+6. **Battle-intro contract:** one consistent format — **[themed name] + [affiliation] + [one line]**;
+   lock the rival sprite to the canon name (§2.3). Fixes "battle introductions are confusing."
+
+## II.4 Proposal C — Make the Mystery-Figure / main arc "feel strong"
+
+1. **Anomaly seeds = the MF foreshadow spine.** They already exist ("Tell The First we said hi";
+   handwriting you don't remember; the "Welcome Back" sticker). Stage ~5–6 across roads 1–8 as the
+   main-track event beats, escalating from *unsettling* → *addressed to you.*
+2. **Make NG+ tangible in the MF.** The save already persists `completedRuns` / `lastClearSeed` /
+   HoF records — the narrative never uses them. On run N+1 the MF should *know*: "You've done this
+   before. I remember even when you don't. How many times now?" The loop becomes both mechanic and
+   story — the highest-leverage narrative move, using data that already exists.
+3. **One mid-game wordless glimpse** (C5–C6): a figure with your silhouette across the route, gone
+   when you approach (reuse the cold-open renderer; no fight). Earns the post-HoF reveal.
+4. **Fold the post-game capture into the MF frame** (retire "Caged God"): after the mirror fight,
+   the MF *grants* the reward ("you're ready") — unifies the post-game and gives the single
+   Master Ball a thematic home.
+
+## II.5 Updated recommendation order (this session)
+
+1. **Flow gate** (II.3.1) — biggest clarity win, kills both reported symptoms. *(pasteur)*
+2. **Extra raids → solo bosses** (II.3.2) + **villain grunt re-skin** (II.3.3). *(pasteur)*
+3. **Move-curve table** (II.2) — the pacing core. *(maxwell — I draft config)*
+4. **Boss simple-mode flag + heal cap** (II.3.4–5). *(pasteur/general)*
+5. **Master Ball single-grant + usable-on-anything** (II.1). *(balance — quick)*
+6. **Economy ×2 strong-item price** (II.1). *(balance — quick, confirm scope)*
+7. **MF arc beats + NG+ awareness** (II.4). *(pasteur — content)*
+8. **Retire "Caged God" naming** (II.1). *(cleanup)*
+
+## II.6 Proposal D — Per-battle "encounter framing" contract (the clarity backbone)
+
+**Designer intent:** every battle should be a *real* story beat, framed as a 5-part unit so the
+player is never disoriented — Game-Boy-Pokémon vibe, "service to the player":
+
+```
+1. Story event        — sets the scene (why this fight exists)
+2. Pre-battle dialogue — the opponent / situation speaks
+3. BATTLE
+4. End-battle dialogue — immediate reaction to the result
+5. Aftermath event     — closes the beat AND hooks the next event/battle ("…the road bends toward X")
+```
+
+Each piece must be **real development**, not generic filler. This is the single best fix for
+"why/what is happening" confusion — the player always knows where they are and what's next.
+
+**Senior-designer refinement — tier it, don't wrap all 65 fights.** Real Pokémon games do *not*
+wrap every route trainer; over-wrapping filler causes its own fatigue and dilutes the "real
+development" mandate. Industry-standard framing is **tiered**:
+
+| Battle tier | Framing | Examples |
+|---|---|---|
+| **Story-significant** | **Full 5-part bespoke arc** | Rival (×4), Gym Leaders, villain grunt/admin/boss, extra mini-raid/raid, Champion, Mystery Figure |
+| **Filler / route** | **Lightweight**: 1 challenge line → battle → 1 defeat line (no forced event wrapper) | Basic / Ace / Gym-approach trainers |
+
+The eligibility gate (II.3.1) is what makes this *read* clean: story beats land only on
+story-significant rows, so a road trainer is obviously "just a road trainer" and a villain beat is
+obviously a villain beat. The two proposals are one fix.
+
+**Most of the data model already supports the 5-part shape** — cold-opens, pre-battle quote
+priority (`getTrainerQuoteForBattle`), `LEADER/ELITE/CHAMPION_VICTORY_LINES`, and `STORY_POST_SCENES`
+("Post-fight—…" aftermath auto-extracted). What's missing is (a) **completeness** (every
+story-significant battle gets all 5, written as real development), (b) the **forward hook** in the
+aftermath, and (c) the **eligibility gate** so they attach to the right fights. So this is mostly a
+*content + wiring* job on existing rails, not a new system. *(pasteur lane — content + dispatch.)*
+
+---
+
+# Part III — Reconciliation with the `youthful-mendel-aTgzF` branch (merging soon)
+
+Verified against `origin/claude/youthful-mendel-aTgzF` (strictly ahead of `main`). **Respected as
+landed design — not re-litigated here:**
+
+- **Master Ball — RESOLVED.** Branch keeps the **villain-boss Master Ball (1, from a story line)**
+  and swaps the HoF first-clear second grant for a **trophy bundle** (`:46322`). Matches "one gift
+  from a story line, usable on anything." §2.4 is closed; the bible's Mismatches row is marked FIXED.
+- **Per-battle EV gain — NEW MECHANIC (respected).** Every trainer win trains the **whole team**:
+  **REGULAR = 9 EV, BOSS = 18 EV** (3-track boss/raid beats pay BOSS via `BEAT_EV_CLASS`), targeted
+  deterministically by species archetype, capped at 510. Values already include the +50% buff. This
+  **partially answers §4 / the "no level-up dopamine" concern** — EVs now visibly accrue per battle
+  and reinforce the weak-start→strong-end curve. **Owner: maxwell.** My move-curve proposal (II.2)
+  must layer *on top of* this, not fight it.
+- **"Vitamin Pack" → "EV Voucher"** rename (free-EV-preset token). Reflected in the bible.
+- `SAVE_VER` 23.
+
+**Excel bible updated** (`design/STORY_MASTER.xlsx`, re-verified vs SAVE_VER 23): added a
+**"Battle EV Gain"** sheet; rewrote the **Ball Economy** Master row; marked the **Mismatches**
+double-grant row **FIXED**; bumped **Save Schema** to v23.
