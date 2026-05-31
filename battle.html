@@ -37788,6 +37788,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Facilities-before-gym gate + per-fight balance (this PR).
                     grantBattleEVs: (...a) => _grantBattleEVs(...a),
                     get EV_GAIN_ACTIVE() { return EV_GAIN_ACTIVE; },
+                    get BEAT_EV_CLASS() { return BEAT_EV_CLASS; },
                     storyTrainerLootVitamins: (...a) => _storyTrainerLootVitamins(...a),
                     isFacilityRequiredHere: (...a) => _isFacilityRequiredHere(...a),
                     isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
@@ -47385,7 +47386,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _victoryRewardLines = [];
                 let _evRewardLine = '';
                 // Battle EV training — flat per-battle EV gain to the whole team
-                // (active and bench gain the SAME amount now; boss fights pay double).
+                // (active and bench gain the SAME amount now; boss-tier fights —
+                // and villain/extra boss/raid/mysteryBoss beats — pay double).
                 // The active-mon set is populated by startBattle / switch /
                 // forced-switch hooks in battle.html's script-top scope; if a path
                 // skipped it, fall back to "lead mon only".
@@ -47393,9 +47395,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const activeIdxSet = (window._battleActiveStoryIdxSet instanceof Set)
                         ? window._battleActiveStoryIdxSet
                         : new Set([0]);
-                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet);
+                    // 3-track beat EV upgrade: a villain/extra boss should train
+                    // the team like a Gym Leader (BOSS), not like the Basic/Elite
+                    // row it attached to. Resolve the in-flight beat's kind — the
+                    // same key the tier-reward hook reads below — and pass the
+                    // matching class so the displayed + granted amounts agree.
+                    let _beatEvClass = null;
+                    try {
+                        if (sm._activeBeatBattleKey) {
+                            const _evBeat = _findBeatBySceneKey(sm._activeBeatBattleKey);
+                            if (_evBeat && _evBeat.kind) _beatEvClass = BEAT_EV_CLASS[_evBeat.kind] || null;
+                        }
+                    } catch (e) {}
+                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet, _beatEvClass);
                     if (evReport && evReport.length) {
-                        const _evCls = _classifyTrainerEvent(en);
+                        const _evCls = _beatEvClass || _classifyTrainerEvent(en);
                         const _evEach = _evCls ? (EV_GAIN_ACTIVE[_evCls] | 0) : 0;
                         _evRewardLine = `🏋️ EV training · +${_evEach} EVs to each of your ${evReport.length} Pokémon`;
                     }
@@ -49620,6 +49634,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             REGULAR: 9,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
             BOSS:    18, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
         });
+        // 3-track beat → EV class. A villain/extra beat attaches to whatever
+        // Basic/Elite-Trainer row it lands on, so by default it trains the team
+        // like that row (REGULAR). This map UPGRADES the climactic beats so a
+        // narrative boss pays Gym-Leader EV (BOSS) instead of basic-trainer EV.
+        // Only boss-tier kinds are listed; battle / miniBoss / miniRaid fall
+        // through to the row's own class (REGULAR) — matching how this game's
+        // Ace/Elite trainers already pay the same EV as a basic fight.
+        // (Owned by the maxwell EV-curve lineage; added on user direction so
+        // villain/extra bosses reward-match real Gym Leaders.)
+        const BEAT_EV_CLASS = Object.freeze({
+            boss:        'BOSS',
+            raid:        'BOSS',
+            mysteryBoss: 'BOSS',
+        });
         function _classifyTrainerEvent(eventName) {
             const en = String(eventName || '');
             if (/^Gym Leader\s*\d$/.test(en)) return 'BOSS';
@@ -49665,10 +49693,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // no EVs were granted. Crucible / Frontier / Mystery battles bypass
         // (crucibleBattleSource is set). Wild Pokémon route through a
         // separate catch-EV system and never call this.
-        function _grantBattleEVs(eventName, team, activeIdxSet) {
+        function _grantBattleEVs(eventName, team, activeIdxSet, classOverride) {
             if (!sm || sm.crucibleBattleSource) return null;
             if (!Array.isArray(team) || team.length === 0) return null;
-            const cls = _classifyTrainerEvent(eventName);
+            const cls = classOverride || _classifyTrainerEvent(eventName);
             if (!cls) return null;
             const activeAmt = EV_GAIN_ACTIVE[cls] | 0;
             if (activeAmt <= 0) return null;

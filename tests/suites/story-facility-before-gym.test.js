@@ -79,6 +79,30 @@ test('vitamin loot: per-fight counts are +50% (round up); leaders still bundle',
   assert.equal(ST.storyTrainerLootVitamins('Champion'), 0);
 });
 
+// ── 3-track beat EV upgrade — villain/extra boss trains like a Gym Leader ─────
+test('beat EV: boss-tier beats grant BOSS EV (18) via class override; battle/miniBoss stay REGULAR', () => {
+  // The kind→class map only upgrades the climactic beats.
+  assert.equal(ST.BEAT_EV_CLASS.boss, 'BOSS');
+  assert.equal(ST.BEAT_EV_CLASS.raid, 'BOSS');
+  assert.equal(ST.BEAT_EV_CLASS.mysteryBoss, 'BOSS');
+  assert.equal(ST.BEAT_EV_CLASS.battle, undefined, 'battle beat keeps the row class (REGULAR)');
+  assert.equal(ST.BEAT_EV_CLASS.miniBoss, undefined, 'miniBoss keeps the row class (REGULAR = ace/elite EV)');
+
+  const sum = (g) => g.hp + g.atk + g.def + g.spa + g.spd + g.spe;
+  // A villain boss beat lands on a Basic-Trainer row, but the BOSS override
+  // trains the team like a Gym Leader (18) instead of a basic fight (9).
+  const team = [{ name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } }];
+  setSm({ team });
+  const upgraded = ST.grantBattleEVs('Basic Trainer', team, new Set([0]), 'BOSS');
+  for (const r of upgraded) assert.equal(sum(r.gained), 18, 'boss-beat override grants 18 EV on a Basic-Trainer row');
+
+  // No override → the row's own class (Basic Trainer = REGULAR = 9).
+  const team2 = [{ name: 'Pikachu', build: { evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } } }];
+  setSm({ team: team2 });
+  const plain = ST.grantBattleEVs('Basic Trainer', team2, new Set([0]));
+  for (const r of plain) assert.equal(sum(r.gained), 9, 'no override → basic-trainer EV (9)');
+});
+
 // ── Item 2 — staged tier-up is a pending must-see intro ───────────────────────
 test('staged tier-up registers as a pending intro at the upgrade city', () => {
   setSm({ npcStageSeen: { tutor: 0, evolab: 0, dojo: 0 } });
