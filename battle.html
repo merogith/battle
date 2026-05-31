@@ -18244,7 +18244,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (activeMon.type1 === 'Ghost' || activeMon.type2 === 'Ghost') { /* Ghost types ignore trapping abilities */ }
                 else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Shadow Tag' && activeMon.ability !== 'Shadow Tag') _switchLockReason = `Trapped by ${_foe.name}'s Shadow Tag!`;
                 else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Magnet Pull' && (activeMon.type1 === 'Steel' || activeMon.type2 === 'Steel')) _switchLockReason = `Trapped by ${_foe.name}'s Magnet Pull!`;
-                else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Arena Trap' && activeMon.type1 !== 'Flying' && activeMon.type2 !== 'Flying' && activeMon.ability !== 'Levitate' && activeMon.item !== 'Air Balloon' && !activeMon.volatile.magnetRise) _switchLockReason = `Trapped by ${_foe.name}'s Arena Trap!`;
+                else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Arena Trap' && isGroundedMon(activeMon)) _switchLockReason = `Trapped by ${_foe.name}'s Arena Trap!`;
             }
             let _switchLocked = !!_switchLockReason;
 
@@ -19480,7 +19480,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!mon || !side) return 0;
             if (mon.ability === "Magic Guard") return 0;
             if (mon.item === "Heavy-Duty Boots") return 0;
-            const isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate" && mon.item !== "Air Balloon";
+            const isGrounded = isGroundedMon(mon);
             let dmg = 0;
             if (side.stealthRock) {
                 const eff = getMoveEffectiveness("Rock", mon.type1, mon.type2);
@@ -19589,8 +19589,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Special") A *= 1.5;
             // Hadron Engine: x4/3 SpA in Electric Terrain (grounded attacker)
             if (attacker.ability === "Hadron Engine" && state.terrain === "Electric" && state.terrainTurns > 0 && move.cat === "Special"
-                && attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate" && attacker.item !== "Air Balloon"
-                && !(attacker.volatile && attacker.volatile.magnetRise)) A *= 4/3;
+                && isGroundedMon(attacker)) A *= 4/3;
             // Orichalcum Pulse: x4/3 Atk in Sun
             if (attacker.ability === "Orichalcum Pulse" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Physical") A *= 4/3;
             if (attacker.ability === "Supreme Overlord") {
@@ -20512,7 +20511,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     const _aiGhost = attacker.type1 === "Ghost" || attacker.type2 === "Ghost";
     const _aiShed = attacker.item === "Shed Shell";
     if (!_aiGhost && !_aiShed) {
-        if (defender.ability === "Arena Trap" && attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate") return null;
+        // NOTE: Arena Trap only stops GROUNDED Pokémon. This previously omitted the
+        // Air Balloon / Magnet Rise clauses (drift — same root cause as the Toxic Spikes
+        // bug), so the AI thought an airborne mon was trapped and wouldn't pivot it out.
+        // Now shares isGroundedMon with the player-facing switch-lock checks.
+        if (defender.ability === "Arena Trap" && isGroundedMon(attacker)) return null;
         if (defender.ability === "Shadow Tag" && attacker.ability !== "Shadow Tag") return null;
         if (defender.ability === "Magnet Pull" && (attacker.type1 === "Steel" || attacker.type2 === "Steel")) return null;
     }
@@ -20765,7 +20768,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${activeMon.name} is trapped by ${foe.name}'s Magnet Pull!`, 'info');
                         return;
                     }
-                    if (foe.ability === "Arena Trap" && activeMon.type1 !== "Flying" && activeMon.type2 !== "Flying" && activeMon.ability !== "Levitate" && activeMon.item !== "Air Balloon" && !activeMon.volatile.magnetRise) {
+                    if (foe.ability === "Arena Trap" && isGroundedMon(activeMon)) {
                         logMsg(`${activeMon.name} is trapped by ${foe.name}'s Arena Trap!`, 'info');
                         return;
                     }
@@ -20849,7 +20852,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Apply sleep if still eligible
                         let canSleep = !mon.status && mon.ability !== "Insomnia" && mon.ability !== "Vital Spirit";
                         let terrain = state.terrain;
-                        let isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate" && mon.item !== "Air Balloon" && !mon.volatile.magnetRise;
+                        let isGrounded = isGroundedMon(mon);
                         if (isGrounded && state.terrainTurns > 0 && (terrain === "Electric" || terrain === "Misty")) canSleep = false;
                         if (canSleep) {
                             applyStatus(mon, "SLP");
@@ -22894,7 +22897,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Psychic Terrain blocks priority moves against grounded targets
                 if (effectivePri > 0 && state.terrain === "Psychic" && state.terrainTurns > 0) {
-                    const _ptGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+                    const _ptGrounded = (m) => isGroundedMon(m);
                     if (_ptGrounded(defender)) {
                         logMsg(`Psychic Terrain protected ${defender.name} from the priority move!`, 'info');
                         AudioSystem.playMissSound();
@@ -23406,7 +23409,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Toxic Boost" && attacker.status === "TOX" && _effectiveCat === "Physical") A *= 1.5;
                 // Hadron Engine: x4/3 SpA in Electric Terrain (attacker must be grounded)
                 if (attacker.ability === "Hadron Engine" && state.terrain === "Electric" && state.terrainTurns > 0 && _effectiveCat === "Special" &&
-                    attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate" && attacker.item !== "Air Balloon" && !(attacker.volatile && attacker.volatile.magnetRise))
+                    isGroundedMon(attacker))
                     A *= 4/3;
                 // Orichalcum Pulse: x4/3 Atk in Sun
                 if (attacker.ability === "Orichalcum Pulse" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && _effectiveCat === "Physical")
@@ -23879,7 +23882,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Terrain modifiers (only affect grounded Pokémon)
                 if (state.terrain && state.terrainTurns > 0) {
-                    const _terrGrounded = (m) => (m.item === "Iron Ball") ? true : (m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise);
+                    const _terrGrounded = (m) => (m.item === "Iron Ball") ? true : isGroundedMon(m);
                     if (state.terrain === "Electric" && move.type === "Electric" && _terrGrounded(attacker))
                         basePower = Math.floor(basePower * 1.3);
                     if (state.terrain === "Grassy" && move.type === "Grass" && _terrGrounded(attacker))
@@ -23894,7 +23897,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Terrain-boosted moves (grounded attacker required)
                 if (state.terrain && state.terrainTurns > 0) {
-                    const _terrG = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+                    const _terrG = (m) => isGroundedMon(m);
                     // Expanding Force: 2x power in Psychic Terrain (also hits both foes — N/A in singles)
                     if (move.name === "Expanding Force" && state.terrain === "Psychic" && _terrG(attacker))
                         basePower = Math.floor(basePower * 2);
@@ -26360,6 +26363,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Canonical grounding test for the common case. A Pokémon is airborne (NOT
+        // grounded) when it is a Flying-type, has Levitate, holds an Air Balloon, or is
+        // under Magnet Rise. Only grounded Pokémon are affected by Spikes / Toxic Spikes /
+        // Sticky Web and by grounded-only terrain effects. This logic was previously
+        // re-inlined ~10 times and the copies had drifted: the applyEntryHazards copy
+        // omitted BOTH the Air Balloon and Magnet Rise clauses (so an airborne mon was
+        // poisoned by Toxic Spikes and the layers were never consumed — the reported bug),
+        // and the AI hazard estimate + Grassy-Terrain heal copies omitted Magnet Rise.
+        // Routing them all through one helper prevents that class of drift.
+        // NOTE: this helper deliberately does NOT special-case Iron Ball (which grounds
+        // its holder). Only the terrain-power check at `_terrGrounded` models Iron Ball
+        // today; folding Iron Ball into universal grounding is a separate behavior change.
+        function isGroundedMon(mon) {
+            if (!mon) return false;
+            return mon.type1 !== "Flying" && mon.type2 !== "Flying"
+                && mon.ability !== "Levitate"
+                && mon.item !== "Air Balloon"
+                && !(mon.volatile && mon.volatile.magnetRise);
+        }
+
         function applyEntryHazards(mon, isPlayer) {
             if (!mon) return;
             // Defensive: a botched bag-revive (or a pre-Dynamax-deactivate state where baseMaxHp
@@ -26378,7 +26401,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let side = isPlayer ? state.pSide : state.fSide;
             if (mon.ability === "Magic Guard") return;
             if (mon.item === "Heavy-Duty Boots" && state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz") return;
-            let isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate";
+            let isGrounded = isGroundedMon(mon);
             const _hazardMult = (state && state._heavyGravityHazardMult > 1 && state.gravity > 0) ? state._heavyGravityHazardMult : 1;
             if (side.stealthRock) {
                 let eff = getMoveEffectiveness("Rock", mon.type1, mon.type2);
@@ -26646,7 +26669,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.ability === "Insomnia" || defender.ability === "Vital Spirit" || defender.ability === "Sweet Veil" || defender.ability === "Comatose") { logMsg(`${defender.name}'s ${defender.ability} prevents sleep!`, 'info'); return; }
                 const _defSide = isPlayer ? state.fSide : state.pSide;
                 if (_defSide && _defSide.safeguard > 0) { logMsg(`${defender.name} is protected by Safeguard!`, 'info'); return; }
-                const _yawnGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+                const _yawnGrounded = (m) => isGroundedMon(m);
                 if (state.terrain === "Electric" && state.terrainTurns > 0 && _yawnGrounded(defender)) { logMsg(`Electric Terrain prevents sleep!`, 'info'); return; }
                 if (state.terrain === "Misty" && state.terrainTurns > 0 && _yawnGrounded(defender)) { logMsg(`Misty Terrain prevents sleep!`, 'info'); return; }
                 defender.volatile.yawnTurns = 2;
@@ -28198,7 +28221,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let monSide = (mon === state.pActive) ? state.pSide : state.fSide;
             if (monSide && monSide.safeguard > 0) { logMsg(`Safeguard protected ${mon.name}!`, 'info'); return; }
             // Terrain status blocks (grounded mons only)
-            const _stGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+            const _stGrounded = (m) => isGroundedMon(m);
             if (state.terrain === "Misty" && state.terrainTurns > 0 && _stGrounded(mon)) {
                 logMsg(`Misty Terrain prevented ${mon.name} from getting a status condition!`, 'info'); return;
             }
@@ -28470,7 +28493,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Grassy Terrain: grounded mons heal 1/16 HP per turn
             if (state.terrain === "Grassy" && state.terrainTurns > 0 && mon.currentHp > 0 && mon.currentHp < mon.maxHp) {
-                const _gtGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon";
+                const _gtGrounded = (m) => isGroundedMon(m);
                 if (_gtGrounded(mon)) {
                     let heal = Math.max(1, Math.floor(mon.maxHp / 16));
                     let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
