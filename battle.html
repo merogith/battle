@@ -49627,23 +49627,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // is now visible, additive progress instead of "zero until 5,000G".
         // EV granted per trainer win (flat per battle, not per foe — simpler and
         // not dependent on faint-path bookkeeping). The WHOLE team gains the same
-        // amount (active and bench alike — no reduced bench share). Boss fights pay
-        // double. Values are 9/18 — a +50% general buff over the prior 6/12 (which was
-        // itself +50% over the original 4/8 spread).
+        // amount (active and bench alike — no reduced bench share). Three tiers so
+        // the EV reward matches trainer rank: a basic fight pays REGULAR, an
+        // Ace/Elite trainer (and villain/extra miniBoss/miniRaid beats) pay ACE,
+        // and a Gym-Leader-tier fight pays BOSS. Values are 9/14/18 — REGULAR/BOSS
+        // are a +50% general buff over the prior 6/12 (itself +50% over the original
+        // 4/8 spread); ACE (14, ~1.5× a basic fight) is the middle tier, added on
+        // user direction.
         const EV_GAIN_ACTIVE = Object.freeze({
-            REGULAR: 9,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
+            REGULAR: 9,  // Basic Trainer, Gym Trainer 1/2
+            ACE:     14, // Elite Trainer; villain/extra miniBoss & miniRaid beats
             BOSS:    18, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
         });
         // 3-track beat → EV class. A villain/extra beat attaches to whatever
-        // Basic/Elite-Trainer row it lands on, so by default it trains the team
-        // like that row (REGULAR). This map UPGRADES the climactic beats so a
-        // narrative boss pays Gym-Leader EV (BOSS) instead of basic-trainer EV.
-        // Only boss-tier kinds are listed; battle / miniBoss / miniRaid fall
-        // through to the row's own class (REGULAR) — matching how this game's
-        // Ace/Elite trainers already pay the same EV as a basic fight.
+        // Basic/Elite-Trainer row it lands on; this map UPGRADES the narrative
+        // beats so the EV reward matches the beat's rank instead of the row it
+        // happened to land on. miniBoss / miniRaid pay ACE (mid-tier, like an
+        // Ace/Elite trainer); boss / raid / mysteryBoss pay BOSS (Gym-Leader EV).
+        // A plain `battle` beat has no entry and falls through to the row's own
+        // class via _classifyTrainerEvent.
         // (Owned by the maxwell EV-curve lineage; added on user direction so
-        // villain/extra bosses reward-match real Gym Leaders.)
+        // villain/extra beats reward-match the trainer rank they represent.)
         const BEAT_EV_CLASS = Object.freeze({
+            miniBoss:    'ACE',
+            miniRaid:    'ACE',
             boss:        'BOSS',
             raid:        'BOSS',
             mysteryBoss: 'BOSS',
@@ -49653,7 +49660,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (/^Gym Leader\s*\d$/.test(en)) return 'BOSS';
             if (/^(E[1-4]|Champion|Rival|Mystery Figure)$/.test(en)) return 'BOSS';
             if (/^Gym Trainer\s*\d?$/.test(en)) return 'REGULAR';
-            if (en === 'Elite Trainer') return 'REGULAR';
+            if (en === 'Elite Trainer') return 'ACE';
             if (en === 'Basic Trainer') return 'REGULAR';
             return null;
         }
