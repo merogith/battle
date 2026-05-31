@@ -638,3 +638,18 @@ keeps a run from going one-note:
   creature dies or moves on and the player mourns; it is **not** catchable. Pure pathos; keeps rewards
   lore-only (IV.7) and protects train-don't-catch. (The flagship extra raid still grants the EXP-Share
   gift on victory; the *creature itself* is never kept.)
+
+## IV.11 Texture & voice calibration (locked)
+
+- **Optional flavor beats — LOCKED: curated standalone vignettes.** A hand-authored pool of short,
+  self-contained dark moments (a disturbing NPC, a roadside tableau, a wrong little scene) the player can
+  stumble into, **independent of the rolled arcs** — deepening discover-through-play. Attach via the
+  INTERRUPTS bus (never by array index, per §10/§6).
+- **Villain register & humor — LOCKED: per-arc, matched to the canon source.** Don't impose one tone.
+  Each team's admins/bosses take the register *and* humor level that fits **their own canon story** —
+  banal-bureaucratic where that bites (corporate Rocket), charismatic or sympathetic where the canon
+  team supports it. This is the IV.8 canon-faithful retelling applied to voice: **tone tracks the
+  source**, it isn't uniform.
+- **Beat text length — LOCKED: terse default, long when earned.** A few sharp sentences per beat for
+  momentum; marquee beats (a boss, The First reveal, a raid's death) earn a longer / multi-page
+  treatment.
