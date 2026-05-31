@@ -637,7 +637,8 @@ keeps a run from going one-note:
 - **Raid resolution — LOCKED: laid to rest, no catch.** Defeating a victim-raid is a **release** — the
   creature dies or moves on and the player mourns; it is **not** catchable. Pure pathos; keeps rewards
   lore-only (IV.7) and protects train-don't-catch. (The flagship extra raid still grants the EXP-Share
-  gift on victory; the *creature itself* is never kept.)
+  gift on victory — but **handed over by a grateful NPC**, not dropped by the creature, which is never
+  kept; see IV.12.)
 
 ## IV.11 Texture & voice calibration (locked)
 
@@ -663,3 +664,14 @@ keeps a run from going one-note:
   *intent*: a real late-game peak, never scripted-soft.
 - **Dark / +18 content — LOCKED: always-on, no toggle.** One uncompromised vision; every run rolls its
   extra arc. No clean-mode switch, no opt-in / opt-out. "It's art; no concerns."
+- **Reward assignment & delivery — LOCKED.** Two storylines, two capstones:
+  - **Villain boss → Master Ball**, framed as **salvaged villain tech** (recovered directly from the
+    defeated HQ — the shipped "among the spoils" line already lands this; *no code reassignment*).
+  - **Extra raid → the EXP-Share gift**, delivered by a **grateful NPC as a thank-you** *after* the
+    victim is laid to rest — explicitly **not** dropped by the creature (a victim isn't a loot piñata).
+    In-fiction = a dead trainer's own EXP-Share, passed on ("use it better than they did").
+- **Build process — LOCKED: plan here → hand off a build pack.** Design is frozen in this doc; execution
+  goes to a fresh session via a build-prompt MD (`DARK_STORY_BUILD_HANDOFF.md`) + workbook sheets
+  (`design/MASTER_11_dark_story_decisions.csv`, `design/MASTER_12_dark_story_build.csv`), built
+  **vertical-slice-first** (one villain arc end-to-end before scaling to all 18). Sign-off gates +
+  pasteur/maxwell hand-offs are enumerated in the build pack.

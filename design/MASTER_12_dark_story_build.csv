@@ -1,0 +1,38 @@
+ID;Phase;Task;Detail;Owner;SignOff;DependsOn;Test
+NOTE;meta;Dark 3-Track Story build tracker;Vertical-slice-first. SignOff Y = needs maintainer game-behavior sign-off before merge. Owners per CLAUDE.md lineage. Canon = SENIOR_DESIGN_REVIEW.md + MASTER_11;-;-;-;-
+B00;0 Baseline;Confirm jsdom harness green + record perf baseline;tests/helpers/load-engine.js boots; capture turn-loop ms / loadGameData ms before any change;general;N;-;existing suite green
+B01;0 Baseline;Plan SAVE_VER bump 23 -> 24;New persisted fields: EXP-Share wallet, per-mon gift permBoost field, arc/run state. Write migration;pasteur;Y;-;save migration round-trip
+B02;0 Baseline;Current-state delta inventory;Master Ball reward shipped (42105); EXP-Share = vitamin stand-in (42112); tracks roster exists (30496); MF scenes specced (PR-6);general;N;-;-
+B10;1 Slice-villain;Author Rocket arc 3 beats (grunt/admin/boss);STORY_SCENES + INTERRUPTS entries; 5-part framing; canon-faithful dark retelling (Rocket as dark corporate); terse default;pasteur;Y;B02;scene-render
+B11;1 Slice-villain;Wire chaining aftermath-hooks between the 3 beats;Each beat names the next in-fiction (no tracker). Hooks carry ALL legibility;pasteur;Y;B10;chain-fires-in-order
+B12;1 Slice-villain;Beat-eligibility gate + spread pacing;grunt early-mid / admin mid / boss ~Road7; gate on city/badge/road;maxwell;Y;B10;gating
+B13;1 Slice-villain;Hook Rocket boss to 1 gimmick tier;BOSS_CONFIGS data + engine wiring (onTurnStart/onDamageTaken); from 3 reusable archetypes;general;Y;B10;gimmick-activates
+B14;1 Slice-villain;Master Ball reward on villain.rocket.boss victory;Verify _storyGrantTrackEndReward (42105) fires; salvaged-villain-tech framing already shipped;general;N;B10;reward-grant
+B15;1 Slice-villain;Dark loss line on a key Rocket beat;Creepy loss outro, win-to-progress; one extra writing pass, not a branch;pasteur;Y;B10;loss-then-retry
+B16;1 Slice-villain;End-to-end seeded test of the Rocket slice;Beats fire in order, boss gimmick activates, Master Ball granted, loss line on defeat;general;N;B10..B15;e2e-villain-slice
+B20;2 Framework;Extract slot/registry resolver for villain track ids;Any of the 10 ids maps to its beat set; attach-by-key, NO array-index coupling;general;N;B16;resolver-all-10
+B21;2 Framework;Generalize eligibility gate + chaining plumbing;Lift the Rocket-slice wiring into a reusable arc engine;general;N;B20;framework
+B22;2 Framework;INTERRUPTS bus audit;Ensure every beat/vignette attaches by key, never by index;general;N;B20;bus-attach
+B30;3 Gift;permBoost-based EXP-Share gift model;6 units, max 3/mon, party+PC, refund over cap; reuse permBoost (~34777) + Fight-Club +stat (~44839);maxwell;Y;B01;apply-3+3 / cap-clamp-refund
+B31;3 Gift;Wallet persistence + SAVE_VER migration;Revive sm.inventory.expShareVoucher; bump 23->24; migrate old saves;pasteur;Y;B01,B30;save-roundtrip
+B32;3 Gift;Bag modal UI;Pick mon (party/PC), spend units, show cap + refund, recompute stats live;general;Y;B30;modal-apply
+B33;3 Gift;NPC thank-you delivery hook;Grant gift via grateful-NPC beat AFTER raid laid-to-rest; replace vitamin stand-in (42112);pasteur;Y;B30;delivery
+B34;3 Gift;Close ISSUE-243;Voucher revived as permBoost gift, not won-t-fix; update STORY_3TRACK_IMPL_PLAN PR-5;general;N;B30..B33;ledger-updated
+B40;4 Slice-extra;Author cubone/Marowak extra arc;Victim framing; deconstruct Lavender/orphan lore; bleak sincere voice;pasteur;Y;B21;scene-render
+B41;4 Slice-extra;Raid mechanic + laid-to-rest resolution;Solo-boss HP-phase; victim framing; win = release, NO catch;general;Y;B40;raid-resolves-no-catch
+B42;4 Slice-extra;NPC thank-you EXP-Share at flagship raid victory;Uses B33 delivery hook;general;N;B33,B41;gift-on-raid
+B43;4 Slice-extra;End-to-end seeded test of the cubone slice;Victim arc, raid resolves no-catch, NPC gift granted;general;N;B40..B42;e2e-extra-slice
+B50;5 Scale;Remaining 9 villain arcs;magma aqua galactic plasma flare skull star yell macroCosmos vs the Rocket template; canon-faithful retelling;pasteur;Y;B22,B16;per-arc render+chain
+B51;5 Scale;Remaining 7 extra arcs;yamask hypno phantump mewtwo mimikyu parasect drifloon vs the cubone template; deconstruct each mon-s lore;pasteur;Y;B43;per-arc render+chain
+B52;5 Scale;Curated standalone flavor-vignette pool;Independent dark micro-moments on the INTERRUPTS bus; opt-in;pasteur;Y;B22;vignette-fires
+B53;5 Scale;Per-arc voice + humor pass;Register/humor matched to each canon source; villains satiric, extra bleak;general;Y;B50,B51;-
+B60;6 The First;Identity dispatcher -> the_first only;Delete 7 old identities; simplify _storyEnsureMysteryIdentity (30081); remove dead callers;pasteur;Y;-;identity
+B61;6 The First;rollMysteryFigureFinalBossTeam = party + stronger starter;Verify/patch (34655);maxwell;Y;B60;mf-team
+B62;6 The First;Hard-wall tuning of the MF battle;Real late peak, not scripted-soft; magnitude maxwell;maxwell;Y;B61;mf-difficulty
+B63;6 The First;Reveal + ending scenes + post-game door;main.mfReveal cold-open -> main.ending -> Frontier door; wire continuePostGame (44023);pasteur;Y;B60;reveal-fires
+B70;7 Seeds;Plant deniable anomaly seeds;Rows 7/14/30/49 via tipsShown overlay machinery; notice-but-rationalize calibration;pasteur;Y;B21;seed-overlay
+B71;7 Seeds;Autopilot extension;Full run per villain (10) + extra rotation (8); assert no scene throws + reaches HoF;general;N;B50,B51;autopilot-fullrun
+B72;7 Seeds;Aggregate test suite;Collect all slice/arc tests under tests/suites/story-3track/;general;N;-;suite-green
+B80;8 Polish;Perf pass;turn-loop / parseMoveEffects / memory across a long 3-track replay;general;N;B72;perf-budget
+B81;8 Polish;a11y pass;New Bag modal + reveal/ending scenes: ARIA, keyboard, contrast, reduced-motion;general;Y;B32,B63;a11y-audit
+B82;8 Polish;Doc + ledger reconciliation;STORY_3TRACK_IMPL_PLAN PR-5/PR-7 match shipped; ISSUE-243 closed; SDR cross-refs intact;general;N;-;-
