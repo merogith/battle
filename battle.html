@@ -46071,8 +46071,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // unlocked* voucher pool (_storyRollVouchers), so a voucher can never
         // arrive before its facility (fixes the EV-Trainer-voucher-at-City-1
         // leak). IV-vitamin counts here + the per-trainer loot drop
-        // (_storyTrainerLootVitamins) + dex milestones total ~120-150
-        // vitamins/run — enough to max a 6-mon team's key stats with surplus.
+        // (_storyTrainerLootVitamins, +50% as of the general buff) + dex milestones
+        // total ~150-200 vitamins/run — enough to max a 6-mon team's key stats with
+        // surplus.
         // `flavor` is a one-line prefix; the item list is generated from the
         // actual contents by _storyRewardItemSummary, so the message never
         // promises an item it didn't grant.
@@ -46246,16 +46247,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // IV-vitamin loot count for non-bundle fights (leaders/elites/bosses return
         // 0 — their vitamins live in GYM_VICTORY_REWARDS). Weak < strong. Counts are
-        // +50% (round up) over the original 1/1/2 · 1/3 spread, so per-fight drops are
-        // more generous; a full run now nets well above the prior ~120-150 vitamins
-        // when combined with the bundle + milestone drops.
+        // a +50% (round up) general buff over the prior 2/2/3 · 2/5 spread (which was
+        // itself +50% over the original 1/1/2 · 1/3), so per-fight drops are more
+        // generous; a full run now nets well above the prior vitamin totals when
+        // combined with the bundle + milestone drops.
         function _storyTrainerLootVitamins(eventName) {
             const e = String(eventName || '');
             if (/^Gym Leader \d$/i.test(e) || /^E[1-4]$/i.test(e) || /Champion/i.test(e) || /Mystery Figure/i.test(e)) return 0;
-            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 2 : 5;
-            if (/Elite Trainer/i.test(e)) return 3;
-            if (/Gym Trainer/i.test(e)) return 2;
-            if (/Basic Trainer/i.test(e)) return 2;
+            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 3 : 8;
+            if (/Elite Trainer/i.test(e)) return 5;
+            if (/Gym Trainer/i.test(e)) return 3;
+            if (/Basic Trainer/i.test(e)) return 3;
             return 0;
         }
         function _storyRewardItemSummary(r, voucherKeys) {
@@ -49612,10 +49614,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // EV granted per trainer win (flat per battle, not per foe — simpler and
         // not dependent on faint-path bookkeeping). The WHOLE team gains the same
         // amount (active and bench alike — no reduced bench share). Boss fights pay
-        // double. Values are +50% over the original 4/8 spread.
+        // double. Values are 9/18 — a +50% general buff over the prior 6/12 (which was
+        // itself +50% over the original 4/8 spread).
         const EV_GAIN_ACTIVE = Object.freeze({
-            REGULAR: 6,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
-            BOSS:    12, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
+            REGULAR: 9,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
+            BOSS:    18, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
         });
         function _classifyTrainerEvent(eventName) {
             const en = String(eventName || '');
