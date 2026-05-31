@@ -57090,6 +57090,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!body) continue;
                     const grid = body.querySelector('.tx-grid');
                     if (!grid) continue;
+                    // The curated "Best picks" panel is the no-search default — hide it
+                    // while a query is active (the fast path skips the full re-render that
+                    // would otherwise drop it), and restore it when the box is cleared.
+                    const recsPanel = body.querySelector('.tx-recs-panel');
+                    if (recsPanel) recsPanel.hidden = !!q;
                     const cards = grid.querySelectorAll('.tx-card[data-search-value]');
                     if (!cards.length) return false; // first render; let full render warm up
                     let shown = 0;
@@ -58273,7 +58278,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const searchingMoves = !!(_txState.search && _txState.search.moves);
                 if (!sPool.sparse && _txState.filter.recOnly.moves && !searchingMoves) {
-                    const recEntries = _txMoveRecsByPurpose(mergedMoves, mon, b, t.name)
+                    // Exclude already-equipped moves so the panel reads as "what to ADD",
+                    // not a list of picks that no-op on tap (matches the item/ability panels,
+                    // which drop the current pick).
+                    const recPool = mergedMoves.filter(m => !equippedSet.has(String(m).split('/')[0]));
+                    const recEntries = _txMoveRecsByPurpose(recPool, mon, b, t.name)
                         .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,

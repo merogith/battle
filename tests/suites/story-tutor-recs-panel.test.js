@@ -58,14 +58,33 @@ test('Move Tutor default view shows the curated "Best picks" panel', async () =>
 
 test('curated panel yields to the full grid when the player searches', async () => {
   primeC7Team();
-  if (!ST.sm) return;
-  if (!w.__txState && !ST) return;
-  // Simulate an active search by setting the move search term, then re-render.
-  try { eng.window.__storySetMoveSearch && eng.window.__storySetMoveSearch('earth'); } catch (e) {}
-  // Fallback: poke _txState through the test surface if exposed; otherwise just
-  // assert the panel exists with no search (covered above) — never throw.
-  const html = await renderTutorAndGetHtml();
-  assert.ok(html.includes('tx-grid'), 'the full grid is always available');
+  await renderTutorAndGetHtml();
+  const host = w.document.getElementById('story-tutor-team');
+  let panel = host.querySelector('.tx-recs-panel');
+  assert.ok(panel && !panel.hidden, 'panel visible before searching');
+  // Drive the REAL search box exactly as a player typing does: the input handler
+  // sets _txState.search.moves and the fast-path hides the panel (or a full
+  // re-render drops it). Either way it must yield to the grid.
+  const box = host.querySelector('.tx-search-input[data-kind="moves"]') || host.querySelector('input');
+  assert.ok(box, 'search input exists');
+  box.value = 'earthquake';
+  box.dispatchEvent(new w.Event('input', { bubbles: true }));
+  for (let i = 0; i < 12; i++) {
+    await new Promise(r => setTimeout(r, 40));
+    panel = host.querySelector('.tx-recs-panel');
+    if (!panel || panel.hidden) break;
+  }
+  assert.ok(!panel || panel.hidden, 'curated panel hidden/removed while searching');
+  assert.ok(host.querySelector('.tx-grid'), 'the full grid takes over');
+  // Clearing the box restores the panel (fast-path un-hides it).
+  box.value = '';
+  box.dispatchEvent(new w.Event('input', { bubbles: true }));
+  for (let i = 0; i < 12; i++) {
+    await new Promise(r => setTimeout(r, 40));
+    panel = host.querySelector('.tx-recs-panel');
+    if (panel && !panel.hidden) break;
+  }
+  assert.ok(panel && !panel.hidden, 'panel restored when the search is cleared');
 });
 
 // ── Phase 5b — the same curated panel for the two HARD pickers: items + abilities ──
