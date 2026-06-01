@@ -33328,13 +33328,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return EXP_SHARE_BASE_LEVEL + Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, lv));
         }
         function _expShareWallet() { return (sm.inventory && sm.inventory.expShareVoucher) | 0; }
-        // Legacy hooks — kept so old callers still resolve, but always read zero now
-        // that vitamins target IVs directly. The v19 migration converts any leftover
-        // permBoosts back into vitamin inventory, so this should never see non-zero
-        // input in a normalized save.
-        function _permBoostsRead(_mon) { return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }; }
-        function _permBoostTotal(_mon) { return 0; }
-        window._permBoostsRead = function(_buildObj) { return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }; };
 
         // ── Random IV rolls ──────────────────────────────────────────────
         // Player paths (starter, wild catches, professor gifts) roll a fully
@@ -45950,8 +45943,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _pendingProfWasMystery = false; // whether cached choices were rolled in mystery mode
         let _pendingProfBadges = null; // badge count when cached; invalidate when badges change so tier curve refreshes
         let _profLegendaryMysteryMode = false;
-        // (legacy _pendingProfRoll kept for safety)
-        let _pendingProfRoll    = null;
 
         /** In-memory professor draft cache must not survive abandon or a fresh run (same cityIdx would reuse stale picks). */
         function resetProfessorPickSession() {
@@ -45963,7 +45954,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pendingProfBadges = null;
             _profLegendaryMysteryMode = false;
             _profMysteryMode = false;
-            _pendingProfRoll = null;
         }
 
         // Catch-tutorial partner picker — draws a random Grade-4 species from the
@@ -46402,7 +46392,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Normal professor: append to team
-            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
             // First Pokémon ever picked → flagged `starter: true` as a visual
             // reminder ("★ STARTER" badge). No hard restrictions — the player
             // can deposit, swap, daycare, or sell it like any other partner.
