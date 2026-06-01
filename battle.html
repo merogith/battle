@@ -13960,6 +13960,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prev && prev !== document.body) window._modalFocusStack.set(id, prev);
             } catch (e) {}
             el.classList.remove('hidden');
+            // Dialog semantics + move focus INTO the overlay so keyboard / SR
+            // users are not stranded behind it (ISSUE-144). Idempotent — most
+            // modal roots already declare role/aria-modal in their markup.
+            try {
+                if (!el.getAttribute('role')) el.setAttribute('role', 'dialog');
+                if (!el.hasAttribute('aria-modal')) el.setAttribute('aria-modal', 'true');
+                _a11yFocusIntoModal(el);
+            } catch (e) {}
         };
         window.closeModal = function(id) {
             const el = document.getElementById(id);
@@ -13990,6 +13998,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.closeModal(top.id); } catch (err) { top.classList.add('hidden'); }
                 } else {
                     top.classList.add('hidden');
+                }
+            });
+        }
+        // A11y: the tabbable controls inside a dialog, in source order. Skips
+        // controls under a .hidden subtree or inline display:none/visibility.
+        window._modalFocusablesIn = function(el) {
+            if (!el) return [];
+            const sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            return Array.prototype.filter.call(el.querySelectorAll(sel), function (n) {
+                if (n.classList && n.classList.contains('hidden')) return false;
+                if (n.closest && n.closest('.hidden')) return false;
+                const st = n.style;
+                if (st && (st.display === 'none' || st.visibility === 'hidden')) return false;
+                return true;
+            });
+        };
+        // A11y: move focus into a just-opened dialog (ISSUE-144). Prefers an
+        // explicit [data-modal-autofocus] target, else the first tabbable
+        // control, else the dialog box itself (so its label is announced).
+        function _a11yFocusIntoModal(el) {
+            const target = el.querySelector('[data-modal-autofocus]') || window._modalFocusablesIn(el)[0];
+            if (target && typeof target.focus === 'function') {
+                target.focus();
+            } else if (typeof el.focus === 'function') {
+                if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+                el.focus();
+            }
+        }
+        // Global Tab focus-trap (ISSUE-190): keep keyboard focus inside the
+        // topmost open .modal, wrapping at both ends and reeling focus back in
+        // if it escaped. Mirrors the global Escape handler above — both query
+        // `.modal:not(.hidden)` so the "topmost modal" notion stays in sync.
+        if (!window.__pbsGlobalTabTrapBound) {
+            window.__pbsGlobalTabTrapBound = true;
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Tab') return;
+                const modals = document.querySelectorAll('.modal:not(.hidden)');
+                if (!modals.length) return;
+                const top = modals[modals.length - 1];
+                const focusables = window._modalFocusablesIn(top);
+                if (!focusables.length) {
+                    e.preventDefault();
+                    if (!top.hasAttribute('tabindex')) top.setAttribute('tabindex', '-1');
+                    top.focus();
+                    return;
+                }
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                const active = document.activeElement;
+                if (e.shiftKey) {
+                    if (active === first || !top.contains(active)) {
+                        e.preventDefault();
+                        last.focus();
+                    }
+                } else if (active === last || !top.contains(active)) {
+                    e.preventDefault();
+                    first.focus();
                 }
             });
         }
