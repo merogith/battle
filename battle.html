@@ -1094,6 +1094,41 @@
         }
         .tx-slot-row--compact::-webkit-scrollbar { height: 3px; }
         .tx-slot-row--compact::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        /* "Browse all" tuck: on phone the full move grid hides behind the curated
+           "Best picks" panel until tapped, so the first screen is the few good picks,
+           not a 30-card wall. On desktop/tablet the grid is always shown (summary hidden,
+           content forced open). Only wraps the grid when the panel is leading. */
+        .tx-browse-summary {
+            cursor: pointer; list-style: none; user-select: none;
+            margin-top: 8px; padding: 9px 12px; text-align: center;
+            border: 1px dashed #3a4156; border-radius: 8px;
+            color: var(--accent); font-size: 12px; font-weight: 700;
+        }
+        .tx-browse-summary::-webkit-details-marker { display: none; }
+        .tx-browse-summary::marker { content: ''; }
+        @media (min-width: 601px) {
+            details.tx-browse > .tx-browse-summary { display: none; }
+            details.tx-browse > .tx-grid { display: grid; }
+        }
+        /* ── Phone declutter for the story TX pickers — hand the small screen to content ── */
+        @media (max-width: 600px), (max-height: 520px) {
+            /* Flavor quote + instruction line are self-evident on the picker (tap a slot,
+               tap a card, the confirm bar prompts) — drop them so the moves get the screen.
+               In landscape they ate nearly the whole viewport. */
+            #screen-story-tutor [data-story-facility-quote],
+            #screen-story-tutor #story-tutor-head-desc { display: none !important; }
+            /* "Editing Slot N — move" just repeats the slot chips below it. */
+            .story-tutor-mon-meta--editing { display: none; }
+        }
+        /* All four move slots visible (2×2) instead of a sideways scroll that hid 3–4 —
+           portrait phones only; landscape is wide enough to keep them in a single row. */
+        @media (max-width: 600px) {
+            .tx-slot-row--compact {
+                display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+                overflow-x: visible; gap: 6px;
+            }
+            .tx-slot-row--compact .tx-slot-chip { min-width: 0; }
+        }
         .tx-slot-chip {
             display: inline-flex; align-items: center; gap: 6px;
             /* Don't shrink chips below content width on phone — let the row
@@ -57291,6 +57326,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // would otherwise drop it), and restore it when the box is cleared.
                     const recsPanel = body.querySelector('.tx-recs-panel');
                     if (recsPanel) recsPanel.hidden = !!q;
+                    // If the grid is tucked behind "Browse all" (phone), open it while
+                    // searching so the matches are visible, not hidden in a collapsed panel.
+                    const _br = body.querySelector('details.tx-browse');
+                    if (_br && q) _br.open = true;
                     const cards = grid.querySelectorAll('.tx-card[data-search-value]');
                     if (!cards.length) return false; // first render; let full render warm up
                     let shown = 0;
@@ -58465,6 +58504,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const body = toggle ? toggle.closest('.story-tutor-mon').querySelector('.story-tutor-mon-body') : null;
                 const grid = body ? body.querySelector('.tx-grid') : null;
                 if (!grid) return false;
+                // Applying a filter/sort means the player wants the list — if it's tucked
+                // behind "Browse all" (phone), reveal it so the result isn't hidden.
+                const _br = body.querySelector('details.tx-browse');
+                if (_br) _br.open = true;
 
                 const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined') ? performance.now() : 0;
                 _txBeginRender();
@@ -58641,7 +58684,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ],
             });
 
-            const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">${
+            const headerSummary = `<div class="story-tutor-mon-meta story-tutor-mon-meta--editing" style="margin-top:0;">${
                 isAppend
                     ? `Adding a move to <strong style="color:var(--accent);">Slot ${N+1}</strong> · ${N}/4 moves`
                     : `Editing <strong style="color:var(--accent);">Slot ${activeSlot+1} — ${_esc(curMove)}</strong>`
@@ -58669,7 +58712,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
-                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + recsPanel + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
+                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + recsPanel + (recsPanel ? `<details class="tx-browse"><summary class="tx-browse-summary">▾ Browse all moves (${filtered.length})</summary><div class="tx-grid">${cardsHtml}</div></details>` : `<div class="tx-grid">${cardsHtml}</div>`) + _txConfirmBarHtml(idx, 'move', mon, b)}
                 </div>
             </div>`;
         }
