@@ -714,6 +714,11 @@
             background-position: center;
         }
         .story-tutor-mon { border:1px solid #3f4352; border-radius:8px; background:linear-gradient(180deg, rgba(17,20,30,0.9), rgba(11,14,21,0.9)); overflow:hidden; }
+        /* The OPEN mon (the card that has an editor body) must NOT clip its contents:
+           overflow:hidden here was defeating the confirm bar's position:sticky, forcing
+           players to scroll down to reach the buy button on phones. Collapsed cards (no
+           body) keep overflow:hidden so their rounded corners still clip cleanly. */
+        .story-tutor-mon:has(.story-tutor-mon-body) { overflow: visible; }
         .story-tutor-mon-toggle {
             width:100%; border:0; background:transparent; color:inherit; cursor:pointer;
             display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -925,6 +930,16 @@
             border-color: #ffd54f; color: #1a0d22;
             box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
         }
+        /* Step 2 — "Type ▾" collapsible type filter. The toggle chip lives in the
+           strip; the expansion row drops below it (full-width, wrapping) so it is
+           never clipped by the strip's overflow-x:auto / overflow-y:hidden. */
+        .tx-chip.tx-chip--typemenu { font-weight: 700; }
+        .tx-typemenu-row {
+            display: flex; flex-wrap: wrap; gap: 4px;
+            margin-top: 6px; padding: 8px 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+        }
         /* Phase 6 — Dojo tier-cap badge at the start of the item-category
            strip, and locked-abilities count badge on the Ability tab label.
            Both communicate "what's hidden until the next dojo stage" without
@@ -1079,6 +1094,40 @@
         }
         .tx-slot-row--compact::-webkit-scrollbar { height: 3px; }
         .tx-slot-row--compact::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        /* The most-used move list leads the picker. The role-balanced "Best picks" ride
+           along as an OPTIONAL, collapsed helper ("✨ Suggest a balanced set") for players
+           who want a coherent one-of-each-role set instead of the raw popularity order.
+           Collapsed at every size — it never buries the list. */
+        .tx-suggest { margin-top: 8px; }
+        .tx-suggest-summary {
+            cursor: pointer; list-style: none; user-select: none;
+            padding: 9px 12px; text-align: center;
+            border: 1px dashed #3a4156; border-radius: 8px;
+            color: var(--accent); font-size: 12px; font-weight: 700;
+        }
+        .tx-suggest-summary:hover { border-color: var(--accent); }
+        .tx-suggest-summary::-webkit-details-marker { display: none; }
+        .tx-suggest-summary::marker { content: ''; }
+        .tx-suggest[open] .tx-suggest-summary { margin-bottom: 6px; }
+        /* ── Phone declutter for the story TX pickers — hand the small screen to content ── */
+        @media (max-width: 600px), (max-height: 520px) {
+            /* Flavor quote + instruction line are self-evident on the picker (tap a slot,
+               tap a card, the confirm bar prompts) — drop them so the moves get the screen.
+               In landscape they ate nearly the whole viewport. */
+            #screen-story-tutor [data-story-facility-quote],
+            #screen-story-tutor #story-tutor-head-desc { display: none !important; }
+            /* "Editing Slot N — move" just repeats the slot chips below it. */
+            .story-tutor-mon-meta--editing { display: none; }
+        }
+        /* All four move slots visible (2×2) instead of a sideways scroll that hid 3–4 —
+           portrait phones only; landscape is wide enough to keep them in a single row. */
+        @media (max-width: 600px) {
+            .tx-slot-row--compact {
+                display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+                overflow-x: visible; gap: 6px;
+            }
+            .tx-slot-row--compact .tx-slot-chip { min-width: 0; }
+        }
         .tx-slot-chip {
             display: inline-flex; align-items: center; gap: 6px;
             /* Don't shrink chips below content width on phone — let the row
@@ -1849,7 +1898,7 @@
 
         /* Confirm bar (per slot) */
         .tx-confirm-bar {
-            position: sticky; bottom: 0;
+            position: sticky; bottom: 0; z-index: 5;
             display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
             padding: 10px 12px; margin-top: 10px;
             background: linear-gradient(180deg, rgba(22,24,34,0.95), rgba(12,14,22,0.96));
@@ -55891,6 +55940,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             moveSlot: 0,
             // dojo tab: 'item' | 'ability'
             dojoTab: 'item',
+            // "Type ▾" type-filter expansion open/closed (moves picker)
+            typeMenuOpen: false,
             // shared text search (kept per facility kind)
             search: { moves: '', items: '', abilities: '', natures: '' },
             // filter sets: types (Set of type names), cats (Set of categories), itemCat (string or 'all'), natureUp (stat or 'any')
@@ -55907,9 +55958,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
             },
             sort: {
-                moves: 'recommended',
-                items: 'recommended',
-                abilities: 'recommended',
+                // Default to honest "By usage %" so the grid order matches the % badge
+                // on every card. The contextual/stat-aware picks live in the "Best
+                // picks" panel above the grid; the grid itself just tells the truth
+                // about popularity. (natures render as a matrix — no list sort.)
+                moves: 'usage',
+                items: 'usage',
+                abilities: 'usage',
                 natures: 'recommended',
             },
         };
@@ -55919,7 +55974,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'items') _txState.filter.itemCat = 'all';
             if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
             _txState.filter.recOnly[kind] = true;
-            _txState.sort[kind] = 'recommended';
+            _txState.sort[kind] = 'usage';
         }
         const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
         const _TX_ALL_CATS  = ["Physical","Special","Status"];
@@ -56137,22 +56192,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
         // Sorted [{name, count, pct}] cached on the stats object. `count` is the
-        // recency-weighted occurrence count; `pct` is the RELATIVE FREQUENCY —
-        // this option's count over the summed count of all options of this
-        // kind. So the values for one attribute sum to ~100%: a mon's moves
-        // read as "share of its meta's move-slots" (Charizard's 18 builds →
-        // ~72 move-slots → each move = its count / 72), and items / abilities /
-        // natures (one per build) likewise sum to 100%. Sort order is unchanged
-        // since it keys on raw count.
+        // recency-weighted occurrence count. `pct` is "% of BUILDS that run this option":
+        //   • moves — count / total builds. A build runs ~4 moves, so move %s do NOT sum
+        //     to 100 — each is read on its own (Earthquake ~95%). This is the intuitive,
+        //     Smogon-style usage players expect, not a slot-share (which read ~19% for a
+        //     near-universal move). Safe to change: moves use a count-ranked cap pool, so
+        //     pct is display-only here.
+        //   • items / abilities / natures — one per build, so count / Σ(this kind's counts)
+        //     already equals "% of builds" and the values sum to ~100%.
+        // Sort order is unchanged (it keys on raw count).
         function _txMetaSorted(stats, kind) {
             if (!stats || !stats[kind]) return [];
             if (!stats._sorted) stats._sorted = {};
             if (stats._sorted[kind]) return stats._sorted[kind];
-            let freqTotal = 0;
-            for (const c of stats[kind].values()) freqTotal += c;
-            if (freqTotal <= 0) freqTotal = 1;
+            let denom;
+            if (kind === 'moves') {
+                denom = stats.weightedTotal || stats.total || 1;
+            } else {
+                denom = 0;
+                for (const c of stats[kind].values()) denom += c;
+                if (denom <= 0) denom = 1;
+            }
             const arr = [...stats[kind].entries()]
-                .map(([name, count]) => ({ name, count, pct: (count / freqTotal) * 100 }))
+                .map(([name, count]) => ({ name, count, pct: (count / denom) * 100 }))
                 .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
             stats._sorted[kind] = arr;
             return arr;
@@ -56685,15 +56747,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Sort comparator factory
         function _txMoveCmp(sortKey, mon, build, monName) {
+            // Usage % is the universal tiebreak so equal-power moves surface
+            // most-used-first instead of drifting alphabetical. (Type / Accuracy
+            // sorts were removed: Accuracy collapsed to A→Z — ~40 moves share 100% —
+            // and Type was an arbitrary alphabetical-by-type grouping.)
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).moves.pctOf; } catch (e) { return new Map(); } })();
+            const tie = (a, b) => ((pctOf.get(b) || 0) - (pctOf.get(a) || 0)) || a.localeCompare(b);
             return (a, b) => {
                 const ma = movesDB[a], mb = movesDB[b];
                 if (!ma && !mb) return a.localeCompare(b);
                 if (!ma) return 1; if (!mb) return -1;
                 if (sortKey === 'name')  return a.localeCompare(b);
-                if (sortKey === 'type')  return (ma.type || '').localeCompare(mb.type || '') || a.localeCompare(b);
-                if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || a.localeCompare(b);
-                if (sortKey === 'acc')   return (mb.acc|0) - (ma.acc|0) || a.localeCompare(b);
-                return _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName) || a.localeCompare(b);
+                if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || tie(a, b);
+                return _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName) || tie(a, b);
             };
         }
 
@@ -56733,13 +56799,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _txBlend(heur, pop);
         }
         function _txItemCmp(sortKey, mon, build, monName) {
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).items.pctOf; } catch (e) { return new Map(); } })();
+            const tie = (a, b) => ((pctOf.get(b) || 0) - (pctOf.get(a) || 0)) || a.localeCompare(b);
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
                 if (sortKey === 'category') {
                     const ca = _txItemCategory(a), cb = _txItemCategory(b);
-                    return ca.localeCompare(cb) || a.localeCompare(b);
+                    return ca.localeCompare(cb) || tie(a, b);
                 }
-                return _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName) || a.localeCompare(b);
+                return _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName) || tie(a, b);
             };
         }
 
@@ -56812,9 +56880,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _txBlend(heur, pop);
         }
         function _txAbilityCmp(sortKey, mon, build, monName) {
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).abilities.pctOf; } catch (e) { return new Map(); } })();
+            const tie = (a, b) => ((pctOf.get(b) || 0) - (pctOf.get(a) || 0)) || a.localeCompare(b);
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
-                return _txScoreAbility(b, mon, build, monName) - _txScoreAbility(a, mon, build, monName) || a.localeCompare(b);
+                return _txScoreAbility(b, mon, build, monName) - _txScoreAbility(a, mon, build, monName) || tie(a, b);
             };
         }
 
@@ -57370,8 +57440,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // The curated "Best picks" panel is the no-search default — hide it
                     // while a query is active (the fast path skips the full re-render that
                     // would otherwise drop it), and restore it when the box is cleared.
-                    const recsPanel = body.querySelector('.tx-recs-panel');
-                    if (recsPanel) recsPanel.hidden = !!q;
+                    // Hide the optional "✨ Suggest a balanced set" helper while searching —
+                    // the matched list is what matters then; restore it when the box clears.
+                    const sug = body.querySelector('details.tx-suggest');
+                    if (sug) sug.hidden = !!q;
                     const cards = grid.querySelectorAll('.tx-card[data-search-value]');
                     if (!cards.length) return false; // first render; let full render warm up
                     let shown = 0;
@@ -57452,6 +57524,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t.classList.contains('tx-sort-select')) {
                     const kind = t.dataset.kind || 'moves';
                     _txState.sort[kind] = t.value || 'recommended';
+                    if (kind === 'moves' && _txMoveGridFastUpdate()) return;
                     void renderTutorTeam(true);
                     return;
                 }
@@ -57557,6 +57630,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
+                // "Type ▾" menu toggle (moves picker) — collapse/expand the type-filter row.
+                const typeMenuBtn = t.closest('[data-typemenu-toggle]');
+                if (typeMenuBtn) {
+                    _txState.typeMenuOpen = !_txState.typeMenuOpen;
+                    void renderTutorTeam(true);
+                    return;
+                }
+
                 // Phase 3 — active-filter "× search" pill clears just the search box
                 const clearSearch = t.closest('.tx-active-filter[data-clear-search]');
                 if (clearSearch) {
@@ -57640,6 +57721,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (!wasActive) _txState.filter.moveCats.add('Status');
                         }
                     }
+                    if ((kind === 'moveType' || kind === 'quick') && _txMoveGridFastUpdate()) return;
                     void renderTutorTeam(true);
                     return;
                 }
@@ -57738,7 +57820,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // overridden silently. The selector reappears the moment the
             // player taps "Show all".
             const recOnly = _txState.filter.recOnly && _txState.filter.recOnly[kind];
-            const showSort = !recOnly;
+            // Show the sort selector whenever the list is un-curated — including sparse
+            // species, where ★ has no usage data to filter on (it sits out), so the
+            // player should still be able to sort the full list.
+            const showSort = !recOnly || !!opts.sparse;
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
                 : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
@@ -57781,6 +57866,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${clearBtn}
                 </div>
                 ${chipsRow}
+                ${opts.belowChipsHtml || ''}
             </div>`;
         }
 
@@ -57909,25 +57995,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<div class="tx-chip-row tx-chip-row--quick" role="group" aria-label="Quick filters">${chips.join('')}</div>`;
         }
 
+        // Type filter is a single collapsible "Type ▾" control: the button lives in the
+        // chip strip; tapping it reveals a wrapping row BELOW the strip (so it isn't
+        // clipped by the strip's overflow-x:auto) listing ONLY the move types present in
+        // this mon's pool — most mons span ~9-11 of 18, so the always-18-chip row was
+        // mostly dead weight. Multi-select; the active picks also surface as removable
+        // pills above the grid (_txActiveFiltersHtml). The standalone Physical/Special/
+        // Status category row was dropped — the STAB / Damage / Status quick chips already
+        // cover that split.
         function _txMoveTypeChipsHtml() {
-            const sel = _txState.filter.moveTypes;
-            const allActive = sel.size === 0;
-            const chips = _TX_ALL_TYPES.map(t =>
-                `<button type="button" class="tx-chip tx-chip--type type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" data-active="${sel.has(t)?1:0}" style="font-family:inherit;">${t}</button>`
-            ).join('');
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter by move type">
-                <button type="button" class="tx-chip" data-filter-kind="moveType" data-filter-value="all" data-active="${allActive?1:0}">All</button>
-                ${chips}
-            </div>`;
+            const n = _txState.filter.moveTypes.size;
+            const open = !!_txState.typeMenuOpen;
+            const label = n ? `Type (${n})` : 'Type';
+            return `<button type="button" class="tx-chip tx-chip--typemenu" data-typemenu-toggle data-active="${n?1:0}" aria-expanded="${open?'true':'false'}" aria-haspopup="true" title="Filter by move type">🎯 ${label} ${open?'▴':'▾'}</button>`;
         }
-        function _txMoveCatChipsHtml() {
-            const sel = _txState.filter.moveCats;
-            const allActive = sel.size === 0;
-            const chips = _TX_ALL_CATS.map(c =>
-                `<button type="button" class="tx-chip tx-chip--cat-${c}" data-filter-kind="moveCat" data-filter-value="${c}" data-active="${sel.has(c)?1:0}">${c}</button>`
+        // The expansion row, rendered below the chip strip when the Type menu is open.
+        // availTypes = Set of move types present in the current pool; falls back to all 18.
+        function _txMoveTypeMenuRowHtml(availTypes) {
+            if (!_txState.typeMenuOpen) return '';
+            const sel = _txState.filter.moveTypes;
+            const present = _TX_ALL_TYPES.filter(t => !availTypes || !availTypes.size || availTypes.has(t));
+            const chips = present.map(t =>
+                `<button type="button" class="tx-chip tx-chip--type type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" data-active="${sel.has(t)?1:0}" aria-pressed="${sel.has(t)?'true':'false'}" style="font-family:inherit;">${t}</button>`
             ).join('');
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter by move category">
-                <button type="button" class="tx-chip" data-filter-kind="moveCat" data-filter-value="all" data-active="${allActive?1:0}">All Categories</button>
+            return `<div class="tx-typemenu-row" role="group" aria-label="Filter by move type">
+                <button type="button" class="tx-chip" data-filter-kind="moveType" data-filter-value="all" data-active="${sel.size===0?1:0}" aria-pressed="${sel.size===0?'true':'false'}">All types</button>
                 ${chips}
             </div>`;
         }
@@ -58098,6 +58190,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Build an Item card.
+        // Shared shell for the item + ability cards — they are the same card (head:
+        // star + title + usage %; body: description with a graceful empty state; foot:
+        // kind-specific pills), differing only by an extra class / data-tier attr and the
+        // pill set. The MOVE card stays its own renderer: it carries a structurally
+        // different body (stats row, type stripe, mechanic icons, equipped/forget), which
+        // is exactly where a shared shell would do more harm than good.
+        function _txSimpleCardHtml(kind, name, ctx, o) {
+            const star = o.isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
+            const pctHtml = _txUsagePctHtml(ctx, name);
+            return `<button type="button" class="tx-card${o.extraClass || ''}" data-card-kind="${kind}" data-card-value="${_esc(name)}" data-search-value="${_esc(name.toLowerCase())}"
+                ${o.tierAttr || ''}data-recommended="${o.isRec?1:0}" data-current="${o.isPending?1:0}" data-disabled="${o.disabled?1:0}" data-locked="${o.locked?1:0}" ${o.disabled?'disabled':''}>
+                <div class="tx-card-head">
+                    ${star}<span class="tx-card-title">${_esc(name)}</span>${pctHtml}
+                </div>
+                ${o.desc ? `<div class="tx-card-desc">${_esc(o.desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
+                <div class="tx-card-foot">${o.pills}</div>
+            </button>`;
+        }
         function _txItemCardHtml(itemName, ctx) {
             const desc = _txDescriptionFor(itemName, 'item');
             const cat = _txItemCategory(itemName);
@@ -58114,16 +58224,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
             ].filter(Boolean).join('');
-            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, itemName);
-            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}" data-search-value="${_esc(itemName.toLowerCase())}"
-                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
-                <div class="tx-card-head">
-                    ${star}<span class="tx-card-title">${_esc(itemName)}</span>${pctHtml}
-                </div>
-                ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
-                <div class="tx-card-foot">${pills}</div>
-            </button>`;
+            return _txSimpleCardHtml('item', itemName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills });
         }
 
         // Build an Ability card. Tier background encodes Regular (default) vs
@@ -58154,16 +58255,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
-            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, abilityName);
-            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}" data-search-value="${_esc(abilityName.toLowerCase())}"
-                data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
-                <div class="tx-card-head">
-                    ${star}<span class="tx-card-title">${_esc(abilityName)}</span>${pctHtml}
-                </div>
-                ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
-                <div class="tx-card-foot">${pills}</div>
-            </button>`;
+            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" ` });
         }
 
         // Per-action voucher metadata. Adding a 5th tutor kind = add a row here +
@@ -58325,20 +58417,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // re-uses the values). The comparator drops to a single Map.get per
             // pair — N=200 cards now does ~3000 cache lookups instead of ~6000
             // heuristic + popularity recomputes.
-            if (recOnly && sortKey === 'recommended') {
+            // The ★ Recommended view (always) and the explicit "By usage %" sort share
+            // ONE honest order: usage % descending — so the grid matches the % badge on
+            // every card — with a fit-score SECONDARY key so 0%-usage and sparse-species
+            // moves stay quality-ordered instead of collapsing to alphabetical. This also
+            // makes the locked "↓ by usage" label truthful in the ★ view (it previously
+            // claimed usage while sorting by fit-score). Scores are precomputed once
+            // (decorate-sort-undecorate + per-render memo) so the comparator is cheap.
+            if (recOnly || sortKey === 'usage') {
+                const scoreOf = new Map();
+                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
+                filt.sort((a, b) => ((pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0))
+                    || (scoreOf.get(b) - scoreOf.get(a))
+                    || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
+                // Opt-in "Best for this mon" (Show-all only) — fit-score first, usage as
+                // the tiebreak. Surfaces stat-appropriate picks over raw popularity.
                 const scoreOf = new Map();
                 for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0)
                     || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
-            } else if (sortKey === 'usage') {
-                // Phase 5 — explicit Smogon-usage sort. Pulls straight from
-                // pool.moves.pctOf so the order matches the % chips on cards.
-                filt.sort((a, b) => (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -58354,18 +58453,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            if (recOnly && sortKey === 'recommended') {
+            // ★ view + explicit usage share one honest order: usage % desc, fit-score
+            // tiebreak (keeps sparse / 0%-usage items quality-ordered, not alphabetical).
+            if (recOnly || sortKey === 'usage') {
+                const scoreOf = new Map();
+                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+                filt.sort((a, b) => ((pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0))
+                    || (scoreOf.get(b) - scoreOf.get(a))
+                    || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
                 const scoreOf = new Map();
                 for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
                     || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
-            } else if (sortKey === 'usage') {
-                filt.sort((a, b) => (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -58381,13 +58482,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (recOnly && !pool.abilities.inPool.has(a) && !(extraStarred && extraStarred.has(a))) return false;
                 return !q || a.toLowerCase().includes(q);
             });
-            if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
-            else if (sortKey === 'recommended') {
+            // ★ view + explicit usage: usage % desc with a fit-score tiebreak. The shared
+            // helper already accepts a scoreFn — pass it so sparse / 0%-usage abilities
+            // stay quality-ordered instead of alphabetical.
+            if (recOnly || sortKey === 'usage') {
+                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf,
+                    a => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility)));
+            } else if (sortKey === 'recommended') {
                 const scoreOf = new Map();
                 for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
-            } else if (sortKey === 'usage') {
-                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
+                    || (pool.abilities.pctOf.get(b) || 0) - (pool.abilities.pctOf.get(a) || 0)
+                    || a.localeCompare(b));
             } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -58469,6 +58575,121 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Render: Move editor (4 slot cards + picker for selected slot)
+        // Shared builder for the move grid's ctx + source — used by BOTH the full editor
+        // render and the partial fast path (_txMoveGridFastUpdate), so a fast-path-built
+        // card is byte-identical to a full-render one. ctx is stable across filter/sort
+        // toggles (it only changes when the build/pending changes, which take the full path).
+        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves) {
+            const sPool = _txStarredPoolMemo(t.name);
+            const equippedSet = new Set(currentMoves);
+            const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
+            const ctx = {
+                pending: (_txPending && _txPending.kind === 'move') ? _txPending.value : null,
+                recommended: sPool.moves.starred,
+                stabTypes: new Set([mon && mon.type1, mon && mon.type2].filter(Boolean)),
+                pctOf: sPool.moves.pctOf,
+                mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
+                equippedSet,
+                slotOf,
+                monName: t.name,
+                tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
+            };
+            const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
+            return { sPool, equippedSet, ctx, gridSource };
+        }
+        // Partial fast path for the MOVES grid on a filter (type / quick) or sort toggle.
+        // A filter/sort change never alters an individual card's HTML (only WHICH cards
+        // show and in what order) or the pending selection, so we keyed-reconcile the grid
+        // — reuse existing card nodes, build only newly-passing ones, hide ones that no
+        // longer pass — instead of rebuilding 30-99 card strings + reparsing innerHTML.
+        // Returns false (→ caller does a full render) when it can't run safely. Gated
+        // behind a fast-path-vs-full-render equivalence test (story-tutor-fastpath.test.js).
+        function _txMoveGridFastUpdate() {
+            try {
+                if ((_storyTutorMode || 'moves') !== 'moves') return false;
+                const el = document.getElementById('story-tutor-team');
+                const idx = _storyTutorOpenIdx;
+                if (!el || idx < 0 || idx >= sm.team.length) return false;
+                const t = sm.team[idx];
+                if (!t || t.isEgg) return false;
+                const mergedMoves = _txMovePoolCache.get(idx);
+                if (!mergedMoves) return false; // pool not warmed yet → full render fetches it
+                const toggle = el.querySelector(`.story-tutor-mon-toggle[data-team="${idx}"]`);
+                const body = toggle ? toggle.closest('.story-tutor-mon').querySelector('.story-tutor-mon-body') : null;
+                const grid = body ? body.querySelector('.tx-grid') : null;
+                if (!grid) return false;
+
+                const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined') ? performance.now() : 0;
+                _txBeginRender();
+                let _built = 0;
+                const b = t.build || {};
+                let mon = null;
+                try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+                const currentMoves = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
+                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+                const ordered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
+
+                // Keyed reconcile by data-card-value.
+                const existing = new Map();
+                for (const c of grid.querySelectorAll(':scope > .tx-card')) existing.set(c.getAttribute('data-card-value'), c);
+                const orderedNodes = [];
+                for (const name of ordered) {
+                    let node = existing.get(name);
+                    if (node) { existing.delete(name); if (node.hidden) node.hidden = false; }
+                    else {
+                        const tmp = document.createElement('template');
+                        tmp.innerHTML = _txMoveCardHtml(name, ctx);
+                        node = tmp.content.firstElementChild;
+                        if (!node) continue;
+                        _built++;
+                    }
+                    orderedNodes.push(node);
+                }
+                for (const node of existing.values()) node.hidden = true; // kept (hidden) for cheap toggle-back
+                for (const node of orderedNodes) grid.appendChild(node);    // appendChild moves → visible set ends up in order
+
+                // Empty-state placeholder (mirrors the full render's message).
+                let emptyEl = grid.querySelector(':scope > .tx-grid-empty');
+                if (!ordered.length) {
+                    const msg = (!sPool.sparse && _txState.filter.recOnly.moves)
+                        ? `No starred moves match these filters. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="moves">★ Show all</button> to expand, or clear the search.`
+                        : 'No moves match these filters. Loosen them or clear the search.';
+                    if (!emptyEl) { emptyEl = document.createElement('div'); emptyEl.className = 'tx-grid-empty'; grid.appendChild(emptyEl); }
+                    emptyEl.innerHTML = msg;
+                } else if (emptyEl) emptyEl.remove();
+
+                // Small toolbar bits that reflect filter state (no card work).
+                const countPill = body.querySelector('.tx-count-pill');
+                if (countPill) countPill.textContent = `${ordered.length} moves`;
+                const strip = body.querySelector('.tx-chip-strip');
+                if (strip) strip.innerHTML = _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml();
+                const menuRow = body.querySelector('.tx-typemenu-row');
+                if (menuRow) {
+                    const recOnlyMoves = !sPool.sparse && _txState.filter.recOnly.moves;
+                    const availTypes = new Set();
+                    for (const m of gridSource) {
+                        if (recOnlyMoves && !sPool.moves.inPool.has(m) && !equippedSet.has(m)) continue;
+                        const md = movesDB[m] || ensureMoveData(m);
+                        if (md && md.type) availTypes.add(md.type);
+                    }
+                    const html = _txMoveTypeMenuRowHtml(availTypes);
+                    if (html) menuRow.outerHTML = html; else menuRow.remove();
+                }
+                // Active-filter pills above the grid (insert before the recs panel / grid).
+                const af = body.querySelector('.tx-active-filters');
+                const afHtml = _txActiveFiltersHtml('moves');
+                if (afHtml) {
+                    if (af) af.outerHTML = afHtml;
+                    else {
+                        const ref = body.querySelector('details.tx-suggest') || grid;
+                        const tmp = document.createElement('template'); tmp.innerHTML = afHtml;
+                        ref.parentNode.insertBefore(tmp.content.firstElementChild, ref);
+                    }
+                } else if (af) af.remove();
+                if (_pStart) console.log(`[txPerf] _txMoveGridFastUpdate ${(performance.now() - _pStart).toFixed(1)}ms · ${ordered.length} visible, ${_built} card(s) built, ${orderedNodes.length - _built} reused`);
+                return true;
+            } catch (e) { return false; }
+        }
         function _txRenderMoveEditor(t, idx, mergedMoves) {
             const b = t.build || {};
             let mon = null;
@@ -58506,33 +58727,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<button type="button" class="tx-slot-chip tx-slot-chip--add" data-slot-idx="${N}" data-active="${isAppend?1:0}" aria-pressed="${isAppend?'true':'false'}" title="Add a move into the empty slot"><span class="tx-slot-num">+</span><span class="tx-slot-name">Add</span></button>`
                 : '');
 
-            // ★ pool = Smogon-usable moves for this species; drives the recommended border + star.
-            const sPool = _txStarredPoolMemo(t.name);
-            const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
-            const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
-            const equippedSet = new Set(currentMoves);
-            const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
-            const ctx = {
-                pending: pendingMove,
-                recommended: sPool.moves.starred,
-                stabTypes,
-                pctOf: sPool.moves.pctOf,
-                mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
-                equippedSet,
-                slotOf,
-                // Phase 4.2 polish: per-move tag chip (Natural / Learnt / Awakened) +
-                // unlock hint on the move card. monName carries the species so the
-                // card render can call _moveTagForSpecies; tutorStage drives the
-                // "Unlocks at L<N>" lock badge.
-                monName: t.name,
-                tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
-            };
-
-            // Grid source: every legal move PLUS the equipped ones, so the
-            // player always sees their current moves (with usage %) right
-            // alongside the alternatives. Equipped moves render as non-learnable
-            // "✓ Equipped" cards; everything else learns into the active slot.
-            const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
+            // ★ pool, card ctx (recommended set, usage %, tags, equipped/slot maps) and the
+            // grid source (every legal move PLUS the equipped ones, so the player sees their
+            // current moves alongside the alternatives) — built by the shared _txMoveCtx so
+            // the partial fast path renders cards identically to this full render.
+            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+            const pendingMove = ctx.pending;
+            // Distinct move types in the CURRENT view (respecting the ★ filter) — drives
+            // the "Type ▾" menu so it only offers types the player can actually filter to
+            // (not all 18, and never a type the ★ pool would render empty).
+            const _recOnlyMoves = !sPool.sparse && _txState.filter.recOnly.moves;
+            const availTypes = new Set();
+            for (const m of gridSource) {
+                if (_recOnlyMoves && !sPool.moves.inPool.has(m) && !equippedSet.has(m)) continue;
+                const md = movesDB[m] || ensureMoveData(m);
+                if (md && md.type) availTypes.add(md.type);
+            }
             const filtered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
             const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
@@ -58544,13 +58754,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const sparseBanner = _txSparseBannerHtml(t.name);
 
-            // Phase 5 — curated "Best picks" shortlist (role-balanced: best STAB,
-            // coverage, setup, status, recovery, priority) surfaced as the EASY default
-            // view, so the no-filter first page reads "pick a few → a coherent set"
-            // instead of a 30-card wall. Revives _txMoveRecsByPurpose + _txRecsPanelHtml
-            // (their CSS + click handler already shipped, just never wired). Drawn from
-            // the stage-gated `mergedMoves`, so every pick is teachable here. Hidden once
-            // the player searches or hits ★ Show all — then the full grid takes over.
+            // The most-used list leads (sorted by % of builds). The curated, role-balanced
+            // "Best picks" (best STAB / coverage / setup / status / recovery / priority) ride
+            // along as an OPTIONAL helper, tucked inside a collapsed "✨ Suggest a balanced
+            // set" disclosure — one tap for players who want a coherent set rather than the
+            // raw popularity order, but never burying the list. Drawn from the stage-gated
+            // `mergedMoves`, so every pick is teachable. Suppressed while searching.
             let recsPanel = '';
             try {
                 const searchingMoves = !!(_txState.search && _txState.search.moves);
@@ -58563,28 +58772,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
-                            'Tap to preview — grab 3–4 for a solid set, or browse the full list below.');
+                            'Tap to preview — grab one of each role for a balanced set.');
                     }
                 }
             } catch (e) {}
+            // Optional, collapsed — the list below is what leads.
+            const suggestBlock = recsPanel
+                ? `<details class="tx-suggest"><summary class="tx-suggest-summary">✨ Suggest a balanced set</summary>${recsPanel}</details>`
+                : '';
 
             const toolbar = _txToolbarHtml('moves', {
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
                 count: filtered.length,
                 countLabel: 'moves',
+                sparse: sPool.sparse,
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
-                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
+                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml(),
+                belowChipsHtml: _txMoveTypeMenuRowHtml(availTypes),
                 sortOptions: [
-                    { value:'recommended', label:'Best for this mon' },
                     { value:'usage', label:'By usage %' },
+                    { value:'recommended', label:'Best for this mon' },
                     { value:'power', label:'Power' },
-                    { value:'acc',   label:'Accuracy' },
-                    { value:'type',  label:'Type' },
                     { value:'name',  label:'Name (A→Z)' },
                 ],
             });
 
-            const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">${
+            const headerSummary = `<div class="story-tutor-mon-meta story-tutor-mon-meta--editing" style="margin-top:0;">${
                 isAppend
                     ? `Adding a move to <strong style="color:var(--accent);">Slot ${N+1}</strong> · ${N}/4 moves`
                     : `Editing <strong style="color:var(--accent);">Slot ${activeSlot+1} — ${_esc(curMove)}</strong>`
@@ -58612,7 +58825,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
-                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + recsPanel + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
+                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + suggestBlock + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
                 </div>
             </div>`;
         }
@@ -58702,11 +58915,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const toolbar = _txToolbarHtml('items', {
                     placeholder: 'Search items (e.g. leftovers, choice, sash)',
                     count: filtItems.length, countLabel: 'items',
+                    sparse: sPool.sparse,
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
                     sortOptions: [
-                        { value:'recommended', label:'Best for this mon' },
                         { value:'usage', label:'By usage %' },
+                        { value:'recommended', label:'Best for this mon' },
                         { value:'category', label:'Category' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
@@ -58748,10 +58962,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const toolbar = _txToolbarHtml('abilities', {
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
+                    sparse: sPool.sparse,
                     leadingChipsHtml: _txRecChipHtml('abilities', t.name),
                     sortOptions: [
-                        { value:'recommended', label:'Best for this mon' },
                         { value:'usage', label:'By usage %' },
+                        { value:'recommended', label:'Best for this mon' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
@@ -58922,13 +59137,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txState.dojoTab = 'item';
             _txState.search.moves = ''; _txState.search.items = ''; _txState.search.abilities = ''; _txState.search.natures = '';
             _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear();
+            _txState.typeMenuOpen = false;
             _txState.filter.itemCat = 'all';
             _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any';
             // Reset ★ Recommended filter to ON for every picker — fresh entry
             // always leads with the curated Smogon-usable pool.
             _txState.filter.recOnly.moves = true; _txState.filter.recOnly.items = true;
             _txState.filter.recOnly.abilities = true; _txState.filter.recOnly.natures = true;
-            _txState.sort.moves = 'recommended'; _txState.sort.items = 'recommended'; _txState.sort.abilities = 'recommended'; _txState.sort.natures = 'recommended';
+            _txState.sort.moves = 'usage'; _txState.sort.items = 'usage'; _txState.sort.abilities = 'usage'; _txState.sort.natures = 'recommended';
             _txPending = null;
             _txMovePoolCache.clear();
             _applyStoryTutorHeader();

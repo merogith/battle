@@ -1,7 +1,8 @@
-// Phase 5 — the curated "Best picks" by-purpose shortlist is the EASY default view
-// of the Move Tutor ("pick a few → a coherent set"), and yields to the full grid
-// once the player searches. Revives the previously-dead _txMoveRecsByPurpose +
-// _txRecsPanelHtml (CSS + click handler already shipped).
+// The Move Tutor leads with the most-used grid (sorted by % of builds). The curated,
+// role-balanced "Best picks" ride along as an OPTIONAL, collapsed "✨ Suggest a balanced
+// set" disclosure (details.tx-suggest) — one tap for a coherent set, hidden while
+// searching. The recommender itself (_txMoveRecsByPurpose) is exercised directly below;
+// items/abilities keep their panel-led layout (the two HARD pickers).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -49,42 +50,50 @@ test('by-purpose recommender returns a role-balanced shortlist', () => {
   assert.equal(new Set(moves).size, moves.length, 'no duplicate moves across purposes');
 });
 
-test('Move Tutor default view shows the curated "Best picks" panel', async () => {
-  primeC7Team();
-  const html = await renderTutorAndGetHtml();
-  assert.ok(html.includes('tx-recs-panel'), 'curated panel present by default');
-  assert.ok(html.includes('tx-rec-row'), 'panel has tappable rows');
-});
-
-test('curated panel yields to the full grid when the player searches', async () => {
+test('Move Tutor leads with the most-used grid; curated picks are an optional collapsed helper', async () => {
   primeC7Team();
   await renderTutorAndGetHtml();
   const host = w.document.getElementById('story-tutor-team');
-  let panel = host.querySelector('.tx-recs-panel');
-  assert.ok(panel && !panel.hidden, 'panel visible before searching');
-  // Drive the REAL search box exactly as a player typing does: the input handler
-  // sets _txState.search.moves and the fast-path hides the panel (or a full
-  // re-render drops it). Either way it must yield to the grid.
+  // The most-used grid leads — it is NOT tucked away inside a <details>.
+  const grid = host.querySelector('.tx-grid');
+  assert.ok(grid && !grid.closest('details'), 'the most-used grid leads (not tucked behind a disclosure)');
+  // The curated role-balanced picks ride along inside a collapsed "✨ Suggest a balanced set".
+  const suggest = host.querySelector('details.tx-suggest');
+  assert.ok(suggest, 'the optional "Suggest a balanced set" disclosure is present');
+  assert.ok(!suggest.open, 'collapsed by default — the list leads, not the panel');
+  assert.ok(suggest.querySelector('.tx-recs-panel'), 'the curated panel lives inside the disclosure');
+  assert.ok(suggest.querySelector('.tx-rec-row'), 'the panel has tappable rows');
+});
+
+test('the "Suggest a balanced set" helper hides while searching, then is restored', async () => {
+  primeC7Team();
+  await renderTutorAndGetHtml();
+  const host = w.document.getElementById('story-tutor-team');
+  let suggest = host.querySelector('details.tx-suggest');
+  assert.ok(suggest && !suggest.hidden, 'the curated helper is present before searching');
+  // Drive the REAL search box exactly as a player typing does: the input handler sets
+  // _txState.search.moves and the fast-path hides the helper (a full re-render would also
+  // drop it). Either way it must yield to the grid showing the matches.
   const box = host.querySelector('.tx-search-input[data-kind="moves"]') || host.querySelector('input');
   assert.ok(box, 'search input exists');
   box.value = 'earthquake';
   box.dispatchEvent(new w.Event('input', { bubbles: true }));
   for (let i = 0; i < 12; i++) {
     await new Promise(r => setTimeout(r, 40));
-    panel = host.querySelector('.tx-recs-panel');
-    if (!panel || panel.hidden) break;
+    suggest = host.querySelector('details.tx-suggest');
+    if (!suggest || suggest.hidden) break;
   }
-  assert.ok(!panel || panel.hidden, 'curated panel hidden/removed while searching');
-  assert.ok(host.querySelector('.tx-grid'), 'the full grid takes over');
-  // Clearing the box restores the panel (fast-path un-hides it).
+  assert.ok(!suggest || suggest.hidden, 'curated helper hidden/removed while searching');
+  assert.ok(host.querySelector('.tx-grid'), 'the most-used grid is showing the matches');
+  // Clearing the box restores the helper.
   box.value = '';
   box.dispatchEvent(new w.Event('input', { bubbles: true }));
   for (let i = 0; i < 12; i++) {
     await new Promise(r => setTimeout(r, 40));
-    panel = host.querySelector('.tx-recs-panel');
-    if (panel && !panel.hidden) break;
+    suggest = host.querySelector('details.tx-suggest');
+    if (suggest && !suggest.hidden) break;
   }
-  assert.ok(panel && !panel.hidden, 'panel restored when the search is cleared');
+  assert.ok(suggest && !suggest.hidden, 'helper restored when the search is cleared');
 });
 
 // ── Phase 5b — the same curated panel for the two HARD pickers: items + abilities ──
