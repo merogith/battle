@@ -15127,7 +15127,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
-            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
+            mon.volatile = makeVolatile();
             mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
             mon.turnCount = 0;
             mon.fakeOutOk = true;
@@ -20819,13 +20819,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let newMon = aiBestSwitch(bench, state.pActive) || bench[0];
                 let oldMon = state.fActive;
                 if (move.name === "Baton Pass") {
-                    // Pass stat stages, sub, and certain beneficial volatiles — NOT Leech Seed (it's a hazard)
-                    newMon.stages = { ...oldMon.stages };
-                    newMon.volatile.sub = oldMon.volatile.sub;
-                    newMon.volatile.confusion = oldMon.volatile.confusion;
-                    newMon.volatile.aquaRing = oldMon.volatile.aquaRing;
-                    newMon.volatile.ingrain = oldMon.volatile.ingrain;
-                    newMon.volatile.focusEnergy = oldMon.volatile.focusEnergy;
+                    applyBatonPass(oldMon, newMon);
                 } else {
                     clearVolatileOnSwitch(oldMon);
                 }
@@ -20846,13 +20840,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let newMon = bench[0]; // In a full implementation, would open party menu
                     let oldMon = state.pActive;
                     if (move.name === "Baton Pass") {
-                        // Pass stat stages, sub, and certain beneficial volatiles — NOT Leech Seed (it's a hazard)
-                        newMon.stages = { ...oldMon.stages };
-                        newMon.volatile.sub = oldMon.volatile.sub;
-                        newMon.volatile.confusion = oldMon.volatile.confusion;
-                        newMon.volatile.aquaRing = oldMon.volatile.aquaRing;
-                        newMon.volatile.ingrain = oldMon.volatile.ingrain;
-                        newMon.volatile.focusEnergy = oldMon.volatile.focusEnergy;
+                        applyBatonPass(oldMon, newMon);
                     } else {
                         clearVolatileOnSwitch(oldMon);
                     }
@@ -22375,6 +22363,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // DESTINY BOND: User will co-faint its attacker if KO'd this turn
             if (move.name === "Destiny Bond") {
+                // The user is taking its turn again, so any bond armed on a PRIOR turn ends now
+                // (canon: Destiny Bond lasts only until the user's next action). Without this, a
+                // failed consecutive re-use below returned with the stale bond still armed, so a
+                // later KO wrongly dragged the attacker down.
+                attacker.volatile.destinyBond = false;
                 // Gen 7+ nerf: Destiny Bond fails if it was used successfully on the previous turn
                 if (attacker.volatile.destinyBondUsedLast) {
                     logMsg(`But it failed!`, 'info');
@@ -24572,7 +24565,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // Electromorphosis: charges next Electric-type move when hit
                     if (defender.ability === "Electromorphosis" && defender.currentHp > 0) {
-                        if (!defender.volatile) defender.volatile = {};
+                        if (!defender.volatile) defender.volatile = makeVolatile();
                         defender.volatile.electromorphosisCharged = true;
                         logMsg(`${defender.name}'s Electromorphosis charged up an Electric move!`, 'info');
                     }
@@ -25445,9 +25438,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearPermanentWeatherIfHolder(state.pActive);
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); let ps = document.getElementById('player-sprite'); const faintP = anime({targets:[fs,ps], translateY:[0,40], opacity:[1,0], filter:['brightness(1)','brightness(0)'], duration:700, easing:'easeInQuad'}).finished; await faintP; fs.style.opacity='0'; fs.style.visibility='hidden'; ps.style.opacity='0'; ps.style.visibility='hidden'; anime.remove(fs); anime.remove(ps); fs.style.filter=''; fs.style.transform=''; ps.style.filter=''; ps.style.transform=''; } ['foe-sprite','player-sprite'].forEach((id,ix)=>{let el=document.getElementById(id);if(el){el.style.filter=''; const mon=ix===0?state.fActive:state.pActive; el.style.transform=getSpriteTransformStyle(mon);}});
                 state.fActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
-                state.fActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', octolock: false, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0, boostedThisTurn: false };
+                state.fActive.volatile = makeVolatile();
                 state.pActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
-                state.pActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', octolock: false, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0, boostedThisTurn: false };
+                state.pActive.volatile = makeVolatile();
 
                 let foeHasNext = state.foeParty.some(m => m.currentHp > 0);
                 let playerHasNext = state.playerParty.some(m => m.currentHp > 0);
@@ -25578,7 +25571,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                 state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
                 state.fActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
-                state.fActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', octolock: false, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0, boostedThisTurn: false };
+                state.fActive.volatile = makeVolatile();
 
                 const _foeSurv2 = state.foeParty.filter(m => m.currentHp > 0);
                 let next = _foeSurv2.length ? (aiBestSwitch(_foeSurv2, state.pActive) || _foeSurv2[0]) : null;
@@ -25636,7 +25629,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.pActive.dynamaxed) deactivateDynamax(state.pActive, true);
                 state.pActive.dynamaxed = false; state.pActive.dynamaxTurns = 0;
                 state.pActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
-                state.pActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0 };
+                state.pActive.volatile = makeVolatile();
 
                 if (state.playerParty.some(m => m.currentHp > 0)) {
                     await sleep(500); state.currentPlayer = 1; window.openParty(true); return true;
@@ -26249,6 +26242,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _applyWeatherFormChanges(); } catch(e) {}
         }
 
+        // Single source of truth for the per-Pokémon volatile schema. Returns a FRESH
+        // object every call (note moveHistory: [] — never share the array reference).
+        // Used at mon creation (buildPokemon) and wherever a mon leaves/re-enters battle
+        // so the ~6 re-inlined copies can't drift apart again (the CLAUDE.md hazard).
+        // Field set is 1:1 with the historical creation literal — behavior-preserving.
+        function makeVolatile() {
+            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
+        }
+
+        // Baton Pass hands the passable volatiles + stat stages to the incoming mon, then runs
+        // the normal switch-out on the outgoing mon. Routing through clearVolatileOnSwitch is
+        // what makes Regenerator / Natural Cure fire on a Baton Pass (they already fire on
+        // U-turn / Volt Switch / Flip Turn / Parting Shot, which all share that helper) and
+        // stops the outgoing mon from carrying its non-passed volatiles onto the bench.
+        // NOTE: canon passes a larger set (Leech Seed, Curse, Embargo, Heal Block, Perish
+        // count, Magnet Rise, Telekinesis, Lock-On, Power Trick…); we keep the historical
+        // subset here to avoid an unreviewed balance shift — expanding it is a follow-up.
+        function applyBatonPass(oldMon, newMon) {
+            const ov = oldMon.volatile;
+            const passedStages = { ...oldMon.stages };
+            const passed = { sub: ov.sub, confusion: ov.confusion, aquaRing: ov.aquaRing, ingrain: ov.ingrain, focusEnergy: ov.focusEnergy };
+            clearVolatileOnSwitch(oldMon);
+            newMon.stages = passedStages;
+            Object.assign(newMon.volatile, passed);
+        }
+
         function clearVolatileOnSwitch(mon) {
             // Deactivate Dynamax on switch-out
             if (mon.dynamaxed) {
@@ -26354,6 +26373,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // replay tick, so a bench mon can't "thaw" the queued berry on return.
             mon.volatile.cudChewBerry = null;
             mon.volatile.cudChewTurns = 0;
+            // Switch-cleared volatiles that were previously leaking onto the bench (every one
+            // of these is removed when the Pokémon leaves the field in the main-series games).
+            // Two symptoms followed from the leak: (1) the effect stayed live on the returning
+            // mon (e.g. still Taunted / still Cursed / a stale live Destiny Bond), and (2) the
+            // move "failed when it should have landed" on re-use, because the target's stale
+            // counter still tripped its already-applied guard (the "But it failed!" checks in
+            // the Taunt / Embargo / No Retreat handlers and Destiny Bond's consecutive-use nerf).
+            mon.volatile.taunt = 0;
+            mon.volatile.destinyBond = false;
+            mon.volatile.destinyBondUsedLast = false;
+            mon.volatile.focusEnergy = false;
+            mon.volatile.cursed = false;
+            mon.volatile.aquaRing = false;
+            mon.volatile.stockpile = 0;
+            mon.volatile.grudge = false;
+            mon.volatile.embargo = 0;
+            mon.volatile.micleBerry = false;
+            mon.volatile.defenseCurled = false;
+            mon.volatile.noRetreatUsed = false;
+            // Consecutive-use power ramps reset to base when the user leaves the field.
+            mon.volatile.furyCutterCount = 0;
+            mon.volatile.echoedVoiceCount = 0;
+            mon.volatile.metronomeCount = 0;
+            mon.volatile.metronomeLastMove = null;
             // Supersweet Syrup is once-per-battle, NOT once-per-switch — keep the
             // supersweetUsed flag through switches (only clear at battle start).
             if (mon._knockOffSashProc) delete mon._knockOffSashProc;
