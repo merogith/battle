@@ -55538,19 +55538,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _hasHeartScale() {
             return !!(sm && sm.inventory && (sm.inventory.heartScale | 0) > 0);
         }
-        // Battle Dojo held-item tiers (cumulative): 1 = berries, 2 = decent staples,
-        // 3 = the meta-defining power items. Unlisted items default to tier 2 so a
-        // stray item is never locked to the very top. Tunable by editing the sets.
+        // Battle Dojo held-item tiers (cumulative): 1 = Foundation (berries + mild
+        // type-boosters + Eviolite), 2 = Staples (Leftovers/Boots/AV/Sash/Helmet/…),
+        // 3 = Meta (the snowball/win-more items). Unlisted items default to tier 2.
+        // SHARED with the foe item gate (_storyFoeItemTier derives the cap from this
+        // same clock), so editing these sets re-paces foes automatically — they can
+        // never field an item above the tier the player can hold at that city.
+        // Tunable by editing the sets.
         const _DOJO_ITEM_BEST = new Set([
-            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb', 'Assault Vest',
-            'Heavy-Duty Boots', 'Weakness Policy', 'Booster Energy', 'Loaded Dice',
+            // Tier 3 (Grandmaster) — snowball / win-more only. (Heavy-Duty Boots and
+            // Assault Vest were demoted to tier 2: they're defensive staples, not win-more.)
+            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb',
+            'Weakness Policy', 'Booster Energy', 'Loaded Dice',
             'Light Ball', 'Thick Club', 'Covert Cloak', 'Clear Amulet',
         ]);
+        // Type-boost held items (+20% to one type) keyed by the type they boost. Mild,
+        // role-defining offense — a fair Foundation (tier-1) pick. The Dojo item pool
+        // injects the mon's STAB booster(s) from here (the Smogon-derived pool never
+        // includes them). Mirrors the engine's typeItemBoosts table.
+        const _DOJO_TYPE_BOOST_BY_TYPE = {
+            Fire: 'Charcoal', Water: 'Mystic Water', Grass: 'Miracle Seed', Electric: 'Magnet',
+            Ice: 'Never-Melt Ice', Fighting: 'Black Belt', Poison: 'Poison Barb', Ground: 'Soft Sand',
+            Flying: 'Sharp Beak', Psychic: 'Twisted Spoon', Bug: 'Silver Powder', Rock: 'Hard Stone',
+            Ghost: 'Spell Tag', Dragon: 'Dragon Fang', Dark: 'Black Glasses', Steel: 'Metal Coat',
+            Fairy: 'Fairy Feather', Normal: 'Silk Scarf',
+        };
+        const _DOJO_TYPE_BOOST_ITEMS = new Set(Object.values(_DOJO_TYPE_BOOST_BY_TYPE));
+        // Tier-1 (Foundation) curated additions: the type-boosters above + Eviolite
+        // (does nothing off an NFE, so it's fair early).
+        const _DOJO_ITEM_TIER1 = new Set(['Eviolite', ..._DOJO_TYPE_BOOST_ITEMS]);
+        // Resist berry that halves one super-effective hit, keyed by the incoming type.
+        const _DOJO_RESIST_BERRY = {
+            Fire: 'Occa Berry', Water: 'Passho Berry', Electric: 'Wacan Berry', Grass: 'Rindo Berry',
+            Ice: 'Yache Berry', Fighting: 'Chople Berry', Poison: 'Kebia Berry', Ground: 'Shuca Berry',
+            Flying: 'Coba Berry', Psychic: 'Payapa Berry', Bug: 'Tanga Berry', Rock: 'Charti Berry',
+            Ghost: 'Kasib Berry', Dragon: 'Haban Berry', Dark: 'Colbur Berry', Steel: 'Babiri Berry',
+            Fairy: 'Roseli Berry', Normal: 'Chilan Berry',
+        };
+        // Worst defensive weakness for a (type1[,type2]) pair via the live type chart.
+        // Returns { type, mult } for the highest-multiplier attacking type (≥2), else null.
+        function _dojoWorstWeakness(type1, type2) {
+            if (typeof typeChart !== 'object' || !type1) return null;
+            let best = null;
+            for (const atk of Object.keys(typeChart)) {
+                const m1 = (typeChart[atk] && typeChart[atk][type1] !== undefined) ? typeChart[atk][type1] : 1;
+                const m2 = type2 ? ((typeChart[atk] && typeChart[atk][type2] !== undefined) ? typeChart[atk][type2] : 1) : 1;
+                const mult = m1 * m2;
+                if (mult >= 2 && (!best || mult > best.mult || (mult === best.mult && atk < best.type))) {
+                    best = { type: atk, mult };
+                }
+            }
+            return best;
+        }
         function _dojoItemTier(name) {
             if (!name || name === '(none)') return 1;
             if (/Berry$/.test(name)) return 1;
-            if (_DOJO_ITEM_BEST.has(name)) return 3;
-            return 2;
+            if (_DOJO_ITEM_TIER1.has(name)) return 1;   // type-boosters + Eviolite → Foundation
+            if (_DOJO_ITEM_BEST.has(name)) return 3;    // snowball items → Meta
+            return 2;                                    // everything else → Staples
         }
         // One-time "stage up" beat: the first time the player reaches a higher tier
         // of a staged NPC, the NPC re-introduces itself and hands over one free use
@@ -55828,6 +55873,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it) && !BANNED_ITEMS.has(it)) safeItems.add(it);
             });
             TUTOR_UNIVERSAL_ITEMS.forEach(it => { if (!BANNED_ITEMS.has(it)) safeItems.add(it); });
+            // Inject the mon's STAB-type booster(s) (+20%, e.g. Soft Sand for Ground) —
+            // a fair tier-1 offense pick the Smogon-derived pool never carries. Types
+            // come from baseStats (.t1/.t2), which is always available.
+            try {
+                for (const _ty of [bs && bs.t1, bs && bs.t2]) {
+                    const _boost = _ty && _DOJO_TYPE_BOOST_BY_TYPE[_ty];
+                    if (_boost && !BANNED_ITEMS.has(_boost)) safeItems.add(_boost);
+                }
+            } catch (e3) {}
             try {
                 const _D = (typeof getPssDex === 'function') ? getPssDex() : null;
                 if (_D && _D.species && typeof _D.species.get === 'function') {
@@ -57276,61 +57330,77 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Item recs by purpose — choose distinct offensive / defensive / utility picks
+        // Battle Dojo "Best items" — a profile-driven, tier-aware shortlist that works
+        // even when early Smogon item usage is sparse/misleading. `availItems` is already
+        // the items UNLOCKED at the current belt, so every pick is equippable now. Four
+        // fixed role slots: Primary (offense or bulk by archetype) · Sustain · Status
+        // insurance · Defensive-tech (a resist berry matched to the mon's worst type
+        // weakness). Archetype is read from BASE stats (built stats would skew every mon
+        // to "sweeper"); Smogon usage only breaks ties via _txScoreItem in the backfill.
         function _txItemRecsByPurpose(availItems, mon, build, monName) {
             if (!availItems || !availItems.length) return [];
-            const stats = _txMonStats(mon, monName);
-            const physical = stats.atk >= stats.spa;
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
+            const bAtk = base.atk | 0, bSpa = base.spa | 0;
+            const isPhys = bAtk >= bSpa;
+            const off = Math.max(bAtk, bSpa);
+            const bulk = (base.hp | 0) + (base.def | 0) + (base.spd | 0);
+            const spe = base.spe | 0;
+            const wall = bulk >= 280 && off < 100;
+            const sweeper = off >= 100 && spe >= 90;
+            const frail = bulk < 230;
+            const types = [mon && mon.type1, mon && mon.type2].filter(Boolean);
+            const isPoison = types.includes('Poison');
+            const nfe = availItems.includes('Eviolite'); // pool adds Eviolite only for NFE mons
+            const stabBoost = types.map(t => _DOJO_TYPE_BOOST_BY_TYPE[t]).filter(Boolean);
+            const worst = _dojoWorstWeakness(types[0], types[1]);
+            const sustainItem = isPoison ? 'Black Sludge' : 'Leftovers';
 
             const curItem = (build && build.i) || '(none)';
-            const pool = availItems.filter(it => it !== curItem);
-            if (!pool.length) return [];
-
-            const bestIn = (cat) => _txBestBy(pool, it => _txItemCategory(it) === cat, it => _txScoreItem(it, mon, build, monName));
-
-            const out = [];
+            const have = new Set(availItems.filter(it => it !== curItem));
             const used = new Set();
-            const push = (purpose, item, reason) => {
-                if (!item || used.has(item)) return;
-                used.add(item);
-                out.push({ purpose, item, reason });
+            const out = [];
+            const pick = (...cands) => cands.flat().find(it => it && have.has(it) && !used.has(it)) || null;
+            const add = (purpose, item, reason) => {
+                if (!item || used.has(item)) return false;
+                used.add(item); out.push({ purpose, item, reason }); return true;
             };
 
-            // 1) Offensive — power up the stronger stat with a Choice item or Life Orb.
-            const offChoice = physical ? 'Choice Band' : 'Choice Specs';
-            const choiceOk = pool.includes(offChoice);
-            if (choiceOk) push('Offensive', offChoice, `Locks in ${physical ? 'Atk +50%' : 'SpA +50%'} — wallbreaker.`);
-            else {
-                const bestOff = bestIn('offensive');
-                if (bestOff) push('Offensive', bestOff, 'Boosts damage output every turn.');
-            }
-
-            // 2) Defensive — sustain over the long game.
-            const wantsBoots = pool.includes('Heavy-Duty Boots') && (mon && (mon.type1 === 'Flying' || mon.type2 === 'Flying' || (stats.spd + stats.def >= 200)));
-            if (wantsBoots) push('Defensive', 'Heavy-Duty Boots', 'Ignores hazards on switch-in.');
-            else if (pool.includes('Leftovers')) push('Defensive', 'Leftovers', 'Heals 1/16 HP each turn — anchor for bulky sets.');
-            else {
-                const bestDef = bestIn('defensive');
-                if (bestDef) push('Defensive', bestDef, 'Improves longevity in the matchup.');
-            }
-
-            // 3) Speed — Choice Scarf if fast-leaning, otherwise utility.
-            if (pool.includes('Choice Scarf') && stats.spe >= 70 && stats.spe <= 110) {
-                push('Speed', 'Choice Scarf', 'Speed +50% — outspeeds tier-leaders.');
-            } else if (pool.includes('Focus Sash') && stats.hp < 200) {
-                push('Insurance', 'Focus Sash', 'Survives any one OHKO at full HP — guarantees a hit.');
+            // 1) PRIMARY — the headline item by archetype.
+            if (wall) {
+                add('Bulk', pick(nfe ? 'Eviolite' : null, sustainItem, !isPhys ? 'Assault Vest' : null, 'Rocky Helmet', 'Sitrus Berry'),
+                    nfe ? 'Eviolite — +50% Def & Sp.Def on a not-fully-evolved Pokémon.' : 'Best sustain item to anchor a wall.');
             } else {
-                const bestUtil = bestIn('utility');
-                if (bestUtil) push('Utility', bestUtil, 'Disrupts the opponent — momentum tool.');
+                const choice = isPhys ? 'Choice Band' : 'Choice Specs';
+                add('Offensive', pick(
+                    sweeper ? choice : null, 'Life Orb', choice,
+                    isPhys ? 'Muscle Band' : 'Wise Glasses', stabBoost, 'Expert Belt',
+                    isPhys ? 'Liechi Berry' : 'Petaya Berry', 'Salac Berry',
+                ), 'The biggest damage boost this Pokémon can hold right now.');
             }
 
-            // 4) Special / niche — Life Orb is the universal damage upgrade if not yet picked.
-            if (out.length < 4 && pool.includes('Life Orb') && !used.has('Life Orb')) {
-                push('Power', 'Life Orb', '+30% damage at 10% HP cost — best on hit-and-switch sets.');
-            } else if (out.length < 4) {
-                const bestRest = _txBestBy(pool, it => !used.has(it), it => _txScoreItem(it, mon, build, monName));
-                if (bestRest) push('Flex', bestRest, _txDescriptionFor(bestRest, 'item').slice(0, 80));
+            // 2) SUSTAIN — stay healthy over the long game.
+            add('Sustain', pick(sustainItem, nfe ? 'Eviolite' : null, 'Sitrus Berry',
+                (off >= 100 || spe >= 95 || frail) ? 'Focus Sash' : null, 'Figy Berry'),
+                'Sustain to win the long exchanges.');
+
+            // 3) STATUS INSURANCE — shrug off a crippling status once.
+            add('Status', pick('Lum Berry', 'Chesto Berry', 'Cheri Berry'),
+                'Cures a status once — frees you from a burn / paralysis / sleep.');
+
+            // 4) DEFENSIVE TECH — resist berry vs the worst weakness, else passive defense.
+            if (worst && _DOJO_RESIST_BERRY[worst.type]) {
+                add('Defensive', pick(_DOJO_RESIST_BERRY[worst.type], 'Rocky Helmet', 'Covert Cloak'),
+                    `Softens a ${worst.type}-type hit once — covers this Pokémon's ${worst.mult}x weakness.`);
+            } else {
+                add('Defensive', pick('Rocky Helmet', 'Covert Cloak', 'Sitrus Berry'),
+                    'Defensive tech for trickier matchups.');
             }
 
+            // Backfill any empty slots with the next best-scoring available item.
+            if (out.length < 4) {
+                const rest = _txBestBy([...have].filter(it => !used.has(it)), () => true, it => _txScoreItem(it, mon, build, monName));
+                if (rest) add('Flex', rest, (_txDescriptionFor(rest, 'item') || '').slice(0, 80) || 'A solid extra option.');
+            }
             return out.slice(0, 4);
         }
 
@@ -58726,21 +58796,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            // ★ view + explicit usage share one honest order: usage % desc, fit-score
-            // tiebreak (keeps sparse / 0%-usage items quality-ordered, not alphabetical).
-            if (recOnly || sortKey === 'usage') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => ((pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0))
-                    || (scoreOf.get(b) - scoreOf.get(a))
-                    || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
-                    || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
-                    || a.localeCompare(b));
-            } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            const scoreOf = new Map();
+            for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+            const pct = (x) => pool.items.pctOf.get(x) || 0;
+            const cmpUsage = (a, b) => (pct(b) - pct(a)) || (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b);
+            const cmpScore = (a, b) => (scoreOf.get(b) - scoreOf.get(a)) || (pct(b) - pct(a)) || a.localeCompare(b);
+            // Default ("recommended") + the ★ view are TIER-AWARE: at White/Black Belt the
+            // heuristic fit-score leads (early item usage is sparse / misleading, so usage%
+            // order is the "initial view is not optimal" complaint); at Grandmaster usage%
+            // leads (the data is reliable there). Explicit "usage" is always usage%.
+            const dojoStage = (typeof _npcStage === 'function' && typeof sm !== 'undefined' && sm && sm.active) ? (_npcStage('dojo') | 0) : 2;
+            if (sortKey === 'usage') filt.sort(cmpUsage);
+            else if (sortKey === 'category' || sortKey === 'name') filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            else filt.sort(dojoStage < 2 ? cmpScore : cmpUsage); // 'recommended' default + ★ view
             return filt;
         }
         function _txApplyAbilityFilters(allAbils, mon, build, monName, extraStarred) {

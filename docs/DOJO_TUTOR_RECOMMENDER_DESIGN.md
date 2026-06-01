@@ -1,9 +1,14 @@
 # Battle Dojo & Move Tutor — Recommender + Tier Design (proposal)
 
-> Status: **proposal awaiting sign-off**. Player-facing recommender/UX is general-session's
-> lane; the **item-tier reassignments and stage-clock numbers are balance (user-owned) and
-> overlap maxwell's curve** — they ship only with explicit approval. Move/ability/price
-> work in this thread is already implemented; this doc is the Dojo-recommender + tier retune.
+> Status: **IMPLEMENTED** (user approved "full retune + recommender"). The tier
+> reassignments are balance (user-owned, overlapping maxwell's curve) and shipped with
+> that approval. Decisions taken: type-boosters + Eviolite → tier 1; Heavy-Duty Boots +
+> Assault Vest → tier 2; snowball items stay tier 3; belt unlocks stay C2/C5/C8; resist
+> berry surfaces for any ≥2× worst weakness (4× preferred). Foe parity is automatic
+> (§2) and covered by a regression test. See tests/suites/story-dojo-item-recs.test.js.
+> NOTE: Eviolite → tier 1 means early NFE foes (Chansey/Porygon2/…) can keep Eviolite at
+> White Belt via the mirror — flip it back to tier 2 (remove from `_DOJO_ITEM_TIER1`) if
+> early fights feel too bulky.
 
 ## 1. Goals
 
