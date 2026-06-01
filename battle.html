@@ -2481,38 +2481,6 @@
             color: #ffe082; font-size: 12px; max-width: 520px; text-align: center;
             font-style: italic; line-height: 1.55;
         }
-        /* Storyline picker card grid (run-setup) */
-        .story-create-storyline-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 8px; margin-top: 4px;
-        }
-        .story-create-storyline-card {
-            display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
-            padding: 10px 12px; background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
-            color: #ddd; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s;
-            font-family: inherit; font-size: 12px;
-        }
-        .story-create-storyline-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.24); }
-        .story-create-storyline-card--active {
-            background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff;
-        }
-        .story-create-storyline-card--mature { border-left: 3px solid #b0bec5; }
-        .story-create-storyline-card--soft   { border-left: 3px solid #ce93d8; }
-        .story-create-storyline-card--pasta  { border-left: 3px solid #ef5350; }
-        .story-create-storyline-card--random { border-left: 3px solid #4fc3f7; font-style: italic; }
-        .story-create-storyline-name { font-weight: bold; font-size: 13px; color: #fff; }
-        .story-create-storyline-tag {
-            font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
-            padding: 1px 6px; border-radius: 2px; color: #111; background: #b0bec5;
-        }
-        .story-create-storyline-tag--soft  { background: #ce93d8; }
-        .story-create-storyline-tag--pasta { background: #ef5350; color: #fff; }
-        .story-create-storyline-tag--classic { background: #ffd54f; }
-        .story-create-storyline-tag--random  { background: #4fc3f7; }
-        .story-create-storyline-tag--mature { background: #b0bec5; }
-        .story-create-storyline-tagline { color: #aaa; font-size: 11px; line-height: 1.45; }
-        .story-create-storyline-warn { color: #ef9a9a; font-size: 10px; font-style: italic; margin-top: 2px; }
         .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
@@ -9538,20 +9506,6 @@
                 </div>
             </section>
 
-            <!-- Storyline picker section hidden under v22 3-track system. Card grid
-                 stays in the DOM (display:none) so legacy JS that reads
-                 `_tcState.storyline` keeps working; the value defaults to
-                 'classic' and the 3-track random villain/extra rolls supersede
-                 the old 8-variant tone picker. Per locked decision 3 (mystery
-                 reveal), the player discovers their rolled tracks through the
-                 first villain / extra beat in-game — NOT pre-set-out.
-                 Surface owned by sm.tracks now. -->
-            <section class="story-create-section" id="story-create-storyline-section" style="display:none;">
-                <h2 class="story-create-sec-title">Storyline (legacy)</h2>
-                <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
-                <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
-                <p id="story-create-storyline-warn" class="story-create-storyline-warn" aria-live="polite" style="margin-top:6px;"></p>
-            </section>
 
             <section class="story-create-section">
                 <h2 class="story-create-sec-title">3 &mdash; Pokémon generations</h2>
@@ -38858,57 +38812,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _tcState.genPreset = p;
             _tcSyncGenPresetButtons();
         }
-        function trainerCreateSetStoryline(id) {
-            // STORYLINE_VARIANTS is declared later in the same IIFE — the lookup
-            // happens at call time, after the IIFE has finished evaluating.
-            if (typeof STORYLINE_VARIANTS === 'undefined' || !STORYLINE_VARIANTS[id]) return;
-            _tcState.storyline = id;
-            _tcSyncStorylineCards();
-        }
-        function _tcSyncStorylineCards() {
-            const cards = document.querySelectorAll('#story-create-storyline-grid .story-create-storyline-card');
-            cards.forEach(c => {
-                const on = (c.dataset.storyline === _tcState.storyline);
-                c.classList.toggle('story-create-storyline-card--active', on);
-                c.setAttribute('aria-checked', on ? 'true' : 'false');
-            });
-            const warnEl = document.getElementById('story-create-storyline-warn');
-            if (warnEl) {
-                const v = STORYLINE_VARIANTS[_tcState.storyline] || null;
-                warnEl.textContent = (v && v.warn) ? v.warn : '';
-            }
-        }
-        function _tcRenderStorylineGrid() {
-            const grid = document.getElementById('story-create-storyline-grid');
-            if (!grid) return;
-            // STORYLINE_VARIANTS keys are walked in declaration order; the picker
-            // grid mirrors that order so the run-setup feels consistent across
-            // sessions. The 'surprise_me' sentinel comes last by design.
-            const ids = Object.keys(STORYLINE_VARIANTS);
-            grid.innerHTML = ids.map(id => {
-                const v = STORYLINE_VARIANTS[id];
-                const tierCls = v.tier === 'mature' ? 'story-create-storyline-card--mature'
-                              : v.tier === 'soft_pasta' ? 'story-create-storyline-card--soft'
-                              : v.tier === 'pasta' ? 'story-create-storyline-card--pasta'
-                              : v.tier === 'random' ? 'story-create-storyline-card--random'
-                              : '';
-                const tagCls = v.tier === 'soft_pasta' ? 'story-create-storyline-tag--soft'
-                             : v.tier === 'pasta' ? 'story-create-storyline-tag--pasta'
-                             : v.tier === 'random' ? 'story-create-storyline-tag--random'
-                             : v.tier === 'mature' ? 'story-create-storyline-tag--mature'
-                             : 'story-create-storyline-tag--classic';
-                const warn = v.warn ? `<span class="story-create-storyline-warn">${_esc(v.warn)}</span>` : '';
-                return `<button type="button"
-                    class="story-create-storyline-card ${tierCls}"
-                    data-storyline="${_esc(id)}" role="radio" aria-checked="false"
-                    onclick="window.StoryMode.trainerCreateSetStoryline('${_esc(id)}')">
-                    <span class="story-create-storyline-tag ${tagCls}">${_esc(v.tierLabel || v.tier || '')}</span>
-                    <span class="story-create-storyline-name">${_esc(v.label || id)}</span>
-                    <span class="story-create-storyline-tagline">${_esc(v.description || '')}</span>
-                    ${warn}
-                </button>`;
-            }).join('');
-        }
         function _tcValidateName(raw) {
             const trimmed = String(raw || '').trim();
             if (!trimmed) return { ok: false, msg: 'Pick a trainer name to continue.' };
@@ -41189,14 +41092,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof _tcState !== 'undefined' && _tcState && _tcState.storyline) {
                     if (_tcState.storyline === 'surprise_me') return _pickRandomStorylineVariant();
                     if (STORYLINE_VARIANTS[_tcState.storyline]) return _tcState.storyline;
-                }
-            } catch (e) {}
-            // Legacy select fallback (older menu still wired for compatibility).
-            try {
-                const el = document.getElementById('story-setting-storyline');
-                if (el && el.value && STORYLINE_VARIANTS[el.value]) {
-                    if (el.value === 'surprise_me') return _pickRandomStorylineVariant();
-                    return el.value;
                 }
             } catch (e) {}
             return 'classic';
@@ -61284,7 +61179,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTrainerCreate, cancelTrainerCreate,
             trainerCreatePrevSprite, trainerCreateNextSprite, trainerCreateRandomSprite,
             trainerCreateSetDifficulty, trainerCreateSetGenPreset,
-            trainerCreateSetStoryline,
             confirmTrainerAndStart,
             openCollection, closeCollection, pokedexSetGen, pokedexSetShinyView,
             _markDexSeen: _storyMarkDexSeen,
