@@ -37837,6 +37837,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     gymLeaderGoldBaselineForCity: (n) => _storyGymLeaderGoldBaselineForCity(n),
                     // Track-end rewards + boss mechanics (PR-5).
                     grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
+                    catchIntroSceneId: (st) => _catchIntroSceneId(st),
                     // EXP-Share gift (extra-raid reward — ISSUE-243).
                     applyExpShareLevel: (src, idx) => applyExpShareLevel(src, idx),
                     monDisplayLevel: (build) => _monDisplayLevel(build),
@@ -42771,6 +42772,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             });
+        }
+
+        /** Pick the single intro tutorial scene a catch screen should enqueue
+         *  (or null for none). INTRO-1: the intro route node chains
+         *  catchTutorial → wildRoute, which without this guard fired firstWild
+         *  ("Catching 101") and then firstWildRoute ("The Road") as two
+         *  back-to-back Prof. Oak overlays that both re-explain ball odds +
+         *  flee. If the catch tutorial already taught catching this run, the
+         *  route overlay is skipped — one tutorial per mechanic. (If the player
+         *  skipped the catch tutorial, firstWildRoute still fires on their first
+         *  wild, so catching is taught exactly once either way.) */
+        function _catchIntroSceneId(st) {
+            if (!st || st.bossMode) return null;
+            if (st.tutorialMode) return 'firstWild';
+            if (st.safariMode) return 'firstSafariCatch';
+            if (_storyRunSceneSeen('tutorial-first-wild')) return null;
+            return 'firstWildRoute';
         }
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
@@ -50220,14 +50238,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // dialogue + Continue. Each scene fires once per run (per-run-
                 // deduped via sm.scenesShown). The catch screen is already
                 // rendered behind the overlay; on Continue the player drops
-                // into the live encounter. See STORY_TUTORIAL_SCENES.
-                if (_catchState.tutorialMode) {
-                    _enqueueIntroTutorial('firstWild');
-                } else if (_catchState.safariMode) {
-                    _enqueueIntroTutorial('firstSafariCatch');
-                } else {
-                    _enqueueIntroTutorial('firstWildRoute');
-                }
+                // into the live encounter. _catchIntroSceneId picks the one
+                // scene for this catch state and folds in the INTRO-1 guard so
+                // the intro route node's catchTutorial → wildRoute chain no
+                // longer stacks firstWild + firstWildRoute back-to-back.
+                const _introScene = _catchIntroSceneId(_catchState);
+                if (_introScene) _enqueueIntroTutorial(_introScene);
                 if (_catchState.roamingLabel) {
                     // Roaming legendaries keep the plain one-time-tip — they're
                     // a rare in-the-grass surprise, not a new mechanic class.
