@@ -52,3 +52,19 @@ test('relic battle-flags reset with no artifacts held — no cross-battle bleed 
     assert.equal(st._typeNullifierType, null);
     assert.equal(st._typeMagnetizerType, null);
 });
+
+test('Master Ball is 1 per run — villain track grants one idempotently (post-HoF grant removed)', () => {
+    // The post-HoF Caged God grant was removed (Phase 6a); the Master Ball now comes
+    // solely from the villain track-end reward, for the roaming legendary.
+    const sm = T.sm;
+    sm.balls = { poke: 0, great: 0, ultra: 0, master: 0 };
+    sm._trackRewardGranted = {};
+    const beat = { sceneKey: 'villain.rocket.boss', kind: 'boss' };
+    const r1 = T.grantTrackEndReward(beat, { silent: true });
+    assert.equal(r1 && r1.kind, 'masterball', 'villain boss should grant a Master Ball');
+    assert.equal(sm.balls.master, 1, 'exactly one Master Ball from the villain track');
+    // Same sceneKey can never grant a second (idempotent via sm._trackRewardGranted).
+    const r2 = T.grantTrackEndReward(beat, { silent: true });
+    assert.equal(r2, null, 'a repeated villain boss reward must not re-grant');
+    assert.equal(sm.balls.master, 1, 'still exactly one Master Ball — no duplicate');
+});
