@@ -714,6 +714,11 @@
             background-position: center;
         }
         .story-tutor-mon { border:1px solid #3f4352; border-radius:8px; background:linear-gradient(180deg, rgba(17,20,30,0.9), rgba(11,14,21,0.9)); overflow:hidden; }
+        /* The OPEN mon (the card that has an editor body) must NOT clip its contents:
+           overflow:hidden here was defeating the confirm bar's position:sticky, forcing
+           players to scroll down to reach the buy button on phones. Collapsed cards (no
+           body) keep overflow:hidden so their rounded corners still clip cleanly. */
+        .story-tutor-mon:has(.story-tutor-mon-body) { overflow: visible; }
         .story-tutor-mon-toggle {
             width:100%; border:0; background:transparent; color:inherit; cursor:pointer;
             display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -1859,7 +1864,7 @@
 
         /* Confirm bar (per slot) */
         .tx-confirm-bar {
-            position: sticky; bottom: 0;
+            position: sticky; bottom: 0; z-index: 5;
             display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
             padding: 10px 12px; margin-top: 10px;
             background: linear-gradient(180deg, rgba(22,24,34,0.95), rgba(12,14,22,0.96));
