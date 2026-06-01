@@ -58023,6 +58023,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Build an Item card.
+        // Shared shell for the item + ability cards — they are the same card (head:
+        // star + title + usage %; body: description with a graceful empty state; foot:
+        // kind-specific pills), differing only by an extra class / data-tier attr and the
+        // pill set. The MOVE card stays its own renderer: it carries a structurally
+        // different body (stats row, type stripe, mechanic icons, equipped/forget), which
+        // is exactly where a shared shell would do more harm than good.
+        function _txSimpleCardHtml(kind, name, ctx, o) {
+            const star = o.isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
+            const pctHtml = _txUsagePctHtml(ctx, name);
+            return `<button type="button" class="tx-card${o.extraClass || ''}" data-card-kind="${kind}" data-card-value="${_esc(name)}" data-search-value="${_esc(name.toLowerCase())}"
+                ${o.tierAttr || ''}data-recommended="${o.isRec?1:0}" data-current="${o.isPending?1:0}" data-disabled="${o.disabled?1:0}" data-locked="${o.locked?1:0}" ${o.disabled?'disabled':''}>
+                <div class="tx-card-head">
+                    ${star}<span class="tx-card-title">${_esc(name)}</span>${pctHtml}
+                </div>
+                ${o.desc ? `<div class="tx-card-desc">${_esc(o.desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
+                <div class="tx-card-foot">${o.pills}</div>
+            </button>`;
+        }
         function _txItemCardHtml(itemName, ctx) {
             const desc = _txDescriptionFor(itemName, 'item');
             const cat = _txItemCategory(itemName);
@@ -58039,16 +58057,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
             ].filter(Boolean).join('');
-            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, itemName);
-            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}" data-search-value="${_esc(itemName.toLowerCase())}"
-                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
-                <div class="tx-card-head">
-                    ${star}<span class="tx-card-title">${_esc(itemName)}</span>${pctHtml}
-                </div>
-                ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
-                <div class="tx-card-foot">${pills}</div>
-            </button>`;
+            return _txSimpleCardHtml('item', itemName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills });
         }
 
         // Build an Ability card. Tier background encodes Regular (default) vs
@@ -58079,16 +58088,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
-            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, abilityName);
-            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}" data-search-value="${_esc(abilityName.toLowerCase())}"
-                data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
-                <div class="tx-card-head">
-                    ${star}<span class="tx-card-title">${_esc(abilityName)}</span>${pctHtml}
-                </div>
-                ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
-                <div class="tx-card-foot">${pills}</div>
-            </button>`;
+            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" ` });
         }
 
         // Per-action voucher metadata. Adding a 5th tutor kind = add a row here +
