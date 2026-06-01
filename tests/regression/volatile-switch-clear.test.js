@@ -168,6 +168,18 @@ describe('Future Sight (side-stored, redirects on switch)', () => {
     assert.ok(f2.currentHp < f2hp, 'the active replacement took the Future Sight hit');
     assert.equal(f1.currentHp, f1hp, 'the original (now benched) target was not hit');
   });
+
+  it('recomputes vs the current target: a Dark-type switched in is immune to Psychic Future Sight', async () => {
+    const { foes } = fsSetup(['Snorlax', 'Umbreon']); // Umbreon is pure Dark
+    const [, f2] = foes;
+    await E.window.playTurn(0, null);            // cast Future Sight (Psychic)
+    E.engine.state.fActive = f2;                 // Dark-type comes in before it lands
+    const f2hp = f2.currentHp;
+    await E.window.playTurn(1, null);
+    await E.window.playTurn(1, null);            // resolves against Umbreon
+    assert.equal(E.engine.state.fSide.futureSightTurns, 0, 'resolved');
+    assert.equal(f2.currentHp, f2hp, 'Dark-type takes no damage from a Psychic Future Sight');
+  });
 });
 
 describe('Baton Pass', () => {

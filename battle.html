@@ -20966,17 +20966,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             [['pSide', 'pActive'], ['fSide', 'fActive']].forEach(([sideKey, activeKey]) => {
                 // Future Sight / Doom Desire delayed damage — resolves against whoever is active
                 // on the targeted side now (stored on the side, like Wish above), so a switch
-                // before it lands redirects the hit to the replacement instead of the original.
+                // before it lands redirects the hit to the replacement. Damage is recomputed here
+                // against the CURRENT target's Sp.Def and type effectiveness (the user's Sp.Atk,
+                // the move power/type and STAB were snapshotted at cast) — matching canon's
+                // hit-time calculation, and adding the type-immunity case the old path skipped.
                 let side = state[sideKey]; let mon = state[activeKey];
                 if (!side || !mon) return;
                 if (side.futureSightTurns > 0) {
                     side.futureSightTurns--;
-                    if (side.futureSightTurns === 0 && side.futureSightDmg > 0) {
+                    if (side.futureSightTurns === 0 && side.futureSightPow > 0) {
                         let fsName = side.futureSightName || 'Future Sight';
-                        let dmg = Math.min(mon.currentHp, side.futureSightDmg);
-                        mon.currentHp -= dmg;
-                        logMsg(`${fsName} struck ${mon.name} for ${dmg} damage!`, 'dmg');
-                        side.futureSightDmg = 0; side.futureSightName = '';
+                        let eff = getMoveEffectiveness(side.futureSightType, mon.type1, mon.type2);
+                        if (eff === 0) {
+                            logMsg(`${fsName} struck, but it doesn't affect ${mon.name}…`, 'info');
+                        } else {
+                            let core = Math.floor((22 * side.futureSightPow * (side.futureSightSpA || 1) / (mon.stats.spd || 1)) / 50) + 2;
+                            let dmg = Math.min(mon.currentHp, Math.max(1, Math.floor(core * (side.futureSightStab || 1) * eff)));
+                            mon.currentHp -= dmg;
+                            logMsg(`${fsName} struck ${mon.name} for ${dmg} damage!`, 'dmg');
+                        }
+                        side.futureSightPow = 0; side.futureSightName = '';
+                        side.futureSightSpA = 0; side.futureSightType = ''; side.futureSightStab = 0;
                     }
                 }
             });
@@ -22772,20 +22782,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Future Sight" || move.name === "Doom Desire") {
                 // Stored on the TARGET'S SIDE (like Wish), not on the target mon, so the strike
                 // lands on whoever is active on that side two turns later — not on the original
-                // target if it has since switched out (which previously made the hit vanish or
-                // follow the wrong Pokémon). Damage is snapshotted at cast time, as before.
+                // target if it has since switched out. The attacker's offence is snapshotted now;
+                // the hit is RECOMPUTED against the current target's Sp.Def + type effectiveness
+                // when it lands (canon calculates Future Sight's damage at hit time), so a Dark-
+                // type switched in to absorb a Psychic Future Sight correctly takes nothing.
                 let fsSide = isPlayer ? state.fSide : state.pSide;
                 if (fsSide.futureSightTurns > 0) { logMsg(`But it failed!`, 'info'); AudioSystem.playMissSound(); registerMoveConnectionFailure(attacker, move); await sleep(1000); return; }
-                let fsA = attacker.stats.spa;
-                let fsD = defender.stats.spd;
-                let fsStab = calcSTAB(attacker, move);
-                let fsDmg = Math.max(1, Math.floor(Math.floor((Math.floor((22 * move.pow * fsA / fsD) / 50) + 2)) * fsStab));
                 // Strikes "two turns later" — end of turn N+2. The end-of-turn tick (runWishHealing)
                 // also fires on this cast turn, so the counter must be 3: one more than Wish's 2,
                 // which is a next-turn effect (Wish:2 :: FutureSight:3). 2 here struck a turn early.
                 fsSide.futureSightTurns = 3;
-                fsSide.futureSightDmg = fsDmg;
                 fsSide.futureSightName = move.name;
+                fsSide.futureSightSpA = attacker.stats.spa;   // snapshot the user's Sp.Atk at cast
+                fsSide.futureSightPow = move.pow;
+                fsSide.futureSightType = move.type;
+                fsSide.futureSightStab = calcSTAB(attacker, move);
                 logMsg(`${attacker.name} foresaw an attack!`, 'info');
                 AudioSystem.playMoveSound(move);
                 await sleep(1000); return;
