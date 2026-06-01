@@ -1461,14 +1461,11 @@
             border-right-color: #ffd54f;
             border-bottom-color: #ffd54f;
         }
+        /* Awakened = off-legal/illegal: red danger stripe so it never reads as the
+           gold "recommended" or blue "hidden" treatment. */
         .tx-card--ability[data-tier="awaken"] {
-            border-left-color: #ffb300;
-        }
-        .tx-card--ability[data-tier="awaken"][data-recommended="1"] {
-            border-left-color: #ffb300;
-            border-top-color: #ffd54f;
-            border-right-color: #ffd54f;
-            border-bottom-color: #ffd54f;
+            border-left-color: #ff5252;
+            background: linear-gradient(90deg, rgba(244,67,54,0.10), transparent 60%);
         }
         .tx-card-head {
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -1505,9 +1502,9 @@
         .tx-card[data-locked="1"] { opacity: 0.5; cursor: not-allowed; }
         .tx-card[data-locked="1"] .tx-card-star { opacity: 0.8; }
         .tx-pill--awaken {
-            background: linear-gradient(135deg, rgba(255,193,7,0.28), rgba(255,87,34,0.22));
-            border-color: #ffb300; color: #fff8e1;
-            box-shadow: 0 0 6px rgba(255,179,0,0.45);
+            background: linear-gradient(135deg, rgba(244,67,54,0.30), rgba(255,87,34,0.24));
+            border-color: #ff5252; color: #ffd7cf;
+            box-shadow: 0 0 6px rgba(244,67,54,0.4);
         }
         .tx-pill--cat-Physical { background: rgba(255,107,107,0.18); border-color: #ff6b6b; color: #ffcaca; }
         .tx-pill--cat-Special  { background: rgba(107,159,255,0.18); border-color: #6b9fff; color: #cbdbff; }
@@ -56136,7 +56133,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // yet (jsdom thin dex / async race), the gate would over-restrict — fall
             // through to the full pool. The tutor UI re-renders once warm.
             const coldCache = !(learn.natural || []).length && !(learn.learnt || []).length && !(learn.awakened || []).length;
-            if (coldCache) return full;
+            if (coldCache) { try { full.fullPool = full; } catch (e) {} return full; }
             // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
             // NB: syncMoves (Smogon competitive moves) are NOT unconditionally unioned —
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
@@ -56172,7 +56169,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // current loadout out from under the player at a tutor visit.
             if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
             const gated = full.filter(m => allow.has(m));
-            return gated.length ? gated : full;
+            const out = gated.length ? gated : full;
+            // Expose the COMPLETE movepool so the picker can render every move (off-stage
+            // ones shown locked, like the Dojo's item/ability roster) while the teachable
+            // acceptance set still reads only `out`. Display-only — never widens the gate.
+            try { out.fullPool = full; } catch (e) {}
+            return out;
         }
 
         // ── REDESIGN HELPERS — categorization & recommendations ──────────
@@ -58370,11 +58372,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             : 'Awakened move — off-legal Smogon pick';
                     }
                     if (!isEquipped) {
-                        const reqStage = tag === 'awakened' ? 2 : tag === 'learnt' ? 1 : 0;
-                        const curStage = (typeof ctx.tutorStage === 'number') ? ctx.tutorStage : 0;
-                        if (reqStage > curStage) {
-                            const name = reqStage === 2 ? 'L3 Guru' : 'L2 Expert';
-                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${name}">🔒 ${name}</span>`;
+                        // Authoritative lock: a move is locked iff it's NOT in the teachable
+                        // acceptance set (matches the gate exactly — incl. the Inner ≤75 BP cap,
+                        // which a tag→stage rule would miss). The unlock-tier LABEL is derived
+                        // from the tag: Learnt/Awakened open at Guru; an over-cap Natural at Expert.
+                        const _base = String(moveName).split('/')[0];
+                        if (ctx.acceptSet && !ctx.acceptSet.has(_base)) {
+                            const unlockStage = (tag === 'learnt' || tag === 'awakened') ? 2 : 1;
+                            const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Expert');
+                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
                             locked = true; // gate the card so off-stage moves can't be picked
                         }
                     }
@@ -58433,7 +58439,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // is exactly where a shared shell would do more harm than good.
         function _txSimpleCardHtml(kind, name, ctx, o) {
             const star = o.isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, name);
+            // hidePct: suppress the usage %. Used for Awakened (off-legal) abilities —
+            // their % comes from illegal-format Smogon builds and misleads the player.
+            const pctHtml = o.hidePct ? '' : _txUsagePctHtml(ctx, name);
             return `<button type="button" class="tx-card${o.extraClass || ''}" data-card-kind="${kind}" data-card-value="${_esc(name)}" data-search-value="${_esc(name.toLowerCase())}"
                 ${o.tierAttr || ''}data-recommended="${o.isRec?1:0}" data-current="${o.isPending?1:0}" data-disabled="${o.disabled?1:0}" data-locked="${o.locked?1:0}" ${o.disabled?'disabled':''}>
                 <div class="tx-card-head">
@@ -58485,12 +58493,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const locked = lockStage > (ctx ? ctx.dojoStage : 99);
             const pills = [
-                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awakened</span>` : '',
+                isAwaken ? `<span class="tx-pill tx-pill--awaken" title="Off-legal ability — illegal in standard play, but often very strong. Only the Grandmaster Dojo can teach it.">⛔ Off-legal</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
-            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" ` });
+            // Awakened picks never show a usage % (off-legal builds only) and never
+            // carry the ★ recommended treatment.
+            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec: isRec && !isAwaken, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" `, hidePct: isAwaken });
         }
 
         // Per-action voucher metadata. Adding a 5th tutor kind = add a row here +
@@ -58738,13 +58748,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sortKey = _txState.sort.abilities || 'recommended';
             const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
-            // Awaken / OP picks aren't Smogon-derived but ARE meant to be
-            // surfaced when unlocked — accept an extra "always-in-pool" Set
-            // from the caller so they survive the ★ Recommended filter.
-            const filt = allAbils.filter(a => {
-                if (recOnly && !pool.abilities.inPool.has(a) && !(extraStarred && extraStarred.has(a))) return false;
-                return !q || a.toLowerCase().includes(q);
-            });
+            // A mon has only 2-3 abilities, so the ★ chip NEVER hides one — it only
+            // re-sorts by usage %. Every legal / hidden / off-legal ability stays
+            // visible; only the search box narrows the list. (extraStarred kept in the
+            // signature for callers, but no longer gates visibility.)
+            const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
             // ★ view + explicit usage: usage % desc with a fit-score tiebreak. The shared
             // helper already accepts a scoreFn — pass it so sparse / 0%-usage abilities
             // stay quality-ordered instead of alphabetical.
@@ -58842,7 +58850,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // render and the partial fast path (_txMoveGridFastUpdate), so a fast-path-built
         // card is byte-identical to a full-render one. ctx is stable across filter/sort
         // toggles (it only changes when the build/pending changes, which take the full path).
-        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves) {
+        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves, acceptSet) {
             const sPool = _txStarredPoolMemo(t.name);
             const equippedSet = new Set(currentMoves);
             const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
@@ -58856,6 +58864,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slotOf,
                 monName: t.name,
                 tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
+                // Teachable set (gated) — the card locks any move NOT in it, authoritatively
+                // (matches the gate incl. the Inner BP cap). Undefined → no locks (safe).
+                acceptSet: acceptSet || null,
             };
             const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
             return { sPool, equippedSet, ctx, gridSource };
@@ -58889,7 +58900,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let mon = null;
                 try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
                 const currentMoves = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
-                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves, _txMoveTier1Cache.get(idx));
                 const ordered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
                 // Keyed reconcile by data-card-value.
@@ -58994,7 +59005,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // grid source (every legal move PLUS the equipped ones, so the player sees their
             // current moves alongside the alternatives) — built by the shared _txMoveCtx so
             // the partial fast path renders cards identically to this full render.
-            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves, _txMoveTier1Cache.get(idx));
             const pendingMove = ctx.pending;
             // Distinct move types in the CURRENT view (respecting the ★ filter) — drives
             // the "Type ▾" menu so it only offers types the player can actually filter to
@@ -59194,9 +59205,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability tab content
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.abilities)
-                    ? `No starred abilities match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="abilities">★ Show all</button> to expand, or clear the search.`
-                    : 'No abilities match the search.';
+                // The ★ chip only re-sorts abilities (never hides), so an empty list can
+                // only be the search box excluding everything.
+                const emptyMsg = 'No abilities match the search.';
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
                     : `<div class="tx-grid-empty">${emptyMsg}</div>`;
@@ -59478,12 +59489,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _tm = sm.team[ti];
                         const _cur = (_tm.build && _tm.build.m) || [];
                         const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur);
-                        _txMovePoolCache.set(ti, _staged);
+                        // The GRID renders the full movepool so off-stage moves show (locked),
+                        // matching the Dojo's all-items roster. The acceptance set below stays
+                        // the GATED/teachable set, so only in-stage moves are selectable.
+                        _txMovePoolCache.set(ti, _staged.fullPool || _staged);
                         // Phase 2 (BUG A fix): the teachable acceptance set is EXACTLY the
-                        // staged pool the picker surfaces (gold AND Heart-Scale paths read it),
-                        // so the handler can never accept a move the gate hides. Previously this
-                        // unioned the FULL Smogon CSV pool, which let Learnt/Awakened coverage
-                        // moves be bought at City 0. currentMoves are already in `_staged`.
+                        // staged/gated pool (gold AND Heart-Scale paths read it), so the handler
+                        // can never accept a move the gate hides. Built from `_staged` (gated),
+                        // NOT the full pool. currentMoves are already in `_staged`.
                         const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
                         _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
                         _txMoveTier1Cache.set(ti, _t1);
@@ -59580,7 +59593,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                const moveCost = _moveCostForStage();
+                // Price by the MOVE's tier (Natural 1000 / Learnt 2500 / Awakened 5000),
+                // exactly as the confirm bar displays it. Calling _moveCostForStage() with
+                // no tag falls back to the per-STAGE price (Guru = 5000 flat), which made
+                // the charge diverge from the shown price (bug: shows 2500, charges 5000).
+                const _moveTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
+                const moveCost = _moveCostForStage(_moveTag === 'unknown' ? null : _moveTag);
                 if (sm.gold < moveCost) return;
                 const moves = mon.build.m || (mon.build.m = []);
                 const currentMoves = moves.map(m => m.split('/')[0]);
@@ -59815,9 +59833,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isAppend = moveSlot >= moves.length;
                 if (isAppend && moves.length >= 4) return false;
                 const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
+                // "Saves" = the per-move-tier gold cost a Heart Scale waives (matches the
+                // confirm bar + tutorChangeMove), not the per-stage fallback.
+                const _vTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
+                const _vSaved = _moveCostForStage(_vTag === 'unknown' ? null : _vTag).toLocaleString();
                 const prompt = isAppend
-                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
-                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
                 if (!await _storyConfirmTutorChange(prompt, 0)) return false;
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
