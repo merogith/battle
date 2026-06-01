@@ -54638,11 +54638,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function continuePostGame() {
             document.querySelectorAll('.story-hof-gb-overlay').forEach(el => { try { el.remove(); } catch (e) {} });
             window._storyHofToken = (window._storyHofToken || 0) + 1;
-            _bossArcEnsureState();
             // First post-HoF re-entry routes the player through row 67 (Mystery Figure)
             // as the one-time climax fight before the post-game hub opens. After that
             // fight resolves we come back here with the climax flag set and fall
-            // through to the Master Ball / bossArc / lastCity flow below.
+            // through to the lastCity flow below.
             if (!sm.postHofMysteryClimaxDone) {
                 const mysteryIdx = STORY_EVENTS_RAW.findIndex(function (r) {
                     return r && r[1] === 'Battle' && String(r[2] || '') === 'Mystery Figure';
@@ -54661,15 +54660,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // post-game still opens cleanly.
                 sm.postHofMysteryClimaxDone = true;
             }
-            // First-clear gift: hand the player the Master Ball and unlock the boss-arc leads.
-            if (!sm.bossArc.available) {
-                sm.bossArc.available = true;
-                if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
-                sm.balls.master = (sm.balls.master | 0) + 1;
-                try { window.showGameAlert && window.showGameAlert('The Underground broker hands you a Master Ball.\n\n"Specimen 0001 has been held for decades. Visit the brokers in Cities 2, 5, and 8 to find it."\n\n🟣 Master Ball added to your inventory.'); } catch (e) {}
-            }
-            // Return to the last visited city. The boss arc is the canonical post-game beat,
-            // triggered from the Underground from here on.
+            // Return to the last visited city — the post-game hub (Crucible / Frontier /
+            // Mystery Figure rematch) is reachable from any city you've visited.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
             sm.eventIndex = lastCityEv;
             save();
@@ -54680,7 +54672,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // we fall straight through to the orientation tip.
             const _showOrientationTipThenCity = function () {
                 try { _storyShowOneTimeTip('postHof',
-                    'The wall is yours. The road keeps going.\n\nThree doors open after the Hall of Fame, and all three reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🔮 The Caged God — three leads, hidden in the Pokémon Centers of Cities 2, 5, and 8. Find all three, then walk into the Cage.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
+                    'The wall is yours. The road keeps going.\n\nTwo doors open after the Hall of Fame, and both reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
                 enterCity();
             };
             try {
