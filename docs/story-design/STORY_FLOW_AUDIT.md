@@ -200,3 +200,44 @@ migration (pasteur)**; story-timeline + prose are pasteur's lane — I'll do the
 4. **Salvage dead-variant prose?** — deferred to the P3 deletion step (decide per-scene then).
 
 Build proceeds **P0 → P1** now; before/after flow trace shown at each phase.
+
+---
+
+## 7. Expanded scope + target navigation model (maintainer direction, this session)
+
+The single engine owns **the whole between-fight layer**, not just story beats. New
+requirements and the principle behind them:
+
+### 7a. Node-based navigable flow — replaces the forward-only timeline + "die-to-return"
+- The stretch between two cities becomes an ordered list of **pitstop NODES**:
+  trainer fight · wild encounter · story scene · (optional) rest/branch.
+- The player can **CONTINUE forward or GO BACK to the previous city** (heal, shop,
+  restock) as an explicit choice — *not* "lose a battle to get sent back." Today the
+  only way back is to white out, which reads as weird/confusing. **(bug → fix)**
+- **Story points attach to ANY node**, not only battle rows ("story points anywhere").
+- **More pitstops can be inserted** between fights (wild encounters + story events as
+  first-class nodes) to pace and optimize the route.
+
+### 7b. Isolation principle — "everything happening is on its own"
+- Each node is **fully self-contained**. Entering a fight builds fresh battle state;
+  leaving it tears that state down. Nothing persists across nodes except the player's
+  **party · inventory · flow position**.
+- One explicit **reset boundary** between nodes clears: boss/raid mechanics, battle
+  log, weather/terrain/hazards, volatile status, stat stages, RNG sub-state.
+  *(The engine specialist is confirming the current bleed — maintainer reports boss/raid
+  mechanics and battle logs continue into the next fight.)* **(bug → fix)**
+
+### 7c. One of each — collapse the duplicates
+| Concern | Today | Target |
+|---|---|---|
+| Dispatch | 17 functions, 2 eras | **one** node resolver |
+| Dedup | 10 maps | **one** `flowSeen` ledger |
+| Notifications | 2–3 systems | **one** notification surface |
+| Rewards | several grant paths + popups | **one** reward presenter |
+| Intros | cold-open + beat-scene + VS-intro + double tutorial | **one** intro per encounter |
+
+### 7d. Current-state catalog (in progress)
+Two specialists are cataloging the exact current duplications (intro / notification /
+reward systems), the between-battle state-bleed, and the loss-routing, so each
+"collapse to one" has a precise **from → to**. Their findings merge into §3/§4 here,
+then feed the P2′/P4 build.
