@@ -58,8 +58,7 @@ their indices, contents, and grade weights.
 and the next event is a Battle in a different city, the engine pauses, runs a
 wild-encounter screen, then advances to the next Battle row.
 
-Implementation strategy = strategy A from
-`docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §5`:
+Implementation strategy — the save/restore-wrapped wild-encounter interrupt:
 
 - Save the story state on entry.
 - Run the wild-encounter screen as a save/restore-wrapped interrupt.
@@ -330,8 +329,7 @@ Net effect: hardcore stops being selectable; existing hardcore saves migrate to 
 
 ## 12. Party-size as difficulty signal (M0)
 
-Per the prior audit's "single most important rule"
-(`docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §8`), every place that keys
+**Single most important rule** — every place that keys
 difficulty off `sm.team.length` must move to `sm.badges` (the monotonic
 progression clock the player can't undo) so depositing a mon to PC can't
 re-introduce easier grade rolls mid-game.
