@@ -55792,9 +55792,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
             },
             sort: {
-                moves: 'recommended',
-                items: 'recommended',
-                abilities: 'recommended',
+                // Default to honest "By usage %" so the grid order matches the % badge
+                // on every card. The contextual/stat-aware picks live in the "Best
+                // picks" panel above the grid; the grid itself just tells the truth
+                // about popularity. (natures render as a matrix — no list sort.)
+                moves: 'usage',
+                items: 'usage',
+                abilities: 'usage',
                 natures: 'recommended',
             },
         };
@@ -55804,7 +55808,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'items') _txState.filter.itemCat = 'all';
             if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
             _txState.filter.recOnly[kind] = true;
-            _txState.sort[kind] = 'recommended';
+            _txState.sort[kind] = 'usage';
         }
         const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
         const _TX_ALL_CATS  = ["Physical","Special","Status"];
@@ -56568,15 +56572,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Sort comparator factory
         function _txMoveCmp(sortKey, mon, build, monName) {
+            // Usage % is the universal tiebreak so equal-power moves surface
+            // most-used-first instead of drifting alphabetical. (Type / Accuracy
+            // sorts were removed: Accuracy collapsed to A→Z — ~40 moves share 100% —
+            // and Type was an arbitrary alphabetical-by-type grouping.)
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).moves.pctOf; } catch (e) { return new Map(); } })();
+            const tie = (a, b) => ((pctOf.get(b) || 0) - (pctOf.get(a) || 0)) || a.localeCompare(b);
             return (a, b) => {
                 const ma = movesDB[a], mb = movesDB[b];
                 if (!ma && !mb) return a.localeCompare(b);
                 if (!ma) return 1; if (!mb) return -1;
                 if (sortKey === 'name')  return a.localeCompare(b);
-                if (sortKey === 'type')  return (ma.type || '').localeCompare(mb.type || '') || a.localeCompare(b);
-                if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || a.localeCompare(b);
-                if (sortKey === 'acc')   return (mb.acc|0) - (ma.acc|0) || a.localeCompare(b);
-                return _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName) || a.localeCompare(b);
+                if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || tie(a, b);
+                return _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName) || tie(a, b);
             };
         }
 
@@ -56616,13 +56624,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _txBlend(heur, pop);
         }
         function _txItemCmp(sortKey, mon, build, monName) {
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).items.pctOf; } catch (e) { return new Map(); } })();
+            const tie = (a, b) => ((pctOf.get(b) || 0) - (pctOf.get(a) || 0)) || a.localeCompare(b);
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
                 if (sortKey === 'category') {
                     const ca = _txItemCategory(a), cb = _txItemCategory(b);
-                    return ca.localeCompare(cb) || a.localeCompare(b);
+                    return ca.localeCompare(cb) || tie(a, b);
                 }
-                return _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName) || a.localeCompare(b);
+                return _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName) || tie(a, b);
             };
         }
 
@@ -56695,9 +56705,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _txBlend(heur, pop);
         }
         function _txAbilityCmp(sortKey, mon, build, monName) {
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).abilities.pctOf; } catch (e) { return new Map(); } })();
+            const tie = (a, b) => ((pctOf.get(b) || 0) - (pctOf.get(a) || 0)) || a.localeCompare(b);
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
-                return _txScoreAbility(b, mon, build, monName) - _txScoreAbility(a, mon, build, monName) || a.localeCompare(b);
+                return _txScoreAbility(b, mon, build, monName) - _txScoreAbility(a, mon, build, monName) || tie(a, b);
             };
         }
 
@@ -57621,7 +57633,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // overridden silently. The selector reappears the moment the
             // player taps "Show all".
             const recOnly = _txState.filter.recOnly && _txState.filter.recOnly[kind];
-            const showSort = !recOnly;
+            // Show the sort selector whenever the list is un-curated — including sparse
+            // species, where ★ has no usage data to filter on (it sits out), so the
+            // player should still be able to sort the full list.
+            const showSort = !recOnly || !!opts.sparse;
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
                 : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
@@ -58208,20 +58223,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // re-uses the values). The comparator drops to a single Map.get per
             // pair — N=200 cards now does ~3000 cache lookups instead of ~6000
             // heuristic + popularity recomputes.
-            if (recOnly && sortKey === 'recommended') {
+            // The ★ Recommended view (always) and the explicit "By usage %" sort share
+            // ONE honest order: usage % descending — so the grid matches the % badge on
+            // every card — with a fit-score SECONDARY key so 0%-usage and sparse-species
+            // moves stay quality-ordered instead of collapsing to alphabetical. This also
+            // makes the locked "↓ by usage" label truthful in the ★ view (it previously
+            // claimed usage while sorting by fit-score). Scores are precomputed once
+            // (decorate-sort-undecorate + per-render memo) so the comparator is cheap.
+            if (recOnly || sortKey === 'usage') {
+                const scoreOf = new Map();
+                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
+                filt.sort((a, b) => ((pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0))
+                    || (scoreOf.get(b) - scoreOf.get(a))
+                    || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
+                // Opt-in "Best for this mon" (Show-all only) — fit-score first, usage as
+                // the tiebreak. Surfaces stat-appropriate picks over raw popularity.
                 const scoreOf = new Map();
                 for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0)
                     || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
-            } else if (sortKey === 'usage') {
-                // Phase 5 — explicit Smogon-usage sort. Pulls straight from
-                // pool.moves.pctOf so the order matches the % chips on cards.
-                filt.sort((a, b) => (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -58237,18 +58259,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            if (recOnly && sortKey === 'recommended') {
+            // ★ view + explicit usage share one honest order: usage % desc, fit-score
+            // tiebreak (keeps sparse / 0%-usage items quality-ordered, not alphabetical).
+            if (recOnly || sortKey === 'usage') {
+                const scoreOf = new Map();
+                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+                filt.sort((a, b) => ((pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0))
+                    || (scoreOf.get(b) - scoreOf.get(a))
+                    || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
                 const scoreOf = new Map();
                 for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
                     || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
-            } else if (sortKey === 'usage') {
-                filt.sort((a, b) => (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -58264,13 +58288,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (recOnly && !pool.abilities.inPool.has(a) && !(extraStarred && extraStarred.has(a))) return false;
                 return !q || a.toLowerCase().includes(q);
             });
-            if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
-            else if (sortKey === 'recommended') {
+            // ★ view + explicit usage: usage % desc with a fit-score tiebreak. The shared
+            // helper already accepts a scoreFn — pass it so sparse / 0%-usage abilities
+            // stay quality-ordered instead of alphabetical.
+            if (recOnly || sortKey === 'usage') {
+                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf,
+                    a => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility)));
+            } else if (sortKey === 'recommended') {
                 const scoreOf = new Map();
                 for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
-            } else if (sortKey === 'usage') {
-                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
+                    || (pool.abilities.pctOf.get(b) || 0) - (pool.abilities.pctOf.get(a) || 0)
+                    || a.localeCompare(b));
             } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -58455,14 +58484,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
                 count: filtered.length,
                 countLabel: 'moves',
+                sparse: sPool.sparse,
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
                 chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
                 sortOptions: [
-                    { value:'recommended', label:'Best for this mon' },
                     { value:'usage', label:'By usage %' },
+                    { value:'recommended', label:'Best for this mon' },
                     { value:'power', label:'Power' },
-                    { value:'acc',   label:'Accuracy' },
-                    { value:'type',  label:'Type' },
                     { value:'name',  label:'Name (A→Z)' },
                 ],
             });
@@ -58585,11 +58613,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const toolbar = _txToolbarHtml('items', {
                     placeholder: 'Search items (e.g. leftovers, choice, sash)',
                     count: filtItems.length, countLabel: 'items',
+                    sparse: sPool.sparse,
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
                     sortOptions: [
-                        { value:'recommended', label:'Best for this mon' },
                         { value:'usage', label:'By usage %' },
+                        { value:'recommended', label:'Best for this mon' },
                         { value:'category', label:'Category' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
@@ -58631,10 +58660,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const toolbar = _txToolbarHtml('abilities', {
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
+                    sparse: sPool.sparse,
                     leadingChipsHtml: _txRecChipHtml('abilities', t.name),
                     sortOptions: [
-                        { value:'recommended', label:'Best for this mon' },
                         { value:'usage', label:'By usage %' },
+                        { value:'recommended', label:'Best for this mon' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
@@ -58811,7 +58841,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // always leads with the curated Smogon-usable pool.
             _txState.filter.recOnly.moves = true; _txState.filter.recOnly.items = true;
             _txState.filter.recOnly.abilities = true; _txState.filter.recOnly.natures = true;
-            _txState.sort.moves = 'recommended'; _txState.sort.items = 'recommended'; _txState.sort.abilities = 'recommended'; _txState.sort.natures = 'recommended';
+            _txState.sort.moves = 'usage'; _txState.sort.items = 'usage'; _txState.sort.abilities = 'usage'; _txState.sort.natures = 'recommended';
             _txPending = null;
             _txMovePoolCache.clear();
             _applyStoryTutorHeader();
