@@ -3,10 +3,12 @@
 // Phase 0: the Natural/Learnt classification is served from the precomputed
 //   data/move-tags.json index (offline-safe), so the gate no longer silently
 //   no-ops without a CDN.
-// Phase 1: the gate is the single move-pacing authority, keyed on tutor stage:
-//   stage 0 (Inner, C0–C3): Natural-tag only, BP ≤ 75.
-//   stage 1 (Expert, C4–C6): Natural + Learnt, no BP cap.
-//   stage 2 (Guru,  C7+):    no gate.
+// Phase 1: the gate is the single move-pacing authority, keyed on tutor stage
+// (user model — TMs/tutor moves unlock only at Guru). Thresholds tutor:[0,2,5]:
+//   stage 0 (Inner,  C0–C1): Natural-tag only, BP ≤ 75.
+//   stage 1 (Expert, C2–C4): ALL Natural (BP cap lifts; still NO Learnt/TM).
+//   stage 2 (Guru,   C5+):   no gate (Natural + Learnt + Awakened).
+// NB: tests resolve cities via cityAtTutorStage() so they survive threshold tuning.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -21,6 +23,12 @@ function cityRowIdx(targetCity) {
     try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {}
     if (c === targetCity) return ei;
   }
+  return 0;
+}
+// Resolve a city that sits at the given tutor stage (0/1/2), so tests don't hardcode
+// city numbers against the NPC_STAGE_CITY.tutor thresholds (which the user tunes).
+function cityAtTutorStage(stage) {
+  for (let c = 0; c <= 12; c++) { if ((ST.npcStageForCity('tutor', c) | 0) === stage) return c; }
   return 0;
 }
 function primeStory() {
@@ -53,31 +61,38 @@ test('Phase 1: BP-cap table — 75 at stage 0, none after', () => {
   assert.equal(ST.storyMoveBpCapForStage(2), Infinity, 'stage 2 uncapped');
 });
 
-test('Phase 1: stage 0 (C0–3) = Natural only AND BP ≤ 75', async () => {
+test('Phase 1: stage 0 (Inner) = Natural only AND BP ≤ 75', async () => {
   primeStory();
   // Outrage(120,nat) Dragon Claw(80,nat) are Natural but ABOVE the 75 cap → stripped.
   const team = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(2));
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(0)));
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.ok(tag === 'natural' || tag === 'unknown', `C2 kept "${m}" must be Natural (was ${tag})`);
-    assert.ok(bp(m) <= 75, `C2 kept "${m}" must be ≤75 BP (was ${bp(m)})`);
+    assert.ok(tag === 'natural' || tag === 'unknown', `Inner kept "${m}" must be Natural (was ${tag})`);
+    assert.ok(bp(m) <= 75, `Inner kept "${m}" must be ≤75 BP (was ${bp(m)})`);
   }
   assert.equal(team[0].build.m.length, 4, 'still a full 4-move set after coherent backfill');
 });
 
-test('Phase 1: stage 1 (C4–6) allows Learnt and removes the BP cap', async () => {
+test('Phase 1: stage 1 (Expert) = ALL Natural, NO Learnt, no BP cap', async () => {
   primeStory();
+  // Outrage(120) + Dragon Claw(80) are high-BP Natural → KEPT (cap lifts at Expert).
+  // Earthquake + Stone Edge are TMs (Learnt) → STRIPPED (Learnt unlocks only at Guru).
   const team = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(5));
-  // All four are Natural or Learnt, so at C5 the whole set survives (no cap).
-  assert.deepEqual(team[0].build.m, ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'], 'C5 keeps Learnt + high-BP moves');
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(1)));
+  const kept = team[0].build.m;
+  assert.ok(kept.includes('Outrage'), 'Expert keeps high-BP Natural (Outrage 120) — cap is lifted');
+  for (const m of kept) {
+    const tag = ST.moveTagForSpecies('Garchomp', m);
+    assert.notEqual(tag, 'learnt', `Expert must NOT keep a Learnt/TM move ("${m}")`);
+  }
+  assert.ok(!kept.includes('Earthquake') && !kept.includes('Stone Edge'), 'Expert strips TMs (Earthquake/Stone Edge)');
 });
 
-test('Phase 1: stage 2 (C7+) leaves moves untouched', async () => {
+test('Phase 1: stage 2 (Guru) leaves moves untouched', async () => {
   primeStory();
   const team = [{ name: 'Garchomp', build: { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance'] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(7));
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(2)));
   assert.deepEqual(team[0].build.m, ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance']);
 });
 
@@ -92,10 +107,10 @@ test('Phase 1: _storyApplyMoveStageToBuild is the shared helper (direct)', async
 
 test('Phase 4: coherent downgrade keeps the build on-identity (STAB attacker)', async () => {
   primeStory();
-  // Garchomp = Dragon/Ground, physical. A downgraded C2 build should lead with its
-  // own STAB attacks (not generic Tackle / off-stat special moves).
+  // Garchomp = Dragon/Ground, physical. A downgraded Inner build (BP cap + Learnt
+  // stripped) should lead with its own STAB attacks (not generic filler / off-stat).
   const team = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Swords Dance'] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(2));
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(0)));
   const types = team[0].build.m.map(m => { const md = ST.ensureMoveData(m); return md ? md.type : '?'; });
   const stab = types.filter(t => t === 'Dragon' || t === 'Ground').length;
   assert.ok(stab >= 1, `coherent downgrade keeps ≥1 STAB move (got types ${types.join(',')})`);
@@ -109,4 +124,19 @@ test('Phase 4: coherent ranker orders STAB damage above utility', async () => {
   await ST.tutorFetchLearnsetMoveNames('Garchomp');
   const ranked = ST.storyCoherentMoveRanker(['Sandstorm', 'Dragon Claw', 'Sand Tomb'], 'Garchomp');
   assert.notEqual(ranked[0], 'Sandstorm', 'a STAB attack outranks a weather utility move');
+});
+
+test('E1: degenerate ceiling fallback never empties the set, picks lowest BP', async () => {
+  primeStory();
+  // Beldum at stage 0 (Inner): its ONLY Natural move is Take Down (90 BP), which is
+  // above the stage-0 cap (75). With NO ≤cap option in the allowed pool, the fallback
+  // must still yield a move (the lowest-BP one) — not crash or leave an empty moveset.
+  const learn = await ST.tutorFetchLearnsetMoveNames('Beldum'); // warm _tutorLearnsetCache
+  assert.ok(learn.natural.length, 'precondition: Beldum has ≥1 Natural move');
+  const build = { m: ['Flash Cannon', 'Meteor Mash', 'Bullet Punch', 'Zen Headbutt'] };
+  const changed = ST.storyApplyMoveStageToBuild(build, 'Beldum', 0, ST.storyCoherentMoveRanker);
+  assert.equal(changed, true, 'build changed — all originals were off-ceiling');
+  assert.ok(build.m.length >= 1, 'fallback always yields at least one move (never empty)');
+  const minNatBp = Math.min(...learn.natural.map(bp));
+  assert.equal(bp(build.m[0].split('/')[0]), minNatBp, 'fallback picks the lowest-BP Natural move');
 });
