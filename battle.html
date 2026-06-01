@@ -56043,22 +56043,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
         // Sorted [{name, count, pct}] cached on the stats object. `count` is the
-        // recency-weighted occurrence count; `pct` is the RELATIVE FREQUENCY —
-        // this option's count over the summed count of all options of this
-        // kind. So the values for one attribute sum to ~100%: a mon's moves
-        // read as "share of its meta's move-slots" (Charizard's 18 builds →
-        // ~72 move-slots → each move = its count / 72), and items / abilities /
-        // natures (one per build) likewise sum to 100%. Sort order is unchanged
-        // since it keys on raw count.
+        // recency-weighted occurrence count. `pct` is "% of BUILDS that run this option":
+        //   • moves — count / total builds. A build runs ~4 moves, so move %s do NOT sum
+        //     to 100 — each is read on its own (Earthquake ~95%). This is the intuitive,
+        //     Smogon-style usage players expect, not a slot-share (which read ~19% for a
+        //     near-universal move). Safe to change: moves use a count-ranked cap pool, so
+        //     pct is display-only here.
+        //   • items / abilities / natures — one per build, so count / Σ(this kind's counts)
+        //     already equals "% of builds" and the values sum to ~100%.
+        // Sort order is unchanged (it keys on raw count).
         function _txMetaSorted(stats, kind) {
             if (!stats || !stats[kind]) return [];
             if (!stats._sorted) stats._sorted = {};
             if (stats._sorted[kind]) return stats._sorted[kind];
-            let freqTotal = 0;
-            for (const c of stats[kind].values()) freqTotal += c;
-            if (freqTotal <= 0) freqTotal = 1;
+            let denom;
+            if (kind === 'moves') {
+                denom = stats.weightedTotal || stats.total || 1;
+            } else {
+                denom = 0;
+                for (const c of stats[kind].values()) denom += c;
+                if (denom <= 0) denom = 1;
+            }
             const arr = [...stats[kind].entries()]
-                .map(([name, count]) => ({ name, count, pct: (count / freqTotal) * 100 }))
+                .map(([name, count]) => ({ name, count, pct: (count / denom) * 100 }))
                 .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
             stats._sorted[kind] = arr;
             return arr;

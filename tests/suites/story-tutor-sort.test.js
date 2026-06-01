@@ -64,6 +64,9 @@ test('default ★ grid is ordered by usage % — matches the badge on every card
   }
   // The single most-used move should be first (Earthquake for Garchomp).
   assert.equal(moveNamesInGrid()[0], 'Earthquake', 'highest-usage move leads the grid');
+  // The badge is now "% of builds that run the move" — a staple reads high (Earthquake
+  // is on ~every Garchomp set), not a slot-share (which capped a top move near ~19%).
+  assert.ok(pcts[0] >= 40, `staple move reads as % of builds (got ${pcts[0]}%), not a slot-share`);
 });
 
 test('Type and Accuracy sorts are gone; "By usage %" leads the menu', async () => {
