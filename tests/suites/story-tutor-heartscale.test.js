@@ -29,7 +29,11 @@ function primeAtCity(city, scales) {
 
 test('Heart Scale no longer unlocks the full pool at Inner Strength (C0)', async () => {
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  if (!ls.natural.length || !ls.learnt.length) return; // thin-dex guard
+  // Precondition (M1): fail LOUDLY if the learnset is thin — a silent `return` here
+  // would let this Bug-B regression test pass vacuously if the offline index failed
+  // to load. With data/move-tags.json present, Garchomp always has natural+learnt.
+  assert.ok(ls.natural.length && ls.learnt.length,
+    'precondition: Garchomp learnset is populated (offline index loaded)');
   const nat = ls.natural[0];
   const lrn = ls.learnt[0];
 
@@ -48,11 +52,30 @@ test('Heart Scale no longer unlocks the full pool at Inner Strength (C0)', async
 
 test('Heart Scale within stage: Expert (C4) shows Learnt with or without a scale', async () => {
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  if (!ls.learnt.length || !ls.awakened.length) return;
+  assert.ok(ls.learnt.length && ls.awakened.length,
+    'precondition: Garchomp has learnt + awakened moves (offline index loaded)');
   const lrn = ls.learnt[0];
   const awk = ls.awakened[0];
   primeAtCity(4, 3);
   const pool = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(pool.has(lrn), 'C4 shows Learnt (in-stage — a scale could waive its cost)');
   assert.ok(!pool.has(awk), 'C4 with a scale still hides Awakened (no bypass to Guru tier)');
+});
+
+// T1 (fail-safe): the teachable acceptance set (_txMoveTier1Cache) is filled by the
+// async tutor render. If a teach is attempted before it resolves (or after a fetch
+// error), the gate must REJECT, never fall open — otherwise an off-stage move could
+// be bought during the render window. Below Guru, a cold cache rejects ALL teaches,
+// even an in-stage Natural move (the render simply isn't ready yet).
+test('T1: a cold move-acceptance cache fails SAFE — no teach slips through', { timeout: 8000 }, async () => {
+  primeAtCity(0, 0); // C0 = Inner (tutor stage 0 < 2)
+  ST.sm.gold = 99999; // ensure the GATE, not the gold check, is what blocks
+  ST.sm.team = [{ name: 'Garchomp', build: { m: ['Dragon Claw', 'Dragon Tail'] } }];
+  // 'Outrage' is a Natural move for Garchomp → normally teachable at C0. With the
+  // acceptance cache cold, even this allowed move must be rejected (fail safe).
+  ST.txClearMoveAcceptance();
+  const before = ST.sm.team[0].build.m.slice();
+  await eng.window.StoryMode.tutorChangeMove(0, before.length, 'Outrage');
+  assert.deepEqual(ST.sm.team[0].build.m, before,
+    'cold acceptance cache must reject the teach (fail safe), leaving the moveset unchanged');
 });

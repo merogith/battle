@@ -37899,6 +37899,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
+                    // T1 regression hook: empty the move-acceptance cache to simulate a
+                    // cold/errored render and assert the tutor gate then fails SAFE.
+                    txClearMoveAcceptance: () => _txMoveTier1Cache.clear(),
                     buildPokemon: (...a) => buildPokemon(...a),
                     txStageCountRule: (...a) => _txStageCountRule(...a),
                     // Facilities-before-gym gate + per-fight balance (this PR).
@@ -47210,7 +47213,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof rankFill === 'function') fill = rankFill(fill, monName) || fill;
                 while (kept.length < targetLen && fill.length) kept.push(fill.shift());
             }
-            if (!kept.length) { const f = [...allowed].filter(bpOK); kept.push(f[0] || [...allowed][0]); }
+            if (!kept.length) {
+                // Degenerate: every original move was off-ceiling AND the bp-filtered
+                // backfill is empty — i.e. NO ≤cap move exists in the allowed pool (e.g.
+                // Beldum at stage 0, whose only Natural move is Take Down at 90 BP). Pick
+                // the LOWEST-BP allowed move so the unavoidable over-cap pick is the
+                // smallest one, not an arbitrary Set-order move.
+                const byBp = [...allowed].sort((a, b) => {
+                    const ma = ensureMoveData(baseName(a)), mb = ensureMoveData(baseName(b));
+                    return (((ma && ma.pow) | 0) - ((mb && mb.pow) | 0));
+                });
+                if (byBp.length) kept.push(byBp[0]);
+            }
             build.m = kept;
             return true;
         }
@@ -58893,6 +58907,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _txMoveTier1Cache.set(ti, _t1);
                     } catch (e) {
                         _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
+                        // T1 fail-safe: a failed staged-pool fetch must NOT leave the
+                        // acceptance set undefined (the gate would then fall open). Seed it
+                        // with the mon's CURRENT moves only, so no new/unverified move is
+                        // teachable until a later render succeeds.
+                        try {
+                            const _cm = (sm.team[ti] && sm.team[ti].build && sm.team[ti].build.m) || [];
+                            _txMoveTier1Cache.set(ti, new Set(_cm.map(m => String(m).split('/')[0])));
+                        } catch (_e2) { _txMoveTier1Cache.set(ti, new Set()); }
                     }
                 }
             }
@@ -58964,8 +58986,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the separate voucher button). The full pool unlocks at Guru (C7+).
             if (_npcStage('tutor') < 2) {
                 const _t1 = _txMoveTier1Cache.get(teamIdx);
-                if (_t1 && !_t1.has(String(newMove).split('/')[0])) {
-                    try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current lesson tier. The tutor opens more of its book as it levels up — Expert teaches TMs, Guru teaches everything.'); } catch (e) {}
+                // Fail SAFE: an unpopulated acceptance set (cold/errored render, or the
+                // async render window) must REJECT, never fall open — otherwise an
+                // off-stage move could slip through before the staged pool resolves.
+                // (voucherOk already fails safe; this matches it.)
+                if (!_t1 || !_t1.has(String(newMove).split('/')[0])) {
+                    if (_t1) { try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current lesson tier. The tutor opens more of its book as it levels up — Expert teaches TMs, Guru teaches everything.'); } catch (e) {} }
                     return;
                 }
             }
@@ -59194,8 +59220,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // gold path (the staged acceptance set is the single source of truth).
                 if (_npcStage('tutor') < 2) {
                     const _t1 = _txMoveTier1Cache.get(teamIdx);
-                    if (_t1 && !_t1.has(String(newMove).split('/')[0])) {
-                        try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current tier — a Heart Scale only waives the cost of a move you could already learn here.'); } catch (e) {}
+                    // Fail SAFE like the gold path: a cold/undefined acceptance set must
+                    // reject (and NOT consume the voucher), never fall open.
+                    if (!_t1 || !_t1.has(String(newMove).split('/')[0])) {
+                        if (_t1) { try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current tier — a Heart Scale only waives the cost of a move you could already learn here.'); } catch (e) {} }
                         return false;
                     }
                 }

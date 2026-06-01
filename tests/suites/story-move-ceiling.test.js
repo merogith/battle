@@ -110,3 +110,18 @@ test('Phase 4: coherent ranker orders STAB damage above utility', async () => {
   const ranked = ST.storyCoherentMoveRanker(['Sandstorm', 'Dragon Claw', 'Sand Tomb'], 'Garchomp');
   assert.notEqual(ranked[0], 'Sandstorm', 'a STAB attack outranks a weather utility move');
 });
+
+test('E1: degenerate ceiling fallback never empties the set, picks lowest BP', async () => {
+  primeStory();
+  // Beldum at stage 0 (Inner): its ONLY Natural move is Take Down (90 BP), which is
+  // above the stage-0 cap (75). With NO ≤cap option in the allowed pool, the fallback
+  // must still yield a move (the lowest-BP one) — not crash or leave an empty moveset.
+  const learn = await ST.tutorFetchLearnsetMoveNames('Beldum'); // warm _tutorLearnsetCache
+  assert.ok(learn.natural.length, 'precondition: Beldum has ≥1 Natural move');
+  const build = { m: ['Flash Cannon', 'Meteor Mash', 'Bullet Punch', 'Zen Headbutt'] };
+  const changed = ST.storyApplyMoveStageToBuild(build, 'Beldum', 0, ST.storyCoherentMoveRanker);
+  assert.equal(changed, true, 'build changed — all originals were off-ceiling');
+  assert.ok(build.m.length >= 1, 'fallback always yields at least one move (never empty)');
+  const minNatBp = Math.min(...learn.natural.map(bp));
+  assert.equal(bp(build.m[0].split('/')[0]), minNatBp, 'fallback picks the lowest-BP Natural move');
+});
