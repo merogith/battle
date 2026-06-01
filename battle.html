@@ -1669,6 +1669,15 @@
             box-shadow: inset 3px 0 0 var(--accent);
         }
         .tx-rec-row[data-disabled="1"] { opacity: 0.45; cursor: not-allowed; }
+        /* Equipped recommendation: a "satisfied" state (green ✓), NOT greyed-out —
+           the player already runs this pick, so it reads as done, not unavailable. */
+        .tx-rec-row--equipped[data-disabled="1"] { opacity: 1; cursor: default; }
+        .tx-rec-row--equipped .tx-rec-name { color: #aed581; }
+        .tx-rec-equipped {
+            display: inline-flex; align-items: center; gap: 3px;
+            font-size: 10px; font-weight: 700; color: #aed581; white-space: nowrap;
+        }
+        .tx-rec-equipped svg { width: 12px; height: 12px; }
         .tx-rec-tag {
             display: inline-flex; align-items: center; justify-content: center;
             padding: 3px 6px; font-size: 9px; font-weight: 800;
@@ -57224,14 +57233,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const worst = _dojoWorstWeakness(types[0], types[1]);
             const sustainItem = isPoison ? 'Black Sludge' : 'Leftovers';
 
+            // INCLUDE the currently-held item (don't filter it out): the panel shows the
+            // ideal item per role and marks the one you already hold ✓, so it's a STABLE
+            // recommendation rather than a moving target that drops your current item and
+            // points at a worse alternative for that role.
             const curItem = (build && build.i) || '(none)';
-            const have = new Set(availItems.filter(it => it !== curItem));
+            const have = new Set(availItems);
             const used = new Set();
             const out = [];
             const pick = (...cands) => cands.flat().find(it => it && have.has(it) && !used.has(it)) || null;
             const add = (purpose, item, reason) => {
                 if (!item || used.has(item)) return false;
-                used.add(item); out.push({ purpose, item, reason }); return true;
+                used.add(item); out.push({ purpose, item, reason, equipped: item === curItem }); return true;
             };
 
             // 1) PRIMARY — the headline item by archetype.
@@ -58567,17 +58580,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!entries || !entries.length) return '';
             const rows = entries.map(e => {
                 const isPending = pendingValue === e.value;
+                // Already-equipped picks are MARKED (not hidden), so the recommendation
+                // is STABLE: the panel shows the ideal set and tells the player which
+                // picks they already run, instead of dropping the equipped pick and
+                // surfacing a worse alternative (a confusing moving target — the moment
+                // you swap to the "recommendation", the panel flips to recommend the
+                // move/item you just gave up). Equipped rows are inert (✓ instead of ›).
+                const isEquipped = !!e.equipped;
                 const tagHtml = `<span class="tx-rec-tag" data-purpose="${_esc(e.purpose)}">${_esc(e.purpose)}</span>`;
-                return `<button type="button" class="tx-rec-row"
+                const goHtml = isEquipped
+                    ? `<span class="tx-rec-equipped">${window.uiSvgCheck ? window.uiSvgCheck() : '✓'} Equipped</span>`
+                    : `<span class="tx-rec-go" aria-hidden="true">›</span>`;
+                return `<button type="button" class="tx-rec-row${isEquipped ? ' tx-rec-row--equipped' : ''}"
                             data-card-kind="${_esc(e.kind)}" data-card-value="${_esc(e.value)}"
-                            data-pending="${isPending?1:0}"
-                            aria-label="${_esc(e.purpose)}: ${_esc(e.value)}">
+                            data-pending="${isPending?1:0}" data-disabled="${isEquipped?1:0}"
+                            aria-label="${_esc(e.purpose)}: ${_esc(e.value)}${isEquipped ? ' (already equipped)' : ''}">
                     ${tagHtml}
                     <span class="tx-rec-body">
                         <span class="tx-rec-name">${_esc(e.value)}${e.extraHtml || ''}</span>
                         <span class="tx-rec-reason">${_esc(e.reason)}</span>
                     </span>
-                    <span class="tx-rec-go" aria-hidden="true">›</span>
+                    ${goHtml}
                 </button>`;
             }).join('');
             const hintHtml = hint ? `<span class="tx-recs-panel-hint">${_esc(hint)}</span>` : '';
@@ -58978,21 +59001,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const searchingMoves = !!(_txState.search && _txState.search.moves);
                 if (!sPool.sparse && _txState.filter.recOnly.moves && !searchingMoves) {
-                    // Exclude already-equipped moves (the panel reads as "what to ADD"),
-                    // AND restrict to the TEACHABLE acceptance set — the grid now renders
-                    // the full pool (off-stage moves shown locked), so without this filter
-                    // the suggester would recommend a balanced set the player can't learn
-                    // yet at this tutor tier. Suggest only moves teachable right now.
+                    // Restrict to the TEACHABLE acceptance set (the grid renders the full
+                    // pool with off-stage moves locked, so without this the suggester would
+                    // recommend moves the player can't learn at this tier). We INCLUDE
+                    // already-equipped moves and mark them — the recommendation is the ideal
+                    // STABLE set, with the picks you already run flagged ✓, instead of a
+                    // moving target that drops your best move and surfaces a worse one.
                     const _accept = ctx.acceptSet;
                     const recPool = mergedMoves.filter(m => {
                         const base = String(m).split('/')[0];
-                        return !equippedSet.has(base) && (!_accept || _accept.has(base));
+                        return (!_accept || _accept.has(base));
                     });
                     const recEntries = _txMoveRecsByPurpose(recPool, mon, b, t.name)
-                        .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
+                        .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move',
+                            equipped: equippedSet.has(String(e.move).split('/')[0]) }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
-                            'Tap to preview — the most-used STAB, coverage and status moves for this Pokémon.');
+                            'Your ideal set — ✓ marks moves you already run.');
                     }
                 }
             } catch (e) {}
@@ -59124,10 +59149,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const tierCap = _dojoStage + 1;
                         const unlockedItems = items.filter(it => (typeof _dojoItemTier === 'function' ? _dojoItemTier(it) : 1) <= tierCap);
                         const recEntries = _txItemRecsByPurpose(unlockedItems, mon, b, t.name)
-                            .map(e => ({ purpose: e.purpose, value: e.item, reason: e.reason, kind: 'item' }));
+                            .map(e => ({ purpose: e.purpose, value: e.item, reason: e.reason, kind: 'item', equipped: e.equipped }));
                         if (recEntries.length) {
                             itemRecsPanel = _txRecsPanelHtml('Best items for ' + t.name, recEntries, pendingItem,
-                                'Tap to preview — one held item per Pokémon. Browse the full list below.');
+                                'Your ideal items — ✓ marks the one you already hold.');
                         }
                     }
                 } catch (e) {}
