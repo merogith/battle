@@ -35,7 +35,7 @@ Enemy power curve is fine; do **not** touch enemy stats here.
 | **C1 gym 1** | Professor, Mart, Gym | **+ Move Tutor + Nature Rater** (fix). **+ Evolution Sage L1 — Stage-1 evos** (move earlier; today evo debuts C2). |
 | **C2 gym 2** | Link, Evo Tutor, Stone Shop, Mart, Move Tutor, Gym, (Daycare #42) | **Evolution Sage L2 — Stones** lands here. + Nature Rater (splice). |
 | **C3 gym 3** | + Nature Rater | (tutors already; ensure staged tags) |
-| **C4 gym 4** | + Safari, Battle Dojo, EV Trainer, (Daycare) | Dojo *White→Black Belt* upgrade beat. |
+| **C4 gym 4** | + Safari, Battle Dojo, EV Trainer, (Daycare) | Dojo White Belt (since C2); *White→Black Belt* upgrade beat lands C5. |
 | **C5 gym 5** | + Poké Casino | **Evolution Sage L3 — Stage-2 evos** (one city before enemies field G2 @ Gym6). ← *placement decision* |
 | **C6 gym 6** | Link, Evo, Stone, **Dept Store**, tutors, Dojo, EV, Colress, (Daycare→Fight Club) | Dept Store anchor. (Move Tutor already Guru since C5.) |
 | **C7 gym 7** | + Mart back | — |
@@ -57,7 +57,7 @@ Professor basics-only · tutors always-on (every city) · wilds base-only + risi
 ## F. Staged-NPC capability ladders — SHIPPED (branch `…-NeTyO`, tests in `story-staged-npc.test.js`)
 **Shared mechanic (city-anchored, tunable):** `NPC_STAGE_CITY[key]` = the first city index of each tier (keyed on the *arrived* city, same basis as the evo gate). `_npcStage(key)` / `_npcStageName(key)` resolve the current tier; the city-screen chip **renames** by tier (`Move Tutor — Inner Strength/Expert/Guru`, `Battle Dojo — White/Black Belt · Grandmaster`, `Stone Sage — Awakening/Stones/Ascension`). On first reaching a higher tier (`enterTutor`/`enterEvolutionLab` → `_npcStageUpCheck`), a **one-time intro** fires and the NPC hands over **1 free use** (a voucher), tracked in `sm.npcStageSeen`.
 
-- **Battle Dojo** `[4,6,8]` (cumulative): **abilities** natural → +Hidden (Black Belt) → +Awakened (Grandmaster); **items** berries → +decent → +all. Gated in `_txRenderLoadoutEditor` via `_dojoItemTier` + the Hidden/`_opAbilitiesForMon` city gate. Gifts: Ability Capsule (BB), Ability Capsule + Emblem of Honor (GM).
+- **Battle Dojo** `[2,5,8]` (cumulative): **abilities** natural → +Hidden (Black Belt, C5) → +Awakened (Grandmaster, C8); **items** berries (C2-4) → +decent (C5-7) → +all (C8+). Gated in `_txRenderLoadoutEditor` via `_dojoItemTier` + the Hidden/`_opAbilitiesForMon` city gate. Gifts: Ability Capsule (BB), Ability Capsule + Emblem of Honor (GM).
 - **Move Tutor** `[0,2,5]`: three stages keyed on the move-tag index (`data/move-tags.json`, offline-safe). **Inner Strength** (C0–1) = Natural moves (egg/level-up/transfer/evolution method codes `E`/`L`/`V`), **BP ≤ 75**. **Expert** (C2–4) = ALL Natural (the BP cap lifts; still no TMs). **Guru** (C5+) = + Learnt (TM/HM/TR/tutor/event) + Awakened (off-legal Smogon picks). A **Heart Scale is a free-teach voucher** — it waives the gold cost of an *in-stage* teach but does **NOT** bypass the gate (Bug-B fix). Falls back to the offline index, then the competitive pool, when the dex bundle is unavailable. Gifts: 1 Heart Scale at Expert (C2), 2 at Guru (C5).
 - **Stone Sage** `[2,3,4]`: capability is the player evo-stage cap; the ladder adds the **rename + intro + free Stonewise Token** per tier (Stones, Ascension).
 - **Voucher rule:** vouchers grant full capability regardless of stage (Heart Scale = any move) — per "vouchers can be used for anything."
@@ -74,8 +74,8 @@ Cities are the anchor. **Everyday services** are present in every city from thei
 | C2 | Cable Link · Stone Sage (Awakening) · **Battle Dojo (White Belt)** · **Move Tutor → Expert** | 🛒 Dojo · Tutor |
 | C3 | Stone Merchant | — |
 | C4 | **Department Store** · Stone Sage → Ascension | — |
-| C5 | Safari Zone · Game Corner · **Move Tutor → Guru** | 🛒 Tutor |
-| C6 | Colress · Department Store · **Dojo → Black Belt** | 🛒 Dojo |
+| C5 | Safari Zone · Game Corner · **Move Tutor → Guru** · **Dojo → Black Belt** | 🛒 Tutor · Dojo |
+| C6 | Colress · Department Store | — |
 | C7 | EV Trainer · Game Corner | — |
 | C8 | **Dojo → Grandmaster** | 🛒 Dojo |
 | C9 | League · everything (Dept · Game Corner · Safari · Fight Club · best trainers) | — |
