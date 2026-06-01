@@ -36,7 +36,8 @@ async function waitFor(sel, present = true, tries = 15) {
   for (let i = 0; i < tries; i++) { await sleep(40); if (!!host().querySelector(sel) === present) return; }
 }
 const typeOf = (el) => (el.className.match(/type-([A-Z][a-z]+)/) || [])[1];
-const gridTypes = () => [...new Set([...host().querySelectorAll('.tx-card[data-card-kind="move"] .tx-card-head .type-badge')].map(typeOf).filter(Boolean))].sort();
+// Only VISIBLE cards — the filter fast path keeps removed cards in the DOM as [hidden].
+const gridTypes = () => [...new Set([...host().querySelectorAll('.tx-card[data-card-kind="move"]:not([hidden]) .tx-card-head .type-badge')].map(typeOf).filter(Boolean))].sort();
 
 test('move bar: Type ▾ collapsed by default, no inline type chips, no category row', async () => {
   primeCityTeam(7, GARCHOMP);

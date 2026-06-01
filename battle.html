@@ -57359,6 +57359,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t.classList.contains('tx-sort-select')) {
                     const kind = t.dataset.kind || 'moves';
                     _txState.sort[kind] = t.value || 'recommended';
+                    if (kind === 'moves' && _txMoveGridFastUpdate()) return;
                     void renderTutorTeam(true);
                     return;
                 }
@@ -57555,6 +57556,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (!wasActive) _txState.filter.moveCats.add('Status');
                         }
                     }
+                    if ((kind === 'moveType' || kind === 'quick') && _txMoveGridFastUpdate()) return;
                     void renderTutorTeam(true);
                     return;
                 }
@@ -58408,6 +58410,121 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Render: Move editor (4 slot cards + picker for selected slot)
+        // Shared builder for the move grid's ctx + source — used by BOTH the full editor
+        // render and the partial fast path (_txMoveGridFastUpdate), so a fast-path-built
+        // card is byte-identical to a full-render one. ctx is stable across filter/sort
+        // toggles (it only changes when the build/pending changes, which take the full path).
+        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves) {
+            const sPool = _txStarredPoolMemo(t.name);
+            const equippedSet = new Set(currentMoves);
+            const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
+            const ctx = {
+                pending: (_txPending && _txPending.kind === 'move') ? _txPending.value : null,
+                recommended: sPool.moves.starred,
+                stabTypes: new Set([mon && mon.type1, mon && mon.type2].filter(Boolean)),
+                pctOf: sPool.moves.pctOf,
+                mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
+                equippedSet,
+                slotOf,
+                monName: t.name,
+                tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
+            };
+            const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
+            return { sPool, equippedSet, ctx, gridSource };
+        }
+        // Partial fast path for the MOVES grid on a filter (type / quick) or sort toggle.
+        // A filter/sort change never alters an individual card's HTML (only WHICH cards
+        // show and in what order) or the pending selection, so we keyed-reconcile the grid
+        // — reuse existing card nodes, build only newly-passing ones, hide ones that no
+        // longer pass — instead of rebuilding 30-99 card strings + reparsing innerHTML.
+        // Returns false (→ caller does a full render) when it can't run safely. Gated
+        // behind a fast-path-vs-full-render equivalence test (story-tutor-fastpath.test.js).
+        function _txMoveGridFastUpdate() {
+            try {
+                if ((_storyTutorMode || 'moves') !== 'moves') return false;
+                const el = document.getElementById('story-tutor-team');
+                const idx = _storyTutorOpenIdx;
+                if (!el || idx < 0 || idx >= sm.team.length) return false;
+                const t = sm.team[idx];
+                if (!t || t.isEgg) return false;
+                const mergedMoves = _txMovePoolCache.get(idx);
+                if (!mergedMoves) return false; // pool not warmed yet → full render fetches it
+                const toggle = el.querySelector(`.story-tutor-mon-toggle[data-team="${idx}"]`);
+                const body = toggle ? toggle.closest('.story-tutor-mon').querySelector('.story-tutor-mon-body') : null;
+                const grid = body ? body.querySelector('.tx-grid') : null;
+                if (!grid) return false;
+
+                const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined') ? performance.now() : 0;
+                _txBeginRender();
+                let _built = 0;
+                const b = t.build || {};
+                let mon = null;
+                try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+                const currentMoves = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
+                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+                const ordered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
+
+                // Keyed reconcile by data-card-value.
+                const existing = new Map();
+                for (const c of grid.querySelectorAll(':scope > .tx-card')) existing.set(c.getAttribute('data-card-value'), c);
+                const orderedNodes = [];
+                for (const name of ordered) {
+                    let node = existing.get(name);
+                    if (node) { existing.delete(name); if (node.hidden) node.hidden = false; }
+                    else {
+                        const tmp = document.createElement('template');
+                        tmp.innerHTML = _txMoveCardHtml(name, ctx);
+                        node = tmp.content.firstElementChild;
+                        if (!node) continue;
+                        _built++;
+                    }
+                    orderedNodes.push(node);
+                }
+                for (const node of existing.values()) node.hidden = true; // kept (hidden) for cheap toggle-back
+                for (const node of orderedNodes) grid.appendChild(node);    // appendChild moves → visible set ends up in order
+
+                // Empty-state placeholder (mirrors the full render's message).
+                let emptyEl = grid.querySelector(':scope > .tx-grid-empty');
+                if (!ordered.length) {
+                    const msg = (!sPool.sparse && _txState.filter.recOnly.moves)
+                        ? `No starred moves match these filters. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="moves">★ Show all</button> to expand, or clear the search.`
+                        : 'No moves match these filters. Loosen them or clear the search.';
+                    if (!emptyEl) { emptyEl = document.createElement('div'); emptyEl.className = 'tx-grid-empty'; grid.appendChild(emptyEl); }
+                    emptyEl.innerHTML = msg;
+                } else if (emptyEl) emptyEl.remove();
+
+                // Small toolbar bits that reflect filter state (no card work).
+                const countPill = body.querySelector('.tx-count-pill');
+                if (countPill) countPill.textContent = `${ordered.length} moves`;
+                const strip = body.querySelector('.tx-chip-strip');
+                if (strip) strip.innerHTML = _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml();
+                const menuRow = body.querySelector('.tx-typemenu-row');
+                if (menuRow) {
+                    const recOnlyMoves = !sPool.sparse && _txState.filter.recOnly.moves;
+                    const availTypes = new Set();
+                    for (const m of gridSource) {
+                        if (recOnlyMoves && !sPool.moves.inPool.has(m) && !equippedSet.has(m)) continue;
+                        const md = movesDB[m] || ensureMoveData(m);
+                        if (md && md.type) availTypes.add(md.type);
+                    }
+                    const html = _txMoveTypeMenuRowHtml(availTypes);
+                    if (html) menuRow.outerHTML = html; else menuRow.remove();
+                }
+                // Active-filter pills above the grid (insert before the recs panel / grid).
+                const af = body.querySelector('.tx-active-filters');
+                const afHtml = _txActiveFiltersHtml('moves');
+                if (afHtml) {
+                    if (af) af.outerHTML = afHtml;
+                    else {
+                        const ref = body.querySelector('.tx-recs-panel') || grid;
+                        const tmp = document.createElement('template'); tmp.innerHTML = afHtml;
+                        ref.parentNode.insertBefore(tmp.content.firstElementChild, ref);
+                    }
+                } else if (af) af.remove();
+                if (_pStart) console.log(`[txPerf] _txMoveGridFastUpdate ${(performance.now() - _pStart).toFixed(1)}ms · ${ordered.length} visible, ${_built} card(s) built, ${orderedNodes.length - _built} reused`);
+                return true;
+            } catch (e) { return false; }
+        }
         function _txRenderMoveEditor(t, idx, mergedMoves) {
             const b = t.build || {};
             let mon = null;
@@ -58445,33 +58562,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<button type="button" class="tx-slot-chip tx-slot-chip--add" data-slot-idx="${N}" data-active="${isAppend?1:0}" aria-pressed="${isAppend?'true':'false'}" title="Add a move into the empty slot"><span class="tx-slot-num">+</span><span class="tx-slot-name">Add</span></button>`
                 : '');
 
-            // ★ pool = Smogon-usable moves for this species; drives the recommended border + star.
-            const sPool = _txStarredPoolMemo(t.name);
-            const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
-            const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
-            const equippedSet = new Set(currentMoves);
-            const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
-            const ctx = {
-                pending: pendingMove,
-                recommended: sPool.moves.starred,
-                stabTypes,
-                pctOf: sPool.moves.pctOf,
-                mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
-                equippedSet,
-                slotOf,
-                // Phase 4.2 polish: per-move tag chip (Natural / Learnt / Awakened) +
-                // unlock hint on the move card. monName carries the species so the
-                // card render can call _moveTagForSpecies; tutorStage drives the
-                // "Unlocks at L<N>" lock badge.
-                monName: t.name,
-                tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
-            };
-
-            // Grid source: every legal move PLUS the equipped ones, so the
-            // player always sees their current moves (with usage %) right
-            // alongside the alternatives. Equipped moves render as non-learnable
-            // "✓ Equipped" cards; everything else learns into the active slot.
-            const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
+            // ★ pool, card ctx (recommended set, usage %, tags, equipped/slot maps) and the
+            // grid source (every legal move PLUS the equipped ones, so the player sees their
+            // current moves alongside the alternatives) — built by the shared _txMoveCtx so
+            // the partial fast path renders cards identically to this full render.
+            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+            const pendingMove = ctx.pending;
             // Distinct move types in the CURRENT view (respecting the ★ filter) — drives
             // the "Type ▾" menu so it only offers types the player can actually filter to
             // (not all 18, and never a type the ★ pool would render empty).
