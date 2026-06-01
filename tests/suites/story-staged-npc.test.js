@@ -28,16 +28,19 @@ setSm();
 const cityRow = (c) => { for (let i = 0; i < SER.length; i++) { const r = SER[i]; if (Array.isArray(r) && r[1] === 'City' && r[2] === 'City' + c) return i; } return -1; };
 const renderCity = (c) => { setSm(); return W.__renderCityActionsForTest(cityRow(c)); };
 
-test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/4, evolab 2/4)', () => {
+test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/2/5, evolab 2/4)', () => {
   assert.equal(ST.npcStageForCity('dojo', 1), 0, 'pre-debut clamps to stage 0');
   assert.equal(ST.npcStageForCity('dojo', 2), 0);
   assert.equal(ST.npcStageForCity('dojo', 4), 0);
   assert.equal(ST.npcStageForCity('dojo', 5), 1);
   assert.equal(ST.npcStageForCity('dojo', 7), 1);
   assert.equal(ST.npcStageForCity('dojo', 8), 2);
+  // Move Tutor thresholds tutor:[0,2,5] — Inner C0-1, Expert C2-4, Guru C5+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
-  assert.equal(ST.npcStageForCity('tutor', 3), 0);
+  assert.equal(ST.npcStageForCity('tutor', 1), 0);
+  assert.equal(ST.npcStageForCity('tutor', 2), 1);
   assert.equal(ST.npcStageForCity('tutor', 4), 1);
+  assert.equal(ST.npcStageForCity('tutor', 5), 2);
   assert.equal(ST.npcStageForCity('evolab', 2), 0);
   assert.equal(ST.npcStageForCity('evolab', 3), 0);
   assert.equal(ST.npcStageForCity('evolab', 4), 1);

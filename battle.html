@@ -47122,11 +47122,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Pre-warm the egg/level-up learnset for the rolled foe species (reusing the Move
         // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
-        // full. From City 4 on both sides have full move access → no-op. Deterministic.
-        // Phase 4.3: enemy move pool mirrors the player's TUTOR STAGE at this city.
-        //   C0–C3 (Inner Strength): Natural only.
-        //   C4–C6 (Expert):         + Learnt.
-        //   C7+   (Guru):           + Awakened — i.e. unfiltered.
+        // full. From City 5 (Guru) on both sides have full move access → no-op. Deterministic.
+        // Enemy move pool mirrors the player's TUTOR STAGE at this city (tutor:[0,2,5]):
+        //   C0–C1 (Inner Strength): Natural only, BP ≤ 75.
+        //   C2–C4 (Expert):         ALL Natural (cap lifts; no Learnt yet).
+        //   C5+   (Guru):           + Learnt + Awakened — i.e. unfiltered.
         // When a Smogon preset move sits above the allowed tag, drop it and refill from
         // the allowed pool (ordered by usage % so the replacement is meta-sensible, not
         // a random low-usage egg move).
@@ -47192,8 +47192,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
             if (!learn) return false; // cache cold → leave as-is (offline-safe via the index)
+            // Staging (user model): L1 Inner = Natural ≤ BP cap; L2 Expert = ALL Natural
+            // (cap lifts, still no Learnt); L3 Guru = no gate at all (handled by the early
+            // return above). Learnt (TM/tutor) therefore unlocks only at Guru — it is NOT
+            // added at L2 the way it was previously.
             const allowed = new Set(learn.natural || learn.tier1 || []);
-            if ((stage | 0) >= 1) (learn.learnt || []).forEach(m => allowed.add(m));
             if (!allowed.size) return false; // thin learnset → leave alone
             const bpCap = _storyMoveBpCapForStage(stage);
             const baseName = (mv) => String(mv).split('/')[0];
@@ -55096,10 +55099,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
         const TUTOR_COST_AWAKEN  = 5000;  // Awakened pick (Grandmaster · City 8+)
         const TUTOR_COST_NATURE  = 2000;
-        // Move Tutor charge is staged by tutor tier (Phase 4.2):
-        //   L1 Inner Strength: 1,000 G per move (Natural pool only — egg / level-up / transfer).
-        //   L2 Expert:         2,500 G per move (+ Learnt: TM / HM / Tutor / TR / event).
-        //   L3 Guru:           5,000 G per move (+ Awakened: off-legal Smogon picks).
+        // Move Tutor charge is staged by tutor tier (cost = the stage CEILING, by stage):
+        //   L1 Inner Strength: 1,000 G per move (Natural pool, BP ≤ 75).
+        //   L2 Expert:         2,500 G per move (ALL Natural — BP cap lifts; still no TMs).
+        //   L3 Guru:           5,000 G per move (+ Learnt TM/HM/Tutor/TR/event + Awakened).
         function _moveCostForStage(moveTag) {
             // If a specific move's tag is supplied, price by the move's TIER (a Natural
             // move at L3 Guru still costs 1000 — the player pays for what the move IS,
@@ -55131,11 +55134,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //             → Grandmaster (+Awakened abilities · +all items)
             // Matrix (post-merge from main): White Belt C2–C4, Black Belt C5–C7, Grandmaster C8+.
             dojo:   [2, 5, 8],
-            // Move Tutor (Phase 4.2): three stages keyed on the move-tag system —
-            //   Inner Strength (L1) — Natural moves (egg + level-up + transfer + evolution-learned). C0-C3.
-            //   Expert         (L2) — + Learnt moves (TM / HM / TR / Tutor / event). C4-C6.
-            //   Guru           (L3) — + Awakened moves (off-legal Smogon picks). C7+.
-            tutor:  [0, 4, 7],
+            // Move Tutor (user model): three stages keyed on the move-tag system —
+            //   Inner Strength (L1) — Natural moves (level-up/egg/transfer/evo), BP ≤ 75.  C0-C1.
+            //   Expert         (L2) — ALL Natural moves (BP cap lifts; still no TMs/tutor). C2-C4.
+            //   Guru           (L3) — + Learnt (TM / HM / TR / Tutor / event) + Awakened.   C5+.
+            // Drives BOTH the player tutor and the foe move-gate (they pace together).
+            tutor:  [0, 2, 5],
             // Evolution Tutor:  capability is enforced by the player evo-stage cap;
             //              these thresholds drive only the chip name + intro beat.
             //              Evolution Teacher (first evos) → Evolution Master (finals @ C4).
@@ -55196,8 +55200,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         const _NPC_STAGE_INTRO = {
             tutor:  {
-                1: 'Move Tutor — Expert: "You\'ve trained enough that the technical book opens up — TMs, HMs, tutor moves, the rest of the legal pool. Here\'s a Heart Scale; the first advanced lesson is on me."',
-                2: 'Move Tutor — Guru: "You\'ve come this far — the Awakened lessons are yours to take. Moves no trainer is supposed to teach. Take two Heart Scales; experiment freely."',
+                1: 'Move Tutor — Expert: "You\'ve trained enough that your partner\'s full natural arsenal is on the table — every level-up, egg and transfer move it can muster, no power ceiling. Here\'s a Heart Scale; the first lesson is on me."',
+                2: 'Move Tutor — Guru: "You\'ve come this far — the technical book AND the Awakened lessons are both open now. TMs, HMs, tutor moves, and moves no trainer is supposed to teach. Take two Heart Scales; experiment freely."',
             },
             dojo:   {
                 1: 'Dojo Master: "Black Belt material. Hidden talents are on the table now — take this Ability Capsule and wake one up, no charge."',
@@ -55738,9 +55742,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Move Tutor view pool — gated by the tutor's city stage via the move-tag
         // index (Phase 4.2):
-        //   L1 Inner Strength: Natural only (egg + level-up + transfer + evolution).
-        //   L2 Expert:         + Learnt (TM / HM / Tutor / TR / event).
-        //   L3 Guru:           + Awakened (off-legal Smogon picks).
+        //   L1 Inner Strength: Natural only (egg/level-up/transfer/evolution), BP ≤ 75.
+        //   L2 Expert:         ALL Natural (BP cap lifts; still no TMs).
+        //   L3 Guru:           + Learnt (TM/HM/Tutor/TR/event) + Awakened.
         // The mon's CURRENTLY-known moves are always kept selectable so an existing
         // tagged-above-stage move doesn't disappear from the editor. A Heart Scale
         // voucher overrides the gate entirely ("learn any move").
@@ -55771,10 +55775,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
             // / Choice item move bypasses Natural-only). They're already merged into
             // `full` for the Show-All view; gating reads ONLY the cache buckets here.
+            // Staging (user model): L1 Inner = Natural within the BP cap (≤75); L2 Expert =
+            // ALL Natural (cap lifts); L3 Guru = + Learnt (TM/HM/TR/tutor) + Awakened.
+            // Mirrors the foe move-gate so the player and enemies pace together.
+            const _bpCap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(stage) : Infinity;
+            const _bpUnder = (m) => {
+                if (_bpCap === Infinity) return true;
+                const md = ensureMoveData(String(m).split('/')[0]);
+                return (md && md.pow ? (md.pow | 0) : 0) <= _bpCap; // status / 0-BP always pass
+            };
             const allow = new Set();
-            (learn.natural || []).forEach(m => allow.add(m));
-            if (stage >= 1) (learn.learnt   || []).forEach(m => allow.add(m));
-            if (stage >= 2) (learn.awakened || []).forEach(m => allow.add(m));
+            (learn.natural || []).forEach(m => { if (_bpUnder(m)) allow.add(m); });
+            if (stage >= 2) {
+                (learn.learnt   || []).forEach(m => allow.add(m));
+                (learn.awakened || []).forEach(m => allow.add(m));
+            }
+            // Barren-species floor (e.g. Beldum, whose only Natural move is Take Down at
+            // 90 BP): if the BP cap leaves NO teachable Natural move at L1, admit the single
+            // lowest-BP Natural move so the picker is never empty. Mirrors the foe gate's
+            // degenerate fallback; keeps Tackle reserved as the structural padding move.
+            if (!allow.size && (learn.natural || []).length) {
+                const _lowestNat = [...learn.natural].sort((a, b) => {
+                    const ma = ensureMoveData(String(a).split('/')[0]), mb = ensureMoveData(String(b).split('/')[0]);
+                    return (((ma && ma.pow) | 0) - ((mb && mb.pow) | 0));
+                })[0];
+                if (_lowestNat) allow.add(_lowestNat);
+            }
             // Always keep already-equipped moves selectable — never strip the mon's
             // current loadout out from under the player at a tutor visit.
             if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
@@ -56328,15 +56354,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _txMetaStatsFor(monName);
             const stageRule = _txStageCountRule();
             // At Inner Strength (tutor stage 0) the player can only teach Natural moves
-            // (level-up + egg + transfer + evolution-learned). The rec source MUST match
-            // the gate's source (_tutorGetStagedMovePoolAsync uses `natural`) — using the
-            // narrower tier1 (L+E only) would star moves the gate accepts but recommend
-            // a strict subset, leaving transfer-only Natural moves un-starred.
+            // WITHIN the BP cap (≤75). The rec source MUST match the gate's source
+            // (_tutorGetStagedMovePoolAsync uses `natural`, capped at Inner) — else the
+            // panel would star a high-BP Natural move (e.g. Outrage 120) that the gate
+            // then rejects. tier1 fallback preserved for transfer-only Natural moves.
             const _natSource = (typeof _tutorLearnsetCache !== 'undefined' && _tutorLearnsetCache.has(monName))
                 ? _tutorLearnsetCache.get(monName)
                 : null;
+            const _innerCap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(0) : 75;
             const _eggLvlSet = (stageRule.tutorStage === 0 && _natSource)
-                ? new Set((_natSource.natural && _natSource.natural.length ? _natSource.natural : _natSource.tier1) || [])
+                ? new Set(((_natSource.natural && _natSource.natural.length ? _natSource.natural : _natSource.tier1) || [])
+                    .filter(m => { if (_innerCap === Infinity) return true; const md = ensureMoveData(String(m).split('/')[0]); return !(md && md.pow) || (md.pow | 0) <= _innerCap; }))
                 : null;
             const _cacheSig = stageRule.sig + ':' + ((_eggLvlSet && _eggLvlSet.size) ? 1 : 0);
             // Sparse only kicks in when BOTH the species' own builds AND the
@@ -58980,10 +59008,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             // Stage gate (Phase 2, BUG A/B fix): below Guru, only moves in the staged
-            // pool are teachable AT ALL — Natural at Inner (C0–3), +Learnt at Expert
-            // (C4–6). An off-stage move is rejected outright; a Heart Scale does NOT
-            // bypass the gate (it only waives the gold cost of an in-stage teach, via
-            // the separate voucher button). The full pool unlocks at Guru (C7+).
+            // pool are teachable AT ALL — Natural ≤75 at Inner (C0–1), ALL Natural at
+            // Expert (C2–4). An off-stage move is rejected outright; a Heart Scale does NOT
+            // bypass the gate (it only waives the gold cost of an in-stage teach, via the
+            // separate voucher button). The full pool (Learnt + Awakened) unlocks at Guru (C5+).
             if (_npcStage('tutor') < 2) {
                 const _t1 = _txMoveTier1Cache.get(teamIdx);
                 // Fail SAFE: an unpopulated acceptance set (cold/errored render, or the
@@ -58991,7 +59019,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // off-stage move could slip through before the staged pool resolves.
                 // (voucherOk already fails safe; this matches it.)
                 if (!_t1 || !_t1.has(String(newMove).split('/')[0])) {
-                    if (_t1) { try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current lesson tier. The tutor opens more of its book as it levels up — Expert teaches TMs, Guru teaches everything.'); } catch (e) {} }
+                    if (_t1) { try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current lesson tier. The tutor opens more of its book as it levels up — Expert teaches your full natural movepool, Guru teaches TMs and everything else.'); } catch (e) {} }
                     return;
                 }
             }

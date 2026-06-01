@@ -1,5 +1,5 @@
-// Phase 4.2: 3-stage Move Tutor — Inner Strength (Natural only) at C0-C3, Expert
-// (+Learnt) at C4-C6, Guru (+Awakened) at C7+. Verifies:
+// 3-stage Move Tutor (user model, tutor:[0,2,5]) — Inner Strength (Natural ≤75) at
+// C0-C1, Expert (ALL Natural, no TMs) at C2-C4, Guru (+Learnt +Awakened) at C5+. Verifies:
 //   • the staged pool's contents grow as the tutor levels up,
 //   • _moveCostForStage by-tag returns 1000 / 2500 / 5000 per Natural / Learnt /
 //     Awakened (independent of tutor stage), and matches the no-arg legacy
@@ -27,17 +27,22 @@ function primeAtCity(city) {
   }
   ST.sm.eventIndex = idx;
 }
+const bp = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
+function cityAtTutorStage(stage) {
+  for (let c = 0; c <= 12; c++) { if ((ST.npcStageForCity('tutor', c) | 0) === stage) return c; }
+  return 0;
+}
 
 test('Move Tutor: 3 stages — Inner Strength → Expert → Guru', () => {
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
   assert.equal(ST.npcStageName('tutor', 1), 'Expert');
   assert.equal(ST.npcStageName('tutor', 2), 'Guru');
-  // Thresholds: C0 stage 0, C4 stage 1, C7 stage 2.
+  // Thresholds tutor:[0,2,5] — Inner C0-1, Expert C2-4, Guru C5+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
-  assert.equal(ST.npcStageForCity('tutor', 3), 0);
+  assert.equal(ST.npcStageForCity('tutor', 1), 0);
+  assert.equal(ST.npcStageForCity('tutor', 2), 1);
   assert.equal(ST.npcStageForCity('tutor', 4), 1);
-  assert.equal(ST.npcStageForCity('tutor', 6), 1);
-  assert.equal(ST.npcStageForCity('tutor', 7), 2);
+  assert.equal(ST.npcStageForCity('tutor', 5), 2);
 });
 
 test('_moveCostForStage by tag — Natural 1000 / Learnt 2500 / Awakened 5000', () => {
@@ -55,32 +60,29 @@ test('_moveCostForStage no-arg returns the tutor stage ceiling for that city', (
   assert.equal(ST.moveCostForStage(), 5000, 'C7: Guru ceiling = 5000');
 });
 
-test('staged pool: L1 Inner Strength rejects Learnt + Awakened moves end-to-end', async () => {
+test('staged pool: Inner→Expert→Guru unlock ladder (user model) end-to-end', async () => {
   // Warm the cache for Garchomp + verify the ACTUAL gating function (not a helper).
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  if (!ls.natural.length || !ls.learnt.length || !ls.awakened.length) {
-    // jsdom thin-dex case — nothing to assert.
-    return;
-  }
-  const nat = ls.natural[0];
+  assert.ok(ls.natural.length && ls.learnt.length && ls.awakened.length, 'precondition: all buckets populated (offline index)');
+  const nat = ls.natural.find(m => bp(m) <= 75) || ls.natural[0]; // Inner-teachable Natural (≤75)
   const lrn = ls.learnt[0];
   const awk = ls.awakened[0];
-  // L1 Inner Strength (C0): only Natural in the pool. Pre-fix bug: syncMoves was
-  // unioned unconditionally, so any Smogon Learnt move slipped through. The
-  // regression test pins the actual function — if syncMoves leaks again, this fails.
-  primeAtCity(0);
+  // L1 Inner Strength: Natural ≤75 only — no Learnt, no Awakened. Pre-fix bug: syncMoves
+  // was unioned unconditionally, so any Smogon Learnt move slipped through. This pins the
+  // actual function — if syncMoves leaks again (or the BP cap regresses), it fails.
+  primeAtCity(cityAtTutorStage(0));
   const poolL1 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
-  assert.ok(poolL1.has(nat), `L1 pool includes Natural "${nat}"`);
-  assert.ok(!poolL1.has(lrn), `L1 pool must NOT include Learnt "${lrn}"`);
-  assert.ok(!poolL1.has(awk), `L1 pool must NOT include Awakened "${awk}"`);
-  // L2 Expert (C4): Natural + Learnt; Awakened still blocked.
-  primeAtCity(4);
+  assert.ok(poolL1.has(nat), `L1 includes a ≤75 Natural "${nat}"`);
+  assert.ok(!poolL1.has(lrn), `L1 must NOT include Learnt "${lrn}"`);
+  assert.ok(!poolL1.has(awk), `L1 must NOT include Awakened "${awk}"`);
+  // L2 Expert: ALL Natural, but still NO Learnt/TM and NO Awakened (TMs wait for Guru).
+  primeAtCity(cityAtTutorStage(1));
   const poolL2 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(poolL2.has(nat), 'L2 includes Natural');
-  assert.ok(poolL2.has(lrn), 'L2 includes Learnt');
+  assert.ok(!poolL2.has(lrn), 'L2 still blocks Learnt/TM (unlocks at Guru)');
   assert.ok(!poolL2.has(awk), 'L2 still blocks Awakened');
-  // L3 Guru (C7): everything.
-  primeAtCity(7);
+  // L3 Guru: everything.
+  primeAtCity(cityAtTutorStage(2));
   const poolL3 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(poolL3.has(nat) && poolL3.has(lrn) && poolL3.has(awk), 'L3 unlocks all three tags');
 });

@@ -1,12 +1,13 @@
-// Phase 4.3: enemy move pool is gated by the city's TUTOR STAGE, mirroring what
-// the player has access to at that city:
-//   C0–C3 (Inner Strength): Natural only (egg + level-up + transfer + evolution).
-//   C4–C6 (Expert):         + Learnt (TM / HM / Tutor / TR / event).
-//   C7+   (Guru):           + Awakened — i.e. no gate (full pool).
+// Enemy move pool is gated by the city's TUTOR STAGE (user model), mirroring what
+// the player can teach at that city. Thresholds tutor:[0,2,5]:
+//   C0–C1 (Inner Strength): Natural only, BP ≤ 75.
+//   C2–C4 (Expert):         ALL Natural (cap lifts; still NO Learnt/TM).
+//   C5+   (Guru):           no gate — full pool (Natural + Learnt + Awakened).
 //
 // We test by warming the learnset cache for a real species (Garchomp), then
 // running a synthetic enemy team through _storyGateFoeMovesByCity at each stage
-// and asserting the surviving moves all belong to the allowed pool.
+// and asserting the surviving moves all belong to the allowed pool. Cities are
+// resolved via cityAtTutorStage() so the tests survive threshold tuning.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -31,50 +32,49 @@ function primeStory() {
   ST.sm.settings.enabledGens = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   ST.sm.badges = 0;
 }
+function cityAtTutorStage(stage) {
+  for (let c = 0; c <= 12; c++) { if ((ST.npcStageForCity('tutor', c) | 0) === stage) return c; }
+  return 0;
+}
 
-test('foe gate: C7+ leaves moves untouched (Guru tier, full pool)', async () => {
+test('foe gate: Guru leaves moves untouched (full pool)', async () => {
   primeStory();
   const team = [{ name: 'Garchomp', build: { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance'] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(7));
-  // C7+ short-circuits before any cache lookup; all 4 moves survive verbatim.
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(2)));
+  // Guru short-circuits before any cache lookup; all 4 moves survive verbatim.
   assert.deepEqual(team[0].build.m, ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance'], 'no filtering at Guru tier');
 });
 
-test('foe gate: warmed cache filters out tag-above-stage moves at C2', async () => {
+test('foe gate: at Inner, only Natural moves survive (Learnt stripped)', async () => {
   primeStory();
   const learn = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  if (!learn.natural.length || !learn.learnt.length) {
-    // jsdom thin-dex environment — bail, the production behavior is fine.
-    return;
-  }
+  assert.ok(learn.natural.length && learn.learnt.length, 'precondition: buckets populated (offline index)');
   const naturalMove = learn.natural[0];
   const learntMove  = learn.learnt[0];
-  // Confirm pre-conditions: the two sample moves are distinctly tagged.
   assert.notEqual(naturalMove, learntMove, 'sample moves come from distinct tag buckets');
-  // Build a team whose moves mix Natural + Learnt.
   const team = [{ name: 'Garchomp', build: { m: [naturalMove, learntMove, learntMove, naturalMove] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(2));
-  // At C2 (Inner Strength, stage 0) every kept move must be Natural.
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(0)));
+  // At Inner (stage 0) every kept move must be Natural.
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.ok(tag === 'natural' || tag === 'unknown', `C2 kept move "${m}" should be Natural (was ${tag})`);
+    assert.ok(tag === 'natural' || tag === 'unknown', `Inner kept move "${m}" should be Natural (was ${tag})`);
   }
 });
 
-test('foe gate: at C5 (Expert) Learnt is allowed; Awakened is filtered', async () => {
+test('foe gate: at Expert, Learnt AND Awakened are filtered (Natural only)', async () => {
   primeStory();
   const learn = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  if (!learn.learnt.length || !learn.awakened.length) {
-    // jsdom thin-dex environment — bail.
-    return;
-  }
+  assert.ok(learn.learnt.length && learn.awakened.length, 'precondition: buckets populated (offline index)');
   const learntMove = learn.learnt[0];
   const awakened   = learn.awakened[0];
   const team = [{ name: 'Garchomp', build: { m: [learntMove, awakened, learntMove, awakened] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(5));
-  // At C5 (Expert, stage 1): Learnt + Natural allowed; Awakened filtered.
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(1)));
+  // User model: at Expert (stage 1) ONLY Natural is allowed — both Learnt/TM and
+  // Awakened are stripped (TMs unlock only at Guru). The all-Learnt/Awakened set is
+  // fully replaced by Natural backfill.
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.notEqual(tag, 'awakened', `C5 kept move "${m}" must not be Awakened`);
+    assert.notEqual(tag, 'awakened', `Expert kept move "${m}" must not be Awakened`);
+    assert.notEqual(tag, 'learnt', `Expert kept move "${m}" must not be Learnt/TM`);
   }
 });
