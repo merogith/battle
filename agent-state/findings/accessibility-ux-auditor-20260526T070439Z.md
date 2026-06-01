@@ -36,7 +36,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 00376bc90497
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: showScreen() does no focus management on story-screen transitions — focus is orphaned

@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-01T14:03:46.800Z
+> **Generated**: 2026-06-01T14:16:09.610Z
 > **Source**: `agent-state/findings/*.md` (349 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -2833,7 +2833,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 00376bc90497
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: showScreen() does no focus management on story-screen transitions — focus is orphaned
@@ -7020,7 +7020,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 961c3460c828
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: anime.js move-FX engine ignores prefers-reduced-motion — heaviest motion bypasses the CSS catch-all
