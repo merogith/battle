@@ -35,7 +35,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 416fa2aaed61
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: Player gimmick gate reads bare IIFE-private `sm` — always sees zero unlocked gimmicks

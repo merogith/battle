@@ -36,7 +36,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 00376bc90497
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: showScreen() does no focus management on story-screen transitions — focus is orphaned
@@ -67,7 +67,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: c0f4bce71793
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: Modals restore focus on close but never move focus INTO the dialog on open
@@ -220,7 +220,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 587b740ecf41
 confidence: medium
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog
