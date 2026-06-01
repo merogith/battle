@@ -123,6 +123,50 @@ describe('makeVolatile() factory', () => {
     for (const [k, v] of Object.entries({ taunt: 0, destinyBond: false, focusEnergy: false, perishCount: -1, embargo: 0, stockpile: 0, cursed: false })) {
       assert.equal(m1.volatile[k], v, `default for ${k}`);
     }
+    // Wish and Future Sight were migrated to side storage — they must NOT be volatile fields.
+    for (const k of ['wishHp', 'wishTurns', 'futureSightTurns', 'futureSightDmg', 'futureSightName']) {
+      assert.equal(k in m1.volatile, false, `${k} should no longer live on the mon volatile`);
+    }
+  });
+});
+
+describe('Future Sight (side-stored, redirects on switch)', () => {
+  function fsSetup(foeMons) {
+    const { engine, mkMon, reset } = E;
+    reset();
+    const a = mkMon({ species: 'Alakazam', ability: 'None', moves: ['Future Sight', 'Splash', 'Splash', 'Splash'] });
+    const foes = foeMons.map((sp) => mkMon({ species: sp, ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] }));
+    a.stats.spe = 999;
+    engine.state.mode = 'pve';
+    engine.state.playerParty = [a];
+    engine.state.foeParty = foes;
+    engine.state.pActive = a;
+    engine.state.fActive = foes[0];
+    engine.state.isOver = false;
+    engine.state.isLocked = false;
+    engine.setForcedFoeMoveSlot(0);
+    return { a, foes };
+  }
+
+  it('is stored on the targeted side, not on any mon volatile', async () => {
+    const { a, foes } = fsSetup(['Snorlax']);
+    await E.window.playTurn(0, null); // cast Future Sight at the foe
+    assert.equal(E.engine.state.fSide.futureSightTurns, 2, 'stored on the foe side (ticked once at EoT)');
+    assert.equal('futureSightTurns' in a.volatile, false, 'not on the caster');
+    assert.equal('futureSightTurns' in foes[0].volatile, false, 'not on the target mon');
+  });
+
+  it('strikes whoever is active on that side when it lands — not the original target', async () => {
+    const { a, foes } = fsSetup(['Snorlax', 'Blissey']);
+    const [f1, f2] = foes;
+    await E.window.playTurn(0, null);            // cast (counter 3 -> 2)
+    E.engine.state.fActive = f2;                 // original target switched out; replacement is active
+    const f1hp = f1.currentHp, f2hp = f2.currentHp;
+    await E.window.playTurn(1, null);            // Splash (2 -> 1)
+    await E.window.playTurn(1, null);            // Splash (1 -> 0): Future Sight resolves
+    assert.equal(E.engine.state.fSide.futureSightTurns, 0, 'resolved');
+    assert.ok(f2.currentHp < f2hp, 'the active replacement took the Future Sight hit');
+    assert.equal(f1.currentHp, f1hp, 'the original (now benched) target was not hit');
   });
 });
 
@@ -132,14 +176,16 @@ describe('Baton Pass', () => {
     a.currentHp = Math.floor(a.maxHp / 2);
     const hpBefore = a.currentHp;
     a.volatile.focusEnergy = true;   // passable -> should land on b
-    a.volatile.cursed = true;        // NOT passable -> must be cleared on a, absent on b
+    a.volatile.leechSeed = true;     // passable (canon set) -> should land on b
+    a.volatile.torment = true;       // NOT passable -> cleared on a, absent on b
     a.stages.atk = 2;                // stages transfer
     await E.window.playTurn(0, null);
     assert.equal(E.engine.state.pActive, b, 'b is now active');
     assert.equal(b.volatile.focusEnergy, true, 'focusEnergy passed to incoming mon');
+    assert.equal(b.volatile.leechSeed, true, 'Leech Seed passed (expanded canon set)');
     assert.equal(b.stages.atk, 2, 'stat stages passed');
-    assert.equal(b.volatile.cursed, false, 'non-passable Curse not transferred');
-    assert.equal(a.volatile.cursed, false, 'outgoing mon Curse cleared (no bench leak)');
+    assert.equal(b.volatile.torment, false, 'non-passable Torment not transferred');
+    assert.equal(a.volatile.torment, false, 'outgoing mon Torment cleared (no bench leak)');
     assert.equal(a.volatile.focusEnergy, false, 'outgoing mon volatile cleared');
     assert.ok(a.currentHp > hpBefore, 'Regenerator healed the Baton Passer on switch-out');
   });

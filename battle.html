@@ -17727,7 +17727,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (v.destinyBond) chip('DBond', 'Destiny Bond — if KO\'d user, KO\'s attacker', 'neutral');
             if (v.cursed) chip('Curse', 'Cursed — takes damage each turn', 'debuff');
             if (v.lockMove && v.lockTurns > 0) chip(`Lock ${v.lockTurns}`, 'Forced to repeat ' + v.lockMove + ' (' + v.lockTurns + ' turn(s))', 'debuff');
-            if (v.futureSightTurns > 0) chip(`Fs ${v.futureSightTurns}`, (v.futureSightName || 'Future Sight') + ' inbound', 'neutral');
+            // Future Sight lives on the side (it hits whoever is active when it lands), so read it
+            // from this mon's side rather than its volatile — only meaningful for the active mon.
+            const _fsSide = mon === state.pActive ? state.pSide : (mon === state.fActive ? state.fSide : null);
+            if (_fsSide && _fsSide.futureSightTurns > 0) chip(`Fs ${_fsSide.futureSightTurns}`, (_fsSide.futureSightName || 'Future Sight') + ' inbound', 'neutral');
             if (v.recharge) chip('Charge+', 'Must recharge — cannot move this turn', 'debuff');
             if (v.charging && typeof v.charging === 'string') chip('Charging', 'Charging — ' + v.charging, 'neutral');
             return parts.join('');
@@ -17989,6 +17992,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (lc > 0) pills.push(mkPill(`${pref}Lk`, lc, mine ? '#81d4fa' : '#ffab91', mine ? 'rgba(129,212,250,0.15)' : 'rgba(255,171,145,0.15)', `<b>Lucky Chant</b> ${who}<br>No critical hits against that side`));
                     const wt = side.wishTurns | 0, wh = side.wishHp | 0;
                     if (wt > 0 && wh > 0) pills.push(mkPill(`${pref}Wish`, wt, mine ? '#f06292' : '#f8bbd0', mine ? 'rgba(236,72,153,0.18)' : 'rgba(236,72,153,0.12)', `<b>Wish</b> ${mine ? '(your bench)' : '(foe bench)'}<br>Delayed heal (${wh} HP) in ${wt} turn(s)`));
+                    const fst = side.futureSightTurns | 0;
+                    if (fst > 0) pills.push(mkPill(`${pref}FS`, fst, mine ? '#7e57c2' : '#b39ddb', mine ? 'rgba(126,87,194,0.18)' : 'rgba(126,87,194,0.12)', `<b>${side.futureSightName || 'Future Sight'}</b> ${mine ? '(incoming on you)' : '(incoming on foe)'}<br>Delayed hit in ${fst} turn(s)`));
                 };
                 pushSideConditions(_mySide, true);
                 pushSideConditions(_foeSide, false);
@@ -18654,8 +18659,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (v.destinyBond) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Destiny Bond — if KO'd, the attacker faints too">D-Bond</span>`);
             if (v.recharge) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Must recharge — cannot move this turn">Recharging</span>`);
             if (v.charging && typeof v.charging === 'string') pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Charging ${v.charging}">Charging: ${v.charging}</span>`);
-            if (v.futureSightTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="${v.futureSightName || 'Future Sight'} inbound (${v.futureSightTurns} turn${v.futureSightTurns === 1 ? '' : 's'})">FS ${v.futureSightTurns}</span>`);
-            if (v.wishHp > 0 && v.wishTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Wish — restores ${v.wishHp} HP in ${v.wishTurns} turn${v.wishTurns === 1 ? '' : 's'}">Wish ${v.wishTurns}</span>`);
+            // Future Sight and Wish are side/slot effects (they hit/heal whoever is active when
+            // they resolve), so they are shown in the field-condition pill row — not on a single
+            // mon's summary, where they'd read dead volatile fields and could mislead about which
+            // Pokémon is affected.
             if (v.protect) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Protected from attacks this turn">Protect</span>`);
             if (v.endure) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Will survive any attack at 1 HP this turn">Endure</span>`);
             if (v.stockpile > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Stockpile ${v.stockpile} — boosts defenses">Stockpile ${v.stockpile}</span>`);
@@ -20956,16 +20963,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             });
-            [state.pActive, state.fActive].forEach(mon => {
-                // Future Sight / Doom Desire delayed damage
-                if (mon.volatile.futureSightTurns > 0) {
-                    mon.volatile.futureSightTurns--;
-                    if (mon.volatile.futureSightTurns === 0 && mon.volatile.futureSightDmg > 0) {
-                        let fsName = mon.volatile.futureSightName || 'Future Sight';
-                        let dmg = Math.min(mon.currentHp, mon.volatile.futureSightDmg);
+            [['pSide', 'pActive'], ['fSide', 'fActive']].forEach(([sideKey, activeKey]) => {
+                // Future Sight / Doom Desire delayed damage — resolves against whoever is active
+                // on the targeted side now (stored on the side, like Wish above), so a switch
+                // before it lands redirects the hit to the replacement instead of the original.
+                let side = state[sideKey]; let mon = state[activeKey];
+                if (!side || !mon) return;
+                if (side.futureSightTurns > 0) {
+                    side.futureSightTurns--;
+                    if (side.futureSightTurns === 0 && side.futureSightDmg > 0) {
+                        let fsName = side.futureSightName || 'Future Sight';
+                        let dmg = Math.min(mon.currentHp, side.futureSightDmg);
                         mon.currentHp -= dmg;
                         logMsg(`${fsName} struck ${mon.name} for ${dmg} damage!`, 'dmg');
-                        mon.volatile.futureSightDmg = 0; mon.volatile.futureSightName = '';
+                        side.futureSightDmg = 0; side.futureSightName = '';
                     }
                 }
             });
@@ -22759,7 +22770,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Hail" || move.name === "Snowscape" || move.name === "Chilly Reception") { state.weather = "Hail"; state.weatherTurns = (_wxRockActive && attacker.item === "Icy Rock") ? 8 : 5; logMsg(move.name === "Chilly Reception" ? "The cold reception chilled the air!" : "It started to hail!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); if (move.name === "Chilly Reception") await handlePivotSwitch(isPlayer, move); return; }
             // Future Sight / Doom Desire: intercept before damage engine (they are Special moves but deal NO immediate damage)
             if (move.name === "Future Sight" || move.name === "Doom Desire") {
-                if (defender.volatile.futureSightTurns > 0) { logMsg(`But it failed!`, 'info'); AudioSystem.playMissSound(); registerMoveConnectionFailure(attacker, move); await sleep(1000); return; }
+                // Stored on the TARGET'S SIDE (like Wish), not on the target mon, so the strike
+                // lands on whoever is active on that side two turns later — not on the original
+                // target if it has since switched out (which previously made the hit vanish or
+                // follow the wrong Pokémon). Damage is snapshotted at cast time, as before.
+                let fsSide = isPlayer ? state.fSide : state.pSide;
+                if (fsSide.futureSightTurns > 0) { logMsg(`But it failed!`, 'info'); AudioSystem.playMissSound(); registerMoveConnectionFailure(attacker, move); await sleep(1000); return; }
                 let fsA = attacker.stats.spa;
                 let fsD = defender.stats.spd;
                 let fsStab = calcSTAB(attacker, move);
@@ -22767,9 +22783,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Strikes "two turns later" — end of turn N+2. The end-of-turn tick (runWishHealing)
                 // also fires on this cast turn, so the counter must be 3: one more than Wish's 2,
                 // which is a next-turn effect (Wish:2 :: FutureSight:3). 2 here struck a turn early.
-                defender.volatile.futureSightTurns = 3;
-                defender.volatile.futureSightDmg = fsDmg;
-                defender.volatile.futureSightName = move.name;
+                fsSide.futureSightTurns = 3;
+                fsSide.futureSightDmg = fsDmg;
+                fsSide.futureSightName = move.name;
                 logMsg(`${attacker.name} foresaw an attack!`, 'info');
                 AudioSystem.playMoveSound(move);
                 await sleep(1000); return;
@@ -26246,9 +26262,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // object every call (note moveHistory: [] — never share the array reference).
         // Used at mon creation (buildPokemon) and wherever a mon leaves/re-enters battle
         // so the ~6 re-inlined copies can't drift apart again (the CLAUDE.md hazard).
-        // Field set is 1:1 with the historical creation literal — behavior-preserving.
+        // (Wish and Future Sight are deliberately absent — they are SIDE/slot effects stored
+        // on state.pSide / state.fSide, not on the mon, so they affect whoever is active.)
         function makeVolatile() {
-            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
+            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
         }
 
         // Baton Pass hands the passable volatiles + stat stages to the incoming mon, then runs
@@ -26256,13 +26273,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // what makes Regenerator / Natural Cure fire on a Baton Pass (they already fire on
         // U-turn / Volt Switch / Flip Turn / Parting Shot, which all share that helper) and
         // stops the outgoing mon from carrying its non-passed volatiles onto the bench.
-        // NOTE: canon passes a larger set (Leech Seed, Curse, Embargo, Heal Block, Perish
-        // count, Magnet Rise, Telekinesis, Lock-On, Power Trick…); we keep the historical
-        // subset here to avoid an unreviewed balance shift — expanding it is a follow-up.
+        // The receiver inherits the canonical Baton Pass-able set; "negative" locks (Taunt,
+        // Encore, Disable, Torment, Yawn…) are NOT passed and are cleared on the outgoing mon.
         function applyBatonPass(oldMon, newMon) {
             const ov = oldMon.volatile;
             const passedStages = { ...oldMon.stages };
-            const passed = { sub: ov.sub, confusion: ov.confusion, aquaRing: ov.aquaRing, ingrain: ov.ingrain, focusEnergy: ov.focusEnergy };
+            const passed = {
+                sub: ov.sub, confusion: ov.confusion, focusEnergy: ov.focusEnergy,
+                aquaRing: ov.aquaRing, ingrain: ov.ingrain, leechSeed: ov.leechSeed,
+                cursed: ov.cursed, perishCount: ov.perishCount, embargo: ov.embargo,
+                healBlock: ov.healBlock, magnetRise: ov.magnetRise, telekinesis: ov.telekinesis,
+            };
             clearVolatileOnSwitch(oldMon);
             newMon.stages = passedStages;
             Object.assign(newMon.volatile, passed);
