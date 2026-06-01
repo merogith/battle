@@ -7,7 +7,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 961c3460c828
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: anime.js move-FX engine ignores prefers-reduced-motion — heaviest motion bypasses the CSS catch-all

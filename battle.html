@@ -14022,6 +14022,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prev && prev !== document.body) window._modalFocusStack.set(id, prev);
             } catch (e) {}
             el.classList.remove('hidden');
+            // Dialog semantics + move focus INTO the overlay so keyboard / SR
+            // users are not stranded behind it (ISSUE-144). Idempotent — most
+            // modal roots already declare role/aria-modal in their markup.
+            try {
+                if (!el.getAttribute('role')) el.setAttribute('role', 'dialog');
+                if (!el.hasAttribute('aria-modal')) el.setAttribute('aria-modal', 'true');
+                _a11yFocusIntoModal(el);
+            } catch (e) {}
         };
         window.closeModal = function(id) {
             const el = document.getElementById(id);
@@ -14052,6 +14060,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.closeModal(top.id); } catch (err) { top.classList.add('hidden'); }
                 } else {
                     top.classList.add('hidden');
+                }
+            });
+        }
+        // A11y: the tabbable controls inside a dialog, in source order. Skips
+        // controls under a .hidden subtree or inline display:none/visibility.
+        window._modalFocusablesIn = function(el) {
+            if (!el) return [];
+            const sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            return Array.prototype.filter.call(el.querySelectorAll(sel), function (n) {
+                if (n.classList && n.classList.contains('hidden')) return false;
+                if (n.closest && n.closest('.hidden')) return false;
+                const st = n.style;
+                if (st && (st.display === 'none' || st.visibility === 'hidden')) return false;
+                return true;
+            });
+        };
+        // A11y: move focus into a just-opened dialog (ISSUE-144). Prefers an
+        // explicit [data-modal-autofocus] target, else the first tabbable
+        // control, else the dialog box itself (so its label is announced).
+        function _a11yFocusIntoModal(el) {
+            const target = el.querySelector('[data-modal-autofocus]') || window._modalFocusablesIn(el)[0];
+            if (target && typeof target.focus === 'function') {
+                target.focus();
+            } else if (typeof el.focus === 'function') {
+                if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+                el.focus();
+            }
+        }
+        // Global Tab focus-trap (ISSUE-190): keep keyboard focus inside the
+        // topmost open .modal, wrapping at both ends and reeling focus back in
+        // if it escaped. Mirrors the global Escape handler above — both query
+        // `.modal:not(.hidden)` so the "topmost modal" notion stays in sync.
+        if (!window.__pbsGlobalTabTrapBound) {
+            window.__pbsGlobalTabTrapBound = true;
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Tab') return;
+                const modals = document.querySelectorAll('.modal:not(.hidden)');
+                if (!modals.length) return;
+                const top = modals[modals.length - 1];
+                const focusables = window._modalFocusablesIn(top);
+                if (!focusables.length) {
+                    e.preventDefault();
+                    if (!top.hasAttribute('tabindex')) top.setAttribute('tabindex', '-1');
+                    top.focus();
+                    return;
+                }
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                const active = document.activeElement;
+                if (e.shiftKey) {
+                    if (active === first || !top.contains(active)) {
+                        e.preventDefault();
+                        last.focus();
+                    }
+                } else if (active === last || !top.contains(active)) {
+                    e.preventDefault();
+                    first.focus();
                 }
             });
         }
@@ -17238,6 +17303,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Tera'd this battle (the class is added by activateTera but never removed).
                 document.querySelectorAll('.tera-crystal-on').forEach(el => el.classList.remove('tera-crystal-on'));
             } catch (e) { console.warn('[startBattle] per-mon gimmick reset:', e); }
+            // ── Between-battle isolation reset (state-bleed fix) ─────────────
+            // `state` is a persistent module-level object reused across Story
+            // battles, and startBattle resets only a fixed field list — so the
+            // boss/raid mechanics, the Healing Wish / Lunar Dance pending flags,
+            // and the battle log (each previously cleared only inside its own
+            // conditional path) bled into the *next* ordinary fight. Most
+            // damaging: the boss surge/immunity hooks (gated on
+            // _activeStoryBeatKey) stayed armed and clamped a follow-up fight's
+            // damage to 0. Clear them all unconditionally here so every fight
+            // starts on its own; the boss block below re-attaches mechanics for
+            // an actual boss beat. Mirrors the weather/terrain reset above.
+            state._activeStoryBeatKey = null;
+            state._bossMechanics = null; state._bossMechanicsFired = null; state._bossPendingTelegraphs = null;
+            state._bossSurgeTurns = 0; state._bossImmuneTurns = 0;
+            state._bossWeatherLocked = false; state._bossTerrainLocked = false;
+            state._healingWish = false; state._healingWishFoe = false;
+            state._lunarDance = false; state._lunarDanceFoe = false;
+            state._fTeraReserveLogged = false;
+            try { const _bl = document.getElementById('battle-log'); if (_bl) _bl.innerHTML = ''; } catch (e) {}
             try { if (settings.randomWeather) rollRandomWeather(); } catch (e) { console.warn('[startBattle] rollRandomWeather:', e); }
             try { if (settings.randomTerrain) rollRandomTerrain(); } catch (e) { console.warn('[startBattle] rollRandomTerrain:', e); }
             try {
@@ -37979,10 +38063,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollIntInRange: (v) => _rollIntInRange(v),
                     gymLeaderGoldBaselineForCity: (n) => _storyGymLeaderGoldBaselineForCity(n),
                     // Track-end rewards + boss mechanics (PR-5).
-                    grantTrackEndReward: (beat) => _storyGrantTrackEndReward(beat),
+                    grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
+                    catchIntroSceneId: (st) => _catchIntroSceneId(st),
+                    displayTownNameForCityRow: (cityEv) => getStoryDisplayTownNameForCityRow(cityEv),
+                    battleEntryBusy: () => _storyBattleEntryBusy,
+                    setBattleEntryBusy: (v) => { _storyBattleEntryBusy = !!v; },
+                    recoverFromEntryFailure: (w, e) => _storyRecoverFromEntryFailure(w, e),
                     // EXP-Share gift (extra-raid reward — ISSUE-243).
                     applyExpShareLevel: (src, idx) => applyExpShareLevel(src, idx),
                     monDisplayLevel: (build) => _monDisplayLevel(build),
+                    // Unified story-flow engine (single-engine refactor — P1, parallel/not-live).
+                    flowSeen: (id) => _flowSeen(id),
+                    flowMarkSeen: (id) => _flowMarkSeen(id),
+                    buildUnifiedStoryEvents: () => _buildUnifiedStoryEvents(),
+                    unifiedResolveRow: (i, reg, seenFn) => _unifiedResolveRow(i, reg, seenFn),
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
                     get BOSS_CONFIGS() { return BOSS_CONFIGS; },
                     bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
@@ -42083,7 +42177,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 scene.run(ev, () => {
                     if (tip) _storyRunSceneMark(tip);
                     try { onPlayed && onPlayed(); }
-                    catch (e) { console.error('[Story] cold-open onPlayed threw:', e); }
+                    catch (e) { _storyRecoverFromEntryFailure('cold-open onPlayed', e); }
                 });
                 return true;
             } catch (e) {
@@ -42337,6 +42431,78 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // UNIFIED STORY-FLOW ENGINE (single-engine refactor — P1 scaffolding).
+        // See docs/story-design/STORY_FLOW_AUDIT.md. Built PARALLEL to the legacy
+        // dispatch (_resolveActiveRoadBeats + _activeBattleBeatForCurrentRow + the
+        // road-dump in _tryFireRoadStoryBeats) and NOT yet wired into
+        // processNextEvent — P2 swaps the live path to it, P3 deletes the legacy.
+        // One registry + one resolver + one dedup ledger. P1 REPRODUCES the legacy
+        // dispatch exactly (faithful drop-in, proven by story-flow-engine-v23.test);
+        // the four flow-bug fixes (audit §4: clumping, ending-before-climax,
+        // story-battle-on-gym-approach, fragmented dedup) land as one isolated edit
+        // to the resolver at P4, once slot granularity is settled.
+        // ═══════════════════════════════════════════════════════════════════
+
+        // ── One dedup ledger (replaces the 10 scattered "shown-once" maps; P2
+        // migration). Namespaced ids ("beat:…", "facility:…", "tip:…"). Reads/
+        // writes go through this single API so a removed event leaves no dangling
+        // state and a duplicate (facilityIntros vs facilitiesSeen) can't recur.
+        function _flowSeen(id) { return !!(sm && sm.flowSeen && sm.flowSeen[id]); }
+        function _flowMarkSeen(id) {
+            if (!sm || !id) return;
+            if (!sm.flowSeen || typeof sm.flowSeen !== 'object') sm.flowSeen = {};
+            sm.flowSeen[id] = true;
+        }
+
+        // ── One registry. Flatten the rolled tracks' beat tables into a single
+        // declarative list — the editable source of truth (add an event = push an
+        // entry; remove = drop it). Each entry: { id, road, kind, track, sceneKey,
+        // requires? }. An arc's `.ending` auto-depends on its climax (villain→.boss,
+        // extra→.raid) so it can never fire before it (fixes ending-before-climax).
+        function _buildUnifiedStoryEvents() {
+            const out = [];
+            const add = (table, track) => {
+                for (const b of Object.values(table || {})) {
+                    if (!b || !b.sceneKey) continue;
+                    const e = { id: b.sceneKey, road: b.roadAnchor, kind: b.kind, track, sceneKey: b.sceneKey };
+                    if (/\.ending$/.test(b.sceneKey)) {
+                        e.requires = track === 'villain'
+                            ? b.sceneKey.replace(/\.ending$/, '.boss')
+                            : b.sceneKey.replace(/\.ending$/, '.raid');
+                    }
+                    out.push(e);
+                }
+            };
+            add(MAIN_STORY_BEATS, 'main');
+            if (sm && sm.tracks && sm.tracks.villain) add(VILLAIN_STORY_BEATS[sm.tracks.villain], 'villain');
+            if (sm && sm.tracks && sm.tracks.extra)   add(EXTRA_STORY_BEATS[sm.tracks.extra], 'extra');
+            return out;
+        }
+
+        const _UNIFIED_BATTLE_KINDS = new Set(['battle', 'miniBoss', 'boss', 'miniRaid', 'raid']);
+        // THE RESOLVER (P1: faithful drop-in — reproduces the LEGACY dispatch exactly
+        // so the P2 swap changes nothing; the flow FIXES are a later, isolated edit to
+        // THIS one function at P4, once slot granularity is settled — see audit §4c).
+        // For one timeline Battle row it returns:
+        //   { scenes: [all unfired event beats for the road],          // == legacy road dump
+        //     battle:  <first unfired battle-kind beat for the road> }  // == legacy inject
+        // `seenFn(id)` is the dedup oracle (live: _flowSeen). The `requires` field on
+        // ending entries is metadata for P4 — ignored here so we match legacy 1:1.
+        function _unifiedResolveRow(arrayIdx, registry, seenFn) {
+            const ev = STORY_EVENTS_RAW[arrayIdx];
+            const road = _roadForArrayIdx(arrayIdx);
+            const result = { scenes: [], battle: null };
+            if (!ev || !road || ev[1] === 'City') return result;
+            for (const e of registry) {                 // legacy road dump: every unfired event beat (non-City rows)
+                if (e.kind === 'event' && e.road === road && !seenFn(e.id)) result.scenes.push(e);
+            }
+            if (ev[1] === 'Battle') for (const e of registry) {   // legacy inject: first unfired battle-kind beat (Battle rows)
+                if (_UNIFIED_BATTLE_KINDS.has(e.kind) && e.road === road && !seenFn(e.id)) { result.battle = e; break; }
+            }
+            return result;
+        }
+
         // ── Track-end reward grants (PR-5) — Master Ball on villain boss
         // victory; EXP-Share gift on extra raid victory. Fires from the
         // battle-injection victory hook in onBattleEnd (the boss/raid regexes
@@ -42346,7 +42512,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // sceneKey grants at most once (sm._trackRewardGranted), so the public
         // StoryMode/__storyTest surface and any double victory-hook can't
         // duplicate the unique Master Ball or the EXP-Share gift.
-        function _storyGrantTrackEndReward(beat) {
+        function _storyGrantTrackEndReward(beat, opts) {
             if (!beat || !beat.sceneKey) return null;
             const sk = beat.sceneKey;
             if (!sm._trackRewardGranted || typeof sm._trackRewardGranted !== 'object') sm._trackRewardGranted = {};
@@ -42357,8 +42523,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.balls.master = (sm.balls.master | 0) + 1;
                 sm._trackRewardGranted[sk] = true;
                 try { save(); } catch (e) {}
-                try { window.showGameAlert && window.showGameAlert('🎯 You found a MASTER BALL among the spoils.'); } catch (e) {}
-                return { kind: 'masterball', count: 1 };
+                const _mbMsg = '🎯 You found a MASTER BALL among the spoils.';
+                // Skip the toast when the caller will render the message itself
+                // (the victory card) — otherwise it paints behind the overlay.
+                if (!(opts && opts.silent)) { try { window.showGameAlert && window.showGameAlert(_mbMsg); } catch (e) {} }
+                return { kind: 'masterball', count: 1, msg: _mbMsg };
             }
             // Extra track raid → EXP-Share gift: EXP_SHARE_GIFT_UNITS distributable
             // level-ups, in fiction the dead trainer's own EXP Share, handed over
@@ -42373,8 +42542,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.inventory.expShareVoucher = (sm.inventory.expShareVoucher | 0) + EXP_SHARE_GIFT_UNITS;
                 sm._trackRewardGranted[sk] = true;
                 try { save(); } catch (e) {}
-                try { window.showGameAlert && window.showGameAlert(`🎓 A grieving trainer presses an EXP SHARE into your hands — ${EXP_SHARE_GIFT_UNITS} level-ups to give. Open your Bag to share them.`); } catch (e) {}
-                return { kind: 'expShareGift', units: EXP_SHARE_GIFT_UNITS };
+                const _esMsg = `🎓 A grieving trainer presses an EXP SHARE into your hands — ${EXP_SHARE_GIFT_UNITS} level-ups to give. Open your Bag to share them.`;
+                // Skip the toast when the caller will render the message itself
+                // (the victory card) — otherwise it paints behind the overlay.
+                if (!(opts && opts.silent)) { try { window.showGameAlert && window.showGameAlert(_esMsg); } catch (e) {} }
+                return { kind: 'expShareGift', units: EXP_SHARE_GIFT_UNITS, msg: _esMsg };
             }
             return null;
         }
@@ -42754,7 +42926,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     reward[v] = (reward[v] | 0) + 1;
                 }
             }
-            return _storyGrantBundle(reward);
+            const rolled = _storyGrantBundle(reward);
+            // Surface what was granted so the victory hook can thread it onto the
+            // on-card reward lines — the bundle grant itself is silent, so before
+            // this the tier reward was delivered but shown nowhere (REWARD-1).
+            return { rolled, reward, msg: _storyRewardItemSummary(reward, rolled) };
         }
 
         // ── IntroQueue (PR-3b) — sequences facility intros / market giveaways /
@@ -42834,6 +43010,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             });
+        }
+
+        /** Pick the single intro tutorial scene a catch screen should enqueue
+         *  (or null for none). INTRO-1: the intro route node chains
+         *  catchTutorial → wildRoute, which without this guard fired firstWild
+         *  ("Catching 101") and then firstWildRoute ("The Road") as two
+         *  back-to-back Prof. Oak overlays that both re-explain ball odds +
+         *  flee. If the catch tutorial already taught catching this run, the
+         *  route overlay is skipped — one tutorial per mechanic. (If the player
+         *  skipped the catch tutorial, firstWildRoute still fires on their first
+         *  wild, so catching is taught exactly once either way.) */
+        function _catchIntroSceneId(st) {
+            if (!st || st.bossMode) return null;
+            if (st.tutorialMode) return 'firstWild';
+            if (st.safariMode) return 'firstSafariCatch';
+            if (_storyRunSceneSeen('tutorial-first-wild')) return null;
+            return 'firstWildRoute';
         }
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
@@ -43246,21 +43439,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityEv = STORY_EVENTS_RAW[sm.eventIndex];
             const el = id => document.getElementById(id);
             const setT = (i,t) => { const e=el(i); if(e) e.textContent=t; };
-            const rawName = cityEv && cityEv[2] ? cityEv[2] : '';
-            const cityIdx = rawName.startsWith('City') ? parseInt(rawName.slice(4), 10) : -1;
-            let cityName;
-            if (cityIdx === 0) {
-                cityName = 'Pallet Town';
-            } else if (cityIdx >= 1 && cityIdx <= 8) {
-                const leaderEvIdx = GYM_CITY_LEADER_EVENT[cityIdx];
-                const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
-                cityName = (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
-            } else if (cityIdx === 9) {
-                cityName = 'Pokémon League';
-            } else {
-                cityName = rawName || 'Town';
-            }
-            setT('story-hud-city', cityName);
+            // City → themed-town name via the shared resolver (single source of
+            // truth; collapsing this duplicate also fixes the City-3 array-index
+            // / row-id mismatch in one place instead of two).
+            setT('story-hud-city', getStoryDisplayTownNameForCityRow(cityEv));
             const hudGoldEl = el('story-hud-gold');
             if (hudGoldEl) hudGoldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             setT('story-hud-badges', `${sm.badges || 0}/8 Badges`);
@@ -44243,8 +44425,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = rawName.startsWith('City') ? parseInt(rawName.slice(4), 10) : -1;
             if (cityIdx === 0) return 'Pallet Town';
             if (cityIdx >= 1 && cityIdx <= 8) {
+                // GYM_CITY_LEADER_EVENT stores the ARRAY INDEX of the gym-leader
+                // row, but sm.trainerAssignments is keyed by ROW-ID (row[0]).
+                // They diverge wherever out-of-order Rival rows shift the
+                // alignment — City 3 in the shipped timeline (arrIdx 17 vs row-id
+                // 18) — so the bare index missed the leader and fell back to the
+                // generic "City 3". Convert index → row-id so the leader's name
+                // (and its themed town) resolves.
                 const leaderEvIdx = GYM_CITY_LEADER_EVENT[cityIdx];
-                const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
+                const leaderRow = leaderEvIdx != null ? STORY_EVENTS_RAW[leaderEvIdx] : null;
+                const leaderName = leaderRow && sm.trainerAssignments && sm.trainerAssignments[leaderRow[0]];
                 return (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
             }
             if (cityIdx === 9) return 'Pokémon League';
@@ -46738,6 +46928,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── PROCEED TO BATTLE ─────────────────────────────────────────────
+        // Recovery for a story battle-entry chain that threw mid-flight. The
+        // critical part is releasing _storyBattleEntryBusy: proceedToNextBattle
+        // latches it true on entry and only enterCity / launchBattle clear it,
+        // so a throw in a cold-open / beat-scene continuation (whose catch used
+        // to just log) stranded the flag true and wedged EVERY later
+        // proceedToNextBattle with "Finish your current action first" — a hard
+        // progression soft-lock with no in-game recovery. We also drop the
+        // player back to the city hub (matching showVictoryOverlay's fall-back)
+        // so they land on a usable screen to retry from.
+        function _storyRecoverFromEntryFailure(where, err) {
+            console.error('[Story] battle-entry chain failed (' + where + ') — recovering to city:', err);
+            _storyBattleEntryBusy = false;
+            try { if (typeof enterCity === 'function') enterCity(); }
+            catch (e2) { console.error('[Story] entry-failure recovery (enterCity) also threw:', e2); }
+        }
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
             // Re-entry guard — see _storyBattleEntryBusy. Blocks a second entry while a cold-open /
@@ -47440,7 +47645,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) { console.warn('[Story] canon trainer override:', e); }
                 _playStoryBeatScene(_beatBattle.sceneKey, () => {
                     try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
-                    catch (e) { console.warn('[Story] beat-battle scene continuation failed:', e); }
+                    catch (e) { _storyRecoverFromEntryFailure('beat-battle scene continuation', e); }
                 });
                 return;
             }
@@ -47846,8 +48051,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.staticDrops.vitaminRouteMidgame = true;
                     _victoryRewardLines.push('💊 A traveler dropped an EV Voucher in the tall grass — +1 EV Voucher.');
                 }
-                // EV training line goes last so item / vitamin loot reads first on the card.
-                if (_evRewardLine) _victoryRewardLines.push(_evRewardLine);
+                // EV line is pushed AFTER the beat/track-reward hook below so item /
+                // vitamin / beat loot reads first on the card (EV training reads last).
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // route from City 8 to the League city after the Gym 8 victory (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
@@ -47888,11 +48093,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_beat) {
                             if (!sm.storyEventsFired) sm.storyEventsFired = {};
                             sm.storyEventsFired[_beatKey] = true;
-                            try { _storyAwardStoryBeatReward(_beat); } catch (e) {}
-                            try { _storyGrantTrackEndReward(_beat); } catch (e) {}
+                            // Thread both rewards onto the on-card lines. The tier
+                            // reward's return was previously discarded (REWARD-1); the
+                            // track reward (Master Ball / EXP Share) announced via a
+                            // toast that painted behind the victory overlay (NOTIF-1,
+                            // z-1200 vs z-9999). Grant the track reward silent so it
+                            // shows ONLY on the card.
+                            try {
+                                const _beatRwd = _storyAwardStoryBeatReward(_beat);
+                                if (_beatRwd && _beatRwd.msg) _victoryRewardLines.push('🎁 ' + _beatRwd.msg);
+                            } catch (e) {}
+                            try {
+                                const _trackRwd = _storyGrantTrackEndReward(_beat, { silent: true });
+                                if (_trackRwd && _trackRwd.msg) _victoryRewardLines.push(_trackRwd.msg);
+                            } catch (e) {}
                         }
                     }
                 } catch (e) { console.warn('[Story] beat-battle victory hook failed:', e); }
+                // EV training line goes last so item / vitamin / beat loot reads first.
+                if (_evRewardLine) _victoryRewardLines.push(_evRewardLine);
                 // (Fatigue/Tiredness was cut — no per-battle stack to stash here anymore.)
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
                 sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
@@ -50373,14 +50592,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // dialogue + Continue. Each scene fires once per run (per-run-
                 // deduped via sm.scenesShown). The catch screen is already
                 // rendered behind the overlay; on Continue the player drops
-                // into the live encounter. See STORY_TUTORIAL_SCENES.
-                if (_catchState.tutorialMode) {
-                    _enqueueIntroTutorial('firstWild');
-                } else if (_catchState.safariMode) {
-                    _enqueueIntroTutorial('firstSafariCatch');
-                } else {
-                    _enqueueIntroTutorial('firstWildRoute');
-                }
+                // into the live encounter. _catchIntroSceneId picks the one
+                // scene for this catch state and folds in the INTRO-1 guard so
+                // the intro route node's catchTutorial → wildRoute chain no
+                // longer stacks firstWild + firstWildRoute back-to-back.
+                const _introScene = _catchIntroSceneId(_catchState);
+                if (_introScene) _enqueueIntroTutorial(_introScene);
                 if (_catchState.roamingLabel) {
                     // Roaming legendaries keep the plain one-time-tip — they're
                     // a rare in-the-grass surprise, not a new mechanic class.
