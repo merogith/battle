@@ -34431,10 +34431,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
+        // v23 (Wander Around) only ADDED the sm.wanderByEventIdx map — additive
+        // and seeded to {} by the load-path back-fill — so it intentionally has
+        // no migrateStoryPreV23; a pre-v23 save loads straight through with a
+        // fresh wander budget. The chain's last versioned step is migrateStoryPreV22.
         const SAVE_VER = 23;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
-        // (load() runs migrateStoryPreV8..PreV20 against a saved `version`).
+        // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
         window.__storyLoad = function () { return load(); };
         window.__STORY_SAVE_VER = SAVE_VER;
         function _emptyStoryMeta() {
