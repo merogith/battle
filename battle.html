@@ -925,6 +925,16 @@
             border-color: #ffd54f; color: #1a0d22;
             box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
         }
+        /* Step 2 — "Type ▾" collapsible type filter. The toggle chip lives in the
+           strip; the expansion row drops below it (full-width, wrapping) so it is
+           never clipped by the strip's overflow-x:auto / overflow-y:hidden. */
+        .tx-chip.tx-chip--typemenu { font-weight: 700; }
+        .tx-typemenu-row {
+            display: flex; flex-wrap: wrap; gap: 4px;
+            margin-top: 6px; padding: 8px 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+        }
         /* Phase 6 — Dojo tier-cap badge at the start of the item-category
            strip, and locked-abilities count badge on the Ability tab label.
            Both communicate "what's hidden until the next dojo stage" without
@@ -55776,6 +55786,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             moveSlot: 0,
             // dojo tab: 'item' | 'ability'
             dojoTab: 'item',
+            // "Type ▾" type-filter expansion open/closed (moves picker)
+            typeMenuOpen: false,
             // shared text search (kept per facility kind)
             search: { moves: '', items: '', abilities: '', natures: '' },
             // filter sets: types (Set of type names), cats (Set of categories), itemCat (string or 'all'), natureUp (stat or 'any')
@@ -57452,6 +57464,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
+                // "Type ▾" menu toggle (moves picker) — collapse/expand the type-filter row.
+                const typeMenuBtn = t.closest('[data-typemenu-toggle]');
+                if (typeMenuBtn) {
+                    _txState.typeMenuOpen = !_txState.typeMenuOpen;
+                    void renderTutorTeam(true);
+                    return;
+                }
+
                 // Phase 3 — active-filter "× search" pill clears just the search box
                 const clearSearch = t.closest('.tx-active-filter[data-clear-search]');
                 if (clearSearch) {
@@ -57679,6 +57699,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${clearBtn}
                 </div>
                 ${chipsRow}
+                ${opts.belowChipsHtml || ''}
             </div>`;
         }
 
@@ -57807,25 +57828,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<div class="tx-chip-row tx-chip-row--quick" role="group" aria-label="Quick filters">${chips.join('')}</div>`;
         }
 
+        // Type filter is a single collapsible "Type ▾" control: the button lives in the
+        // chip strip; tapping it reveals a wrapping row BELOW the strip (so it isn't
+        // clipped by the strip's overflow-x:auto) listing ONLY the move types present in
+        // this mon's pool — most mons span ~9-11 of 18, so the always-18-chip row was
+        // mostly dead weight. Multi-select; the active picks also surface as removable
+        // pills above the grid (_txActiveFiltersHtml). The standalone Physical/Special/
+        // Status category row was dropped — the STAB / Damage / Status quick chips already
+        // cover that split.
         function _txMoveTypeChipsHtml() {
-            const sel = _txState.filter.moveTypes;
-            const allActive = sel.size === 0;
-            const chips = _TX_ALL_TYPES.map(t =>
-                `<button type="button" class="tx-chip tx-chip--type type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" data-active="${sel.has(t)?1:0}" style="font-family:inherit;">${t}</button>`
-            ).join('');
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter by move type">
-                <button type="button" class="tx-chip" data-filter-kind="moveType" data-filter-value="all" data-active="${allActive?1:0}">All</button>
-                ${chips}
-            </div>`;
+            const n = _txState.filter.moveTypes.size;
+            const open = !!_txState.typeMenuOpen;
+            const label = n ? `Type (${n})` : 'Type';
+            return `<button type="button" class="tx-chip tx-chip--typemenu" data-typemenu-toggle data-active="${n?1:0}" aria-expanded="${open?'true':'false'}" aria-haspopup="true" title="Filter by move type">🎯 ${label} ${open?'▴':'▾'}</button>`;
         }
-        function _txMoveCatChipsHtml() {
-            const sel = _txState.filter.moveCats;
-            const allActive = sel.size === 0;
-            const chips = _TX_ALL_CATS.map(c =>
-                `<button type="button" class="tx-chip tx-chip--cat-${c}" data-filter-kind="moveCat" data-filter-value="${c}" data-active="${sel.has(c)?1:0}">${c}</button>`
+        // The expansion row, rendered below the chip strip when the Type menu is open.
+        // availTypes = Set of move types present in the current pool; falls back to all 18.
+        function _txMoveTypeMenuRowHtml(availTypes) {
+            if (!_txState.typeMenuOpen) return '';
+            const sel = _txState.filter.moveTypes;
+            const present = _TX_ALL_TYPES.filter(t => !availTypes || !availTypes.size || availTypes.has(t));
+            const chips = present.map(t =>
+                `<button type="button" class="tx-chip tx-chip--type type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" data-active="${sel.has(t)?1:0}" aria-pressed="${sel.has(t)?'true':'false'}" style="font-family:inherit;">${t}</button>`
             ).join('');
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter by move category">
-                <button type="button" class="tx-chip" data-filter-kind="moveCat" data-filter-value="all" data-active="${allActive?1:0}">All Categories</button>
+            return `<div class="tx-typemenu-row" role="group" aria-label="Filter by move type">
+                <button type="button" class="tx-chip" data-filter-kind="moveType" data-filter-value="all" data-active="${sel.size===0?1:0}" aria-pressed="${sel.size===0?'true':'false'}">All types</button>
                 ${chips}
             </div>`;
         }
@@ -58445,6 +58472,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // alongside the alternatives. Equipped moves render as non-learnable
             // "✓ Equipped" cards; everything else learns into the active slot.
             const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
+            // Distinct move types in the CURRENT view (respecting the ★ filter) — drives
+            // the "Type ▾" menu so it only offers types the player can actually filter to
+            // (not all 18, and never a type the ★ pool would render empty).
+            const _recOnlyMoves = !sPool.sparse && _txState.filter.recOnly.moves;
+            const availTypes = new Set();
+            for (const m of gridSource) {
+                if (_recOnlyMoves && !sPool.moves.inPool.has(m) && !equippedSet.has(m)) continue;
+                const md = movesDB[m] || ensureMoveData(m);
+                if (md && md.type) availTypes.add(md.type);
+            }
             const filtered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
             const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
@@ -58486,7 +58523,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 countLabel: 'moves',
                 sparse: sPool.sparse,
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
-                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
+                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml(),
+                belowChipsHtml: _txMoveTypeMenuRowHtml(availTypes),
                 sortOptions: [
                     { value:'usage', label:'By usage %' },
                     { value:'recommended', label:'Best for this mon' },
@@ -58835,6 +58873,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txState.dojoTab = 'item';
             _txState.search.moves = ''; _txState.search.items = ''; _txState.search.abilities = ''; _txState.search.natures = '';
             _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear();
+            _txState.typeMenuOpen = false;
             _txState.filter.itemCat = 'all';
             _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any';
             // Reset ★ Recommended filter to ON for every picker — fresh entry
