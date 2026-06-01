@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6a29587124a9
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: `_storyGrantTrackEndReward` has no internal idempotency guard — re-call double-grants Master Ball

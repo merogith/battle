@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1d05f5b87967
 confidence: medium
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: Villain-boss Master Ball grant has no fire-once guard; unique-ball guarantee can break
