@@ -4,7 +4,7 @@
 
 ## What this codebase is
 
-A single-page Pokémon-style battle simulator (`battle.html`, ~48k LOC). Three play modes exist in the code:
+A single-page Pokémon-style battle simulator (`battle.html`, ~61k lines / 4 MB — HTML + CSS + JS in one file). Three play modes exist in the code:
 
 - **Story** — single-player campaign with cities, gyms, rival, mystery figure, post-game.
 - **Quick Play** — instant standalone battles (Player vs CPU).
@@ -36,17 +36,20 @@ Five spec systems were authored but never shipped. They are now **permanently cu
 
 Verify before reviving: `grep -niE 'blackMarket|illegalDealer|pendingWager|traderOfferByCity|itineraryProgress' battle.html` → 0 hits today. Past spec text lives in git history.
 
-## Role boundaries
+## Workflow (solo developer, single branch → main)
 
-The repo has three AI session lines working in parallel:
+This is a **solo project**. There are no parallel "session lineages" — work on the active
+branch, get the maintainer's sign-off on behaviour changes, then merge to `main`. `main`
+is the source of truth; feature branches are short-lived and should be deleted after merge.
 
-| Branch line | Owner | Domain |
-|---|---|---|
-| `claude/*-pasteur-*` | "pasteur" | Story flow — timeline, beats, intro queue, save schema versions, MF dispatch, canon trainer overrides, 3-track system |
-| `claude/*-maxwell-*` | "maxwell" | Difficulty pacing — IV gating, EV caps, tier curves, foe stat multipliers, tutor staging, move-tag index |
-| `claude/optimistic-ptolemy-*` and other ad-hoc | "general" (this session) | Engine correctness, code hygiene, perf, a11y, data-driven sustainability, polish |
+**Sensitive areas — change carefully, never casually (but fine to touch when asked):**
 
-**Hard rule**: general-session does NOT modify story timeline / save schema (pasteur) or difficulty curve / IV tiers / stat multipliers (maxwell) without written hand-off from the relevant lineage.
+- **Story flow & saves** — `STORY_EVENTS_RAW` timeline, beat ordering, intro queue, and the
+  save schema (`SAVE_VER` + `migrateStoryPreV*`). A wrong edit here can corrupt a player's
+  existing save. Read `STORY_MODE_FLOW.md` before touching it.
+- **Difficulty curve / balance** — IV gating, EV caps, build tiers, foe stat multipliers,
+  tutor staging. These are tuned *numbers the maintainer owns* (see Approval rules).
+  Reference: `docs/PROGRESSION_CURVE_MASTER.md`.
 
 ## Approval rules
 
@@ -54,11 +57,11 @@ The repo has three AI session lines working in parallel:
 - **Balance numbers are user-owned.** HP curves, foe stat multipliers, ball %, gold values, retreat fees — I extract & expose them; user picks values.
 - **Behavior-preserving refactors do not need diff-level approval** if they are strictly 1:1 (rename, extract helper, dead-code removal verified by grep). They still need approval for the *direction* before starting a sweep.
 - **Doc deletion is OK without sign-off** for content marked as DE-SCOPED in this file.
-- **Flow-ordering bugs MUST be flagged** even though the user "owns" the flow (e.g., "intro fires after gift is delivered"). User can't pre-spot ordering inconsistencies in 48k LOC — that's the AI's job.
+- **Flow-ordering bugs MUST be flagged** even though the user "owns" the flow (e.g., "intro fires after gift is delivered"). User can't pre-spot ordering inconsistencies in 61k lines — that's the AI's job.
 
 ## Architecture preferences
 
-- **Data-driven over code-driven**: dialogue pools, type chart, ball multipliers, UI strings → JSON under `data/`. Mechanics & curves stay in code (pasteur/maxwell territory).
+- **Data-driven over code-driven**: dialogue pools, type chart, ball multipliers, UI strings → JSON under `data/`. Mechanics & curves stay in code.
 - **Sustainable**: every refactor leaves behind a deterministic test (jsdom harness via `tests/helpers/load-engine.js`), so the next AI session can't silently regress it.
 - **Helpers over duplicated logic**: the "vibecode" pattern of re-inlining a 3-line block 25 times is what we are trying to undo.
 - **Use seeded RNG (`storyRngNext`) everywhere user-visible**, never bare `Math.random()`. Deterministic replays are part of the product.
@@ -68,8 +71,8 @@ The repo has three AI session lines working in parallel:
 
 - `agent-state/ISSUE_LEDGER.md` — single source of truth for known issues. Add findings via `agent-state/findings/<agent>-<timestamp>.md`, then run `node scripts/debug/issue-ledger.mjs`.
 - `.claude/agents/*.md` — 10 specialist auditors fanned out by `/deep-debug`.
-- `STORY_MODE_FLOW.md` — pasteur's design canon.
-- `docs/PROGRESSION_CURVE_MASTER.md` — maxwell's curve canon (if present).
+- `STORY_MODE_FLOW.md` — story-mode design canon (the shipped catch / PC / Safari / boss systems).
+- `docs/PROGRESSION_CURVE_MASTER.md` — difficulty-curve reference (the flat-Lv50 / 3-axis model).
 - `tests/helpers/load-engine.js` — jsdom harness; ~2.5s first boot, cached thereafter.
 
 When in doubt, ask before acting.

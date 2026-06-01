@@ -2490,38 +2490,6 @@
             color: #ffe082; font-size: 12px; max-width: 520px; text-align: center;
             font-style: italic; line-height: 1.55;
         }
-        /* Storyline picker card grid (run-setup) */
-        .story-create-storyline-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 8px; margin-top: 4px;
-        }
-        .story-create-storyline-card {
-            display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
-            padding: 10px 12px; background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
-            color: #ddd; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s;
-            font-family: inherit; font-size: 12px;
-        }
-        .story-create-storyline-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.24); }
-        .story-create-storyline-card--active {
-            background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff;
-        }
-        .story-create-storyline-card--mature { border-left: 3px solid #b0bec5; }
-        .story-create-storyline-card--soft   { border-left: 3px solid #ce93d8; }
-        .story-create-storyline-card--pasta  { border-left: 3px solid #ef5350; }
-        .story-create-storyline-card--random { border-left: 3px solid #4fc3f7; font-style: italic; }
-        .story-create-storyline-name { font-weight: bold; font-size: 13px; color: #fff; }
-        .story-create-storyline-tag {
-            font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
-            padding: 1px 6px; border-radius: 2px; color: #111; background: #b0bec5;
-        }
-        .story-create-storyline-tag--soft  { background: #ce93d8; }
-        .story-create-storyline-tag--pasta { background: #ef5350; color: #fff; }
-        .story-create-storyline-tag--classic { background: #ffd54f; }
-        .story-create-storyline-tag--random  { background: #4fc3f7; }
-        .story-create-storyline-tag--mature { background: #b0bec5; }
-        .story-create-storyline-tagline { color: #aaa; font-size: 11px; line-height: 1.45; }
-        .story-create-storyline-warn { color: #ef9a9a; font-size: 10px; font-style: italic; margin-top: 2px; }
         .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
@@ -9547,20 +9515,6 @@
                 </div>
             </section>
 
-            <!-- Storyline picker section hidden under v22 3-track system. Card grid
-                 stays in the DOM (display:none) so legacy JS that reads
-                 `_tcState.storyline` keeps working; the value defaults to
-                 'classic' and the 3-track random villain/extra rolls supersede
-                 the old 8-variant tone picker. Per locked decision 3 (mystery
-                 reveal), the player discovers their rolled tracks through the
-                 first villain / extra beat in-game — NOT pre-set-out.
-                 Surface owned by sm.tracks now. -->
-            <section class="story-create-section" id="story-create-storyline-section" style="display:none;">
-                <h2 class="story-create-sec-title">Storyline (legacy)</h2>
-                <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
-                <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
-                <p id="story-create-storyline-warn" class="story-create-storyline-warn" aria-live="polite" style="margin-top:6px;"></p>
-            </section>
 
             <section class="story-create-section">
                 <h2 class="story-create-sec-title">3 &mdash; Pokémon generations</h2>
@@ -15228,8 +15182,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Fatigue/Tiredness was cut (Path D): it was an invisible, near-inert ~1-2% tax
             // that auto-cleared at the next gym and could never reach its own cap in the shipped
-            // timeline. The `build.tired` save field is left intact-but-inert for save
-            // compatibility (pasteur-owned schema); nothing reads it for battle stats anymore.
+            // timeline. The `build.tired` field is no longer written; an inert value on an old
+            // save is harmless (nothing reads it).
             // Phase 4.4 — per-event enemy stat multiplier (set by enterBattleEvent's
             // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
             // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
@@ -33356,13 +33310,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return EXP_SHARE_BASE_LEVEL + Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, lv));
         }
         function _expShareWallet() { return (sm.inventory && sm.inventory.expShareVoucher) | 0; }
-        // Legacy hooks — kept so old callers still resolve, but always read zero now
-        // that vitamins target IVs directly. The v19 migration converts any leftover
-        // permBoosts back into vitamin inventory, so this should never see non-zero
-        // input in a normalized save.
-        function _permBoostsRead(_mon) { return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }; }
-        function _permBoostTotal(_mon) { return 0; }
-        window._permBoostsRead = function(_buildObj) { return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }; };
 
         // ── Random IV rolls ──────────────────────────────────────────────
         // Player paths (starter, wild catches, professor gifts) roll a fully
@@ -34602,8 +34549,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // v23 (Wander Around) only ADDED the sm.wanderByEventIdx map — additive
         // and seeded to {} by the load-path back-fill — so it intentionally has
         // no migrateStoryPreV23; a pre-v23 save loads straight through with a
-        // fresh wander budget. The chain's last versioned step is migrateStoryPreV22.
-        const SAVE_VER = 23;
+        // fresh wander budget.
+        // v24 removes the post-HoF "Caged God" boss arc — migrateStoryPreV24 strips
+        // the vestigial sm.bossArc state. The chain's last versioned step is v24.
+        const SAVE_VER = 24;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -35141,6 +35090,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
             if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
         }
+        function migrateStoryPreV24() {
+            // The post-HoF "Caged God" boss arc was cut (post-game is now the Mystery
+            // Figure climax -> Crucible / Battle Frontier / farm). Drop its vestigial
+            // save state. Any Master Ball an old save banked for the now-gone cage is
+            // left in the bag (harmless). postHofMysteryClimaxDone (Mystery Figure) is kept.
+            if (sm.bossArc) delete sm.bossArc;
+        }
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -35156,7 +35112,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!slot.build.bonus || typeof slot.build.bonus !== 'object') {
                         slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
                     }
-                    if (typeof slot.build.tired !== 'number') slot.build.tired = 0;
                 }
             }
         }
@@ -35289,7 +35244,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex || typeof sm.pokedex !== 'object' || !Array.isArray(sm.pokedex.seen) || !Array.isArray(sm.pokedex.caught)) {
                 sm.pokedex = { seen: [], caught: [] };
             }
-            if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
             // Post-HoF Mystery Figure climax flag (introduced after Caged God arc shipped).
             // Existing post-HoF saves (boss arc already available) should not be forced
             // back through the climax. Same shadowing trap as balls above — the defaults block
@@ -35374,7 +35328,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    pcBox: [],
                    balls: { poke: 0, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
-                   catchUnlocked: false,
                    storyLine: 'classic',
                    storyChoices: {},
                    postHofMysteryClimaxDone: false,
@@ -35553,7 +35506,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 25089, 25148, 25154, 25532, 26487). Without this expose, those sites
         // throw ReferenceError whenever sm.active is true (= every story battle
         // that triggers fatigue-confusion, thaw, Swagger/Flatter, secondary
-        // confuse, Harvest, or a G-Max status branch). See BUG_REPORT.md.
+        // confuse, Harvest, or a G-Max status branch).
         try { window.storyRngNext = storyRngNext; } catch (e) {}
         // Story replay determinism: when sm.active && sm.runSeed != null, every
         // Math.random() in the engine (262 sites across battle.html) routes
@@ -35768,6 +35721,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 22) {
                     try { migrateStoryPreV22(); } catch (e) { console.warn('[Story] v22 3-track migrate', e); }
                 }
+                if (_loadedVer < 24) {
+                    try { migrateStoryPreV24(); } catch (e) { console.warn('[Story] v24 Caged God arc removal migrate', e); }
+                }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -35800,8 +35756,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     slot.build.bonus[k] = Math.max(0, Math.min(10, (slot.build.bonus[k] | 0)));
                                 }
                             }
-                            if (typeof slot.build.tired !== 'number') slot.build.tired = 0;
-                            slot.build.tired = Math.max(0, Math.min(3, slot.build.tired | 0));
                         }
                     }
                 } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
@@ -38106,11 +38060,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // EXP-Share gift (extra-raid reward — ISSUE-243).
                     applyExpShareLevel: (src, idx) => applyExpShareLevel(src, idx),
                     monDisplayLevel: (build) => _monDisplayLevel(build),
-                    // Unified story-flow engine (single-engine refactor — P1, parallel/not-live).
-                    flowSeen: (id) => _flowSeen(id),
-                    flowMarkSeen: (id) => _flowMarkSeen(id),
-                    buildUnifiedStoryEvents: () => _buildUnifiedStoryEvents(),
-                    unifiedResolveRow: (i, reg, seenFn) => _unifiedResolveRow(i, reg, seenFn),
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
                     get BOSS_CONFIGS() { return BOSS_CONFIGS; },
                     bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
@@ -38898,57 +38847,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _tcState.genPreset = p;
             _tcSyncGenPresetButtons();
         }
-        function trainerCreateSetStoryline(id) {
-            // STORYLINE_VARIANTS is declared later in the same IIFE — the lookup
-            // happens at call time, after the IIFE has finished evaluating.
-            if (typeof STORYLINE_VARIANTS === 'undefined' || !STORYLINE_VARIANTS[id]) return;
-            _tcState.storyline = id;
-            _tcSyncStorylineCards();
-        }
-        function _tcSyncStorylineCards() {
-            const cards = document.querySelectorAll('#story-create-storyline-grid .story-create-storyline-card');
-            cards.forEach(c => {
-                const on = (c.dataset.storyline === _tcState.storyline);
-                c.classList.toggle('story-create-storyline-card--active', on);
-                c.setAttribute('aria-checked', on ? 'true' : 'false');
-            });
-            const warnEl = document.getElementById('story-create-storyline-warn');
-            if (warnEl) {
-                const v = STORYLINE_VARIANTS[_tcState.storyline] || null;
-                warnEl.textContent = (v && v.warn) ? v.warn : '';
-            }
-        }
-        function _tcRenderStorylineGrid() {
-            const grid = document.getElementById('story-create-storyline-grid');
-            if (!grid) return;
-            // STORYLINE_VARIANTS keys are walked in declaration order; the picker
-            // grid mirrors that order so the run-setup feels consistent across
-            // sessions. The 'surprise_me' sentinel comes last by design.
-            const ids = Object.keys(STORYLINE_VARIANTS);
-            grid.innerHTML = ids.map(id => {
-                const v = STORYLINE_VARIANTS[id];
-                const tierCls = v.tier === 'mature' ? 'story-create-storyline-card--mature'
-                              : v.tier === 'soft_pasta' ? 'story-create-storyline-card--soft'
-                              : v.tier === 'pasta' ? 'story-create-storyline-card--pasta'
-                              : v.tier === 'random' ? 'story-create-storyline-card--random'
-                              : '';
-                const tagCls = v.tier === 'soft_pasta' ? 'story-create-storyline-tag--soft'
-                             : v.tier === 'pasta' ? 'story-create-storyline-tag--pasta'
-                             : v.tier === 'random' ? 'story-create-storyline-tag--random'
-                             : v.tier === 'mature' ? 'story-create-storyline-tag--mature'
-                             : 'story-create-storyline-tag--classic';
-                const warn = v.warn ? `<span class="story-create-storyline-warn">${_esc(v.warn)}</span>` : '';
-                return `<button type="button"
-                    class="story-create-storyline-card ${tierCls}"
-                    data-storyline="${_esc(id)}" role="radio" aria-checked="false"
-                    onclick="window.StoryMode.trainerCreateSetStoryline('${_esc(id)}')">
-                    <span class="story-create-storyline-tag ${tagCls}">${_esc(v.tierLabel || v.tier || '')}</span>
-                    <span class="story-create-storyline-name">${_esc(v.label || id)}</span>
-                    <span class="story-create-storyline-tagline">${_esc(v.description || '')}</span>
-                    ${warn}
-                </button>`;
-            }).join('');
-        }
         function _tcValidateName(raw) {
             const trimmed = String(raw || '').trim();
             if (!trimmed) return { ok: false, msg: 'Pick a trainer name to continue.' };
@@ -39541,7 +39439,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pcBox: [],
                 balls: { poke: 0, great: 0, ultra: 0, master: 0 },
                 pokedex: { seen: [], caught: [] },
-                catchUnlocked: false,
                 storyLine: _readStorylineFromUI(),
                 storyChoices: {},
                 postHofMysteryClimaxDone: false,
@@ -41232,14 +41129,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (STORYLINE_VARIANTS[_tcState.storyline]) return _tcState.storyline;
                 }
             } catch (e) {}
-            // Legacy select fallback (older menu still wired for compatibility).
-            try {
-                const el = document.getElementById('story-setting-storyline');
-                if (el && el.value && STORYLINE_VARIANTS[el.value]) {
-                    if (el.value === 'surprise_me') return _pickRandomStorylineVariant();
-                    return el.value;
-                }
-            } catch (e) {}
             return 'classic';
         }
         /** Roll one of the eight real variants. 'surprise_me' itself and any
@@ -42057,6 +41946,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_shouldFireCatchTutorialBeforeBattle(battleIdx)) return null;
                     const partner = _pickStarterPartner(storySettingsGens());
                     if (!partner) return null;
+                    // Defensive net (fire-path only): the City-0 Pokémart grants the 5
+                    // starting balls before this, but if that's ever skipped/reordered,
+                    // top up here so the scripted catch + guaranteed 2nd party member
+                    // can never silently no-op for want of a ball.
+                    const balls = sm.balls || (sm.balls = { poke: 0, great: 0, ultra: 0, master: 0 });
+                    if (((balls.poke | 0) + (balls.great | 0) + (balls.ultra | 0) + (balls.master | 0)) <= 0) {
+                        balls.poke = 5;
+                        try { save(); } catch (e) {}
+                    }
                     return {
                         encounter: partner,
                         options: { forcedCatchRate: 1.0, forcedFleeRate: 0, tutorialMode: true },
@@ -42463,78 +42361,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!queue.length) return false;
             _playStoryBeatQueue(queue, 0, () => processNextEvent());
             return true;
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
-        // UNIFIED STORY-FLOW ENGINE (single-engine refactor — P1 scaffolding).
-        // See docs/story-design/STORY_FLOW_AUDIT.md. Built PARALLEL to the legacy
-        // dispatch (_resolveActiveRoadBeats + _activeBattleBeatForCurrentRow + the
-        // road-dump in _tryFireRoadStoryBeats) and NOT yet wired into
-        // processNextEvent — P2 swaps the live path to it, P3 deletes the legacy.
-        // One registry + one resolver + one dedup ledger. P1 REPRODUCES the legacy
-        // dispatch exactly (faithful drop-in, proven by story-flow-engine-v23.test);
-        // the four flow-bug fixes (audit §4: clumping, ending-before-climax,
-        // story-battle-on-gym-approach, fragmented dedup) land as one isolated edit
-        // to the resolver at P4, once slot granularity is settled.
-        // ═══════════════════════════════════════════════════════════════════
-
-        // ── One dedup ledger (replaces the 10 scattered "shown-once" maps; P2
-        // migration). Namespaced ids ("beat:…", "facility:…", "tip:…"). Reads/
-        // writes go through this single API so a removed event leaves no dangling
-        // state and a duplicate (facilityIntros vs facilitiesSeen) can't recur.
-        function _flowSeen(id) { return !!(sm && sm.flowSeen && sm.flowSeen[id]); }
-        function _flowMarkSeen(id) {
-            if (!sm || !id) return;
-            if (!sm.flowSeen || typeof sm.flowSeen !== 'object') sm.flowSeen = {};
-            sm.flowSeen[id] = true;
-        }
-
-        // ── One registry. Flatten the rolled tracks' beat tables into a single
-        // declarative list — the editable source of truth (add an event = push an
-        // entry; remove = drop it). Each entry: { id, road, kind, track, sceneKey,
-        // requires? }. An arc's `.ending` auto-depends on its climax (villain→.boss,
-        // extra→.raid) so it can never fire before it (fixes ending-before-climax).
-        function _buildUnifiedStoryEvents() {
-            const out = [];
-            const add = (table, track) => {
-                for (const b of Object.values(table || {})) {
-                    if (!b || !b.sceneKey) continue;
-                    const e = { id: b.sceneKey, road: b.roadAnchor, kind: b.kind, track, sceneKey: b.sceneKey };
-                    if (/\.ending$/.test(b.sceneKey)) {
-                        e.requires = track === 'villain'
-                            ? b.sceneKey.replace(/\.ending$/, '.boss')
-                            : b.sceneKey.replace(/\.ending$/, '.raid');
-                    }
-                    out.push(e);
-                }
-            };
-            add(MAIN_STORY_BEATS, 'main');
-            if (sm && sm.tracks && sm.tracks.villain) add(VILLAIN_STORY_BEATS[sm.tracks.villain], 'villain');
-            if (sm && sm.tracks && sm.tracks.extra)   add(EXTRA_STORY_BEATS[sm.tracks.extra], 'extra');
-            return out;
-        }
-
-        const _UNIFIED_BATTLE_KINDS = new Set(['battle', 'miniBoss', 'boss', 'miniRaid', 'raid']);
-        // THE RESOLVER (P1: faithful drop-in — reproduces the LEGACY dispatch exactly
-        // so the P2 swap changes nothing; the flow FIXES are a later, isolated edit to
-        // THIS one function at P4, once slot granularity is settled — see audit §4c).
-        // For one timeline Battle row it returns:
-        //   { scenes: [all unfired event beats for the road],          // == legacy road dump
-        //     battle:  <first unfired battle-kind beat for the road> }  // == legacy inject
-        // `seenFn(id)` is the dedup oracle (live: _flowSeen). The `requires` field on
-        // ending entries is metadata for P4 — ignored here so we match legacy 1:1.
-        function _unifiedResolveRow(arrayIdx, registry, seenFn) {
-            const ev = STORY_EVENTS_RAW[arrayIdx];
-            const road = _roadForArrayIdx(arrayIdx);
-            const result = { scenes: [], battle: null };
-            if (!ev || !road || ev[1] === 'City') return result;
-            for (const e of registry) {                 // legacy road dump: every unfired event beat (non-City rows)
-                if (e.kind === 'event' && e.road === road && !seenFn(e.id)) result.scenes.push(e);
-            }
-            if (ev[1] === 'Battle') for (const e of registry) {   // legacy inject: first unfired battle-kind beat (Battle rows)
-                if (_UNIFIED_BATTLE_KINDS.has(e.kind) && e.road === road && !seenFn(e.id)) { result.battle = e; break; }
-            }
-            return result;
         }
 
         // ── Track-end reward grants (PR-5) — Master Ball on villain boss
@@ -44525,10 +44351,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Fatigue/Tiredness was cut (Path D). It was an invisible, near-inert ~1-2% tax that
         // auto-cleared at the next gym and could never reach its own cap in the shipped timeline.
-        // These functions are kept as inert no-ops so any remaining call sites stay safe; nothing
-        // accrues, clears, or displays fatigue anymore. The `build.tired` save field and its
-        // migration are intentionally left intact-but-unused for save compatibility (the schema
-        // is pasteur-owned). Removing them is a separate pasteur task.
+        // The `build.tired` field is no longer written; an inert value on an old save is harmless
+        // (nothing reads it). The no-op hooks below are retained only because live call sites still
+        // invoke them — they do nothing.
         function _storyEventIsIconicFight(eventName) {
             if (!eventName) return false;
             const s = String(eventName);
@@ -44543,7 +44368,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || s === 'Crucible'
                 || s === 'Frontier';
         }
-        function _storyApplyTiredness(_eventName) { /* fatigue cut — no-op */ }
         function _storyClearTirednessForIconic() { /* fatigue cut — no-op */ }
         function _storyShowTirednessIntro() { /* fatigue cut — no-op */ }
 
@@ -44636,7 +44460,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { console.warn('[Egg] build', e); }
             if (!b) b = { m: ['Tackle','Tackle','Tackle','Tackle'], a: null, n: 'Hardy', i: null, ivs: { hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
             if (!b.bonus || typeof b.bonus !== 'object') b.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            if (typeof b.tired !== 'number') b.tired = 0;
             return b;
         }
         // Hatch every egg whose gate badge is met, in place (party + PC). Keeps the
@@ -45050,7 +44873,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { if (typeof makeBuild === 'function') build = makeBuild(name); } catch (e) {}
                 if (!build) build = { m:['Tackle','Tackle','Tackle','Tackle'], a:null, n:'Hardy', i:null, ivs:{ hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs:{ hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
                 if (!build.bonus) build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-                if (typeof build.tired !== 'number') build.tired = 0;
                 if (isBoss) { for (const s of ['hp','atk','def','spa','spd','spe']) build.bonus[s] = 2; }
                 six.push({ name, build, grade: getMonGrade(name, getBST(name)) });
             }
@@ -45978,8 +45800,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _pendingProfWasMystery = false; // whether cached choices were rolled in mystery mode
         let _pendingProfBadges = null; // badge count when cached; invalidate when badges change so tier curve refreshes
         let _profLegendaryMysteryMode = false;
-        // (legacy _pendingProfRoll kept for safety)
-        let _pendingProfRoll    = null;
 
         /** In-memory professor draft cache must not survive abandon or a fresh run (same cityIdx would reuse stale picks). */
         function resetProfessorPickSession() {
@@ -45991,7 +45811,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pendingProfBadges = null;
             _profLegendaryMysteryMode = false;
             _profMysteryMode = false;
-            _pendingProfRoll = null;
         }
 
         // Catch-tutorial partner picker — draws a random Grade-4 species from the
@@ -46430,7 +46249,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Normal professor: append to team
-            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
             // First Pokémon ever picked → flagged `starter: true` as a visual
             // reminder ("★ STARTER" badge). No hard restrictions — the player
             // can deposit, swap, daycare, or sell it like any other partner.
@@ -46948,8 +46767,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // enabled gens (`_pickStarterPartner` → `buildGradePool(gens, 4)`),
         // mirroring what they'd encounter on the very next wild route.
         // Fires exactly once per save (`sm.catchTutorialDone` flag), and only
-        // when the player has just enough to handle it (party < 6, has at
-        // least 1 Poké Ball — which the starting kit guarantees).
+        // when there's party room (< the badge-scaled cap). Balls are NOT gated
+        // here — the fire-path (prepare()) tops the player up to the starting
+        // kit if needed, so this can never silently no-op for want of a ball.
         function _shouldFireCatchTutorialBeforeBattle(battleIdx) {
             if (!sm || sm.catchTutorialDone) return false;
             const row = STORY_EVENTS_RAW[battleIdx];
@@ -46965,11 +46785,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // is already at cap pre-rival, the tutorial reschedules to the
             // next eligible battle after the next badge raises the cap.
             if ((sm.team || []).length >= _storyMaxPartySize()) return false;
-            // Player must have at least one Poké Ball (starting kit gives 5,
-            // so this is just a safety net).
-            const balls = sm.balls || {};
-            const totalBalls = (balls.poke | 0) + (balls.great | 0) + (balls.ultra | 0) + (balls.master | 0);
-            if (totalBalls <= 0) return false;
             return true;
         }
         function _markCatchTutorialDone() {
@@ -54863,11 +54678,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function continuePostGame() {
             document.querySelectorAll('.story-hof-gb-overlay').forEach(el => { try { el.remove(); } catch (e) {} });
             window._storyHofToken = (window._storyHofToken || 0) + 1;
-            _bossArcEnsureState();
             // First post-HoF re-entry routes the player through row 67 (Mystery Figure)
             // as the one-time climax fight before the post-game hub opens. After that
             // fight resolves we come back here with the climax flag set and fall
-            // through to the Master Ball / bossArc / lastCity flow below.
+            // through to the lastCity flow below.
             if (!sm.postHofMysteryClimaxDone) {
                 const mysteryIdx = STORY_EVENTS_RAW.findIndex(function (r) {
                     return r && r[1] === 'Battle' && String(r[2] || '') === 'Mystery Figure';
@@ -54886,15 +54700,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // post-game still opens cleanly.
                 sm.postHofMysteryClimaxDone = true;
             }
-            // First-clear gift: hand the player the Master Ball and unlock the boss-arc leads.
-            if (!sm.bossArc.available) {
-                sm.bossArc.available = true;
-                if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
-                sm.balls.master = (sm.balls.master | 0) + 1;
-                try { window.showGameAlert && window.showGameAlert('The Underground broker hands you a Master Ball.\n\n"Specimen 0001 has been held for decades. Visit the brokers in Cities 2, 5, and 8 to find it."\n\n🟣 Master Ball added to your inventory.'); } catch (e) {}
-            }
-            // Return to the last visited city. The boss arc is the canonical post-game beat,
-            // triggered from the Underground from here on.
+            // Return to the last visited city — the post-game hub (Crucible / Frontier /
+            // Mystery Figure rematch) is reachable from any city you've visited.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
             sm.eventIndex = lastCityEv;
             save();
@@ -54905,7 +54712,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // we fall straight through to the orientation tip.
             const _showOrientationTipThenCity = function () {
                 try { _storyShowOneTimeTip('postHof',
-                    'The wall is yours. The road keeps going.\n\nThree doors open after the Hall of Fame, and all three reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🔮 The Caged God — three leads, hidden in the Pokémon Centers of Cities 2, 5, and 8. Find all three, then walk into the Cage.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
+                    'The wall is yours. The road keeps going.\n\nTwo doors open after the Hall of Fame, and both reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
                 enterCity();
             };
             try {
@@ -55028,9 +54835,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── ARTIFACT EFFECTS (applied at battle start) ────────────────────
         // These are applied when startBattle fires via the state
         function applyArtifactBattleEffects() {
-            if (!sm.artifacts || !sm.artifacts.length) return;
+            // No early-return on empty artifacts: every effect below is active()-gated,
+            // so running with no/disabled relics simply resets all state._* relic flags
+            // to their inert defaults. Returning early would skip those resets and let
+            // flags bleed from a prior battle (init-inside-guard — the boss-bleed shape).
             const off = sm.artifactsDisabled || [];
-            const active = id => sm.artifacts.includes(id) && !off.includes(id);
+            const active = id => sm.artifacts && sm.artifacts.includes(id) && !off.includes(id);
             const _storyArtifactType = (key) => {
                 if (sm.artifactTypeById && sm.artifactTypeById[key]) return sm.artifactTypeById[key];
                 const rng = (sm && sm.active && typeof storyRngNext === 'function') ? storyRngNext : Math.random;
@@ -61464,7 +61274,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTrainerCreate, cancelTrainerCreate,
             trainerCreatePrevSprite, trainerCreateNextSprite, trainerCreateRandomSprite,
             trainerCreateSetDifficulty, trainerCreateSetGenPreset,
-            trainerCreateSetStoryline,
             confirmTrainerAndStart,
             openCollection, closeCollection, pokedexSetGen, pokedexSetShinyView,
             _markDexSeen: _storyMarkDexSeen,

@@ -157,10 +157,12 @@ test('main beat priority ordering: main → villain → extra', () => {
     }
 });
 
-test('storyline picker section is hidden in the DOM', () => {
+test('legacy storyline picker UI is removed (superseded by v22 3-track rolls)', () => {
+    // The pre-v22 8-variant tone picker was removed; storyline is now always rolled at
+    // random ('surprise_me' -> _readStorylineFromUI). The hidden section and its export
+    // handler should both be gone.
     const section = W.document.getElementById('story-create-storyline-section');
-    assert.ok(section, 'storyline section element should still exist (legacy JS reads it)');
-    // jsdom doesn't compute style.display from inline style attr the same way browsers do —
-    // just check the inline style attribute directly.
-    assert.match(section.getAttribute('style') || '', /display:\s*none/i);
+    assert.equal(section, null, 'dead storyline picker section should be removed from the DOM');
+    assert.equal(typeof (W.StoryMode && W.StoryMode.trainerCreateSetStoryline), 'undefined',
+        'trainerCreateSetStoryline handler should no longer be exported');
 });

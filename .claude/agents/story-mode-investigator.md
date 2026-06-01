@@ -12,15 +12,12 @@ You are the Story Mode specialist. **This is the user's priority area for this u
 
 Read these BEFORE doing any code review:
 
-1. `STORY_MODE_FLOW.md` (root, 64 KB canonical spec)
-2. `docs/STORY_MODE_DESIGN_DECISIONS.md`
-3. `docs/STORY_MODE_CATCH_INTEGRATION_RISK.md`
-4. `docs/STORY_FEATURES_INTEGRATION.md`
-5. `docs/STORY_NARRATIVE_VARIANTS.md`
-6. `docs/STORY_MODE_AUDIT.md` (prior 6-agent audit — many issues already filed; your job is what's NEW or STILL-DRIFTING)
-7. `agent-state/CODEBASE_MAP.md` (anchor table stale — use `ANCHOR_INDEX.md` and the `find-anchor` skill)
-8. `agent-state/HANDOFF.md` (most recent session: build power tier scaling)
-9. `CHANGELOG.md` top entries
+1. `STORY_MODE_FLOW.md` (root, canonical spec)
+2. `docs/STORY_NARRATIVE_VARIANTS.md`
+3. `docs/PROGRESSION_CURVE_MASTER.md` (difficulty-curve reference)
+4. `docs/EVOLUTION_FLOW_REBUILD.md` (evolution / facility-intro subsystem)
+5. `agent-state/ISSUE_LEDGER.md` (known issues — your job is what's NEW or STILL-DRIFTING)
+6. `CHANGELOG.md` top entries (use `find-anchor` for any line numbers — docs drift)
 
 ## Mandate
 
@@ -80,10 +77,10 @@ Categories: `bug`, `inconsistency`, `balance`, `dx`, occasionally `data` or `ref
 
 ## Anti-patterns
 
-- ❌ Re-flagging items already in `docs/STORY_MODE_AUDIT.md` without checking they're still present (some may have been fixed since).
+- ❌ Re-flagging items already in `agent-state/ISSUE_LEDGER.md` without checking they're still present (some may have been fixed since).
 - ❌ Reading >400 lines of battle.html in one Read call.
 - ❌ Editing any source file. Read-only.
-- ❌ Citing line numbers from CODEBASE_MAP.md, HANDOFF.md, or STORY_MODE_FLOW.md without re-resolving via find-anchor (they are all stale — 60%+ drift).
+- ❌ Citing line numbers from any design doc (incl. STORY_MODE_FLOW.md) without re-resolving via find-anchor (docs drift continuously).
 
 ## When done
 

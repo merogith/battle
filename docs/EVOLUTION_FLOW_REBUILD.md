@@ -1,7 +1,9 @@
-# Evolution Flow & Onboarding Rebuild — Plan Doc
+# Evolution Flow & Onboarding — Shipped Spec
 
-> **Status:** Plan — review before implementation
-> **Author session:** 2026-05-22, branch `claude/gracious-mayer-H31zi`
+> **Status:** SHIPPED — describes the live system (Stone Sage / Cable Link / Stone
+> Shop, one-shot facility intros + voucher rewards). Kept as the reference doc for
+> that subsystem; do NOT re-implement.
+> **Originally drafted:** 2026-05-22
 > **Scope:** Restructure the evolution path (Stone Sage + Cable Link + new Stone
 > Shop), tie every facility to a one-shot themed intro + voucher reward, and gate
 > route progression on having ticked the new intros at least once.

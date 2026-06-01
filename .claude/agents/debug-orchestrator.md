@@ -15,7 +15,7 @@ Read `CLAUDE.md` at the repo root. It defines the active scope. Currently:
 - **Active**: story mode normal-difficulty + supporting code/UI.
 - **Out of scope**: `online-pvp.js` / Quick Play / Battle Frontier / Gauntlet (auditors should tag findings here as `wontfix-out-of-scope`, not surface as work items).
 - **Permanently de-scoped (cut)**: Black Market, Illegal Dealer NPC, Battle for Pokémon wager, Pokémon Trader, full Itinerary scaffolding. Auditors must NOT file new findings about these missing-feature implementations.
-- **Owned by another lineage**: story timeline / save schema (pasteur), difficulty curve / IV tiers / foe stat multipliers (maxwell). Findings about these are advisory only and must be tagged with the owning lineage so general-session does not auto-action them.
+- **Touch carefully (maintainer sign-off)**: story timeline / save schema, and difficulty curve / IV tiers / foe stat multipliers. Findings here are advisory — surface them, but do not auto-action timeline, save-schema, or balance/curve changes without the maintainer's OK (save-critical paths + tuned numbers the maintainer owns).
 
 When spawning each sub-agent, pass these scope constraints in the prompt explicitly. Agents that audit shared code (battle.html itself) should still scan everything but apply the scope tags when emitting findings.
 

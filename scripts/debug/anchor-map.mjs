@@ -35,7 +35,6 @@ function render(index) {
   lines.push('');
   lines.push(`> **Generated**: ${ts}`);
   lines.push('> **Source**: `node scripts/debug/anchor-map.mjs`');
-  lines.push('> **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).');
   lines.push('');
   lines.push('Line numbers below are accurate as of generation. They drift on every');
   lines.push('insertion; agents should resolve via the `find-anchor` skill rather than');

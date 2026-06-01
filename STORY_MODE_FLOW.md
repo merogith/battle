@@ -4,9 +4,8 @@ This is the **working spec** for the new story-mode flow: catching, the PC, the
 Underground (corrupted Centers), wild routes, the Safari Zone, and the post-Champion
 boss arc ("The Caged God").
 
-It supersedes prior recommendations in `docs/STORY_MODE_DESIGN_DECISIONS.md` where
-they conflict. Conflicts are noted inline so old context isn't silently
-contradicted.
+It supersedes the project's earlier story-mode design notes where they conflict.
+Conflicts are noted inline so old context isn't silently contradicted.
 
 **Code anchors** below use `battle.html:LINE` so each subsystem can be jumped to
 directly. All line numbers are against the current main file at the time of
@@ -29,7 +28,7 @@ writing — they will drift as work proceeds.
 | Safari Zone | Story-unlocked location. First visit free; subsequent visits cost gold. Continuous random encounters up to 6 per run. Mons can flee on missed throws. Better grade mix than wild routes. |
 | Catch | Pure minigame — no fight, no HP, no status. `chance = species.catchRate × ballMult`. Mons can flee. |
 | Balls | PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞. Start the run with 5 PokéBalls. |
-| Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Balls scatter through gym/Elite/Champion victory bundles and Frontier milestones (substantially more than the original "×2 total" draft; the loosened economy hooks into Underground gold-sink balance). Master Ball ×1 from the boss arc. |
+| Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Balls scatter through gym/Elite/Champion victory bundles and Frontier milestones (substantially more than the original "×2 total" draft; the loosened economy hooks into Underground gold-sink balance). Master Ball ×1 from the villain story-track boss (for the roaming legendary). |
 | Caught state | Full HP / full PP / no status. |
 | HP between battles | **Full-heal between every battle.** Attrition is removed; mart consumables matter only within a single battle. |
 | Difficulty modes | Keep `veryeasy / easy / normal / hard / challenge`. **Remove `hardcore`.** |
@@ -59,8 +58,7 @@ their indices, contents, and grade weights.
 and the next event is a Battle in a different city, the engine pauses, runs a
 wild-encounter screen, then advances to the next Battle row.
 
-Implementation strategy = strategy A from
-`docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §5`:
+Implementation strategy — the save/restore-wrapped wild-encounter interrupt:
 
 - Save the story state on entry.
 - Run the wild-encounter screen as a save/restore-wrapped interrupt.
@@ -144,7 +142,7 @@ Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.35×`, s
 | PokéBall | 1.0× | PokéMart (300G ea, unlimited) + 5 at run start | — |
 | Great Ball | 1.5× | Department Store (existing City6/City8) (1000G ea) | — |
 | Ultra Ball | 2.0× | Gym Leader / Elite Four / Champion victory bundles + Battle Frontier milestones (was: ×2 static drops in the original spec; widened after the Underground/Crucible economy landed and a tight ball supply stopped paying out) | unbounded |
-| Master Ball | ∞ | Boss arc reward (Underground broker) | 1 per run |
+| Master Ball | ∞ | Villain story-track boss reward (Road 7, pre-HoF) — for the roaming legendary | 1 per run |
 
 Money flows already in the game:
 
@@ -220,9 +218,16 @@ All five modes use **full-heal between battles**. The HC-only persistence code a
 
 ---
 
-## 9. Boss arc — "The Caged God"
+## 9. Boss arc — "The Caged God" — ❌ REMOVED (v24)
 
-Triggered post-Champion. Row 67 (`Mystery Figure`) in `STORY_EVENTS_RAW` is the post-HoF Mystery Figure climax — `continuePostGame()` (`battle.html:30702`) routes the player through row 67 once on first post-HoF reentry (mask-drop + identity reveal, single fight), then snaps `sm.eventIndex` back to the last visited city so the Crucible / Caged God doors are visible at every subsequent city visit. The Caged God arc itself is triggered separately, via the Underground broker handing the player a Master Ball after the Mystery Figure climax; Mystery Figure also remains reachable as the Crucible's "Mystery" encore on every later run. (See §14d.)
+> **This arc was cut.** Post-game is now: the **Mystery Figure** climax fight → the story
+> ends → the **Crucible** (every facility + the endless Battle Frontier ladder + the Mystery
+> Figure encore). There is **no** Caged God hunt, no corrupted-Center leads, and no post-HoF
+> Master Ball grant. The Master Ball is a **1-per-run** villain story-track reward (Road 7,
+> pre-HoF) for the **roaming legendary**. `migrateStoryPreV24` strips the old `sm.bossArc`
+> state. The subsections below are retained only as a record of the cut design.
+
+Still live: row 67 (`Mystery Figure`) is the post-HoF climax — `continuePostGame()` routes the player through it once on first post-HoF reentry (mask-drop + single fight), then returns `sm.eventIndex` to the last visited city so the Crucible is reachable from every city. Mystery Figure also remains the Crucible's "Mystery" encore.
 
 ### Trigger and leads
 
@@ -331,8 +336,7 @@ Net effect: hardcore stops being selectable; existing hardcore saves migrate to 
 
 ## 12. Party-size as difficulty signal (M0)
 
-Per the prior audit's "single most important rule"
-(`docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §8`), every place that keys
+**Single most important rule** — every place that keys
 difficulty off `sm.team.length` must move to `sm.badges` (the monotonic
 progression clock the player can't undo) so depositing a mon to PC can't
 re-introduce easier grade rolls mid-game.
@@ -407,7 +411,7 @@ This spec overrides these prior recommendations:
 
 | Prior doc | Prior recommendation | New decision | Why |
 |---|---|---|---|
-| `STORY_MODE_DESIGN_DECISIONS.md` C2 | HP-based catch formula | Pure grade × ball | Simpler; no in-battle catching anyway |
+| Prior design-decisions doc · C2 | HP-based catch formula | Pure grade × ball | Simpler; no in-battle catching anyway |
 | C3 | Captured = preserve HP/status | Full HP / full PP / no status | No-fight minigame; nothing to preserve |
 | C4 | Foe fights to KO | Foe may flee on miss | Catch is a minigame, not a battle |
 | C5 | Wild 50% pre-trainer in same slot | Wild forced on dedicated route nodes | Cleaner separation; no in-slot conflict |
@@ -1068,10 +1072,9 @@ gets new leader picks for unvisited slots.
 
 ## 16. References
 
-- `docs/STORY_MODE_AUDIT.md` — full 6-agent audit of current story mode (~400 lines)
-- `docs/STORY_MODE_DESIGN_DECISIONS.md` — prior 22-decision table; this spec overrides where §14 lists conflicts
-- `docs/STORY_MODE_CATCH_INTEGRATION_RISK.md` — risk analysis of catch/PC integration; strategy A is the chosen wild-encounter approach
-- `docs/STORY_FEATURES_INTEGRATION.md` — earlier high-level mechanic outlines; this spec is the canonical replacement
+- `docs/STORY_NARRATIVE_VARIANTS.md` — the 8-storyline variant design layered over the timeline
+- `docs/PROGRESSION_CURVE_MASTER.md` — difficulty-curve reference (flat-Lv50 / 3-axis model)
+- `docs/EVOLUTION_FLOW_REBUILD.md` — evolution / stone / facility-intro subsystem spec
 - `README.md` — top-level project README; references this file
 
 ---
