@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: be6f0b9ce8fd
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: proceedToNextBattle re-entry stacks duplicate cold-open overlays, wedging progression (the "After Badge One" stuck state)

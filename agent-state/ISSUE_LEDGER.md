@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-01T14:16:09.610Z
+> **Generated**: 2026-06-01T14:20:28.410Z
 > **Source**: `agent-state/findings/*.md` (349 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1511,7 +1511,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: be6f0b9ce8fd
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: proceedToNextBattle re-entry stacks duplicate cold-open overlays, wedging progression (the "After Badge One" stuck state)
