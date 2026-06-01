@@ -34571,10 +34571,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
+        // v23 (Wander Around) only ADDED the sm.wanderByEventIdx map — additive
+        // and seeded to {} by the load-path back-fill — so it intentionally has
+        // no migrateStoryPreV23; a pre-v23 save loads straight through with a
+        // fresh wander budget. The chain's last versioned step is migrateStoryPreV22.
         const SAVE_VER = 23;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
-        // (load() runs migrateStoryPreV8..PreV20 against a saved `version`).
+        // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
         window.__storyLoad = function () { return load(); };
         window.__STORY_SAVE_VER = SAVE_VER;
         function _emptyStoryMeta() {
@@ -38066,6 +38070,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
                     catchIntroSceneId: (st) => _catchIntroSceneId(st),
                     displayTownNameForCityRow: (cityEv) => getStoryDisplayTownNameForCityRow(cityEv),
+                    preLeagueLegendaryGate: (c) => isPreLeagueLegendaryMysteryGate(c),
+                    profLegendaryMysteryMode: () => _profLegendaryMysteryMode,
                     battleEntryBusy: () => _storyBattleEntryBusy,
                     setBattleEntryBusy: (v) => { _storyBattleEntryBusy = !!v; },
                     recoverFromEntryFailure: (w, e) => _storyRecoverFromEntryFailure(w, e),
@@ -43497,7 +43503,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hasProf = (hasBaseProf || shouldForceCityProfessor(cityIdx, actions)) && (hasTeamRoom || _legendaryGateHere);
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const swapMode = hasProf && !hasTeamRoom && !profUsedHere;
-            const legendMysteryGate = swapMode && _legendaryGateHere;
+            // Fire the Mystery-Figure legendary gate framing (button label,
+            // objective, route-block) whenever the gate is active and unfinished
+            // — not only for a full party — so a lean party gets the same
+            // "Required" treatment (the legendary is gifted into an open slot
+            // rather than swapped). enterProfessor mirrors this via the gate.
+            const legendMysteryGate = _legendaryGateHere && !profUsedHere;
             const _storyNextBatIdx = storyEffectiveNextBattleIndexFromHub();
             const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
             const _storyNextBatId = _storyNextBat ? (_storyNextBat[0] | 0) : -1;
@@ -43716,11 +43727,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // legendary gate, which IS a story-mystery event distinct from
             // the regular Professor flow.
             if (hasProf && !profUsedHere) {
-                if (hasTeamRoom) {
+                if (legendMysteryGate) {
+                    // City-8 legendary gate takes precedence over the plain
+                    // gift/swap buttons whether or not the party has room: a full
+                    // party swaps the legendary in, a lean party receives it into
+                    // an open slot — both framed as the required Mystery Figure.
+                    const _legLabel = hasTeamRoom ? '❓ Mystery Figure — Legendary' : '❓ Mystery Figure — Legendary Swap';
+                    _push('quest', makeActionBtn(_legLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta:[{label:'Required',tone:'info'}] }));
+                } else if (hasTeamRoom) {
                     const profLabel = cityIdx === 0 ? 'Professor — Pick Your Starter' : 'Professor — New Team Member';
                     _push('quest', makeActionBtn(profLabel,'professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] }));
-                } else if (legendMysteryGate) {
-                    _push('quest', makeActionBtn('❓ Mystery Figure — Legendary Swap','mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta:[{label:'Required',tone:'info'}] }));
                 } else {
                     _push('quest', makeActionBtn('Professor — Swap a Team Member','professor','window.StoryMode.enterProfessor()','primary',{ soft:true, meta:[{label:'Swap',tone:'info'}] }));
                 }
@@ -46039,7 +46055,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyShowOneTimeTip('prof-overview-v2',
                     'Two ways to find a partner: Professors and the wild.\n\nProfessors keep curated benches — lab-raised, hand-picked, one slot per visit. You\'ll meet one in each of the first six cities. Wild routes and the Safari are the other path: a roll of the dice, but the species pool widens fast once you leave the starter town.\n\nFoes match your party size 1-for-1. The Champion, the Elite Four, and Victory Road are the exceptions — they always field six, no matter how lean you ran.\n\nThere\'s also a training tier on every Pokémon (the chip beside its name): Untrained, Novice, Competent, Tournament. Early route trainers run Untrained — no EVs, neutral nature, no held item. The Champion and the Elite Four run Tournament. Your starter begins Untrained too. The Move Tutor, EV Trainer, Nature Rater, and Battle Dojo are the four facilities that walk it up the ladder.'); } catch (e) {}
             }
-            _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
+            // City-8 post-Gym-8 legendary gate fires regardless of party
+            // fullness — a lean party must also be offered the "required"
+            // legendary. A full party still gets the swap-to-PC flow (driven by
+            // _profMysteryMode below); a lean party receives the legendary into
+            // an open slot via the normal accept path. Pre-fix a sub-cap party
+            // silently got an ordinary 3-roll gift and could walk Victory Road
+            // with no legendary despite the gate's "Required" framing.
+            _profLegendaryMysteryMode = isPreLeagueLegendaryMysteryGate(cityIdx);
             // One-time framing for the City-8 legendary gate. Accepting the legendary
             // either swaps a partner to the PC or parks the legendary in the PC; the
             // player can also refuse. Spell the options out before they commit.

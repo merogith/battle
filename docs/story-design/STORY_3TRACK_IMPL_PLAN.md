@@ -1,7 +1,7 @@
 # Story Mode 3-Track Implementation Plan
 
 > Bone-structure pass. Wires the 3-track design (Main / Villain / Extra) into
-> the existing 68-row `STORY_EVENTS_RAW` timeline. Random track assignment at
+> the existing 67-row `STORY_EVENTS_RAW` timeline. Random track assignment at
 > run start, no picker UI. Content lives in the CSVs in this folder; this plan
 > wires the structure first — story polish and boss-fight tuning happen later
 > on top of the bone.
@@ -21,7 +21,7 @@
   - **Villain** — one of 10 (`rocket / magma / aqua / galactic / plasma / flare / skull / yell / macroCosmos / star`)
   - **Extra** — one of 8 (`cubone / yamask / hypno / phantump / mimikyu / drifloon / parasect / mewtwo`)
 - Assignment: random at `confirmTrainerAndStart`, locked for the run. No picker.
-- All 3 tracks layer on top of the existing 68-row `STORY_EVENTS_RAW` — we DO NOT fork the timeline.
+- All 3 tracks layer on top of the existing 67-row `STORY_EVENTS_RAW` (idx 0–66) — we DO NOT fork the timeline.
 - Existing 8-variant `STORYLINE_VARIANTS` system (`battle.html:37225`) stays alive but defaults to `classic` and is no longer surfaced. Retirement is a separate pass once 3-track is stable.
 
 ---
@@ -31,7 +31,7 @@
 | Symbol | File | Line | Role |
 |---|---|---|---|
 | `SAVE_VER` | battle.html | 31509 | save schema version |
-| `STORY_EVENTS_RAW` | battle.html | 29247 | 68-row event timeline |
+| `STORY_EVENTS_RAW` | battle.html | 29247 | 67-row event timeline (idx 0–66) |
 | `MYSTERY_FIGURE_IDENTITIES` | battle.html | 30013 | identity table |
 | `_storyEnsureMysteryIdentity` | battle.html | 30081 | picks an identity |
 | `sm.storyLine` default | battle.html | 32210 | `'classic'` default |

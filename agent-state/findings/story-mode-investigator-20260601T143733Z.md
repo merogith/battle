@@ -115,7 +115,7 @@ agents: [story-mode-investigator]
 fingerprint: 567292b036c3
 confidence: high
 domain: pasteur
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: City-8 "Required" legendary handoff silently downgrades to a normal Professor gift when the party is below cap
@@ -144,7 +144,7 @@ agents: [story-mode-investigator]
 fingerprint: 35442eebd3b2
 confidence: high
 domain: pasteur
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: SAVE_VER=23 but migration chain stops at `_loadedVer < 22` — no migrateStoryPreV23, no boot shadow-validation
@@ -172,7 +172,7 @@ agents: [story-mode-investigator]
 fingerprint: 8d651a30fcb3
 confidence: high
 domain: pasteur
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: Timeline is 67 rows; STORY_MODE_FLOW.md (and this update's brief) still say "68 rows"
