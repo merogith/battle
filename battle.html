@@ -1905,6 +1905,13 @@
             border: 1px solid #3a4156; border-radius: 8px;
             box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
         }
+        /* Stage-locked move: amber, reads as "not yet available" rather than an error. */
+        .tx-confirm-bar--locked {
+            border-color: #8d6e2f;
+            background: linear-gradient(180deg, rgba(40,33,18,0.96), rgba(24,19,10,0.97));
+        }
+        .tx-confirm-bar--locked .tx-confirm-bar-text { color: #ffd9a0; }
+        .tx-confirm-bar--locked .tx-confirm-bar-text strong { color: #ffd54f; }
         .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
         .tx-confirm-bar-text strong { color: var(--accent); }
         .tx-confirm-bar-btn {
@@ -58530,6 +58537,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="tx-confirm-bar-text" style="opacity:0.7;">Pick ${verb} to preview. Confirm appears here.</span>
                     <button type="button" class="tx-confirm-bar-btn" disabled>Confirm</button>
                 </div>`;
+            }
+            // Stage gate (moves): mirror tutorChangeMove's acceptance check EXACTLY so
+            // the bar never shows a Confirm the gate would silently reject. Below Guru
+            // (stage 2) only moves in the staged acceptance pool are teachable; an
+            // off-stage pending move (reachable via the Suggest panel, a cold-cache
+            // render, etc.) gets a clear Locked state explaining what unlocks it,
+            // instead of a dead Confirm that does nothing. Presentational — it reads
+            // the staging gate, never changes what is gated.
+            if (kind === 'move') {
+                const base = String(pending.value).split('/')[0];
+                const accept = _txMoveTier1Cache.get(teamIdx);
+                const stageLocked = (typeof _npcStage === 'function' && _npcStage('tutor') < 2)
+                    && !(accept && accept.has(base));
+                if (stageLocked) {
+                    const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
+                    let tag = null;
+                    try { tag = monName ? _txMoveTagMemo(monName, pending.value) : null; } catch (e) {}
+                    const unlock = (tag === 'learnt' || tag === 'awakened')
+                        ? 'It opens at the <strong>Guru</strong> tier — TMs, tutor moves and off-legal picks.'
+                        : (tag === 'natural'
+                            ? 'It opens at the <strong>Expert</strong> tier, which lifts the power cap on level-up moves.'
+                            : 'It opens as the Move Tutor levels up.');
+                    return `<div class="tx-confirm-bar tx-confirm-bar--locked">
+                        <span class="tx-confirm-bar-text">🔒 <strong>${_esc(pending.value)}</strong> isn't in this Move Tutor's lesson tier yet. ${unlock}</span>
+                        <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
+                        <button type="button" class="tx-confirm-bar-btn" disabled title="This move unlocks at a higher Move Tutor tier">Locked</button>
+                    </div>`;
+                }
             }
             let current = '(none)';
             let isAppendMove = false;
