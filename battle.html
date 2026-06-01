@@ -14035,6 +14035,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = document.getElementById(id);
             if (!el) return;
             el.classList.add('hidden');
+            // game-confirm carries a Promise contract: showGameConfirm() awaits a
+            // resolver normally settled by _gameConfirmResult(). If the modal is
+            // dismissed by a GENERIC path instead — the global a11y Escape handler
+            // (which fires before the promise-aware one and just closeModal()s the
+            // topmost modal), a screen transition, etc. — the awaiter would hang
+            // forever. A stranded window._gameConfirmResolve permanently blocks
+            // _storyTryBeginInteraction(), silently bricking every later tutor /
+            // dojo / EV-trainer purchase ("Confirm does nothing"). Settle it as a
+            // cancel here so no close path can strand it. (_gameConfirmResult clears
+            // the resolver before it calls closeModal, so the normal OK/Cancel path
+            // never double-resolves through this branch.)
+            if (id === 'modal-game-confirm' && window._gameConfirmResolve) {
+                const r = window._gameConfirmResolve;
+                window._gameConfirmResolve = null;
+                try { r(false); } catch (e) {}
+            }
             try {
                 const prev = window._modalFocusStack.get(id);
                 if (prev && typeof prev.focus === 'function') prev.focus();
@@ -14137,9 +14153,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         };
         window._gameConfirmResult = function(ok) {
-            window.closeModal('modal-game-confirm');
+            // Capture + clear the resolver BEFORE closeModal so the game-confirm
+            // self-heal in closeModal() sees no pending resolver and can't pre-empt
+            // this with a false result (which would turn every OK into a cancel).
             const r = window._gameConfirmResolve;
             window._gameConfirmResolve = null;
+            window.closeModal('modal-game-confirm');
             if (r) r(!!ok);
         };
         if (!window._modalEscapeBound) {
@@ -57125,131 +57144,123 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return best;
         }
 
-        // Move tutor — produce 3-4 categorized recommendations for distinct purposes
-        // (STAB / Coverage / Setup / Utility / Recovery / Priority / Speed Control)
-        // so the player sees several genuinely different builds, not just the
-        // top-scoring damage move. Each entry includes a short reason for the pick.
+        // Move tutor — produce up to 4 categorized recommendations (STAB / Coverage /
+        // Status) for the "✨ Suggest a balanced set" helper. Each entry includes a
+        // short reason for the pick.
+        // Suggest a balanced, POPULARITY-FIRST set: the moves this species actually
+        // runs most, arranged so each slot reads clearly. Composition follows the
+        // mon's typing — dual-type → 2 STAB + 1 Coverage + 1 flex; mono-type →
+        // 1 STAB + 2 Coverage + 1 flex — and every damaging pick is a DISTINCT type
+        // (no two STAB/coverage moves share a type; that's the whole point of running
+        // two STABs on a dual-type). Within each slot we take the highest Smogon
+        // usage % (the same "% of sets" the grid sorts by). Physical-vs-Special is a
+        // SOFT tiebreak toward the mon's bigger attacking stat, so a STAB type is
+        // never dropped just because its popular move happens to be the "wrong"
+        // category. The flex 4th slot becomes a Status move only when the species
+        // runs status MORE than the next coverage option would add — otherwise it
+        // coverage-fills, so a pure attacker never gets a status move it never uses.
+        // Final tiebreak is alphabetical → a fully deterministic, replay-stable list.
         function _txMoveRecsByPurpose(availMoves, mon, build, monName) {
             if (!availMoves || !availMoves.length) return [];
-            const types = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const md = (m) => movesDB[m] || (typeof ensureMoveData === 'function' ? ensureMoveData(m) : null);
+            const types = [mon && mon.type1, mon && mon.type2]
+                .filter(Boolean).filter((t, i, a) => a.indexOf(t) === i); // distinct, in order
+            const typeSet = new Set(types);
             const stats = _txMonStats(mon, monName);
-            const physical = stats.atk >= stats.spa;
-            const slow = stats.spe < 70;
+            // Preferred damaging category from the bigger attacking stat; null on a
+            // tie (no bias — usage % alone decides, exactly as requested).
+            const catPref = stats.atk > stats.spa ? 'Physical' : stats.spa > stats.atk ? 'Special' : null;
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).moves.pctOf; } catch (e) { return new Map(); } })();
+            const usage = (m) => pctOf.get(m) || 0;
 
-            const isDamage = m => { const md = movesDB[m]; return md && (md.cat === 'Physical' || md.cat === 'Special'); };
-            const isStab = m => { const md = movesDB[m]; return md && types.has(md.type) && isDamage(m); };
-            const isPriority = m => { const md = movesDB[m]; return md && md.pri && md.pri > 0 && isDamage(m); };
-            const isCoverage = m => { const md = movesDB[m]; return md && !types.has(md.type) && isDamage(m); };
+            const isDamaging   = (m) => { const d = md(m); return !!d && (d.cat === 'Physical' || d.cat === 'Special'); };
+            const isStatusMove = (m) => { const d = md(m); return !!d && d.cat === 'Status'; };
+            const typeOf = (m) => { const d = md(m); return d ? d.type : null; };
+            const catOf  = (m) => { const d = md(m); return d ? d.cat : null; };
+            const powOf  = (m) => { const d = md(m); return d ? (d.pow | 0) : 0; };
 
-            const SETUP = new Set(['Swords Dance','Nasty Plot','Dragon Dance','Quiver Dance','Calm Mind','Bulk Up','Iron Defense','Cosmic Power','Coil','Shell Smash','Geomancy','Tail Glow','Belly Drum','Curse','Agility','Rock Polish','Autotomize','Work Up','Hone Claws','Power-Up Punch','Howl']);
-            const RECOVERY = new Set(['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Morning Sun','Moonlight','Rest','Wish','Strength Sap','Shore Up','Milk Drink','Heal Order','Pain Split','Leech Life','Drain Punch','Giga Drain','Horn Leech','Parabolic Charge','Oblivion Wing','Aqua Ring','Ingrain']);
-            const STATUS_AILMENT = new Set(['Toxic','Will-O-Wisp','Thunder Wave','Sleep Powder','Spore','Hypnosis','Sing','Yawn','Glare','Stun Spore','Lovely Kiss','Dark Void']);
-            const SPEED_CONTROL = new Set(['Tailwind','Trick Room','Sticky Web','Icy Wind','Electroweb','Bulldoze','Rock Tomb','Glaciate','Drum Beating','Mud Shot','Low Sweep']);
-            const HAZARDS = new Set(['Stealth Rock','Spikes','Toxic Spikes','Sticky Web']);
-            const SCREENS = new Set(['Reflect','Light Screen','Aurora Veil']);
-            const PIVOT   = new Set(['U-turn','Volt Switch','Flip Turn','Teleport','Parting Shot','Baton Pass','Chilly Reception']);
+            // Damaging order: usage% → category match (when there's a preference) →
+            // power → alphabetical. Status order: usage% → alphabetical.
+            const cmpDmg = (a, b) => {
+                const du = usage(b) - usage(a); if (du) return du;
+                if (catPref) { const ca = catOf(a) === catPref ? 1 : 0, cb = catOf(b) === catPref ? 1 : 0; if (cb - ca) return cb - ca; }
+                const dp = powOf(b) - powOf(a); if (dp) return dp;
+                return a.localeCompare(b);
+            };
+            const cmpStatus = (a, b) => (usage(b) - usage(a)) || a.localeCompare(b);
 
-            const used = new Set();
+            const damaging = availMoves.filter(isDamaging);
+            const statusMoves = availMoves.filter(isStatusMove).sort(cmpStatus);
+
+            const usedTypes = new Set();
+            const usedMoves = new Set();
             const out = [];
-            const push = (purpose, move, reason, hint) => {
-                if (!move || used.has(move)) return;
-                used.add(move);
-                out.push({ purpose, move, reason, hint });
+            const add = (purpose, move) => {
+                if (!move || usedMoves.has(move)) return false;
+                usedMoves.add(move);
+                const t = typeOf(move); if (t) usedTypes.add(t);
+                const pct = usage(move);
+                const pctStr = pct >= 1 ? `${Math.round(pct)}% of sets` : null;
+                let reason;
+                if (purpose === 'Status') {
+                    reason = pctStr ? `${pctStr} · most-run non-damaging move` : 'Top non-damaging option for this set';
+                } else {
+                    const tc = `${t || '—'} ${catOf(move) || ''}`.trim();
+                    const tail = purpose === 'STAB' ? 'STAB' : 'off-type coverage';
+                    reason = pctStr ? `${pctStr} · ${tc} ${tail}` : `${tc} ${tail}`;
+                }
+                out.push({ purpose, move, reason });
+                return true;
             };
 
-            // 1) Best STAB damage move — STAB × power × accuracy, prefer matching offensive category.
-            const bestStab = _txBestBy(availMoves, isStab, m => _txScoreMove(m, mon, build, monName));
-            if (bestStab) {
-                const md = movesDB[bestStab];
-                push('STAB', bestStab, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — same type as ${monName} for the 1.5× boost.`, 'core');
+            // ── STAB ──────────────────────────────────────────────────────
+            // One pick per type when the mon is dual-typed AND both types have a
+            // damaging move in the (stage-gated) pool — that's when two STABs earn
+            // their slots. Otherwise the single most-popular STAB.
+            const stabByType = {};
+            for (const t of types) stabByType[t] = damaging.filter(m => typeOf(m) === t).sort(cmpDmg);
+            const dualStab = types.length >= 2 && types.every(t => stabByType[t] && stabByType[t].length);
+            if (dualStab) {
+                for (const t of types) add('STAB', stabByType[t][0]);
+            } else {
+                const anyStab = damaging.filter(m => typeSet.has(typeOf(m))).sort(cmpDmg);
+                if (anyStab.length) add('STAB', anyStab[0]);
             }
 
-            // 2) Best Coverage damage — different type than the mon, fills holes.
-            const bestCoverage = _txBestBy(availMoves, isCoverage, m => {
-                const md = movesDB[m];
-                if (!md) return 0;
-                // Bias toward the mon's stronger offense
-                const catBias = (md.cat === 'Physical' && physical) || (md.cat === 'Special' && !physical) ? 1.0 : 0.5;
-                return (md.pow || 0) * ((md.acc || 100) / 100) * catBias;
-            });
-            if (bestCoverage) {
-                const md = movesDB[bestCoverage];
-                push('Coverage', bestCoverage, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — answers types your STAB can't hit.`, 'core');
+            // ── Coverage ──────────────────────────────────────────────────
+            // Distinct-typed off-STAB damage. dual STAB → 1 coverage; else → 2.
+            const nextCoverage = () => damaging
+                .filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m)))
+                .sort(cmpDmg)[0];
+            const coverageTarget = dualStab ? 1 : 2;
+            for (let i = 0; i < coverageTarget; i++) {
+                const c = nextCoverage();
+                if (!c) break;
+                add('Coverage', c);
             }
 
-            // 3) Setup move — only if the mon has the bulk or speed to invest a turn.
-            const bestSetup = _txBestBy(availMoves, m => SETUP.has(m), m => {
-                // Prefer setup that boosts the user's strongest offense or speed
-                if (m === 'Swords Dance' && physical) return 100;
-                if (m === 'Nasty Plot' && !physical) return 100;
-                if (m === 'Dragon Dance' && physical) return 95;
-                if (m === 'Quiver Dance' && !physical) return 95;
-                if (m === 'Calm Mind' && !physical) return 80;
-                if (m === 'Bulk Up' && physical) return 80;
-                if (m === 'Shell Smash') return 85;
-                return 50;
-            });
-            if (bestSetup) push('Setup', bestSetup, `Boosts a key stat. Use on a free turn to snowball.`, 'flex');
-
-            // 4) Recovery — heal moves are gold on bulkier mons.
-            const bestRecovery = _txBestBy(availMoves, m => RECOVERY.has(m), m => {
-                if (['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Strength Sap','Shore Up','Milk Drink'].includes(m)) return 100;
-                if (['Morning Sun','Moonlight'].includes(m)) return 90;
-                if (m === 'Wish') return 85;
-                if (m === 'Rest') return 70;
-                return 50;
-            });
-            if (bestRecovery && (stats.hp + stats.def + stats.spd >= 200 || used.size <= 2)) {
-                push('Recovery', bestRecovery, 'Heals roughly half HP — keeps tanks alive across exchanges.', 'flex');
-            }
-
-            // 5) Status / threat — cripple a fast attacker or stall.
-            const bestStatus = _txBestBy(availMoves, m => STATUS_AILMENT.has(m), m => {
-                if (m === 'Will-O-Wisp' || m === 'Spore') return 100;
-                if (m === 'Thunder Wave') return 90;
-                if (m === 'Toxic') return 85;
-                if (m === 'Sleep Powder') return 80;
-                return 60;
-            });
-            if (bestStatus && out.length < 4) push('Status', bestStatus, 'Burn / paralyze / sleep — wins matchups against bulky attackers.', 'flex');
-
-            // 6) Priority — for revenge-killing or making up for speed.
-            const bestPriority = _txBestBy(availMoves, isPriority, m => _txScoreMove(m, mon, build, monName));
-            if (bestPriority && out.length < 4 && slow) {
-                const md = movesDB[bestPriority];
-                push('Priority', bestPriority, `${md.pow > 0 ? md.pow + ' BP ' : ''}${md.type} — moves first, plugs slow speed.`, 'flex');
-            }
-
-            // 7) Hazards (entry damage) — if no offense gap yet.
-            const bestHazard = _txBestBy(availMoves, m => HAZARDS.has(m), m => {
-                if (m === 'Stealth Rock') return 100;
-                if (m === 'Sticky Web') return 80;
-                if (m === 'Spikes') return 75;
-                return 60;
-            });
-            if (bestHazard && out.length < 4) push('Hazards', bestHazard, 'Entry damage — wears down switch-ins all match.', 'flex');
-
-            // 8) Speed control — Tailwind, Trick Room, etc.
-            const bestSpeedCtrl = _txBestBy(availMoves, m => SPEED_CONTROL.has(m), m => {
-                if (m === 'Tailwind') return 95;
-                if (m === 'Trick Room' && slow) return 100;
-                if (m === 'Sticky Web') return 80;
-                return 50;
-            });
-            if (bestSpeedCtrl && out.length < 4) push('Speed', bestSpeedCtrl, 'Shifts the speed tier — flip the matchup before it starts.', 'flex');
-
-            // 9) Pivot move — for momentum-keeping.
-            const bestPivot = _txBestBy(availMoves, m => PIVOT.has(m), m => {
-                if (m === 'U-turn' || m === 'Volt Switch' || m === 'Flip Turn') return 95;
-                if (m === 'Teleport') return 75;
-                return 60;
-            });
-            if (bestPivot && out.length < 4) push('Pivot', bestPivot, 'Hits and switches — keeps you in control of the matchup.', 'flex');
-
-            // Screens for support builds.
+            // ── Flex 4th slot — Status vs extra Coverage (coverage-fill) ─────
+            // Take a Status move only when the species runs it MORE than the next
+            // coverage would add; ties / no-status go to coverage so a pure attacker
+            // never gets a status move it doesn't use.
             if (out.length < 4) {
-                const bestScreens = _txBestBy(availMoves, m => SCREENS.has(m), m => m === 'Aurora Veil' ? 100 : 80);
-                if (bestScreens) push('Screens', bestScreens, 'Halves damage for 5 turns — anchors a defensive team.', 'flex');
+                const topStatus = statusMoves.find(m => !usedMoves.has(m));
+                const cov = nextCoverage();
+                if (topStatus && (!cov || usage(topStatus) > usage(cov))) add('Status', topStatus);
+                else if (cov) add('Coverage', cov);
+                else if (topStatus) add('Status', topStatus);
+            }
+
+            // Backfill any remaining slots with the next most-popular damaging move,
+            // re-checking usedTypes live so picks stay DISTINCT-typed as we fill. The
+            // distinct-type rule is never relaxed — a shallow pool simply returns
+            // fewer than four rather than doubling up a type.
+            if (out.length < 4) {
+                for (const m of damaging.filter(m => !usedMoves.has(m)).sort(cmpDmg)) {
+                    if (out.length >= 4) break;
+                    if (usedTypes.has(typeOf(m))) continue;
+                    add('Coverage', m);
+                }
             }
 
             return out.slice(0, 4);
@@ -58989,7 +59000,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
-                            'Tap to preview — grab one of each role for a balanced set.');
+                            'Tap to preview — the most-used STAB, coverage and status moves for this Pokémon.');
                     }
                 }
             } catch (e) {}
