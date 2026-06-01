@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-01T15:10:02.180Z
+> **Generated**: 2026-06-01T15:32:54.861Z
 > **Source**: `agent-state/findings/*.md` (355 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -5461,7 +5461,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 567292b036c3
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: City-8 "Required" legendary handoff silently downgrades to a normal Professor gift when the party is below cap
