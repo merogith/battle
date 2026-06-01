@@ -241,3 +241,72 @@ Two specialists are cataloging the exact current duplications (intro / notificat
 reward systems), the between-battle state-bleed, and the loss-routing, so each
 "collapse to one" has a precise **from → to**. Their findings merge into §3/§4 here,
 then feed the P2′/P4 build.
+
+---
+
+## 8. Confirmed findings + prioritized fix roadmap (both specialists, this session)
+
+### 8a. State isolation — fights are NOT self-contained (engine specialist, repro-backed)
+Root cause: `state` is a **persistent module-level object** (battle.html:14682). The Story
+path mutates it in place; `startBattle` resets only a fixed field list — anything off
+that list bleeds into the next fight. (PvP/QuickPlay/Frontier build a fresh `state`, so
+they're immune — Story-only bug.)
+- **BLEED-1 (P1, game-breaking): boss/raid mechanics persist.** `_bossMechanics`,
+  `_bossMechanicsFired`, `_bossPendingTelegraphs`, `_bossSurgeTurns`, `_bossImmuneTurns`,
+  `_bossWeatherLocked`, `_bossTerrainLocked`, `_activeStoryBeatKey` are written only in the
+  boss guard (17219-17228) and never reset. **Proven:** the next ordinary fight keeps the
+  boss's surge (+25% foe dmg) and immunity round (damage clamped to 0) — repro: clean
+  hit = 105 dmg, post-boss bled = **0 dmg** ("braces — the attack does no damage!").
+- **BLEED-2 (P1): battle log persists.** `#battle-log` is cleared only in `returnToHome`
+  (15237); the normal victory→next flow never clears it, so each fight's log stacks on the
+  prior fight's lines.
+- **BLEED-3 (P2): Healing Wish / Lunar Dance pending flags persist.** `_healingWish(Foe)`,
+  `_lunarDance(Foe)` survive battle end → next fight's lead gets a free full-heal/status-clear.
+- **FIX:** unconditional reset of these in `startBattle`'s reset block (~17148), mirroring
+  how `_storyApplyArtifacts` already resets artifact flags each battle. Engine lane, contained.
+- Verified NOT bleeding: weather/terrain/hazards/stat-stages/status/HP/PP/mega-dyna-tera.
+
+### 8b. Intros/tutorials — 6 pre-battle layers, two double-fire (story specialist)
+- **INTRO-1 (P1): the wild node fires 2 catch screens + 2 tutorials** — `catchTutorial`
+  chains into `wildRoute` (`STORY_WILDS_PER_ROUTE_NODE=2`), distinct keys `firstWild` +
+  `firstWildRoute` both play. → one tutorial per mechanic.
+- **INTRO-2 (P2): the intro-rival fight stacks 3 overlays** (introRival cold-open +
+  "Your First Fight" tutorial + VS splash). → one pre-fight overlay.
+- **INTRO-3 (P2): catch-tutorial shows a framing message AND a redundant overlay** re-explaining the same mechanic.
+
+### 8c. Notifications — ≈11 mechanisms; rewards invisible behind the victory card
+- **NOTIF-1 (P1, user-visible): reward alerts render BEHIND the victory overlay**
+  (`showGameAlert` z-1200 vs victory z-9999) — the Master Ball, EXP-Share and Pokédex
+  milestone rewards are granted but **never announced**. → thread post-battle rewards onto
+  the on-card `_victoryRewardLines`.
+- **NOTIF-2 (P2): Pallet Town arrival fires two systems** (inline cold-open + welcome modal).
+- 3 generic surfaces (`showGameAlert`, `showToast`, `_storyShowOneTimeTip`) + ~8 bespoke
+  full-screen overlays, none sharing a base. → one overlay renderer behind the IntroQueue.
+
+### 8d. Rewards — ~9 grant paths, 3 display channels
+- All mutate via one `_storyGrantBundle` (wallet is healthy); only the **display** is split.
+- **REWARD-1 (P2): `_storyAwardStoryBeatReward` is granted then discarded** (return value
+  ignored at 47695) — shown nowhere.
+- **REWARD-2 (P2): one `onBattleEnd` uses 3 channels** (on-card / silent / occluded alert).
+- **REWARD-3 (P3): facility gifts double-announce** (in-scene prose + modal). → one on-card channel.
+
+### 8e. Navigation — "die-to-return" confirmed
+- **NAV-1 (P1, UX): no voluntary back-nav.** The hub has one forward button
+  (`proceedToNextBattle`); "Back to City" reopens the *current* city only. The only mid-route
+  hub re-entry is lose → game-over → "Return to Last City". → add a voluntary "Leave / go
+  back" affordance through the existing `_storyApplyRetreatToCity` (minus loss framing + fee).
+- **NAV-2 (P3): "Return to Last City" snaps to a fixed city,** not a chosen one. Data exists
+  (`lastStoryCityEventIndexAtOrBefore`, `cityIndexFromEventIndex`) to build real back-nav.
+
+### 8f. Prioritized roadmap
+**Tier 1 — contained, high-impact bug fixes (each its own tested diff):**
+1. **State-bleed reset** (BLEED-1/2/3) — engine lane, repro-backed. *game-breaking.*
+2. **Reward visibility** (NOTIF-1 + REWARD-1) — invisible loot the player earned.
+3. **Wild double-tutorial** (INTRO-1).
+
+**Tier 2 — the single-engine consolidation (the refactor; P1 done):**
+4. Story-flow engine live swap + fix (P2′/P4) — node model + one isolation boundary.
+5. One notification surface · one reward channel · one intro per encounter.
+
+**Tier 3 — navigation feature:**
+6. Continue / go-back navigable pitstops (NAV-1/2) on the node-based map.
