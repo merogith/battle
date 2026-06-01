@@ -34521,8 +34521,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // v23 (Wander Around) only ADDED the sm.wanderByEventIdx map — additive
         // and seeded to {} by the load-path back-fill — so it intentionally has
         // no migrateStoryPreV23; a pre-v23 save loads straight through with a
-        // fresh wander budget. The chain's last versioned step is migrateStoryPreV22.
-        const SAVE_VER = 23;
+        // fresh wander budget.
+        // v24 removes the post-HoF "Caged God" boss arc — migrateStoryPreV24 strips
+        // the vestigial sm.bossArc state. The chain's last versioned step is v24.
+        const SAVE_VER = 24;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -35059,6 +35061,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.storyEventsFired || typeof sm.storyEventsFired !== 'object') sm.storyEventsFired = {};
             if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
             if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
+        }
+        function migrateStoryPreV24() {
+            // The post-HoF "Caged God" boss arc was cut (post-game is now the Mystery
+            // Figure climax -> Crucible / Battle Frontier / farm). Drop its vestigial
+            // save state. Any Master Ball an old save banked for the now-gone cage is
+            // left in the bag (harmless). postHofMysteryClimaxDone (Mystery Figure) is kept.
+            if (sm.bossArc) delete sm.bossArc;
         }
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
@@ -35683,6 +35692,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 22) {
                     try { migrateStoryPreV22(); } catch (e) { console.warn('[Story] v22 3-track migrate', e); }
+                }
+                if (_loadedVer < 24) {
+                    try { migrateStoryPreV24(); } catch (e) { console.warn('[Story] v24 Caged God arc removal migrate', e); }
                 }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
