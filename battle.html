@@ -15200,8 +15200,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Fatigue/Tiredness was cut (Path D): it was an invisible, near-inert ~1-2% tax
             // that auto-cleared at the next gym and could never reach its own cap in the shipped
-            // timeline. The `build.tired` save field is left intact-but-inert for save
-            // compatibility (pasteur-owned schema); nothing reads it for battle stats anymore.
+            // timeline. The `build.tired` field is no longer written; an inert value on an old
+            // save is harmless (nothing reads it).
             // Phase 4.4 — per-event enemy stat multiplier (set by enterBattleEvent's
             // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
             // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
@@ -35121,7 +35121,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!slot.build.bonus || typeof slot.build.bonus !== 'object') {
                         slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
                     }
-                    if (typeof slot.build.tired !== 'number') slot.build.tired = 0;
                 }
             }
         }
@@ -35254,7 +35253,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex || typeof sm.pokedex !== 'object' || !Array.isArray(sm.pokedex.seen) || !Array.isArray(sm.pokedex.caught)) {
                 sm.pokedex = { seen: [], caught: [] };
             }
-            if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
             // Post-HoF Mystery Figure climax flag (introduced after Caged God arc shipped).
             // Existing post-HoF saves (boss arc already available) should not be forced
             // back through the climax. Same shadowing trap as balls above — the defaults block
@@ -35339,7 +35337,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    pcBox: [],
                    balls: { poke: 0, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
-                   catchUnlocked: false,
                    storyLine: 'classic',
                    storyChoices: {},
                    postHofMysteryClimaxDone: false,
@@ -35765,8 +35762,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     slot.build.bonus[k] = Math.max(0, Math.min(10, (slot.build.bonus[k] | 0)));
                                 }
                             }
-                            if (typeof slot.build.tired !== 'number') slot.build.tired = 0;
-                            slot.build.tired = Math.max(0, Math.min(3, slot.build.tired | 0));
                         }
                     }
                 } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
@@ -39506,7 +39501,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pcBox: [],
                 balls: { poke: 0, great: 0, ultra: 0, master: 0 },
                 pokedex: { seen: [], caught: [] },
-                catchUnlocked: false,
                 storyLine: _readStorylineFromUI(),
                 storyChoices: {},
                 postHofMysteryClimaxDone: false,
@@ -44490,10 +44484,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Fatigue/Tiredness was cut (Path D). It was an invisible, near-inert ~1-2% tax that
         // auto-cleared at the next gym and could never reach its own cap in the shipped timeline.
-        // These functions are kept as inert no-ops so any remaining call sites stay safe; nothing
-        // accrues, clears, or displays fatigue anymore. The `build.tired` save field and its
-        // migration are intentionally left intact-but-unused for save compatibility (the schema
-        // is pasteur-owned). Removing them is a separate pasteur task.
+        // The `build.tired` field is no longer written; an inert value on an old save is harmless
+        // (nothing reads it). The no-op hooks below are retained only because live call sites still
+        // invoke them — they do nothing.
         function _storyEventIsIconicFight(eventName) {
             if (!eventName) return false;
             const s = String(eventName);
@@ -44508,7 +44501,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || s === 'Crucible'
                 || s === 'Frontier';
         }
-        function _storyApplyTiredness(_eventName) { /* fatigue cut — no-op */ }
         function _storyClearTirednessForIconic() { /* fatigue cut — no-op */ }
         function _storyShowTirednessIntro() { /* fatigue cut — no-op */ }
 
@@ -44601,7 +44593,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { console.warn('[Egg] build', e); }
             if (!b) b = { m: ['Tackle','Tackle','Tackle','Tackle'], a: null, n: 'Hardy', i: null, ivs: { hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
             if (!b.bonus || typeof b.bonus !== 'object') b.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            if (typeof b.tired !== 'number') b.tired = 0;
             return b;
         }
         // Hatch every egg whose gate badge is met, in place (party + PC). Keeps the
@@ -45015,7 +45006,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { if (typeof makeBuild === 'function') build = makeBuild(name); } catch (e) {}
                 if (!build) build = { m:['Tackle','Tackle','Tackle','Tackle'], a:null, n:'Hardy', i:null, ivs:{ hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs:{ hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
                 if (!build.bonus) build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-                if (typeof build.tired !== 'number') build.tired = 0;
                 if (isBoss) { for (const s of ['hp','atk','def','spa','spd','spe']) build.bonus[s] = 2; }
                 six.push({ name, build, grade: getMonGrade(name, getBST(name)) });
             }
