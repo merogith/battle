@@ -1,6 +1,6 @@
 ---
 name: find-anchor
-description: Resolves a symbol name (function or const) to `file:line` in the codebase. Drift-tolerant — agents should call this instead of trusting line numbers in CODEBASE_MAP.md or older docs. Maintains a negative cache for confirmed-missing symbols so you don't repeat-grep dead leads.
+description: Resolves a symbol name (function or const) to `file:line` in the codebase. Drift-tolerant — agents should call this instead of trusting line numbers in older design docs. Maintains a negative cache for confirmed-missing symbols so you don't repeat-grep dead leads.
 ---
 
 # find-anchor
@@ -10,7 +10,7 @@ description: Resolves a symbol name (function or const) to `file:line` in the co
 Any time an agent needs to know where a symbol lives. Especially:
 - Before reading a region of `battle.html` (use the resolved line to bound the read).
 - Before quoting a `file:line` in a finding (so the line is fresh).
-- When CODEBASE_MAP.md, HANDOFF.md, or STORY_MODE_FLOW.md mentions a line number — they are almost certainly stale (battle.html has drifted ~62% since CODEBASE_MAP was written). Resolve via this skill.
+- When any design doc (e.g. STORY_MODE_FLOW.md, PROGRESSION_CURVE_MASTER.md) mentions a `battle.html` line number — treat it as almost certainly stale; battle.html drifts continuously. Resolve via this skill.
 
 ## How to use
 

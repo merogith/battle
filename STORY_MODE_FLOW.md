@@ -4,9 +4,8 @@ This is the **working spec** for the new story-mode flow: catching, the PC, the
 Underground (corrupted Centers), wild routes, the Safari Zone, and the post-Champion
 boss arc ("The Caged God").
 
-It supersedes prior recommendations in `docs/STORY_MODE_DESIGN_DECISIONS.md` where
-they conflict. Conflicts are noted inline so old context isn't silently
-contradicted.
+It supersedes the project's earlier story-mode design notes where they conflict.
+Conflicts are noted inline so old context isn't silently contradicted.
 
 **Code anchors** below use `battle.html:LINE` so each subsystem can be jumped to
 directly. All line numbers are against the current main file at the time of
@@ -407,7 +406,7 @@ This spec overrides these prior recommendations:
 
 | Prior doc | Prior recommendation | New decision | Why |
 |---|---|---|---|
-| `STORY_MODE_DESIGN_DECISIONS.md` C2 | HP-based catch formula | Pure grade × ball | Simpler; no in-battle catching anyway |
+| Prior design-decisions doc · C2 | HP-based catch formula | Pure grade × ball | Simpler; no in-battle catching anyway |
 | C3 | Captured = preserve HP/status | Full HP / full PP / no status | No-fight minigame; nothing to preserve |
 | C4 | Foe fights to KO | Foe may flee on miss | Catch is a minigame, not a battle |
 | C5 | Wild 50% pre-trainer in same slot | Wild forced on dedicated route nodes | Cleaner separation; no in-slot conflict |
@@ -1068,10 +1067,9 @@ gets new leader picks for unvisited slots.
 
 ## 16. References
 
-- `docs/STORY_MODE_AUDIT.md` — full 6-agent audit of current story mode (~400 lines)
-- `docs/STORY_MODE_DESIGN_DECISIONS.md` — prior 22-decision table; this spec overrides where §14 lists conflicts
-- `docs/STORY_MODE_CATCH_INTEGRATION_RISK.md` — risk analysis of catch/PC integration; strategy A is the chosen wild-encounter approach
-- `docs/STORY_FEATURES_INTEGRATION.md` — earlier high-level mechanic outlines; this spec is the canonical replacement
+- `docs/STORY_NARRATIVE_VARIANTS.md` — the 8-storyline variant design layered over the timeline
+- `docs/PROGRESSION_CURVE_MASTER.md` — difficulty-curve reference (flat-Lv50 / 3-axis model)
+- `docs/EVOLUTION_FLOW_REBUILD.md` — evolution / stone / facility-intro subsystem spec
 - `README.md` — top-level project README; references this file
 
 ---

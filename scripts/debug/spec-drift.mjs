@@ -9,15 +9,11 @@ const SYMBOL_INDEX_PATH = join(REPO, 'agent-state', 'symbol-index.json');
 
 const DOCS = [
   'STORY_MODE_FLOW.md',
-  'docs/STORY_FEATURES_INTEGRATION.md',
-  'docs/STORY_MODE_DESIGN_DECISIONS.md',
-  'docs/STORY_MODE_CATCH_INTEGRATION_RISK.md',
   'docs/STORY_NARRATIVE_VARIANTS.md',
-  'docs/design-audit/DESIGN_CONSISTENCY_CHECKLIST.md',
-  'agent-state/CODEBASE_MAP.md',
-  'agent-state/HANDOFF.md',
+  'docs/PROGRESSION_CURVE_MASTER.md',
+  'docs/EVOLUTION_FLOW_REBUILD.md',
   'README.md',
-];
+].filter((p) => existsSync(join(REPO, p)));
 
 const ANCHOR_RE = /\bbattle\.html:(\d+)/g;
 const SYM_NEAR_RE = /`([A-Za-z_$][\w$]*)`/g;

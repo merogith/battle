@@ -43,4 +43,4 @@ grep -nE 'function.*<symbol>|const.*<symbol>|<symbol>\s*\(' battle.html | head -
 
 - Before reading a region of `battle.html` (use the resolved line to bound your `Read` call)
 - Before citing a `file:line` in a finding or commit message
-- Whenever `CODEBASE_MAP.md` or `HANDOFF.md` mentions a line number — those are stale; resolve via this command
+- Whenever an older design doc mentions a line number — treat it as stale; resolve via this command

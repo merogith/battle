@@ -36,7 +36,7 @@ If you need to study more than 400 lines, do two reads with different offsets. *
 
 - ❌ `Read battle.html` with no offset (reads first 2000 lines — wastes 2000 lines of context on CSS).
 - ❌ `Read battle.html` with `limit: 5000` (hard refusal — your context will overflow before you finish).
-- ❌ Reading by raw line number from CODEBASE_MAP.md (stale by thousands of lines — resolve via `find-anchor` first).
+- ❌ Reading by raw line number from an older design doc (stale by thousands of lines — resolve via `find-anchor` first).
 - ❌ `cat battle.html | grep ...` via Bash — slow on a 3.2 MB file; use grep directly without cat.
 
 ## Good patterns

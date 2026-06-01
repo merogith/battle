@@ -35,7 +35,7 @@ quality. The game is a polish target — small UX wins are valuable.
 
 ### Story-mode specific
 
-11. **Story tutorial scenes** (`STORY_TUTORIAL_SCENES`) — text-only? Audio? Provide both? Tutorial CSS at `~3853` per CODEBASE_MAP (stale — `find-anchor STORY_TUTORIAL_SCENES`).
+11. **Story tutorial scenes** (`STORY_TUTORIAL_SCENES`) — text-only? Audio? Provide both? (resolve the tutorial CSS via `find-anchor STORY_TUTORIAL_SCENES`).
 12. **Save toast throttling** — 3s throttle is good but is the toast `role="status"` (announced once) or `role="alert"` (announced every time, annoying)? Should be `role="status"` or `aria-live="polite"`.
 13. **Mobile layout** — battle.html targets desktop 1280×720 + phone portrait/landscape. Verify touch targets ≥44px on mobile by reading the CSS for the relevant screens.
 

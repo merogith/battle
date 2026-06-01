@@ -3,8 +3,8 @@
 > **Orchestration source of truth** for the strategic-progression-curve pass.
 > Generated 2026-05-25. **Read-only synthesis — no gameplay code has been changed.**
 > All numbers are verbatim from `battle.html` (now ~54,035 lines) and cited as
-> `battle.html:LINE`, cross-checked against `STORY_MODE_FLOW.md` (canonical spec),
-> `DESIGN_FEEDBACK.md`, `BUG_REPORT.md`, and `agent-state/ISSUE_LEDGER.md`.
+> `battle.html:LINE`, cross-checked against `STORY_MODE_FLOW.md` (canonical spec)
+> and `agent-state/ISSUE_LEDGER.md`.
 > Line numbers drift; the symbol name is the durable anchor.
 
 Deliverables, in order:
