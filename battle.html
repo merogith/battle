@@ -37903,6 +37903,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Track-end rewards + boss mechanics (PR-5).
                     grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
                     catchIntroSceneId: (st) => _catchIntroSceneId(st),
+                    battleEntryBusy: () => _storyBattleEntryBusy,
+                    setBattleEntryBusy: (v) => { _storyBattleEntryBusy = !!v; },
+                    recoverFromEntryFailure: (w, e) => _storyRecoverFromEntryFailure(w, e),
                     // EXP-Share gift (extra-raid reward — ISSUE-243).
                     applyExpShareLevel: (src, idx) => applyExpShareLevel(src, idx),
                     monDisplayLevel: (build) => _monDisplayLevel(build),
@@ -42004,7 +42007,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 scene.run(ev, () => {
                     if (tip) _storyRunSceneMark(tip);
                     try { onPlayed && onPlayed(); }
-                    catch (e) { console.error('[Story] cold-open onPlayed threw:', e); }
+                    catch (e) { _storyRecoverFromEntryFailure('cold-open onPlayed', e); }
                 });
                 return true;
             } catch (e) {
@@ -46736,6 +46739,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── PROCEED TO BATTLE ─────────────────────────────────────────────
+        // Recovery for a story battle-entry chain that threw mid-flight. The
+        // critical part is releasing _storyBattleEntryBusy: proceedToNextBattle
+        // latches it true on entry and only enterCity / launchBattle clear it,
+        // so a throw in a cold-open / beat-scene continuation (whose catch used
+        // to just log) stranded the flag true and wedged EVERY later
+        // proceedToNextBattle with "Finish your current action first" — a hard
+        // progression soft-lock with no in-game recovery. We also drop the
+        // player back to the city hub (matching showVictoryOverlay's fall-back)
+        // so they land on a usable screen to retry from.
+        function _storyRecoverFromEntryFailure(where, err) {
+            console.error('[Story] battle-entry chain failed (' + where + ') — recovering to city:', err);
+            _storyBattleEntryBusy = false;
+            try { if (typeof enterCity === 'function') enterCity(); }
+            catch (e2) { console.error('[Story] entry-failure recovery (enterCity) also threw:', e2); }
+        }
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
             // Re-entry guard — see _storyBattleEntryBusy. Blocks a second entry while a cold-open /
@@ -47356,7 +47374,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) { console.warn('[Story] canon trainer override:', e); }
                 _playStoryBeatScene(_beatBattle.sceneKey, () => {
                     try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
-                    catch (e) { console.warn('[Story] beat-battle scene continuation failed:', e); }
+                    catch (e) { _storyRecoverFromEntryFailure('beat-battle scene continuation', e); }
                 });
                 return;
             }
