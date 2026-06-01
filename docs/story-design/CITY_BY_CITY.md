@@ -23,7 +23,7 @@ Enemy power curve is fine; do **not** touch enemy stats here.
 
 - **Evolution Sage** — *Awakening* (Stage-1 evos) → *Stones* → *Ascension* (Stage-2 evos). **3 layers, staged across cities (see §C).**
 - **Battle Dojo** — *White Belt* (abilities) → *Black Belt* (Hidden) → *Grandmaster* (Awakened). *(confirm if already implemented)*
-- **Move Tutor** — *Heart Scale* (egg + learnable moves) → *TM Expert* (TMs/HMs/all). Pricing: 1,500 → 2,500.
+- **Move Tutor** — *Inner Strength* (Natural moves, BP ≤ 75) → *Expert* (all Natural, cap lifts) → *Guru* (+ TMs/HMs/tutor + Awakened). Pricing: 1,000 → 2,500 → 5,000.
 - **Items** — *Poké Mart* (Lv1: berries/basics, 500) → *Super Mart* (decent, 1,000) → *Department Store* (Lv2: best/all, 2,500). Mart & Dept cycle; Dept anchors important cities (C6/C8/League).
 - Each new stage = revisit + fresh intro + **1 free use**. Nature Rater & EV Trainer: **no staging**.
 
@@ -37,7 +37,7 @@ Enemy power curve is fine; do **not** touch enemy stats here.
 | **C3 gym 3** | + Nature Rater | (tutors already; ensure staged tags) |
 | **C4 gym 4** | + Safari, Battle Dojo, EV Trainer, (Daycare) | Dojo *White→Black Belt* upgrade beat. |
 | **C5 gym 5** | + Poké Casino | **Evolution Sage L3 — Stage-2 evos** (one city before enemies field G2 @ Gym6). ← *placement decision* |
-| **C6 gym 6** | Link, Evo, Stone, **Dept Store**, tutors, Dojo, EV, Colress, (Daycare→Fight Club) | Move Tutor *TM Expert* upgrade; Dept Store anchor. |
+| **C6 gym 6** | Link, Evo, Stone, **Dept Store**, tutors, Dojo, EV, Colress, (Daycare→Fight Club) | Dept Store anchor. (Move Tutor already Guru since C5.) |
 | **C7 gym 7** | + Mart back | — |
 | **C8 gym 8** | Mart + Dept | Dept Store anchor (everything). |
 | **C9 league / endgame** | everything + Enter League; Crucible post-HoF | The "do-anything" hub — every service at top stage; Fight Club farm. |
@@ -55,10 +55,10 @@ Enemy power curve is fine; do **not** touch enemy stats here.
 Professor basics-only · tutors always-on (every city) · wilds base-only + rising IV cap · enemy rising-mean IVs · special=31 · evolution 3-layer (Stage-1 C1 / Stones C2 / Stage-2 C4) · menu order · required intros (Bag C0, Party+Fan Club C1) · bag shows Poké Balls + trimmed voucher/vitamin text · Pokémart 5-ball gift + Center Full Restore · egg-hatch animation · **disputed items (Artifact Hall, NEW/visited) proven working via `tests/verify-early-game.mjs`.**
 
 ## F. Staged-NPC capability ladders — SHIPPED (branch `…-NeTyO`, tests in `story-staged-npc.test.js`)
-**Shared mechanic (city-anchored, tunable):** `NPC_STAGE_CITY[key]` = the first city index of each tier (keyed on the *arrived* city, same basis as the evo gate). `_npcStage(key)` / `_npcStageName(key)` resolve the current tier; the city-screen chip **renames** by tier (`Move Tutor — Heart Scale/TM Expert`, `Battle Dojo — White/Black Belt · Grandmaster`, `Stone Sage — Awakening/Stones/Ascension`). On first reaching a higher tier (`enterTutor`/`enterEvolutionLab` → `_npcStageUpCheck`), a **one-time intro** fires and the NPC hands over **1 free use** (a voucher), tracked in `sm.npcStageSeen`.
+**Shared mechanic (city-anchored, tunable):** `NPC_STAGE_CITY[key]` = the first city index of each tier (keyed on the *arrived* city, same basis as the evo gate). `_npcStage(key)` / `_npcStageName(key)` resolve the current tier; the city-screen chip **renames** by tier (`Move Tutor — Inner Strength/Expert/Guru`, `Battle Dojo — White/Black Belt · Grandmaster`, `Stone Sage — Awakening/Stones/Ascension`). On first reaching a higher tier (`enterTutor`/`enterEvolutionLab` → `_npcStageUpCheck`), a **one-time intro** fires and the NPC hands over **1 free use** (a voucher), tracked in `sm.npcStageSeen`.
 
 - **Battle Dojo** `[4,6,8]` (cumulative): **abilities** natural → +Hidden (Black Belt) → +Awakened (Grandmaster); **items** berries → +decent → +all. Gated in `_txRenderLoadoutEditor` via `_dojoItemTier` + the Hidden/`_opAbilitiesForMon` city gate. Gifts: Ability Capsule (BB), Ability Capsule + Emblem of Honor (GM).
-- **Move Tutor** `[0,4]`: Heart Scale tier = own competitive + **egg/level-up** learnset (method codes `E`/`L` read from the loaded `@pkmn/dex` learnsets); TM Expert opens the full learnset. **Holding a Heart Scale overrides the gate** ("learn any move"); the gold path is guarded so a TM-tier move below TM Expert can only be taught with a Heart Scale (no gold leak). Falls back to the full competitive pool when the dex bundle is unavailable. Gift at TM Expert: 1 Heart Scale.
+- **Move Tutor** `[0,2,5]`: three stages keyed on the move-tag index (`data/move-tags.json`, offline-safe). **Inner Strength** (C0–1) = Natural moves (egg/level-up/transfer/evolution method codes `E`/`L`/`V`), **BP ≤ 75**. **Expert** (C2–4) = ALL Natural (the BP cap lifts; still no TMs). **Guru** (C5+) = + Learnt (TM/HM/TR/tutor/event) + Awakened (off-legal Smogon picks). A **Heart Scale is a free-teach voucher** — it waives the gold cost of an *in-stage* teach but does **NOT** bypass the gate (Bug-B fix). Falls back to the offline index, then the competitive pool, when the dex bundle is unavailable. Gifts: 1 Heart Scale at Expert (C2), 2 at Guru (C5).
 - **Stone Sage** `[2,3,4]`: capability is the player evo-stage cap; the ladder adds the **rename + intro + free Stonewise Token** per tier (Stones, Ascension).
 - **Voucher rule:** vouchers grant full capability regardless of stage (Heart Scale = any move) — per "vouchers can be used for anything."
 
@@ -69,15 +69,15 @@ Cities are the anchor. **Everyday services** are present in every city from thei
 
 | City | New this town | Buy-tier-up 🛒 |
 |---|---|---|
-| C0 | Mart · Move Tutor (Heart Scale) · Bag · Party · Center · Artifact Hall | — |
+| C0 | Mart · Move Tutor (Inner Strength) · Bag · Party · Center · Artifact Hall | — |
 | C1 | **Gym 1** · Nature Rater · Fan Club | — |
-| C2 | Cable Link · Stone Sage (Awakening) · **Battle Dojo (White Belt)** | 🛒 Dojo |
+| C2 | Cable Link · Stone Sage (Awakening) · **Battle Dojo (White Belt)** · **Move Tutor → Expert** | 🛒 Dojo · Tutor |
 | C3 | Stone Merchant | — |
-| C4 | **Department Store** · Move Tutor → TM Expert · Stone Sage → Ascension | 🛒 Tutor |
-| C5 | Safari Zone · Game Corner | — |
+| C4 | **Department Store** · Stone Sage → Ascension | — |
+| C5 | Safari Zone · Game Corner · **Move Tutor → Guru** | 🛒 Tutor |
 | C6 | Colress · Department Store · **Dojo → Black Belt** | 🛒 Dojo |
 | C7 | EV Trainer · Game Corner | — |
 | C8 | **Dojo → Grandmaster** | 🛒 Dojo |
 | C9 | League · everything (Dept · Game Corner · Safari · Fight Club · best trainers) | — |
 
-Config: `NPC_STAGE_CITY = { dojo:[2,5,8], tutor:[0,4], evolab:[2,4] }`; `FACILITY_DEBUT_CITY` nature→1, dojo→2, stoneShop→3, dept→4, safari→5, evtrainer→7, party→0; ALWAYS_ON minCities Nature→1, Evolution Tutor→2. Daycare C2/C4/C6; Fight Club C6 (daycare secret) / C9 / post-game. Stone Sage stays a 2-tier ladder aligned to the evo cap (finals @ C4). Note: with dojo Black Belt @C5 right after the C4 Tutor bump, two buy-bumps land a city apart (per the player's explicit C2/C5/C8 choice).
+Config: `NPC_STAGE_CITY = { dojo:[2,5,8], tutor:[0,2,5], evolab:[2,4] }`; `FACILITY_DEBUT_CITY` nature→1, dojo→2, stoneShop→3, dept→4, safari→5, evtrainer→7, party→0; ALWAYS_ON minCities Nature→1, Evolution Tutor→2. Daycare C2/C4/C6; Fight Club C6 (daycare secret) / C9 / post-game. Stone Sage stays a 2-tier ladder aligned to the evo cap (finals @ C4). Note: with `tutor:[0,2,5]` the Move-Tutor Expert bump lands at C2 (alongside Dojo White Belt) and Guru at C5; TMs/tutor moves stay locked until Guru.
