@@ -299,10 +299,17 @@ they're immune — Story-only bug.)
   (`lastStoryCityEventIndexAtOrBefore`, `cityIndexFromEventIndex`) to build real back-nav.
 
 ### 8f. Prioritized roadmap
-**Tier 1 — contained, high-impact bug fixes (each its own tested diff):**
-1. **State-bleed reset** (BLEED-1/2/3) — engine lane, repro-backed. *game-breaking.*
-2. **Reward visibility** (NOTIF-1 + REWARD-1) — invisible loot the player earned.
-3. **Wild double-tutorial** (INTRO-1).
+**Tier 1 — contained, high-impact bug fixes (each its own tested diff): ✅ DONE**
+1. ✅ **State-bleed reset** (BLEED-1/2/3) — engine lane, repro-backed. *game-breaking.*
+   `db1e8c6` — unconditional between-battle reset in `startBattle`;
+   net `tests/suites/battle-state-isolation-v23.test.js`.
+2. ✅ **Reward visibility** (NOTIF-1 + REWARD-1) — invisible loot the player earned.
+   `86af9b7` — beat + track-end rewards threaded onto `_victoryRewardLines`,
+   track reward granted `{silent}`; net `tests/suites/story-reward-visibility-v23.test.js`.
+3. ✅ **Wild double-tutorial** (INTRO-1). `8dd1f14` — `_catchIntroSceneId` guard
+   suppresses `firstWildRoute` after the catch tutorial;
+   net `tests/suites/story-intro-tutorial-dedup-v23.test.js`. *Touches pasteur's
+   intro/tutorial domain — implemented with owner go-ahead; pasteur to review.*
 
 **Tier 2 — the single-engine consolidation (the refactor; P1 done):**
 4. Story-flow engine live swap + fix (P2′/P4) — node model + one isolation boundary.
