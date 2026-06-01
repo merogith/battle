@@ -17176,6 +17176,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Tera'd this battle (the class is added by activateTera but never removed).
                 document.querySelectorAll('.tera-crystal-on').forEach(el => el.classList.remove('tera-crystal-on'));
             } catch (e) { console.warn('[startBattle] per-mon gimmick reset:', e); }
+            // ── Between-battle isolation reset (state-bleed fix) ─────────────
+            // `state` is a persistent module-level object reused across Story
+            // battles, and startBattle resets only a fixed field list — so the
+            // boss/raid mechanics, the Healing Wish / Lunar Dance pending flags,
+            // and the battle log (each previously cleared only inside its own
+            // conditional path) bled into the *next* ordinary fight. Most
+            // damaging: the boss surge/immunity hooks (gated on
+            // _activeStoryBeatKey) stayed armed and clamped a follow-up fight's
+            // damage to 0. Clear them all unconditionally here so every fight
+            // starts on its own; the boss block below re-attaches mechanics for
+            // an actual boss beat. Mirrors the weather/terrain reset above.
+            state._activeStoryBeatKey = null;
+            state._bossMechanics = null; state._bossMechanicsFired = null; state._bossPendingTelegraphs = null;
+            state._bossSurgeTurns = 0; state._bossImmuneTurns = 0;
+            state._bossWeatherLocked = false; state._bossTerrainLocked = false;
+            state._healingWish = false; state._healingWishFoe = false;
+            state._lunarDance = false; state._lunarDanceFoe = false;
+            state._fTeraReserveLogged = false;
+            try { const _bl = document.getElementById('battle-log'); if (_bl) _bl.innerHTML = ''; } catch (e) {}
             try { if (settings.randomWeather) rollRandomWeather(); } catch (e) { console.warn('[startBattle] rollRandomWeather:', e); }
             try { if (settings.randomTerrain) rollRandomTerrain(); } catch (e) { console.warn('[startBattle] rollRandomTerrain:', e); }
             try {
