@@ -1461,14 +1461,11 @@
             border-right-color: #ffd54f;
             border-bottom-color: #ffd54f;
         }
+        /* Awakened = off-legal/illegal: red danger stripe so it never reads as the
+           gold "recommended" or blue "hidden" treatment. */
         .tx-card--ability[data-tier="awaken"] {
-            border-left-color: #ffb300;
-        }
-        .tx-card--ability[data-tier="awaken"][data-recommended="1"] {
-            border-left-color: #ffb300;
-            border-top-color: #ffd54f;
-            border-right-color: #ffd54f;
-            border-bottom-color: #ffd54f;
+            border-left-color: #ff5252;
+            background: linear-gradient(90deg, rgba(244,67,54,0.10), transparent 60%);
         }
         .tx-card-head {
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -1505,9 +1502,9 @@
         .tx-card[data-locked="1"] { opacity: 0.5; cursor: not-allowed; }
         .tx-card[data-locked="1"] .tx-card-star { opacity: 0.8; }
         .tx-pill--awaken {
-            background: linear-gradient(135deg, rgba(255,193,7,0.28), rgba(255,87,34,0.22));
-            border-color: #ffb300; color: #fff8e1;
-            box-shadow: 0 0 6px rgba(255,179,0,0.45);
+            background: linear-gradient(135deg, rgba(244,67,54,0.30), rgba(255,87,34,0.24));
+            border-color: #ff5252; color: #ffd7cf;
+            box-shadow: 0 0 6px rgba(244,67,54,0.4);
         }
         .tx-pill--cat-Physical { background: rgba(255,107,107,0.18); border-color: #ff6b6b; color: #ffcaca; }
         .tx-pill--cat-Special  { background: rgba(107,159,255,0.18); border-color: #6b9fff; color: #cbdbff; }
@@ -1905,6 +1902,13 @@
             border: 1px solid #3a4156; border-radius: 8px;
             box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
         }
+        /* Stage-locked move: amber, reads as "not yet available" rather than an error. */
+        .tx-confirm-bar--locked {
+            border-color: #8d6e2f;
+            background: linear-gradient(180deg, rgba(40,33,18,0.96), rgba(24,19,10,0.97));
+        }
+        .tx-confirm-bar--locked .tx-confirm-bar-text { color: #ffd9a0; }
+        .tx-confirm-bar--locked .tx-confirm-bar-text strong { color: #ffd54f; }
         .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
         .tx-confirm-bar-text strong { color: var(--accent); }
         .tx-confirm-bar-btn {
@@ -14035,6 +14039,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = document.getElementById(id);
             if (!el) return;
             el.classList.add('hidden');
+            // game-confirm carries a Promise contract: showGameConfirm() awaits a
+            // resolver normally settled by _gameConfirmResult(). If the modal is
+            // dismissed by a GENERIC path instead — the global a11y Escape handler
+            // (which fires before the promise-aware one and just closeModal()s the
+            // topmost modal), a screen transition, etc. — the awaiter would hang
+            // forever. A stranded window._gameConfirmResolve permanently blocks
+            // _storyTryBeginInteraction(), silently bricking every later tutor /
+            // dojo / EV-trainer purchase ("Confirm does nothing"). Settle it as a
+            // cancel here so no close path can strand it. (_gameConfirmResult clears
+            // the resolver before it calls closeModal, so the normal OK/Cancel path
+            // never double-resolves through this branch.)
+            if (id === 'modal-game-confirm' && window._gameConfirmResolve) {
+                const r = window._gameConfirmResolve;
+                window._gameConfirmResolve = null;
+                try { r(false); } catch (e) {}
+            }
             try {
                 const prev = window._modalFocusStack.get(id);
                 if (prev && typeof prev.focus === 'function') prev.focus();
@@ -14137,9 +14157,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         };
         window._gameConfirmResult = function(ok) {
-            window.closeModal('modal-game-confirm');
+            // Capture + clear the resolver BEFORE closeModal so the game-confirm
+            // self-heal in closeModal() sees no pending resolver and can't pre-empt
+            // this with a false result (which would turn every OK into a cancel).
             const r = window._gameConfirmResolve;
             window._gameConfirmResolve = null;
+            window.closeModal('modal-game-confirm');
             if (r) r(!!ok);
         };
         if (!window._modalEscapeBound) {
@@ -55538,19 +55561,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _hasHeartScale() {
             return !!(sm && sm.inventory && (sm.inventory.heartScale | 0) > 0);
         }
-        // Battle Dojo held-item tiers (cumulative): 1 = berries, 2 = decent staples,
-        // 3 = the meta-defining power items. Unlisted items default to tier 2 so a
-        // stray item is never locked to the very top. Tunable by editing the sets.
+        // Battle Dojo held-item tiers (cumulative): 1 = Foundation (berries + mild
+        // type-boosters + Eviolite), 2 = Staples (Leftovers/Boots/AV/Sash/Helmet/…),
+        // 3 = Meta (the snowball/win-more items). Unlisted items default to tier 2.
+        // SHARED with the foe item gate (_storyFoeItemTier derives the cap from this
+        // same clock), so editing these sets re-paces foes automatically — they can
+        // never field an item above the tier the player can hold at that city.
+        // Tunable by editing the sets.
         const _DOJO_ITEM_BEST = new Set([
-            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb', 'Assault Vest',
-            'Heavy-Duty Boots', 'Weakness Policy', 'Booster Energy', 'Loaded Dice',
+            // Tier 3 (Grandmaster) — snowball / win-more only. (Heavy-Duty Boots and
+            // Assault Vest were demoted to tier 2: they're defensive staples, not win-more.)
+            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb',
+            'Weakness Policy', 'Booster Energy', 'Loaded Dice',
             'Light Ball', 'Thick Club', 'Covert Cloak', 'Clear Amulet',
         ]);
+        // Type-boost held items (+20% to one type) keyed by the type they boost. Mild,
+        // role-defining offense — a fair Foundation (tier-1) pick. The Dojo item pool
+        // injects the mon's STAB booster(s) from here (the Smogon-derived pool never
+        // includes them). Mirrors the engine's typeItemBoosts table.
+        const _DOJO_TYPE_BOOST_BY_TYPE = {
+            Fire: 'Charcoal', Water: 'Mystic Water', Grass: 'Miracle Seed', Electric: 'Magnet',
+            Ice: 'Never-Melt Ice', Fighting: 'Black Belt', Poison: 'Poison Barb', Ground: 'Soft Sand',
+            Flying: 'Sharp Beak', Psychic: 'Twisted Spoon', Bug: 'Silver Powder', Rock: 'Hard Stone',
+            Ghost: 'Spell Tag', Dragon: 'Dragon Fang', Dark: 'Black Glasses', Steel: 'Metal Coat',
+            Fairy: 'Fairy Feather', Normal: 'Silk Scarf',
+        };
+        const _DOJO_TYPE_BOOST_ITEMS = new Set(Object.values(_DOJO_TYPE_BOOST_BY_TYPE));
+        // Tier-1 (Foundation) curated additions: the type-boosters above + Eviolite
+        // (does nothing off an NFE, so it's fair early).
+        const _DOJO_ITEM_TIER1 = new Set(['Eviolite', ..._DOJO_TYPE_BOOST_ITEMS]);
+        // Resist berry that halves one super-effective hit, keyed by the incoming type.
+        const _DOJO_RESIST_BERRY = {
+            Fire: 'Occa Berry', Water: 'Passho Berry', Electric: 'Wacan Berry', Grass: 'Rindo Berry',
+            Ice: 'Yache Berry', Fighting: 'Chople Berry', Poison: 'Kebia Berry', Ground: 'Shuca Berry',
+            Flying: 'Coba Berry', Psychic: 'Payapa Berry', Bug: 'Tanga Berry', Rock: 'Charti Berry',
+            Ghost: 'Kasib Berry', Dragon: 'Haban Berry', Dark: 'Colbur Berry', Steel: 'Babiri Berry',
+            Fairy: 'Roseli Berry', Normal: 'Chilan Berry',
+        };
+        // Worst defensive weakness for a (type1[,type2]) pair via the live type chart.
+        // Returns { type, mult } for the highest-multiplier attacking type (≥2), else null.
+        function _dojoWorstWeakness(type1, type2) {
+            if (typeof typeChart !== 'object' || !type1) return null;
+            let best = null;
+            for (const atk of Object.keys(typeChart)) {
+                const m1 = (typeChart[atk] && typeChart[atk][type1] !== undefined) ? typeChart[atk][type1] : 1;
+                const m2 = type2 ? ((typeChart[atk] && typeChart[atk][type2] !== undefined) ? typeChart[atk][type2] : 1) : 1;
+                const mult = m1 * m2;
+                if (mult >= 2 && (!best || mult > best.mult || (mult === best.mult && atk < best.type))) {
+                    best = { type: atk, mult };
+                }
+            }
+            return best;
+        }
         function _dojoItemTier(name) {
             if (!name || name === '(none)') return 1;
             if (/Berry$/.test(name)) return 1;
-            if (_DOJO_ITEM_BEST.has(name)) return 3;
-            return 2;
+            if (_DOJO_ITEM_TIER1.has(name)) return 1;   // type-boosters + Eviolite → Foundation
+            if (_DOJO_ITEM_BEST.has(name)) return 3;    // snowball items → Meta
+            return 2;                                    // everything else → Staples
         }
         // One-time "stage up" beat: the first time the player reaches a higher tier
         // of a staged NPC, the NPC re-introduces itself and hands over one free use
@@ -55828,6 +55896,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it) && !BANNED_ITEMS.has(it)) safeItems.add(it);
             });
             TUTOR_UNIVERSAL_ITEMS.forEach(it => { if (!BANNED_ITEMS.has(it)) safeItems.add(it); });
+            // Inject the mon's STAB-type booster(s) (+20%, e.g. Soft Sand for Ground) —
+            // a fair tier-1 offense pick the Smogon-derived pool never carries. Types
+            // come from baseStats (.t1/.t2), which is always available.
+            try {
+                for (const _ty of [bs && bs.t1, bs && bs.t2]) {
+                    const _boost = _ty && _DOJO_TYPE_BOOST_BY_TYPE[_ty];
+                    if (_boost && !BANNED_ITEMS.has(_boost)) safeItems.add(_boost);
+                }
+            } catch (e3) {}
             try {
                 const _D = (typeof getPssDex === 'function') ? getPssDex() : null;
                 if (_D && _D.species && typeof _D.species.get === 'function') {
@@ -56133,7 +56210,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // yet (jsdom thin dex / async race), the gate would over-restrict — fall
             // through to the full pool. The tutor UI re-renders once warm.
             const coldCache = !(learn.natural || []).length && !(learn.learnt || []).length && !(learn.awakened || []).length;
-            if (coldCache) return full;
+            if (coldCache) { try { full.fullPool = full; } catch (e) {} return full; }
             // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
             // NB: syncMoves (Smogon competitive moves) are NOT unconditionally unioned —
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
@@ -56169,7 +56246,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // current loadout out from under the player at a tutor visit.
             if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
             const gated = full.filter(m => allow.has(m));
-            return gated.length ? gated : full;
+            const out = gated.length ? gated : full;
+            // Expose the COMPLETE movepool so the picker can render every move (off-stage
+            // ones shown locked, like the Dojo's item/ability roster) while the teachable
+            // acceptance set still reads only `out`. Display-only — never widens the gate.
+            try { out.fullPool = full; } catch (e) {}
+            return out;
         }
 
         // ── REDESIGN HELPERS — categorization & recommendations ──────────
@@ -57148,192 +57230,200 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return best;
         }
 
-        // Move tutor — produce 3-4 categorized recommendations for distinct purposes
-        // (STAB / Coverage / Setup / Utility / Recovery / Priority / Speed Control)
-        // so the player sees several genuinely different builds, not just the
-        // top-scoring damage move. Each entry includes a short reason for the pick.
+        // Move tutor — produce up to 4 categorized recommendations (STAB / Coverage /
+        // Status) for the "✨ Suggest a balanced set" helper. Each entry includes a
+        // short reason for the pick.
+        // Suggest a balanced, POPULARITY-FIRST set: the moves this species actually
+        // runs most, arranged so each slot reads clearly. Composition follows the
+        // mon's typing — dual-type → 2 STAB + 1 Coverage + 1 flex; mono-type →
+        // 1 STAB + 2 Coverage + 1 flex — and every damaging pick is a DISTINCT type
+        // (no two STAB/coverage moves share a type; that's the whole point of running
+        // two STABs on a dual-type). Within each slot we take the highest Smogon
+        // usage % (the same "% of sets" the grid sorts by). Physical-vs-Special is a
+        // SOFT tiebreak toward the mon's bigger attacking stat, so a STAB type is
+        // never dropped just because its popular move happens to be the "wrong"
+        // category. The flex 4th slot becomes a Status move only when the species
+        // runs status MORE than the next coverage option would add — otherwise it
+        // coverage-fills, so a pure attacker never gets a status move it never uses.
+        // Final tiebreak is alphabetical → a fully deterministic, replay-stable list.
         function _txMoveRecsByPurpose(availMoves, mon, build, monName) {
             if (!availMoves || !availMoves.length) return [];
-            const types = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const md = (m) => movesDB[m] || (typeof ensureMoveData === 'function' ? ensureMoveData(m) : null);
+            const types = [mon && mon.type1, mon && mon.type2]
+                .filter(Boolean).filter((t, i, a) => a.indexOf(t) === i); // distinct, in order
+            const typeSet = new Set(types);
             const stats = _txMonStats(mon, monName);
-            const physical = stats.atk >= stats.spa;
-            const slow = stats.spe < 70;
+            // Preferred damaging category from the bigger attacking stat; null on a
+            // tie (no bias — usage % alone decides, exactly as requested).
+            const catPref = stats.atk > stats.spa ? 'Physical' : stats.spa > stats.atk ? 'Special' : null;
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).moves.pctOf; } catch (e) { return new Map(); } })();
+            const usage = (m) => pctOf.get(m) || 0;
 
-            const isDamage = m => { const md = movesDB[m]; return md && (md.cat === 'Physical' || md.cat === 'Special'); };
-            const isStab = m => { const md = movesDB[m]; return md && types.has(md.type) && isDamage(m); };
-            const isPriority = m => { const md = movesDB[m]; return md && md.pri && md.pri > 0 && isDamage(m); };
-            const isCoverage = m => { const md = movesDB[m]; return md && !types.has(md.type) && isDamage(m); };
+            const isDamaging   = (m) => { const d = md(m); return !!d && (d.cat === 'Physical' || d.cat === 'Special'); };
+            const isStatusMove = (m) => { const d = md(m); return !!d && d.cat === 'Status'; };
+            const typeOf = (m) => { const d = md(m); return d ? d.type : null; };
+            const catOf  = (m) => { const d = md(m); return d ? d.cat : null; };
+            const powOf  = (m) => { const d = md(m); return d ? (d.pow | 0) : 0; };
 
-            const SETUP = new Set(['Swords Dance','Nasty Plot','Dragon Dance','Quiver Dance','Calm Mind','Bulk Up','Iron Defense','Cosmic Power','Coil','Shell Smash','Geomancy','Tail Glow','Belly Drum','Curse','Agility','Rock Polish','Autotomize','Work Up','Hone Claws','Power-Up Punch','Howl']);
-            const RECOVERY = new Set(['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Morning Sun','Moonlight','Rest','Wish','Strength Sap','Shore Up','Milk Drink','Heal Order','Pain Split','Leech Life','Drain Punch','Giga Drain','Horn Leech','Parabolic Charge','Oblivion Wing','Aqua Ring','Ingrain']);
-            const STATUS_AILMENT = new Set(['Toxic','Will-O-Wisp','Thunder Wave','Sleep Powder','Spore','Hypnosis','Sing','Yawn','Glare','Stun Spore','Lovely Kiss','Dark Void']);
-            const SPEED_CONTROL = new Set(['Tailwind','Trick Room','Sticky Web','Icy Wind','Electroweb','Bulldoze','Rock Tomb','Glaciate','Drum Beating','Mud Shot','Low Sweep']);
-            const HAZARDS = new Set(['Stealth Rock','Spikes','Toxic Spikes','Sticky Web']);
-            const SCREENS = new Set(['Reflect','Light Screen','Aurora Veil']);
-            const PIVOT   = new Set(['U-turn','Volt Switch','Flip Turn','Teleport','Parting Shot','Baton Pass','Chilly Reception']);
+            // Damaging order: usage% → category match (when there's a preference) →
+            // power → alphabetical. Status order: usage% → alphabetical.
+            const cmpDmg = (a, b) => {
+                const du = usage(b) - usage(a); if (du) return du;
+                if (catPref) { const ca = catOf(a) === catPref ? 1 : 0, cb = catOf(b) === catPref ? 1 : 0; if (cb - ca) return cb - ca; }
+                const dp = powOf(b) - powOf(a); if (dp) return dp;
+                return a.localeCompare(b);
+            };
+            const cmpStatus = (a, b) => (usage(b) - usage(a)) || a.localeCompare(b);
 
-            const used = new Set();
+            const damaging = availMoves.filter(isDamaging);
+            const statusMoves = availMoves.filter(isStatusMove).sort(cmpStatus);
+
+            const usedTypes = new Set();
+            const usedMoves = new Set();
             const out = [];
-            const push = (purpose, move, reason, hint) => {
-                if (!move || used.has(move)) return;
-                used.add(move);
-                out.push({ purpose, move, reason, hint });
+            const add = (purpose, move) => {
+                if (!move || usedMoves.has(move)) return false;
+                usedMoves.add(move);
+                const t = typeOf(move); if (t) usedTypes.add(t);
+                const pct = usage(move);
+                const pctStr = pct >= 1 ? `${Math.round(pct)}% of sets` : null;
+                let reason;
+                if (purpose === 'Status') {
+                    reason = pctStr ? `${pctStr} · most-run non-damaging move` : 'Top non-damaging option for this set';
+                } else {
+                    const tc = `${t || '—'} ${catOf(move) || ''}`.trim();
+                    const tail = purpose === 'STAB' ? 'STAB' : 'off-type coverage';
+                    reason = pctStr ? `${pctStr} · ${tc} ${tail}` : `${tc} ${tail}`;
+                }
+                out.push({ purpose, move, reason });
+                return true;
             };
 
-            // 1) Best STAB damage move — STAB × power × accuracy, prefer matching offensive category.
-            const bestStab = _txBestBy(availMoves, isStab, m => _txScoreMove(m, mon, build, monName));
-            if (bestStab) {
-                const md = movesDB[bestStab];
-                push('STAB', bestStab, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — same type as ${monName} for the 1.5× boost.`, 'core');
+            // ── STAB ──────────────────────────────────────────────────────
+            // One pick per type when the mon is dual-typed AND both types have a
+            // damaging move in the (stage-gated) pool — that's when two STABs earn
+            // their slots. Otherwise the single most-popular STAB.
+            const stabByType = {};
+            for (const t of types) stabByType[t] = damaging.filter(m => typeOf(m) === t).sort(cmpDmg);
+            const dualStab = types.length >= 2 && types.every(t => stabByType[t] && stabByType[t].length);
+            if (dualStab) {
+                for (const t of types) add('STAB', stabByType[t][0]);
+            } else {
+                const anyStab = damaging.filter(m => typeSet.has(typeOf(m))).sort(cmpDmg);
+                if (anyStab.length) add('STAB', anyStab[0]);
             }
 
-            // 2) Best Coverage damage — different type than the mon, fills holes.
-            const bestCoverage = _txBestBy(availMoves, isCoverage, m => {
-                const md = movesDB[m];
-                if (!md) return 0;
-                // Bias toward the mon's stronger offense
-                const catBias = (md.cat === 'Physical' && physical) || (md.cat === 'Special' && !physical) ? 1.0 : 0.5;
-                return (md.pow || 0) * ((md.acc || 100) / 100) * catBias;
-            });
-            if (bestCoverage) {
-                const md = movesDB[bestCoverage];
-                push('Coverage', bestCoverage, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — answers types your STAB can't hit.`, 'core');
+            // ── Coverage ──────────────────────────────────────────────────
+            // Distinct-typed off-STAB damage. dual STAB → 1 coverage; else → 2.
+            const nextCoverage = () => damaging
+                .filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m)))
+                .sort(cmpDmg)[0];
+            const coverageTarget = dualStab ? 1 : 2;
+            for (let i = 0; i < coverageTarget; i++) {
+                const c = nextCoverage();
+                if (!c) break;
+                add('Coverage', c);
             }
 
-            // 3) Setup move — only if the mon has the bulk or speed to invest a turn.
-            const bestSetup = _txBestBy(availMoves, m => SETUP.has(m), m => {
-                // Prefer setup that boosts the user's strongest offense or speed
-                if (m === 'Swords Dance' && physical) return 100;
-                if (m === 'Nasty Plot' && !physical) return 100;
-                if (m === 'Dragon Dance' && physical) return 95;
-                if (m === 'Quiver Dance' && !physical) return 95;
-                if (m === 'Calm Mind' && !physical) return 80;
-                if (m === 'Bulk Up' && physical) return 80;
-                if (m === 'Shell Smash') return 85;
-                return 50;
-            });
-            if (bestSetup) push('Setup', bestSetup, `Boosts a key stat. Use on a free turn to snowball.`, 'flex');
-
-            // 4) Recovery — heal moves are gold on bulkier mons.
-            const bestRecovery = _txBestBy(availMoves, m => RECOVERY.has(m), m => {
-                if (['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Strength Sap','Shore Up','Milk Drink'].includes(m)) return 100;
-                if (['Morning Sun','Moonlight'].includes(m)) return 90;
-                if (m === 'Wish') return 85;
-                if (m === 'Rest') return 70;
-                return 50;
-            });
-            if (bestRecovery && (stats.hp + stats.def + stats.spd >= 200 || used.size <= 2)) {
-                push('Recovery', bestRecovery, 'Heals roughly half HP — keeps tanks alive across exchanges.', 'flex');
-            }
-
-            // 5) Status / threat — cripple a fast attacker or stall.
-            const bestStatus = _txBestBy(availMoves, m => STATUS_AILMENT.has(m), m => {
-                if (m === 'Will-O-Wisp' || m === 'Spore') return 100;
-                if (m === 'Thunder Wave') return 90;
-                if (m === 'Toxic') return 85;
-                if (m === 'Sleep Powder') return 80;
-                return 60;
-            });
-            if (bestStatus && out.length < 4) push('Status', bestStatus, 'Burn / paralyze / sleep — wins matchups against bulky attackers.', 'flex');
-
-            // 6) Priority — for revenge-killing or making up for speed.
-            const bestPriority = _txBestBy(availMoves, isPriority, m => _txScoreMove(m, mon, build, monName));
-            if (bestPriority && out.length < 4 && slow) {
-                const md = movesDB[bestPriority];
-                push('Priority', bestPriority, `${md.pow > 0 ? md.pow + ' BP ' : ''}${md.type} — moves first, plugs slow speed.`, 'flex');
-            }
-
-            // 7) Hazards (entry damage) — if no offense gap yet.
-            const bestHazard = _txBestBy(availMoves, m => HAZARDS.has(m), m => {
-                if (m === 'Stealth Rock') return 100;
-                if (m === 'Sticky Web') return 80;
-                if (m === 'Spikes') return 75;
-                return 60;
-            });
-            if (bestHazard && out.length < 4) push('Hazards', bestHazard, 'Entry damage — wears down switch-ins all match.', 'flex');
-
-            // 8) Speed control — Tailwind, Trick Room, etc.
-            const bestSpeedCtrl = _txBestBy(availMoves, m => SPEED_CONTROL.has(m), m => {
-                if (m === 'Tailwind') return 95;
-                if (m === 'Trick Room' && slow) return 100;
-                if (m === 'Sticky Web') return 80;
-                return 50;
-            });
-            if (bestSpeedCtrl && out.length < 4) push('Speed', bestSpeedCtrl, 'Shifts the speed tier — flip the matchup before it starts.', 'flex');
-
-            // 9) Pivot move — for momentum-keeping.
-            const bestPivot = _txBestBy(availMoves, m => PIVOT.has(m), m => {
-                if (m === 'U-turn' || m === 'Volt Switch' || m === 'Flip Turn') return 95;
-                if (m === 'Teleport') return 75;
-                return 60;
-            });
-            if (bestPivot && out.length < 4) push('Pivot', bestPivot, 'Hits and switches — keeps you in control of the matchup.', 'flex');
-
-            // Screens for support builds.
+            // ── Flex 4th slot — Status vs extra Coverage (coverage-fill) ─────
+            // Take a Status move only when the species runs it MORE than the next
+            // coverage would add; ties / no-status go to coverage so a pure attacker
+            // never gets a status move it doesn't use.
             if (out.length < 4) {
-                const bestScreens = _txBestBy(availMoves, m => SCREENS.has(m), m => m === 'Aurora Veil' ? 100 : 80);
-                if (bestScreens) push('Screens', bestScreens, 'Halves damage for 5 turns — anchors a defensive team.', 'flex');
+                const topStatus = statusMoves.find(m => !usedMoves.has(m));
+                const cov = nextCoverage();
+                if (topStatus && (!cov || usage(topStatus) > usage(cov))) add('Status', topStatus);
+                else if (cov) add('Coverage', cov);
+                else if (topStatus) add('Status', topStatus);
+            }
+
+            // Backfill any remaining slots with the next most-popular damaging move,
+            // re-checking usedTypes live so picks stay DISTINCT-typed as we fill. The
+            // distinct-type rule is never relaxed — a shallow pool simply returns
+            // fewer than four rather than doubling up a type.
+            if (out.length < 4) {
+                for (const m of damaging.filter(m => !usedMoves.has(m)).sort(cmpDmg)) {
+                    if (out.length >= 4) break;
+                    if (usedTypes.has(typeOf(m))) continue;
+                    add('Coverage', m);
+                }
             }
 
             return out.slice(0, 4);
         }
 
         // Item recs by purpose — choose distinct offensive / defensive / utility picks
+        // Battle Dojo "Best items" — a profile-driven, tier-aware shortlist that works
+        // even when early Smogon item usage is sparse/misleading. `availItems` is already
+        // the items UNLOCKED at the current belt, so every pick is equippable now. Four
+        // fixed role slots: Primary (offense or bulk by archetype) · Sustain · Status
+        // insurance · Defensive-tech (a resist berry matched to the mon's worst type
+        // weakness). Archetype is read from BASE stats (built stats would skew every mon
+        // to "sweeper"); Smogon usage only breaks ties via _txScoreItem in the backfill.
         function _txItemRecsByPurpose(availItems, mon, build, monName) {
             if (!availItems || !availItems.length) return [];
-            const stats = _txMonStats(mon, monName);
-            const physical = stats.atk >= stats.spa;
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
+            const bAtk = base.atk | 0, bSpa = base.spa | 0;
+            const isPhys = bAtk >= bSpa;
+            const off = Math.max(bAtk, bSpa);
+            const bulk = (base.hp | 0) + (base.def | 0) + (base.spd | 0);
+            const spe = base.spe | 0;
+            const wall = bulk >= 280 && off < 100;
+            const sweeper = off >= 100 && spe >= 90;
+            const frail = bulk < 230;
+            const types = [mon && mon.type1, mon && mon.type2].filter(Boolean);
+            const isPoison = types.includes('Poison');
+            const nfe = availItems.includes('Eviolite'); // pool adds Eviolite only for NFE mons
+            const stabBoost = types.map(t => _DOJO_TYPE_BOOST_BY_TYPE[t]).filter(Boolean);
+            const worst = _dojoWorstWeakness(types[0], types[1]);
+            const sustainItem = isPoison ? 'Black Sludge' : 'Leftovers';
 
             const curItem = (build && build.i) || '(none)';
-            const pool = availItems.filter(it => it !== curItem);
-            if (!pool.length) return [];
-
-            const bestIn = (cat) => _txBestBy(pool, it => _txItemCategory(it) === cat, it => _txScoreItem(it, mon, build, monName));
-
-            const out = [];
+            const have = new Set(availItems.filter(it => it !== curItem));
             const used = new Set();
-            const push = (purpose, item, reason) => {
-                if (!item || used.has(item)) return;
-                used.add(item);
-                out.push({ purpose, item, reason });
+            const out = [];
+            const pick = (...cands) => cands.flat().find(it => it && have.has(it) && !used.has(it)) || null;
+            const add = (purpose, item, reason) => {
+                if (!item || used.has(item)) return false;
+                used.add(item); out.push({ purpose, item, reason }); return true;
             };
 
-            // 1) Offensive — power up the stronger stat with a Choice item or Life Orb.
-            const offChoice = physical ? 'Choice Band' : 'Choice Specs';
-            const choiceOk = pool.includes(offChoice);
-            if (choiceOk) push('Offensive', offChoice, `Locks in ${physical ? 'Atk +50%' : 'SpA +50%'} — wallbreaker.`);
-            else {
-                const bestOff = bestIn('offensive');
-                if (bestOff) push('Offensive', bestOff, 'Boosts damage output every turn.');
-            }
-
-            // 2) Defensive — sustain over the long game.
-            const wantsBoots = pool.includes('Heavy-Duty Boots') && (mon && (mon.type1 === 'Flying' || mon.type2 === 'Flying' || (stats.spd + stats.def >= 200)));
-            if (wantsBoots) push('Defensive', 'Heavy-Duty Boots', 'Ignores hazards on switch-in.');
-            else if (pool.includes('Leftovers')) push('Defensive', 'Leftovers', 'Heals 1/16 HP each turn — anchor for bulky sets.');
-            else {
-                const bestDef = bestIn('defensive');
-                if (bestDef) push('Defensive', bestDef, 'Improves longevity in the matchup.');
-            }
-
-            // 3) Speed — Choice Scarf if fast-leaning, otherwise utility.
-            if (pool.includes('Choice Scarf') && stats.spe >= 70 && stats.spe <= 110) {
-                push('Speed', 'Choice Scarf', 'Speed +50% — outspeeds tier-leaders.');
-            } else if (pool.includes('Focus Sash') && stats.hp < 200) {
-                push('Insurance', 'Focus Sash', 'Survives any one OHKO at full HP — guarantees a hit.');
+            // 1) PRIMARY — the headline item by archetype.
+            if (wall) {
+                add('Bulk', pick(nfe ? 'Eviolite' : null, sustainItem, !isPhys ? 'Assault Vest' : null, 'Rocky Helmet', 'Sitrus Berry'),
+                    nfe ? 'Eviolite — +50% Def & Sp.Def on a not-fully-evolved Pokémon.' : 'Best sustain item to anchor a wall.');
             } else {
-                const bestUtil = bestIn('utility');
-                if (bestUtil) push('Utility', bestUtil, 'Disrupts the opponent — momentum tool.');
+                const choice = isPhys ? 'Choice Band' : 'Choice Specs';
+                add('Offensive', pick(
+                    sweeper ? choice : null, 'Life Orb', choice,
+                    isPhys ? 'Muscle Band' : 'Wise Glasses', stabBoost, 'Expert Belt',
+                    isPhys ? 'Liechi Berry' : 'Petaya Berry', 'Salac Berry',
+                ), 'The biggest damage boost this Pokémon can hold right now.');
             }
 
-            // 4) Special / niche — Life Orb is the universal damage upgrade if not yet picked.
-            if (out.length < 4 && pool.includes('Life Orb') && !used.has('Life Orb')) {
-                push('Power', 'Life Orb', '+30% damage at 10% HP cost — best on hit-and-switch sets.');
-            } else if (out.length < 4) {
-                const bestRest = _txBestBy(pool, it => !used.has(it), it => _txScoreItem(it, mon, build, monName));
-                if (bestRest) push('Flex', bestRest, _txDescriptionFor(bestRest, 'item').slice(0, 80));
+            // 2) SUSTAIN — stay healthy over the long game.
+            add('Sustain', pick(sustainItem, nfe ? 'Eviolite' : null, 'Sitrus Berry',
+                (off >= 100 || spe >= 95 || frail) ? 'Focus Sash' : null, 'Figy Berry'),
+                'Sustain to win the long exchanges.');
+
+            // 3) STATUS INSURANCE — shrug off a crippling status once.
+            add('Status', pick('Lum Berry', 'Chesto Berry', 'Cheri Berry'),
+                'Cures a status once — frees you from a burn / paralysis / sleep.');
+
+            // 4) DEFENSIVE TECH — resist berry vs the worst weakness, else passive defense.
+            if (worst && _DOJO_RESIST_BERRY[worst.type]) {
+                add('Defensive', pick(_DOJO_RESIST_BERRY[worst.type], 'Rocky Helmet', 'Covert Cloak'),
+                    `Softens a ${worst.type}-type hit once — covers this Pokémon's ${worst.mult}x weakness.`);
+            } else {
+                add('Defensive', pick('Rocky Helmet', 'Covert Cloak', 'Sitrus Berry'),
+                    'Defensive tech for trickier matchups.');
             }
 
+            // Backfill any empty slots with the next best-scoring available item.
+            if (out.length < 4) {
+                const rest = _txBestBy([...have].filter(it => !used.has(it)), () => true, it => _txScoreItem(it, mon, build, monName));
+                if (rest) add('Flex', rest, (_txDescriptionFor(rest, 'item') || '').slice(0, 80) || 'A solid extra option.');
+            }
             return out.slice(0, 4);
         }
 
@@ -58375,11 +58465,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             : 'Awakened move — off-legal Smogon pick';
                     }
                     if (!isEquipped) {
-                        const reqStage = tag === 'awakened' ? 2 : tag === 'learnt' ? 1 : 0;
-                        const curStage = (typeof ctx.tutorStage === 'number') ? ctx.tutorStage : 0;
-                        if (reqStage > curStage) {
-                            const name = reqStage === 2 ? 'L3 Guru' : 'L2 Expert';
-                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${name}">🔒 ${name}</span>`;
+                        // Authoritative lock: a move is locked iff it's NOT in the teachable
+                        // acceptance set (matches the gate exactly — incl. the Inner ≤75 BP cap,
+                        // which a tag→stage rule would miss). The unlock-tier LABEL is derived
+                        // from the tag: Learnt/Awakened open at Guru; an over-cap Natural at Expert.
+                        const _base = String(moveName).split('/')[0];
+                        if (ctx.acceptSet && !ctx.acceptSet.has(_base)) {
+                            const unlockStage = (tag === 'learnt' || tag === 'awakened') ? 2 : 1;
+                            const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Expert');
+                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
                             locked = true; // gate the card so off-stage moves can't be picked
                         }
                     }
@@ -58438,7 +58532,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // is exactly where a shared shell would do more harm than good.
         function _txSimpleCardHtml(kind, name, ctx, o) {
             const star = o.isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, name);
+            // hidePct: suppress the usage %. Used for Awakened (off-legal) abilities —
+            // their % comes from illegal-format Smogon builds and misleads the player.
+            const pctHtml = o.hidePct ? '' : _txUsagePctHtml(ctx, name);
             return `<button type="button" class="tx-card${o.extraClass || ''}" data-card-kind="${kind}" data-card-value="${_esc(name)}" data-search-value="${_esc(name.toLowerCase())}"
                 ${o.tierAttr || ''}data-recommended="${o.isRec?1:0}" data-current="${o.isPending?1:0}" data-disabled="${o.disabled?1:0}" data-locked="${o.locked?1:0}" ${o.disabled?'disabled':''}>
                 <div class="tx-card-head">
@@ -58490,12 +58586,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const locked = lockStage > (ctx ? ctx.dojoStage : 99);
             const pills = [
-                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awakened</span>` : '',
+                isAwaken ? `<span class="tx-pill tx-pill--awaken" title="Off-legal ability — illegal in standard play, but often very strong. Only the Grandmaster Dojo can teach it.">⛔ Off-legal</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
-            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" ` });
+            // Awakened picks never show a usage % (off-legal builds only) and never
+            // carry the ★ recommended treatment.
+            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec: isRec && !isAwaken, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" `, hidePct: isAwaken });
         }
 
         // Per-action voucher metadata. Adding a 5th tutor kind = add a row here +
@@ -58542,6 +58640,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="tx-confirm-bar-text" style="opacity:0.7;">Pick ${verb} to preview. Confirm appears here.</span>
                     <button type="button" class="tx-confirm-bar-btn" disabled>Confirm</button>
                 </div>`;
+            }
+            // Stage gate (moves): mirror tutorChangeMove's acceptance check EXACTLY so
+            // the bar never shows a Confirm the gate would silently reject. Below Guru
+            // (stage 2) only moves in the staged acceptance pool are teachable; an
+            // off-stage pending move (reachable via the Suggest panel, a cold-cache
+            // render, etc.) gets a clear Locked state explaining what unlocks it,
+            // instead of a dead Confirm that does nothing. Presentational — it reads
+            // the staging gate, never changes what is gated.
+            if (kind === 'move') {
+                const base = String(pending.value).split('/')[0];
+                const accept = _txMoveTier1Cache.get(teamIdx);
+                const stageLocked = (typeof _npcStage === 'function' && _npcStage('tutor') < 2)
+                    && !(accept && accept.has(base));
+                if (stageLocked) {
+                    const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
+                    let tag = null;
+                    try { tag = monName ? _txMoveTagMemo(monName, pending.value) : null; } catch (e) {}
+                    const unlock = (tag === 'learnt' || tag === 'awakened')
+                        ? 'It opens at the <strong>Guru</strong> tier — TMs, tutor moves and off-legal picks.'
+                        : (tag === 'natural'
+                            ? 'It opens at the <strong>Expert</strong> tier, which lifts the power cap on level-up moves.'
+                            : 'It opens as the Move Tutor levels up.');
+                    return `<div class="tx-confirm-bar tx-confirm-bar--locked">
+                        <span class="tx-confirm-bar-text">🔒 <strong>${_esc(pending.value)}</strong> isn't in this Move Tutor's lesson tier yet. ${unlock}</span>
+                        <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
+                        <button type="button" class="tx-confirm-bar-btn" disabled title="This move unlocks at a higher Move Tutor tier">Locked</button>
+                    </div>`;
+                }
             }
             let current = '(none)';
             let isAppendMove = false;
@@ -58693,21 +58819,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            // ★ view + explicit usage share one honest order: usage % desc, fit-score
-            // tiebreak (keeps sparse / 0%-usage items quality-ordered, not alphabetical).
-            if (recOnly || sortKey === 'usage') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => ((pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0))
-                    || (scoreOf.get(b) - scoreOf.get(a))
-                    || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
-                    || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
-                    || a.localeCompare(b));
-            } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            const scoreOf = new Map();
+            for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+            const pct = (x) => pool.items.pctOf.get(x) || 0;
+            const cmpUsage = (a, b) => (pct(b) - pct(a)) || (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b);
+            const cmpScore = (a, b) => (scoreOf.get(b) - scoreOf.get(a)) || (pct(b) - pct(a)) || a.localeCompare(b);
+            // Default ("recommended") + the ★ view are TIER-AWARE: at White/Black Belt the
+            // heuristic fit-score leads (early item usage is sparse / misleading, so usage%
+            // order is the "initial view is not optimal" complaint); at Grandmaster usage%
+            // leads (the data is reliable there). Explicit "usage" is always usage%.
+            const dojoStage = (typeof _npcStage === 'function' && typeof sm !== 'undefined' && sm && sm.active) ? (_npcStage('dojo') | 0) : 2;
+            if (sortKey === 'usage') filt.sort(cmpUsage);
+            else if (sortKey === 'category' || sortKey === 'name') filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            else filt.sort(dojoStage < 2 ? cmpScore : cmpUsage); // 'recommended' default + ★ view
             return filt;
         }
         function _txApplyAbilityFilters(allAbils, mon, build, monName, extraStarred) {
@@ -58715,13 +58839,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sortKey = _txState.sort.abilities || 'recommended';
             const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
-            // Awaken / OP picks aren't Smogon-derived but ARE meant to be
-            // surfaced when unlocked — accept an extra "always-in-pool" Set
-            // from the caller so they survive the ★ Recommended filter.
-            const filt = allAbils.filter(a => {
-                if (recOnly && !pool.abilities.inPool.has(a) && !(extraStarred && extraStarred.has(a))) return false;
-                return !q || a.toLowerCase().includes(q);
-            });
+            // A mon has only 2-3 abilities, so the ★ chip NEVER hides one — it only
+            // re-sorts by usage %. Every legal / hidden / off-legal ability stays
+            // visible; only the search box narrows the list. (extraStarred kept in the
+            // signature for callers, but no longer gates visibility.)
+            const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
             // ★ view + explicit usage: usage % desc with a fit-score tiebreak. The shared
             // helper already accepts a scoreFn — pass it so sparse / 0%-usage abilities
             // stay quality-ordered instead of alphabetical.
@@ -58819,7 +58941,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // render and the partial fast path (_txMoveGridFastUpdate), so a fast-path-built
         // card is byte-identical to a full-render one. ctx is stable across filter/sort
         // toggles (it only changes when the build/pending changes, which take the full path).
-        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves) {
+        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves, acceptSet) {
             const sPool = _txStarredPoolMemo(t.name);
             const equippedSet = new Set(currentMoves);
             const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
@@ -58833,6 +58955,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slotOf,
                 monName: t.name,
                 tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
+                // Teachable set (gated) — the card locks any move NOT in it, authoritatively
+                // (matches the gate incl. the Inner BP cap). Undefined → no locks (safe).
+                acceptSet: acceptSet || null,
             };
             const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
             return { sPool, equippedSet, ctx, gridSource };
@@ -58866,7 +58991,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let mon = null;
                 try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
                 const currentMoves = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
-                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves, _txMoveTier1Cache.get(idx));
                 const ordered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
                 // Keyed reconcile by data-card-value.
@@ -58971,7 +59096,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // grid source (every legal move PLUS the equipped ones, so the player sees their
             // current moves alongside the alternatives) — built by the shared _txMoveCtx so
             // the partial fast path renders cards identically to this full render.
-            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves, _txMoveTier1Cache.get(idx));
             const pendingMove = ctx.pending;
             // Distinct move types in the CURRENT view (respecting the ★ filter) — drives
             // the "Type ▾" menu so it only offers types the player can actually filter to
@@ -59012,7 +59137,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
-                            'Tap to preview — grab one of each role for a balanced set.');
+                            'Tap to preview — the most-used STAB, coverage and status moves for this Pokémon.');
                     }
                 }
             } catch (e) {}
@@ -59171,9 +59296,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability tab content
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.abilities)
-                    ? `No starred abilities match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="abilities">★ Show all</button> to expand, or clear the search.`
-                    : 'No abilities match the search.';
+                // The ★ chip only re-sorts abilities (never hides), so an empty list can
+                // only be the search box excluding everything.
+                const emptyMsg = 'No abilities match the search.';
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
                     : `<div class="tx-grid-empty">${emptyMsg}</div>`;
@@ -59455,12 +59580,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _tm = sm.team[ti];
                         const _cur = (_tm.build && _tm.build.m) || [];
                         const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur);
-                        _txMovePoolCache.set(ti, _staged);
+                        // The GRID renders the full movepool so off-stage moves show (locked),
+                        // matching the Dojo's all-items roster. The acceptance set below stays
+                        // the GATED/teachable set, so only in-stage moves are selectable.
+                        _txMovePoolCache.set(ti, _staged.fullPool || _staged);
                         // Phase 2 (BUG A fix): the teachable acceptance set is EXACTLY the
-                        // staged pool the picker surfaces (gold AND Heart-Scale paths read it),
-                        // so the handler can never accept a move the gate hides. Previously this
-                        // unioned the FULL Smogon CSV pool, which let Learnt/Awakened coverage
-                        // moves be bought at City 0. currentMoves are already in `_staged`.
+                        // staged/gated pool (gold AND Heart-Scale paths read it), so the handler
+                        // can never accept a move the gate hides. Built from `_staged` (gated),
+                        // NOT the full pool. currentMoves are already in `_staged`.
                         const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
                         _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
                         _txMoveTier1Cache.set(ti, _t1);
@@ -59557,7 +59684,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                const moveCost = _moveCostForStage();
+                // Price by the MOVE's tier (Natural 1000 / Learnt 2500 / Awakened 5000),
+                // exactly as the confirm bar displays it. Calling _moveCostForStage() with
+                // no tag falls back to the per-STAGE price (Guru = 5000 flat), which made
+                // the charge diverge from the shown price (bug: shows 2500, charges 5000).
+                const _moveTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
+                const moveCost = _moveCostForStage(_moveTag === 'unknown' ? null : _moveTag);
                 if (sm.gold < moveCost) return;
                 const moves = mon.build.m || (mon.build.m = []);
                 const currentMoves = moves.map(m => m.split('/')[0]);
@@ -59792,9 +59924,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isAppend = moveSlot >= moves.length;
                 if (isAppend && moves.length >= 4) return false;
                 const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
+                // "Saves" = the per-move-tier gold cost a Heart Scale waives (matches the
+                // confirm bar + tutorChangeMove), not the per-stage fallback.
+                const _vTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
+                const _vSaved = _moveCostForStage(_vTag === 'unknown' ? null : _vTag).toLocaleString();
                 const prompt = isAppend
-                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
-                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
                 if (!await _storyConfirmTutorChange(prompt, 0)) return false;
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
