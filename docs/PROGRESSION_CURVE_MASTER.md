@@ -127,14 +127,14 @@ four at badge 5** — Colress/City 6, see §2e — so every row with B ≥ 5 is 
 | 62 | 63 | Battle · **E4** | — | 8 | 70/30/0/0 | T4 | 1.15 ×1.22ᴸ | 6 | 4 | 5000 | +1 illegal. Bundle: 2 Ultra Balls. |
 | 63 | 64 | Battle · **Champion** | — | 8 | 80/20/0/0 | T4 | 1.20 ×1.40ᴸ | 6 | 4 | 7500 | +2 illegal. |
 | 64 | 65 | Battle · **Rival** (phase 4) | — | 8 | 75/25/0/0 | T4 | 1.20 ×1.40ᴸ | 6 | 4 | 7200 | "Title Match." +2 illegal. |
-| 65 | 66 | **Hall of Fame** | — | 8 | — | — | — | — | 4 | 0 | HoF transition → unlocks Crucible / Frontier / Caged God. |
-| 66 | 67 | Battle · **Mystery Figure** (Caged God) | — | 8 | 100/0/0/0 | T4 | 1.20 ×1.50ᴸ | 6 | **all** | 12000 | G1-only, all gimmicks forced, +3 illegal. Master Ball gifted at arc unlock. **Curve gold peak.** |
+| 65 | 66 | **Hall of Fame** | — | 8 | — | — | — | — | 4 | 0 | HoF transition → unlocks Crucible / Frontier. |
+| 66 | 67 | Battle · **Mystery Figure** | — | 8 | 100/0/0/0 | T4 | 1.20 ×1.50ᴸ | 6 | **all** | 12000 | G1-only, all gimmicks forced, +3 illegal. **Curve gold peak.** |
 
 ¹ GL6 filler is g3:100 in the raw table; its **ace** is pulled to G2 via the signature roll + `gwForFiller` tier-down (composition lock).
 ² GL8 g2:100 filler with a **G1 ace exception**.
 ᴸ `applyStoryLeagueFoeStatBoost` stacks **multiplicatively** on top of the stage-gated mult (and difficulty mode stacks again). Champion HP on Hard ≈ ×1.20 × ×1.40 × ×1.15.
 
-**Post-game (not in `STORY_EVENTS_RAW`):** Crucible super-hub · Battle Frontier (endless 6v6, +35%→+150% foe edge, **no gold/item reward**) · Caged God arc (3 leads in Cities 2/5/8 + Master Ball) · Fight Club/Pits (6+ badges, pays `max(1000, 0.5×nextGymPurse)`).
+**Post-game (not in `STORY_EVENTS_RAW`):** Crucible super-hub · Battle Frontier (endless 6v6, +35%→+150% foe edge, **no gold/item reward**) · Fight Club/Pits (6+ badges, pays `max(1000, 0.5×nextGymPurse)`).
 
 ---
 
@@ -206,7 +206,7 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 | Ability Capsule | GL4 (badge 3→4) | Battle Dojo debuts **C4** | ✅ |
 | Wishing Piece | GL5 (badge 4→5) | All four gimmicks unlock @badge5; Colress @**C6** | ✅ |
 | Ultra Ball | GL4 | catching live since C1 | ✅ |
-| Master Ball | Caged God arc (post-HoF) | the one fight that needs it | ✅ |
+| Master Ball | Villain story-track boss (Road 7, pre-HoF) | the roaming legendary | ✅ |
 | Vitamins (+3 IV) | drop-only, any time | applied anywhere | n/a |
 | Great Ball | GL3 gift / dept C6 | — | ✅ |
 

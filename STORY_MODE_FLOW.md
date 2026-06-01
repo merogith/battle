@@ -28,7 +28,7 @@ writing — they will drift as work proceeds.
 | Safari Zone | Story-unlocked location. First visit free; subsequent visits cost gold. Continuous random encounters up to 6 per run. Mons can flee on missed throws. Better grade mix than wild routes. |
 | Catch | Pure minigame — no fight, no HP, no status. `chance = species.catchRate × ballMult`. Mons can flee. |
 | Balls | PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞. Start the run with 5 PokéBalls. |
-| Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Balls scatter through gym/Elite/Champion victory bundles and Frontier milestones (substantially more than the original "×2 total" draft; the loosened economy hooks into Underground gold-sink balance). Master Ball ×1 from the boss arc. |
+| Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Balls scatter through gym/Elite/Champion victory bundles and Frontier milestones (substantially more than the original "×2 total" draft; the loosened economy hooks into Underground gold-sink balance). Master Ball ×1 from the villain story-track boss (for the roaming legendary). |
 | Caught state | Full HP / full PP / no status. |
 | HP between battles | **Full-heal between every battle.** Attrition is removed; mart consumables matter only within a single battle. |
 | Difficulty modes | Keep `veryeasy / easy / normal / hard / challenge`. **Remove `hardcore`.** |
@@ -142,7 +142,7 @@ Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.35×`, s
 | PokéBall | 1.0× | PokéMart (300G ea, unlimited) + 5 at run start | — |
 | Great Ball | 1.5× | Department Store (existing City6/City8) (1000G ea) | — |
 | Ultra Ball | 2.0× | Gym Leader / Elite Four / Champion victory bundles + Battle Frontier milestones (was: ×2 static drops in the original spec; widened after the Underground/Crucible economy landed and a tight ball supply stopped paying out) | unbounded |
-| Master Ball | ∞ | Boss arc reward (Underground broker) | 1 per run |
+| Master Ball | ∞ | Villain story-track boss reward (Road 7, pre-HoF) — for the roaming legendary | 1 per run |
 
 Money flows already in the game:
 
@@ -218,9 +218,16 @@ All five modes use **full-heal between battles**. The HC-only persistence code a
 
 ---
 
-## 9. Boss arc — "The Caged God"
+## 9. Boss arc — "The Caged God" — ❌ REMOVED (v24)
 
-Triggered post-Champion. Row 67 (`Mystery Figure`) in `STORY_EVENTS_RAW` is the post-HoF Mystery Figure climax — `continuePostGame()` (`battle.html:30702`) routes the player through row 67 once on first post-HoF reentry (mask-drop + identity reveal, single fight), then snaps `sm.eventIndex` back to the last visited city so the Crucible / Caged God doors are visible at every subsequent city visit. The Caged God arc itself is triggered separately, via the Underground broker handing the player a Master Ball after the Mystery Figure climax; Mystery Figure also remains reachable as the Crucible's "Mystery" encore on every later run. (See §14d.)
+> **This arc was cut.** Post-game is now: the **Mystery Figure** climax fight → the story
+> ends → the **Crucible** (every facility + the endless Battle Frontier ladder + the Mystery
+> Figure encore). There is **no** Caged God hunt, no corrupted-Center leads, and no post-HoF
+> Master Ball grant. The Master Ball is a **1-per-run** villain story-track reward (Road 7,
+> pre-HoF) for the **roaming legendary**. `migrateStoryPreV24` strips the old `sm.bossArc`
+> state. The subsections below are retained only as a record of the cut design.
+
+Still live: row 67 (`Mystery Figure`) is the post-HoF climax — `continuePostGame()` routes the player through it once on first post-HoF reentry (mask-drop + single fight), then returns `sm.eventIndex` to the last visited city so the Crucible is reachable from every city. Mystery Figure also remains the Crucible's "Mystery" encore.
 
 ### Trigger and leads
 
