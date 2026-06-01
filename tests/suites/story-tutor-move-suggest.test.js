@@ -67,38 +67,46 @@ test('every damaging pick is a distinct type; STAB matches the mon, coverage doe
   assert.ok(stabMoves(recs).length <= 2, 'at most 2 STAB picks');
 });
 
-test('soft category preference: usage-tied STAB favors the bigger attacking stat', () => {
-  // Fighting mono-type. Physical mon should take Brick Break (Physical 75) over
-  // Focus Blast (Special 120) even though Focus Blast hits harder — category is
-  // weighed before power. Flip the stats and the special move wins.
+test('soft category preference: the PRIMARY STAB favors the bigger attacking stat', () => {
+  // Fighting mono-type. The first/primary STAB pick should be Brick Break (Physical
+  // 75) over Focus Blast (Special 120) for a physical mon — category is weighed
+  // before power. Flip the stats and the special move leads. (A 2nd same-type STAB
+  // may follow as a narrow-pool fallback; we only assert the PRIMARY here.)
   const pool = ['Brick Break', 'Focus Blast', 'Earthquake'];
 
   const physStab = stabMoves(ST.txMoveRecsByPurpose(pool, synthMon('Fighting', null, 150, 60), { m: [] }, NO_DATA));
-  assert.equal(physStab.length, 1, 'one STAB on a mono-type');
-  assert.equal(physStab[0], 'Brick Break', 'physical mon picks the physical STAB');
+  assert.equal(physStab[0], 'Brick Break', 'physical mon picks the physical STAB first');
 
-  const specialRecs = ST.txMoveRecsByPurpose(pool, synthMon('Fighting', null, 60, 150), { m: [] }, NO_DATA);
-  assert.equal(stabMoves(specialRecs)[0], 'Focus Blast', 'special mon picks the special STAB');
-
-  // The off-category same-type move (Focus Blast for the physical mon) must NOT
-  // resurface as coverage — that would double the Fighting type.
-  const physical = ST.txMoveRecsByPurpose(pool, synthMon('Fighting', null, 150, 60), { m: [] }, NO_DATA);
-  const physTypes = physical.filter((r) => r.purpose !== 'Status').map((r) => typeOf(r.move));
-  assert.equal(new Set(physTypes).size, physTypes.length, 'no doubled type from backfill');
-  assert.ok(!movesOf(physical).includes('Focus Blast'), 'second Fighting move is not added as coverage');
+  const specStab = stabMoves(ST.txMoveRecsByPurpose(pool, synthMon('Fighting', null, 60, 150), { m: [] }, NO_DATA));
+  assert.equal(specStab[0], 'Focus Blast', 'special mon picks the special STAB first');
 });
 
-test('dual-type → two distinct-type STABs; mono-type → one STAB', () => {
-  const pool = ['Fire Punch', 'Flamethrower', 'Brave Bird', 'Air Slash', 'Earthquake'];
+test('dual-type → two distinct-type STABs; mono-type → one STAB (deep pool, no fallback)', () => {
+  // Pools with one move per type so there's always DISTINCT coverage to fill the
+  // remaining slots — the narrow-pool 2nd-STAB fallback never triggers, so this
+  // checks the primary composition cleanly.
+  const dualPool = ['Fire Punch', 'Brave Bird', 'Earthquake', 'Thunder Punch', 'Ice Punch'];
+  const dual = stabMoves(ST.txMoveRecsByPurpose(dualPool, synthMon('Fire', 'Flying', 150, 60), { m: [] }, NO_DATA));
+  assert.equal(dual.length, 2, 'dual-type gets two STABs');
+  assert.equal([...new Set(dual.map(typeOf))].sort().join('/'), 'Fire/Flying', 'one STAB per type');
 
-  const dual = ST.txMoveRecsByPurpose(pool, synthMon('Fire', 'Flying', 150, 60), { m: [] }, NO_DATA);
-  const dualStab = stabMoves(dual);
-  assert.equal(dualStab.length, 2, 'dual-type gets two STABs');
-  const dualStabTypes = [...new Set(dualStab.map(typeOf))].sort().join('/');
-  assert.equal(dualStabTypes, 'Fire/Flying', 'one STAB per type');
+  const monoPool = ['Flamethrower', 'Earthquake', 'Thunder Punch', 'Ice Punch', 'Brave Bird'];
+  const mono = stabMoves(ST.txMoveRecsByPurpose(monoPool, synthMon('Fire', null, 150, 60), { m: [] }, NO_DATA));
+  assert.equal(mono.length, 1, 'mono-type gets one STAB; distinct coverage fills the rest');
+});
 
-  const mono = ST.txMoveRecsByPurpose(pool, synthMon('Fire', null, 150, 60), { m: [] }, NO_DATA);
-  assert.equal(stabMoves(mono).length, 1, 'mono-type gets one STAB');
+test('narrow-pool fallback: fills with a 2nd same-type STAB / status rather than leaving slots empty', () => {
+  // Mono-Fighting with two same-type STABs + a Fighting status, NO coverage at all.
+  // Distinct coverage is impossible, so the empty slots fill — a 2nd same-type STAB
+  // is allowed (the user's "2 different power/accuracy STAB" idea), and a status
+  // move takes a slot too. Never returns a single lonely pick.
+  const pool = ['Close Combat', 'Brick Break', 'Bulk Up'];
+  const recs = ST.txMoveRecsByPurpose(pool, synthMon('Fighting', null, 150, 60), { m: [] }, NO_DATA);
+  assert.ok(recs.length >= 3, 'fills a viable set from a narrow same-type pool');
+  assert.ok(recs.every((r) => r.move), 'every slot is a real move (no empty slots)');
+  const dmg = recs.filter((r) => r.purpose !== 'Status').map((r) => r.move);
+  assert.ok(dmg.includes('Close Combat') && dmg.includes('Brick Break'), 'a 2nd same-type STAB fills rather than dropping the slot');
+  assert.ok(movesOf(recs).includes('Bulk Up'), 'the status move also takes a slot');
 });
 
 test('flex slot coverage-fills when status is not more popular, but shows status when it is the only option', () => {

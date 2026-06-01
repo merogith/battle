@@ -1696,6 +1696,11 @@
         .tx-rec-tag[data-purpose="Trick Room"], .tx-rec-tag[data-purpose="Meta"] {
             background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5;
         }
+        .tx-rec-tag[data-purpose="Weather"], .tx-rec-tag[data-purpose="Immunity"] {
+            background: rgba(77,208,225,0.16); border-color: #4dd0e1; color: #b2ebf2;
+        }
+        /* Compact role tag used inside ability cards (the foot pill row). */
+        .tx-rec-tag--card { padding: 1px 6px; font-size: 8.5px; }
         .tx-rec-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .tx-rec-name {
             font-size: 13px; font-weight: 700; color: #e8eaf0;
@@ -56286,7 +56291,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // about popularity. (natures render as a matrix — no list sort.)
                 moves: 'usage',
                 items: 'usage',
-                abilities: 'usage',
+                // Abilities default to "Legal first" (the mon's real 2-3 lead, off-legal
+                // Awakened last) — there's no "Best abilities" panel to carry that signal,
+                // and raw usage% floats high-heuristic off-legal picks above legal ones.
+                abilities: 'recommended',
                 natures: 'recommended',
             },
         };
@@ -57006,10 +57014,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!ab.pctOf.has(a)) ab.pctOf.set(a, 0);
                         if (slot !== 'H' || hiddenUnlocked) legal.push(a);
                     }
-                    let best = null, bestPct = -1;
+                    // Best legal ability gets the ★. Usage % leads; an ability-quality
+                    // heuristic breaks ties AND carries the pick on data-sparse early /
+                    // NFE mons (e.g. a starter's Torrent that has no Smogon build — usage
+                    // 0 for all, so the heuristic decides instead of grabbing slot 0).
+                    let best = null, bestScore = -1;
                     for (const a of legal) {
                         const p = ab.pctOf.get(a) || 0;
-                        if (p > bestPct) { bestPct = p; best = a; }
+                        const score = p * 1000 + ((typeof _txAbilityHeuristic === 'function') ? _txAbilityHeuristic(a) : 0);
+                        if (score > bestScore) { bestScore = score; best = a; }
                     }
                     if (best) ab.starred.add(best);
                 }
@@ -57194,7 +57207,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txAbilityHeuristic(abilityName) {
             if (!abilityName || abilityName === '(none)') return 5;
             if (_TX_GOOD_ABILITIES.has(abilityName)) return 90;
+            // Starter-line pinch boosters & a few signature abilities — below the
+            // "obvious-good" tier but clearly better than a passive filler, so the
+            // ★ favours them on data-sparse early mons (e.g. a starter's Torrent).
+            if (_TX_DECENT_ABILITIES.has(abilityName)) return 68;
             return 50;
+        }
+        // Intrinsic role of an ability — usage-INDEPENDENT, so an early / NFE mon with
+        // no Smogon build (e.g. Torrent on a starter) still gets a meaningful tag. Every
+        // ability card carries this; unlisted abilities default to Utility. Tunable.
+        const _TX_DECENT_ABILITIES = new Set([
+            'Overgrow','Blaze','Torrent','Swarm','Shield Dust','Run Away','Keen Eye',
+            'Inner Focus','Static','Poison Point','Rough Skin','Effect Spore','Synchronize',
+            'Cute Charm','Rivalry','Hyper Cutter','Battle Bond','Libero','Protean','Stamina',
+        ]);
+        const _TX_ABILITY_ROLE_SETS = {
+            Weather: new Set(['Drought','Drizzle','Sand Stream','Snow Warning','Orichalcum Pulse','Hadron Engine','Primordial Sea','Desolate Land','Delta Stream','Electric Surge','Psychic Surge','Misty Surge','Grassy Surge','Sand Spit','Snow Cloak']),
+            Setup: new Set(['Speed Boost','Moody','Beast Boost','Soul-Heart','Moxie','Chilling Neigh','Grim Neigh','As One','Quark Drive','Protosynthesis','Anger Shell','Weak Armor','Berserk','Download','Intrepid Sword','Dauntless Shield','Opportunist','Guard Dog','Costar','Hospitality','Supreme Overlord']),
+            Offensive: new Set(['Adaptability','Tough Claws','Strong Jaw','Sheer Force','Technician','Skill Link','Iron Fist','Mega Launcher','Aerilate','Pixilate','Galvanize','Refrigerate','Normalize','Huge Power','Pure Power','Hustle','Guts','Toxic Boost','Flare Boost','Tinted Lens','Sand Force','Steelworker','Steely Spirit','Rocky Payload','Transistor',"Dragon's Maw",'Punk Rock','Reckless','Sniper','Super Luck','Stakeout','Analytic','Neuroforce','Gorilla Tactics','Overgrow','Blaze','Torrent','Swarm','Sand Rush','Slush Rush','Chlorophyll','Swift Swim','Surge Surfer','Unburden','Quick Feet','Libero','Protean','Battle Bond','Sharpness','Rivalry','Merciless','Tough Claws','Long Reach']),
+            Immunity: new Set(['Levitate','Flash Fire','Water Absorb','Volt Absorb','Storm Drain','Lightning Rod','Motor Drive','Sap Sipper','Dry Skin','Earth Eater','Wind Rider','Soundproof','Bulletproof','Overcoat','Sap Sipper','Magic Bounce','Well-Baked Body','Purifying Salt','Wonder Guard','Disguise']),
+            Defensive: new Set(['Magic Guard','Multiscale','Shadow Shield','Regenerator','Unaware','Filter','Solid Rock','Prism Armor','Fluffy','Ice Scales','Thick Fat','Fur Coat','Marvel Scale','Water Bubble','Heatproof','Thermal Exchange','Grass Pelt','Sturdy','Battle Armor','Shell Armor','Cotton Down','Stamina','Cursed Body','Gooey','Tangling Hair','Rough Skin','Iron Barbs','Sand Veil','Snow Cloak','Mirror Armor','Big Pecks','Clear Body','White Smoke','Full Metal Body']),
+            Utility: new Set(['Intimidate','Prankster','Triage','Gale Wings','Serene Grace','Compound Eyes','No Guard','Victory Star','Trace','Imposter','Pickpocket','Frisk','Mummy','Lingering Aroma','Wandering Spirit','Pressure','Unnerve','Healer','Natural Cure','Hydration','Shed Skin','Immunity','Limber','Vital Spirit','Insomnia','Sweet Veil','Leaf Guard','Sticky Hold','Suction Cups','Quick Draw','Stall','Arena Trap','Shadow Tag','Magnet Pull','Defiant','Competitive','Justified','Mold Breaker','Magic Bounce','Tablets of Ruin','Sword of Ruin','Vessel of Ruin','Beads of Ruin']),
+        };
+        const _TX_ABILITY_ROLE_ORDER = ['Weather','Setup','Offensive','Immunity','Defensive','Utility'];
+        function _txAbilityRole(abilityName) {
+            if (!abilityName) return 'Utility';
+            for (const role of _TX_ABILITY_ROLE_ORDER) {
+                if (_TX_ABILITY_ROLE_SETS[role] && _TX_ABILITY_ROLE_SETS[role].has(abilityName)) return role;
+            }
+            return 'Utility';
         }
         function _txScoreAbility(abilityName, mon, build, monName) {
             const heur = _txAbilityHeuristic(abilityName);
@@ -57325,27 +57366,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 add('Coverage', c);
             }
 
-            // ── Flex 4th slot — Status vs extra Coverage (coverage-fill) ─────
-            // Take a Status move only when the species runs it MORE than the next
-            // coverage would add; ties / no-status go to coverage so a pure attacker
-            // never gets a status move it doesn't use.
-            if (out.length < 4) {
-                const topStatus = statusMoves.find(m => !usedMoves.has(m));
-                const cov = nextCoverage();
-                if (topStatus && (!cov || usage(topStatus) > usage(cov))) add('Status', topStatus);
-                else if (cov) add('Coverage', cov);
-                else if (topStatus) add('Status', topStatus);
-            }
-
-            // Backfill any remaining slots with the next most-popular damaging move,
-            // re-checking usedTypes live so picks stay DISTINCT-typed as we fill. The
-            // distinct-type rule is never relaxed — a shallow pool simply returns
-            // fewer than four rather than doubling up a type.
-            if (out.length < 4) {
-                for (const m of damaging.filter(m => !usedMoves.has(m)).sort(cmpDmg)) {
-                    if (out.length >= 4) break;
-                    if (usedTypes.has(typeOf(m))) continue;
-                    add('Coverage', m);
+            // ── Remaining slots — adaptive fill by usage ─────────────────────
+            // For each open slot take whichever the species RUNS more (Smogon usage):
+            // the next status/utility move, or the next damaging move. Distinct types
+            // are preferred for damaging; on a narrow early pool with no distinct
+            // coverage left, a 2nd same-type STAB is allowed (a different move) rather
+            // than leaving the slot empty — better than stacking nothing. Ties go to
+            // the damaging move so a pure attacker isn't handed an unused status move.
+            while (out.length < 4) {
+                const nextStatus = statusMoves.find(m => !usedMoves.has(m));
+                const distinctDmg = damaging.filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m))).sort(cmpDmg)[0];
+                const nextDmg = distinctDmg || damaging.filter(m => !usedMoves.has(m)).sort(cmpDmg)[0];
+                if (!nextStatus && !nextDmg) break;
+                if (nextStatus && (!nextDmg || usage(nextStatus) > usage(nextDmg))) {
+                    add('Status', nextStatus);
+                } else {
+                    add(typeSet.has(typeOf(nextDmg)) ? 'STAB' : 'Coverage', nextDmg);
                 }
             }
 
@@ -58585,7 +58621,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (abilityName === ctx.haName) lockStage = 1;
             }
             const locked = lockStage > (ctx ? ctx.dojoStage : 99);
+            // Role tag (intrinsic — independent of Smogon usage), so every ability reads
+            // as Offensive / Defensive / Utility / Setup / Weather / Immunity at a glance,
+            // even on an early/NFE mon that has no competitive build yet.
+            const role = (typeof _txAbilityRole === 'function') ? _txAbilityRole(abilityName) : 'Utility';
             const pills = [
+                `<span class="tx-rec-tag tx-rec-tag--card" data-purpose="${_esc(role)}">${_esc(role)}</span>`,
                 isAwaken ? `<span class="tx-pill tx-pill--awaken" title="Off-legal ability — illegal in standard play, but often very strong. Only the Grandmaster Dojo can teach it.">⛔ Off-legal</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
@@ -58834,29 +58875,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else filt.sort(dojoStage < 2 ? cmpScore : cmpUsage); // 'recommended' default + ★ view
             return filt;
         }
-        function _txApplyAbilityFilters(allAbils, mon, build, monName, extraStarred) {
+        function _txApplyAbilityFilters(allAbils, mon, build, monName, awakenSet, haName) {
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
-            // A mon has only 2-3 abilities, so the ★ chip NEVER hides one — it only
-            // re-sorts by usage %. Every legal / hidden / off-legal ability stays
-            // visible; only the search box narrows the list. (extraStarred kept in the
-            // signature for callers, but no longer gates visibility.)
+            // Abilities are never hidden by a chip (a mon has only 2-3); only the
+            // search box narrows the list.
             const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
-            // ★ view + explicit usage: usage % desc with a fit-score tiebreak. The shared
-            // helper already accepts a scoreFn — pass it so sparse / 0%-usage abilities
-            // stay quality-ordered instead of alphabetical.
-            if (recOnly || sortKey === 'usage') {
-                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf,
-                    a => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility)));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
-                    || (pool.abilities.pctOf.get(b) || 0) - (pool.abilities.pctOf.get(a) || 0)
-                    || a.localeCompare(b));
-            } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
+            const usageOf = (a) => pool.abilities.pctOf.get(a) || 0;
+            const heurOf = (a) => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility);
+            // Group rank: legal slots (0/1) first, Hidden next, off-legal Awakened last.
+            const rankOf = (a) => (awakenSet && awakenSet.has(a)) ? 2 : (a === haName ? 1 : 0);
+            if (sortKey === 'name') {
+                filt.sort((a, b) => a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                filt.sort((a, b) => (usageOf(b) - usageOf(a)) || (heurOf(b) - heurOf(a)) || a.localeCompare(b));
+            } else {
+                // 'recommended' (default) — LEGAL-FIRST, then usage %, then a quality
+                // heuristic so a good ability on a data-sparse early/NFE mon (e.g. a
+                // starter's Torrent with no Smogon build) still leads its group.
+                filt.sort((a, b) => (rankOf(a) - rankOf(b)) || (usageOf(b) - usageOf(a)) || (heurOf(b) - heurOf(a)) || a.localeCompare(b));
+            }
             return filt;
         }
         function _txApplyNatureFilters(allNat, mon, build, monName) {
@@ -59129,10 +59168,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const searchingMoves = !!(_txState.search && _txState.search.moves);
                 if (!sPool.sparse && _txState.filter.recOnly.moves && !searchingMoves) {
-                    // Exclude already-equipped moves so the panel reads as "what to ADD",
-                    // not a list of picks that no-op on tap (matches the item/ability panels,
-                    // which drop the current pick).
-                    const recPool = mergedMoves.filter(m => !equippedSet.has(String(m).split('/')[0]));
+                    // Exclude already-equipped moves (the panel reads as "what to ADD"),
+                    // AND restrict to the TEACHABLE acceptance set — the grid now renders
+                    // the full pool (off-stage moves shown locked), so without this filter
+                    // the suggester would recommend a balanced set the player can't learn
+                    // yet at this tutor tier. Suggest only moves teachable right now.
+                    const _accept = ctx.acceptSet;
+                    const recPool = mergedMoves.filter(m => {
+                        const base = String(m).split('/')[0];
+                        return !equippedSet.has(base) && (!_accept || _accept.has(base));
+                    });
                     const recEntries = _txMoveRecsByPurpose(recPool, mon, b, t.name)
                         .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
                     if (recEntries.length) {
@@ -59242,10 +59287,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { for (const a of opAbils) awakenSet.add(a); }
             const haSet = new Set();
             if (_haName) haSet.add(_haName);
-            // #47: Awakened picks are NOT recommendations — pass no extra-starred set so
-            // they drop out of the ★ Recommended view (still selectable under "show all"
-            // once unlocked at Grandmaster; "they appear when they appear").
-            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, null);
+            // Order legal-first → Hidden → off-legal Awakened (pass the awaken set + HA
+            // name so the sort can rank groups). Every ability stays visible.
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet, _haName);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
             const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, dojoStage: _dojoStage, haName: _haName };
 
@@ -59293,49 +59337,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return sparseBanner + toolbar + _txActiveFiltersHtml('items') + itemRecsPanel + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
-            // Ability tab content
+            // Ability tab content — a mon runs exactly ONE ability, so there's no
+            // "balanced set" to recommend. We drop the "Best abilities" panel AND the ★
+            // toggle and just show every ability as a card: each role-tagged, ordered
+            // legal-first (see _txApplyAbilityFilters), with the single best legal pick
+            // carrying the ★. Off-legal Awakened picks sort last and read as ⛔.
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                // The ★ chip only re-sorts abilities (never hides), so an empty list can
-                // only be the search box excluding everything.
-                const emptyMsg = 'No abilities match the search.';
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
-                    : `<div class="tx-grid-empty">${emptyMsg}</div>`;
-                // Phase 5b — curated "Best abilities" panel. Candidates are filtered to
-                // what's UNLOCKED at the current Dojo stage (Hidden → Black Belt,
-                // Awakened → Grandmaster) so it never points at a 🔒 pick. The one-line
-                // reason is the real win here: bare ability cards never explained WHY.
-                let abilRecsPanel = '';
-                try {
-                    const searchingAbils = !!(_txState.search && _txState.search.abilities);
-                    if (!sPool.sparse && _txState.filter.recOnly.abilities && !searchingAbils) {
-                        const unlockedAbils = abils.filter(a => {
-                            if (awakenSet.has(a)) return _dojoStage >= 2;
-                            if (a === _haName) return _dojoStage >= 1;
-                            return true;
-                        });
-                        const recEntries = _txAbilityRecsByPurpose(unlockedAbils, mon, b, t.name)
-                            .map(e => ({ purpose: e.purpose, value: e.ability, reason: e.reason, kind: 'ability',
-                                extraHtml: e.hidden ? ' <span class="tx-pill tx-pill--ha" style="margin-left:6px;font-size:0.7em;">Hidden</span>' : '' }));
-                        if (recEntries.length) {
-                            abilRecsPanel = _txRecsPanelHtml('Best abilities for ' + t.name, recEntries, pendingAbility,
-                                'Tap to preview — one ability per Pokémon. Browse the full list below.');
-                        }
-                    }
-                } catch (e) {}
+                    : `<div class="tx-grid-empty">No abilities match the search.</div>`;
                 const toolbar = _txToolbarHtml('abilities', {
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
                     sparse: sPool.sparse,
-                    leadingChipsHtml: _txRecChipHtml('abilities', t.name),
                     sortOptions: [
+                        { value:'recommended', label:'Legal first' },
                         { value:'usage', label:'By usage %' },
-                        { value:'recommended', label:'Best for this mon' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + abilRecsPanel + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
@@ -59509,7 +59531,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // always leads with the curated Smogon-usable pool.
             _txState.filter.recOnly.moves = true; _txState.filter.recOnly.items = true;
             _txState.filter.recOnly.abilities = true; _txState.filter.recOnly.natures = true;
-            _txState.sort.moves = 'usage'; _txState.sort.items = 'usage'; _txState.sort.abilities = 'usage'; _txState.sort.natures = 'recommended';
+            // Abilities default to "Legal first" (no Best-abilities panel to carry that
+            // signal, and raw usage% floats off-legal picks above the mon's real ones).
+            _txState.sort.moves = 'usage'; _txState.sort.items = 'usage'; _txState.sort.abilities = 'recommended'; _txState.sort.natures = 'recommended';
             _txPending = null;
             _txMovePoolCache.clear();
             _applyStoryTutorHeader();
