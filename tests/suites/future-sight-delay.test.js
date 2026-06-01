@@ -6,6 +6,11 @@
 // turn, so 2 struck a turn early (end of N+1). Fixed to 3 — one more than Wish's
 // 2, which is a genuine next-turn effect. Matches tests/reports/deviations.md
 // ("delayed 2 turns") and Showdown.
+//
+// Future Sight is stored on the TARGET'S SIDE (so it hits whoever is active when
+// it lands, not the original target). That means the battle state must persist
+// across turns here — runTurn() resets pSide/fSide every call, which would wipe a
+// side-stored pending strike — so we drive playTurn directly over one battle.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -14,23 +19,35 @@ const eng = await loadEngine();
 const logsHave = (logs, re) => logs.some(l => re.test(l.text));
 
 async function castAndTrace(moveName) {
-  const caster = eng.mkMon({ species: 'Alakazam', moves: [moveName, 'Splash', 'Splash', 'Splash'] });
-  const target = eng.mkMon({ species: 'Snorlax', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  const { engine, mkMon, reset, window, logs } = eng;
+  reset();
+  const caster = mkMon({ species: 'Alakazam', moves: [moveName, 'Splash', 'Splash', 'Splash'] });
+  const target = mkMon({ species: 'Snorlax', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  caster.stats.spe = 999; // cast/attacks resolve before the foe acts
+  engine.state.mode = 'pve';
+  engine.state.playerParty = [caster];
+  engine.state.foeParty = [target];
+  engine.state.pActive = caster;
+  engine.state.fActive = target;
+  engine.state.isOver = false;
+  engine.state.isLocked = false;
+  engine.setForcedFoeMoveSlot(0);
+  const turn = async (slot) => { const n = logs.length; await window.playTurn(slot, null); return logs.slice(n); };
 
   // Turn 1 (cast): no strike.
-  let logs = await eng.runTurn({ playerMon: caster, foeMon: target, playerMoveSlot: 0, foeMoveSlot: 0 });
-  assert.ok(logsHave(logs, /foresaw an attack/), `${moveName} is cast`);
-  assert.ok(!logsHave(logs, /struck/), `${moveName}: no strike on the cast turn`);
+  let l = await turn(0);
+  assert.ok(logsHave(l, /foresaw an attack/), `${moveName} is cast`);
+  assert.ok(!logsHave(l, /struck/), `${moveName}: no strike on the cast turn`);
   const hpAfterCast = target.currentHp;
 
   // Turn 2: still pending (this is where the off-by-one used to strike).
-  logs = await eng.runTurn({ playerMon: caster, foeMon: target, playerMoveSlot: 1, foeMoveSlot: 0 });
-  assert.ok(!logsHave(logs, /struck/), `${moveName}: no strike on turn 2`);
+  l = await turn(1);
+  assert.ok(!logsHave(l, /struck/), `${moveName}: no strike on turn 2`);
   assert.equal(target.currentHp, hpAfterCast, `${moveName}: target HP unchanged through turn 2`);
 
   // Turn 3: strike (two turns after the cast).
-  logs = await eng.runTurn({ playerMon: caster, foeMon: target, playerMoveSlot: 1, foeMoveSlot: 0 });
-  assert.ok(logsHave(logs, /struck/), `${moveName}: strikes on turn 3`);
+  l = await turn(1);
+  assert.ok(logsHave(l, /struck/), `${moveName}: strikes on turn 3`);
   assert.ok(target.currentHp < hpAfterCast, `${moveName}: target takes delayed damage on turn 3`);
 }
 
