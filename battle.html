@@ -41906,6 +41906,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_shouldFireCatchTutorialBeforeBattle(battleIdx)) return null;
                     const partner = _pickStarterPartner(storySettingsGens());
                     if (!partner) return null;
+                    // Defensive net (fire-path only): the City-0 Pokémart grants the 5
+                    // starting balls before this, but if that's ever skipped/reordered,
+                    // top up here so the scripted catch + guaranteed 2nd party member
+                    // can never silently no-op for want of a ball.
+                    const balls = sm.balls || (sm.balls = { poke: 0, great: 0, ultra: 0, master: 0 });
+                    if (((balls.poke | 0) + (balls.great | 0) + (balls.ultra | 0) + (balls.master | 0)) <= 0) {
+                        balls.poke = 5;
+                        try { save(); } catch (e) {}
+                    }
                     return {
                         encounter: partner,
                         options: { forcedCatchRate: 1.0, forcedFleeRate: 0, tutorialMode: true },
@@ -46718,8 +46727,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // enabled gens (`_pickStarterPartner` → `buildGradePool(gens, 4)`),
         // mirroring what they'd encounter on the very next wild route.
         // Fires exactly once per save (`sm.catchTutorialDone` flag), and only
-        // when the player has just enough to handle it (party < 6, has at
-        // least 1 Poké Ball — which the starting kit guarantees).
+        // when there's party room (< the badge-scaled cap). Balls are NOT gated
+        // here — the fire-path (prepare()) tops the player up to the starting
+        // kit if needed, so this can never silently no-op for want of a ball.
         function _shouldFireCatchTutorialBeforeBattle(battleIdx) {
             if (!sm || sm.catchTutorialDone) return false;
             const row = STORY_EVENTS_RAW[battleIdx];
@@ -46735,11 +46745,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // is already at cap pre-rival, the tutorial reschedules to the
             // next eligible battle after the next badge raises the cap.
             if ((sm.team || []).length >= _storyMaxPartySize()) return false;
-            // Player must have at least one Poké Ball (starting kit gives 5,
-            // so this is just a safety net).
-            const balls = sm.balls || {};
-            const totalBalls = (balls.poke | 0) + (balls.great | 0) + (balls.ultra | 0) + (balls.master | 0);
-            if (totalBalls <= 0) return false;
             return true;
         }
         function _markCatchTutorialDone() {
@@ -54798,9 +54803,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── ARTIFACT EFFECTS (applied at battle start) ────────────────────
         // These are applied when startBattle fires via the state
         function applyArtifactBattleEffects() {
-            if (!sm.artifacts || !sm.artifacts.length) return;
+            // No early-return on empty artifacts: every effect below is active()-gated,
+            // so running with no/disabled relics simply resets all state._* relic flags
+            // to their inert defaults. Returning early would skip those resets and let
+            // flags bleed from a prior battle (init-inside-guard — the boss-bleed shape).
             const off = sm.artifactsDisabled || [];
-            const active = id => sm.artifacts.includes(id) && !off.includes(id);
+            const active = id => sm.artifacts && sm.artifacts.includes(id) && !off.includes(id);
             const _storyArtifactType = (key) => {
                 if (sm.artifactTypeById && sm.artifactTypeById[key]) return sm.artifactTypeById[key];
                 const rng = (sm && sm.active && typeof storyRngNext === 'function') ? storyRngNext : Math.random;
