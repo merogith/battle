@@ -37903,6 +37903,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Track-end rewards + boss mechanics (PR-5).
                     grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
                     catchIntroSceneId: (st) => _catchIntroSceneId(st),
+                    displayTownNameForCityRow: (cityEv) => getStoryDisplayTownNameForCityRow(cityEv),
                     battleEntryBusy: () => _storyBattleEntryBusy,
                     setBattleEntryBusy: (v) => { _storyBattleEntryBusy = !!v; },
                     recoverFromEntryFailure: (w, e) => _storyRecoverFromEntryFailure(w, e),
@@ -43269,21 +43270,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityEv = STORY_EVENTS_RAW[sm.eventIndex];
             const el = id => document.getElementById(id);
             const setT = (i,t) => { const e=el(i); if(e) e.textContent=t; };
-            const rawName = cityEv && cityEv[2] ? cityEv[2] : '';
-            const cityIdx = rawName.startsWith('City') ? parseInt(rawName.slice(4), 10) : -1;
-            let cityName;
-            if (cityIdx === 0) {
-                cityName = 'Pallet Town';
-            } else if (cityIdx >= 1 && cityIdx <= 8) {
-                const leaderEvIdx = GYM_CITY_LEADER_EVENT[cityIdx];
-                const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
-                cityName = (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
-            } else if (cityIdx === 9) {
-                cityName = 'Pokémon League';
-            } else {
-                cityName = rawName || 'Town';
-            }
-            setT('story-hud-city', cityName);
+            // City → themed-town name via the shared resolver (single source of
+            // truth; collapsing this duplicate also fixes the City-3 array-index
+            // / row-id mismatch in one place instead of two).
+            setT('story-hud-city', getStoryDisplayTownNameForCityRow(cityEv));
             const hudGoldEl = el('story-hud-gold');
             if (hudGoldEl) hudGoldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             setT('story-hud-badges', `${sm.badges || 0}/8 Badges`);
@@ -44244,8 +44234,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = rawName.startsWith('City') ? parseInt(rawName.slice(4), 10) : -1;
             if (cityIdx === 0) return 'Pallet Town';
             if (cityIdx >= 1 && cityIdx <= 8) {
+                // GYM_CITY_LEADER_EVENT stores the ARRAY INDEX of the gym-leader
+                // row, but sm.trainerAssignments is keyed by ROW-ID (row[0]).
+                // They diverge wherever out-of-order Rival rows shift the
+                // alignment — City 3 in the shipped timeline (arrIdx 17 vs row-id
+                // 18) — so the bare index missed the leader and fell back to the
+                // generic "City 3". Convert index → row-id so the leader's name
+                // (and its themed town) resolves.
                 const leaderEvIdx = GYM_CITY_LEADER_EVENT[cityIdx];
-                const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
+                const leaderRow = leaderEvIdx != null ? STORY_EVENTS_RAW[leaderEvIdx] : null;
+                const leaderName = leaderRow && sm.trainerAssignments && sm.trainerAssignments[leaderRow[0]];
                 return (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
             }
             if (cityIdx === 9) return 'Pokémon League';
