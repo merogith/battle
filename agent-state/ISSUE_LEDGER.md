@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-01T15:32:54.861Z
+> **Generated**: 2026-06-01T16:28:18.407Z
 > **Source**: `agent-state/findings/*.md` (355 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -12097,7 +12097,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 35442eebd3b2
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: SAVE_VER=23 but migration chain stops at `_loadedVer < 22` — no migrateStoryPreV23, no boot shadow-validation
@@ -12770,7 +12770,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8d651a30fcb3
 confidence: high
-status: open
+status: fixed-claude/relaxed-bell-2X3Ys
 ---
 
 **Title**: Timeline is 67 rows; STORY_MODE_FLOW.md (and this update's brief) still say "68 rows"
