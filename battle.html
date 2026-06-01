@@ -37836,7 +37836,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollIntInRange: (v) => _rollIntInRange(v),
                     gymLeaderGoldBaselineForCity: (n) => _storyGymLeaderGoldBaselineForCity(n),
                     // Track-end rewards + boss mechanics (PR-5).
-                    grantTrackEndReward: (beat) => _storyGrantTrackEndReward(beat),
+                    grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
                     // EXP-Share gift (extra-raid reward — ISSUE-243).
                     applyExpShareLevel: (src, idx) => applyExpShareLevel(src, idx),
                     monDisplayLevel: (build) => _monDisplayLevel(build),
@@ -42273,7 +42273,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // sceneKey grants at most once (sm._trackRewardGranted), so the public
         // StoryMode/__storyTest surface and any double victory-hook can't
         // duplicate the unique Master Ball or the EXP-Share gift.
-        function _storyGrantTrackEndReward(beat) {
+        function _storyGrantTrackEndReward(beat, opts) {
             if (!beat || !beat.sceneKey) return null;
             const sk = beat.sceneKey;
             if (!sm._trackRewardGranted || typeof sm._trackRewardGranted !== 'object') sm._trackRewardGranted = {};
@@ -42284,8 +42284,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.balls.master = (sm.balls.master | 0) + 1;
                 sm._trackRewardGranted[sk] = true;
                 try { save(); } catch (e) {}
-                try { window.showGameAlert && window.showGameAlert('🎯 You found a MASTER BALL among the spoils.'); } catch (e) {}
-                return { kind: 'masterball', count: 1 };
+                const _mbMsg = '🎯 You found a MASTER BALL among the spoils.';
+                // Skip the toast when the caller will render the message itself
+                // (the victory card) — otherwise it paints behind the overlay.
+                if (!(opts && opts.silent)) { try { window.showGameAlert && window.showGameAlert(_mbMsg); } catch (e) {} }
+                return { kind: 'masterball', count: 1, msg: _mbMsg };
             }
             // Extra track raid → EXP-Share gift: EXP_SHARE_GIFT_UNITS distributable
             // level-ups, in fiction the dead trainer's own EXP Share, handed over
@@ -42300,8 +42303,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.inventory.expShareVoucher = (sm.inventory.expShareVoucher | 0) + EXP_SHARE_GIFT_UNITS;
                 sm._trackRewardGranted[sk] = true;
                 try { save(); } catch (e) {}
-                try { window.showGameAlert && window.showGameAlert(`🎓 A grieving trainer presses an EXP SHARE into your hands — ${EXP_SHARE_GIFT_UNITS} level-ups to give. Open your Bag to share them.`); } catch (e) {}
-                return { kind: 'expShareGift', units: EXP_SHARE_GIFT_UNITS };
+                const _esMsg = `🎓 A grieving trainer presses an EXP SHARE into your hands — ${EXP_SHARE_GIFT_UNITS} level-ups to give. Open your Bag to share them.`;
+                // Skip the toast when the caller will render the message itself
+                // (the victory card) — otherwise it paints behind the overlay.
+                if (!(opts && opts.silent)) { try { window.showGameAlert && window.showGameAlert(_esMsg); } catch (e) {} }
+                return { kind: 'expShareGift', units: EXP_SHARE_GIFT_UNITS, msg: _esMsg };
             }
             return null;
         }
@@ -42681,7 +42687,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     reward[v] = (reward[v] | 0) + 1;
                 }
             }
-            return _storyGrantBundle(reward);
+            const rolled = _storyGrantBundle(reward);
+            // Surface what was granted so the victory hook can thread it onto the
+            // on-card reward lines — the bundle grant itself is silent, so before
+            // this the tier reward was delivered but shown nowhere (REWARD-1).
+            return { rolled, reward, msg: _storyRewardItemSummary(reward, rolled) };
         }
 
         // ── IntroQueue (PR-3b) — sequences facility intros / market giveaways /
@@ -47669,8 +47679,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.staticDrops.vitaminRouteMidgame = true;
                     _victoryRewardLines.push('💊 A traveler dropped an EV Voucher in the tall grass — +1 EV Voucher.');
                 }
-                // EV training line goes last so item / vitamin loot reads first on the card.
-                if (_evRewardLine) _victoryRewardLines.push(_evRewardLine);
+                // EV line is pushed AFTER the beat/track-reward hook below so item /
+                // vitamin / beat loot reads first on the card (EV training reads last).
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // route from City 8 to the League city after the Gym 8 victory (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
@@ -47711,11 +47721,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_beat) {
                             if (!sm.storyEventsFired) sm.storyEventsFired = {};
                             sm.storyEventsFired[_beatKey] = true;
-                            try { _storyAwardStoryBeatReward(_beat); } catch (e) {}
-                            try { _storyGrantTrackEndReward(_beat); } catch (e) {}
+                            // Thread both rewards onto the on-card lines. The tier
+                            // reward's return was previously discarded (REWARD-1); the
+                            // track reward (Master Ball / EXP Share) announced via a
+                            // toast that painted behind the victory overlay (NOTIF-1,
+                            // z-1200 vs z-9999). Grant the track reward silent so it
+                            // shows ONLY on the card.
+                            try {
+                                const _beatRwd = _storyAwardStoryBeatReward(_beat);
+                                if (_beatRwd && _beatRwd.msg) _victoryRewardLines.push('🎁 ' + _beatRwd.msg);
+                            } catch (e) {}
+                            try {
+                                const _trackRwd = _storyGrantTrackEndReward(_beat, { silent: true });
+                                if (_trackRwd && _trackRwd.msg) _victoryRewardLines.push(_trackRwd.msg);
+                            } catch (e) {}
                         }
                     }
                 } catch (e) { console.warn('[Story] beat-battle victory hook failed:', e); }
+                // EV training line goes last so item / vitamin / beat loot reads first.
+                if (_evRewardLine) _victoryRewardLines.push(_evRewardLine);
                 // (Fatigue/Tiredness was cut — no per-battle stack to stash here anymore.)
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
                 sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
