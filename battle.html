@@ -53302,6 +53302,102 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Shared evolution-card block for one mon — the expanded body rendered by
+        // both the party accordion (renderEvoLabTeam) and the Evolution Master's
+        // "Evolve from PC" picker. The mon is addressed by its stable `id` (resolved
+        // via _pcFindSlotById in the evolve handlers), so identical markup works
+        // whether the mon lives in sm.team or sm.pcBox.
+        function _evoLabEvoCardsHtml(mon, evosAll, enabledGensLabel) {
+            const _evoSlotShiny = !!(mon.build && mon.build._isShiny);
+            const _monId = String(mon.id).replace(/'/g, "\\'");
+            const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
+            let evoBlockHtml;
+            if (!evosAll.length) {
+                evoBlockHtml = `<div class="tx-grid-empty" style="margin-top:8px;"><strong>${_esc(mon.name)}</strong> is fully evolved. No more evolution paths.</div>`;
+            } else {
+                const allowedAny = evosAll.some(e => e.allowed);
+                const evoCards = evosAll.map(e => {
+                    if (!e.exists) {
+                        return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
+                            <div class="tx-card-head">
+                                <span class="tx-card-title">⛔ ${_esc(e.name)}</span>
+                            </div>
+                            <div class="tx-card-desc">No data for this evolution in this build.</div>
+                        </div>`;
+                    }
+                    const eg = getMonGrade(e.name, getBST(e.name));
+                    const evoBase = baseStats[e.name] || {};
+                    const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
+                    const bst = getBST(e.name);
+                    const sprite = (typeof getSprite === 'function') ? getSprite(e.name, _evoSlotShiny) : '';
+                    if (!e.allowed) {
+                        return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
+                            <div class="tx-card-head">
+                                <img src="${sprite}" alt="" style="width:32px;height:32px;image-rendering:pixelated;opacity:0.5;" onerror="this.style.visibility='hidden'">
+                                <span class="tx-card-title" style="opacity:0.6;">${_esc(e.name)} ${evoTypes}</span>
+                            </div>
+                            <div class="tx-card-stats">
+                                <span>Grade <strong>${eg}</strong></span>
+                                <span>BST <strong>${bst}</strong></span>
+                                <span>Gen <strong>${e.gen}</strong></span>
+                                <span style="color:#ef9a9a;">${e.cityLocked ? 'Locked' : 'Disabled'}</span>
+                            </div>
+                            <div class="tx-card-desc" style="color:#ef9a9a;">${e.cityLocked ? `Unlocks at the ${_cityOrdinalWord(e.unlockCity)} city${(e.unlockCity | 0) >= 4 ? ', when full evolution opens' : ''}.` : `Gen ${e.gen} disabled in run settings.`}</div>
+                        </div>`;
+                    }
+                    const cost = _evoCostFor(eg);
+                    const canAfford = sm.gold >= cost;
+                    const reqHint = (_evoReqHint(e.name) || '').replace(/^\.\s*/, '');
+                    // Per docs/EVOLUTION_FLOW_REBUILD.md §5: gate the gold button on
+                    // requirement availability (stone in bag / Cable Link visited / trade
+                    // item in bag). Rare Candy still bypasses gold + consumable but
+                    // honors the Cable Link visit for trade evos.
+                    const goldReq = _evoLabCheckRequirements(e.name);
+                    const candyReq = _evoLabCheckRequirements(e.name, { bypassConsumables: true });
+                    let goldBtn;
+                    if (!goldReq.ok) {
+                        const _missLabel = goldReq.missing === 'link' ? 'Visit Cable Link'
+                                        : goldReq.missing === 'stone' ? `Need ${goldReq.stone}`
+                                        : goldReq.missing === 'tradeItem' ? `Need ${goldReq.trade}`
+                                        : 'Locked';
+                        goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(goldReq.reason || '')}">${_missLabel}</button>`;
+                    } else if (canAfford) {
+                        goldBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve('${_monId}', '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`;
+                    } else {
+                        goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
+                    }
+                    let candyBtn = '';
+                    if (_rareCandyCount > 0) {
+                        if (!candyReq.ok) {
+                            // Candy bypasses consumables but not the Cable Link gate.
+                            candyBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(candyReq.reason || '')}"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;opacity:0.5;">Candy locked</button>`;
+                        } else {
+                            candyBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy('${_monId}', '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`;
+                        }
+                    }
+                    return `<div class="tx-card" data-recommended="${canAfford?1:0}" style="cursor:default;">
+                        <div class="tx-card-head">
+                            <img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.visibility='hidden'">
+                            <span class="tx-card-title">${_esc(e.name)} ${evoTypes}</span>
+                        </div>
+                        <div class="tx-card-stats">
+                            <span>Grade <strong>${eg}</strong></span>
+                            <span>BST <strong>${bst}</strong></span>
+                            <span>Gen <strong>${e.gen}</strong></span>
+                            <span class="tx-stat-bp">${cost.toLocaleString()}G</span>
+                        </div>
+                        ${reqHint ? `<div class="tx-card-desc">${_esc(reqHint)}</div>` : ''}
+                        <div class="tx-card-foot">${goldBtn} ${candyBtn}</div>
+                    </div>`;
+                }).join('');
+                const costHint = allowedAny
+                    ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
+                    : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
+                evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
+            }
+            return evoBlockHtml;
+        }
+
         function renderEvoLabTeam() {
             const el = document.getElementById('story-evolab-team');
             if (!el) return;
@@ -53386,91 +53482,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return `<div class="story-tutor-mon" id="evolab-mon-${i}">${header}</div>`;
                 }
 
-                const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
-                let evoBlockHtml;
-                if (!evosAll.length) {
-                    evoBlockHtml = `<div class="tx-grid-empty" style="margin-top:8px;"><strong>${_esc(t.name)}</strong> is fully evolved. No more evolution paths.</div>`;
-                } else {
-                    const allowedAny = evosAll.some(e => e.allowed);
-                    const evoCards = evosAll.map(e => {
-                        if (!e.exists) {
-                            return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
-                                <div class="tx-card-head">
-                                    <span class="tx-card-title">⛔ ${_esc(e.name)}</span>
-                                </div>
-                                <div class="tx-card-desc">No data for this evolution in this build.</div>
-                            </div>`;
-                        }
-                        const eg = getMonGrade(e.name, getBST(e.name));
-                        const evoBase = baseStats[e.name] || {};
-                        const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
-                        const bst = getBST(e.name);
-                        const sprite = (typeof getSprite === 'function') ? getSprite(e.name, _evoSlotShiny) : '';
-                        if (!e.allowed) {
-                            return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
-                                <div class="tx-card-head">
-                                    <img src="${sprite}" alt="" style="width:32px;height:32px;image-rendering:pixelated;opacity:0.5;" onerror="this.style.visibility='hidden'">
-                                    <span class="tx-card-title" style="opacity:0.6;">${_esc(e.name)} ${evoTypes}</span>
-                                </div>
-                                <div class="tx-card-stats">
-                                    <span>Grade <strong>${eg}</strong></span>
-                                    <span>BST <strong>${bst}</strong></span>
-                                    <span>Gen <strong>${e.gen}</strong></span>
-                                    <span style="color:#ef9a9a;">${e.cityLocked ? 'Locked' : 'Disabled'}</span>
-                                </div>
-                                <div class="tx-card-desc" style="color:#ef9a9a;">${e.cityLocked ? `Unlocks at the ${_cityOrdinalWord(e.unlockCity)} city${(e.unlockCity | 0) >= 4 ? ', when full evolution opens' : ''}.` : `Gen ${e.gen} disabled in run settings.`}</div>
-                            </div>`;
-                        }
-                        const cost = _evoCostFor(eg);
-                        const canAfford = sm.gold >= cost;
-                        const reqHint = (_evoReqHint(e.name) || '').replace(/^\.\s*/, '');
-                        // Per docs/EVOLUTION_FLOW_REBUILD.md §5: gate the gold button on
-                        // requirement availability (stone in bag / Cable Link visited / trade
-                        // item in bag). Rare Candy still bypasses gold + consumable but
-                        // honors the Cable Link visit for trade evos.
-                        const goldReq = _evoLabCheckRequirements(e.name);
-                        const candyReq = _evoLabCheckRequirements(e.name, { bypassConsumables: true });
-                        let goldBtn;
-                        if (!goldReq.ok) {
-                            const _missLabel = goldReq.missing === 'link' ? 'Visit Cable Link'
-                                            : goldReq.missing === 'stone' ? `Need ${goldReq.stone}`
-                                            : goldReq.missing === 'tradeItem' ? `Need ${goldReq.trade}`
-                                            : 'Locked';
-                            goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(goldReq.reason || '')}">${_missLabel}</button>`;
-                        } else if (canAfford) {
-                            goldBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`;
-                        } else {
-                            goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
-                        }
-                        let candyBtn = '';
-                        if (_rareCandyCount > 0) {
-                            if (!candyReq.ok) {
-                                // Candy bypasses consumables but not the Cable Link gate.
-                                candyBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(candyReq.reason || '')}"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;opacity:0.5;">Candy locked</button>`;
-                            } else {
-                                candyBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`;
-                            }
-                        }
-                        return `<div class="tx-card" data-recommended="${canAfford?1:0}" style="cursor:default;">
-                            <div class="tx-card-head">
-                                <img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.visibility='hidden'">
-                                <span class="tx-card-title">${_esc(e.name)} ${evoTypes}</span>
-                            </div>
-                            <div class="tx-card-stats">
-                                <span>Grade <strong>${eg}</strong></span>
-                                <span>BST <strong>${bst}</strong></span>
-                                <span>Gen <strong>${e.gen}</strong></span>
-                                <span class="tx-stat-bp">${cost.toLocaleString()}G</span>
-                            </div>
-                            ${reqHint ? `<div class="tx-card-desc">${_esc(reqHint)}</div>` : ''}
-                            <div class="tx-card-foot">${goldBtn} ${candyBtn}</div>
-                        </div>`;
-                    }).join('');
-                    const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
-                        : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
-                    evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
-                }
+                const evoBlockHtml = _evoLabEvoCardsHtml(t, evosAll, enabledGensLabel);
 
                 return `<div class="story-tutor-mon" id="evolab-mon-${i}">
                     ${header}
@@ -53483,8 +53495,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
         }
 
-        async function _evoLabApplyEvolution(idx, evoName) {
-            const mon = sm.team[idx];
+        async function _evoLabApplyEvolution(monId, evoName) {
+            const found = _pcFindSlotById(monId);
+            const mon = found && found.slot;
             if (!mon) return false;
             let evoBuild;
             evoBuild = _withStoryPlayerGimmickGate(() => makeBuild(evoName));
@@ -53578,7 +53591,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // PC/Underground/Subject-Zero bookkeeping keeps pointing at the same mon.
             // Spreading `mon` first then overriding name/build keeps every metadata
             // flag (starter, unsellable, nickname, id, caughtAt, …) attached.
-            sm.team[idx] = { ...mon, name: evoName, build: evoBuild };
+            const _arr = found.where === 'team' ? sm.team : sm.pcBox;
+            _arr[found.index] = { ...mon, name: evoName, build: evoBuild };
             // Pokédex — evolving into a new species means the player now owns
             // that species, so it's both seen and caught (mainline behavior).
             // Shiny carries from the pre-evo via the identity carry-over block
@@ -53593,12 +53607,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // matches the team state) and the animation plays purely as polish.
         // Resolves to `true` if the swap succeeded, `false` otherwise. The
         // scene itself never blocks the swap.
-        async function _evoLabApplyEvolutionWithAnim(idx, evoName) {
-            const mon = sm.team[idx];
+        async function _evoLabApplyEvolutionWithAnim(monId, evoName) {
+            const found = _pcFindSlotById(monId);
+            const mon = found && found.slot;
             if (!mon) return false;
             const fromName = mon.name;
             const shiny = !!(mon.build && mon.build._isShiny);
-            const ok = await _evoLabApplyEvolution(idx, evoName);
+            const ok = await _evoLabApplyEvolution(monId, evoName);
             if (!ok) return false;
             // Polish: play the full scene if StoryFx is loaded. If anything in
             // the scene throws or it's reduced-motion off, the swap still
@@ -53616,10 +53631,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
-        async function evoLabEvolve(idx, evoName) {
+        async function evoLabEvolve(monId, evoName) {
             if (!_storyTryBeginInteraction()) return;
             try {
-                const mon = sm.team[idx]; if (!mon) return;
+                const found = _pcFindSlotById(monId);
+                const mon = found && found.slot;
+                if (!mon) return;
                 if (!evoName || typeof evoName !== 'string') return;
                 const evosAll = _getAllEvosWithStatus(mon.name, storySettingsGens());
                 const target = evosAll.find(e => e.name === evoName);
@@ -53645,7 +53662,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
-                if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
+                if (!await _evoLabApplyEvolutionWithAnim(monId, evoName)) return;
                 _storyEnsureInventory();
                 if (req.stoneId)  sm.inventory[req.stoneId]  = Math.max(0, (sm.inventory[req.stoneId]  | 0) - 1);
                 if (req.tradeId)  sm.inventory[req.tradeId]  = Math.max(0, (sm.inventory[req.tradeId]  | 0) - 1);
@@ -53662,10 +53679,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Rare Candy alt path — instant free evolution, consumes one charge.
         // Skips the flat gold cost entirely; the Cable Link gate for trade evos and
         // all other evolution requirements still apply.
-        async function evoLabEvolveWithCandy(idx, evoName) {
+        async function evoLabEvolveWithCandy(monId, evoName) {
             if (!_storyTryBeginInteraction()) return;
             try {
-                const mon = sm.team[idx]; if (!mon) return;
+                const found = _pcFindSlotById(monId);
+                const mon = found && found.slot;
+                if (!mon) return;
                 if (!evoName || typeof evoName !== 'string') return;
                 _storyEnsureInventory();
                 if ((sm.inventory.rareCandy | 0) <= 0) {
@@ -53691,7 +53710,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
-                if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
+                if (!await _evoLabApplyEvolutionWithAnim(monId, evoName)) return;
                 sm.inventory.rareCandy = Math.max(0, (sm.inventory.rareCandy | 0) - 1);
                 if (sm.inventory.rareCandy <= 0) delete sm.inventory.rareCandy;
                 save();
@@ -61280,6 +61299,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         } catch (e) {}
 
         // ── PUBLIC API ────────────────────────────────────────────────────
+        // Headless test surface for story-mode internals — defined INSIDE this IIFE
+        // (before the return) so it closes over `sm` and the Evolution Lab evolve
+        // path. Mirrors window.__engine; inert in normal play.
+        try {
+            if (typeof window !== 'undefined' && window.__testHarness === true) {
+                window.__story = {
+                    applyEvolution: typeof _evoLabApplyEvolution === 'function' ? _evoLabApplyEvolution : null,
+                    findSlotById: typeof _pcFindSlotById === 'function' ? _pcFindSlotById : null,
+                    makeBuild: typeof makeBuild === 'function' ? makeBuild : null,
+                    get sm() { return sm; },
+                    set sm(v) { sm = v; },
+                };
+            }
+        } catch (e) { /* test surface is best-effort */ }
+
         return {
             get state() { return sm; },
             // Boss-mechanics live wiring — startBattle (init) + the locked turn
