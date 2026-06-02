@@ -12358,8 +12358,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // exception (maintainer decision 2026-05-25): _makePlayerLinkBuild
         // calls makeBuild ungated so a paid Cable Link can surface a
         // run-enabled gimmick before the Gym-5 badge gate. All other paths
-        // (starter, professor, wild catch, evolution, pending builds, the
-        // Caged God roll) stay gated so pre-unlock leaks remain impossible.
+        // (starter, professor, wild catch, evolution, pending builds) stay
+        // gated so pre-unlock leaks remain impossible.
         function _withStoryPlayerGimmickGate(fn) {
             try {
                 window._pbsStoryUsePlayerGimmickGate = true;
@@ -32819,6 +32819,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  Champion regardless of which canonical champion was rolled —
          *  the variant's voice overrides the per-name personality at this
          *  one beat. */
+        // ⚠️ DORMANT (2026-06): tone layer retired — every run uses 'classic', so only
+        // the `classic` entry is reachable. Other entries (and any Caged God / boss
+        // references in them) are preserved-but-dormant. See STORYLINE_VARIANTS / CLAUDE.md.
         const _CHAMPION_DIALOGUE_BY_VARIANT = {
             classic: {
                 // No overrides — falls through to existing per-name pool.
@@ -35717,8 +35720,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
                 // Starter is a visual reminder only — strip the legacy `unsellable`
-                // flag that older saves co-applied with `starter:true`. Subject Zero
-                // and other bonded mons (no `starter` flag) keep their unsellable lock.
+                // flag that older saves co-applied with `starter:true`. Bonded story
+                // mons (no `starter` flag) keep their unsellable lock.
                 try {
                     for (const arr of [sm.team || [], sm.pcBox || []]) {
                         for (const slot of arr) {
@@ -39531,6 +39534,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             },
             // ── Per-variant beat scenes ─────────────────────────────────────
+            // ⚠️ DORMANT (2026-06): the 8-tone layer is retired — every run uses the
+            // 'classic' tone, so only the `classic_*` entries in the per-variant
+            // families below (beat scenes, E4 NPC, E5 twist, K mystery-intro, B choice)
+            // are reachable. The tone-prefixed entries (secondsun_ / bonekeepers_ /
+            // projectmewtwo_ / hypnos_ / deadraticate_ / lavender_ / static_) are
+            // PRESERVED-BUT-DORMANT — not live bugs. See the STORYLINE_VARIANTS banner /
+            // CLAUDE.md "Retired/cut systems".
             // Each scene reuses _renderNarrativeOverlay so the layout matches the
             // intro-rival cold-open and dedupe stays in the same per-run bucket.
             // Sprite choices lean on existing trainer roster: Oak / Veteran for
@@ -40851,12 +40861,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
-        /** Storyline variants — let the same STORY_EVENTS_RAW timeline play
+        /** STORYLINE VARIANTS — ⚠️ RETIRED / DORMANT (2026-06).
+         *  This 8-tone narrative layer is NO LONGER reachable at runtime: every run
+         *  is forced to the 'classic' tone (see _readStorylineFromUI + the load()
+         *  back-fill). The dirty tones (project_mewtwo / hypnos_lullaby / static /
+         *  bone_keepers) and their cold-opens, broker/cage prose, "Subject Zero"
+         *  starter, and Mystery-Figure biases are PRESERVED INTENTIONALLY for a
+         *  possible future fold-in — they are NOT live bugs, and references here to
+         *  the excised post-HoF "Caged God" boss are expected dormant content.
+         *  Design spec: docs/STORY_NARRATIVE_VARIANTS.md (also marked retired);
+         *  canonical status in CLAUDE.md. To revive, restore the roll in
+         *  _readStorylineFromUI().
+         *
+         *  Original behavior: variants let the same STORY_EVENTS_RAW timeline play
          *  differently from run to run. A variant can shadow any beat
-         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default
-         *  tone for the dialogue layer. Pokémon picks remain driven by the
-         *  per-row gradeWeights and `sm.settings.enabledGens`, so variants
-         *  cannot break the difficulty curve. */
+         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default tone for
+         *  the dialogue layer. Pokémon picks remain driven by the per-row
+         *  gradeWeights and `sm.settings.enabledGens`, so variants cannot break the
+         *  difficulty curve. */
         const STORYLINE_VARIANTS = {
             // ── TIER: CLASSIC ────────────────────────────────────────────
             classic: {
@@ -46623,7 +46645,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Pokédex caught-count milestones — cross-run safe (sm.pokedexMilestones is
         // per-save, so each run earns its own once). 100 deliberately drops a unique
         // trophy bundle instead of a 2nd Master Ball, keeping the Master Ball uniquely
-        // tied to the Caged God arc.
+        // tied to the villain-track reward.
         const POKEDEX_CAUGHT_MILESTONES = [
             { n: 25,  reward: { ultraBall:1, hpUp:1, carbos:1, gold:2000 },
               msg:'25 species in the Pokédex — a quarter-region survey. +1 Ultra Ball, +1 HP Up, +1 Carbos, +2,000G.' },
@@ -47443,7 +47465,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // wins. Each interrupt fires `enterCatchEncounter` and, on dismiss,
             // re-enters this function with `_wildAlreadyChecked=true` so the
             // chain doesn't loop. Skipped entirely on rematch / retry. Post-HoF
-            // Mystery (the Caged God arc) opts out via its own predicates.
+            // Mystery opts out via its own predicates.
             if (!_wildAlreadyChecked) {
                 const _firedInterrupt = _runFirstStoryInterrupt(sm.eventIndex, ev,
                     () => enterBattleEvent(ev, true));
@@ -47609,7 +47631,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const e = String(eventType || '');
             if (/^Gym Leader/i.test(e)) return 'leader';
             if (e === 'Rival') return 'rival';
-            if (e === 'Champion' || e === 'Mystery Figure' || /Caged God|Boss/i.test(e)) return 'boss';
+            if (e === 'Champion' || e === 'Mystery Figure' || /Boss/i.test(e)) return 'boss';
             if (/^E[1-4]$/.test(e) || e === 'Elite Trainer' || e === 'Victory Road') return 'elite';
             return 'trainer';
         }
@@ -48720,8 +48742,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const unsellable = slot.unsellable === true;
                 const isLastParty = where === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
-                const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
-                const reason = isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
+                const reason = unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
                 // Underground rows also flag shiny so the player doesn't
                 // accidentally hand a shiny to the broker for pocket gold.
@@ -50085,8 +50106,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else headerEl.textContent = '🌿 Wild Encounter';
                 }
             } catch (e) {}
-            // Scene backdrop matches the encounter mode (gen3 pixel art): the Caged
-            // God boss gets the cavern, Safari its zone, wild routes the forest.
+            // Scene backdrop matches the encounter mode (gen3 pixel art): Safari
+            // gets its zone, wild routes the forest.
             try {
                 syncStorySceneBackground('story-catch-bg-layer',
                     _catchState.safariMode ? 'safari' : 'forest');
@@ -50316,7 +50337,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
                     const pct = Math.round(chance * 100);
                     // Master Ball is a normal guaranteed-catch ball — usable on any
-                    // encounter, not reserved/locked for the Caged God boss. (It still
+                    // encounter, not reserved for a special boss capture. (It still
                     // reads as the guaranteed throw via the purple glow + ✨ below.)
                     const canThrow = have > 0;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
