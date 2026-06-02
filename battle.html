@@ -34831,7 +34831,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
                     if (!sm.pokedex.seen.includes(name)) sm.pokedex.seen.push(name);
                     if (!sm.pokedex.caught.includes(name)) sm.pokedex.caught.push(name);
-                    try { _storyCheckPokedexMilestones(); } catch (e) {}
                 }
             } catch (e) {}
             const meta = readStoryMeta();
@@ -38169,6 +38168,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get EV_GAIN_ACTIVE() { return EV_GAIN_ACTIVE; },
                     get BEAT_EV_CLASS() { return BEAT_EV_CLASS; },
                     get VITAMIN_LOOT_BY_CLASS() { return VITAMIN_LOOT_BY_CLASS; },
+                    get VOUCHER_DEBUT_CITY() { return VOUCHER_DEBUT_CITY; },
                     storyTrainerLootVitamins: (...a) => _storyTrainerLootVitamins(...a),
                     isFacilityRequiredHere: (...a) => _isFacilityRequiredHere(...a),
                     isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
@@ -40702,11 +40702,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"The big-city upgrade. Five floors, one elevator, and the goods aren\'t cheap."',
                     '"Great Balls (1,000G) — 1.5× catch rate. Revives and Max Revives for partners who go down mid-battle. Weather and Terrain Orbs tilt the field the moment a fight begins. The Emergency Teleporter pulls you out of any trapping move, once per battle."',
-                    '"Stock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf. Here — a Great Ball, on the house. First-visit gift, our usual policy."'
+                    '"Stock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf. Here — a Great Ball and a Revive, on the house. First-visit gift, our usual policy."'
                 ],
                 onContinue: function () {
-                    try { _storyGrantBundle({ greatBall: 1 }); } catch (e) {}
-                    try { window.showGameAlert && window.showGameAlert('Received 1 Great Ball — welcome to the Department Store!'); } catch (e) {}
+                    try { _storyGrantBundle({ greatBall: 1, revive: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Great Ball and 1 Revive — welcome to the Department Store!'); } catch (e) {}
                 }
             },
             firstSafari: {
@@ -46779,13 +46779,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // A voucher may only be granted once the player has reached the city where
         // its redeeming facility debuts. This is the structural fix for vouchers
         // leaking before their facility (the EV Trainer's Vitamin Pack used to drop
-        // at Gym 1 / City 1 though the EV Trainer debuts at City 4). Mirrors
+        // at Gym 1 / City 1 though the EV Trainer debuts at City 7). Mirrors
         // FACILITY_DEBUT_CITY. rareCandy is gated like the rest AND kept out of the
         // random draw pool below, so it stays a scarce, hand-placed reward.
         const VOUCHER_DEBUT_CITY = {
             heartScale: 0, mint: 0,
             rareCandy: 2, linkDiscount50: 2, stoneToken: 2,
-            vitamin: 4, abilityCapsule: 4, emblemHonor: 4,
+            vitamin: 7, abilityCapsule: 4, emblemHonor: 4,
             casinoChip500: 5, wishingPiece: 6
         };
         const VOUCHER_DRAW_EXCLUDE = new Set(['rareCandy']); // scarce — never in the uniform pool
@@ -46855,18 +46855,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Per-fight IV-vitamin loot ("every trainer loots"), keyed by trainer rank.
         // Rank detection is shared with the EV curve via _classifyTrainerEvent, and
         // the per-rank counts live in VITAMIN_LOOT_BY_CLASS (beside EV_GAIN_ACTIVE)
-        // so loot and EV speak one rank vocabulary. REGULAR/ACE pay 3/5 — a +50%
-        // (round up) general buff over the prior 2/2/3 · 2/5 spread (itself +50%
-        // over the original 1/1/2 · 1/3), so per-fight drops are more generous; a
-        // full run nets well above the prior vitamin totals once bundle + milestone
-        // drops are added. Two BOSS-class exceptions are resolved here, not via the
-        // shared table: Gym Leaders / Elite Four / Champion / Mystery Figure bundle
-        // their vitamins in GYM_VICTORY_REWARDS (so BOSS loot is 0), and the Rival
-        // loots per-fight on a badge-scaled ramp (3 → 8) — matched before
-        // classifying. An unrecognized event → null → 0.
+        // so loot and EV speak one rank vocabulary. REGULAR/ACE both pay a flat 5, so
+        // the vitamin faucet is uniform for every non-boss fight. Two BOSS-class
+        // exceptions are resolved here, not via the shared table: Gym Leaders / Elite
+        // Four / Champion / Mystery Figure still bundle their vitamins in
+        // GYM_VICTORY_REWARDS (so BOSS loot is 0 — bosses move onto the flat faucet
+        // when the loot matrix lands), and the Rival drips a flat 5 per fight.
+        // An unrecognized event → null → 0.
         function _storyTrainerLootVitamins(eventName) {
             const e = String(eventName || '');
-            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 3 : 8;
+            if (/Rival/i.test(e)) return 5;
             const cls = _classifyTrainerEvent(e);
             return cls ? (VITAMIN_LOOT_BY_CLASS[cls] | 0) : 0;
         }
@@ -46928,6 +46926,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.calcium)    sm.inventory.calcium  = (sm.inventory.calcium  | 0) + r.calcium;
             if (r.zinc)       sm.inventory.zinc     = (sm.inventory.zinc     | 0) + r.zinc;
             if (r.carbos)     sm.inventory.carbos   = (sm.inventory.carbos   | 0) + r.carbos;
+            // Heal-item consumable grant — Revive is the first *gifted* one (Dept first-visit);
+            // lands in the same sm.inventory.revive slot a bought one uses.
+            if (r.revive)     sm.inventory.revive   = (sm.inventory.revive   | 0) + r.revive;
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
             try { _storyRefreshInventoryScreens(); } catch (e) {}
             return _rolled;
@@ -46940,33 +46941,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return { msg: flavor + ' ' + _storyRewardItemSummary(r, rolled) };
         }
 
-        // Pokédex caught-count milestones — cross-run safe (sm.pokedexMilestones is
-        // per-save, so each run earns its own once). 100 deliberately drops a unique
-        // trophy bundle instead of a 2nd Master Ball, keeping the Master Ball uniquely
-        // tied to the villain-track reward.
-        const POKEDEX_CAUGHT_MILESTONES = [
-            { n: 25,  reward: { ultraBall:1, hpUp:1, carbos:1, gold:2000 },
-              msg:'25 species in the Pokédex — a quarter-region survey. +1 Ultra Ball, +1 HP Up, +1 Carbos, +2,000G.' },
-            { n: 50,  reward: { ultraBall:2, vitamin:1, heartScale:1, protein:1, calcium:1 },
-              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves an EV Voucher, a Heart Scale, two Ultra Balls, and a paired Protein/Calcium bundle on the bench.' },
-            { n: 75,  reward: { rareCandy:2, emblemHonor:1, iron:1, zinc:1, gold:5000 },
-              msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +1 Emblem of Honor, +1 Iron, +1 Zinc, +5,000G.' },
-            { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1, mint:1, abilityCapsule:1, hpUp:1, protein:1, iron:1, calcium:1, zinc:1, carbos:1 },
-              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 EV Voucher, +1 Mint, +1 Ability Capsule, and one of every perm-boost vitamin (+1 each).' }
-        ];
-        function _storyCheckPokedexMilestones() {
-            if (!sm.pokedex || !Array.isArray(sm.pokedex.caught)) return;
-            if (!sm.pokedexMilestones || typeof sm.pokedexMilestones !== 'object') sm.pokedexMilestones = {};
-            const n = sm.pokedex.caught.length;
-            for (const m of POKEDEX_CAUGHT_MILESTONES) {
-                const key = 'c' + m.n;
-                if (n >= m.n && !sm.pokedexMilestones[key]) {
-                    sm.pokedexMilestones[key] = true;
-                    _storyGrantBundle(m.reward);
-                    try { window.showGameAlert && window.showGameAlert('🏅 ' + m.msg); } catch (e) {}
-                }
-            }
-        }
+        // (Pokédex caught-count milestone rewards removed 2026-06 — per-run loot didn't
+        // fit the cross-run Achievements model, and the EV-Voucher tiers mis-timed vs the
+        // C7 EV Trainer. Cross-run Achievements / Hall of Fame are unaffected.)
 
         // Roaming sub-legendary: after the Gym 8 victory, queue a one-shot wild
         // encounter for the route from City 8 to the League city. 30% catch rate,
@@ -48207,15 +48184,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         sm.flags._crucibleDaycareToastQueued = true;
                     }
                 } catch (e) { console.warn('[Story] story-mid unlock hooks', e); }
-                // Mid-game route find — one Vitamin Pack on the first Basic/Elite
-                // Trainer cleared after the 4th badge, before Gym 5. Surfaces as a
-                // "found on the route" pickup so the curve has a beat between gym
-                // gifts, not just at gym victories.
-                if ((sm.badges | 0) === 4 && !sm.staticDrops.vitaminRouteMidgame && /^(Basic Trainer|Elite Trainer)$/.test(en)) {
-                    _storyGrantBundle({ vitamin: 1 });
-                    sm.staticDrops.vitaminRouteMidgame = true;
-                    _victoryRewardLines.push('💊 A traveler dropped an EV Voucher in the tall grass — +1 EV Voucher.');
-                }
+                // (Mid-game EV-Voucher route-find removed — premature vs the C7 EV Trainer;
+                // its first-visit welcome voucher covers the early-voucher beat.)
                 // EV line is pushed AFTER the beat/track-reward hook below so item /
                 // vitamin / beat loot reads first on the card (EV training reads last).
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
@@ -50236,15 +50206,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Per-fight IV-vitamin drop, keyed by the SAME rank classes as the EV
         // table above — one rank vocabulary for both reward systems, with
         // _classifyTrainerEvent as the single source of truth. Consumed by
-        // _storyTrainerLootVitamins. Two BOSS-class exceptions are handled there:
-        // Gym Leaders / E1-4 / Champion / MF carry their vitamins in
-        // GYM_VICTORY_REWARDS (so BOSS loot here is 0, not dripped per-fight), and
-        // the Rival loots per-fight on a badge-scaled ramp (3 → 8) rather than via
-        // this table. Counts are user-owned balance numbers.
+        // _storyTrainerLootVitamins. REGULAR/ACE both pay a flat 5 — the vitamin
+        // faucet is uniform for every non-boss fight. Two BOSS-class exceptions are
+        // handled there: Gym Leaders / E1-4 / Champion / MF still carry their
+        // vitamins in GYM_VICTORY_REWARDS (so BOSS here is 0 — the planned "bosses
+        // also drip 5 + bundle rescale" lands with the loot matrix), and the Rival
+        // drips a flat 5 per fight. Counts are user-owned balance numbers.
         const VITAMIN_LOOT_BY_CLASS = Object.freeze({
-            REGULAR: 3, // Basic Trainer, Gym Trainer 1/2
+            REGULAR: 5, // Basic Trainer, Gym Trainer 1/2
             ACE:     5, // Elite Trainer
-            BOSS:    0, // bundled in GYM_VICTORY_REWARDS instead of dripped per-fight
+            BOSS:    0, // bundled in GYM_VICTORY_REWARDS (matrix moves bosses onto the faucet)
         });
         // 3-track beat → EV class. A villain/extra beat attaches to whatever
         // Basic/Elite-Trainer row it lands on; this map UPGRADES the narrative
@@ -50957,11 +50928,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _renderPartySwapPrompt(caught);
                 return;
             }
-            // Pokédex — record the catch + check milestone bundles (25/50/75/100).
+            // Pokédex — record the catch.
             if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
             if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
             if (!sm.pokedex.caught.includes(enc.name)) sm.pokedex.caught.push(enc.name);
-            try { _storyCheckPokedexMilestones(); } catch (e) {}
             try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
             try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
             // Catch tutorial: mark done only on actual catch success, so a
@@ -51017,11 +50987,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const caught = _pendingCaught;
             _pendingCaught = null;
             if (!caught) return;
-            // Pokédex — record the catch + check milestone bundles (25/50/75/100).
+            // Pokédex — record the catch.
             if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
             if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
             if (!sm.pokedex.caught.includes(caught.name)) sm.pokedex.caught.push(caught.name);
-            try { _storyCheckPokedexMilestones(); } catch (e) {}
             try { _storyMarkDexCaught(caught.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
             try { save(); } catch (e) {}
             _catchFinishWithMessage(message);

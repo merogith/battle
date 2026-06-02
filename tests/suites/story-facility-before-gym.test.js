@@ -74,14 +74,14 @@ test('EV gain: three tiers (REGULAR 9 / ACE 14 / BOSS 18) and the whole team gai
 });
 
 // ── Item 6 — per-fight vitamin loot ──────────────────────────────────────────
-test('vitamin loot: per-fight counts are +50% (round up); leaders still bundle', () => {
+test('vitamin loot: per-fight faucet is a flat 5 for non-boss ranks; leaders still bundle', () => {
   setSm({ badges: 0 });
-  assert.equal(ST.storyTrainerLootVitamins('Basic Trainer'), 3, 'Basic 2→3');
-  assert.equal(ST.storyTrainerLootVitamins('Gym Trainer 1'), 3, 'Gym Trainer 2→3');
-  assert.equal(ST.storyTrainerLootVitamins('Elite Trainer'), 5, 'Elite 3→5');
-  assert.equal(ST.storyTrainerLootVitamins('Rival'), 3, 'Rival before 1st badge 2→3');
+  assert.equal(ST.storyTrainerLootVitamins('Basic Trainer'), 5, 'Basic = 5');
+  assert.equal(ST.storyTrainerLootVitamins('Gym Trainer 1'), 5, 'Gym Trainer = 5');
+  assert.equal(ST.storyTrainerLootVitamins('Elite Trainer'), 5, 'Elite = 5');
+  assert.equal(ST.storyTrainerLootVitamins('Rival'), 5, 'Rival = 5 (flat, no badge ramp)');
   setSm({ badges: 1 });
-  assert.equal(ST.storyTrainerLootVitamins('Rival'), 8, 'Rival after 1st badge 5→8');
+  assert.equal(ST.storyTrainerLootVitamins('Rival'), 5, 'Rival = 5 regardless of badges (ramp removed)');
   // Leaders / elites / bosses carry vitamins in the victory bundle, not here.
   assert.equal(ST.storyTrainerLootVitamins('Gym Leader 1'), 0);
   assert.equal(ST.storyTrainerLootVitamins('E1'), 0);
@@ -98,7 +98,7 @@ test('vitamin loot is keyed by the same rank classes as the EV curve', () => {
     Object.keys(ST.EV_GAIN_ACTIVE).sort(),
     'loot and EV tables share the same class keys (REGULAR/ACE/BOSS)'
   );
-  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.REGULAR, 3, 'REGULAR loot = 3 (Basic/Gym)');
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.REGULAR, 5, 'REGULAR loot = 5 (Basic/Gym)');
   assert.equal(ST.VITAMIN_LOOT_BY_CLASS.ACE, 5, 'ACE loot = 5 (Elite)');
   assert.equal(ST.VITAMIN_LOOT_BY_CLASS.BOSS, 0, 'BOSS loot = 0 (bundled in GYM_VICTORY_REWARDS)');
 });

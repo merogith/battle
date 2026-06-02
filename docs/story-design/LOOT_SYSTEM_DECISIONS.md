@@ -136,19 +136,25 @@ Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaim
   fight like every other tier. (The old ramp was *backwards* — it paid most late, exactly when
   high-IV catches need vitamins least.)
 
-### 🔧 Implementation deltas (locked values — await diff approval before commit)
+### ✅ Implementation log — Story rewards Step 2 (shipped, branch `claude/story-rewards-step2`)
 
-| # | Site | Change |
-|---|---|---|
-| Q1 | `VOUCHER_DEBUT_CITY.vitamin` (46522) + comment (46516) | `4 → 7` |
-| Q2 | `firstDept` bundle + toast (~40584) | `{greatBall:1}` → `{greatBall:1, revive:1}` |
-| D7 | `VITAMIN_LOOT_BY_CLASS` (50085) | REGULAR `3 → 5` (ACE stays 5, BOSS 0 bundled) |
-| Q4 | Rival `3→8` badge ramp in `_storyTrainerLootVitamins` (50085+) | flat `5` |
+| # | Site | Change | Status |
+|---|---|---|---|
+| Q1 | `VOUCHER_DEBUT_CITY.vitamin` + comment | `4 → 7` (match EV Trainer C7) | ✅ done |
+| Q2 | `firstDept` gift + `_storyGrantBundle` (new `revive` branch) + dialogue/toast | `{greatBall:1}` → `{greatBall:1, revive:1}` | ✅ done |
+| D7 | `VITAMIN_LOOT_BY_CLASS` | REGULAR `3 → 5` (ACE 5, BOSS 0) | ✅ done |
+| Q4 | Rival ramp in `_storyTrainerLootVitamins` | `3→8` → flat `5` | ✅ done |
+| — | **Pokédex milestone rewards** (`POKEDEX_CAUGHT_MILESTONES` + `_storyCheckPokedexMilestones` + 3 call sites) | **removed** — per-run loot didn't fit the cross-run Achievements model; EV-Voucher tiers mis-timed vs C7 | ✅ done |
+| — | **Mid-game route-find** (badge-4 EV-Voucher pickup) | **removed** — premature vs C7 EV Trainer + silently dropped under Q1's gate; the EV Trainer's welcome voucher covers it | ✅ done |
 
-Four small, fully-specified diffs. The larger BUILD artifacts still to draft: the **stage loot
-matrix** (value-anchor scores → tier population → per-cell chances), the **boss reward tables**
-(`GYM_VICTORY_REWARDS`, value-into-loot per D2), and the **purse-nerf** numbers (mid/late per
-D1, sized to the ~3–6k finale cushion per D4).
+Guard test: `tests/suites/story-vitamin-faucet.test.js` (faucet 5/5/5 · boss 0 · gate C7). Full
+suite green (498/498). Cross-run **Achievements / Hall of Fame** were left untouched.
+
+**Deferred to the next artifact (needs your numbers):** "boss faucet also = 5" + the
+**bundle rescale** so each boss matches the gym-leader reward level for its city stage (E1–4 /
+Champion all sit at City9 → top band) — done together as the **universal stage×rank loot
+matrix** (layered: flat-5 faucet · rarity-weighted bonus pool · per-boss signature). Plus the
+**purse-nerf** numbers (D1, sized to the ~3–6k finale cushion per D4).
 
 ---
 
