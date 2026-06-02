@@ -31,7 +31,7 @@ The repo carries **three mutually-incompatible narrative designs**. Verdict (fro
 6. **Kill the "screen says X but Y fires" desync** — preview/label vs actual dispatch; beat-type vs actual trainer (see §4).
 7. **Merge all old/new/conflicting designs into one masterpiece** — code + data + file structure.
 
-## 3. Conflict ledger (partial — expand after the auditor re-run)
+## 3. Conflict ledger (COMPLETE — all 5 auditors; 427 ledger findings as of 2026-06-02)
 
 ### Critical / player-facing
 - **[✅ FIXED in #212]** Crucible unreachable — city button gated on dead `sm.bossArc.available`; re-gated on `sm.postHofMysteryClimaxDone`.
@@ -54,6 +54,23 @@ The repo carries **three mutually-incompatible narrative designs**. Verdict (fro
 - `WANDER_AROUND_SPEC` says "not implemented" but **shipped** (v23/24).
 - `STORY_MODE_FLOW §14d` describes the 7-identity Mystery + Caged God repurpose; code has only `the_first`.
 - 23/43 doc `battle.html:LINE` anchors drifted (symbol names still resolve).
+
+### Sequencing / ordering (story-flow auditor — the worst class)
+- **🔴 MAIN finale spoils before E1** — at the first league battle, `_resolveActiveRoadBeats('league')` drains all 6 unfired league event-beats, so the Mystery reveal ("I am The First") + the ending play BEFORE E1 / Champion / the Mystery battle. Villain `ending` likewise fires before its boss; road beats fire *inside gyms*; beats clump (league dumps 7 overlays at once).
+- **🔴 Desync root cause** — `_storyComputeUpNext` is a SEPARATE model from the dispatcher (blind to road event-beats + battle-beat scenes); the up-next trainer name renders BEFORE the `BEAT_CANON_TRAINER` swap, so villain bosses preview as a generic trainer. `main.battle1/2` beats promise a themed mirror-team in prose but launch a generic route trainer.
+- **Correction:** variants roll RANDOMLY every run (NOT pinned classic) → variant + Caged-God-pointer dialogue is LIVE / player-facing; ~30 per-variant Mystery outros are dead (keyed to retired identities).
+
+### Balance — measured curve (balance auditor, 8-seed harness)
+- **🔴 FOUR stacking foe-stat systems** (not 3): `_STORY_FOE_STAT_BAND` + `FOE_STAT_NERF_BY_CITY` + `_stageGatedFoeStatMult` + additive `applyStoryLeagueFoeStatBoost`. Band + stage + league EACH special-case Champion/Mystery. The canon doc omits the band entirely and wrongly says the league boost stacks multiplicatively (code merges it additively).
+- **🔴 Intended "regular &lt; player &lt; gym, E4 = player" does NOT hold.** Measured foe-vs-fully-trained-player: GL1 **0.67** (inverted), GL2 0.83, GL3 0.98, GL4 1.10, GL5 1.19, GL6 1.29, GL7 1.47, GL8 1.57, E1-4 **~1.70** (not equal), Champion **1.99**, Mystery **2.35**. Early gyms too weak; mid/late gyms overshoot; Elite Four far above "equal."
+- **🔴 Double-dip softening** — `FOE_STAT_NERF_BY_CITY` × `_STORY_FOE_STAT_BAND` multiply on the same foe → C0 realized **0.64×** (intro rival 0.60×), not the documented ~0.80.
+- **AI is competent** (won't pick 0× moves; rival scores the full party) — the stat curve IS the difficulty lever (AI is byte-identical across difficulties). Raid HP ≈5.2×/6.5× vs documented 4×/5×. Mystery HP code 1.35 vs docs 1.50.
+
+### Villain theming (data-integrity auditor)
+- **🟠 Villain-arc regular battles are never themed** — the 10 villain tracks share 7 generic `villain` grunts; `yell` / `macroCosmos` / `star` have none → a generic random trainer is the default for every regular villain encounter. **Team Yell bosses broken:** Piers → generic Roughneck (missing sprite); Marnie → renders as `Gladion`.
+
+### Notifications / event presentation (story-flow auditor)
+- **🟠 ~12 parallel presentation paths**, 3 z-index layers, no shared registry — `_renderNarrativeOverlay` (click-to-continue) vs `showVictoryOverlay` (6s auto-dismiss) vs `showBattleIntro` (timed) vs `showGameAlert` (paints behind overlays). Inconsistent dwell / dismiss / z-order.
 
 ## 4. Target architecture (recommendation — the "single consistent flow")
 
@@ -80,4 +97,6 @@ Each phase: behavior changes get a proposed diff + maintainer sign-off + regress
 1. `FACILITY_DEBUT_CITY` canonical schedule (which city each facility debuts).
 2. Foe-softening model — keep the per-city `FOE_STAT_NERF_BY_CITY` table, or the per-event constants the docs describe?
 3. Mystery Figure HP multiplier — `1.35` or `1.50`?
-4. The exact "regular &lt; player &lt; gym, Elite = player" target power ratios per city (the §2.5 staging targets).
+4. Target power ratios per stage — the intended "regular &lt; player &lt; gym, Elite = player" does **not** currently hold (measured: GL1 0.67, gyms overshoot to 1.2–1.6, E1-4 ~1.70, Champion 1.99, Mystery 2.35). Pick the intended ratio per stage, then collapse the **four** stacking foe-stat systems into one staging config that hits it.
+5. Where the Champion/Mystery boss boost should live (three systems each special-case it today).
+6. Caged God residue: confirm full removal (incl. the live variant Champion/post-HoF dialogue pointing at the cut broker/cage) vs. revive.
