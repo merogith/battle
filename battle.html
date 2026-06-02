@@ -12447,7 +12447,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // No stone assigned — see activateMega() for sentinel handling.
                 } else {
                     let stone = MEGA_STONE_MAP[name];
-                    if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
+                    // Seeded RNG in story mode so a dual-mega species (Charizard X/Y,
+                    // Mewtwo X/Y) resolves to the SAME stone on every load of a seeded
+                    // battle — X vs Y change typing/ability/role, so a bare Math.random()
+                    // here breaks the static-roll reproducibility the story pipeline keeps.
+                    if (Array.isArray(stone)) {
+                        // `sm` is private to the StoryMode IIFE — read story state via the
+                        // public getter (mirrors storyAwareRng below) so this engine-scope
+                        // call doesn't throw "sm is not defined".
+                        const _smState = (window.StoryMode && window.StoryMode.state) || null;
+                        const _stoneRng = (_smState && _smState.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                        stone = stone[Math.floor(_stoneRng() * stone.length)];
+                    }
                     if (stone) build.i = stone;
                 }
                 // If no stone is available, degrade below — handled by validateGimmick
@@ -30426,7 +30437,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Ilima', type:'Normal', sigs:['Smeargle','Yungoos','Gumshoos','Eevee','Komala'], charGen:7, pkmGens:[1,2,7], spriteFile:'Ilima' },
           { role:'Basic Trainer', name:'Infielder', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Infielder' },
           { role:'Elite Trainer', name:'Ingo', type:'Mixed', sigs:['Excadrill','Crustle','Garchomp','Conkeldurr','Eelektross'], charGen:5, pkmGens:[4,5,8], spriteFile:'Ingo' },
-          { role:'Elite Trainer', name:'Interviewers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Interviewers' },
+          { role:'Basic Trainer', name:'Interviewers', type:'Normal', sigs:[], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Interviewers' },
           { role:'Elite Trainer', name:'Janine', type:'Poison', sigs:['Crobat','Ariados','Weezing','Muk','Venomoth'], charGen:2, pkmGens:[1,2], spriteFile:'Janine' },
           { role:'Basic Trainer', name:'Janitor', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Janitor' },
           { role:'Basic Trainer', name:'Jogger', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Jogger' },
@@ -30444,7 +30455,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Lady', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lady' },
           { role:'Elite Trainer', name:'Lana', type:'Water', sigs:['Araquanid','Lanturn','Wishiwashi','Cloyster','Bruxish'], charGen:7, pkmGens:[7], spriteFile:'Lana' },
           { role:'Elite Trainer', name:'Leaf', type:'Mixed', sigs:['Venusaur','Charizard','Blastoise','Pidgeot','Clefable'], charGen:1, pkmGens:[1], spriteFile:'Leaf' },
-          { role:'Elite Trainer', name:'Li', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Li' },
+          { role:'Basic Trainer', name:'Li', type:'Normal', sigs:[], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Li' },
           { role:'Elite Trainer', name:'Lillie', type:'Fairy', sigs:['Clefable','Ribombee','Comfey','Mismagius','Wigglytuff'], charGen:7, pkmGens:[1,7], spriteFile:'Lillie' },
           { role:'Elite Trainer', name:'Lillie 2', type:'Fairy', sigs:['Clefable','Comfey','Ribombee','Lopunny','Mismagius','Polteageist'], charGen:7, pkmGens:[1,7,8], spriteFile:'Lillie-2' },
           { role:'Basic Trainer', name:'Linebacker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Linebacker' },
@@ -30469,7 +30480,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Musician', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Musician' },
           { role:'Elite Trainer', name:'Nanu', type:'Dark', sigs:['Persian','Honchkrow','Krookodile','Absol','Skuntank'], charGen:7, pkmGens:[1,5,7], spriteFile:'Nanu' },
           { role:'Basic Trainer', name:'Ninja Boy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ninja_Boy' },
-          { role:'Elite Trainer', name:'Nita', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nita' },
+          { role:'Basic Trainer', name:'Nita', type:'Normal', sigs:[], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nita' },
           { role:'Elite Trainer', name:'Noland', type:'Mixed', sigs:['Articuno','Latias','Latios','Snorlax','Heracross'], charGen:3, pkmGens:[1,3], spriteFile:'Noland' },
           { role:'Basic Trainer', name:'Nurse', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Nurse' },
           { role:'Basic Trainer', name:'Nursery Aide', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Nursery_Aide' },
@@ -30482,7 +30493,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Palmer', type:'Mixed', sigs:['Milotic','Rhyperior','Dragonite','Cresselia','Heatran'], charGen:4, pkmGens:[1,4], spriteFile:'Palmer' },
           { role:'Basic Trainer', name:'Parasol Lady', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Parasol_Lady' },
           { role:'Elite Trainer', name:'Petrel', type:'Poison', sigs:['Weezing','Koffing','Crobat','Golbat','Muk'], charGen:2, pkmGens:[1,2], spriteFile:'Petrel' },
-          { role:'Elite Trainer', name:'PI', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'PI' },
+          { role:'Basic Trainer', name:'PI', type:'Normal', sigs:[], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'PI' },
           { role:'Basic Trainer', name:'Picnicker', type:'Grass', sigs:['Oddish','Bellsprout','Sunkern','Sunflora','Hoppip'], charGen:1, pkmGens:[1,2], spriteFile:'Picnicker' },
           { role:'Basic Trainer', name:'Pilot', type:'Flying', sigs:['Starly','Pidove','Fletchling','Rookidee','Pidgey'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Pilot' },
           { role:'Basic Trainer', name:'Plasma Grunt', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Plasma_Grunt' },
