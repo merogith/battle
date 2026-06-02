@@ -1,8 +1,9 @@
 # Story-Mode Item System Overhaul — design spec
 
 > **Status:** Phase 1 **IMPLEMENTED** (Potion-line regen + Ether/Elixir cut + Ultra Ball
-> featured; tests in `tests/suites/potion-regen.test.js`). Decisions resolved in §11.
-> Phase 2 (enemy item scaling) is outlined in §10 and is NOT started yet.
+> featured; `tests/suites/potion-regen.test.js`). Phase 2 **IMPLEMENTED** (enemy "kit
+> tiers" — §10; `tests/suites/foe-item-system.test.js`) — awaiting sign-off on its
+> `[BALANCE]` numbers. Decisions resolved in §11.
 > Maintainer-set prices: regen Potions 500 / 1000 / 1500, Poké Ball 500 (per CLAUDE.md).
 >
 > **How to edit the catalog:** the shop catalog is data-driven. Edit
@@ -188,16 +189,81 @@ Emergency Teleporter 800 · EV Reset Charm 3000.
   it clearly cheaper than Max Potion.
 - **Featured stays ×2**; Ultra Ball is a flat **1500** (no base shelf price).
 
-## 10. Phase 2 — enemy item usage & difficulty scaling (outline, not started)
-Extends `buildFoeStoryInventoryForBattle()` / `tryFoeStoryBattleItem()`:
-- **Item access:** today HP/cure/revive only. Add a curated subset (regen Potion,
-  %-heal, X-items) so enemies feel smarter, gated by city/badge.
-- **Unlock timing:** mirror the existing badge curve (first heal at 4 badges); layer
-  new items in mid-game so challenge ramps city-by-city.
-- **Mega/Ultra for enemies:** the new "difficulty layer" — let late bosses (E4 /
-  Champion / Mystery, or Hard+) draw a single instant/double item. **Never** give
-  enemies Sacred Ash (no enemy mass-revive).
-All Phase-2 numbers are maintainer-owned and get their own decision pass.
+## 10. Phase 2 — enemy "kit tiers" (IMPLEMENTED)
+
+> **Status:** implemented + tested (`tests/suites/foe-item-system.test.js`). Awaiting
+> maintainer sign-off on the BALANCE numbers (all flagged `[BALANCE]` in code). Active
+> scope is NORMAL difficulty.
+
+**The problem (was):** the foe CONSUMABLE bag was the one axis NOT on the city ×
+trainer-difficulty curve — it keyed off **badges only**, held **5 heal/revive items**,
+and the AI was **deterministic** (fixed 32%/22% HP thresholds, baitable) with **no
+per-battle cap** (heal-spam structurally unbounded) and identical logic for a Youngster
+and the Champion. (The held-item tier system — `_storyFoeItemTier(city)` — was already
+city-scaled and is left alone.)
+
+**The fix:** pull the consumable bag onto the same curve. Two read-only signals →
+one tier; a small seeded AI on top.
+
+### Item ROLE (re-groups trainer types for *item* purposes)
+Coarser than the IV/EV `diffStep`, because items want Leaders > Gym Trainers even though
+both are `diffStep 1`:
+
+| Role | Trainer types | Items? |
+|---|---|---|
+| **0 fodder** | Basic / Gym / Elite Trainer, Victory Road | never carries |
+| **1 anchor** | Gym Leader, Rival | tier ramps with city |
+| **2 boss** | E1–E4, Champion, Mystery Figure | top tier + revive + signature |
+
+### Kit tier (`_foeConsumableTier(eventType, city)` → 0–3)
+Fodder = 0 always. Boss = 3 always. **Anchor** ramps the 8-gym ladder; the featured/Ultra
+tier (3) enters at **City 7**, mirroring the player's Department Store at City 6:
+
+| Anchor at | Gym 1–2 | Gym 3–4 | Gym 5–6 | Gym 7–8 |
+|---|---|---|---|---|
+| **tier** | 0 (clean) | 1 | 2 | 3 |
+
+(easy/very-easy soften by one tier; hard/challenge keep the tier but get +1 use.)
+
+### Tier kits (regen Potions heal *over time* → even heal tiers stay fair)
+| Tier | Bag | Per-battle use cap |
+|---|---|---|
+| **1** | Super Potion (regen 1/8 ×3) | 1 |
+| **2** | Hyper Potion (regen 1/4 ×3) + 1 X-item | 2 |
+| **3** | Max Potion (instant) + Full Heal + **signature** + (bosses) 1 Revive | 3 |
+
+**Signature** (once/battle, tier-3 only): Champion & Mystery → an **INSTANT Mega Max
+Potion** (full heal that does NOT cost the turn — the marquee spike; returns `'instant'`
+so the call site doesn't pass). Every other tier-3 (E1–E4, late Gym Leaders) → an **Ultra
+X-item** (+4 to stronger offense, used as a setup turn — the "milder Ultra").
+
+### AI ruleset (simple + fair) — `tryFoeStoryBattleItem`
+Decision order; each gate is HP/turn + a seeded probability roll, under a **hard
+per-battle cap** (= tier #). All `[BALANCE]`:
+1. **Signature** — heal kind at ≤50% HP (instant); buff kind on turns ≤2 while ≥60% HP.
+2. **Status cure** — only when it *matters* (`SLP/FRZ/PAR/TOX`, or any status under 60% HP). Fixes the old "cure a burn at 95% HP" turn-waste.
+3. **Emergency heal** — HP ≤ `HEAL_HP` (tier-1 35% / tier-2 40% / tier-3 45%): Max Potion → regen Potion → Full Restore.
+4. **Setup X-item** — turns ≤2 while ≥60% HP (a "powering up" beat).
+5. **Bench revive** — bosses, once enough teammates are down, strongest-BST target.
+
+`USE_ROLL = 0.70`, `SETUP_ROLL = 0.55` → even a met trigger only fires ~70%/55% of the
+time, so it's varied and never robotic. The per-battle cap (`state.foeStoryItemUsesThisBattle`)
+is the anti-spam guarantee. Regen heals on the foe reuse the Phase-1 `bagRegen` volatile.
+
+**Never** give enemies Sacred Ash / mass-revive (cut anyway, §6).
+
+### Hooks touched
+`buildFoeStoryInventoryForBattle` + `_foeItemRole` / `_foeConsumableTier` /
+`_foeSignatureItem` (build); `tryFoeStoryBattleItem` (use AI, now a named function +
+captured by reference in `__storyTest` so tests reach it past the harness stub);
+the `playTurn` call site (`usedFoeItem === true` so `'instant'` falls through to a normal
+move); `state.foeStoryItemUsesThisBattle` init at battle start.
+
+### Open follow-up (not done)
+Held-item tier (`_storyFoeItemTier`) still ignores `diffStep` — the lone difficulty axis
+keyed on city only. Adding a `diffStep` shift would let a boss hold one item-tier higher
+than a basic trainer at the same city (it touches the player-parity lock, so it's a
+separate, flagged decision).
 
 ## 11. Decisions — resolved
 
