@@ -25,16 +25,35 @@ test('progression curve: soft early, parity mid, demanding by the League', () =>
   }
 });
 
-test('boss / narrative overrides take precedence over the city curve', () => {
+test('late-game ladder: a smooth climb to the post-Champion Rival finale', () => {
+  // Elite Four steps up E1→E4, the Champion sits above E4, the league Rival is
+  // the FINAL main-story fight (timeline row 65, after the Champion) and is the
+  // true peak, and the post-game Mystery Figure tops everything.
+  assert.equal(ST.storyEnemyStatMult('E1', 9, 0), 1.14, 'E1 +14%');
+  assert.equal(ST.storyEnemyStatMult('E2', 9, 0), 1.16, 'E2 +16%');
+  assert.equal(ST.storyEnemyStatMult('E3', 9, 0), 1.18, 'E3 +18%');
+  assert.equal(ST.storyEnemyStatMult('E4', 9, 0), 1.20, 'E4 +20%');
+  assert.equal(ST.storyEnemyStatMult('Champion', 9, 0), 1.23, 'Champion +23%');
+  assert.equal(ST.storyEnemyStatMult('Rival', 9, 65), 1.26, 'League Rival finale +26% (row 65)');
   assert.equal(ST.storyEnemyStatMult('Mystery Figure', 0, 0), 1.30, 'Mystery +30% regardless of city');
   assert.equal(ST.storyEnemyStatMult('Mystery Figure', 9, 0), 1.30);
-  assert.equal(ST.storyEnemyStatMult('Champion', 9, 0), 1.20, 'Champion +20%');
-  assert.equal(ST.storyEnemyStatMult('E1', 9, 0), 1.15, 'Elite Four +15%');
-  assert.equal(ST.storyEnemyStatMult('E4', 9, 0), 1.15);
+  // Monotonic non-decreasing ladder, no anticlimax.
+  const ladder = [
+    ST.storyEnemyStatMult('E1', 9, 0), ST.storyEnemyStatMult('E2', 9, 0),
+    ST.storyEnemyStatMult('E3', 9, 0), ST.storyEnemyStatMult('E4', 9, 0),
+    ST.storyEnemyStatMult('Champion', 9, 0), ST.storyEnemyStatMult('Rival', 9, 65),
+    ST.storyEnemyStatMult('Mystery Figure', 9, 0),
+  ];
+  for (let i = 1; i < ladder.length; i++) {
+    assert.ok(ladder[i] >= ladder[i - 1], `ladder step ${i} must not drop (${ladder[i - 1]} → ${ladder[i]})`);
+  }
+});
+
+test('rival overrides: intro debuff vs league finale vs mid-run curve', () => {
   assert.equal(ST.storyEnemyStatMult('Rival', 0, 68), 0.75, 'Intro rival -25% (row 68)');
-  // Non-intro rival has no override → follows the city curve.
+  assert.equal(ST.storyEnemyStatMult('Rival', 9, 65), 1.26, 'League rival is the finale, not the curve');
+  // A non-intro, non-league rival (mid-run) has no override → follows the city curve.
   assert.equal(ST.storyEnemyStatMult('Rival', 3, 12), 0.95, 'Mid rival at C3 follows the curve');
-  assert.equal(ST.storyEnemyStatMult('Rival', 9, 65), 1.15, 'League rival follows the C9 curve');
 });
 
 test('out-of-story callers (city = -1) get no scaling', () => {

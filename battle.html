@@ -14969,25 +14969,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.displayItem = displayItem;
 
-        // Story-mode foe stat multiplier (difficulty knob).
-        // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
-        // Two stacking layers:
-        //   1. Early-game nerf (story spec): a starting stat penalty that fades over the
-        //      first three CITIES and applies symmetrically to every foe in them —
-        //      ~20% at the start (City 0), 15% at City 1, 10% at City 2, 0% from City 3 on.
-        //      Keyed on the city clock (not badges) so City 0 and City 1 — both before the
-        //      first badge — get different softening. See FOE_STAT_NERF_BY_CITY.
-        //   2. Stage-gated late-game ramp ("slightly harder than Fire Red" past G2 unlock):
-        //        - Stages 1–2 (badges 0–4) → 1.00 (true FR feel)
-        //        - Stage 3 start (G6, badge 5) → 1.05
-        //        - Gym 8 (badge 7) → 1.10
-        //        - E4 (badge 8 / Elite Four event) → 1.15
-        //        - Champion+ (Champion / Mystery Figure / Frontier) → 1.20
-        // The "gym leaders keep their signature ace identity" guarantee is enforced through
-        // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
-        // while signature aces stay in the canonical grade), not via per-mon stat exemptions.
-        const FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]; // index = city; City ≥3 → 1.0
-        window.FOE_STAT_NERF_BY_CITY = FOE_STAT_NERF_BY_CITY;
+        // Foe stat scaling now lives in ONE place: the unified FOE_POWER_CURVE ×
+        // _foeDifficultyMult model (see _storyEnemyStatMult), stamped onto trainer
+        // builds and applied once in buildPokemon. The old per-city nerf table and
+        // badge/stage-gate ramp were removed — they compounded multiplicatively and
+        // read the wrong story row. applyFoeDifficultyScaling below now only carries
+        // the plain difficulty knob for UNSTAMPED foes (wild encounters / Frontier).
         // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
         // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
         // and skips the turn. Read via the public getter (window.StoryMode.state, which
@@ -14996,82 +14983,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const s = (window.StoryMode && window.StoryMode.state) || null;
             return (s && s.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
         }
-        function _earlyGameFoeStatMult() {
-            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (!sm) return 1.0;
-            const idx = sm.eventIndex | 0;
-            // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
-            const SER = window.STORY_EVENTS_RAW;
-            if (!SER) return 1.0;
-            const row = (idx >= 0 && idx < SER.length) ? SER[idx] : null;
-            // Only soften actual battles; city/hub rows pass through at 1.0.
-            if (!row || row[1] !== 'Battle') return 1.0;
-            // Current city = the nearest preceding City row's index.
-            let city = -1;
-            for (let i = Math.min(idx, SER.length - 1); i >= 0; i--) {
-                const r = SER[i];
-                if (r && r[1] === 'City') { const m = String(r[2] || '').match(/City\s*(\d+)/); city = m ? (+m[1]) : -1; break; }
-            }
-            if (city < 0 || city >= FOE_STAT_NERF_BY_CITY.length) return 1.0;
-            return FOE_STAT_NERF_BY_CITY[city];
-        }
-        window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
-        // Stage-gated foe stat mult: the "slightly harder than Fire Red" ramp the design
-        // calls for past the G2 unlock. Reads the current story row's event type to
-        // determine which stage we're in — late-stage rows ramp up, early-stage rows
-        // stay at 1.0 so Normal mode keeps a pure FR feel through the G3 era.
-        window._stageGatedFoeStatMult = function _stageGatedFoeStatMult() {
-            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (!sm) return 1.0;
-            // Crucible / Frontier / post-HoF replay rooms already stack their own boost — don't double.
-            if (sm.frontier && sm.frontier.active) return 1.0;
-            if (sm.atCrucible) return 1.0;
-            const idx = sm.eventIndex | 0;
-            const SER = window.STORY_EVENTS_RAW;
-            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
-            if (!row || row[1] !== 'Battle') return 1.0;
-            const evt = String(row[2] || '');
-            if (evt === 'Mystery Figure' || evt === 'Champion') return 1.20;
-            if (/^E[1-4]$/.test(evt)) return 1.15;
-            const gl = evt.match(/^Gym Leader\s*(\d)$/);
-            if (gl) {
-                const n = +gl[1];
-                if (n >= 8) return 1.10;
-                if (n >= 7) return 1.08;
-                if (n >= 6) return 1.05;
-                if (n >= 5) return 1.03;
-                if (n >= 4) return 1.01;
-                return 1.0;
-            }
-            // Non-leader fights inherit the contemporary stage's multiplier so route
-            // trainers between Gyms 7 and 8 don't feel suddenly weaker than the leaders.
-            const b = sm.badges | 0;
-            if (b >= 8) return 1.15;  // post-G8 league run
-            if (b >= 7) return 1.10;  // post-G7 (GL8 era)
-            if (b >= 6) return 1.08;  // post-G6 (GL7 era)
-            if (b >= 5) return 1.05;  // post-G5 (GL6 era)
-            if (b >= 4) return 1.03;  // post-G4 (GL5 era) — fills the GL4–5 dead zone
-            if (b >= 3) return 1.01;  // post-G3 (GL4 era) — fills the GL4–5 dead zone
-            return 1.0;
-        };
-        // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
-        // gets a true answer for the original pre-GL1 non-GL fights only.
-        function _isPreGym1NerfedBattle() {
-            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (!sm || (sm.badges | 0) > 0) return false;
-            const idx = sm.eventIndex | 0;
-            const SER = window.STORY_EVENTS_RAW;
-            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
-            if (!row || row[1] !== 'Battle') return false;
-            return row[2] !== 'Gym Leader 1';
-        }
-        window._isPreGym1NerfedBattle = _isPreGym1NerfedBattle;
         window.applyFoeDifficultyScaling = function(mon) {
             if (!mon) return;
             // Stamped story-trainer foes are already fully scaled at build time
-            // (curve × difficulty, applied once in buildPokemon). This path now only
-            // covers UNSTAMPED foes — wild encounters and the Battle Frontier ladder —
-            // so it never double-scales a trainer foe.
+            // (unified curve × difficulty, applied once in buildPokemon). This path
+            // only covers UNSTAMPED foes — wild encounters and the Battle Frontier
+            // ladder — and applies the single difficulty knob, nothing else.
             if (mon._foeMultApplied) return;
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             const d = (sm && sm.storyDifficulty) || 'normal';
@@ -15080,8 +14997,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
-            mult *= _earlyGameFoeStatMult();
-            mult *= window._stageGatedFoeStatMult();
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -30754,9 +30669,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         })();
         // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
-        // `applyFoeDifficultyScaling` and `_earlyGameFoeStatMult` live outside the IIFE and need
-        // to look up the current row's event type — without this, `typeof STORY_EVENTS_RAW`
-        // resolves to 'undefined' from there and the early-game softening silently no-ops.
+        // Engine-scope code outside the IIFE looks up the current row's event type via this
+        // reference — without it, `typeof STORY_EVENTS_RAW` resolves to 'undefined' from there.
         window.STORY_EVENTS_RAW = STORY_EVENTS_RAW;
 
         // 3-track story-mode pools (v22+). One villain + one extra is rolled at
@@ -33685,12 +33599,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.00, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
         function _storyEnemyStatMult(eventType, city, storyRowIdx) {
             const e = String(eventType || '');
-            // Boss / narrative overrides take precedence over the city curve.
-            if (e === 'Mystery Figure') return 1.30;
-            if (e === 'Champion') return 1.20;
-            if (/^E[1-4]$/.test(e)) return 1.15;
-            // Intro rival is the explicit narrative debuff floor (−25%).
-            if (e === 'Rival' && (storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) return 0.75;
+            const row = storyRowIdx | 0;
+            // Boss / narrative overrides take precedence over the city curve. The
+            // late-game ladder climbs smoothly through the Elite Four to the Champion
+            // and then the post-Champion Rival finale (the last main-story fight,
+            // timeline row 65), with the post-game Mystery Figure topping everything.
+            if (e === 'Mystery Figure') return 1.30;                              // post-game superboss
+            if (e === 'Rival' && row === STORY_RIVAL_ROW_INTRO) return 0.75;      // intro debuff floor (−25%)
+            if (e === 'Rival' && row === STORY_RIVAL_ROW_LEAGUE) return 1.26;     // main-story finale (after Champion)
+            if (e === 'Champion') return 1.23;
+            if (e === 'E1') return 1.14;
+            if (e === 'E2') return 1.16;
+            if (e === 'E3') return 1.18;
+            if (e === 'E4') return 1.20;
             // Out-of-story callers (Crucible / Frontier forward city = −1): no curve.
             const ci = city | 0;
             if (ci < 0) return 1;
