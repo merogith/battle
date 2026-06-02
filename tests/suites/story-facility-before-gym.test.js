@@ -82,10 +82,10 @@ test('vitamin loot: per-fight faucet is a flat 5 for non-boss ranks; leaders sti
   assert.equal(ST.storyTrainerLootVitamins('Rival'), 5, 'Rival = 5 (flat, no badge ramp)');
   setSm({ badges: 1 });
   assert.equal(ST.storyTrainerLootVitamins('Rival'), 5, 'Rival = 5 regardless of badges (ramp removed)');
-  // Leaders / elites / bosses carry vitamins in the victory bundle, not here.
-  assert.equal(ST.storyTrainerLootVitamins('Gym Leader 1'), 0);
-  assert.equal(ST.storyTrainerLootVitamins('E1'), 0);
-  assert.equal(ST.storyTrainerLootVitamins('Champion'), 0);
+  // Bosses now drip 5 from the faucet too (vitamins no longer bundled).
+  assert.equal(ST.storyTrainerLootVitamins('Gym Leader 1'), 5);
+  assert.equal(ST.storyTrainerLootVitamins('E1'), 5);
+  assert.equal(ST.storyTrainerLootVitamins('Champion'), 5);
 });
 
 // ── Loot + EV share one rank vocabulary (single classifier) ──────────────────
@@ -100,7 +100,7 @@ test('vitamin loot is keyed by the same rank classes as the EV curve', () => {
   );
   assert.equal(ST.VITAMIN_LOOT_BY_CLASS.REGULAR, 5, 'REGULAR loot = 5 (Basic/Gym)');
   assert.equal(ST.VITAMIN_LOOT_BY_CLASS.ACE, 5, 'ACE loot = 5 (Elite)');
-  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.BOSS, 0, 'BOSS loot = 0 (bundled in GYM_VICTORY_REWARDS)');
+  assert.equal(ST.VITAMIN_LOOT_BY_CLASS.BOSS, 5, 'BOSS loot = 5 (bosses drip from the faucet)');
 });
 
 // ── 3-track beat EV upgrade — villain/extra boss trains like a Gym Leader ─────

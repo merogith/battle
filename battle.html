@@ -33347,6 +33347,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         ];
         const PERM_BOOST_IDS = new Set(PERM_BOOST_ITEMS.map(v => v.id));
         const PERM_BOOST_STAT_LABEL = { hp:'HP', atk:'Atk', def:'Def', spa:'Sp.Atk', spd:'Sp.Def', spe:'Spe' };
+        // Fan Club first-visit welcome gift: this many of EACH IV vitamin (× 6 stats).
+        // Front-loads early-game IV training when caught-mon IVs are lowest. Own knob.
+        const FANCLUB_WELCOME_VITAMINS_PER_STAT = 5;
 
         // ── EXP-Share gift (extra-arc raid reward — revives ISSUE-243) ─────
         // A bounded "level-up" gift handed over by a grateful NPC after a
@@ -40807,7 +40810,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome! We at the Pokémon Fan Club study every partner who walks through that door."',
                     '"Every Pokémon is born with hidden potential — Individual Values, IVs for short. Zero to thirty-one in each stat. Roll well and your partner has the makings of a champion; roll poorly and they need a little help."',
-                    '"Vitamins are that help. HP Up, Protein, Iron, Calcium, Zinc, Carbos — each one lifts a single stat\'s IV by three points. Thirty-one is the ceiling. Here, take one of each as a welcome gift. Drop by any Fan Club to apply them or check on your team\'s progress."'
+                    '"Vitamins are that help. HP Up, Protein, Iron, Calcium, Zinc, Carbos — each one lifts a single stat\'s IV by three points. Thirty-one is the ceiling. Here, take five of each as a generous welcome gift. Drop by any Fan Club to apply them or check on your team\'s progress."'
                 ]
             },
             firstColress: {
@@ -46677,39 +46680,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // `voucherRolls: N` — N uniform-random draws from the *currently
         // unlocked* voucher pool (_storyRollVouchers), so a voucher can never
         // arrive before its facility (fixes the EV-Trainer-voucher-at-City-1
-        // leak). IV-vitamin counts here + the per-trainer loot drop
-        // (_storyTrainerLootVitamins, +50% as of the general buff) + dex milestones
-        // total ~150-200 vitamins/run — enough to max a 6-mon team's key stats with
-        // surplus.
+        // leak). These bundles now carry NON-vitamin spoils only — IV vitamins come
+        // from the flat-5 per-fight faucet (_storyTrainerLootVitamins) plus the Fan
+        // Club welcome gift, which together max a 6-mon team's key stats with surplus.
         // `flavor` is a one-line prefix; the item list is generated from the
         // actual contents by _storyRewardItemSummary, so the message never
         // promises an item it didn't grant.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, hpUp:2, protein:2, carbos:1, gold:500, voucherRolls:1,
+            'Gym Leader 1': { pokeBall:3, gold:500, voucherRolls:1,
                 flavor:'"You earned this."' },
-            'Gym Leader 2': { rareCandy:1, hpUp:1, iron:2, calcium:1, zinc:1, gold:1000, voucherRolls:1,
+            'Gym Leader 2': { rareCandy:1, gold:1000, voucherRolls:1,
                 flavor:'The second badge — the gym apothecary opens its shelves.' },
-            'Gym Leader 3': { greatBall:2, protein:2, calcium:2, carbos:2, voucherRolls:1,
+            'Gym Leader 3': { greatBall:2, voucherRolls:1,
                 flavor:'"Three down. The road steepens from here."' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1, hpUp:2, protein:2, iron:1, carbos:1, voucherRolls:1,
+            'Gym Leader 4': { ultraBall:1, rareCandy:1, voucherRolls:1,
                 flavor:'The Gym Leader nods. "Take these — they go far together."' },
-            'Gym Leader 5': { greatBall:2, protein:2, calcium:2, zinc:1, carbos:1, gold:1000, wishingPiece:1, voucherRolls:1,
+            'Gym Leader 5': { greatBall:2, gold:1000, wishingPiece:1, voucherRolls:1,
                 flavor:'Halfway to the League. Your battle forms awaken — carry this Wishing Piece to Colress in the next city for a free first awakening.' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, hpUp:2, protein:1, iron:1, calcium:2, zinc:1, gold:1500, voucherRolls:1,
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, gold:1500, voucherRolls:1,
                 flavor:'The sixth badge, and a metropolitan stipend.' },
-            'Gym Leader 7': { ultraBall:1, rareCandy:1, hpUp:1, protein:2, iron:2, carbos:2, voucherRolls:1,
+            'Gym Leader 7': { ultraBall:1, rareCandy:1, voucherRolls:1,
                 flavor:'"You\'ll need everything you\'ve got for the last gym."' },
-            'Gym Leader 8': { ultraBall:3, hpUp:2, protein:2, calcium:1, zinc:1, carbos:1, voucherRolls:1,
+            'Gym Leader 8': { ultraBall:3, voucherRolls:1,
                 flavor:'The eighth badge. Victory Road is open.' },
-            'E1': { greatBall:2, hpUp:1, protein:2, iron:1, voucherRolls:1,
+            'E1': { greatBall:2, voucherRolls:1,
                 flavor:'The first Elite tips a hat.' },
-            'E2': { ultraBall:1, rareCandy:1, hpUp:1, calcium:2, zinc:1, voucherRolls:1,
+            'E2': { ultraBall:1, rareCandy:1, voucherRolls:1,
                 flavor:'"Top League issue."' },
-            'E3': { ultraBall:1, hpUp:1, protein:1, carbos:2, voucherRolls:1,
+            'E3': { ultraBall:1, voucherRolls:1,
                 flavor:'The third Elite salutes the climb.' },
-            'E4': { ultraBall:2, rareCandy:1, hpUp:2, protein:1, iron:1, zinc:1, voucherRolls:1,
+            'E4': { ultraBall:2, rareCandy:1, voucherRolls:1,
                 flavor:'The fourth Elite bows.' },
-            'Champion': { ultraBall:2, rareCandy:1, hpUp:2, protein:2, iron:2, calcium:2, zinc:2, carbos:2, voucherRolls:2,
+            'Champion': { ultraBall:2, rareCandy:1, voucherRolls:2,
                 flavor:'The Champion bows. "These are yours by right."' }
         };
 
@@ -46854,17 +46856,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Per-fight IV-vitamin loot ("every trainer loots"), keyed by trainer rank.
         // Rank detection is shared with the EV curve via _classifyTrainerEvent, and
-        // the per-rank counts live in VITAMIN_LOOT_BY_CLASS (beside EV_GAIN_ACTIVE)
-        // so loot and EV speak one rank vocabulary. REGULAR/ACE both pay a flat 5, so
-        // the vitamin faucet is uniform for every non-boss fight. Two BOSS-class
-        // exceptions are resolved here, not via the shared table: Gym Leaders / Elite
-        // Four / Champion / Mystery Figure still bundle their vitamins in
-        // GYM_VICTORY_REWARDS (so BOSS loot is 0 — bosses move onto the flat faucet
-        // when the loot matrix lands), and the Rival drips a flat 5 per fight.
-        // An unrecognized event → null → 0.
+        // the per-rank counts live in VITAMIN_LOOT_BY_CLASS (beside EV_GAIN_ACTIVE) so
+        // loot and EV speak one rank vocabulary. Every rank drips a flat 5 today, each
+        // an independent knob. The Rival is checked first and reads its own
+        // VITAMIN_LOOT_RIVAL knob (it classifies as BOSS but is tuned separately).
+        // Bosses now drip via the faucet too; their GYM_VICTORY_REWARDS bundles hold
+        // non-vitamin spoils only. An unrecognized event → null → 0.
         function _storyTrainerLootVitamins(eventName) {
             const e = String(eventName || '');
-            if (/Rival/i.test(e)) return 5;
+            if (/Rival/i.test(e)) return VITAMIN_LOOT_RIVAL | 0;
             const cls = _classifyTrainerEvent(e);
             return cls ? (VITAMIN_LOOT_BY_CLASS[cls] | 0) : 0;
         }
@@ -50203,20 +50203,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ACE:     14, // Elite Trainer; villain/extra miniBoss & miniRaid beats
             BOSS:    18, // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
         });
-        // Per-fight IV-vitamin drop, keyed by the SAME rank classes as the EV
-        // table above — one rank vocabulary for both reward systems, with
-        // _classifyTrainerEvent as the single source of truth. Consumed by
-        // _storyTrainerLootVitamins. REGULAR/ACE both pay a flat 5 — the vitamin
-        // faucet is uniform for every non-boss fight. Two BOSS-class exceptions are
-        // handled there: Gym Leaders / E1-4 / Champion / MF still carry their
-        // vitamins in GYM_VICTORY_REWARDS (so BOSS here is 0 — the planned "bosses
-        // also drip 5 + bundle rescale" lands with the loot matrix), and the Rival
-        // drips a flat 5 per fight. Counts are user-owned balance numbers.
+        // Per-fight IV-vitamin faucet. Keyed by the SAME rank classes as the EV table
+        // above (one rank vocabulary, via _classifyTrainerEvent), and consumed by
+        // _storyTrainerLootVitamins. Every fight drips a flat 5 today, but each value
+        // is an INDEPENDENT knob — retune any single rank/role without touching the
+        // others. REGULAR/ACE/BOSS share the EV rank keys; the Rival takes its own
+        // VITAMIN_LOOT_RIVAL knob (it classifies as BOSS for EV but is tuned apart).
+        // Bosses now drip from the faucet like everyone — their GYM_VICTORY_REWARDS
+        // bundles carry NON-vitamin spoils only (no double-dip). User-owned numbers.
         const VITAMIN_LOOT_BY_CLASS = Object.freeze({
             REGULAR: 5, // Basic Trainer, Gym Trainer 1/2
             ACE:     5, // Elite Trainer
-            BOSS:    0, // bundled in GYM_VICTORY_REWARDS (matrix moves bosses onto the faucet)
+            BOSS:    5, // Gym Leaders / E1-4 / Champion / Mystery Figure
         });
+        const VITAMIN_LOOT_RIVAL = 5; // Rival — own knob (BOSS-classified, tuned separately)
         // 3-track beat → EV class. A villain/extra beat attaches to whatever
         // Basic/Elite-Trainer row it lands on; this map UPGRADES the narrative
         // beats so the EV reward matches the beat's rank instead of the row it
@@ -60924,14 +60924,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-fanclub');
             // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
             _storyFanClubOpenIdx = 0;
-            // First-visit welcome gift: one of each vitamin (HP Up / Protein /
-            // Iron / Calcium / Zinc / Carbos). Set a save flag so re-entering
-            // doesn't double-tip the player.
+            // First-visit welcome gift: FANCLUB_WELCOME_VITAMINS_PER_STAT of each
+            // vitamin (HP Up / Protein / Iron / Calcium / Zinc / Carbos) to front-load
+            // early IV training. Set a save flag so re-entering doesn't double-tip.
             const firstVisit = !sm.fanClubGiftClaimed;
             if (firstVisit) {
                 if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
                 for (const vit of PERM_BOOST_ITEMS) {
-                    sm.inventory[vit.id] = ((sm.inventory[vit.id] | 0) + 1);
+                    sm.inventory[vit.id] = ((sm.inventory[vit.id] | 0) + FANCLUB_WELCOME_VITAMINS_PER_STAT);
                 }
                 sm.fanClubGiftClaimed = true;
                 try { save(); } catch (e) {}
@@ -60942,7 +60942,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // first city visit since the flag is independent.
             try { playStoryTutorial('firstFanClub', function () {
                 if (firstVisit) {
-                    try { window.showGameAlert && window.showGameAlert('The Chairman hands you a small case — 1 of each vitamin (HP Up, Protein, Iron, Calcium, Zinc, Carbos).'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('The Chairman hands you a sizable case — 5 of each vitamin (HP Up, Protein, Iron, Calcium, Zinc, Carbos) to kick-start your team.'); } catch (e) {}
                     try { renderFanClubRoster(); } catch (e) {}
                 }
             }); } catch (e) {}

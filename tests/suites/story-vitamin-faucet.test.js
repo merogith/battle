@@ -1,9 +1,9 @@
-// Regression guard for the flat-5 IV-vitamin faucet + EV-Voucher gate alignment
-// (Story rewards Step 2). The per-fight vitamin faucet is now a uniform 5 for every
-// non-boss trainer rank (Basic / Gym Trainer / Elite / Rival). True bosses stay 0 in
-// the faucet because they bundle their vitamins in GYM_VICTORY_REWARDS (the matrix
-// artifact later moves them onto the faucet). The EV Voucher (`vitamin` key) now
-// debuts at C7, matching the EV Trainer facility (FACILITY_DEBUT_CITY.evtrainer).
+// Regression guard for the flat-5 IV-vitamin faucet + EV-Voucher gate alignment.
+// The per-fight vitamin faucet is a uniform 5 for EVERY fight — Basic / Gym Trainer /
+// Elite / Rival AND bosses (Gym Leaders / E1-4 / Champion / MF). Each rank/role is an
+// independent knob (REGULAR/ACE/BOSS in VITAMIN_LOOT_BY_CLASS + a separate
+// VITAMIN_LOOT_RIVAL). Bosses no longer bundle vitamins in GYM_VICTORY_REWARDS. The
+// EV Voucher (`vitamin` key) debuts at C7, matching the EV Trainer facility.
 //
 // Reached through window.__storyTest — the harness-gated hook (load-engine.js sets
 // window.__testHarness before parse).
@@ -39,17 +39,17 @@ test('rival drips a flat 5 with no badge ramp (Q4)', () => {
   assert.equal(ST.storyTrainerLootVitamins('Rival'), 5, '8 badges');
 });
 
-test('true bosses stay 0 in the faucet (vitamins bundled in GYM_VICTORY_REWARDS)', () => {
+test('bosses drip 5 from the faucet too (vitamins no longer bundled)', () => {
   for (const boss of ['Gym Leader 1', 'Gym Leader 8', 'E1', 'E4', 'Champion', 'Mystery Figure']) {
-    assert.equal(ST.storyTrainerLootVitamins(boss), 0, boss);
+    assert.equal(ST.storyTrainerLootVitamins(boss), 5, boss);
   }
 });
 
-test('VITAMIN_LOOT_BY_CLASS is the locked flat-5 shape', () => {
+test('VITAMIN_LOOT_BY_CLASS is the locked flat-5 shape (all ranks = 5)', () => {
   const t = ST.VITAMIN_LOOT_BY_CLASS;
   assert.equal(t.REGULAR, 5);
   assert.equal(t.ACE, 5);
-  assert.equal(t.BOSS, 0);
+  assert.equal(t.BOSS, 5);
 });
 
 test('EV Voucher gate matches the EV Trainer facility debut (C7) (Q1)', () => {
