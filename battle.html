@@ -43731,7 +43731,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(500, '+')])));
             }
             if (actions.includes('Evolution Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('🧬 ' + _npcStageName('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(1500, '+')])));
+                _push('train', makeActionBtn('🧬 ' + _npcStageName('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(3000)])));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
                 _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
@@ -51678,7 +51678,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Evolution is priced by the TARGET grade, not the source — so Magikarp → Gyarados
         // (G4 → G1 in one step) costs the same as any other G1 evolution, and a G3 → G1
         // pseudo-legend final pays the G1 tier instead of the G3 source tier.
-        const EVOLVE_COST_BY_TARGET = { 3: 1500, 2: 6000, 1: 16000 };
+        const EVOLVE_COST_BY_TARGET = { 3: 3000, 2: 6000, 1: 12000 };
         const REBUILD_COST     = 5000;
         const STORY_INTERACTION_WARN_COOLDOWN_MS = 1200;
         let _storyInteractionBusy = false;
@@ -53230,15 +53230,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return levelUpLines[Math.floor(Math.random() * levelUpLines.length)];
         }
 
-        // Cost for an evolution by TARGET grade, with the usual ×1.5 ramp per use in
-        // the same city. Mirrors the Cable Link reroll's first-use discount for
-        // easy/veryeasy difficulty so the difficulty dial feels consistent.
-        function _evoCostFor(targetGrade, useCount /* 1-based */) {
-            const base = EVOLVE_COST_BY_TARGET[targetGrade] || 2000;
-            let cost = Math.ceil(base * Math.pow(1.5, Math.max(0, useCount - 1)));
-            const d = (sm && sm.storyDifficulty) || 'normal';
-            if (useCount === 1 && (d === 'easy' || d === 'veryeasy')) cost = Math.ceil(cost * 0.78);
-            return cost;
+        // Cost for an evolution, keyed purely on the TARGET grade — a flat fee with
+        // no per-use ramp and no difficulty modifier, so the price is identical on
+        // every evolution (Magikarp → Gyarados pays the G1 tier like any other G1).
+        function _evoCostFor(targetGrade) {
+            return EVOLVE_COST_BY_TARGET[targetGrade] || 2000;
         }
 
         // Returns every species-listed evolution for `monName` (no gen filter), each annotated
@@ -53300,7 +53296,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Mystical stone-cracking chime — sets the Sage's ritual tone.
                 try { window.StoryFx && window.StoryFx.playSfx('sparkle', 0.5); } catch (e) {}
                 try { _storyShowOneTimeTip('first-evolab',
-                    'Evolution Tutor\n\nEvolve any eligible Pokémon, in one step. The tutor figures out stones, trades, friendship, time-of-day — all of it.\n\n• Nature, ability slot, EVs, held item, Tera type, and battle gimmick (Dynamax/Tera/Z-Move/Mega) all carry over where supported.\n• Cost scales with the target tier: G3 = 1,500G, G2 = 6,000G, G1 = 16,000G.\n• A 🍬 Rare Candy skips the gold cost entirely. The same candy gates "free" on the first evolution per Pokémon — repeat evolutions on the same mon still pay full price.'); } catch (e) {}
+                    'Evolution Tutor\n\nEvolve any eligible Pokémon, in one step. The tutor figures out stones, trades, friendship, time-of-day — all of it.\n\n• Nature, ability slot, EVs, held item, Tera type, and battle gimmick (Dynamax/Tera/Z-Move/Mega) all carry over where supported.\n• Cost is a flat fee by target tier: G3 = 3,000G, G2 = 6,000G, G1 = 12,000G — the same every time.\n• A 🍬 Rare Candy evolves for free, skipping the gold cost entirely — one candy per evolution.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -53390,8 +53386,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return `<div class="story-tutor-mon" id="evolab-mon-${i}">${header}</div>`;
                 }
 
-                const ek = `e_${i}`;
-                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
                 let evoBlockHtml;
                 if (!evosAll.length) {
@@ -53427,7 +53421,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 <div class="tx-card-desc" style="color:#ef9a9a;">${e.cityLocked ? `Unlocks at the ${_cityOrdinalWord(e.unlockCity)} city${(e.unlockCity | 0) >= 4 ? ', when full evolution opens' : ''}.` : `Gen ${e.gen} disabled in run settings.`}</div>
                             </div>`;
                         }
-                        const cost = _evoCostFor(eg, en);
+                        const cost = _evoCostFor(eg);
                         const canAfford = sm.gold >= cost;
                         const reqHint = (_evoReqHint(e.name) || '').replace(/^\.\s*/, '');
                         // Per docs/EVOLUTION_FLOW_REBUILD.md §5: gate the gold button on
@@ -53473,7 +53467,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>`;
                     }).join('');
                     const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
+                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
                         : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
                     evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
                 }
@@ -53639,10 +53633,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // but we re-check here for the rare hand-built callsite (URL-triggered etc).
                 const req = _evoLabCheckRequirements(evoName);
                 if (!req.ok) { window.showGameAlert(req.reason || 'Evolution requirements not met.'); return; }
-                const ek = `e_${idx}`;
-                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
-                const cost = _evoCostFor(evoGrade, en);
+                const cost = _evoCostFor(evoGrade);
                 if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const flavor = _evoFlavorLine(evoName);
                 const head = `Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`;
@@ -53653,7 +53645,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
-                sm.cityRerollsUsed[ek] = en;
                 if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
                 _storyEnsureInventory();
                 if (req.stoneId)  sm.inventory[req.stoneId]  = Math.max(0, (sm.inventory[req.stoneId]  | 0) - 1);
@@ -53669,8 +53660,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Rare Candy alt path — instant free evolution, consumes one charge.
-        // Skips the gold cost ramp but still consumes a `cityRerollsUsed` use so
-        // subsequent paid re-evolutions in the same city still scale fairly.
+        // Skips the flat gold cost entirely; the Cable Link gate for trade evos and
+        // all other evolution requirements still apply.
         async function evoLabEvolveWithCandy(idx, evoName) {
             if (!_storyTryBeginInteraction()) return;
             try {
@@ -53692,17 +53683,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // the friction, the wallet is the override. Re-check with bypass on.
                 const candyReq = _evoLabCheckRequirements(evoName, { bypassConsumables: true });
                 if (!candyReq.ok) { window.showGameAlert(candyReq.reason || 'Trade evolution still needs the Cable Link visit.'); return; }
-                const ek = `e_${idx}`;
-                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
-                const cost = _evoCostFor(evoGrade, en);
+                const cost = _evoCostFor(evoGrade);
                 const flavor = _evoFlavorLine(evoName);
                 const head = `🍬 Use 1 Rare Candy to evolve ${mon.name} → ${evoName} (Grade ${evoGrade})? Saves ${cost.toLocaleString()}G.`;
                 const tail = `Nature, EVs, item, ability (if ${evoName} can have it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
-                sm.cityRerollsUsed[ek] = en;
                 if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
                 sm.inventory.rareCandy = Math.max(0, (sm.inventory.rareCandy | 0) - 1);
                 if (sm.inventory.rareCandy <= 0) delete sm.inventory.rareCandy;
@@ -53767,7 +53755,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tmp = sm.team[i];
             sm.team[i] = sm.team[j];
             sm.team[j] = tmp;
-            for (const p of ['r_','u_','e_','b_']) {
+            for (const p of ['r_','u_','b_']) {
                 const ka = p + i, kb = p + j;
                 const va = sm.cityRerollsUsed[ka] ?? 0;
                 const vb = sm.cityRerollsUsed[kb] ?? 0;
