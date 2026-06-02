@@ -1,6 +1,6 @@
 ---
 name: inspect-save
-description: Parses a `pbs_story_save` localStorage JSON dump, validates against `SAVE_VER=15`, summarizes party / PC / badges / eventIndex / unlock state. Useful for reproducing bug reports that include a save export.
+description: Parses a `pbs_story_save` localStorage JSON dump, validates against `SAVE_VER=24`, summarizes party / PC / badges / eventIndex / unlock state. Useful for reproducing bug reports that include a save export.
 ---
 
 # inspect-save
