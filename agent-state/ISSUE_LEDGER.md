@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-02T09:22:43.922Z
+> **Generated**: 2026-06-02T09:46:08.031Z
 > **Source**: `agent-state/findings/*.md` (383 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -625,7 +625,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a319172728a4
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss arc soft-locks if enabled gens contain no legendary — cage unlocks but can never be entered
@@ -773,7 +773,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 30b6eaa39800
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss immunity-round off-by-one: activation sets _bossImmuneTurns then decrements it in the SAME tick, so turns:1 grants 0 immune turns
@@ -809,7 +809,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 7e37abfd6aab
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss HP-threshold "surge" (_bossSurgeTurns, +25% damage) has zero damage-path consumers — phase is banner-only
@@ -843,7 +843,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1d05f5b87967
 confidence: medium
-status: fixed-claude/relaxed-bell-2X3Ys
+status: fixed-main
 ---
 
 **Title**: Villain-boss Master Ball grant has no fire-once guard; unique-ball guarantee can break
@@ -879,7 +879,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a7a89682fc13
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Two Master Ball sources collide — villain-track boss (Road 7, pre-HoF) + post-HoF broker = 2 per run
@@ -916,7 +916,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 416fa2aaed61
 confidence: high
-status: fixed-claude/relaxed-bell-2X3Ys
+status: fixed-main
 ---
 
 **Title**: Player gimmick gate reads bare IIFE-private `sm` — always sees zero unlocked gimmicks
@@ -1440,7 +1440,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7856b112bcd7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: The unique Master Ball can be wasted on any wild — soft-locks the Caged God capture (only 1% catch rate without it)
@@ -1582,7 +1582,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: be6f0b9ce8fd
 confidence: high
-status: fixed-claude/relaxed-bell-2X3Ys
+status: fixed-main
 ---
 
 **Title**: proceedToNextBattle re-entry stacks duplicate cold-open overlays, wedging progression (the "After Badge One" stuck state)
@@ -1759,7 +1759,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 659dab26287d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: City-8 legendary Mystery gate is bypassed if party has < 6 members
@@ -1922,7 +1922,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d1e01d9e6e3e
 confidence: high
-status: fixed-claude/sharp-keller-eZEDN
+status: fixed-main
 ---
 
 **Title**: v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it
@@ -2466,7 +2466,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: f2cfc21d6afc
 confidence: high
-status: fixed-claude/funny-clarke-EnGMv
+status: fixed-main
 ---
 
 **Title**: Solar Beam bad-weather power halving is dead code — checks `"SolarBeam"` (no space) which never matches
@@ -2870,7 +2870,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 308066024fc5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Battle log (#battle-log) only cleared on returnToHome, not at battle start; previous fight's lines bleed in
@@ -2989,7 +2989,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 3fdf16d5ab31
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss-mechanic hookup reads window.StoryMode.{BOSS_CONFIGS,bossMechanics*} but those live on test-only __storyTest — boss arc still dead in prod
@@ -3026,7 +3026,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 61d2b4386873
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss/raid mechanics state never reset; bleeds into next ordinary Story fight
@@ -3067,7 +3067,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: c634b39bd109
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Fresh run starts with 0 PokéBalls (spec says 5 at run start); 5 are gifted at first Mart instead
@@ -3102,7 +3102,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 80dcfb8449c7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays

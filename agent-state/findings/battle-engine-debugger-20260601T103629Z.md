@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 61d2b4386873
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss/raid mechanics state never reset; bleeds into next ordinary Story fight
@@ -43,7 +43,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 308066024fc5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Battle log (#battle-log) only cleared on returnToHome, not at battle start; previous fight's lines bleed in

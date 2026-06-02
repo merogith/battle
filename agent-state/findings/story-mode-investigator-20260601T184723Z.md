@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a7a89682fc13
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Two Master Ball sources collide — villain-track boss (Road 7, pre-HoF) + post-HoF broker = 2 per run
@@ -248,7 +248,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7856b112bcd7
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Catch tutorial relies on inventory balls — tutorial throw consumes a real Poké Ball, not special-cased free despite "on the house" copy

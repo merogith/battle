@@ -79,7 +79,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a319172728a4
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss arc soft-locks if enabled gens contain no legendary — cage unlocks but can never be entered
