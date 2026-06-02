@@ -2940,6 +2940,68 @@
         /* Party panel sort buttons */
         .party-sort-btn { width:22px; height:19px; font-size:9px; padding:0; line-height:1; border-radius:2px; }
         .party-sort-btn:disabled { opacity:0.15; }
+
+        /* ── PC roster grid (Pokémon Center → Storage tab) ───────────────────
+           Responsive card grid + sort/filter/search toolbar. Styled to match
+           the summary modal (.sum-*): surface gradient cards, accent focus
+           rings, 40px touch targets on phones. Display-only — never reorders
+           sm.pcBox (actions resolve mons by stable id). */
+        .pc-section-head { font-size:11px; margin:6px 0 6px; letter-spacing:0.05em; text-transform:uppercase; }
+        .pc-section-head--party { color:#90caf9; }
+        .pc-section-head--box { color:#ce93d8; margin-top:16px; }
+        .pc-empty { color:#888; font-size:11px; padding:8px; line-height:1.5; }
+        .pc-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px; }
+        .pc-tool-select, .pc-tool-search, .pc-tool-toggle {
+            font-family:inherit; font-size:11px; min-height:36px; padding:4px 8px;
+            background:var(--surface); border:1px solid #444; color:#ddd; border-radius:4px;
+            box-sizing:border-box; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+        }
+        .pc-tool-select { cursor:pointer; }
+        .pc-tool-search { flex:1; min-width:110px; }
+        .pc-tool-search::placeholder { color:#777; }
+        .pc-tool-toggle { cursor:pointer; font-weight:bold; color:#888; white-space:nowrap; }
+        .pc-tool-toggle.active { color:#ffd54f; border-color:#ffd54f; background:#1a1700; }
+        .pc-tool-select:focus-visible, .pc-tool-search:focus-visible, .pc-tool-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+        .pc-grid-count { font-size:10px; color:#888; margin-bottom:6px; }
+        .pc-clear-filter { font-size:10px; min-height:32px; padding:4px 8px; margin-left:6px; color:var(--accent); border:1px solid #555; background:var(--surface); border-radius:4px; cursor:pointer; font-family:inherit; }
+
+        .pc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(148px, 1fr)); gap:8px; margin-bottom:4px; }
+        .pc-card {
+            display:flex; flex-direction:column; gap:5px; padding:8px; min-width:0;
+            border:1px solid #2c2c30; border-radius:6px; box-sizing:border-box;
+            background:linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+        }
+        .pc-card.is-shiny { border-color:#a47800; box-shadow:inset 0 0 0 1px rgba(255,213,79,0.25); }
+        .pc-card--egg { border-style:dashed; border-color:#ffd54f; }
+        .pc-card-hit {
+            display:flex; flex-direction:column; align-items:center; gap:3px;
+            min-width:0; cursor:pointer; text-align:center; border-radius:4px; padding:2px;
+            touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+        }
+        .pc-card-hit:hover { background:rgba(255,255,255,0.04); }
+        .pc-card-hit:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+        .pc-card-sprite-wrap { position:relative; width:56px; height:56px; display:flex; align-items:center; justify-content:center; }
+        .pc-card-sprite { width:56px; height:56px; image-rendering:pixelated; object-fit:contain; }
+        .pc-card-grade { position:absolute; bottom:-3px; right:-7px; transform:scale(0.82); }
+        .pc-card-name { font-size:11px; font-weight:bold; line-height:1.2; color:#eee; word-break:break-word; min-width:0; }
+        .pc-card.is-shiny .pc-card-name { color:#ffd54f; }
+        .pc-card-shiny { color:#ffd54f; margin-right:2px; }
+        .pc-card-species { font-size:9px; color:#888; line-height:1.1; }
+        .pc-card-sub { font-size:9px; color:#888; line-height:1.3; }
+        .pc-card-mark { font-size:9px; margin-left:3px; }
+        .pc-card-mark--star { color:#ffd54f; }
+        .pc-card-mark--bound { color:#ce93d8; }
+        .pc-card-types { display:flex; flex-wrap:wrap; gap:2px; justify-content:center; }
+        .pc-card-actions { display:flex; gap:4px; margin-top:auto; }
+        .pc-card-btn { flex:1; min-width:0; min-height:32px; font-size:10px; padding:4px 6px; font-family:inherit; border-radius:4px; cursor:pointer; touch-action:manipulation; }
+        .pc-card-btn--deposit { color:#4caf50; border:1px solid #4caf50; background:rgba(76,175,80,0.08); }
+        .pc-card-btn--withdraw { color:#ce93d8; border:1px solid #7b1fa2; background:rgba(206,147,216,0.08); }
+        .pc-card-btn--release { color:#bbb; border:1px solid #666; background:transparent; }
+        .pc-card-btn:disabled { opacity:0.4; cursor:not-allowed; }
+        @media (max-width: 768px) and (orientation: portrait) {
+            .pc-card-btn { min-height:40px; }
+            .pc-tool-select, .pc-tool-search, .pc-tool-toggle { min-height:40px; }
+        }
         .story-prof-card-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: stretch; width: 100%; max-width: 1200px; margin: 12px auto; box-sizing: border-box; }
         .prof-pick-card { flex: 1 1 280px; max-width: 420px; min-width: min(100%, 240px); }
         .prof-pick-card-selected { transform: scale(1.02); border-color: var(--accent) !important; box-shadow: 0 0 18px rgba(255,213,79,0.22); }
@@ -48573,6 +48635,186 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return html;
         }
 
+        // ── PC roster view state (display-only; never mutates sm.pcBox order) ──
+        // Sort/filter are pure presentation: actions resolve mons by stable `id`
+        // (see _pcFindSlotById), so reordering the on-screen grid is always safe.
+        let _pcBoxSort = 'caught';        // caught | dex | grade | name | type | bst
+        let _pcBoxFilterType = '';        // '' = all types
+        let _pcBoxShinyOnly = false;
+        let _pcBoxSearch = '';
+
+        // Species sprite for a roster slot, honoring the locked _isShiny flag.
+        function _pcSpriteFor(slot) {
+            if (!slot || !slot.name) return '';
+            const sh = !!(slot.build && slot.build._isShiny);
+            try {
+                const sd = (typeof spriteDisplayName === 'function') ? spriteDisplayName(slot) : slot.name;
+                return (typeof getSprite === 'function') ? (getSprite(sd, sh) || '') : '';
+            } catch (e) { return ''; }
+        }
+        // Types for a slot, read straight from the loaded dex (baseStats).
+        function _pcSlotTypes(slot) {
+            if (!slot || !slot.name || slot.isEgg) return [];
+            const b = (typeof baseStats !== 'undefined') ? baseStats[slot.name] : null;
+            if (!b) return [];
+            return [b.t1, b.t2].filter(Boolean);
+        }
+        // Distinct, alpha-sorted list of types present in the box (drives the filter dropdown).
+        function _pcBoxTypesPresent(box) {
+            const set = new Set();
+            (box || []).forEach(s => _pcSlotTypes(s).forEach(t => set.add(t)));
+            return [...set].sort();
+        }
+        // Comparator for a sort key, or null for 'caught' (keep insertion order).
+        function _pcBoxComparator(sort) {
+            const dex = (s) => { const b = (typeof baseStats !== 'undefined') ? baseStats[s && s.name] : null; return (b && b.dex) || 99999; };
+            const grade = (s) => (s && s.isEgg) ? 99 : _pcMonGrade(s);
+            const bst = (s) => { try { return getBST(s && s.name) || 0; } catch (e) { return 0; } };
+            const t1 = (s) => (_pcSlotTypes(s)[0] || 'zzz');
+            const nm = (s) => String((s && (s.nickname || s.name)) || '').toLowerCase();
+            switch (sort) {
+                case 'dex':   return (a, b) => dex(a) - dex(b);
+                case 'grade': return (a, b) => grade(a) - grade(b) || dex(a) - dex(b);
+                case 'name':  return (a, b) => nm(a).localeCompare(nm(b));
+                case 'type':  return (a, b) => t1(a).localeCompare(t1(b)) || dex(a) - dex(b);
+                case 'bst':   return (a, b) => bst(b) - bst(a);
+                default:      return null; // 'caught' → insertion order
+            }
+        }
+        // Pure: returns a NEW array of slots filtered + sorted for display.
+        // Stable (ties fall back to original index). Never mutates the input.
+        function _pcBoxView(box, opts) {
+            opts = opts || {};
+            const sort = opts.sort || 'caught';
+            const typeF = (opts.type || '').trim();
+            const shinyOnly = !!opts.shiny;
+            const q = String(opts.search || '').trim().toLowerCase();
+            const decorated = (Array.isArray(box) ? box : [])
+                .map((slot, _i) => ({ slot, _i }))
+                .filter(({ slot }) => {
+                    if (!slot) return false;
+                    if (shinyOnly && !(slot.build && slot.build._isShiny)) return false;
+                    if (typeF) {
+                        if (slot.isEgg) return false;
+                        if (!_pcSlotTypes(slot).includes(typeF)) return false;
+                    }
+                    if (q) {
+                        const hay = ((slot.nickname || '') + ' ' + (slot.name || '')).toLowerCase();
+                        if (!hay.includes(q)) return false;
+                    }
+                    return true;
+                });
+            const cmp = _pcBoxComparator(sort);
+            if (cmp) decorated.sort((a, b) => cmp(a.slot, b.slot) || (a._i - b._i));
+            return decorated.map(d => d.slot);
+        }
+
+        // One roster card (party slot or PC slot), styled to match the summary modal.
+        // where: 'party' (Deposit) | 'pc' (Withdraw + Release). ctx carries the gate flags.
+        function _pcCardHtml(slot, where, ctx) {
+            if (!slot) return '';
+            const id = slot.id || '';
+            const idEsc = _esc(id);
+            ctx = ctx || {};
+            if (slot.isEgg) {
+                const can = where === 'party' ? (!ctx.boxFull && !!id) : (!ctx.partyFull && !!id);
+                const reason = where === 'party'
+                    ? (ctx.boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '')
+                    : (ctx.partyFull ? `Party full (${ctx.partyCap}/${ctx.partyCap})` : !id ? 'Missing id (legacy save)' : '');
+                const actions = where === 'party'
+                    ? `<button type="button" class="pc-card-btn pc-card-btn--deposit" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Deposit</button>`
+                    : `<button type="button" class="pc-card-btn pc-card-btn--withdraw" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Withdraw</button>`
+                      + `<button type="button" class="pc-card-btn pc-card-btn--release" onclick="event.stopPropagation();window.StoryMode.pcRelease('${idEsc}')" title="Release this egg">Release</button>`;
+                return `<div class="pc-card pc-card--egg" data-pc-row="${where}" data-pc-id="${idEsc}">
+                    <div class="pc-card-hit" role="button" tabindex="0" data-pc-open="1" aria-label="Mystery Egg" title="It's an egg">
+                        <div class="pc-card-sprite-wrap pc-card-sprite-wrap--egg">${_eggIconHTML(48)}</div>
+                        <div class="pc-card-name">🥚 Mystery Egg</div>
+                        <div class="pc-card-sub">hatches a couple of towns on</div>
+                    </div>
+                    <div class="pc-card-actions">${actions}</div>
+                </div>`;
+            }
+            const g = _pcMonGrade(slot);
+            const sh = !!(slot.build && slot.build._isShiny);
+            const spr = _pcSpriteFor(slot);
+            const ts = _pcSlotTypes(slot);
+            const typesHtml = ts.length ? getTypeHTML(ts[0], ts[1] || null) : '';
+            const shinyMark = sh ? '<span class="pc-card-shiny" aria-hidden="true">&#10024;</span>' : '';
+            const nameMain = slot.nickname ? `"${_esc(slot.nickname)}"` : _esc(slot.name);
+            const speciesSub = slot.nickname ? `<div class="pc-card-species">${_esc(slot.name)}</div>` : '';
+            const marks = (slot.starter ? '<span class="pc-card-mark pc-card-mark--star" title="Your starter">&#9733;</span>' : '')
+                        + (slot.unsellable && !slot.starter ? '<span class="pc-card-mark pc-card-mark--bound" title="Bonded to you">&#9939;</span>' : '');
+            let actions;
+            if (where === 'party') {
+                const can = !ctx.partyLastOne && !ctx.boxFull && !!id;
+                const reason = ctx.partyLastOne ? 'Party needs at least one Pokémon' : ctx.boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '';
+                actions = `<button type="button" class="pc-card-btn pc-card-btn--deposit" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Deposit</button>`;
+            } else {
+                const can = !ctx.partyFull && !!id;
+                const reason = ctx.partyFull ? `Party full (${ctx.partyCap}/${ctx.partyCap})` : !id ? 'Missing id (legacy save)' : '';
+                actions = `<button type="button" class="pc-card-btn pc-card-btn--withdraw" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Withdraw</button>`
+                        + `<button type="button" class="pc-card-btn pc-card-btn--release" onclick="event.stopPropagation();window.StoryMode.pcRelease('${idEsc}')" title="Release ${_esc(slot.name)}">Release</button>`;
+            }
+            return `<div class="pc-card tier-${g}${sh ? ' is-shiny' : ''}" data-pc-row="${where}" data-pc-id="${idEsc}">
+                <div class="pc-card-hit" role="button" tabindex="0" data-pc-open="1" aria-label="View ${_esc(slot.nickname || slot.name)} summary" title="View full summary">
+                    <div class="pc-card-sprite-wrap">
+                        ${spr ? `<img src="${spr}" alt="" class="pc-card-sprite" data-shiny="${sh ? 'true' : 'false'}" style="${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
+                        <span class="pc-card-grade">${_pcGradeChipHtml(g)}</span>
+                    </div>
+                    <div class="pc-card-name">${shinyMark}${nameMain}${marks}</div>
+                    ${speciesSub}
+                    <div class="pc-card-types">${typesHtml}</div>
+                </div>
+                <div class="pc-card-actions">${actions}</div>
+            </div>`;
+        }
+
+        // Sort + filter + search toolbar for the PC box. The toolbar is rendered once
+        // per tab paint; only the grid re-renders on input (preserves search focus).
+        function _pcRenderBoxToolbar(box) {
+            const types = _pcBoxTypesPresent(box);
+            const sortOpts = [
+                ['caught', 'Order caught'], ['dex', 'Dex No.'], ['grade', 'Grade'],
+                ['name', 'Name A–Z'], ['type', 'Type'], ['bst', 'Base stats']
+            ];
+            const sortSel = `<select class="pc-tool-select" aria-label="Sort PC box" onchange="window.StoryMode.pcSetBoxSort(this.value)">`
+                + sortOpts.map(([v, l]) => `<option value="${v}"${_pcBoxSort === v ? ' selected' : ''}>&#8597; ${l}</option>`).join('')
+                + `</select>`;
+            const typeSel = `<select class="pc-tool-select" aria-label="Filter by type" onchange="window.StoryMode.pcSetBoxFilterType(this.value)">`
+                + `<option value="">All types</option>`
+                + types.map(t => `<option value="${_esc(t)}"${_pcBoxFilterType === t ? ' selected' : ''}>${_esc(t)}</option>`).join('')
+                + `</select>`;
+            const shinyBtn = `<button type="button" class="pc-tool-toggle${_pcBoxShinyOnly ? ' active' : ''}" aria-pressed="${_pcBoxShinyOnly ? 'true' : 'false'}" onclick="window.StoryMode.pcToggleBoxShiny()" title="Show shinies only">&#10024; Shiny</button>`;
+            const search = `<input type="search" class="pc-tool-search" placeholder="Search name…" aria-label="Search PC box by name" value="${_esc(_pcBoxSearch)}" oninput="window.StoryMode.pcSetBoxSearch(this.value)">`;
+            return `<div class="pc-toolbar">${sortSel}${typeSel}${shinyBtn}${search}</div>`;
+        }
+        // Inner HTML of the PC box grid (the part that re-renders on sort/filter/search).
+        function _pcRenderBoxGridInner() {
+            const box = sm.pcBox || [];
+            const partyCap = _storyMaxPartySize();
+            const ctx = { partyFull: (sm.team || []).length >= partyCap, partyCap };
+            const view = _pcBoxView(box, { sort: _pcBoxSort, type: _pcBoxFilterType, shiny: _pcBoxShinyOnly, search: _pcBoxSearch });
+            if (!view.length) {
+                return `<div class="pc-empty">No Pokémon match this filter. <button type="button" class="pc-clear-filter" onclick="window.StoryMode.pcClearBoxFilters()">Clear filters</button></div>`;
+            }
+            const head = (view.length !== box.length)
+                ? `<div class="pc-grid-count">Showing ${view.length} of ${box.length}</div>` : '';
+            return head + `<div class="pc-grid">${view.map(s => _pcCardHtml(s, 'pc', ctx)).join('')}</div>`;
+        }
+        // Re-render only the box grid (keeps the toolbar DOM, so search keeps focus).
+        function _pcRerenderBoxGrid() {
+            const el = document.getElementById('story-pc-box-grid');
+            if (el) el.innerHTML = _pcRenderBoxGridInner();
+        }
+        // Public toolbar handlers (exposed via window.StoryMode).
+        function pcSetBoxSort(v) { _pcBoxSort = v || 'caught'; _pcRerenderBoxGrid(); }
+        function pcSetBoxFilterType(v) { _pcBoxFilterType = v || ''; _pcRerenderBoxGrid(); }
+        function pcSetBoxSearch(v) { _pcBoxSearch = v || ''; _pcRerenderBoxGrid(); }
+        function pcToggleBoxShiny() { _pcBoxShinyOnly = !_pcBoxShinyOnly; _pcRefresh(); }
+        function pcClearBoxFilters() { _pcBoxFilterType = ''; _pcBoxShinyOnly = false; _pcBoxSearch = ''; _pcRefresh(); }
+        // Test hook: pure, opts-driven view computation (no module state).
+        function pcBoxView(box, opts) { return _pcBoxView(box, opts); }
+
         function _pcRenderStorageTab() {
             _pcEnsureBoxArray();
             const team = sm.team || [];
@@ -48602,94 +48844,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html += `<div style="padding:8px 10px;margin-bottom:10px;background:rgba(255,193,7,0.12);border:1px solid #ffb300;color:#ffd54f;font-size:11px;line-height:1.4;">⚠ PC almost full (${box.length}/${PC_BOX_CAP}). Free up space soon.</div>`;
             }
 
-            // PC rows include a small species sprite + a shiny sparkle so a
-            // player can spot a stored shiny at a glance. Reads `_isShiny`
-            // straight from the persisted build — locked at mon-creation
-            // time by `ensureShinyRolled`, so it never flickers between
-            // visits to the PC.
-            const _pcSpriteFor = (slot) => {
-                if (!slot || !slot.name) return '';
-                const sh = !!(slot.build && slot.build._isShiny);
-                try {
-                    const sd = (typeof spriteDisplayName === 'function') ? spriteDisplayName(slot) : slot.name;
-                    return (typeof getSprite === 'function') ? (getSprite(sd, sh) || '') : '';
-                } catch (e) { return ''; }
-            };
-
-            html += `<h4 style="color:#90caf9;font-size:11px;margin:6px 0 6px;letter-spacing:0.05em;text-transform:uppercase;">Party</h4>`;
+            // Party — compact card grid (Deposit action).
+            html += `<h4 class="pc-section-head pc-section-head--party">Party</h4>`;
             if (!team.length) {
-                html += `<div style="color:#888;font-size:11px;padding:8px;">No Pokémon in your party. Visit the Professor or withdraw from the PC.</div>`;
+                html += `<div class="pc-empty">No Pokémon in your party. Visit the Professor or withdraw from the PC.</div>`;
             } else {
-                html += `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">`;
-                team.forEach((slot, i) => {
-                    if (!slot) return;
-                    if (slot.isEgg) {
-                        const eid = slot.id || '';
-                        const eggCanDep = !boxFull && !!eid;
-                        const eggReason = boxFull ? 'PC is full — release or sell to free a slot' : !eid ? 'Missing id (legacy save)' : '';
-                        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(36,30,12,0.6);border:1px dashed #ffd54f;">
-                            ${_eggIconHTML(32)}
-                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches a couple of towns on</span></span>
-                            <button type="button" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${_esc(eid)}')" ${eggCanDep ? '' : 'disabled'} title="${_esc(eggReason)}" style="font-size:10px;padding:3px 8px;${eggCanDep ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
-                        </div>`;
-                        return;
-                    }
-                    const g = _pcMonGrade(slot);
-                    const id = slot.id || '';
-                    const canDeposit = !partyLastOne && !boxFull && !!id;
-                    const reason = partyLastOne ? 'Party needs at least one Pokémon' : boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '';
-                    const sh = !!(slot.build && slot.build._isShiny);
-                    const spr = _pcSpriteFor(slot);
-                    const shinyMark = sh ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
-                    const nameHtml = slot.nickname
-                        ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
-                        : _esc(slot.name);
-                    html += `<div data-pc-row="team" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;cursor:pointer;" title="Click to view full build">
-                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;pointer-events:none;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
-                        <button type="button" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
-                    </div>`;
-                });
-                html += `</div>`;
+                const pctx = { boxFull, partyLastOne };
+                html += `<div class="pc-grid">${team.map(s => _pcCardHtml(s, 'party', pctx)).join('')}</div>`;
             }
 
-            html += `<h4 style="color:#ce93d8;font-size:11px;margin:6px 0 6px;letter-spacing:0.05em;text-transform:uppercase;">PC Box</h4>`;
+            // PC Box — sort/filter toolbar + responsive card grid.
+            html += `<h4 class="pc-section-head pc-section-head--box">PC Box</h4>`;
             if (!box.length) {
-                html += `<div style="color:#888;font-size:11px;padding:8px;">PC is empty. Catch wild Pokémon or deposit from your party.</div>`;
+                html += `<div class="pc-empty">PC is empty. Catch wild Pokémon or deposit from your party.</div>`;
             } else {
-                html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
-                box.forEach((slot, i) => {
-                    if (!slot) return;
-                    if (slot.isEgg) {
-                        const eid = slot.id || '';
-                        const eggCanW = !partyFull && !!eid;
-                        const eggReason = partyFull ? `Party full (${partyCap}/${partyCap})` : !eid ? 'Missing id (legacy save)' : '';
-                        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(36,30,12,0.6);border:1px dashed #ffd54f;">
-                            ${_eggIconHTML(32)}
-                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches a couple of towns on</span></span>
-                            <button type="button" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${_esc(eid)}')" ${eggCanW ? '' : 'disabled'} title="${_esc(eggReason)}" style="font-size:10px;padding:3px 8px;${eggCanW ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
-                            <button type="button" onclick="event.stopPropagation();window.StoryMode.pcRelease('${_esc(eid)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
-                        </div>`;
-                        return;
-                    }
-                    const g = _pcMonGrade(slot);
-                    const id = slot.id || '';
-                    const canWithdraw = !partyFull && !!id;
-                    const reason = partyFull ? `Party full (${partyCap}/${partyCap})` : !id ? 'Missing id (legacy save)' : '';
-                    const sh = !!(slot.build && slot.build._isShiny);
-                    const spr = _pcSpriteFor(slot);
-                    const shinyMark = sh ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
-                    const nameHtml = slot.nickname
-                        ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
-                        : _esc(slot.name);
-                    html += `<div data-pc-row="pc" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;cursor:pointer;" title="Click to view full build">
-                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;pointer-events:none;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
-                        <button type="button" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
-                        <button type="button" onclick="event.stopPropagation();window.StoryMode.pcRelease('${_esc(id)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
-                    </div>`;
-                });
-                html += `</div>`;
+                html += _pcRenderBoxToolbar(box);
+                html += `<div id="story-pc-box-grid">${_pcRenderBoxGridInner()}</div>`;
             }
             return html;
         }
@@ -48701,14 +48871,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const body = document.getElementById('story-pc-body');
             if (!body || body._rowClickBound) return;
             body._rowClickBound = true;
-            body.addEventListener('click', function (ev) {
-                if (ev.target && ev.target.tagName === 'BUTTON') return;
-                const row = ev.target.closest('[data-pc-id]');
+            const _openFrom = (el) => {
+                const row = el && el.closest('[data-pc-id]');
                 if (!row || !body.contains(row)) return;
                 const id = row.getAttribute('data-pc-id');
                 const where = row.getAttribute('data-pc-row');
                 if (!id) return;
                 openSummaryFromAnyPCRow(id, where);
+            };
+            body.addEventListener('click', function (ev) {
+                if (ev.target && ev.target.closest('button')) return;
+                // Grid cards expose a focusable [data-pc-open] hit region; legacy
+                // Underground rows carry data-pc-id directly. Honor both.
+                _openFrom(ev.target.closest('[data-pc-open]') || ev.target.closest('[data-pc-id]'));
+            });
+            // Keyboard: Enter/Space on a focusable hit region opens the summary.
+            body.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
+                const hit = ev.target.closest('[data-pc-open]');
+                if (!hit || !body.contains(hit)) return;
+                ev.preventDefault();
+                _openFrom(hit);
             });
         }
 
@@ -48775,9 +48958,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _srcPill = where === 'team'
                     ? '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(76,175,80,0.22);color:#a5d6a7;border:1px solid #4caf50;">&#128101; Party</span>'
                     : '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(79,195,247,0.16);color:#81d4fa;border:1px solid #4fc3f7;">&#128230; PC Box</span>';
-                html += `<div data-pc-row="${where}" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};cursor:pointer;" title="Click to view full build">
+                html += `<div data-pc-row="${where}" data-pc-id="${_esc(id)}" role="button" tabindex="0" data-pc-open="1" aria-label="View ${_esc(slot.name)} summary" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};cursor:pointer;" title="View full summary">
                     ${_srcPill}
-                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
+                    <span style="flex:1;min-width:0;font-size:12px;line-height:1.25;word-break:break-word;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
                     <span style="color:#ffd700;font-size:11px;font-weight:bold;pointer-events:none;">+${price.toLocaleString()}G</span>
                     <button type="button" onclick="event.stopPropagation();window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
                 </div>`;
@@ -61307,6 +61490,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterStoneShop, buyStoneItem, redeemStoneToken,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
+            pcSetBoxSort, pcSetBoxFilterType, pcSetBoxSearch, pcToggleBoxShiny, pcClearBoxFilters, pcBoxView,
             catchThrow, catchRun, catchContinue,
             catchResolveSendToPC, catchResolveSwap,
             safariBait, safariRock, safariLeaveEarly,
