@@ -44836,34 +44836,87 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // current city — instead of a fixed snapshot average. Two axes stack, both
         // reusing the canonical story-roll machinery so there's no bespoke "Pit
         // curve" to balance:
-        //   • City pace — grade weights are ramped by the player's story progress
-        //     (applyStoryProgressToGradeWeights on the live eventIndex), so City N+1
-        //     is harder than City N automatically.
-        //   • Trainer-type difficulty — each round's grade weights are reshaped by
-        //     _applyTrainerGradeMatrix for a difficulty CLASS that escalates across
-        //     the bracket: warm-up Basic Trainer → three Ace Trainer (Elite) rounds
-        //     at city pace → a Gym-Leader-class boss. Higher classes favour stronger
-        //     grades (Basic→G4, Ace→G3, Leader→G2) at the same city.
+        //   • City pace — each round seeds from the AUTHORED grade weights of that
+        //     trainer class at the player's current city (STORY_EVENTS_RAW), so City8
+        //     foes carry the G2 mass City6 foes don't. The progress ramp then nudges it
+        //     a touch further on the live row.
+        //   • Trainer-type difficulty — each round's class escalates across the bracket:
+        //     warm-up Basic Trainer → three Ace Trainer (Elite) rounds at city pace → a
+        //     Gym-Leader-class boss. The authored per-class weights already differ
+        //     (City6 Basic→g3-heavy, Elite→g2:40, Leader→g3:100); _applyTrainerGradeMatrix
+        //     re-skews on top (Basic→G4, Ace→G3, Leader→G2).
         // Species pass through `weightedPickFromGrades` (→ buildGradePool), which is
         // already gen-toggle-aware and forme-filtered (isStoryRollExcluded), so the
         // Pit can never field a mega/gmax/primal entry or an off-gen mon. Build depth
         // (IV/EV/item/ability gating) comes from `_applyStoryBuildPowerTier` keyed to
         // the SAME class + live row, so foes stay parity-locked to the city. The boss
         // round keeps its +2 bonus layer and tags its highest-BST mon as the ace.
+        //
+        // CRITICAL: the base grade weights MUST come from the authored STORY_EVENTS_RAW
+        // rows, not a synthetic flat base. The progress ramp and the trainer matrix only
+        // *reshape* existing grade mass (they multiply), so a {g3,g4}-only base can never
+        // produce a G1/G2 foe — the maintainer's per-(city,class) weights are the only
+        // place G1/G2 mass is authored (e.g. City6 Elite = g2:40/g3:60, City8 GL = g2:100).
+        // _pitsCityClassWeights pulls those authored numbers so the Pit mirrors a real
+        // Basic / Ace (Elite) / Gym-Leader roll at the player's city — no invented balance.
+        //
+        // Per-(city, class) authored base weights, scanned once from STORY_EVENTS_RAW in
+        // play order. Missing classes (early cities have no Elite row) fall back to the
+        // nearest lower city that authored one, then to the city's leader weights.
+        let _pitsCityClassWeightsCache = null;
+        function _pitsBuildCityClassWeights() {
+            if (_pitsCityClassWeightsCache) return _pitsCityClassWeightsCache;
+            const byCity = {};
+            let curCity = 0;
+            for (const row of (typeof STORY_EVENTS_RAW !== 'undefined' ? STORY_EVENTS_RAW : [])) {
+                const type = row[1], ev = row[2], gw = row[3];
+                if (type === 'City') { const m = /City(\d+)/.exec(ev || ''); if (m) curCity = +m[1]; continue; }
+                if (type !== 'Battle' || !gw) continue;
+                const slot = byCity[curCity] || (byCity[curCity] = {});
+                if (ev === 'Basic Trainer') { if (!slot.basic) slot.basic = gw; }
+                else if (ev === 'Elite Trainer') { if (!slot.elite) slot.elite = gw; }
+                else if (/^Gym Leader/.test(ev)) { slot.leader = gw; }
+            }
+            _pitsCityClassWeightsCache = byCity;
+            return byCity;
+        }
+        function _pitsCityClassWeights(city) {
+            const byCity = _pitsBuildCityClassWeights();
+            const pick = (key) => {
+                for (let c = (city | 0); c >= 0; c--) { if (byCity[c] && byCity[c][key]) return byCity[c][key]; }
+                for (let c = (city | 0); c <= 12; c++) { if (byCity[c] && byCity[c][key]) return byCity[c][key]; }
+                return null;
+            };
+            const leader = pick('leader') || { g1: 0, g2: 0, g3: 100, g4: 0 };
+            return {
+                basic: pick('basic') || leader,
+                elite: pick('elite') || leader,
+                leader,
+            };
+        }
         function _pitsRollEnemyRoster() {
             const gens = storySettingsGens();
             const rowIdx = (sm && sm.eventIndex != null) ? (sm.eventIndex | 0) : null;
-            // City-paced base ramp — the grade weights a route trainer would roll at
-            // the player's current story position (difficulty-adjusted, G4-stripped),
-            // mirroring rollTrainerTeam's front matter.
-            let cityGw = applyDifficultyToGradeWeights({ g1: 0, g2: 0, g3: 50, g4: 50 });
-            cityGw = applyStoryProgressToGradeWeights(cityGw, rowIdx);
-            cityGw = storyStripGrade4IfPartyMature(cityGw);
-            // Five back-to-back rounds, escalating by trainer-type difficulty class.
-            const roundClasses = ['Basic Trainer', 'Elite Trainer', 'Elite Trainer', 'Elite Trainer', 'Gym Leader 8'];
-            return roundClasses.map((cls, roundIdx) => {
-                const isBoss = roundIdx === roundClasses.length - 1;
-                const gw = _applyTrainerGradeMatrix(cityGw, cls);
+            const city = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(rowIdx | 0) : 6;
+            const W = _pitsCityClassWeights(city);
+            // Five back-to-back rounds, escalating by trainer-type difficulty class. Each
+            // round seeds from that class's authored city weights, then runs the SAME
+            // grade-weight front matter rollTrainerTeam uses (player-difficulty skew →
+            // progress ramp on the live row → G4 strip → trainer-type matrix).
+            const gymNo = Math.max(1, Math.min(8, city | 0));
+            const rounds = [
+                { cls: 'Basic Trainer',     base: W.basic },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Gym Leader ' + gymNo, base: W.leader },
+            ];
+            return rounds.map((r, roundIdx) => {
+                const isBoss = roundIdx === rounds.length - 1;
+                let gw = applyDifficultyToGradeWeights(r.base);
+                gw = applyStoryProgressToGradeWeights(gw, rowIdx);
+                gw = storyStripGrade4IfPartyMature(gw);
+                gw = _applyTrainerGradeMatrix(gw, r.cls);
                 const six = _pitsRollTrainerSix(gw, gens, isBoss);
                 // Class-matched tier polish across the whole six; the highest-BST mon
                 // is tagged as the ace so its IV roll lands in the top quartile. The
@@ -44872,10 +44925,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (typeof _applyStoryBuildPowerTier === 'function' && six.length) {
                         let aceName = six[0].name, aceBst = -1;
                         for (const e of six) { const b = getBST(e.name) | 0; if (b > aceBst) { aceBst = b; aceName = e.name; } }
-                        _applyStoryBuildPowerTier(six, cls, rowIdx, [aceName]);
+                        _applyStoryBuildPowerTier(six, r.cls, rowIdx, [aceName]);
                     }
                 } catch (e) { console.warn('[Pits] tier polish', e); }
-                return { tier: cls, isBoss, six, picked: null };
+                return { tier: r.cls, isBoss, six, picked: null };
             });
         }
         // Build one round's TRAINER OF SIX from the round's grade weights. Species

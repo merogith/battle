@@ -28,6 +28,7 @@ window.save = window.save || (() => {});
 const baseStats = E.baseStats;
 const isExcluded = window.__rivalTest.isStoryRollExcluded; // harness-only seam (inner StoryMode scope)
 const genOf = (name) => (baseStats[name] || {}).gen;
+const gradeOf = (name) => E.getMonGrade(name, E.getBST(name));
 
 let PASS = 0, FAIL = 0;
 function check(desc, cond) {
@@ -35,12 +36,13 @@ function check(desc, cond) {
   else { FAIL++; console.log(`  ✗ FAIL: ${desc}`); }
 }
 
-// Minimal active run. eventIndex 38 ~ Gym-6 era (story Fight Club unlock window).
-function setupRun(enabledGens) {
+// Minimal active run. eventIndex 38 ~ Gym-6 era (story Fight Club unlock window);
+// 50 ~ City8 (endgame-adjacent) for the city-scaling check.
+function setupRun(enabledGens, eventIndex = 38) {
   sm.active = true;
   sm.badges = 6;
   sm.gold = 10000;
-  sm.eventIndex = 38;
+  sm.eventIndex = eventIndex;
   sm.storyDifficulty = 'normal';
   sm.settings = { enabledGens: enabledGens.slice() };
   sm.partyEverReached2 = true;
@@ -91,6 +93,32 @@ for (let trial = 0; trial < 30; trial++) {
 }
 check('every gen-1-only Fight Club foe is a gen-1, non-forme species', offGen.length === 0);
 if (offGen.length) console.log('    off-toggle:', [...new Set(offGen)].slice(0, 10));
+
+// ── Fight Club difficulty scales with city (guards the grade-collapse bug) ──
+// The base grade weights MUST come from authored STORY_EVENTS_RAW rows. A flat
+// synthetic base collapses every round to G3 (the ramp/matrix only multiply
+// existing mass). Assert: City8 fields meaningfully stronger grades than City6,
+// and rosters are not pinned to a single grade.
+console.log('\nFight Club difficulty scales with current city');
+function gradeProfile(eventIndex) {
+  setupRun([1,2,3,4,5,6,7,8,9], eventIndex);
+  const hist = { 1:0, 2:0, 3:0, 4:0 }; let n = 0;
+  for (let t = 0; t < 20; t++) {
+    for (const round of SM._pitsRollEnemyRoster()) {
+      for (const foe of round.six) { hist[gradeOf(foe.name)]++; n++; }
+    }
+  }
+  // mean grade NUMBER (lower = stronger); fraction that are G2-or-better.
+  const mean = (hist[1]*1 + hist[2]*2 + hist[3]*3 + hist[4]*4) / n;
+  const strongFrac = (hist[1] + hist[2]) / n;
+  return { hist, mean, strongFrac };
+}
+const c6 = gradeProfile(38); // City6
+const c8 = gradeProfile(50); // City8
+console.log(`  City6: mean grade ${c6.mean.toFixed(2)}, G1+G2 ${(c6.strongFrac*100).toFixed(0)}%`);
+console.log(`  City8: mean grade ${c8.mean.toFixed(2)}, G1+G2 ${(c8.strongFrac*100).toFixed(0)}%`);
+check('City8 foes are stronger-grade on average than City6 (city scaling lives)', c8.mean < c6.mean - 0.1);
+check('City8 fields substantial G1/G2 mass (no grade-collapse to all-G3)', c8.strongFrac > 0.25);
 
 // ── Daycare egg reward (all gens) ───────────────────────────────────────────
 // Drive the real drop-off so _daycareRollHatchSpecies runs end-to-end.
