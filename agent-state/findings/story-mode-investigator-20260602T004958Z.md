@@ -16,7 +16,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4638d3b1dea5
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Entire MAIN finale (twist + ending) spoils before E1 — 6 league event-beats drain at once

@@ -218,7 +218,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: bfb866b472f0
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: League-road narrative "clumping" — 6 story beats fire back-to-back before the Champion (the audit §4 flow bug, still unfixed in the live path)

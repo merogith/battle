@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-02T09:44:13.275Z
+> **Generated**: 2026-06-02T12:53:04.643Z
 > **Source**: `agent-state/findings/*.md` (427 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -818,7 +818,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4638d3b1dea5
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Entire MAIN finale (twist + ending) spoils before E1 — 6 league event-beats drain at once
@@ -10066,7 +10066,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: bfb866b472f0
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: League-road narrative "clumping" — 6 story beats fire back-to-back before the Champion (the audit §4 flow bug, still unfixed in the live path)
