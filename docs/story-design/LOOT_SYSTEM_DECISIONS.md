@@ -40,10 +40,14 @@ edge, or a tier weight), and the table stays coherent. This is the backbone of t
 - **D5** — Casino is **contained** (pays items, not net gold).
 - **D6+D9** — Bonus-layer generosity = **Balanced**: common 60 / uncommon 28 / rare 10 /
   epic 2, moderate per-cell bonus chances. Weights are stage-indexed.
-- **D7** — Faucet = **flat 3 IV-vitamins across all trainer tiers** (ACE drops 5→3 — *exact
-  current numbers pending code confirm*). Early game unchanged; late-game vitamin volume
-  **tapers** while bonus-layer quality **rises by stage** — a deliberate "stat-juice early →
-  real gear late" crossover.
+- **D7** — Faucet = **flat 5 IV-vitamins per fight, every tier** (REGULAR 3→5; ACE already 5;
+  Rival 3→8 ramp → 5). BOSS stays **0 here** — Gym Leaders / E4 / Champion / MF deliver their
+  vitamins via the `GYM_VICTORY_REWARDS` bundle (D2), sized when we build the boss tables.
+  *Why generous-flat, not a per-stage taper:* vitamins are the **only** IV-training path and
+  demand is **front-loaded** — a C0 catch needs ~9 vitamins/stat to reach 31, a C7 catch ~1
+  (`STORY_IV_CITY_WILDPROF`) — so a fat faucet keeps the early low-IV team from starving, while
+  the taper happens **on its own** (high-IV late catches barely need vitamins) as the bonus
+  layer rises. Keeps the "stat-juice early → real gear late" crossover with one number, no curve.
 - **D8** — Loot is **flat across difficulty** (difficulty changes foe strength only).
 - **D10** — Voucher gate is **derived from the facility map** so it can't drift (taken as recommended).
 - **D11** — **No mailbox.** Loot tables are **stage-structured**: any reward referencing a
@@ -98,7 +102,7 @@ Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaim
 5. **Department Store** — `firstDept` gifts exactly **1 Great Ball** at C4 (40575), nothing else.
 6. **Faucet (IV-vitamin drops)** — REGULAR 3 / ACE 5 / BOSS 0 (bosses bundle via
    `GYM_VICTORY_REWARDS`) / **Rival 3→8** (`VITAMIN_LOOT_BY_CLASS` 50085). *(This is the faucet
-   D7 trims; the parallel EV-gain faucet in #1 is a mechanic, not loot.)*
+   D7 revises to a flat 5; the parallel EV-gain faucet in #1 is a mechanic, not loot.)*
 
 ### Already implemented — D10 & D12 need no work
 
@@ -128,8 +132,9 @@ Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaim
   is already buyable here).
 - **Q3 — No new voucher designs.** Early tables (C0–C1) draw only from existing tokens (Heart
   Scale, Mint) + IV vitamins + balls + consumables. Zero new redeem-wiring.
-- **Q4 — Rival faucet flattened to 3.** Drop the post-badge-0 special-case (3→8); the rival
-  classifies as REGULAR = 3 like everyone else.
+- **Q4 — Rival faucet → flat 5.** Drop the badge-scaled 3→8 ramp; the rival drips a flat 5 per
+  fight like every other tier. (The old ramp was *backwards* — it paid most late, exactly when
+  high-IV catches need vitamins least.)
 
 ### 🔧 Implementation deltas (locked values — await diff approval before commit)
 
@@ -137,8 +142,8 @@ Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaim
 |---|---|---|
 | Q1 | `VOUCHER_DEBUT_CITY.vitamin` (46522) + comment (46516) | `4 → 7` |
 | Q2 | `firstDept` bundle + toast (~40584) | `{greatBall:1}` → `{greatBall:1, revive:1}` |
-| Q4 | rival vitamin special-case (~46603) | `badges==0 ? 3 : 8` → `3` |
-| D7 | `VITAMIN_LOOT_BY_CLASS` ACE (50085) | `5 → 3` |
+| D7 | `VITAMIN_LOOT_BY_CLASS` (50085) | REGULAR `3 → 5` (ACE stays 5, BOSS 0 bundled) |
+| Q4 | Rival `3→8` badge ramp in `_storyTrainerLootVitamins` (50085+) | flat `5` |
 
 Four small, fully-specified diffs. The larger BUILD artifacts still to draft: the **stage loot
 matrix** (value-anchor scores → tier population → per-cell chances), the **boss reward tables**
@@ -218,6 +223,11 @@ it's one row in JSON.
 **Why (a):** IV vitamins are the "steady growth" backbone and are always usable (no gate).
 Trimming a bit makes room for the bonus layer without flooding. ★ leans (a). **Trade-off:**
 slightly slower IV maxing — fits "tighter."
+
+> ✅ **RESOLVED — see running log (D7, revised 2026-06-02).** Reversed the "trim" instinct: the
+> faucet goes **flat 5**, not down to 2. Vitamins are the *only* IV-training path and demand is
+> front-loaded (C0 catch ~9 vitamins/stat vs C7 ~1), so the early team would starve under a cut.
+> The taper is automatic (late catches roll high) — no per-stage curve needed.
 
 ### D8. Do loot chances scale with difficulty mode (Easy…Challenge)?
 - ★ **(a) No — loot is flat across difficulty.** Difficulty changes *foe strength*, not
