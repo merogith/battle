@@ -11393,7 +11393,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 5,000G. Permanent for that mon.<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
 <b>Relics</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides (Browse to acquire, Manage to toggle).<br>
-<b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random IV vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
+<b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random IV vitamins (+3 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
 <b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
 After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure.</div>
@@ -32609,8 +32609,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             flavor: { goldFrac: 0,    vouchers: 0,      vitamins: 0,      items: [] },
             low:    { goldFrac: 0.80, vouchers: [0, 1], vitamins: 0,      items: [] },
             mid:    { goldFrac: 1.00, vouchers: [1, 2], vitamins: 1,      items: [] },
-            big:    { goldFrac: 1.00, vouchers: [3, 5], vitamins: [2, 3], items: ['voucher_artifact'] },
-            apex:   { goldFrac: 1.00, vouchers: 5,      vitamins: 3,      items: ['voucher_artifact'] },
+            big:    { goldFrac: 1.00, vouchers: [3, 5], vitamins: [2, 3], items: [] },
+            apex:   { goldFrac: 1.00, vouchers: 5,      vitamins: 3,      items: [] },
         };
         const STORY_KIND_TO_TIER = {
             event:       'flavor',
@@ -34199,14 +34199,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // post-HoF return to City 9) fall back to the last entry.
         const CITY_SPECIALTY_BLURBS = [
             'Hometown. The lab, the starter, and the only road that goes north.',
-            'Training town. Dojo and EV Trainer keep the gym hopefuls honest.',
+            'Training town. The Battle Dojo keeps the gym hopefuls honest.',
             'Move-craft town. Move Tutor and Battle Dojo, side by side.',
             'Academy town. Scholars test their theories on the gym floor.',
             'Wilderness town. The Safari gate marks the city limit.',
             'Resort town. Casino lights, gym floor, last easy night before the climb.',
             'Metropolis. Department Store, Colress\'s roof lab, every tutor on payroll.',
             'Champion\'s road. Every tutor open. Last Pokémart before the League.',
-            'Final-gym town. Department Store, Battle Dojo, and EV Trainer for the last polish.',
+            'Final-gym town. Battle Dojo and EV Trainer for the last polish.',
             'Pokémon League. Every facility under one roof — the Plateau is upstairs.',
         ];
         function _cityBlurbFor(cityIdx) {
@@ -40599,7 +40599,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Gambler', name: 'Game Corner Manager', nameplate: 'Poké Game Corner',
                 lines: [
                     '"Welcome to the Game Corner. Gold plays straight here — no cashier, no coin swap. Drop your bet on the table and pull the lever."',
-                    '"But here\'s why trainers really come up. Win big enough and the floor pays in *Vitamins* — HP Up, Protein, Iron, the works. Every drop lifts a partner\'s IV by one. Hit a jackpot and the manager hands over Rare Candies or Ability Capsules."',
+                    '"But here\'s why trainers really come up. Win big enough and the floor pays in *Vitamins* — HP Up, Protein, Iron, the works. Every drop lifts a partner\'s IV by three. Hit a jackpot and the manager hands over Rare Candies or Ability Capsules."',
                     '"Three tables, three moods. Coin Flip for nerves of steel — even money, streaks of three boost your prize tier. Slots for the spectacle — three reels, big payouts, the 7-7-7 jackpot drops the rarest vouchers. Roulette for the math majors — 11× on a single cell."',
                     '"Tap STATS up top to watch your numbers grow. The house has an edge — that\'s real. But the prizes don\'t care about luck the way coins do. Spin smart, walk out with vitamins. Here — a Lucky Chip, 500G credit on your first bet. House rule."'
                 ],
@@ -46609,6 +46609,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.pokeBall)  parts.push('+' + r.pokeBall  + ' Poké Ball'  + (r.pokeBall  > 1 ? 's' : ''));
             if (r.greatBall) parts.push('+' + r.greatBall + ' Great Ball' + (r.greatBall > 1 ? 's' : ''));
             if (r.ultraBall) parts.push('+' + r.ultraBall + ' Ultra Ball' + (r.ultraBall > 1 ? 's' : ''));
+            if (r.masterBall) parts.push('+' + r.masterBall + ' Master Ball' + (r.masterBall > 1 ? 's' : ''));
             if (r.rareCandy) parts.push('+' + r.rareCandy + ' Rare Candy');
             const vit = [];
             for (const k of _IV_VITAMIN_KEYS) if (r[k]) vit.push('+' + r[k] + ' ' + _IV_VITAMIN_LABEL[k]);
@@ -46626,6 +46627,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.gold) parts.push('+' + r.gold.toLocaleString() + 'G');
             return parts.join(' · ');
         }
+        // Repaint whichever inventory surface is currently open so freshly-granted
+        // balls / vouchers / items show immediately (fixes "balls don't appear in
+        // the Mart until you re-enter the city"). No-ops during battle / on other
+        // screens. The Mart reads sm.balls live, so a plain grid repaint suffices.
+        function _storyRefreshInventoryScreens() {
+            try {
+                const shop = document.getElementById('screen-story-shop');
+                if (shop && !shop.classList.contains('hidden') && typeof _storyRenderShopGrid === 'function') {
+                    _storyRenderShopGrid(shop.getAttribute('data-shop-type') === 'dept' ? 'dept' : 'mart');
+                }
+            } catch (e) {}
+        }
         function _storyGrantBundle(r) {
             if (!r) return [];
             _storyEnsureBalls();
@@ -46640,7 +46653,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (r[k] && _storyVoucherGiftable(k)) sm.inventory[k] = (sm.inventory[k] | 0) + r[k];
             }
             const _rolled = r.voucherRolls ? _storyRollVouchers(r.voucherRolls) : [];
-            // Perm-boost vitamin drops (each = +1 to that stat, applied via city bag).
+            // Perm-boost vitamin drops (each = +3 IV to that stat, cap 31, applied via city bag).
             // Distinct from the Vitamin Pack voucher (EV preset waiver) — both
             // coexist in inventory under their own ids.
             if (r.hpUp)       sm.inventory.hpUp     = (sm.inventory.hpUp     | 0) + r.hpUp;
@@ -46650,6 +46663,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.zinc)       sm.inventory.zinc     = (sm.inventory.zinc     | 0) + r.zinc;
             if (r.carbos)     sm.inventory.carbos   = (sm.inventory.carbos   | 0) + r.carbos;
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
+            try { _storyRefreshInventoryScreens(); } catch (e) {}
             return _rolled;
         }
         function _storyApplyVictoryReward(eventName) {
@@ -46736,7 +46750,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (!pool.length) return;
-            const pickName = pool[Math.floor(Math.random() * pool.length)];
+            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const pickName = pool[Math.floor(_rng() * pool.length)];
             sm.roamingLegendary.pending = { slot, name: pickName };
             try {
                 window.showGameAlert && window.showGameAlert(
@@ -51270,6 +51285,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
+            _storyRenderShopGrid(type);
+            // Shop-door bell — fires only when transitioning from a different
+            // screen (not on the buy→re-render loop, which would stutter).
+            try {
+                const _shopScrEl = document.getElementById('screen-story-shop');
+                const wasHidden = !_shopScrEl || _shopScrEl.classList.contains('hidden');
+                showScreen('screen-story-shop');
+                if (wasHidden && window.StoryFx) window.StoryFx.playSfx('pbTrayBall', 0.35);
+            } catch (e) {
+                showScreen('screen-story-shop');
+            }
+        }
+        // Pure (re)render of the shop grid for the given type ('mart'|'dept') —
+        // no entry side effects (tutorial/greeter/bell). Safe to call to repaint
+        // live ball/item counts after a reward grant. enterShop() runs its
+        // first-visit logic, then delegates the actual drawing here.
+        function _storyRenderShopGrid(type) {
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
             const titleEl = document.getElementById('story-shop-title');
@@ -51361,16 +51393,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
             syncStoryShopBackground(type === 'dept' ? 'dept' : 'mart');
-            // Shop-door bell — fires only when transitioning from a different
-            // screen (not on the buy→re-render loop, which would stutter).
-            try {
-                const _shopScrEl = document.getElementById('screen-story-shop');
-                const wasHidden = !_shopScrEl || _shopScrEl.classList.contains('hidden');
-                showScreen('screen-story-shop');
-                if (wasHidden && window.StoryFx) window.StoryFx.playSfx('pbTrayBall', 0.35);
-            } catch (e) {
-                showScreen('screen-story-shop');
-            }
         }
 
         async function buyItem(itemId, price) {
@@ -51812,6 +51834,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Lucky Chip (casinoChip500) — one-time 500G bankroll credit, redeemed the
+        // first time the player commits a spin at any table. Granted at the Casino
+        // first-visit intro (firstCasino); this is its ONLY consumption site.
+        // Returns true if a chip was redeemed on this call.
+        function _casinoApplyChipCreditOnce() {
+            if (!sm || !sm.inventory || (sm.inventory.casinoChip500 | 0) <= 0) return false;
+            sm.inventory.casinoChip500 = (sm.inventory.casinoChip500 | 0) - 1;
+            sm.gold = (sm.gold | 0) + 500;
+            try { save(); } catch (e) {}
+            try { _refreshCasinoGoldPill('up'); } catch (e) {}
+            try { window.showGameAlert && window.showGameAlert('🎟️ Lucky Chip redeemed — +500G credit added to your bankroll!'); } catch (e) {}
+            return true;
+        }
+
         function _casinoStatsAdd(game, key, value) {
             if (!sm.casinoStats || typeof sm.casinoStats !== 'object') sm.casinoStats = {};
             if (!sm.casinoStats[game] || typeof sm.casinoStats[game] !== 'object') sm.casinoStats[game] = {};
@@ -51886,7 +51922,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ════════════════════════════════════════════════════════════════
         // PRIZE SYSTEM — the engagement hook.
         // Every spin that nets a positive return rolls for a chance to
-        // drop vitamins (+1 IV each) and/or vouchers (tutor freebies).
+        // drop vitamins (+3 IV each) and/or vouchers (tutor freebies).
         // Tier is set by the win multiplier (payout / bet):
         //   • Small  (1× <  mult ≤ 4×) — 20% chance → 1 vitamin
         //   • Big    (4× <  mult ≤ 75×) — 65% chance → vitamins + sometimes a voucher
@@ -52136,6 +52172,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function casinoFlipSpin() {
             if (_casinoUI.spinInFlight) return;
             if (!sm || !sm.active) return;
+            _casinoApplyChipCreditOnce();
             const inp = document.getElementById('story-casino-flip-bet');
             const betTry = _casinoTryBet(inp ? inp.value : 0);
             const resEl = document.getElementById('story-casino-flip-result');
@@ -52404,6 +52441,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function casinoSlotsSpin() {
             if (_casinoUI.spinInFlight) return;
             if (!sm || !sm.active) return;
+            _casinoApplyChipCreditOnce();
             _casinoSlotsEnsureInit();
             const resEl = document.getElementById('story-casino-slots-result');
             const spinBtn = document.getElementById('story-casino-slots-spin');
@@ -52687,6 +52725,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function casinoRoulSpin() {
             if (_casinoUI.spinInFlight) return;
             if (!sm || !sm.active) return;
+            _casinoApplyChipCreditOnce();
             const resEl = document.getElementById('story-casino-roul-result');
             const cells = _roulCellList();
             let totalStake = 0;
@@ -53989,7 +54028,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. The new nature sticks through PC, evolution, the works.' },
                 { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from gym leaders + Pokédex milestones. Hidden Abilities included, just like the dojo\'s gold path.' },
                 { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
-                { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 5,000G. The first one drops from Gym Leader 5; redeem at the next-city lab for your first awakening.' }
+                { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 5,000G. The first one drops from Gym Leader 5; redeem at the next-city lab for your first awakening.' },
+                { id:'linkDiscount50', name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Bill\'s Discount Card', desc:'Take to the Cable Link Station for 50% off one transaction — Reroll, Upgrade, or Rebuild, your pick. Earned from Bill on your first visit to the Link Station.' },
+                { id:'stoneToken',     name:'<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Stonewise Token', desc:'Redeem at Stones and Beyond for one free item — any evolution stone or trade item on the shelf. Earned from the Stonewise Granny.' },
+                { id:'casinoChip500',  name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Lucky Chip', desc:'A 500G casino credit — applied to your bankroll automatically on your first bet at the Poké Casino. Earned on your first Casino visit.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
