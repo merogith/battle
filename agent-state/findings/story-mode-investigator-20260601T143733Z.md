@@ -81,7 +81,7 @@ agents: [story-mode-investigator]
 fingerprint: 52588cec9516
 confidence: high
 domain: engine
-status: open
+status: fixed-claude/cagedgod-excision
 note: post-HoF / boss-arc (Crucible-adjacent) — out of strict normal-Story scope, but explicitly in this agent's Tier-2 mandate
 ---
 

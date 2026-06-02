@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 32544380f8c1
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God "Key" lead has zero cost — spec says it should demand strongest mon or steep gold
@@ -43,7 +43,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7de2a5226091
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Post-game lead "hunt" collapses to 3 buttons on one Crucible screen — no travel, no gating
@@ -79,7 +79,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a319172728a4
 confidence: high
-status: fixed-main
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Boss arc soft-locks if enabled gens contain no legendary — cage unlocks but can never be entered
@@ -117,7 +117,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: da289fe043c3
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Single Master Ball is a free consumable — spending it pre-cage leaves boss arc as a 1%-per-throw grind
@@ -309,7 +309,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 0fa929cda809
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Crucible "Pokémon Center" facility re-renders the Caged God section a second time (below the Underground sell list)
@@ -340,7 +340,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 90bad6000f2f
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Non-hub Caged God render path is effectively dead post-HoF (player can never be at City 2/5/8)
@@ -405,7 +405,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fc1331e5a296
 confidence: low
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Subject Zero stored to PC (party-full at cage) shows "Subject Zero" nickname but is never auto-fielded — easy to miss the capstone mon
@@ -563,7 +563,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 86b897ccf02f
 confidence: low
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Pre-boss-arc post-HoF saves may never receive the Master Ball / boss arc if parked at a city row on load

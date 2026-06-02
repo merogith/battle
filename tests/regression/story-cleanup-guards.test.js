@@ -12,6 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
@@ -67,4 +68,15 @@ test('Master Ball is 1 per run — villain track grants one idempotently (post-H
     const r2 = T.grantTrackEndReward(beat, { silent: true });
     assert.equal(r2, null, 'a repeated villain boss reward must not re-grant');
     assert.equal(sm.balls.master, 1, 'still exactly one Master Ball — no duplicate');
+});
+
+test('Caged God boss-arc code stays excised (v24) — no silent revival', () => {
+    // The post-HoF Caged God arc was removed; only save-migration cleanup + a few
+    // accurate "now-removed" comments may still name `sm.bossArc`. The arc *functions*
+    // must never reappear. See CLAUDE.md → "Excised vs retired (mid-2026 cleanup)".
+    const html = readFileSync(new URL('../../battle.html', import.meta.url), 'utf8');
+    for (const sym of ['_bossArcRenderSection', '_bossArcRollLegendary', 'bossCollectLead', '_bossArcCheckCageUnlock']) {
+        assert.ok(!html.includes(sym),
+            `${sym} reappeared — the Caged God boss arc was excised (v24); revival belongs in git history, not main.`);
+    }
 });

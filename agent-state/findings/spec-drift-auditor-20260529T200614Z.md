@@ -37,7 +37,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: e2a51b657ed3
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God lead spec (§9 "visit Cities 2/5/8") contradicts shipped Crucible-hub collection; §14b omits the arc
@@ -164,7 +164,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 17b27a222658
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Master Ball granted by BOTH villain-boss victory and post-HoF Caged God, vs spec "1 per run"

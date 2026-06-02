@@ -262,7 +262,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fde69214ddbf
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Unique Master Ball can be wasted on any non-boss wild (Crucible wild encounter), soft-locking the Caged God capture — VERIFIED still present post-merge

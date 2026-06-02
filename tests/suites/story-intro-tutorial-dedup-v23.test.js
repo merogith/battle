@@ -29,9 +29,8 @@ test('safari state picks firstSafariCatch', () => {
     assert.equal(T.catchIntroSceneId({ safariMode: true }), 'firstSafariCatch');
 });
 
-test('boss state and empty state pick no intro tutorial', () => {
+test('null state picks no intro tutorial', () => {
     clearScenes();
-    assert.equal(T.catchIntroSceneId({ bossMode: true }), null);
     assert.equal(T.catchIntroSceneId(null), null);
 });
 

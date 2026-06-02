@@ -19,7 +19,7 @@ const ANCHORS = [
   { section: 'Mystery Figure / Professor', symbols: ['enterProfessor', 'isPreLeagueLegendaryMysteryGate'] },
   { section: 'Rival', symbols: ['setRivalStanding', 'getRivalEncounterPhase', 'pickStoryRivalSpriteFile'] },
   { section: 'City hub', symbols: ['enterCity', 'renderCityActions', 'getCurrentCityDisplayName', 'shouldForceCityProfessor'] },
-  { section: 'Catch / PC / Safari / Boss', symbols: ['_pickStarterPartner', '_bossArcRollLegendary'] },
+  { section: 'Catch / PC / Safari', symbols: ['_pickStarterPartner'] },
   { section: 'Damage formula', symbols: ['parseMoveEffects', 'buildPokemon', 'ensureMoveData'] },
   { section: 'Tutorial scenes', symbols: ['STORY_TUTORIAL_SCENES', '_showStoryTutorialScene', 'playStoryTutorial'] },
   { section: 'Dialogue pools', symbols: ['TRAINER_QUOTES', 'TRAINER_QUOTES_BY_NAME', 'CITY_PROFESSOR_QUOTES', 'CITY_GUIDE_QUOTES', 'getTrainerQuoteForBattle'] },
