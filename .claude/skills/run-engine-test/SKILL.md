@@ -9,7 +9,7 @@ description: Standard invocations for the jsdom test harness. The harness loads 
 
 | Category | Run | Notes |
 |---|---|---|
-| Full suite | `npm test` | ~70s, 884 tests |
+| Full suite | `npm test` | ~70s; run for the live test count |
 | Property tests (954 moves) | `npm run test:property` | 9 invariants, ~20s |
 | Targeted suites | `npm run test:suites` | VGC damage formula |
 | Per-move tests | `npm run test:moves` | 867 tests (516 real, 351 todo) |
@@ -18,7 +18,7 @@ description: Standard invocations for the jsdom test harness. The harness loads 
 | Single test by name | `node --test --test-name-pattern="STAB" tests/property/stab-applied.test.js` | |
 | With verbose engine logs | `TEST_VERBOSE=1 node --test <file>` | |
 
-## Integration tests (new this session)
+## Integration tests (selected — see `tests/integration/` for the full set)
 
 | File | Covers |
 |---|---|
@@ -44,7 +44,7 @@ const harness = await loadEngine();
 // harness.nextFloat() — get next deterministic random
 ```
 
-The harness gates on `window.__testHarness = true` set in `beforeParse`. The hook lives at `battle.html:~48385`.
+The harness gates on `window.__testHarness = true` set in `beforeParse`. The `window.__engine` / `__testReady` export sits near end-of-file; resolve via `grep -n '__testHarness' battle.html` (it gates several sites, not one — don't trust a hardcoded line).
 
 ## Common pitfalls
 

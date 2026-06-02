@@ -21,7 +21,7 @@ When spawning each sub-agent, pass these scope constraints in the prompt explici
 
 ## Wave-staged fan-out
 
-Running 9 agents in true parallel would have each one re-reading `battle.html` (3.2 MB). The orchestrator stages them. Within a wave, members run concurrently. Between waves, sequential.
+Running 9 agents in true parallel would have each one re-reading `battle.html` (~4 MB). The orchestrator stages them. Within a wave, members run concurrently. Between waves, sequential.
 
 ### Wave 1 — Read-only auditors (parallel, no harness boot needed)
 

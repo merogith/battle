@@ -1,6 +1,7 @@
 # CLAUDE.md — Pokemon Battle Arena (scope & rules for AI sessions)
 
 > This file is loaded into every Claude session as project context. Read it before any work.
+> **Read alongside this:** `OBJECTIVE.md` (what we're building & what "good" looks like) — this file gives the *rules*, OBJECTIVE gives the *direction*.
 
 ## What this codebase is
 
@@ -66,6 +67,18 @@ is the source of truth; feature branches are short-lived and should be deleted a
 - **Helpers over duplicated logic**: the "vibecode" pattern of re-inlining a 3-line block 25 times is what we are trying to undo.
 - **Use seeded RNG (`storyRngNext`) everywhere user-visible**, never bare `Math.random()`. Deterministic replays are part of the product.
 - **Sloppy-mode hazard**: `battle.html` has no `'use strict'`. Bare reassignment to an undeclared identifier silently creates a window global — it does NOT update an already-declared `let`/`const` in scope. When loader code populates a module-level placeholder, always: (a) declare the `let`/`const` with `{}`/`[]` defaults near the consumer's enclosing scope, (b) mutate via `Object.assign(X, fetched)` or `X.push(...fetched)`, NEVER `X = fetched`, (c) optionally mirror to `window.X = X` at declaration for cross-script readers. The early-let block above `loadGameData()` is the canonical pattern.
+
+## Docs discipline (keep context trustworthy for the next agent)
+
+Stale docs mislead agents *worse* than missing docs. A doc that claims something the code doesn't do is an active trap. Rules:
+
+- **Code is the source of truth.** When a doc disagrees with `battle.html`, the code wins — fix the doc; never trust the doc over the code.
+- **Anchor on symbol names, not line numbers.** `battle.html` drifts every commit, so every `battle.html:NNNNN` reference rots. Cite the function/const name and resolve via `find-anchor`. (`docs/DOJO_TUTOR_RECOMMENDER_DESIGN.md` is the template — it never embeds a line number, so it never rotted.)
+- **Every design doc carries a status header** — `SHIPPED` / `PLAN` / `AUDIT` / `SUPERSEDED` — plus an as-built line (`SAVE_VER N · battle.html ~NNk · verified YYYY-MM`). A reader must be able to tell a record from a wish.
+- **When a plan ships, flip it.** Change the header to SHIPPED and move imperative voice to past tense, or move the doc to `docs/archive/`. A shipped feature documented in future tense reads as an open TODO.
+- **Don't hardcode volatile facts** — exact line counts, file sizes, total test counts, branch names, `SAVE_VER` literals. Round (`~62k`) or cite the command that derives them (`wc -l`, `npm test`).
+- **Definition of done** for any feature change includes: update its as-built doc, flip any plan's status, and re-check doc health.
+- Reference docs: `OBJECTIVE.md` (north-star) · `agent-state/DOC_HEALTH_AUDIT.md` (the standing doc-health report & issue register).
 
 ## Audit infrastructure
 

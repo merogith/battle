@@ -66,5 +66,5 @@ If any single agent fails (timeout, error, no output file), proceed with the res
 
 - All agents are read-only — no game-code edits this pass.
 - Story Mode is the priority focus area.
-- Branch: `claude/sharp-keller-eZEDN` (commits go here).
+- Commit to the active feature branch (never hardcode a branch name here — they're short-lived).
 - Don't open a PR unless the user asks.

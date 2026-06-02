@@ -19,10 +19,10 @@ Returns one or more `file:line` matches with kind and a code snippet. If the sym
 
 ```
 /anchor rollTrainerTeam
-→ battle.html:32290    function-decl    function rollTrainerTeam(trainer, partySize, ...) {
+→ battle.html:37609    function-decl    function rollTrainerTeam(trainer, partySize, ...) {
 
 /anchor STORY_EVENTS_RAW
-→ battle.html:27969    const-decl       const STORY_EVENTS_RAW = [
+→ battle.html:30620    const-decl       const STORY_EVENTS_RAW = [
 ```
 
 ## When the symbol isn't found

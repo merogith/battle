@@ -28,7 +28,7 @@ cat > "$FILE" <<EOF
 severity: P1
 category: bug
 anchor_symbol: rollTrainerTeam
-current_line_hint: ~32290
+current_line_hint: ~37609
 file: battle.html
 agents: [${AGENT}]
 fingerprint: ${FP}
@@ -66,7 +66,7 @@ See `agent-state/LEDGER_SCHEMA.md` for the full schema. Required: `severity`, `c
 
 `fingerprint.mjs` normalizes by collapsing whitespace and truncating to 4096 chars. **Use the actual offending code or text as evidence input** — quoting your *interpretation* of the bug will produce different fingerprints across agents and break dedup.
 
-✅ Good: `node scripts/debug/fingerprint.mjs bug rollTrainerTeam "$(sed -n '32290,32295p' battle.html)"`
+✅ Good: `node scripts/debug/fingerprint.mjs bug rollTrainerTeam "$(sed -n '37609,37614p' battle.html)"`
 ❌ Bad: `node scripts/debug/fingerprint.mjs bug rollTrainerTeam "rival might pick wrong type"`
 
 ## After emitting
