@@ -17891,6 +17891,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Critical-hit ratio (Focus Energy / Dire Hit / Lansat Berry) is rendered as a stat-stage
             // badge alongside Atk/Def/SpA/SpD/Spe/Acc/Eva in the stat-info-row, not as a volatile chip.
             if (v.aquaRing) chip('Aqua', 'Aqua Ring — heals a little HP each turn', 'buff');
+            if (v.bagRegen && v.bagRegen.turns > 0) chip(`Regen ${v.bagRegen.turns}`, 'HP-regen (Potion) — recovers HP at the end of each turn (' + v.bagRegen.turns + ' turn(s) left)', 'buff');
             if (v.ingrain) chip('Root', 'Ingrain — heals each turn but cannot switch out voluntarily', 'neutral');
             if (v.healBlock > 0) chip(`Hb ${v.healBlock}`, 'Heal Block — cannot heal (' + v.healBlock + ' turn(s))', 'debuff');
             if (v.throatChop > 0) chip(`Throat ${v.throatChop}`, 'Throat Chop — cannot use sound moves', 'debuff');
@@ -18829,6 +18830,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (v.torment) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Torment — cannot use the same move twice in a row">Torment</span>`);
             if (v.lockMove && v.lockTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Locked into ${v.lockMove} (${v.lockTurns} turn${v.lockTurns === 1 ? '' : 's'} left)">Lock: ${v.lockMove}</span>`);
             if (v.aquaRing) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Aqua Ring — recovers 1/16 HP each turn">Aqua Ring</span>`);
+            if (v.bagRegen && v.bagRegen.turns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="HP-regen (Potion) — recovers ${Math.round(Math.min(1, v.bagRegen.pct) * 100)}% HP each turn (${v.bagRegen.turns} turn${v.bagRegen.turns === 1 ? '' : 's'} left)">Regen ${v.bagRegen.turns}</span>`);
             if (v.ingrain) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Ingrained — heals each turn but can't switch out">Ingrain</span>`);
             if (v.magnetRise) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Magnet Rise — Ground-immune">Magnet Rise</span>`);
             if (v.destinyBond) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Destiny Bond — if KO'd, the attacker faints too">D-Bond</span>`);
@@ -26451,7 +26453,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // (Wish and Future Sight are deliberately absent — they are SIDE/slot effects stored
         // on state.pSide / state.fSide, not on the mon, so they affect whoever is active.)
         function makeVolatile() {
-            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
+            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, bagRegen: null, ingrain: false, stockpile: 0, lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
         }
 
         // Baton Pass hands the passable volatiles + stat stages to the incoming mon, then runs
@@ -26593,6 +26595,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.focusEnergy = false;
             mon.volatile.cursed = false;
             mon.volatile.aquaRing = false;
+            mon.volatile.bagRegen = null;
             mon.volatile.stockpile = 0;
             mon.volatile.grudge = false;
             mon.volatile.embargo = 0;
@@ -28822,6 +28825,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let actAqHeal = Math.min(mon.maxHp - mon.currentHp, aqHeal);
                 mon.currentHp += actAqHeal;
                 logMsg(`${mon.name} restored ${actAqHeal} HP from ${mon.volatile.aquaRing ? "Aqua Ring" : "Ingrain"}!`, 'heal');
+            }
+
+            // Bag-item HP-regen (repurposed Potion line). Static %-of-maxHP per turn for N turns;
+            // set in applyBagItem, cleared on switch (clearVolatileOnSwitch) — mirrors Aqua Ring so it
+            // can't be banked by switching out. A full-HP tick is wasted but still burns a turn.
+            if (mon.volatile.bagRegen && mon.volatile.bagRegen.turns > 0 && mon.currentHp > 0) {
+                const _br = mon.volatile.bagRegen;
+                if (mon.currentHp < mon.maxHp) {
+                    const _brHeal = Math.min(mon.maxHp - mon.currentHp, Math.max(1, Math.floor(mon.maxHp * Math.min(1, _br.pct))));
+                    mon.currentHp += _brHeal;
+                    logMsg(`${mon.name} recovered ${_brHeal} HP!`, 'heal');
+                }
+                _br.turns--;
+                if (_br.turns <= 0) mon.volatile.bagRegen = null;
             }
 
             // 2. Item effects (Leftovers, Black Sludge, Orbs, Sticky Barb)
@@ -38164,6 +38181,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     catchBallButton: (ballKey) => document.querySelector('#story-catch-body [data-ball-type="' + ballKey + '"]'),
                     // Department-store featured Mega/Ultra catalog (price-multiplier regression).
                     getStoryFeaturedItems: () => getStoryFeaturedItems(),
+                    getDeptFeaturedCatalogItems: () => _getDeptFeaturedCatalogItems(),
                 };
             } catch (e) {}
         }
@@ -51208,6 +51226,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _getDeptFeaturedCatalogItems() {
             let list = getStoryFeaturedItems();
+            // Ultra Ball — a gold path to premium catching, sold ONLY in the dept featured roll
+            // (one per city, like every featured item). The boss-reward Master Ball stays gift-only.
+            // Kept out of getStoryFeaturedItems() so it never leaks into the battle/city bag or the
+            // sell list — it routes to sm.balls.ultra (a ball), not sm.inventory. The 'ultra_' id
+            // prefix marks it featured for the per-city purchase lock in buyItem.
+            list = list.concat([{ id: 'ultra_ball', name: 'Ultra Ball', price: 1500, kind: 'ball', ballKey: 'ultra', desc: 'A high-performance Ball — 2× the catch rate of a Poké Ball.', battleBag: false }]);
             if (sm && sm.settings && sm.settings.noItemRun) {
                 list = list.filter(item => !isNoItemRunBattleBagExcluded(item));
             }
@@ -51394,8 +51418,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const allowed = [...normalDept, ...featuredOffers];
                 if (!allowed.some(i => i.id === itemId && i.price === price)) return;
             }
-            // Catalog lookup once — used for ball routing and dept lockout skip.
-            const _itemRow = [...POKEMART_ITEMS, ...DEPT_ITEMS].find(r => r.id === itemId) || null;
+            // Catalog lookup once — used for ball routing and dept lockout skip. Includes the dept
+            // featured catalog so featured entries resolve: routes the featured Ultra Ball
+            // (kind:'ball') to sm.balls.ultra, and gives Mega/Ultra items a clean confirm label.
+            // Mega/Ultra effect items carry no `kind`, so _isBall stays false for them.
+            const _itemRow = [...POKEMART_ITEMS, ...DEPT_ITEMS, ..._getDeptFeaturedCatalogItems()].find(r => r.id === itemId) || null;
             const _isBall = !!(_itemRow && _itemRow.kind === 'ball' && _itemRow.ballKey);
             // Featured Mega/Ultra items use prefixed IDs and live outside POKEMART_ITEMS/DEPT_ITEMS.
             const _isFeatured = typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'));
@@ -53959,9 +53986,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const effMul = tier === 'ultra' ? 2 : 1;
             const instantUse = tier === 'mega';
             let msg = '';
-            if (eff==='heal20'&&mon&&mon.currentHp>0)  { const h=Math.min(20,mon.maxHp-mon.currentHp); mon.currentHp+=h; msg=`Used ${item.name} on ${mon.name}! (+${h} HP)`; }
-            else if (eff==='heal60'&&mon&&mon.currentHp>0) { const h=Math.min(60,mon.maxHp-mon.currentHp); mon.currentHp+=h; msg=`Used ${item.name}! (+${h} HP)`; }
-            else if (eff==='heal120'&&mon&&mon.currentHp>0){ const h=Math.min(120,mon.maxHp-mon.currentHp); mon.currentHp+=h; msg=`Used ${item.name}! (+${h} HP)`; }
+            if ((eff==='regen16'||eff==='regen8'||eff==='regen4')&&mon&&mon.currentHp>0) {
+                // Repurposed Potion line — HP-regen over 3 turns instead of a dead flat heal
+                // (flat heals lose to a turn of damage; Max Potion / Full Restore own the burst niche).
+                // Static %-of-maxHP per turn; the tiers double (1/16 → 1/8 → 1/4). Ultra doubles the
+                // fraction (effMul); Mega applies it without ending the turn (instantUse). The per-turn
+                // tick lives in endOfTurnEffects and clears on switch (clearVolatileOnSwitch) — modeled on Aqua Ring.
+                const baseDen = eff==='regen4' ? 4 : (eff==='regen8' ? 8 : 16);
+                mon.volatile = mon.volatile || {};
+                mon.volatile.bagRegen = { pct: Math.min(1, (1/baseDen) * effMul), turns: 3 };
+                const pctTxt = Math.round(mon.volatile.bagRegen.pct * 100);
+                msg = `${mon.name} is cloaked in a soothing mist! (recovers ~${pctTxt}% HP each turn for 3 turns)`;
+            }
             else if (eff==='healFull'&&mon&&mon.currentHp>0){ const h=mon.maxHp-mon.currentHp; mon.currentHp=mon.maxHp; msg=`${mon.name} fully healed! (+${h} HP)`; }
             else if (eff==='fullRestore'&&mon&&mon.currentHp>0){ const h=mon.maxHp-mon.currentHp; mon.currentHp=mon.maxHp; mon.status=null; msg=`${mon.name} fully restored!`; }
             else if (eff==='cureStatus'&&mon){ mon.status=null; msg=`${mon.name}'s status cleared!`; }
