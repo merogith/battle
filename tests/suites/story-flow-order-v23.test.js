@@ -11,7 +11,11 @@
 //   B3  villain.rocket.ending fires (idx48) BEFORE villain.rocket.boss (idx49)
 //   B4  extra.cubone.miniRaid2 injects on idx36 = a Gym-6 APPROACH row
 //   B2  multi-scene dumps (idx19 = 3 scenes; idx48 = 4)
-//   B10 league dump (idx59 = 6 scenes)
+//   B10 league dump (idx59 = 6 scenes) — FIXED (this commit): event6/7/8 pace
+//       across E1/Champion/Rival via fireAtEvent sub-anchors; event9 + mfReveal
+//       + ending are firePostHoF and now fire from the post-Hall-of-Fame flow
+//       (continuePostGame + the Mystery-win path), so the finale no longer
+//       spoils at E1. B2/B3/B4 remain captured below (still pending).
 //
 // Run: node --test tests/suites/story-flow-order-v23.test.js
 
@@ -69,7 +73,13 @@ const EXPECTED_ROCKET_CUBONE = [
     '48|main.event4+villain.rocket.event6+villain.rocket.ending+extra.cubone.ending|main.battle2(battle)',
     '49||villain.rocket.boss(boss)',
     '55|main.event5|',
-    '59|main.event6+main.event7+main.event8+main.event9+main.mfReveal+main.ending|',
+    // B10 FIXED: the league road no longer drains every beat at E1. event6/7/8
+    // pace across E1 (idx59) / Champion (idx63) / Rival (idx64); event9 +
+    // mfReveal + ending are firePostHoF, so they no longer appear in the road
+    // dump at all — they fire from the post-HoF flow + the Mystery-win path.
+    '59|main.event6|',
+    '63|main.event7|',
+    '64|main.event8|',
 ];
 
 test('GOLDEN: 3-track dispatch order for rocket+cubone is unchanged', () => {
@@ -79,6 +89,42 @@ test('GOLDEN: 3-track dispatch order for rocket+cubone is unchanged', () => {
 
 test('the dispatch is deterministic (same trace on repeat)', () => {
     assert.deepEqual(traceFlow('rocket', 'cubone'), traceFlow('rocket', 'cubone'));
+});
+
+test('B10 FIXED: the league road never dumps and never leaks the finale', () => {
+    const got = traceFlow('rocket', 'cubone');
+    // No row fires more than one MAIN league event beat — event6/7/8 pace
+    // one-per-row instead of draining together at E1.
+    for (const line of got) {
+        const scenes = line.split('|')[1].split('+').filter(Boolean);
+        const mainLeague = scenes.filter(s => /^main\.(event[6-9]|mfReveal|ending)$/.test(s));
+        assert.ok(mainLeague.length <= 1, 'league beats must pace one-per-row, got: ' + line);
+    }
+    // The post-HoF beats (lead-in + reveal + ending) are NEVER road-dispatched —
+    // they belong to continuePostGame + the Mystery-win path. This is the core
+    // of the finale-spoiler fix: the twist can't appear before the player fights.
+    const flat = got.join('\n');
+    for (const k of ['main.event9', 'main.mfReveal', 'main.ending']) {
+        assert.ok(!flat.includes(k), k + ' must fire post-HoF, not from the road dispatcher');
+    }
+    // event6/7/8 still all fire, and in narrative order.
+    const order = ['main.event6', 'main.event7', 'main.event8'];
+    const idxs = order.map(k => got.findIndex(l => l.includes(k)));
+    assert.ok(idxs.every(i => i >= 0), 'event6/7/8 must all still fire');
+    assert.deepEqual(idxs.slice().sort((a, b) => a - b), idxs, 'event6/7/8 fire in order');
+});
+
+test('league beat data carries the pacing sub-anchors', () => {
+    const B = ST.MAIN_STORY_BEATS;
+    assert.equal(B.event6.fireAtEvent, 'E1');
+    assert.equal(B.event7.fireAtEvent, 'Champion');
+    assert.equal(B.event8.fireAtEvent, 'Rival');
+    assert.equal(B.event9.firePostHoF, true);
+    assert.equal(B.mfReveal.firePostHoF, true);
+    assert.equal(B.ending.firePostHoF, true);
+    // The pre-HoF beats must NOT also be flagged post-HoF (and vice-versa).
+    assert.ok(!B.event6.firePostHoF && !B.event7.firePostHoF && !B.event8.firePostHoF);
+    assert.ok(!B.event9.fireAtEvent && !B.mfReveal.fireAtEvent && !B.ending.fireAtEvent);
 });
 
 test('BUG B3 (documented): villain ending fires before villain boss', () => {

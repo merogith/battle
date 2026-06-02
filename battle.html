@@ -30764,21 +30764,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   "event6": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "E1",
                             "sceneKey": "main.event6"
                   },
                   "event7": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "Champion",
                             "sceneKey": "main.event7"
                   },
                   "event8": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "Rival",
                             "sceneKey": "main.event8"
                   },
                   "event9": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.event9"
                   },
                   "mfBattle": {
@@ -30789,11 +30793,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   "mfReveal": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.mfReveal"
                   },
                   "ending": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.ending"
                   }
         };
@@ -38038,6 +38044,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Post-battle scenes (PR-D).
                     get STORY_POST_SCENES() { return STORY_POST_SCENES; },
                     playPostBattleScene: (k, cb) => _playPostBattleScene(k, cb),
+                    // Post-HoF Mystery Figure reveal (finale-spoiler fix).
+                    fireMysteryRevealThenEnding: (cb) => _fireMysteryRevealThenEnding(cb),
                     // Mystery Figure single-voice (PR-6).
                     get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
                     pickMysteryIdentity: () => _storyPickMysteryIdentity(),
@@ -42149,10 +42157,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!road || !sm || !sm.tracks) return [];
             if (!sm.storyEventsFired) sm.storyEventsFired = {};
             const out = [];
-            const eligible = (slot) =>
-                slot && slot.kind === 'event'
-                    && slot.roadAnchor === road
-                    && !sm.storyEventsFired[slot.sceneKey];
+            // Current row name — used to honor league beats' sub-anchors so the
+            // single coarse 'league' road (E1→Mystery Figure, 8 rows) doesn't
+            // drain every league beat at E1.
+            const curRow = STORY_EVENTS_RAW[sm.eventIndex | 0];
+            const curName = curRow ? String(curRow[2] || '') : '';
+            const eligible = (slot) => {
+                if (!slot || slot.kind !== 'event') return false;
+                if (slot.roadAnchor !== road) return false;
+                if (sm.storyEventsFired[slot.sceneKey]) return false;
+                // League sub-positioning. firePostHoF beats (event9 lead-in,
+                // mfReveal, ending) are delivered by the post-Hall-of-Fame
+                // climax flow — never road-dispatched. fireAtEvent beats fire
+                // only on their named league row, in narrative order.
+                if (road === 'league') {
+                    if (slot.firePostHoF) return false;
+                    if (slot.fireAtEvent && slot.fireAtEvent !== curName) return false;
+                }
+                return true;
+            };
             for (const slot of Object.values(MAIN_STORY_BEATS)) if (eligible(slot)) out.push(slot);
             const v = sm.tracks.villain && VILLAIN_STORY_BEATS[sm.tracks.villain];
             if (v) for (const slot of Object.values(v)) if (eligible(slot)) out.push(slot);
@@ -42238,6 +42261,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 console.warn('[Story] beat overlay failed for', sceneKey, e);
                 try { onDone && onDone(); } catch (e2) {}
             }
+        }
+        // Fires the one-time Mystery Figure reveal (the cap comes off) then the
+        // ending, in order, then calls onDone. Deduped via storyEventsFired so
+        // a lost post-HoF climax that's later avenged from the Crucible's
+        // Mystery button still delivers the reveal — exactly once. If the
+        // reveal already played, this is a no-op that calls onDone immediately.
+        function _fireMysteryRevealThenEnding(onDone) {
+            if (!sm) { try { onDone && onDone(); } catch (e) {} return; }
+            if (!sm.storyEventsFired) sm.storyEventsFired = {};
+            if (sm.storyEventsFired['main.mfReveal']) { try { onDone && onDone(); } catch (e) {} return; }
+            _playStoryBeatScene('main.mfReveal', () => {
+                sm.storyEventsFired['main.mfReveal'] = true;
+                try { save(); } catch (e) {}
+                _playStoryBeatScene('main.ending', () => {
+                    sm.storyEventsFired['main.ending'] = true;
+                    try { save(); } catch (e) {}
+                    try { onDone && onDone(); } catch (e) {}
+                });
+            });
         }
         function _playStoryBeatQueue(queue, i, onDone) {
             if (i >= queue.length) { try { onDone && onDone(); } catch (e) {} return; }
@@ -49269,12 +49311,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (won) { try { _storyAchievementUnlock('r_mystery'); } catch (e) {} }
                 sm.postHofMysteryClimaxDone = true;
                 try { save(); } catch (e) {}
-                try {
-                    window.showGameAlert && window.showGameAlert(won
-                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.\n\n+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.'
-                        : 'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
-                } catch (e) {}
-                continuePostGame();
+                if (won) {
+                    // The mask only comes off on a win: play the reveal + ending
+                    // beats (moved here from the league road, where they used to
+                    // spoil at E1), then the reward toast, then open the post-game.
+                    _fireMysteryRevealThenEnding(function () {
+                        try {
+                            window.showGameAlert && window.showGameAlert(
+                                '+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.');
+                        } catch (e) {}
+                        continuePostGame();
+                    });
+                } else {
+                    try {
+                        window.showGameAlert && window.showGameAlert(
+                            'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
+                    } catch (e) {}
+                    continuePostGame();
+                }
+                return;
+            }
+            if (source === 'mystery') {
+                // Crucible Mystery-button rematch. If the post-HoF climax was
+                // lost, the mask still hasn't come off — deliver the one-time
+                // reveal + ending on this win (deduped via storyEventsFired, so
+                // a win after the reveal already played just shows a plain
+                // victory toast and returns to the hub).
+                if (won) {
+                    _fireMysteryRevealThenEnding(function () {
+                        try { window.showGameAlert && window.showGameAlert('Victory!'); } catch (e) {}
+                        enterCrucible();
+                    });
+                } else {
+                    try { window.showGameAlert && window.showGameAlert('The mask stays on. Try again.'); } catch (e) {}
+                    enterCrucible();
+                }
                 return;
             }
             if (source === 'league') {
@@ -54291,10 +54362,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Climax flag is flipped on battle end (in _handleCrucibleBattleEnd's
                     // 'postHofMystery' branch) so a tab-close before victory still resumes
                     // via processNextEvent's recovery branch and finishes cleanly.
-                    sm.eventIndex = mysteryIdx;
-                    sm.crucibleBattleSource = 'postHofMystery';
-                    save();
-                    processNextEvent();
+                    const _routeToMysteryClimax = function () {
+                        sm.eventIndex = mysteryIdx;
+                        sm.crucibleBattleSource = 'postHofMystery';
+                        save();
+                        processNextEvent();
+                    };
+                    // "Hall of Fame closes" lead-in (main.event9) plays once here —
+                    // post-HoF, immediately before the masked challenger — instead of
+                    // being drained early on the league road. Then the climax fight.
+                    if (!sm.storyEventsFired) sm.storyEventsFired = {};
+                    if (!sm.storyEventsFired['main.event9']) {
+                        _playStoryBeatScene('main.event9', function () {
+                            sm.storyEventsFired['main.event9'] = true;
+                            try { save(); } catch (e) {}
+                            _routeToMysteryClimax();
+                        });
+                    } else {
+                        _routeToMysteryClimax();
+                    }
                     return;
                 }
                 // Row 67 is gone for some reason — flag done and fall through so the

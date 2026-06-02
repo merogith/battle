@@ -41,21 +41,25 @@
                   "event6": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "E1",
                             "sceneKey": "main.event6"
                   },
                   "event7": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "Champion",
                             "sceneKey": "main.event7"
                   },
                   "event8": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "Rival",
                             "sceneKey": "main.event8"
                   },
                   "event9": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.event9"
                   },
                   "mfBattle": {
@@ -66,11 +70,13 @@
                   "mfReveal": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.mfReveal"
                   },
                   "ending": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.ending"
                   }
         };

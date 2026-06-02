@@ -68,6 +68,27 @@ function mainKind(slot) {
     if (slot === 'mfBattle')               return 'mysteryBoss';
     return 'event';
 }
+
+// League beat pacing. The 'league' road spans eight rows (E1→E2→E3→E4→
+// Champion→Rival→Hall of Fame→Mystery Figure), but the road dispatcher only
+// knows the coarse 'league' anchor — so without a sub-position every league
+// event beat drains at the FIRST league row (E1), spoiling the Mystery
+// Figure reveal + ending before the player has fought a single Elite Four
+// member. These sub-anchors fix that:
+//   • fireAtEvent  — the dispatcher fires this beat only on the named league
+//                    row (matched by STORY_EVENTS_RAW name within the league).
+//   • firePostHoF  — the beat is NOT road-dispatched at all; it fires from the
+//                    post-Hall-of-Fame climax flow (event9 as the pre-Mystery
+//                    lead-in; mfReveal + ending only on the Mystery win — "the
+//                    mask doesn't come off until you win").
+const LEAGUE_BEAT_POSITION = {
+    event6:   { fireAtEvent: 'E1' },        // wall-of-portraits, pre-E1
+    event7:   { fireAtEvent: 'Champion' },  // after E4, pre-Champion
+    event8:   { fireAtEvent: 'Rival' },     // after Champion, pre-Rival final
+    event9:   { firePostHoF: true },        // "Hall of Fame closes" — post-HoF lead-in
+    mfReveal: { firePostHoF: true },        // the cap comes off — only on a win
+    ending:   { firePostHoF: true },        // the finale
+};
 function villainKind(slot) {
     if (slot && slot.startsWith('battle')) return 'battle';
     if (slot === 'miniBoss')               return 'miniBoss';
@@ -90,7 +111,12 @@ for (const row of rows) {
     const mainSlot = mainSlotKey(mainLabel);
     if (mainSlot) {
         const sceneKey = 'main.' + mainSlot;
-        mainBeats[mainSlot] = { roadAnchor: roadAnchor(mainRoad), kind: mainKind(mainSlot), sceneKey };
+        const beat = { roadAnchor: roadAnchor(mainRoad), kind: mainKind(mainSlot) };
+        if (beat.roadAnchor === 'league' && LEAGUE_BEAT_POSITION[mainSlot]) {
+            Object.assign(beat, LEAGUE_BEAT_POSITION[mainSlot]);
+        }
+        beat.sceneKey = sceneKey;
+        mainBeats[mainSlot] = beat;
         scenes[sceneKey] = { title: mainLabel.trim(), body: (mainProse || '').trim() };
     }
 
