@@ -54089,8 +54089,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (eff==='xAcc'&&mon){ mon.stages.acc=Math.min(6,(mon.stages.acc||0)+(2*effMul)); msg=`${mon.name}'s Accuracy rose sharply!`; }
             else if (eff==='direHit'&&mon){ mon.volatile=mon.volatile||{}; const fe = (typeof mon.volatile.focusEnergy === 'number') ? mon.volatile.focusEnergy : (mon.volatile.focusEnergy ? 2 : 0); mon.volatile.focusEnergy = Math.min(6, fe + (2 * effMul)); msg=`${mon.name} is focused!`; }
             else if (eff==='elixirFull'&&mon){ mon.moves.forEach(mv=>mv.pp=mv.maxPp||mv.pp); msg=`${mon.name}'s PP fully restored!`; }
-            else if (eff==='elixirAll'&&mon){ mon.moves.forEach(mv=>{ const cap = mv.maxPp||mv.pp; mv.pp = Math.min(cap, (mv.pp||0) + 10); }); msg=`${mon.name}'s PP restored (+10 each)!`; }
-            else if (eff==='etherSingle'&&mon){ const usable = mon.moves.filter(mv => (mv.pp||0) < (mv.maxPp||mv.pp)); if (!usable.length) { msg='No move needs PP!'; } else { const tgt = usable[0]; const cap = tgt.maxPp||tgt.pp; tgt.pp = Math.min(cap, (tgt.pp||0) + 10); msg=`${mon.name}'s ${tgt.name} regained 10 PP!`; } }
+            // Ether (`etherSingle`) / Elixir (`elixirAll`) retired with the items — Phase 1 cut them
+            // from the catalog, so these branches were unreachable (the bag only surfaces catalog
+            // items). Max Elixir (`elixirFull`) is the lone PP item kept.
             else if (eff==='guardSpec'&&mon){ state.pSide.mist=Math.max(state.pSide.mist||0,5); msg='Guard Spec. raised a barrier for your team! Stat drops blocked for 5 turns.'; }
             else if (eff==='weatherSun') { state.weather='Sun'; state.weatherTurns=5; if(typeof logMsg==='function') logMsg('The sun turned harsh!','info'); msg='Sun Orb: Harsh Sunlight for 5 turns!'; }
             else if (eff==='weatherRain') { state.weather='Rain'; state.weatherTurns=5; if(typeof logMsg==='function') logMsg('It started to rain!','info'); msg='Rain Orb: Rain for 5 turns!'; }
