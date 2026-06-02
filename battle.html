@@ -2937,9 +2937,22 @@
         .story-team-slot { display:flex; align-items:center; gap:6px; padding:4px 6px; border:1px solid #2a2a2a; border-radius:4px; background:var(--surface); font-size:11px; }
         .story-team-slot img { width:40px; height:40px; image-rendering:pixelated; border:none; background:transparent; }
         .story-team-slot .draft-card-info-btn { flex-shrink: 0; }
-        /* Party panel sort buttons */
-        .party-sort-btn { width:22px; height:19px; font-size:9px; padding:0; line-height:1; border-radius:2px; }
-        .party-sort-btn:disabled { opacity:0.15; }
+        /* Party panel sort buttons + drag-to-reorder + set-as-lead */
+        .party-sort-col { display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-items:center; justify-content:center; }
+        .party-sort-btn { width:34px; min-height:30px; font-size:11px; padding:0; line-height:1; border-radius:3px; }
+        .party-sort-btn:disabled { opacity:0.2; }
+        .party-lead-btn { width:34px; min-height:30px; font-size:13px; padding:0; line-height:1; border-radius:3px; color:var(--accent); border:1px solid #6a5a2a; background:rgba(255,213,79,0.08); cursor:pointer; font-family:inherit; }
+        .party-lead-btn:disabled { opacity:0.25; cursor:default; }
+        .party-drag-handle { flex-shrink:0; display:flex; align-items:center; justify-content:center; width:24px; align-self:stretch; color:#667; font-size:16px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; border-radius:3px; }
+        .party-drag-handle:hover { color:var(--accent); background:rgba(255,255,255,0.04); }
+        .party-row.party-dragging { opacity:0.5; }
+        .party-row.party-drop-target { outline:2px dashed var(--accent); outline-offset:-2px; }
+        .party-lead-flag { display:inline-block; font-size:8.5px; font-weight:bold; color:#1a1800; background:var(--accent); padding:1px 5px; border-radius:2px; letter-spacing:0.06em; vertical-align:1px; margin-right:2px; }
+        .party-slot-num { display:inline-block; font-size:9px; font-weight:bold; color:#8a92a6; margin-right:2px; vertical-align:1px; }
+        @media (max-width: 768px) and (orientation: portrait) {
+            .party-sort-btn, .party-lead-btn { min-height:40px; width:40px; }
+            .party-drag-handle { width:34px; }
+        }
 
         /* ── PC roster grid (Pokémon Center → Storage tab) ───────────────────
            Responsive card grid + sort/filter/search toolbar. Styled to match
@@ -2998,6 +3011,19 @@
         .pc-card-btn--withdraw { color:#ce93d8; border:1px solid #7b1fa2; background:rgba(206,147,216,0.08); }
         .pc-card-btn--release { color:#bbb; border:1px solid #666; background:transparent; }
         .pc-card-btn:disabled { opacity:0.4; cursor:not-allowed; }
+        /* Underground (Sell) variant of the shared card + its header bits. */
+        .pc-card--sell { background:linear-gradient(180deg, rgba(40,16,16,0.6) 0%, rgba(20,8,8,0.6) 100%); border-color:#5a1818; }
+        .pc-card--sell.is-shiny { border-color:#a47800; }
+        .pc-card-srcrow { display:flex; justify-content:center; }
+        .pc-card-src { font-size:8.5px; font-weight:bold; padding:1px 6px; border-radius:3px; white-space:nowrap; }
+        .pc-card-src--party { background:rgba(76,175,80,0.22); color:#a5d6a7; border:1px solid #4caf50; }
+        .pc-card-src--pc { background:rgba(79,195,247,0.16); color:#81d4fa; border:1px solid #4fc3f7; }
+        .pc-card-btn--sell { color:#ff8a80; border:1px solid #ff5252; background:rgba(255,82,82,0.08); font-weight:bold; }
+        .pc-underground-note { padding:10px; margin-bottom:12px; font-size:11px; line-height:1.5; color:#bcaaa4; border:1px solid #5a1818; border-radius:4px; background:linear-gradient(180deg, rgba(40,12,12,0.7) 0%, rgba(20,4,4,0.7) 100%); }
+        .pc-underground-note strong { color:#ff5252; }
+        .pc-price-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; font-size:10px; }
+        .pc-price-chip { padding:3px 8px; background:rgba(20,28,40,0.6); border:1px solid #2c3a52; color:#aaa; border-radius:4px; }
+        .pc-price-chip strong { color:#ffd700; }
         @media (max-width: 768px) and (orientation: portrait) {
             .pc-card-btn { min-height:40px; }
             .pc-tool-select, .pc-tool-search, .pc-tool-toggle { min-height:40px; }
@@ -7680,12 +7706,19 @@
             flex-wrap: nowrap !important;
             gap: 6px;
         }
-        #modal-story-party .story-team-slot { width: 100%; box-sizing: border-box; }
+        #modal-story-party .story-team-slot { width: 100%; box-sizing: border-box; align-items: center; }
         #modal-story-party .story-party-card-hit {
             cursor: pointer;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
+        /* Keep the body (and its 2-col move grid) from overflowing under the drag
+           handle + reorder column on narrow phones — let everything shrink to fit. */
+        #modal-story-party .draft-card-sprite { min-width: 48px; }
+        #modal-story-party .draft-card-sprite .mini-sprite { width: 48px; height: 48px; }
+        #modal-story-party .draft-card-header > span { min-width: 0; }
+        #modal-story-party .draft-card-moves { min-width: 0; }
+        #modal-story-party .draft-card-moves > div { min-width: 0; overflow-wrap: anywhere; }
         #modal-story-party .party-sort-col {
             display: flex !important;
             flex-direction: column;
@@ -9480,7 +9513,7 @@
     <div id="modal-story-party" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline story-party-modal-content">
             <h3 class="story-party-modal-title"><img class="story-screen-head-ico" src="icons/story/story_party.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span>Party <span id="story-party-count" style="color:#9aa0aa;font-size:10px;letter-spacing:0;font-weight:normal;"></span></span></h3>
-            <p class="story-party-modal-hint">Tap a Pokémon for the full summary. Use Move Up/Move Down to change lead order.</p>
+            <p class="story-party-modal-hint">Tap a Pokémon for its full summary. Drag the ↕ handle to reorder, or use ⤒ to send one to the front (lead).</p>
             <div id="story-party-modal-scroll" class="story-party-modal-scroll">
                 <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
             </div>
@@ -45678,6 +45711,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     openSummary(idx);
                 });
             }
+            _installPartyDrag(panel);
             const countEl = document.getElementById('story-party-count');
             // Use the badge-curve cap (matches _storyMaxPartySize) so the
             // chip shows "1/2" at 0 badges, "5/6" at 4 badges — not always
@@ -45690,22 +45724,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
                 return;
             }
+            // Lead slot = battle order index 0. Drag the ↕ handle (mouse or touch) to
+            // reorder; "Lead" jumps a mon to the front; ▲/▼ are the keyboard fallback.
+            const _leadFlag = (i) => i === 0
+                ? '<span class="party-lead-flag" title="Battles start with this Pokémon">LEAD</span>'
+                : `<span class="party-slot-num">#${i + 1}</span>`;
+            const _reorderCol = (i, n) => `<div class="party-sort-col" onclick="event.stopPropagation()">
+                <button type="button" class="party-lead-btn" title="Send to the front (make lead)" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation();window.StoryMode.setPartyLead(${i})" aria-label="Make lead">&#10514;</button>
+                <button type="button" class="party-sort-btn" title="Move up in party" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)" aria-label="Move up">&#9650;</button>
+                <button type="button" class="party-sort-btn" title="Move down in party" ${i === n - 1 ? 'disabled' : ''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},1)" aria-label="Move down">&#9660;</button>
+            </div>`;
+            const _handle = '<div class="party-drag-handle" title="Drag to reorder" aria-hidden="true">&#8597;</div>';
             panel.innerHTML = sm.team.map((t,i) => {
                 const n = sm.team.length;
                 if (t && t.isEgg) {
-                    return `<div class="story-team-slot draft-card" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;border:1px dashed #ffd54f;">
+                    return `<div class="story-team-slot draft-card party-row" data-party-idx="${i}" style="align-items:stretch;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;border:1px dashed #ffd54f;">
+                        ${_handle}
                         <div class="story-party-card-hit" style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="It's an egg" aria-label="Mystery Egg">
                             <div class="draft-card-sprite">${_eggIconHTML(40)}</div>
                             <div class="draft-card-body" style="min-width:0;flex:1;">
-                                <div class="draft-card-header"><span>🥚 Mystery Egg</span></div>
+                                <div class="draft-card-header"><span>${_leadFlag(i)} 🥚 Mystery Egg</span></div>
                                 <div class="draft-card-details" style="color:#ffd54f;">Something stirs inside…</div>
                                 <div class="draft-card-moves" style="color:#888;">Hatches a couple of towns on</div>
                             </div>
                         </div>
-                        <div class="party-sort-col" style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;" onclick="event.stopPropagation()">
-                            <button type="button" class="party-sort-btn" title="Move up in party" ${i===0?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)">▲</button>
-                            <button type="button" class="party-sort-btn" title="Move down in party" ${i===n-1?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},1)">▼</button>
-                        </div>
+                        ${_reorderCol(i, n)}
                     </div>`;
                 }
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
@@ -45715,7 +45758,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 while (moveNames.length < 4) moveNames.push('—');
                 const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
                 const movesHtml = moveNames.map(mn => `<div>${mn}</div>`).join('');
-                return `<div class="story-team-slot draft-card tier-${g}" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;">
+                return `<div class="story-team-slot draft-card party-row tier-${g}" data-party-idx="${i}" style="align-items:stretch;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;">
+                    ${_handle}
                     <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary" aria-label="View ${_esc(String(t.nickname || t.name))} summary">
                         <div class="draft-card-sprite">
                             <img src="${getSprite(spriteDisplayName(t), !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
@@ -45723,16 +45767,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
-                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Your starter — keepsake marker only, no restrictions." style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:9px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
+                                <span>${_leadFlag(i)} ${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Your starter — keepsake marker only, no restrictions." style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:9px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
                             </div>
                             <div class="draft-card-details">${details}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
                         </div>
                     </div>
-                    <div class="party-sort-col" style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;" onclick="event.stopPropagation()">
-                        <button type="button" class="party-sort-btn" title="Move up in party" ${i===0?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)">▲</button>
-                        <button type="button" class="party-sort-btn" title="Move down in party" ${i===n-1?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},1)">▼</button>
-                    </div>
+                    ${_reorderCol(i, n)}
                 </div>`;
             }).join('');
         }
@@ -45758,6 +45799,82 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             [sm.team[j], sm.team[idx]] = [sm.team[idx], sm.team[j]];
             save();
             renderTeamPanel();
+        }
+
+        // Pure: returns a NEW array with the item at `from` moved to `to`, or null
+        // if the indices are out of range / a no-op. Used by drag + Set-as-lead.
+        function partyReorder(list, from, to) {
+            const arr = Array.isArray(list) ? list.slice() : [];
+            if (from < 0 || from >= arr.length || to < 0 || to >= arr.length || from === to) return null;
+            const [moved] = arr.splice(from, 1);
+            arr.splice(to, 0, moved);
+            return arr;
+        }
+        // Apply a move on sm.team in place (preserve the array reference), persist, repaint.
+        function _reorderTeam(from, to) {
+            const next = partyReorder(sm.team, from, to);
+            if (!next) return;
+            sm.team.length = 0;
+            for (const m of next) sm.team.push(m);
+            save();
+            renderTeamPanel();
+            try { window.StoryFx && window.StoryFx.playSfx('pbRel', 0.45); } catch (e) {}
+        }
+        // One-tap "make this the lead" — moves a slot to the front of the party.
+        function setPartyLead(idx) {
+            _reorderTeam(idx, 0);
+        }
+        // Pointer-drag reorder for the party list (works with mouse AND touch via
+        // Pointer Events). Bound once on the panel; reads live cards at drag time so
+        // it survives the innerHTML repaint after each drop.
+        function _installPartyDrag(panel) {
+            if (!panel || panel._partyDragBound) return;
+            panel._partyDragBound = true;
+            let fromIdx = -1;
+            const cards = () => Array.from(panel.querySelectorAll('.party-row[data-party-idx]'));
+            const idxUnder = (clientY) => {
+                for (const c of cards()) {
+                    const r = c.getBoundingClientRect();
+                    if (clientY >= r.top && clientY <= r.bottom) return parseInt(c.getAttribute('data-party-idx'), 10);
+                }
+                return -1;
+            };
+            const clearMarks = () => cards().forEach(c => c.classList.remove('party-dragging', 'party-drop-target'));
+            // Move/up are bound on document (capture) for the duration of a drag, so the
+            // gesture keeps tracking even if the pointer leaves the handle or the list
+            // repaints — more robust than setPointerCapture across touch + mouse.
+            const onMove = (ev) => {
+                if (fromIdx < 0) return;
+                if (ev.cancelable) ev.preventDefault();
+                const over = idxUnder(ev.clientY);
+                cards().forEach(c => {
+                    const ci = parseInt(c.getAttribute('data-party-idx'), 10);
+                    c.classList.toggle('party-drop-target', ci === over && ci !== fromIdx);
+                });
+            };
+            const onUp = (ev) => {
+                document.removeEventListener('pointermove', onMove, true);
+                document.removeEventListener('pointerup', onUp, true);
+                document.removeEventListener('pointercancel', onUp, true);
+                const from = fromIdx;
+                fromIdx = -1;
+                if (from < 0) { clearMarks(); return; }
+                const over = idxUnder(ev.clientY);
+                clearMarks();
+                if (over >= 0 && over !== from) _reorderTeam(from, over);
+            };
+            panel.addEventListener('pointerdown', (ev) => {
+                const handle = ev.target.closest('.party-drag-handle');
+                if (!handle) return;
+                const card = handle.closest('.party-row[data-party-idx]');
+                if (!card) return;
+                ev.preventDefault();
+                fromIdx = parseInt(card.getAttribute('data-party-idx'), 10);
+                card.classList.add('party-dragging');
+                document.addEventListener('pointermove', onMove, true);
+                document.addEventListener('pointerup', onUp, true);
+                document.addEventListener('pointercancel', onUp, true);
+            });
         }
 
         function openSummary(i) {
@@ -48744,19 +48861,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const speciesSub = slot.nickname ? `<div class="pc-card-species">${_esc(slot.name)}</div>` : '';
             const marks = (slot.starter ? '<span class="pc-card-mark pc-card-mark--star" title="Your starter">&#9733;</span>' : '')
                         + (slot.unsellable && !slot.starter ? '<span class="pc-card-mark pc-card-mark--bound" title="Bonded to you">&#9939;</span>' : '');
-            let actions;
+            let actions, srcRow = '', rowAttr = where;
             if (where === 'party') {
                 const can = !ctx.partyLastOne && !ctx.boxFull && !!id;
                 const reason = ctx.partyLastOne ? 'Party needs at least one Pokémon' : ctx.boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '';
                 actions = `<button type="button" class="pc-card-btn pc-card-btn--deposit" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Deposit</button>`;
+            } else if (where === 'sell') {
+                // The Underground lists both party and PC mons, so each card flags its
+                // source; data-pc-row carries the real source so tap→summary resolves it.
+                rowAttr = ctx.source === 'team' ? 'team' : 'pc';
+                srcRow = ctx.source === 'team'
+                    ? '<div class="pc-card-srcrow"><span class="pc-card-src pc-card-src--party">&#128101; Party</span></div>'
+                    : '<div class="pc-card-srcrow"><span class="pc-card-src pc-card-src--pc">&#128230; PC Box</span></div>';
+                actions = `<button type="button" class="pc-card-btn pc-card-btn--sell" onclick="event.stopPropagation();window.StoryMode.pcSell('${idEsc}')" ${ctx.canSell ? '' : 'disabled'} title="${_esc(ctx.reason || '')}">Sell +${(ctx.price | 0).toLocaleString()}G</button>`;
             } else {
                 const can = !ctx.partyFull && !!id;
                 const reason = ctx.partyFull ? `Party full (${ctx.partyCap}/${ctx.partyCap})` : !id ? 'Missing id (legacy save)' : '';
                 actions = `<button type="button" class="pc-card-btn pc-card-btn--withdraw" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Withdraw</button>`
                         + `<button type="button" class="pc-card-btn pc-card-btn--release" onclick="event.stopPropagation();window.StoryMode.pcRelease('${idEsc}')" title="Release ${_esc(slot.name)}">Release</button>`;
             }
-            return `<div class="pc-card tier-${g}${sh ? ' is-shiny' : ''}" data-pc-row="${where}" data-pc-id="${idEsc}">
+            return `<div class="pc-card tier-${g}${sh ? ' is-shiny' : ''}${where === 'sell' ? ' pc-card--sell' : ''}" data-pc-row="${rowAttr}" data-pc-id="${idEsc}">
                 <div class="pc-card-hit" role="button" tabindex="0" data-pc-open="1" aria-label="View ${_esc(slot.nickname || slot.name)} summary" title="View full summary">
+                    ${srcRow}
                     <div class="pc-card-sprite-wrap">
                         ${spr ? `<img src="${spr}" alt="" class="pc-card-sprite" data-shiny="${sh ? 'true' : 'false'}" style="${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
                         <span class="pc-card-grade">${_pcGradeChipHtml(g)}</span>
@@ -48922,48 +49048,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const lastInParty = team.filter(s => s && !s.isEgg).length <= 1;
 
             let html = '';
-            html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
-                <strong style="color:#ff5252;">The Underground.</strong>
+            html += `<div class="pc-underground-note">
+                <strong>The Underground.</strong>
                 Every sale is final — the Pokémon walks out with whatever training you put into it, and isn\'t coming back. Rarer mons fetch more gold. The broker won\'t ask where they came from; the right move is not to ask where they\'re going.
             </div>`;
-            html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:10px;">`;
+            html += `<div class="pc-price-chips">`;
             for (const g of [1, 2, 3, 4]) {
-                html += `<span style="padding:3px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;color:#aaa;">${_pcGradeChipHtml(g)} <strong style="color:#ffd700;">${_PC_UNDERGROUND_PRICE_BY_GRADE[g].toLocaleString()}G</strong></span>`;
+                html += `<span class="pc-price-chip">${_pcGradeChipHtml(g)} <strong>${_PC_UNDERGROUND_PRICE_BY_GRADE[g].toLocaleString()}G</strong></span>`;
             }
             html += `</div>`;
 
             const rows = [];
-            team.forEach((s, i) => { if (s && !s.isEgg) rows.push({ slot: s, where: 'team', index: i }); });
-            box.forEach((s, i) => { if (s && !s.isEgg) rows.push({ slot: s, where: 'pc', index: i }); });
+            team.forEach((s) => { if (s && !s.isEgg) rows.push({ slot: s, source: 'team' }); });
+            box.forEach((s) => { if (s && !s.isEgg) rows.push({ slot: s, source: 'pc' }); });
 
             if (!rows.length) {
-                html += `<div style="color:#888;font-size:11px;padding:8px;">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
+                html += `<div class="pc-empty">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
+                html += _bossArcRenderSection();
                 return html;
             }
-            html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
-            rows.forEach(({ slot, where }) => {
-                const g = _pcMonGrade(slot);
-                const price = _pcSellPriceForSlot(slot);
+            html += `<div class="pc-grid">`;
+            rows.forEach(({ slot, source }) => {
                 const id = slot.id || '';
                 const unsellable = slot.unsellable === true;
-                const isLastParty = where === 'team' && lastInParty;
+                const isLastParty = source === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
                 const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
                 const reason = isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
-                const whereLabel = where === 'team' ? 'Party' : 'PC';
-                // Underground rows also flag shiny so the player doesn't
-                // accidentally hand a shiny to the broker for pocket gold.
-                const _ugShiny = !!(slot.build && slot.build._isShiny);
-                const _ugShinyMark = _ugShiny ? '<span style="color:#ffd54f;margin-right:3px;" title="Shiny — careful!">&#10024;</span>' : '';
-                const _srcPill = where === 'team'
-                    ? '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(76,175,80,0.22);color:#a5d6a7;border:1px solid #4caf50;">&#128101; Party</span>'
-                    : '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(79,195,247,0.16);color:#81d4fa;border:1px solid #4fc3f7;">&#128230; PC Box</span>';
-                html += `<div data-pc-row="${where}" data-pc-id="${_esc(id)}" role="button" tabindex="0" data-pc-open="1" aria-label="View ${_esc(slot.name)} summary" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};cursor:pointer;" title="View full summary">
-                    ${_srcPill}
-                    <span style="flex:1;min-width:0;font-size:12px;line-height:1.25;word-break:break-word;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
-                    <span style="color:#ffd700;font-size:11px;font-weight:bold;pointer-events:none;">+${price.toLocaleString()}G</span>
-                    <button type="button" onclick="event.stopPropagation();window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
-                </div>`;
+                html += _pcCardHtml(slot, 'sell', { price: _pcSellPriceForSlot(slot), canSell, reason, source });
             });
             html += `</div>`;
             html += _bossArcRenderSection();
@@ -61511,7 +61623,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,
             confirmAbandon, abandonAndReturn, continuePostGame,
-            openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
+            openSummary, profOpenSummary, summaryMove, moveInParty, setPartyLead, partyReorder, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
