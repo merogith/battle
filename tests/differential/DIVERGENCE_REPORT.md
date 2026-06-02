@@ -8,15 +8,20 @@
 
 ## Headline
 - **Known bugs confirmed by the oracle:** 5/5
-- **Sanity scenarios in agreement:** 13/13
+- **Sanity scenarios in agreement:** 14/14
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 0/22
+- **Probes flagging a divergence to investigate:** 1/31
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
 
-## 🔎 New divergences to investigate
-None — every should-match / exploratory scenario agreed with Showdown at high confidence.
+## 🔎 New divergences to investigate (1)
+High-confidence disagreements on should-match / exploratory scenarios — candidate bugs beyond the known catalogue.
+
+- **`speed-boost-ramp`** (ability / end-of-turn) — Speed Boost grants +1 Speed at the end of each turn (+1/+2/+3).
+  - T1 p1a `boost.spe`: Showdown=`1` vs in-house=`0`
+  - T2 p1a `boost.spe`: Showdown=`2` vs in-house=`1`
+  - T3 p1a `boost.spe`: Showdown=`3` vs in-house=`2`
 
 ## Summary
 | Scenario | Category | Expect | HIGH | med | low | Verdict |
@@ -54,6 +59,16 @@ None — every should-match / exploratory scenario agreed with Showdown at high 
 | `fixed-night-shade` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `fixed-dragon-rage` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `fixed-sonic-boom` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `protect-blocks-damage` | protect | match | 0 | 0 | 0 | ✅ agrees |
+| `protect-blocks-status` | protect | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `substitute-blocks-status` | substitute | probe | 0 | 0 | 1 | 🔍 no divergence |
+| `moldbreaker-ignores-levitate` | ability-ignoring | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `scrappy-hits-ghost` | ability-ignoring | probe | 0 | 1 | 0 | 🔍 no divergence |
+| `sturdy-survives-ohko` | survival | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `focussash-survives-ohko` | survival | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `speed-boost-ramp` | ability / end-of-turn | probe | 3 | 0 | 0 | 🔍 divergence (investigate) |
+| `switchin-intimidate` | switch-in ability | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `hazard-stealth-rock-entry` | entry hazard | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
@@ -287,6 +302,78 @@ Dragon Rage deals a flat 40 (expect ~40 HP).
 Sonic Boom deals a flat 20 (expect ~20 HP).
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `protect-blocks-damage` — ✅ agrees
+Protect blocks a damaging move — defender takes 0.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `protect-blocks-status` — 🔍 no divergence
+Protect blocks Thunder Wave — no paralysis applied.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `substitute-blocks-status` — 🔍 no divergence
+A Substitute (set up first) blocks Thunder Wave — no paralysis.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+
+| Turn | Mon | Field | Showdown | In-house | Conf |
+|---|---|---|---|---|---|
+| 2 | p2a | hp/damage | `140/140 (dmg~0)` | `70/140 (dmg~70)` | low |
+
+### `moldbreaker-ignores-levitate` — 🔍 no divergence
+Mold Breaker lets Earthquake hit a Levitate holder (damage, not 0).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `scrappy-hits-ghost` — 🔍 no divergence
+Scrappy lets a Normal move hit a Ghost-type (damage, not 0).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+
+| Turn | Mon | Field | Showdown | In-house | Conf |
+|---|---|---|---|---|---|
+| 1 | p2a | status | `par` | `(none)` | medium |
+
+### `sturdy-survives-ohko` — 🔍 no divergence
+Sturdy survives a would-be OHKO from full HP (defender not fainted).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `focussash-survives-ohko` — 🔍 no divergence
+Focus Sash survives a would-be OHKO from full HP (defender not fainted).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `speed-boost-ramp` — 🔍 divergence (investigate)
+Speed Boost grants +1 Speed at the end of each turn (+1/+2/+3).
+
+- **Maps to:** CONFIRMED real divergence (not harness): battle.html:28706 gates Speed Boost on `turnCount > 0` ("after first turn"), and turnCount++ runs AFTER endOfTurnEffects (battle.html:21676 vs 21682), so a lead skips its end-of-turn-1 boost → in-house 0/1/2 vs Showdown 1/2/3.
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+
+| Turn | Mon | Field | Showdown | In-house | Conf |
+|---|---|---|---|---|---|
+| 1 | p1a | boost.spe | `1` | `0` | high |
+| 2 | p1a | boost.spe | `2` | `1` | high |
+| 3 | p1a | boost.spe | `3` | `2` | high |
+
+### `switchin-intimidate` — 🔍 no divergence
+Switching in an Intimidate Pokémon lowers the foe Attack by 1.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `hazard-stealth-rock-entry` — 🔍 no divergence
+A Pokémon switched into Stealth Rock takes 1/8 max HP × type effectiveness (×4 vs Fire/Flying = 50%).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
 - No divergences.
 
 ### `sanity-swords-dance-normal` — ✅ agrees

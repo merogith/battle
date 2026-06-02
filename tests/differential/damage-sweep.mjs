@@ -24,26 +24,37 @@ const SEEDS_SD = Array.from({ length: N }, (_, i) => [i + 1, (i * 7 + 3) & 255, 
 
 const WALL_SPEC = { species: 'Blissey', ability: 'Natural Cure', nature: 'Calm', evs: { hp: 252, spd: 252 } };
 const WALL_PHYS = { species: 'Aggron', ability: 'Heavy Metal', nature: 'Impish', evs: { hp: 252, def: 252 } };
-const withMoves = (set, move) => ({ ...set, moves: [move, 'Splash'] });
-const passiveWall = (set) => ({ ...set, moves: ['Splash', 'Splash'] });
+const WALL_BULKY = { species: 'Slowbro', ability: 'Regenerator', nature: 'Bold', evs: { hp: 252, def: 252 } };
+// attacker uses test move on turn 2, after a setup move on turn 1
+const setupAtk = ['move 2', 'move 1'];
+const setupDef = ['move 1', 'move 2'];
 
-// attacker uses `move` once into a passive `defender`; return damage stats over the seed sweep.
+// Run `move` into a passive `defender` (optionally after a setup turn) and return
+// total damage to the defender over the seed sweep. Setup moves (weather/screens)
+// don't damage the defender, so total HP lost = the test move's damage.
 async function sweep(scn) {
+  const aMoves = scn.attackerMoves || [scn.move, 'Splash'];
+  const dMoves = scn.defenderMoves || ['Splash', 'Splash'];
+  const c1 = scn.choices1 || ['move 1'];
+  const c2 = scn.choices2 || ['move 1'];
   const ih = { min: Infinity, max: 0, sum: 0, ko: false };
   const sd = { min: Infinity, max: 0, sum: 0, ko: false };
   for (const seed of SEEDS_IH) {
-    const r = await runInhouseBattle({ team1: [withMoves(scn.attacker, scn.move)], team2: [passiveWall(scn.defender)], choices1: ['move 1'], choices2: ['move 1'], seed });
-    const e = r.turns[0]?.end?.p2a;
-    const d = (e?.maxhp || 0) - (e?.hp || 0);
-    if ((e?.hp | 0) <= 0) ih.ko = true;
+    const r = await runInhouseBattle({ team1: [{ ...scn.attacker, moves: aMoves }], team2: [{ ...scn.defender, moves: dMoves }], choices1: c1, choices2: c2, seed });
+    const last = r.turns[r.turns.length - 1]?.end?.p2a;
+    const d = (last?.maxhp || 0) - (last?.hp || 0);
+    if ((last?.hp | 0) <= 0) ih.ko = true;
     ih.min = Math.min(ih.min, d); ih.max = Math.max(ih.max, d); ih.sum += d;
   }
   for (const seed of SEEDS_SD) {
-    const r = await runShowdownBattle({ team1: [withMoves(scn.attacker, scn.move)], team2: [passiveWall(scn.defender)], choices1: ['move 1'], choices2: ['move 1'], seed });
-    const act = r.turns[0]?.actions?.find(a => a.kind === 'move' && a.slot === 'p1a');
-    const d = act?.damage || 0;
-    const e = r.turns[0]?.end?.p2a;
-    if ((e?.hp | 0) <= 0) sd.ko = true;
+    const r = await runShowdownBattle({ team1: [{ ...scn.attacker, moves: aMoves }], team2: [{ ...scn.defender, moves: dMoves }], choices1: c1, choices2: c2, seed });
+    // Measure damage the SAME way as in-house — net end-of-turn HP drop — so that
+    // end-of-turn field effects on the defender (e.g. Grassy Terrain healing it)
+    // are accounted for identically in both engines and don't masquerade as a
+    // damage divergence. Setup moves don't damage the defender.
+    const last = r.turns[r.turns.length - 1]?.end?.p2a;
+    const d = (last?.maxhp || 0) - (last?.hp || 0);
+    if ((last?.hp | 0) <= 0) sd.ko = true;
     sd.min = Math.min(sd.min, d); sd.max = Math.max(sd.max, d); sd.sum += d;
   }
   ih.mean = ih.sum / N; sd.mean = sd.sum / N;
@@ -62,6 +73,24 @@ const DAMAGE_SCENARIOS = [
   { id: 'ability-technician', desc: 'Technician ×1.5 (≤60 BP)', attacker: { species: 'Scizor', ability: 'Technician', nature: 'Adamant', evs: { atk: 252 } }, move: 'Bullet Punch', defender: WALL_PHYS },
   { id: 'def-thick-fat', desc: 'Thick Fat halves incoming Fire (defender)', attacker: { species: 'Charizard', ability: 'Blaze', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Calm', evs: { hp: 252, spd: 252 } } },
   { id: 'def-multiscale', desc: 'Multiscale halves at full HP (defender)', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Hardy' }, move: 'Strength', defender: { species: 'Dragonite', ability: 'Multiscale', nature: 'Impish', evs: { hp: 252, def: 252 } } },
+
+  // ── weather (attacker sets it turn 1, attacks turn 2) ──
+  { id: 'weather-rain-water', desc: 'Rain ×1.5 on Water (Rain Dance → Surf)', attacker: { species: 'Vaporeon', ability: 'Hydration', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Surf', 'Rain Dance'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
+  { id: 'weather-sun-fire', desc: 'Sun ×1.5 on Fire (Sunny Day → Flamethrower)', attacker: { species: 'Charizard', ability: 'Blaze', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Flamethrower', 'Sunny Day'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
+  { id: 'weather-sun-water-weak', desc: 'Sun ×0.5 on Water (Sunny Day → Surf)', attacker: { species: 'Vaporeon', ability: 'Hydration', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Surf', 'Sunny Day'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
+
+  // ── screens (defender sets it turn 1) ──
+  { id: 'screen-reflect-phys', desc: 'Reflect halves physical', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Strength', 'Splash'], choices1: setupAtk, defender: WALL_BULKY, defenderMoves: ['Reflect', 'Splash'], choices2: setupDef },
+  { id: 'screen-lightscreen-spec', desc: 'Light Screen halves special', attacker: { species: 'Alakazam', ability: 'Synchronize', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Psychic', 'Splash'], choices1: setupAtk, defender: WALL_BULKY, defenderMoves: ['Light Screen', 'Splash'], choices2: setupDef },
+
+  // ── super-effective / resisted item & ability multipliers (single turn) ──
+  { id: 'item-expert-belt-se', desc: 'Expert Belt ×1.2 on super-effective', attacker: { species: 'Charizard', ability: 'Blaze', item: 'Expert Belt', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Registeel', ability: 'Clear Body', nature: 'Sassy', evs: { hp: 252, spd: 252 } } },
+  { id: 'item-tinted-lens-resist', desc: 'Tinted Lens ×2 on a resisted hit', attacker: { species: 'Venomoth', ability: 'Tinted Lens', nature: 'Modest', evs: { spa: 252 } }, move: 'Bug Buzz', defender: WALL_PHYS },
+  { id: 'ability-moldbreaker-vs-thickfat', desc: 'Mold Breaker ignores Thick Fat (full Fire damage)', attacker: { species: 'Pinsir', ability: 'Mold Breaker', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Sassy', evs: { hp: 252, spd: 252 } } },
+
+  // ── terrain (grounded attacker sets it turn 1, attacks turn 2) ──
+  { id: 'terrain-electric', desc: 'Electric Terrain ×1.3 on Electric', attacker: { species: 'Raichu', ability: 'Static', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Thunderbolt', 'Electric Terrain'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
+  { id: 'terrain-grassy', desc: 'Grassy Terrain ×1.3 on Grass', attacker: { species: 'Roserade', ability: 'Natural Cure', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Energy Ball', 'Grassy Terrain'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
 ];
 
 async function main() {

@@ -124,6 +124,111 @@ export const SCENARIOS = [
   fixed('fixed-dragon-rage', 'Dragon Rage deals a flat 40', 'Dragon Rage', 40),
   fixed('fixed-sonic-boom', 'Sonic Boom deals a flat 20', 'Sonic Boom', 20),
 
+  // ══ Protect / Substitute ══
+  {
+    id: 'protect-blocks-damage',
+    category: 'protect',
+    desc: 'Protect blocks a damaging move — defender takes 0.',
+    expect: 'match', noMiss: true,
+    team1: [{ species: 'Rhyperior', ability: 'Solid Rock', moves: ['Earthquake', 'Splash'], nature: 'Adamant', evs: { atk: 252 } }],
+    team2: [{ species: 'Skarmory', ability: 'Sturdy', moves: ['Protect', 'Splash'], nature: 'Impish', evs: { hp: 252, def: 252 } }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'protect-blocks-status',
+    category: 'protect',
+    desc: 'Protect blocks Thunder Wave — no paralysis applied.',
+    expect: 'probe',
+    team1: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Thunder Wave', 'Quick Attack'], nature: 'Jolly', evs: { spe: 252 } }],
+    team2: [SLOW_WALL(['Protect', 'Splash'])],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'substitute-blocks-status',
+    category: 'substitute',
+    desc: 'A Substitute (set up first) blocks Thunder Wave — no paralysis.',
+    expect: 'probe',
+    team1: [{ species: 'Snorlax', ability: 'Thick Fat', moves: ['Thunder Wave', 'Splash'], nature: 'Brave', evs: { hp: 252 }, ivs: { spe: 0 } }],
+    team2: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Substitute', 'Splash'], nature: 'Jolly', evs: { spe: 252 }, ivs: { spe: 31 } }],
+    choices1: ['move 2', 'move 1'], // Splash, then Thunder Wave
+    choices2: ['move 1', 'move 1'], // Substitute (faster), then Substitute
+  },
+
+  // ══ Ability-ignoring (Mold Breaker / Scrappy) → the move CONNECTS (PROBE, noMiss) ══
+  {
+    id: 'moldbreaker-ignores-levitate',
+    category: 'ability-ignoring',
+    desc: 'Mold Breaker lets Earthquake hit a Levitate holder (damage, not 0).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Rhyperior', ability: 'Mold Breaker', moves: ['Earthquake', 'Splash'], nature: 'Adamant', evs: { atk: 252 } }],
+    team2: [passive('Bronzong', 'Levitate')],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'scrappy-hits-ghost',
+    category: 'ability-ignoring',
+    desc: 'Scrappy lets a Normal move hit a Ghost-type (damage, not 0).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Kangaskhan', ability: 'Scrappy', moves: ['Body Slam', 'Splash'], nature: 'Adamant', evs: { atk: 252 } }],
+    team2: [passive('Gengar', 'Cursed Body')],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+
+  // ══ Survival floors (Sturdy / Focus Sash) — defender must NOT faint (PROBE) ══
+  {
+    id: 'sturdy-survives-ohko',
+    category: 'survival',
+    desc: 'Sturdy survives a would-be OHKO from full HP (defender not fainted).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Machamp', ability: 'No Guard', item: 'Choice Band', moves: ['Brick Break', 'Splash'], nature: 'Adamant', evs: { atk: 252 } }],
+    team2: [{ species: 'Aron', ability: 'Sturdy', moves: ['Splash', 'Splash'], nature: 'Hardy' }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'focussash-survives-ohko',
+    category: 'survival',
+    desc: 'Focus Sash survives a would-be OHKO from full HP (defender not fainted).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Machamp', ability: 'No Guard', item: 'Choice Band', moves: ['Brick Break', 'Splash'], nature: 'Adamant', evs: { atk: 252 } }],
+    team2: [{ species: 'Aron', ability: 'Rock Head', item: 'Focus Sash', moves: ['Splash', 'Splash'], nature: 'Hardy' }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+
+  // ══ Speed Boost: +1 Speed stage each end-of-turn (PROBE) ══
+  {
+    id: 'speed-boost-ramp',
+    category: 'ability / end-of-turn',
+    desc: 'Speed Boost grants +1 Speed at the end of each turn (+1/+2/+3).',
+    bug: 'CONFIRMED real divergence (not harness): battle.html:28706 gates Speed Boost on `turnCount > 0` ("after first turn"), and turnCount++ runs AFTER endOfTurnEffects (battle.html:21676 vs 21682), so a lead skips its end-of-turn-1 boost → in-house 0/1/2 vs Showdown 1/2/3.',
+    expect: 'probe',
+    team1: [{ species: 'Yanmega', ability: 'Speed Boost', moves: ['Quick Attack', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    team2: [SLOW_WALL(['Splash', 'Splash'])],
+    choices1: ['move 2', 'move 2', 'move 2'],
+    choices2: threeTurns,
+  },
+
+  // ══ Switch-in hooks (Intimidate / entry hazards) — PROBE ══
+  {
+    id: 'switchin-intimidate',
+    category: 'switch-in ability',
+    desc: 'Switching in an Intimidate Pokémon lowers the foe Attack by 1.',
+    expect: 'probe',
+    team1: [SLOW_WALL(['Splash', 'Splash']), { species: 'Gyarados', ability: 'Intimidate', moves: ['Splash', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    team2: [SLOW_WALL(['Splash', 'Splash'])],
+    choices1: ['switch 2', 'move 1'],
+    choices2: ['move 1', 'move 1'],
+  },
+  {
+    id: 'hazard-stealth-rock-entry',
+    category: 'entry hazard',
+    desc: 'A Pokémon switched into Stealth Rock takes 1/8 max HP × type effectiveness (×4 vs Fire/Flying = 50%).',
+    expect: 'probe',
+    team1: [SLOW_WALL(['Splash', 'Splash']), { species: 'Charizard', ability: 'Blaze', moves: ['Splash', 'Splash'], nature: 'Timid', evs: { spe: 252 } }],
+    team2: [{ species: 'Sableye', ability: 'Prankster', moves: ['Stealth Rock', 'Splash'], nature: 'Calm', evs: { hp: 252 } }],
+    choices1: ['move 1', 'switch 2'],
+    choices2: ['move 1', 'move 1'],
+  },
+
   // ══ Sanity / regression (must MATCH) ══
   {
     id: 'sanity-swords-dance-normal',

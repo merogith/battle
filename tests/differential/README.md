@@ -15,6 +15,9 @@ The point: make "battle bugs resolved for good" a *measurable, continuously-chec
 property instead of a whack-a-mole. The oracle finds divergences automatically and,
 kept in CI, stops fixed bugs from silently regressing.
 
+**See [`FINDINGS.md`](./FINDINGS.md)** for the consolidated conclusions (what
+diverges, what's confirmed correct, and the harness-fidelity fixes made along the way).
+
 ## Run it
 
 ```bash
