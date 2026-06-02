@@ -59,15 +59,15 @@ test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('dojo', 9), 'Grandmaster', 'over-cap stage clamps to last label');
 });
 
-test('dojoItemTier: Foundation=1 (berries + type-boosters + Eviolite), Staples=2, Meta=3', () => {
-  // Tier 1 — Foundation: berries, the mild +20% type-boosters, and Eviolite (NFE-only).
+test('dojoItemTier: Foundation=1 (berries + type-boosters), Staples=2 (Eviolite + …), Meta=3', () => {
+  // Tier 1 — Foundation: berries and the mild +20% type-boosters.
   assert.equal(ST.dojoItemTier('Lum Berry'), 1);
   assert.equal(ST.dojoItemTier('Sitrus Berry'), 1);
   assert.equal(ST.dojoItemTier('Charcoal'), 1);       // type-booster → Foundation
   assert.equal(ST.dojoItemTier('Soft Sand'), 1);      // type-booster → Foundation
-  assert.equal(ST.dojoItemTier('Eviolite'), 1);       // NFE-only → Foundation
-  // Tier 2 — Staples: the defensive baseline (incl. Heavy-Duty Boots + Assault Vest,
-  // demoted from tier 3 — they're staples, not win-more).
+  // Tier 2 — Staples: the defensive baseline (incl. Eviolite — too strong at White
+  // Belt where every team is NFE — plus Heavy-Duty Boots + Assault Vest).
+  assert.equal(ST.dojoItemTier('Eviolite'), 2);       // NFE power item → gated to Black Belt
   assert.equal(ST.dojoItemTier('Leftovers'), 2);
   assert.equal(ST.dojoItemTier('Heavy-Duty Boots'), 2);
   assert.equal(ST.dojoItemTier('Assault Vest'), 2);

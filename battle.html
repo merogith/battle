@@ -847,6 +847,18 @@
             .tx-sort-select { min-height: 44px; font-size: 13px; padding: 10px 12px; }
         }
         .tx-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+        /* Stage/tier filter row — a labelled strip of multi-select tier chips.
+           Active tier chips use a cyan tint to read distinctly from the purple
+           category/type chips on the same picker. */
+        .tx-tier-row { align-items: center; margin-top: 4px; }
+        .tx-tier-row-label {
+            font-size: 9px; font-weight: 700; color: #8b92a4;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-right: 2px;
+        }
+        .tx-chip--tier[data-active="1"] {
+            background: #4dd0e1; color: #06343a; border-color: #4dd0e1;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset;
+        }
         .tx-chip {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 4px 10px; font-size: 11px; font-weight: 600;
@@ -55377,7 +55389,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _DOJO_TYPE_BOOST_ITEMS = new Set(Object.values(_DOJO_TYPE_BOOST_BY_TYPE));
         // Tier-1 (Foundation) curated additions: the type-boosters above + Eviolite
         // (does nothing off an NFE, so it's fair early).
-        const _DOJO_ITEM_TIER1 = new Set(['Eviolite', ..._DOJO_TYPE_BOOST_ITEMS]);
+        // Eviolite is a Tier-2 (Black Belt) item, NOT Tier-1: at White Belt nearly every
+        // team is still NFE, so a +50% Def/SpD NFE item would be a near-universal early
+        // power pick. Gating it to Black Belt (where many mons have evolved) keeps it from
+        // dominating the opening. Mirrors to foes/wild via _dojoItemTier.
+        const _DOJO_ITEM_TIER1 = new Set([..._DOJO_TYPE_BOOST_ITEMS]);
         // Resist berry that halves one super-effective hit, keyed by the incoming type.
         const _DOJO_RESIST_BERRY = {
             Fire: 'Occa Berry', Water: 'Passho Berry', Electric: 'Wacan Berry', Grass: 'Rindo Berry',
@@ -56066,6 +56082,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // every kind so first-time players see the curated list; toggle
                 // off via the ★ chip to expand to the full option list.
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
+                // Stage/tier filter — a Set of tier keys per picker. Empty = "All" (no
+                // filter). Lets the player check what unlocks at each belt/tutor tier and
+                // combine several (e.g. T1+T2). Tier keys: moves natural/learnt/awakened,
+                // items '1'/'2'/'3', abilities legal/hidden/awakened. (Strings throughout.)
+                tier: { moves: new Set(), items: new Set(), abilities: new Set() },
             },
             sort: {
                 // Default to honest "By usage %" so the grid order matches the % badge
@@ -56086,8 +56107,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'moves') { _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear(); }
             if (kind === 'items') _txState.filter.itemCat = 'all';
             if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
+            if (_txState.filter.tier && _txState.filter.tier[kind]) _txState.filter.tier[kind].clear();
             _txState.filter.recOnly[kind] = true;
-            _txState.sort[kind] = 'usage';
+            // Abilities default to "Legal first"; everything else to usage %.
+            _txState.sort[kind] = (kind === 'abilities') ? 'recommended' : 'usage';
         }
         const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
         const _TX_ALL_CATS  = ["Physical","Special","Status"];
@@ -57873,6 +57896,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             _txState.filter.moveCats.clear();
                             if (!wasActive) _txState.filter.moveCats.add('Status');
                         }
+                    } else if (kind === 'tier') {
+                        // Multi-select stage/tier filter. "All" clears; any other chip toggles
+                        // its tier in the per-picker Set, so several tiers can be combined.
+                        const tk = chip.dataset.tierKind;
+                        if (tk && _txState.filter.tier) {
+                            if (!_txState.filter.tier[tk]) _txState.filter.tier[tk] = new Set();
+                            const sel = _txState.filter.tier[tk];
+                            if (value === 'all') sel.clear();
+                            else if (sel.has(value)) sel.delete(value);
+                            else sel.add(value);
+                        }
                     }
                     if ((kind === 'moveType' || kind === 'quick') && _txMoveGridFastUpdate()) return;
                     void renderTutorTeam(true);
@@ -57950,8 +57984,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The ★ Recommended chip lives outside the drawer (on the search row) so
         // we don't include it here.
         function _txActiveFilterCount(kind) {
-            if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size;
-            if (kind === 'items') return _txState.filter.itemCat !== 'all' ? 1 : 0;
+            const tierN = (_txState.filter.tier && _txState.filter.tier[kind]) ? _txState.filter.tier[kind].size : 0;
+            if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size + tierN;
+            if (kind === 'items') return (_txState.filter.itemCat !== 'all' ? 1 : 0) + tierN;
+            if (kind === 'abilities') return tierN;
             if (kind === 'natures') return (_txState.filter.natureUp !== 'any' ? 1 : 0) + (_txState.filter.natureDown !== 'any' ? 1 : 0);
             return 0;
         }
@@ -58201,6 +58237,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     `<button type="button" class="tx-chip" data-filter-kind="itemCat" data-filter-value="${k}" data-active="${cur===k?1:0}">${_TX_ITEM_CAT_LABEL[k]}</button>`
                 ).join('')
             }</div>`;
+        }
+
+        // Stage/tier filter chips — multi-select per picker (toggle each tier; "All"
+        // clears). Lets the player browse what's available at each belt / tutor tier and
+        // combine several (e.g. T1+T2). Tier keys are STRINGS so they sit in a Set cleanly.
+        const _TX_TIER_DEFS = {
+            moves:     [['natural', 'Natural'], ['learnt', 'Learnt'], ['awakened', 'Awakened']],
+            items:     [['1', 'T1'], ['2', 'T2'], ['3', 'T3']],
+            abilities: [['legal', 'Legal'], ['hidden', 'Hidden'], ['awakened', 'Awakened']],
+        };
+        function _txTierChipsHtml(kind) {
+            const defs = _TX_TIER_DEFS[kind];
+            if (!defs) return '';
+            const sel = (_txState.filter.tier && _txState.filter.tier[kind]) || new Set();
+            const chip = (val, label, active) =>
+                `<button type="button" class="tx-chip tx-chip--tier" data-filter-kind="tier" data-tier-kind="${kind}" data-filter-value="${val}" data-active="${active ? 1 : 0}" aria-pressed="${active ? 'true' : 'false'}">${_esc(label)}</button>`;
+            return `<div class="tx-chip-row tx-tier-row" role="group" aria-label="Filter by stage / tier">`
+                + `<span class="tx-tier-row-label">Stage</span>`
+                + chip('all', 'All', sel.size === 0)
+                + defs.map(([v, l]) => chip(v, l, sel.has(v))).join('')
+                + `</div>`;
         }
 
         // Format usage % as a tiny inline tag — only rendered when ctx.pctOf
@@ -58602,13 +58659,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cats  = _txState.filter.moveCats;
             const sortKey = _txState.sort.moves || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
+            const tierSel = (_txState.filter.tier && _txState.filter.tier.moves) || null;
+            // An active Stage filter shows the FULL tier (it bypasses ★), so "check what's
+            // at each tutor tier" reveals everything, not just the curated subset.
+            const recOnly = !pool.sparse && _txState.filter.recOnly.moves && !(tierSel && tierSel.size);
             const filt = allMoves.filter(m => {
-                // Equipped moves (extraInclude) always pass the ★ filter so the
-                // player never loses sight of a move they currently run — they
-                // still obey the search box + type/category chips, though.
+                // Equipped moves (extraInclude) always pass the ★ and Stage filters so the
+                // player never loses sight of a move they currently run — they still obey
+                // the search box + type/category chips, though.
                 const forced = extraInclude && extraInclude.has(m);
                 if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
+                if (tierSel && tierSel.size && !forced) {
+                    const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, m) : null;
+                    if (!tierSel.has(tag)) return false; // tier keys: natural / learnt / awakened
+                }
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
                 if (!md) return true;
@@ -58650,9 +58714,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const catFilter = _txState.filter.itemCat || 'all';
             const sortKey = _txState.sort.items || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            const recOnly = !pool.sparse && _txState.filter.recOnly.items;
+            const tierSel = (_txState.filter.tier && _txState.filter.tier.items) || null;
+            // An active Stage filter shows the FULL tier (bypasses ★) so the player can
+            // browse everything that unlocks at each belt, not just the curated picks.
+            const recOnly = !pool.sparse && _txState.filter.recOnly.items && !(tierSel && tierSel.size);
+            const curItem = (build && build.i) || null; // held item is exempt from the Stage filter
             const filt = allItems.filter(it => {
                 if (recOnly && !pool.items.inPool.has(it)) return false;
+                if (tierSel && tierSel.size && it !== curItem) {
+                    const t = (typeof _dojoItemTier === 'function') ? _dojoItemTier(it) : 1;
+                    if (!tierSel.has(String(t))) return false; // tier keys: '1' / '2' / '3'
+                }
                 if (q && !it.toLowerCase().includes(q)) return false;
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
@@ -58676,13 +58748,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            // Abilities are never hidden by a chip (a mon has only 2-3); only the
-            // search box narrows the list.
-            const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
-            const usageOf = (a) => pool.abilities.pctOf.get(a) || 0;
-            const heurOf = (a) => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility);
             // Group rank: legal slots (0/1) first, Hidden next, off-legal Awakened last.
             const rankOf = (a) => (awakenSet && awakenSet.has(a)) ? 2 : (a === haName ? 1 : 0);
+            // Abilities are never hidden by the ★ chip (a mon has only 2-3) — the search
+            // box and the Stage filter narrow the list. Tier key: legal / hidden / awakened
+            // (rankOf 0/1/2). The equipped ability is exempt so it's never hidden.
+            const tierSel = (_txState.filter.tier && _txState.filter.tier.abilities) || null;
+            const tierKeyOf = (a) => ['legal', 'hidden', 'awakened'][rankOf(a)];
+            const curAbil = (build && build.a) || (mon && mon.ability) || null;
+            const filt = allAbils.filter(a => {
+                if (q && !a.toLowerCase().includes(q)) return false;
+                if (tierSel && tierSel.size && a !== curAbil && !tierSel.has(tierKeyOf(a))) return false;
+                return true;
+            });
+            const usageOf = (a) => pool.abilities.pctOf.get(a) || 0;
+            const heurOf = (a) => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility);
             if (sortKey === 'name') {
                 filt.sort((a, b) => a.localeCompare(b));
             } else if (sortKey === 'usage') {
@@ -58997,7 +59077,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sparse: sPool.sparse,
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
                 chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml(),
-                belowChipsHtml: _txMoveTypeMenuRowHtml(availTypes),
+                belowChipsHtml: _txTierChipsHtml('moves') + _txMoveTypeMenuRowHtml(availTypes),
                 sortOptions: [
                     { value:'usage', label:'By usage %' },
                     { value:'recommended', label:'Best for this mon' },
@@ -59126,6 +59206,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sparse: sPool.sparse,
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
+                    belowChipsHtml: _txTierChipsHtml('items'),
                     sortOptions: [
                         { value:'usage', label:'By usage %' },
                         { value:'recommended', label:'Best for this mon' },
@@ -59150,6 +59231,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
                     sparse: sPool.sparse,
+                    belowChipsHtml: _txTierChipsHtml('abilities'),
                     sortOptions: [
                         { value:'recommended', label:'Legal first' },
                         { value:'usage', label:'By usage %' },
@@ -59326,6 +59408,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txState.typeMenuOpen = false;
             _txState.filter.itemCat = 'all';
             _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any';
+            // Stage/tier filter resets to "All" on entry.
+            if (_txState.filter.tier) { _txState.filter.tier.moves.clear(); _txState.filter.tier.items.clear(); _txState.filter.tier.abilities.clear(); }
             // Reset ★ Recommended filter to ON for every picker — fresh entry
             // always leads with the curated Smogon-usable pool.
             _txState.filter.recOnly.moves = true; _txState.filter.recOnly.items = true;

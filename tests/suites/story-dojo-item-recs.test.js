@@ -29,10 +29,10 @@ function recsFor(city, monName, build) {
 const GARCHOMP = { m: ['Earthquake'], n: 'Jolly', a: 'Rough Skin' };
 const TOXAPEX = { m: ['Scald'], n: 'Bold', a: 'Regenerator' };
 
-test('tier map — Foundation (type-boosters + Eviolite) / Staples (Boots + AV) / Meta', () => {
+test('tier map — Foundation (type-boosters) / Staples (Eviolite + Boots + AV) / Meta', () => {
   assert.equal(ST.dojoItemTier('Charcoal'), 1, 'type-booster is Foundation');
   assert.equal(ST.dojoItemTier('Dragon Fang'), 1);
-  assert.equal(ST.dojoItemTier('Eviolite'), 1);
+  assert.equal(ST.dojoItemTier('Eviolite'), 2, 'Eviolite is a Black Belt (Staples) item, not White Belt');
   assert.equal(ST.dojoItemTier('Heavy-Duty Boots'), 2, 'Boots demoted to Staples');
   assert.equal(ST.dojoItemTier('Assault Vest'), 2, 'AV demoted to Staples');
   assert.equal(ST.dojoItemTier('Choice Band'), 3, 'Choice stays Meta');
