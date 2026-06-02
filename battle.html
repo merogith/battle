@@ -42854,7 +42854,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  skipped the catch tutorial, firstWildRoute still fires on their first
          *  wild, so catching is taught exactly once either way.) */
         function _catchIntroSceneId(st) {
-            if (!st || st.bossMode) return null;
+            if (!st) return null;
             if (st.tutorialMode) return 'firstWild';
             if (st.safariMode) return 'firstSafariCatch';
             if (_storyRunSceneSeen('tutorial-first-wild')) return null;
@@ -50460,34 +50460,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const baseRate = (_catchState.forcedCatchRate != null) ? _catchState.forcedCatchRate : (_CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4]);
             const message = _catchState.message ? `<div style="text-align:center;color:#aed581;font-size:12px;margin:6px 0;line-height:1.5;">${_esc(_catchState.message)}</div>` : '';
 
-            // Boss-mode HP-attrition phase: show the boss + HP bar + Attack button until HP=0.
-            if (_catchState.bossMode && _catchState.bossHp > 0) {
-                const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
-                let bossSpriteHtml = '';
-                try {
-                    const _bossShiny = !!(enc && enc.build && enc.build._isShiny);
-                    const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), _bossShiny) : '';
-                    if (spriteUrl) {
-                        bossSpriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 8px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 10px rgba(206,147,216,0.7));" onerror="this.style.display='none'">`;
-                    }
-                } catch (e) {}
-                body.innerHTML = `
-                    <div style="text-align:center;padding:18px 12px;background:linear-gradient(180deg,rgba(40,16,52,0.7) 0%,rgba(14,8,20,0.7) 100%);border:1px solid #6a1b9a;">
-                        <div style="font-size:11px;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
-                        ${bossSpriteHtml}
-                        <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
-                        <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#ce93d8;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
-                        <div style="margin-top:14px;height:14px;background:rgba(0,0,0,0.55);border:1px solid #444;position:relative;overflow:hidden;">
-                            <div style="height:100%;width:${pct}%;background:linear-gradient(180deg,#e91e63 0%,#880e4f 100%);transition:width 220ms ease-out;"></div>
-                            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;text-shadow:0 0 3px #000;">${_catchState.bossHp.toLocaleString()} / ${_catchState.bossMaxHp.toLocaleString()}</div>
-                        </div>
-                    </div>
-                    ${message}
-                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;">Strike</button>
-                `;
-                return;
-            }
-
             // ── Safari Mode: a different UI. Safari Ball only (session pool), plus
             //    Bait and Rock actions that stack modifiers on this encounter. The
             //    regular ball stack stays in your inventory — it cannot be used here.
@@ -50607,39 +50579,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </button>`;
                 }).join('');
             }
-            // Boss-mode escape hatch: the Run button is hidden so the player can't flee
-            // mid-fight, but if all four ball stacks are empty the catch screen has no
-            // exit. Surface a retreat option that returns to the last city with the
-            // boss still alive (sm.bossArc.boss persists), so the player can buy/farm
-            // balls and return.
-            const _totalBalls = ['poke','great','ultra','master'].reduce((s,k)=>s+((sm.balls && sm.balls[k]|0)||0),0);
-            const bossRetreat = (_catchState.bossMode && _totalBalls <= 0)
-                ? `<div style="margin-top:14px;padding:10px;border:1px dashed #6a1b9a;background:rgba(40,16,52,0.4);text-align:center;">
-                       <div style="font-size:11px;color:#ce93d8;margin-bottom:8px;line-height:1.5;">Out of Poké Balls. Stock up and return.</div>
-                       <button type="button" onclick="window.StoryMode.bossRetreatToCity()" style="padding:8px 16px;background:rgba(0,0,0,0.4);border:1px solid #a060c0;color:#e0c0ff;font-family:inherit;font-size:12px;cursor:pointer;">↩ Retreat to City</button>
-                   </div>`
-                : '';
             // Shiny encounters get a sparkle on the name, a friendlier header
             // line, and a soft gold accent on the grade chip — the player
             // should always know they're staring at a 1% roll before they
             // decide which ball to spend.
             const _encShiny = !!(enc && enc.build && enc.build._isShiny);
-            const headerLabel = _catchState.bossMode
-                ? 'The Caged Pokémon stirs.'
-                : _catchState.safariMode
-                    ? (_encShiny ? '✨ A Shiny Safari Pokémon comes into view!' : 'A Safari Pokémon comes into view.')
-                    : (_encShiny ? '✨ A Shiny Pokémon stepped out of the grass!' : 'A wild Pokémon stepped out of the grass!');
-            const headerColor = _catchState.bossMode ? '#ce93d8' : (_encShiny ? '#ffd54f' : '#a5d6a7');
-            const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
-            const gradeBg = _catchState.bossMode ? '#ce93d8' : (_encShiny ? '#ffd54f' : '#a5d6a7');
-            const subText = _catchState.bossMode
-                ? 'One percent per throw with a standard ball. A Master Ball never misses.'
-                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
+            const headerLabel = _catchState.safariMode
+                ? (_encShiny ? '✨ A Shiny Safari Pokémon comes into view!' : 'A Safari Pokémon comes into view.')
+                : (_encShiny ? '✨ A Shiny Pokémon stepped out of the grass!' : 'A wild Pokémon stepped out of the grass!');
+            const headerColor = _encShiny ? '#ffd54f' : '#a5d6a7';
+            const headerBg = 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
+            const gradeBg = _encShiny ? '#ffd54f' : '#a5d6a7';
+            const subText = _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
             // "Up next" pill — surfaced on route catch screens (not safari /
             // boss / tutorial, which have their own framing). Tells the player
             // what they walk into next: another wild on the same route, or
             // the trainer waiting at the end of it.
-            const _showUpNext = !_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode;
+            const _showUpNext = !_catchState.safariMode && !_catchState.tutorialMode;
             const upNextHtml = _showUpNext
                 ? `<div style="text-align:center;margin:-2px 0 6px;">${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
                 : '';
@@ -50661,7 +50617,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${ballRows}
                 </div>
                 ${safariActionRow}
-                ${bossRetreat}
             `;
             // Mount the persistent stage element under the placeholder. Build
             // it on first render of a new encounter so encounterReveal can
@@ -50672,7 +50627,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (host) {
                     if (!_catchStageEl || _catchStageEncToken !== _catchState) {
                         if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
-                        const tone = _catchState.bossMode ? 'boss' : (_catchState.safariMode ? 'safari' : 'wild');
+                        const tone = _catchState.safariMode ? 'safari' : 'wild';
                         _catchStageEl = window.StoryFx && window.StoryFx.buildEncounterStage(host, { tone })
                             || null;
                         _catchStageEncToken = _catchState;
@@ -50682,50 +50637,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
         }
-        function bossRetreatToCity() {
-            if (!_catchState || !_catchState.bossMode) return;
-            // Boss state persists — boss HP is reset on next re-entry by enterCatchEncounter
-            // (it always rolls bossHp = bossMaxHp on init), so the player can return when
-            // they've stocked balls. The cageUnlocked flag is unchanged.
-            _catchState = null;
-            try { save(); } catch (e) {}
-            try {
-                window.showGameAlert && window.showGameAlert('You retreat from the cage. Stock up on Poké Balls at a Mart, then return to finish the catch.');
-            } catch (e) {}
-            try { enterCity(); } catch (e) { try { showMenu(true); } catch (_) {} }
-        }
-        function bossAttack() {
-            if (!_catchState || !_catchState.bossMode || _catchState.bossHp == null || _catchState.bossHp <= 0) return;
-            const dmg = Math.floor(_catchState.bossMaxHp * (0.05 + Math.random() * 0.07));
-            _catchState.bossHp = Math.max(0, _catchState.bossHp - dmg);
-            const pctAfter = _catchState.bossHp / _catchState.bossMaxHp;
-            if (_catchState.bossHp === 0) {
-                _catchState.message = `${_catchState.encounter.name} is exhausted. Throw a ball to catch it.`;
-            } else {
-                // Per-HP-band flavor — short, escalating tension.
-                let frame;
-                if (pctAfter > 0.75) {
-                    frame = `Clean strike! -${dmg.toLocaleString()} HP.`;
-                } else if (pctAfter > 0.5) {
-                    frame = `Another solid hit. -${dmg.toLocaleString()} HP.`;
-                } else if (pctAfter > 0.25) {
-                    frame = `-${dmg.toLocaleString()} HP. It's starting to slow down.`;
-                } else if (pctAfter > 0.10) {
-                    frame = `-${dmg.toLocaleString()} HP. Nearly worn out.`;
-                } else {
-                    frame = `-${dmg.toLocaleString()} HP. One more hit should finish it.`;
-                }
-                _catchState.message = frame;
-            }
-            _catchRender();
-        }
         async function catchThrow(ballKey) {
             if (!_catchState || _catchState.ended) return;
             // Reject overlapping throws while a ball animation is already running
             // — fast double-clicks would otherwise burn a second ball.
             if (_catchThrowInFlight) return;
-            // Boss mode: can't throw until HP has been drained to zero.
-            if (_catchState.bossMode && _catchState.bossHp > 0) return;
             const enc = _catchState.encounter;
             if (!enc) return;
             const isSafariThrow = ballKey === 'safari';
@@ -50763,8 +50679,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let fleeMessage = null;
             if (roll < chance) {
                 outcome = 'catch';
-            } else if (_catchState.bossMode) {
-                outcome = 'wobble';
             } else {
                 const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
                 let fleeThreshold;
@@ -50810,17 +50724,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _catchHandleSuccess(enc, ballKey);
                 return;
             }
-            if (_catchState.bossMode) {
-                const _bossMisses = [
-                    'The ball wobbles once — then snaps open. It\'s still in there, and it\'s not happy.',
-                    'So close. The ball flies wide and the seal cracks.',
-                    'The latch holds for a heartbeat. Then nothing.',
-                    'Almost. The next throw matters more than this one did.'
-                ];
-                _catchState.message = _bossMisses[Math.floor(Math.random() * _bossMisses.length)];
-                _catchRender();
-                return;
-            }
             if (outcome === 'flee') {
                 _catchFinishWithMessage(fleeMessage);
                 return;
@@ -50843,7 +50746,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxParty = _storyMaxPartySize();
             const partyFull = (sm.team || []).length >= maxParty;
             const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
-            const bossMode = !!(_catchState && _catchState.bossMode);
             if (partyFull && pcFull) {
                 _catchFinishWithMessage(`Your party (${(sm.team||[]).length}/${maxParty}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Free a slot at the Pokémon Center, then try again.`);
                 return;
@@ -50855,20 +50757,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 wild: true,
                 caughtAt: cityIndexFromEventIndex(sm.eventIndex)
             };
-            if (bossMode) {
-                caught.unsellable = true;
-                caught.nickname = 'Subject Zero';
-                caught.bossArc = true;
-                // Subject Zero is a one-of-a-kind experimental partner — perfect 31 IVs
-                // override whatever the wild encounter rolled. No vitamins needed.
-                if (caught.build) caught.build.ivs = { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
-            }
-            // Boss-arc catch always goes to party (or PC if full). No swap prompt —
-            // the story beat needs the unique mon in your hand right now.
             if (!partyFull) {
                 sm.team.push(caught);
-            } else if (bossMode) {
-                sm.pcBox.push(caught);
             } else {
                 // Party full + PC has room — give the player a real choice rather
                 // than silently sending the new catch to PC. They can default to
@@ -50884,25 +50774,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex.caught.includes(enc.name)) sm.pokedex.caught.push(enc.name);
             try { _storyCheckPokedexMilestones(); } catch (e) {}
             try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
-            try { if (bossMode) { _storyAchievementUnlock('caged_god'); _storyAchievementUnlock('r_caged_god'); } } catch (e) {}
             try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
-            if (bossMode) {
-                _bossArcEnsureState();
-                sm.bossArc.cleared = true;
-                // Caged God reward — the apex of the post-game arc. A full
-                // vitamin set lets the player fully boost a second favorite mon,
-                // plus an oversized voucher bundle for Evolution Tutor / EV Trainer
-                // polish on Subject Zero itself.
-                if (!sm.staticDrops) sm.staticDrops = {};
-                if (!sm.staticDrops.rwdCagedGod) {
-                    _storyGrantBundle({
-                        rareCandy:3, vitamin:5,
-                        hpUp:5, protein:5, iron:5, calcium:5, zinc:5, carbos:5,
-                        gold:10000
-                    });
-                    sm.staticDrops.rwdCagedGod = true;
-                }
-            }
             // Catch tutorial: mark done only on actual catch success, so a
             // mid-tutorial reload doesn't lock the once-per-save flag without
             // the partner ever landing in the team.
@@ -50912,9 +50784,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
             const _caughtShiny = !!(caught && caught.build && caught.build._isShiny);
             const _shinyLine = _caughtShiny ? '\n\n✨ It\'s a shiny! One in a hundred — keep it close.' : '';
-            const successMsg = bossMode
-                ? _variantSubjectZeroEpilogue() + _shinyLine
-                : `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
+            const successMsg = `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
             _catchFinishWithMessage(successMsg);
         }
         // Holds the just-caught mon while the player picks "send to PC" or
@@ -50992,7 +50862,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Skip the up-next pill in safari (per-encounter loop has its own
                 // counter), boss (cage-only flow), and tutorial (the next step is
                 // narrative-baked into the tutorial message itself).
-                const _showUpNext = !_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode;
+                const _showUpNext = !_catchState.safariMode && !_catchState.tutorialMode;
                 const upNextHtml = _showUpNext
                     ? `<div>${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
                     : '';
