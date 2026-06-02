@@ -35696,7 +35696,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.storyEventsFired || typeof sm.storyEventsFired !== 'object') sm.storyEventsFired = {};
                 if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
                 if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
-                // Per-mon bonus/tired back-fill on every build (active team + PC).
+                // TONE RETIREMENT (2026-06): force every loaded save onto the clean
+                // 'classic' tone. The 8-tone STORYLINE_VARIANTS layer is retired in favor
+                // of the 3-track system (sm.tracks); some tones pointed the player at the
+                // removed post-HoF boss. Idempotent normalization (no SAVE_VER bump) —
+                // mirrors the new-run roll-retirement in _readStorylineFromUI().
+                sm.storyLine = 'classic';
                 try {
                     for (const arr of [sm.team || [], sm.pcBox || []]) {
                         for (const slot of arr) {
@@ -37938,6 +37943,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     getTrainerData: () => TRAINER_DATA,
                     get sm() { return sm; },
                     set sm(v) { sm = v; },
+                    // Tone-retirement regression hooks (see _readStorylineFromUI).
+                    readStorylineFromUI: () => _readStorylineFromUI(),
+                    loadSaveForTest: () => load(),
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
                     cityIndexForStoryRow: (...a) => _cityIndexForStoryRow(...a),
@@ -38747,9 +38755,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             _tcState.genPreset = allChecked ? 'all' : (onlyG1 ? 'kanto' : 'custom');
             _tcSyncGenPresetButtons();
-            // Storyline is ALWAYS rolled at random on Begin Adventure (per spec) — the
-            // player no longer picks one. Force the 'surprise_me' sentinel; it resolves
-            // to one of the real variants in _readStorylineFromUI() at run construction.
+            // Storyline TONE is retired (2026-06): every run uses the clean 'classic'
+            // tone — run variety now comes from the 3-track system (sm.tracks). The
+            // 'surprise_me' sentinel still resolves to 'classic' in _readStorylineFromUI().
+            // Tone scripts stay in STORYLINE_VARIANTS for a possible future fold-in.
             _tcState.storyline = 'surprise_me';
             const warn = document.getElementById('story-create-warning');
             if (warn) warn.textContent = '';
@@ -41077,7 +41086,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // already knowing which tone they got.
             try {
                 if (typeof _tcState !== 'undefined' && _tcState && _tcState.storyline) {
-                    if (_tcState.storyline === 'surprise_me') return _pickRandomStorylineVariant();
+                    // TONE RETIREMENT (2026-06): the 8-tone STORYLINE_VARIANTS layer is
+                    // retired in favor of the 3-track system (sm.tracks). Several tones
+                    // (project_mewtwo / hypnos_lullaby / static / bone_keepers) sent the
+                    // player toward the removed post-HoF boss (broker / cage / Subject
+                    // Zero). The 'surprise_me' roll now resolves to the clean 'classic'
+                    // tone; run variety comes from sm.tracks (10 villains x 8 extras).
+                    // Tone scripts + _pickRandomStorylineVariant() are preserved for a
+                    // future fold-in — to revive rolling, restore the call below.
+                    if (_tcState.storyline === 'surprise_me') return 'classic'; // was: _pickRandomStorylineVariant()
                     if (STORYLINE_VARIANTS[_tcState.storyline]) return _tcState.storyline;
                 }
             } catch (e) {}
@@ -41092,6 +41109,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  when an active run is mid-flight so a shared seed reproduces the
          *  rolled variant. */
         function _pickRandomStorylineVariant() {
+            // RETIRED (2026-06): no longer called — tone rolling was retired in
+            // _readStorylineFromUI() (every run uses 'classic'). Body preserved for a
+            // future fold-in into the 3-track tone layer.
             const ids = Object.keys(STORYLINE_VARIANTS).filter(k => {
                 const v = STORYLINE_VARIANTS[k];
                 return v && v.tier !== 'random';
