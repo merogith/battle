@@ -117,13 +117,33 @@ Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaim
   in story (only the CPU foe AI + a debug seed receive `revive:N`). So "introduce Revive" means
   introduce a *gifted* one — the item itself already ships.
 
-## 🔓 Open decisions (sharpened — awaiting answers)
+## ✅ Voucher decisions resolved (2026-06-02)
 
-1. **EV Voucher drift fix** — gate → C7 (match facility) / move EV Trainer earlier / drop the
-   voucher (near-dead value that late).
-2. **Department Store gift** — add a gifted Revive / bump balls / both / keep 1 Great Ball.
-3. **New voucher designs** — reuse existing tokens only / author new early-debut token(s).
-4. **Rival faucet** — flatten to 3 / keep elevated (8) / middle.
+- **Q1 — EV Voucher drift → gate to C7.** `VOUCHER_DEBUT_CITY.vitamin: 4 → 7` (match
+  `FACILITY_DEBUT_CITY.evtrainer`); refresh the stale comment at 46516. Accepted the thin late
+  window; the voucher's *value* (is it worth dropping at all that late?) is deferred to the
+  matrix pass.
+- **Q2 — Department Store gift → add a gifted Revive.** `firstDept` bundle becomes
+  `{ greatBall: 1, revive: 1 }` + toast update. Introduces the first *gifted* Revive (the item
+  is already buyable here).
+- **Q3 — No new voucher designs.** Early tables (C0–C1) draw only from existing tokens (Heart
+  Scale, Mint) + IV vitamins + balls + consumables. Zero new redeem-wiring.
+- **Q4 — Rival faucet flattened to 3.** Drop the post-badge-0 special-case (3→8); the rival
+  classifies as REGULAR = 3 like everyone else.
+
+### 🔧 Implementation deltas (locked values — await diff approval before commit)
+
+| # | Site | Change |
+|---|---|---|
+| Q1 | `VOUCHER_DEBUT_CITY.vitamin` (46522) + comment (46516) | `4 → 7` |
+| Q2 | `firstDept` bundle + toast (~40584) | `{greatBall:1}` → `{greatBall:1, revive:1}` |
+| Q4 | rival vitamin special-case (~46603) | `badges==0 ? 3 : 8` → `3` |
+| D7 | `VITAMIN_LOOT_BY_CLASS` ACE (50085) | `5 → 3` |
+
+Four small, fully-specified diffs. The larger BUILD artifacts still to draft: the **stage loot
+matrix** (value-anchor scores → tier population → per-cell chances), the **boss reward tables**
+(`GYM_VICTORY_REWARDS`, value-into-loot per D2), and the **purse-nerf** numbers (mid/late per
+D1, sized to the ~3–6k finale cushion per D4).
 
 ---
 
