@@ -113,6 +113,44 @@ test('rollTrainerTeam: duplicate sigs field multiple copies (Lance triple-Dragon
   assert.ok(maxD >= 2, 'duplicate sigs are reachable (capped at 1 before the fix)');
 });
 
+test('rollTrainerTeam: devolution collisions never field duplicate species (dedup guard)', () => {
+  // Clair's grade-ceiling devolves her Dragonite onto Dragonair-tier at GL8; before the
+  // fix that collided with her line and _sigMult read it as authored multiplicity, so she
+  // fielded two identical mons ~29/30 rolls. Only a verbatim authored duplicate (Lance)
+  // may repeat — a non-duplicate leader must never show the same species twice.
+  const clair = ST.getTrainerData().find((t) => t.name === 'Clair' && t.role === 'Gym Leader 8');
+  assert.ok(clair, 'Clair GL8 exists');
+  assert.equal(new Set(clair.sigs).size, clair.sigs.length, 'Clair has no verbatim duplicate sigs');
+  const GL8_GW = { g1: 0, g2: 100, g3: 0, g4: 0 };
+  let worstDup = 0;
+  for (let i = 0; i < 30; i++) {
+    activeSeed(2000 + i);
+    const team = ST.rollTrainerTeam(clair, 6, GL8_GW, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'Gym Leader 8', 53);
+    const counts = {};
+    for (const s of team) counts[s.name] = (counts[s.name] || 0) + 1;
+    worstDup = Math.max(worstDup, ...Object.values(counts));
+  }
+  assert.equal(worstDup, 1, `no species appears twice on a non-duplicate-sig leader (got ${worstDup})`);
+});
+
+test('rollTrainerTeam: signatures respect the player gen toggle, not the trainer pkmGens', () => {
+  // Cynthia.pkmGens is [4], but her iconic Gen-3 Milotic must still appear in an all-gens
+  // run — signatures are gated only by the player's enabled-gens toggle now, so a trainer's
+  // self-imposed gen window can no longer silently delete one of its own aces.
+  const cynthia = ST.getTrainerData().find((t) => t.name === 'Cynthia' && t.role === 'Champion');
+  assert.ok(cynthia, 'Cynthia Champion exists');
+  assert.ok(cynthia.sigs.includes('Milotic'), 'Milotic is a Cynthia signature');
+  assert.ok(!(cynthia.pkmGens || []).includes(3), 'and her pkmGens does NOT include Milotic gen 3');
+  const CH_GW = { g1: 60, g2: 40, g3: 0, g4: 0 };
+  let sawMilotic = false;
+  for (let i = 0; i < 30 && !sawMilotic; i++) {
+    activeSeed(3000 + i);
+    const team = ST.rollTrainerTeam(cynthia, 6, CH_GW, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'Champion', 60);
+    if (team.some((s) => s.name === 'Milotic')) sawMilotic = true;
+  }
+  assert.ok(sawMilotic, 'Cynthia fields Milotic in an all-gens run despite pkmGens=[4]');
+});
+
 test('rollTrainerTeam: species selection is deterministic on the story seed', () => {
   const lance = lanceE4();
   const roll = () => {
@@ -122,13 +160,16 @@ test('rollTrainerTeam: species selection is deterministic on the story seed', ()
   assert.deepEqual(roll(), roll(), 'same story seed -> same species lineup');
 });
 
-test('_validateTrainerData: no unknown-species errors; flags the known thin champion pools', () => {
+test('_validateTrainerData: no unknown-species errors; every champion now has a full 6-sig pool', () => {
   const issues = ST.validateTrainerData();
   assert.ok(Array.isArray(issues), 'returns an issue array');
   const hardErrors = issues.filter((m) => /not a known species/.test(m));
   assert.equal(hardErrors.length, 0, `every signature resolves to a known species (got: ${hardErrors.join('; ')})`);
+  // Signature fanservice pass: the six formerly-thin champions (Wallace, Alder, Kukui,
+  // Leon, Geeta, Red) were filled to six authored aces, so no Champion falls back to a
+  // thematic 6th slot any more.
   const thin = issues.filter((m) => /Champion fight/.test(m));
-  assert.ok(thin.some((m) => /Leon/.test(m)), 'flags Leon as a thin (5-sig) champion pool');
+  assert.equal(thin.length, 0, `no champion should be a thin (<6-sig) pool (got: ${thin.join('; ')})`);
 });
 
 test('Mystery Figure: gimmick override is local — never mutates shared sm.settings/sm.badges', () => {
