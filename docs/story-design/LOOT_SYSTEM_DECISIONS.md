@@ -52,18 +52,78 @@ edge, or a tier weight), and the table stays coherent. This is the backbone of t
 - **D12** — Keep the **1-city grace** so a hand-placed gift can arrive just before its
   facility opens (taken as recommended).
 
-## 🔎 Open threads (raised by D11 — resolve after the voucher inventory lands)
+## 📋 Verified ground truth (code sweeps, 2026-06-02)
 
-- **Voucher inventory (in progress):** enumerate *every* existing voucher/pass (dojo,
-  nature, facility passes, free-use credits…), confirm the set is complete, and decide what
-  must be added. Two read-only agents are sweeping `battle.html` + `data/*.json` now.
-- **Mechanic ground-truth (in progress):** confirm EV = battle + later EV-Trainer; IVs random
-  but encounter quality rises by stage; **IV vitamins applied at the Pokémon Fan Club**; Poké
-  Mart = first balls; Department Store = Great Ball gift.
-- **Department Store gift upgrade (pending):** 1 Great Ball → 3 Great Balls? add a **Revive**
-  (to introduce the item)? both, or only one? — decide once Revive's existence is confirmed.
-- **New voucher/item designs (pending):** reuse only existing tokens, or author new ones for
-  the early tables? — decide with the inventory in hand.
+### Voucher set — 12 tokens (canonical list: `VOUCHER_KEYS` battle.html:46510)
+
+| Token (label) | item id | Redeems at | Waives / effect | Gate (debut city) |
+|---|---|---|---|---|
+| Rare Candy | `rareCandy` | Evolution Tutor | free evolution | C2 *(hand-placed; excluded from random draw)* |
+| EV Voucher | `vitamin` | EV Trainer (Buck) | 5,000G EV preset | C4 ⚠ *(drift — see below)* |
+| Heart Scale | `heartScale` | Move Tutor | 1,500G move teach | C0 |
+| Mint | `mint` | Nature Rater | 2,000G nature change | C0 |
+| Ability Capsule | `abilityCapsule` | Battle Dojo | 2,500G ability swap | C4 |
+| Emblem of Honor | `emblemHonor` | Battle Dojo | 2,000G item swap | C4 |
+| Wishing Piece | `wishingPiece` | Colress (Power-Up) | 5,000G form awakening | C6 |
+| Bill's Discount Card | `linkDiscount50` | Cable Link Station | 50% off one transaction | C2 |
+| Stonewise Token | `stoneToken` | Stone Shop | free stone / trade item | C2 |
+| Lucky Chip | `casinoChip500` | Poké Casino | 500G first-bet credit | C5 |
+
+Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaimUsed`
+(Artifact Shop — 1 free relic) and `sm.safari.freeEntryUsed` (Safari — 1 free entry).
+
+### Corrections to the working mental model
+
+- **"Dojo vouchers" = two, not one** — `abilityCapsule` (ability swap) + `emblemHonor` (item
+  swap). There is no single `dojoVoucher`.
+- **"Nature voucher" = `mint`** (Nature Rater, waives 2,000G).
+- **Naming trap:** item id `vitamin` is the **EV Voucher** (waives the EV-Trainer fee) — it is
+  NOT an "IV vitamin." The IV vitamins are a *separate* six-item set `_IV_VITAMIN_KEYS`
+  (hpUp/protein/iron/calcium/zinc/carbos, 46529), each **+3 to one IV** (cap 31, `applyPermBoost`
+  54224), handed out & applied at the Pokémon Fan Club. The tables must keep these two
+  "vitamins" strictly apart.
+
+### Mechanics — confirmed (anchors)
+
+1. **EV training** — per-battle gain is **always on from fight #1** (whole team; REGULAR 9 /
+   ACE 14 / BOSS 18, `EV_GAIN_ACTIVE` 50072; into 2 identity stats, cap 252/510). The **EV
+   Trainer (Buck)** is a *re-spec/optimizer* that overwrites the spread
+   (`evTrainerApplyPreset` 61265) — not "more training."
+2. **IVs** — random, but the wild/gift IV band **floor rises by city**: `[0,10]` C0 → `[25,31]`
+   C7 (`STORY_IV_CITY_WILDPROF` 33326). Wild EV-yield ramps `[0,50]`→`[508,508]`
+   (`STORY_EV_CITY_TOTAL` 33364). Scaling input is story stage, **not** difficulty.
+3. **IV vitamins @ Fan Club** — confirmed. Fan Club (debut C1, recurring) gifts one of each on
+   first visit (`enterFanClub` 60832) and is where they're applied (also reachable from the bag).
+4. **Poké Mart** — `firstMart` gifts **5 Poké Balls** at C0 (40562).
+5. **Department Store** — `firstDept` gifts exactly **1 Great Ball** at C4 (40575), nothing else.
+6. **Faucet (IV-vitamin drops)** — REGULAR 3 / ACE 5 / BOSS 0 (bosses bundle via
+   `GYM_VICTORY_REWARDS`) / **Rival 3→8** (`VITAMIN_LOOT_BY_CLASS` 50085). *(This is the faucet
+   D7 trims; the parallel EV-gain faucet in #1 is a mechanic, not loot.)*
+
+### Already implemented — D10 & D12 need no work
+
+- **D10** — voucher gate already mirrors the facility map: `VOUCHER_DEBUT_CITY` (46519).
+- **D12** — 1-city giftable grace already exists: `_storyVoucherGiftable` (46544, `debut − 1`).
+
+### ⚠ Flagged drift (redesign must reconcile)
+
+- **EV Voucher out-of-time by 3 cities.** `VOUCHER_DEBUT_CITY.vitamin = 4`, but the EV Trainer
+  debuts **C7** (`FACILITY_DEBUT_CITY.evtrainer: 7`, 30656). The comment at 46516 still says
+  "EV Trainer debuts City 4" — stale since the 2026-05-26 reshuffle. A player can hold an EV
+  Voucher for 3 cities with nowhere to spend it. *(Minor siblings: `mint` C0 vs Nature Rater C1;
+  `stoneToken` C2 vs Stone Shop C3 — each 1 city, softened by the giftable grace.)*
+- **Revive already exists** — buyable Dept item (`revive`, 2,500G, `revive50`) with Max Revive
+  (4,000G) and Revival Herb (1,200G), `data/story/shops.json:144-158`. It is **never *gifted***
+  in story (only the CPU foe AI + a debug seed receive `revive:N`). So "introduce Revive" means
+  introduce a *gifted* one — the item itself already ships.
+
+## 🔓 Open decisions (sharpened — awaiting answers)
+
+1. **EV Voucher drift fix** — gate → C7 (match facility) / move EV Trainer earlier / drop the
+   voucher (near-dead value that late).
+2. **Department Store gift** — add a gifted Revive / bump balls / both / keep 1 Great Ball.
+3. **New voucher designs** — reuse existing tokens only / author new early-debut token(s).
+4. **Rival faucet** — flatten to 3 / keep elevated (8) / middle.
 
 ---
 
