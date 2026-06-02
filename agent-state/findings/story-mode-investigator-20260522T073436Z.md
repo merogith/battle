@@ -84,7 +84,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d1e01d9e6e3e
 confidence: high
-status: fixed-claude/sharp-keller-eZEDN
+status: fixed-main
 ---
 
 **Title**: v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it

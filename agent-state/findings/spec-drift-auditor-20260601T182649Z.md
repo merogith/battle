@@ -7,7 +7,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: c634b39bd109
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Fresh run starts with 0 PokéBalls (spec says 5 at run start); 5 are gifted at first Mart instead

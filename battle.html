@@ -11373,7 +11373,7 @@ All four are always on. In Classic mode each team gets one per battle; in Unlimi
 <b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a matching Z-Crystal unleashes one colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
 The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
-Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. The Caged God in the post-game needs the Master Ball — saved for that one fight.<br>
+Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. A Master Ball guarantees any catch — save it for a legendary you cannot afford to let flee.<br>
 <b>Catch chance</b> = species rate × ball multiplier. Poké Ball <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates climb with rarity: G1 12%, G2 22%, G3 35%, G4 50%. On a missed throw the wild may flee, with G1 the most likely to bolt and G4 the least.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Build Power Tiers (T1 → T4)</h3>
 Every Pokémon carries a training tier, separate from its species grade:<br>
@@ -11396,7 +11396,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random IV vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
 <b>Safari Zone</b> (City 5) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
-After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure. The <b>Caged God</b> boss arc needs three corrupted-Center leads scattered through the post-game, then the Master Ball.</div>
+After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Useful Habits</h3>
 • Tap any Pokémon name in battle, yours or the foe\'s, for the full build summary.<br>
 • The <b>🎯 Next:</b> chip in the city tip rail jumps you to your next required fight.<br>
@@ -34783,7 +34783,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'e4',             cat: 'milestone',  name: 'Elite Four',      desc: 'Defeat the fourth Elite Four member.',            icon: '🟥' },
             { id: 'champion',       cat: 'milestone',  name: 'Champion',        desc: 'Defeat the reigning Champion.',                   icon: '👑' },
             { id: 'mystery',        cat: 'milestone',  name: 'Mask Removed',    desc: 'Defeat the post-game Mystery Figure.',            icon: '🥷' },
-            { id: 'caged_god',      cat: 'milestone',  name: 'The Caged God',   desc: 'Capture Subject Zero in the post-game boss arc.', icon: '🔮' },
             { id: 'first_hof',      cat: 'milestone',  name: 'Hall of Fame',    desc: 'Reach the Hall of Fame for the first time.',      icon: '🏆' },
             // Lifetime counters (4 ranks)
             { id: 'trainers_won',   cat: 'count',      name: 'Battle Veteran',  desc: 'Win trainer battles (lifetime total).',           icon: '⚔', ranks: [20, 100, 500, 1000] },
@@ -34813,7 +34812,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'r_frontier_vet',   cat: 'replay', name: 'Frontier Veteran',   desc: 'Clear 10 Battle Frontier rounds (lifetime).',                       icon: '🗼' },
             { id: 'r_safari',         cat: 'replay', name: 'Safari Saga',        desc: 'Catch a Pokémon inside the Safari Zone.',                           icon: '🦒' },
             { id: 'r_mystery',        cat: 'replay', name: 'Mystery Solved',     desc: 'Defeat the post-Hall-of-Fame Mystery Figure.',                      icon: '🎭' },
-            { id: 'r_caged_god',      cat: 'replay', name: 'Caged God',          desc: 'Complete the Caged God post-game boss arc.',                        icon: '🔮' },
             { id: 'r_three_runs',     cat: 'replay', name: 'Three Runs',         desc: 'Clear three full story runs.',                                      icon: '🌟' },
         ];
         const STORY_ACHIEVEMENTS_BY_ID = (() => { const m = {}; for (const a of STORY_ACHIEVEMENTS) m[a.id] = a; return m; })();
@@ -50912,9 +50910,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
             if (!sm.pokedex.caught.includes(enc.name)) sm.pokedex.caught.push(enc.name);
             try { _storyCheckPokedexMilestones(); } catch (e) {}
-            try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
-            try { if (bossMode) { _storyAchievementUnlock('caged_god'); _storyAchievementUnlock('r_caged_god'); } } catch (e) {}
-            try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
+            try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}            try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
             if (bossMode) {
                 _bossArcEnsureState();
                 sm.bossArc.cleared = true;

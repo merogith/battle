@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 80dcfb8449c7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays
@@ -35,7 +35,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 416fa2aaed61
 confidence: high
-status: fixed-claude/relaxed-bell-2X3Ys
+status: fixed-main
 ---
 
 **Title**: Player gimmick gate reads bare IIFE-private `sm` — always sees zero unlocked gimmicks
