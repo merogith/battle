@@ -136,19 +136,30 @@ Plus **2 one-time boolean free-use flags** (not counters): `sm.artifactFreeClaim
   fight like every other tier. (The old ramp was *backwards* — it paid most late, exactly when
   high-IV catches need vitamins least.)
 
-### 🔧 Implementation deltas (locked values — await diff approval before commit)
+### ✅ Implementation log — Story rewards Step 2 + 3 (shipped, branch `claude/story-rewards-step2`)
 
-| # | Site | Change |
-|---|---|---|
-| Q1 | `VOUCHER_DEBUT_CITY.vitamin` (46522) + comment (46516) | `4 → 7` |
-| Q2 | `firstDept` bundle + toast (~40584) | `{greatBall:1}` → `{greatBall:1, revive:1}` |
-| D7 | `VITAMIN_LOOT_BY_CLASS` (50085) | REGULAR `3 → 5` (ACE stays 5, BOSS 0 bundled) |
-| Q4 | Rival `3→8` badge ramp in `_storyTrainerLootVitamins` (50085+) | flat `5` |
+| # | Site | Change | Status |
+|---|---|---|---|
+| Q1 | `VOUCHER_DEBUT_CITY.vitamin` + comment | `4 → 7` (match EV Trainer C7) | ✅ done |
+| Q2 | `firstDept` gift + `_storyGrantBundle` (new `revive` branch) + dialogue/toast | `{greatBall:1}` → `{greatBall:1, revive:1}` | ✅ done |
+| D7 | `VITAMIN_LOOT_BY_CLASS` | flat **5** for **every** rank — REGULAR / ACE / **BOSS** all 5 | ✅ done |
+| Q4 | Rival faucet | `3→8` ramp → flat `5`, now its own `VITAMIN_LOOT_RIVAL` knob | ✅ done |
+| — | **Faucet structure** | 4 independent knobs (REGULAR/ACE/BOSS + RIVAL) — all 5 today, separately tunable | ✅ done |
+| — | **`GYM_VICTORY_REWARDS`** | **stripped of IV-vitamins** — bosses drip 5 via the faucet; bundles keep balls / candy / vouchers / gold / Wishing Piece (no double-dip) | ✅ done |
+| — | **Fan Club welcome gift** | `1 of each` → **`5 of each`** IV vitamin (`FANCLUB_WELCOME_VITAMINS_PER_STAT = 5`; 30 total) to front-load early IV training | ✅ done |
+| — | **Pokédex milestone rewards** (const + fn + 3 call sites) | **removed** — per-run loot didn't fit the cross-run Achievements model; EV-Voucher tiers mis-timed vs C7 | ✅ done |
+| — | **Mid-game route-find** (badge-4 EV-Voucher) | **removed** — premature vs C7 + silently dropped under Q1; EV Trainer's welcome voucher covers it | ✅ done |
 
-Four small, fully-specified diffs. The larger BUILD artifacts still to draft: the **stage loot
-matrix** (value-anchor scores → tier population → per-cell chances), the **boss reward tables**
-(`GYM_VICTORY_REWARDS`, value-into-loot per D2), and the **purse-nerf** numbers (mid/late per
-D1, sized to the ~3–6k finale cushion per D4).
+Guard test: `tests/suites/story-vitamin-faucet.test.js` (faucet 5 for every rank incl. bosses ·
+gate C7 · rival badge-independent). Full suite green. Cross-run **Achievements / Hall of Fame**
+untouched.
+
+**Still deferred (needs your numbers):** the **boss bundle RESCALE** — the *non-vitamin* spoils
+(balls / vouchers / gold) re-tuned so each boss matches the gym-leader reward level for its city
+stage (E1–4 / Champion all sit at **City 9** → top band; today's stripped bundles are thin and
+not yet stage-matched). Built together as the **universal stage×rank loot matrix** (layered:
+flat-5 faucet · rarity-weighted bonus pool · per-boss signature). Plus the **purse-nerf**
+numbers (D1, sized to the ~3–6k finale cushion per D4).
 
 ---
 
