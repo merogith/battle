@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-02T01:17:44.951Z
+> **Generated**: 2026-06-02T09:39:45.395Z
 > **Source**: `agent-state/findings/*.md` (427 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -669,7 +669,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a319172728a4
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Boss arc soft-locks if enabled gens contain no legendary — cage unlocks but can never be entered
@@ -1787,7 +1787,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7856b112bcd7
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: The unique Master Ball can be wasted on any wild — soft-locks the Caged God capture (only 1% catch rate without it)
@@ -1823,7 +1823,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fde69214ddbf
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Unique Master Ball can be wasted on any non-boss wild (Crucible wild encounter), soft-locking the Caged God capture — VERIFIED still present post-merge
@@ -3376,7 +3376,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 3fdf16d5ab31
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Boss-mechanic hookup reads window.StoryMode.{BOSS_CONFIGS,bossMechanics*} but those live on test-only __storyTest — boss arc still dead in prod
@@ -3702,7 +3702,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 19bef76fa998
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: ~250-line Caged God boss arc is dead code (unreachable) but still fully shipped
@@ -3742,7 +3742,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: e2a51b657ed3
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God lead spec (§9 "visit Cities 2/5/8") contradicts shipped Crucible-hub collection; §14b omits the arc
@@ -3779,7 +3779,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7de2a5226091
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Post-game lead "hunt" collapses to 3 buttons on one Crucible screen — no travel, no gating
@@ -4960,7 +4960,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 7fa907ba5071
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God removal (v24) is incomplete — residual content/help-text/achievements still reference the cut arc
@@ -5033,7 +5033,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 17b27a222658
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Master Ball granted by BOTH villain-boss victory and post-HoF Caged God, vs spec "1 per run"
@@ -5588,7 +5588,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 32544380f8c1
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God "Key" lead has zero cost — spec says it should demand strongest mon or steep gold
@@ -5769,7 +5769,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 52588cec9516
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Unique Master Ball is spendable on any regular wild → Caged God capture becomes a 1%-per-throw grind
@@ -5911,7 +5911,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: da289fe043c3
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Single Master Ball is a free consumable — spending it pre-cage leaves boss arc as a 1%-per-throw grind
@@ -5951,7 +5951,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 86b897ccf02f
 confidence: low
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Pre-boss-arc post-HoF saves may never receive the Master Ball / boss arc if parked at a city row on load
@@ -8931,7 +8931,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 58d0c67c14b0
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Help screen still advertises the cut Caged God / Subject Zero / Master-Ball quest
@@ -9520,7 +9520,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 369bf4e2180e
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God uses three names for one entity (Specimen 0001 / Subject Zero / Subject 0001) without a stated rule
@@ -9557,7 +9557,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: ece351f805e0
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: _bossArcRenderSection rebuilt in full inside every _renderCrucible re-render (adds ~6ms of the 30ms)
@@ -9595,7 +9595,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 90bad6000f2f
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Non-hub Caged God render path is effectively dead post-HoF (player can never be at City 2/5/8)
@@ -10172,7 +10172,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 0fa929cda809
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Crucible "Pokémon Center" facility re-renders the Caged God section a second time (below the Underground sell list)
@@ -14891,7 +14891,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fc1331e5a296
 confidence: low
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Subject Zero stored to PC (party-full at cage) shows "Subject Zero" nickname but is never auto-fielded — easy to miss the capstone mon

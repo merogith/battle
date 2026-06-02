@@ -37,7 +37,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7856b112bcd7
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: The unique Master Ball can be wasted on any wild — soft-locks the Caged God capture (only 1% catch rate without it)

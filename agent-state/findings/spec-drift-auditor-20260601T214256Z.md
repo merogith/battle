@@ -129,7 +129,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 7fa907ba5071
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God removal (v24) is incomplete — residual content/help-text/achievements still reference the cut arc

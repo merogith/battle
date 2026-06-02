@@ -49,7 +49,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 19bef76fa998
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: ~250-line Caged God boss arc is dead code (unreachable) but still fully shipped
@@ -114,7 +114,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 58d0c67c14b0
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Help screen still advertises the cut Caged God / Subject Zero / Master-Ball quest

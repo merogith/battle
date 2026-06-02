@@ -40,7 +40,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: ece351f805e0
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: _bossArcRenderSection rebuilt in full inside every _renderCrucible re-render (adds ~6ms of the 30ms)

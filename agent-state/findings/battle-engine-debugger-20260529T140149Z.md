@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 3fdf16d5ab31
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Boss-mechanic hookup reads window.StoryMode.{BOSS_CONFIGS,bossMechanics*} but those live on test-only __storyTest — boss arc still dead in prod
