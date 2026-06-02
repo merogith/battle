@@ -628,7 +628,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9b3fe50135f0
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Row-67 `STORY_BEATS` still tags `'cagedGod'` + coldOpen `mystery67` — stale cut-arc residue in the live beat map

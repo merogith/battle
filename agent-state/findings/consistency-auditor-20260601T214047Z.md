@@ -14,7 +14,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: db1dd616e801
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Post-HoF Crucible hub button gated on dead `bossArc.available` — never renders
@@ -84,7 +84,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 3c5313751854
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Achievements `caged_god` / `r_caged_god` are permanently unobtainable (dead arc)

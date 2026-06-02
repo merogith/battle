@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-02T09:39:45.395Z
+> **Generated**: 2026-06-02T09:44:13.275Z
 > **Source**: `agent-state/findings/*.md` (427 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1965,7 +1965,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: db1dd616e801
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Post-HoF Crucible hub button gated on dead `bossArc.available` — never renders
@@ -8580,7 +8580,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 3c5313751854
 confidence: high
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Achievements `caged_god` / `r_caged_god` are permanently unobtainable (dead arc)
@@ -14998,7 +14998,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9b3fe50135f0
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Row-67 `STORY_BEATS` still tags `'cagedGod'` + coldOpen `mystery67` — stale cut-arc residue in the live beat map
