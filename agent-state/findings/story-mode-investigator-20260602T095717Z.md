@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f9a5c88627c5
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Post-HoF Crucible super-hub is unreachable — city button gated on dead bossArc state
@@ -43,7 +43,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 98cc2054989a
 confidence: high
-status: open
+status: fixed-claude/gracious-goodall-QFuQF
 ---
 
 **Title**: In-game Help "Catching" section still points players to the cut Caged God arc
@@ -104,7 +104,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 628362bfd5b2
 confidence: high
-status: open
+status: fixed-claude/gracious-goodall-QFuQF
 ---
 
 **Title**: Achievements caged_god / r_caged_god are permanently unobtainable

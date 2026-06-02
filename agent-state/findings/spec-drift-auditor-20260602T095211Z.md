@@ -7,7 +7,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 84f5dd4f7ed4
 confidence: high
-status: open
+status: fixed-claude/gracious-goodall-QFuQF
 ---
 
 **Title**: Caged God achievements (caged_god, r_caged_god) are permanently unearnable after v24 arc cut
