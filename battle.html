@@ -50310,22 +50310,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 onComplete: onComplete || null,
                 message: null,
                 ended: false,
-                bossMode: !!(options && options.boss),
                 safariMode: !!(options && options.safari),
                 tutorialMode: !!(options && options.tutorialMode),
                 forcedCatchRate: (options && typeof options.forcedCatchRate === 'number') ? options.forcedCatchRate : null,
                 forcedFleeRate: (options && typeof options.forcedFleeRate === 'number') ? options.forcedFleeRate : null,
-                roamingLabel: (options && typeof options.roamingLabel === 'string') ? options.roamingLabel : null,
-                bossHp: null,
-                bossMaxHp: null
+                roamingLabel: (options && typeof options.roamingLabel === 'string') ? options.roamingLabel : null
             };
-            if (_catchState.bossMode) {
-                const base = (baseStats[wildMon.name] || {});
-                const baseHp = (base && base.baseStats && base.baseStats.hp) || (base && base.hp) || 100;
-                _catchState.bossMaxHp = Math.max(500, baseHp * 10);
-                _catchState.bossHp = _catchState.bossMaxHp;
-                _catchState.message = `The cage opens. ${wildMon.name} stirs. Wear it down, then throw your strongest ball.`;
-            }
             try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
             try { _storyMarkDexSeen(wildMon && wildMon.name, wildShiny); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
@@ -50336,8 +50326,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const headerEl = document.querySelector('#screen-story-catch .story-screen-head-text');
                 if (headerEl) {
-                    if (_catchState.bossMode) headerEl.textContent = '🔮 The Caged God';
-                    else if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
+                    if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
                     else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
                     else headerEl.textContent = '🌿 Wild Encounter';
                 }
@@ -50346,11 +50335,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // God boss gets the cavern, Safari its zone, wild routes the forest.
             try {
                 syncStorySceneBackground('story-catch-bg-layer',
-                    _catchState.bossMode ? 'cave' : (_catchState.safariMode ? 'safari' : 'forest'));
+                    _catchState.safariMode ? 'safari' : 'forest');
             } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
-            if (_catchState.roamingLabel && !_catchState.bossMode) {
+            if (_catchState.roamingLabel) {
                 _catchState.message = `A roaming ${wildMon.name}! One throw — catch or it's gone forever. (Running also forfeits it.)`;
             }
             // Per-variant catch-intro line — prepended to the standard
@@ -50358,7 +50347,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // boss / safari / tutorial / roaming, which all carry their
             // own framing). Skipped when the active variant has no
             // intro pool (classic stays silent).
-            if (!_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode && !_catchState.roamingLabel) {
+            if (!_catchState.safariMode && !_catchState.tutorialMode && !_catchState.roamingLabel) {
                 try {
                     const _vIntro = _variantCatchIntro();
                     if (_vIntro) {
@@ -50415,13 +50404,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _catchThrowInFlight = false;
             _catchRender();
             // Fire the slide-in + cry only when the wild actually appears.
-            // Boss mode has its own HP-bar phase (no stage), so skip.
             try {
-                if (!_catchState.bossMode && _catchStageEl && window.StoryFx) {
+                if (_catchStageEl && window.StoryFx) {
                     window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, { shiny: wildShiny });
                 }
             } catch (e) {}
-            if (!_catchState.bossMode) {
+            {
                 // Story-embedded tutorial scenes — NPC cameo with sprite +
                 // dialogue + Continue. Each scene fires once per run (per-run-
                 // deduped via sm.scenesShown). The catch screen is already
@@ -50455,7 +50443,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // button would be redundant. Hide it in safari, boss, and tutorial
                 // mode. The tutorial is a "must-catch" — the wild can't flee, so
                 // there's no need for an escape hatch.
-                runBtn.style.display = (_catchState.bossMode || _catchState.safariMode || _catchState.tutorialMode) ? 'none' : '';
+                runBtn.style.display = (_catchState.safariMode || _catchState.tutorialMode) ? 'none' : '';
                 runBtn.disabled = false;
             }
             showScreen('screen-story-catch');
@@ -50470,7 +50458,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 catch (e) { return 4; }
             })();
             const baseRate = (_catchState.forcedCatchRate != null) ? _catchState.forcedCatchRate : (_CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4]);
-            const message = _catchState.message ? `<div style="text-align:center;color:${_catchState.bossMode ? '#ce93d8' : '#aed581'};font-size:12px;margin:6px 0;line-height:1.5;">${_esc(_catchState.message)}</div>` : '';
+            const message = _catchState.message ? `<div style="text-align:center;color:#aed581;font-size:12px;margin:6px 0;line-height:1.5;">${_esc(_catchState.message)}</div>` : '';
 
             // Boss-mode HP-attrition phase: show the boss + HP bar + Attack button until HP=0.
             if (_catchState.bossMode && _catchState.bossHp > 0) {
