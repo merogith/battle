@@ -17378,6 +17378,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.mode === 'story') {
                 state.storyItemUsedThisTurn = false;
                 state.foeStoryItemUsedThisTurn = false;
+                state.foeStoryItemUsesThisBattle = 0;
                 try { state.foeStoryInv = typeof window.buildFoeStoryInventoryForBattle === 'function' ? window.buildFoeStoryInventoryForBattle() : null; } catch (e) { console.warn('[startBattle] buildFoeStoryInventoryForBattle:', e); state.foeStoryInv = null; }
                 // PR-A: attach BOSS_CONFIGS mechanics if this battle is a
                 // story-beat boss/raid/miniBoss. Field locks fire immediately
@@ -17418,6 +17419,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 state.foeStoryInv = null;
                 state.foeStoryItemUsedThisTurn = false;
+                state.foeStoryItemUsesThisBattle = 0;
             }
             state.revealedFoe = new Set();
             try { if (state.fActive && state.fActive.name) state.revealedFoe.add(state.fActive.name); } catch (e) {}
@@ -17679,42 +17681,114 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
-        window.tryFoeStoryBattleItem = function() {
+        // Foe item-use AI (Phase 2). Returns false (no item), true (item used — costs the
+        // foe's whole turn → __FoeItemPass), or 'instant' (signature Mega heal — used AND
+        // the foe still attacks this turn). Simple + fair: HP-threshold + a probability roll
+        // + a HARD per-battle cap (the anti-spam guarantee). All rolls seeded for replays.
+        // Named function (not just `window.x = ...`) so the jsdom test harness — which stubs
+        // window.tryFoeStoryBattleItem to () => false for predictable foe turns — can still reach
+        // the REAL logic via __storyTest.tryFoeStoryBattleItem.
+        function tryFoeStoryBattleItem() {
             if (state.mode !== 'story' || settings.storyBattleItems === false || !state.foeStoryInv || state.foeStoryItemUsedThisTurn) return false;
             const inv = state.foeStoryInv;
             const mon = state.fActive;
             if (!mon || mon.currentHp <= 0) return false;
+            // Per-battle hard cap — a tier-N trainer uses at most N items (N+1 on Hard/Challenge)
+            // across the WHOLE battle. This is what kills the old unbounded heal-spam.
+            if ((state.foeStoryItemUsesThisBattle | 0) >= (inv.maxUsesPerBattle | 0)) return false;
+            const _rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const hpPct = mon.currentHp / mon.maxHp;
-            // Tuned thresholds (were 0.42 / 0.28): fewer opportunistic full heals
-            const FOE_MAX_POTION_HP = 0.32;
-            const FOE_FULL_RESTORE_HP = 0.22;
+            const tier = inv.tier | 0;
+            // Heal threshold rises slightly with tier (bosses heal a touch earlier/smarter). [BALANCE]
+            const HEAL_HP = tier >= 3 ? 0.45 : (tier === 2 ? 0.40 : 0.35);
+            const USE_ROLL = 0.70;    // even when a trigger fires, only acts ~70% of the time — never robotic [BALANCE]
+            const SETUP_ROLL = 0.55;  // X-item / buff setup chance [BALANCE]
+            const _consume = (instant) => {
+                state.foeStoryItemUsedThisTurn = true;
+                state.foeStoryItemUsesThisBattle = (state.foeStoryItemUsesThisBattle | 0) + 1;
+                try { updateUI(); } catch (e) {}
+                return instant ? 'instant' : true;
+            };
+
+            // 1) SIGNATURE — once-per-battle featured item (tier-3 only).
+            if (inv.signature) {
+                const sig = inv.signature;
+                if (sig.kind === 'heal' && hpPct <= 0.50 && _rng() < USE_ROLL) {
+                    // Mega Max Potion: instant full heal that does NOT cost the foe's turn.
+                    inv.signature = null;
+                    const h = mon.maxHp - mon.currentHp;
+                    mon.currentHp = mon.maxHp;
+                    logMsg(`The foe's ${mon.name} popped a Mega Max Potion — fully healed, and still ready to strike! (+${h} HP)`, 'heal');
+                    return _consume(true); // instant → foe still attacks this turn
+                }
+                if (sig.kind === 'buff' && (state.turnNumber | 0) <= 2 && hpPct >= 0.60 && _rng() < SETUP_ROLL) {
+                    // Ultra X-item: +4 to the mon's stronger offense.
+                    inv.signature = null;
+                    const physical = (mon.stats.atk || 0) >= (mon.stats.spa || 0);
+                    const k = physical ? 'atk' : 'spa';
+                    mon.stages[k] = Math.min(6, (mon.stages[k] | 0) + 4);
+                    logMsg(`The foe used an Ultra X ${physical ? 'Attack' : 'Sp. Atk'} on ${mon.name}! Its ${physical ? 'Attack' : 'Sp. Atk'} surged!`, 'info');
+                    return _consume(false);
+                }
+            }
+
+            // 2) STATUS CURE — only when it MATTERS (severe status, or any status while hurt).
+            //    (The old code cured a burn at 95% HP and wasted the whole turn.)
             if (mon.status && (inv.fullHeal || 0) > 0) {
-                inv.fullHeal--;
-                mon.status = null;
-                logMsg(`The foe used Full Heal on ${mon.name}!`, 'info');
-                state.foeStoryItemUsedThisTurn = true;
-                updateUI();
-                return true;
+                const severe = (mon.status === 'SLP' || mon.status === 'FRZ' || mon.status === 'PAR' || mon.status === 'TOX');
+                if ((severe || hpPct < 0.60) && _rng() < USE_ROLL) {
+                    inv.fullHeal--;
+                    mon.status = null;
+                    logMsg(`The foe used Full Heal on ${mon.name}!`, 'info');
+                    return _consume(false);
+                }
             }
-            if (hpPct <= FOE_MAX_POTION_HP && (inv.maxPotion || 0) > 0) {
-                inv.maxPotion--;
-                const h = mon.maxHp - mon.currentHp;
-                mon.currentHp = mon.maxHp;
-                logMsg(`The foe used a Max Potion on ${mon.name}! (+${h} HP)`, 'heal');
-                state.foeStoryItemUsedThisTurn = true;
-                updateUI();
-                return true;
+
+            // 3) EMERGENCY HEAL — threshold + probability. Max Potion (instant) → regen
+            //    Potion (heals over time) → Full Restore.
+            if (hpPct <= HEAL_HP && _rng() < USE_ROLL) {
+                if ((inv.maxPotion || 0) > 0) {
+                    inv.maxPotion--;
+                    const h = mon.maxHp - mon.currentHp;
+                    mon.currentHp = mon.maxHp;
+                    logMsg(`The foe used a Max Potion on ${mon.name}! (+${h} HP)`, 'heal');
+                    return _consume(false);
+                }
+                if ((inv.hyperPotion || 0) > 0 || (inv.superPotion || 0) > 0) {
+                    const isHyper = (inv.hyperPotion || 0) > 0;
+                    if (isHyper) inv.hyperPotion--; else inv.superPotion--;
+                    mon.volatile = mon.volatile || {};
+                    mon.volatile.bagRegen = { pct: isHyper ? 1 / 4 : 1 / 8, turns: 3 };
+                    logMsg(`The foe used a ${isHyper ? 'Hyper' : 'Super'} Potion on ${mon.name}! A healing mist forms.`, 'heal');
+                    return _consume(false);
+                }
+                if ((inv.fullRestore || 0) > 0) {
+                    inv.fullRestore--;
+                    mon.currentHp = mon.maxHp;
+                    mon.status = null;
+                    logMsg(`The foe used a Full Restore on ${mon.name}!`, 'heal');
+                    return _consume(false);
+                }
             }
-            if (hpPct <= FOE_FULL_RESTORE_HP && (inv.fullRestore || 0) > 0) {
-                inv.fullRestore--;
-                mon.currentHp = mon.maxHp;
-                mon.status = null;
-                logMsg(`The foe used a Full Restore on ${mon.name}!`, 'heal');
-                state.foeStoryItemUsedThisTurn = true;
-                updateUI();
-                return true;
+
+            // 4) SETUP X-ITEM — early turns, while healthy (a "powering up" beat). [BALANCE]
+            if ((inv.xItem || 0) > 0 && (state.turnNumber | 0) <= 2 && hpPct >= 0.60 && _rng() < SETUP_ROLL) {
+                inv.xItem--;
+                const useSpeed = _rng() < 0.35;
+                if (useSpeed) {
+                    mon.stages.spe = Math.min(6, (mon.stages.spe | 0) + 2);
+                    logMsg(`The foe used X Speed on ${mon.name}!`, 'info');
+                } else {
+                    const physical = (mon.stats.atk || 0) >= (mon.stats.spa || 0);
+                    const k = physical ? 'atk' : 'spa';
+                    mon.stages[k] = Math.min(6, (mon.stages[k] | 0) + 2);
+                    logMsg(`The foe used X ${physical ? 'Attack' : 'Sp. Atk'} on ${mon.name}!`, 'info');
+                }
+                return _consume(false);
             }
-            // Bench Revive / Max Revive: wait until several teammates are down (up to 3), then revive strongest BST among fainted.
+
+            // 5) BENCH REVIVE — bosses: wait until several teammates are down (up to 3), then
+            //    revive the strongest-BST fainted mon.
             const _foeParty = state.foeParty || [];
             const _maxBenchFainted = Math.max(0, _foeParty.length - 1);
             const _foeReviveWait = _maxBenchFainted <= 0 ? 999 : Math.min(3, _maxBenchFainted);
@@ -17732,22 +17806,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     benchTgt.currentHp = benchTgt.maxHp;
                     benchTgt.status = null;
                     logMsg(`The foe used a Max Revive on ${benchTgt.name}!`, 'heal');
-                    state.foeStoryItemUsedThisTurn = true;
-                    updateUI();
-                    return true;
+                    return _consume(false);
                 }
                 if ((inv.revive || 0) > 0) {
                     inv.revive--;
                     benchTgt.currentHp = Math.floor(benchTgt.maxHp / 2);
                     benchTgt.status = null;
                     logMsg(`The foe used a Revive on ${benchTgt.name}!`, 'heal');
-                    state.foeStoryItemUsedThisTurn = true;
-                    updateUI();
-                    return true;
+                    return _consume(false);
                 }
             }
             return false;
-        };
+        }
+        window.tryFoeStoryBattleItem = tryFoeStoryBattleItem;
 
         function isGuestPerspective() {
             return state.mode === 'pvp' && window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function' && window.OnlineBattle.isActive() && !window.OnlineBattle.isHost();
@@ -21304,7 +21375,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { usedFoeItem = window.tryFoeStoryBattleItem(); }
                         catch (e) { console.warn('[playTurn] tryFoeStoryBattleItem threw — skipping foe item this turn:', e); usedFoeItem = false; }
                     }
-                    if (usedFoeItem) {
+                    // 'instant' (signature Mega heal) and false both fall through to normal move
+                    // selection so the foe still attacks; only a turn-costing item (true) passes.
+                    if (usedFoeItem === true) {
                         state.p2GimmickIntent = null;
                         state.p2Action = { moveIndex: null, switchIndex: null, aiMove: { name: '__FoeItemPass', type: 'Normal', cat: 'Status', pow: 0, acc: 100, pri: 0, pp: 999, eff: '', effectStr: '' } };
                     } else {
@@ -38182,6 +38255,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Department-store featured Mega/Ultra catalog (price-multiplier regression).
                     getStoryFeaturedItems: () => getStoryFeaturedItems(),
                     getDeptFeaturedCatalogItems: () => _getDeptFeaturedCatalogItems(),
+                    foeItemRole: (...a) => _foeItemRole(...a),
+                    foeConsumableTier: (...a) => _foeConsumableTier(...a),
+                    foeSignatureItem: (...a) => _foeSignatureItem(...a),
+                    tryFoeStoryBattleItem: tryFoeStoryBattleItem, // captured by REFERENCE here (before the harness stubs the global) so tests reach the real logic
                 };
             } catch (e) {}
         }
@@ -55037,76 +55114,80 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Expose for battle engine to call after startBattle initialisation
         window._storyApplyArtifacts = applyArtifactBattleEffects;
 
+        // ── Enemy "kit tiers" (Phase 2: foe trainer item system) ──────────────────
+        // The whole story curve runs on city x trainer-difficulty; the foe CONSUMABLE
+        // bag is brought onto it here (it used to be badge-only + heal-spammy). Active
+        // scope is NORMAL difficulty (per CLAUDE.md). Every number below is a BALANCE
+        // value the maintainer owns.
+        //
+        // Item ROLE re-groups trainer types for ITEM purposes (coarser than the IV/EV
+        // diffStep, since items want Leaders > Gym Trainers even though both are +1):
+        //   0 fodder (Basic / Gym / Elite Trainer, Victory Road) -> never carries items
+        //   1 anchor (Gym Leader, Rival)                         -> tier ramps with city
+        //   2 boss   (E1-E4, Champion, Mystery Figure)           -> top tier + revive + signature
+        function _foeItemRole(eventType) {
+            const e = String(eventType || '');
+            if (e === 'Champion' || e === 'Mystery Figure' || /^E[1-4]$/.test(e)) return 2;
+            if (/^Gym Leader/.test(e) || e === 'Rival') return 1;
+            return 0;
+        }
+        // Consumable tier 0-3 from (role, city). Fodder never carries. Anchors ramp the
+        // 8-gym ladder 0->1->2->3; the featured/Ultra tier (3) enters at City 7, mirroring
+        // the player's Department Store opening at City 6. Bosses sit at the top. [BALANCE]
+        function _foeConsumableTier(eventType, city) {
+            const role = _foeItemRole(eventType);
+            if (role === 0) return 0;
+            if (role === 2) return 3;
+            const c = city | 0;                 // role 1 (Gym Leader / Rival): city ramp
+            if (c <= 2) return 0;               // Gym 1-2 - early game stays clean
+            if (c <= 4) return 1;               // Gym 3-4 - one regen Potion
+            if (c <= 6) return 2;               // Gym 5-6 - regen + an X-item
+            return 3;                           // Gym 7-8 - full kit + Ultra signature
+        }
+        // The once-per-battle "signature" featured item a tier-3 trainer carries (or null).
+        // Champion / Mystery Figure -> an INSTANT Mega heal (does NOT cost their turn - the
+        // marquee boss spike). Every other tier-3 (E1-E4, late Gym Leaders) -> an Ultra
+        // X-item (+4 to its stronger offense, used as a setup turn) - the "milder Ultra".
+        function _foeSignatureItem(eventType, tier) {
+            if ((tier | 0) < 3) return null;
+            const e = String(eventType || '');
+            if (e === 'Champion' || e === 'Mystery Figure') return { kind: 'heal', instant: true };
+            return { kind: 'buff', instant: false };
+        }
         function buildFoeStoryInventoryForBattle() {
-            const emptyInv = () => ({ maxPotion: 0, fullRestore: 0, fullHeal: 0, revive: 0, maxRevive: 0 });
+            const emptyInv = () => ({ superPotion: 0, hyperPotion: 0, maxPotion: 0, fullRestore: 0, fullHeal: 0, revive: 0, maxRevive: 0, xItem: 0, signature: null, tier: 0, role: 0, maxUsesPerBattle: 0 });
             if (!sm || !sm.active) return null;
             if (sm.settings && sm.settings.noItemRun) return emptyInv();
             if (typeof settings !== 'undefined' && settings.storyBattleItems === false) return emptyInv();
-            const gymCount = Object.values(sm.gymCleared || {}).filter(Boolean).length;
-            const badges = sm.badges | 0;
             const diff = sm.storyDifficulty || 'normal';
-            if ((diff === 'easy' || diff === 'veryeasy') && gymCount < 3) return emptyInv();
-            const sc = diff === 'challenge' ? 1.2 : (diff === 'easy' || diff === 'veryeasy') ? 0.75 : diff === 'hard' ? 1.15 : 1;
-            let maxPotion = 0, fullRestore = 0, fullHeal = 0, revive = 0, maxRevive = 0;
-            // Fewer Max Potions: first at 4+ badges, second at 7+ (was 2+ and 4+)
-            if (badges >= 4) maxPotion += 1;
-            if (badges >= 7) maxPotion += 1;
-            // Full Heal / Full Restore slightly later
-            if (badges >= 6) fullHeal = 1;
-            if (badges >= 7) fullRestore = Math.max(1, Math.round(1 * sc));
-            // Challenge: extra Full Heal from 6+ badges only (no free Max Potion at 0–1 badges)
-            if (diff === 'challenge' && badges >= 6) fullHeal += 1;
-            // Hard+ bench items: stagger Revive (5–6) then Max Revive (7+); −1 Max Potion trade each
-            const hardPlus = diff === 'hard' || diff === 'challenge';
-            if (hardPlus) {
-                if (badges >= 5 && badges <= 6) {
-                    revive = 1;
-                    maxPotion = Math.max(0, maxPotion - 1);
-                } else if (badges >= 7) {
-                    maxRevive = 1;
-                    maxPotion = Math.max(0, maxPotion - 1);
+            const eventType = (typeof STORY_EVENTS_RAW !== 'undefined' && sm && STORY_EVENTS_RAW[sm.eventIndex]) ? String(STORY_EVENTS_RAW[sm.eventIndex][2] || '') : '';
+            const city = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(sm.eventIndex) : 0;
+            let tier = _foeConsumableTier(eventType, city);
+            // Difficulty mode: easy/very-easy soften by a tier; hard/challenge keep the tier
+            // but get one extra use (they already get stat/build boosts elsewhere). [BALANCE]
+            if (diff === 'easy' || diff === 'veryeasy') tier = Math.max(0, tier - 1);
+            if (tier <= 0) return emptyInv();
+            const role = _foeItemRole(eventType);
+            const inv = emptyInv();
+            inv.tier = tier;
+            inv.role = role;
+            inv.maxUsesPerBattle = tier + ((diff === 'hard' || diff === 'challenge') ? 1 : 0); // hard per-battle cap - the anti-spam guarantee [BALANCE]
+            // Bag by tier. Regen Potions heal OVER TIME (not instant-full walls), so even the
+            // heal tiers stay fair; only tier-3 bosses get an instant Max Potion. [BALANCE]
+            if (tier === 1) {
+                inv.superPotion = 1;                       // 1/8 maxHP per turn x3
+            } else if (tier === 2) {
+                inv.hyperPotion = 1;                       // 1/4 maxHP per turn x3
+                inv.xItem = 1;                             // one X-item (stat chosen at use time)
+            } else {                                       // tier 3
+                inv.maxPotion = 1;                         // instant full (threshold heal)
+                inv.fullHeal = 1;                          // status cure
+                inv.signature = _foeSignatureItem(eventType, tier);
+                if (role === 2) {                          // E4 / Champion / Mystery: one bench revive
+                    if (eventType === 'Mystery Figure') inv.maxRevive = 1; else inv.revive = 1;
                 }
             }
-            // Normal / Easy / Very Easy: boss bag deltas (data-driven; do not stack on
-            // Hard+ which uses its own badge-keyed Revive ladder). Each entry adds the
-            // listed fields and optionally trades a Max Potion off (for early-game rival
-            // who'd otherwise stockpile a heal AND a revive).
-            const isNormalLike = diff === 'normal' || diff === 'easy' || diff === 'veryeasy';
-            // Phase 4.6 — heavier boss bags so iconic fights feel item-rich:
-            //   E1–E4:          +1 Revive + +1 Full Restore
-            //   Champion:       +1 Revive + +1 Full Restore
-            //   Mystery Figure: +1 Max Revive + +1 Full Restore (no trade-down)
-            //   Late-rival:     +1 Revive at the cost of one Max Potion
-            const _BOSS_BAG_DELTA = {
-                'E1':             { revive: 1, fullRestore: 1 },
-                'E2':             { revive: 1, fullRestore: 1 },
-                'E3':             { revive: 1, fullRestore: 1 },
-                'E4':             { revive: 1, fullRestore: 1 },
-                'Champion':       { revive: 1, fullRestore: 1 },
-                'Mystery Figure': { maxRevive: 1, fullRestore: 1 },
-            };
-            if (isNormalLike && typeof STORY_EVENTS_RAW !== 'undefined') {
-                try {
-                    const ev = STORY_EVENTS_RAW[sm.eventIndex];
-                    if (ev && ev[1] === 'Battle') {
-                        const label = String(ev[2] || '');
-                        const delta = _BOSS_BAG_DELTA[label];
-                        if (delta) {
-                            maxPotion   += delta.maxPotion   || 0;
-                            fullRestore += delta.fullRestore || 0;
-                            fullHeal    += delta.fullHeal    || 0;
-                            revive      += delta.revive      || 0;
-                            maxRevive   += delta.maxRevive   || 0;
-                        } else if (label === 'Rival' && badges >= 7) {
-                            // Late-rival keeps its trade-down (Revive in, Max Potion out)
-                            // — it's not a "boss" tier so it lives outside the table.
-                            revive += 1;
-                            maxPotion = Math.max(0, maxPotion - 1);
-                        }
-                    }
-                } catch (e) {}
-            }
-            return { maxPotion, fullRestore, fullHeal, revive, maxRevive };
+            return inv;
         }
         window.buildFoeStoryInventoryForBattle = buildFoeStoryInventoryForBattle;
 
