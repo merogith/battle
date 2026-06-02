@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 659dab26287d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: City-8 legendary Mystery gate is bypassed if party has < 6 members

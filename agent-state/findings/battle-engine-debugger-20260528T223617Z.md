@@ -40,7 +40,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: f2cfc21d6afc
 confidence: high
-status: fixed-claude/funny-clarke-EnGMv
+status: fixed-main
 ---
 
 **Title**: Solar Beam bad-weather power halving is dead code — checks `"SolarBeam"` (no space) which never matches

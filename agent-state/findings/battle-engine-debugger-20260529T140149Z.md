@@ -39,7 +39,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 30b6eaa39800
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss immunity-round off-by-one: activation sets _bossImmuneTurns then decrements it in the SAME tick, so turns:1 grants 0 immune turns
@@ -70,7 +70,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 7e37abfd6aab
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss HP-threshold "surge" (_bossSurgeTurns, +25% damage) has zero damage-path consumers — phase is banner-only

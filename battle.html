@@ -847,6 +847,18 @@
             .tx-sort-select { min-height: 44px; font-size: 13px; padding: 10px 12px; }
         }
         .tx-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+        /* Stage/tier filter row — a labelled strip of multi-select tier chips.
+           Active tier chips use a cyan tint to read distinctly from the purple
+           category/type chips on the same picker. */
+        .tx-tier-row { align-items: center; margin-top: 4px; }
+        .tx-tier-row-label {
+            font-size: 9px; font-weight: 700; color: #8b92a4;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-right: 2px;
+        }
+        .tx-chip--tier[data-active="1"] {
+            background: #4dd0e1; color: #06343a; border-color: #4dd0e1;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset;
+        }
         .tx-chip {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 4px 10px; font-size: 11px; font-weight: 600;
@@ -1461,14 +1473,11 @@
             border-right-color: #ffd54f;
             border-bottom-color: #ffd54f;
         }
+        /* Awakened = off-legal/illegal: red danger stripe so it never reads as the
+           gold "recommended" or blue "hidden" treatment. */
         .tx-card--ability[data-tier="awaken"] {
-            border-left-color: #ffb300;
-        }
-        .tx-card--ability[data-tier="awaken"][data-recommended="1"] {
-            border-left-color: #ffb300;
-            border-top-color: #ffd54f;
-            border-right-color: #ffd54f;
-            border-bottom-color: #ffd54f;
+            border-left-color: #ff5252;
+            background: linear-gradient(90deg, rgba(244,67,54,0.10), transparent 60%);
         }
         .tx-card-head {
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -1505,9 +1514,9 @@
         .tx-card[data-locked="1"] { opacity: 0.5; cursor: not-allowed; }
         .tx-card[data-locked="1"] .tx-card-star { opacity: 0.8; }
         .tx-pill--awaken {
-            background: linear-gradient(135deg, rgba(255,193,7,0.28), rgba(255,87,34,0.22));
-            border-color: #ffb300; color: #fff8e1;
-            box-shadow: 0 0 6px rgba(255,179,0,0.45);
+            background: linear-gradient(135deg, rgba(244,67,54,0.30), rgba(255,87,34,0.24));
+            border-color: #ff5252; color: #ffd7cf;
+            box-shadow: 0 0 6px rgba(244,67,54,0.4);
         }
         .tx-pill--cat-Physical { background: rgba(255,107,107,0.18); border-color: #ff6b6b; color: #ffcaca; }
         .tx-pill--cat-Special  { background: rgba(107,159,255,0.18); border-color: #6b9fff; color: #cbdbff; }
@@ -1672,6 +1681,15 @@
             box-shadow: inset 3px 0 0 var(--accent);
         }
         .tx-rec-row[data-disabled="1"] { opacity: 0.45; cursor: not-allowed; }
+        /* Equipped recommendation: a "satisfied" state (green ✓), NOT greyed-out —
+           the player already runs this pick, so it reads as done, not unavailable. */
+        .tx-rec-row--equipped[data-disabled="1"] { opacity: 1; cursor: default; }
+        .tx-rec-row--equipped .tx-rec-name { color: #aed581; }
+        .tx-rec-equipped {
+            display: inline-flex; align-items: center; gap: 3px;
+            font-size: 10px; font-weight: 700; color: #aed581; white-space: nowrap;
+        }
+        .tx-rec-equipped svg { width: 12px; height: 12px; }
         .tx-rec-tag {
             display: inline-flex; align-items: center; justify-content: center;
             padding: 3px 6px; font-size: 9px; font-weight: 800;
@@ -1699,6 +1717,11 @@
         .tx-rec-tag[data-purpose="Trick Room"], .tx-rec-tag[data-purpose="Meta"] {
             background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5;
         }
+        .tx-rec-tag[data-purpose="Weather"], .tx-rec-tag[data-purpose="Immunity"] {
+            background: rgba(77,208,225,0.16); border-color: #4dd0e1; color: #b2ebf2;
+        }
+        /* Compact role tag used inside ability cards (the foot pill row). */
+        .tx-rec-tag--card { padding: 1px 6px; font-size: 8.5px; }
         .tx-rec-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .tx-rec-name {
             font-size: 13px; font-weight: 700; color: #e8eaf0;
@@ -1905,6 +1928,13 @@
             border: 1px solid #3a4156; border-radius: 8px;
             box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
         }
+        /* Stage-locked move: amber, reads as "not yet available" rather than an error. */
+        .tx-confirm-bar--locked {
+            border-color: #8d6e2f;
+            background: linear-gradient(180deg, rgba(40,33,18,0.96), rgba(24,19,10,0.97));
+        }
+        .tx-confirm-bar--locked .tx-confirm-bar-text { color: #ffd9a0; }
+        .tx-confirm-bar--locked .tx-confirm-bar-text strong { color: #ffd54f; }
         .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
         .tx-confirm-bar-text strong { color: var(--accent); }
         .tx-confirm-bar-btn {
@@ -3385,6 +3415,14 @@
         }
         #screen-battle[data-battle-layout="desktop"] #gauntlet-score,
         #screen-battle[data-battle-layout="ultrawide"] #gauntlet-score { bottom: calc(var(--battle-ui-h) + 84px); }
+        /* Persistent story-difficulty badge — top-center (online score is hidden in story). */
+        #story-diff-badge {
+            position: absolute; top: calc(6px + var(--safe-top, 0px)); left: 50%; transform: translateX(-50%);
+            z-index: 9; background: rgba(0, 0, 0, 0.62); border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px; padding: 2px 10px; font-size: 10px; font-weight: bold;
+            letter-spacing: 0.05em; color: #cfd6e0; white-space: nowrap;
+            pointer-events: none; text-shadow: 0 1px 3px #000;
+        }
 
         /* ── Move tooltip ─────────────────────────────────────────────────── */
         #move-tooltip {
@@ -9593,6 +9631,7 @@
         <div id="terrain-overlay" class="terrain-overlay"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
         <div id="gauntlet-score" class="hidden">Score: 0</div>
+        <div id="story-diff-badge" class="hidden" aria-live="polite"></div>
         <div id="online-battle-score" class="hidden" style="position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:8;background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:12px;padding:3px 12px;font-size:11px;color:#ccc;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:8px;">
             <span id="obs-p1-name" style="color:var(--hp-green);font-weight:bold;">P1</span>
             <span id="obs-p1-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
@@ -12429,7 +12468,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // No stone assigned — see activateMega() for sentinel handling.
                 } else {
                     let stone = MEGA_STONE_MAP[name];
-                    if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
+                    // Seeded RNG in story mode so a dual-mega species (Charizard X/Y,
+                    // Mewtwo X/Y) resolves to the SAME stone on every load of a seeded
+                    // battle — X vs Y change typing/ability/role, so a bare Math.random()
+                    // here breaks the static-roll reproducibility the story pipeline keeps.
+                    if (Array.isArray(stone)) {
+                        // `sm` is private to the StoryMode IIFE — read story state via the
+                        // public getter (mirrors storyAwareRng below) so this engine-scope
+                        // call doesn't throw "sm is not defined".
+                        const _smState = (window.StoryMode && window.StoryMode.state) || null;
+                        const _stoneRng = (_smState && _smState.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                        stone = stone[Math.floor(_stoneRng() * stone.length)];
+                    }
                     if (stone) build.i = stone;
                 }
                 // If no stone is available, degrade below — handled by validateGimmick
@@ -13989,6 +14039,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = document.getElementById(id);
             if (!el) return;
             el.classList.add('hidden');
+            // game-confirm carries a Promise contract: showGameConfirm() awaits a
+            // resolver normally settled by _gameConfirmResult(). If the modal is
+            // dismissed by a GENERIC path instead — the global a11y Escape handler
+            // (which fires before the promise-aware one and just closeModal()s the
+            // topmost modal), a screen transition, etc. — the awaiter would hang
+            // forever. A stranded window._gameConfirmResolve permanently blocks
+            // _storyTryBeginInteraction(), silently bricking every later tutor /
+            // dojo / EV-trainer purchase ("Confirm does nothing"). Settle it as a
+            // cancel here so no close path can strand it. (_gameConfirmResult clears
+            // the resolver before it calls closeModal, so the normal OK/Cancel path
+            // never double-resolves through this branch.)
+            if (id === 'modal-game-confirm' && window._gameConfirmResolve) {
+                const r = window._gameConfirmResolve;
+                window._gameConfirmResolve = null;
+                try { r(false); } catch (e) {}
+            }
             try {
                 const prev = window._modalFocusStack.get(id);
                 if (prev && typeof prev.focus === 'function') prev.focus();
@@ -14091,9 +14157,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         };
         window._gameConfirmResult = function(ok) {
-            window.closeModal('modal-game-confirm');
+            // Capture + clear the resolver BEFORE closeModal so the game-confirm
+            // self-heal in closeModal() sees no pending resolver and can't pre-empt
+            // this with a false result (which would turn every OK into a cancel).
             const r = window._gameConfirmResolve;
             window._gameConfirmResolve = null;
+            window.closeModal('modal-game-confirm');
             if (r) r(!!ok);
         };
         if (!window._modalEscapeBound) {
@@ -14923,25 +14992,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.displayItem = displayItem;
 
-        // Story-mode foe stat multiplier (difficulty knob).
-        // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
-        // Two stacking layers:
-        //   1. Early-game nerf (story spec): a starting stat penalty that fades over the
-        //      first three CITIES and applies symmetrically to every foe in them —
-        //      ~20% at the start (City 0), 15% at City 1, 10% at City 2, 0% from City 3 on.
-        //      Keyed on the city clock (not badges) so City 0 and City 1 — both before the
-        //      first badge — get different softening. See FOE_STAT_NERF_BY_CITY.
-        //   2. Stage-gated late-game ramp ("slightly harder than Fire Red" past G2 unlock):
-        //        - Stages 1–2 (badges 0–4) → 1.00 (true FR feel)
-        //        - Stage 3 start (G6, badge 5) → 1.05
-        //        - Gym 8 (badge 7) → 1.10
-        //        - E4 (badge 8 / Elite Four event) → 1.15
-        //        - Champion+ (Champion / Mystery Figure / Frontier) → 1.20
-        // The "gym leaders keep their signature ace identity" guarantee is enforced through
-        // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
-        // while signature aces stay in the canonical grade), not via per-mon stat exemptions.
-        const FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]; // index = city; City ≥3 → 1.0
-        window.FOE_STAT_NERF_BY_CITY = FOE_STAT_NERF_BY_CITY;
+        // Foe stat scaling now lives in ONE place: the unified FOE_POWER_CURVE ×
+        // _foeDifficultyMult model (see _storyEnemyStatMult), stamped onto trainer
+        // builds and applied once in buildPokemon. The old per-city nerf table and
+        // badge/stage-gate ramp were removed — they compounded multiplicatively and
+        // read the wrong story row. applyFoeDifficultyScaling below now only carries
+        // the plain difficulty knob for UNSTAMPED foes (wild encounters / Frontier).
         // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
         // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
         // and skips the turn. Read via the public getter (window.StoryMode.state, which
@@ -14950,78 +15006,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const s = (window.StoryMode && window.StoryMode.state) || null;
             return (s && s.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
         }
-        function _earlyGameFoeStatMult() {
-            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (!sm) return 1.0;
-            const idx = sm.eventIndex | 0;
-            // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
-            const SER = window.STORY_EVENTS_RAW;
-            if (!SER) return 1.0;
-            const row = (idx >= 0 && idx < SER.length) ? SER[idx] : null;
-            // Only soften actual battles; city/hub rows pass through at 1.0.
-            if (!row || row[1] !== 'Battle') return 1.0;
-            // Current city = the nearest preceding City row's index.
-            let city = -1;
-            for (let i = Math.min(idx, SER.length - 1); i >= 0; i--) {
-                const r = SER[i];
-                if (r && r[1] === 'City') { const m = String(r[2] || '').match(/City\s*(\d+)/); city = m ? (+m[1]) : -1; break; }
-            }
-            if (city < 0 || city >= FOE_STAT_NERF_BY_CITY.length) return 1.0;
-            return FOE_STAT_NERF_BY_CITY[city];
-        }
-        window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
-        // Stage-gated foe stat mult: the "slightly harder than Fire Red" ramp the design
-        // calls for past the G2 unlock. Reads the current story row's event type to
-        // determine which stage we're in — late-stage rows ramp up, early-stage rows
-        // stay at 1.0 so Normal mode keeps a pure FR feel through the G3 era.
-        window._stageGatedFoeStatMult = function _stageGatedFoeStatMult() {
-            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (!sm) return 1.0;
-            // Crucible / Frontier / post-HoF replay rooms already stack their own boost — don't double.
-            if (sm.frontier && sm.frontier.active) return 1.0;
-            if (sm.atCrucible) return 1.0;
-            const idx = sm.eventIndex | 0;
-            const SER = window.STORY_EVENTS_RAW;
-            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
-            if (!row || row[1] !== 'Battle') return 1.0;
-            const evt = String(row[2] || '');
-            if (evt === 'Mystery Figure' || evt === 'Champion') return 1.20;
-            if (/^E[1-4]$/.test(evt)) return 1.15;
-            const gl = evt.match(/^Gym Leader\s*(\d)$/);
-            if (gl) {
-                const n = +gl[1];
-                if (n >= 8) return 1.10;
-                if (n >= 7) return 1.08;
-                if (n >= 6) return 1.05;
-                if (n >= 5) return 1.03;
-                if (n >= 4) return 1.01;
-                return 1.0;
-            }
-            // Non-leader fights inherit the contemporary stage's multiplier so route
-            // trainers between Gyms 7 and 8 don't feel suddenly weaker than the leaders.
-            const b = sm.badges | 0;
-            if (b >= 8) return 1.15;  // post-G8 league run
-            if (b >= 7) return 1.10;  // post-G7 (GL8 era)
-            if (b >= 6) return 1.08;  // post-G6 (GL7 era)
-            if (b >= 5) return 1.05;  // post-G5 (GL6 era)
-            if (b >= 4) return 1.03;  // post-G4 (GL5 era) — fills the GL4–5 dead zone
-            if (b >= 3) return 1.01;  // post-G3 (GL4 era) — fills the GL4–5 dead zone
-            return 1.0;
-        };
-        // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
-        // gets a true answer for the original pre-GL1 non-GL fights only.
-        function _isPreGym1NerfedBattle() {
-            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (!sm || (sm.badges | 0) > 0) return false;
-            const idx = sm.eventIndex | 0;
-            const SER = window.STORY_EVENTS_RAW;
-            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
-            if (!row || row[1] !== 'Battle') return false;
-            return row[2] !== 'Gym Leader 1';
-        }
-        window._isPreGym1NerfedBattle = _isPreGym1NerfedBattle;
         window.applyFoeDifficultyScaling = function(mon) {
             if (!mon) return;
+            // Stamped story-trainer foes are already fully scaled at build time
+            // (unified curve × difficulty, applied once in buildPokemon). This path
+            // only covers UNSTAMPED foes — wild encounters and the Battle Frontier
+            // ladder — and applies the single difficulty knob, nothing else.
+            if (mon._foeMultApplied) return;
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             const d = (sm && sm.storyDifficulty) || 'normal';
             let mult = 1.0;
@@ -15029,26 +15020,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
-            mult *= _earlyGameFoeStatMult();
-            mult *= window._stageGatedFoeStatMult();
-            // League boost (E1-E4 / Champion / league Rival / post-HoF Mystery)
-            // is stored as additive deltas on the mon by applyStoryLeagueFoeStatBoost
-            // so difficulty and boss boost stack ADDITIVELY (not multiplicatively).
-            // Stops the 1.30 × 1.40 = 1.82 cliff between Normal and Challenge.
-            const lb = mon._leagueStatBonus;
-            const hpMult   = mult + (lb && lb.hp   ? lb.hp   : 0);
-            const bulkMult = mult + (lb && lb.bulk ? lb.bulk : 0);
-            const speMult  = mult + (lb && lb.spe  ? lb.spe  : 0);
-            if (hpMult === 1.0 && bulkMult === 1.0 && speMult === 1.0) return;
-            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpMult));
+            if (mult === 1.0) return;
+            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
             mon.currentHp = newMaxHp;
             if (mon.stats) {
-                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * bulkMult));
-                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * bulkMult));
-                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * bulkMult));
-                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * bulkMult));
-                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * speMult));
+                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * mult));
+                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * mult));
+                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * mult));
+                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * mult));
+                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * mult));
             }
         };
 
@@ -15156,20 +15137,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // that auto-cleared at the next gym and could never reach its own cap in the shipped
             // timeline. The `build.tired` field is no longer written; an inert value on an old
             // save is harmless (nothing reads it).
-            // Phase 4.4 — per-event enemy stat multiplier (set by enterBattleEvent's
-            // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
-            // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
-            // (rounded). Shedinja's 1-HP gimmick is preserved.
-            if (build && typeof build._storyStatMult === 'number' && build._storyStatMult > 0 && build._storyStatMult !== 1) {
+            // Unified per-foe stat multiplier (the single value stamped by
+            // enterBattleEvent = progression curve × difficulty). Applied LAST and
+            // exactly ONCE — to maxHP + every combat stat, one floor per stat — so
+            // Spe 100 × 1.20 → 120. Shedinja's 1-HP gimmick is preserved. The
+            // _foeMultApplied marker is set even when the multiplier is exactly 1.00,
+            // telling applyFoeDifficultyScaling this foe is already fully scaled so no
+            // other path can scale it a second time (stops the old band×stage leak).
+            if (build && typeof build._storyStatMult === 'number' && build._storyStatMult > 0) {
+                mon._foeMultApplied = true;
                 const m = build._storyStatMult;
-                if (monName !== 'Shedinja') {
-                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * m));
-                    mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * m)));
+                if (m !== 1) {
+                    if (monName !== 'Shedinja') {
+                        mon.maxHp = Math.max(1, Math.floor(mon.maxHp * m));
+                        mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * m)));
+                    }
+                    for (const k of ['atk','def','spa','spd','spe']) {
+                        mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * m));
+                    }
+                    mon._storyStatMult = m; // exposed for the battle summary UI.
                 }
-                for (const k of ['atk','def','spa','spd','spe']) {
-                    mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * m));
-                }
-                mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
             }
             // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
             // (_bossStatMult, applied to HP + stats) and a party-scaled HP multiplier
@@ -17197,26 +17184,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
-            // Story League (E4 line / Champion / post-HoF boss): tiered stat boosts, then global difficulty mult.
-            // These foe-scaling helpers must not be allowed to crash startBattle and leave the
-            // user on a placeholder MissingNo screen — wrap each one so a single bad mon entry
-            // can't take down the whole init.
+            // Foe scaling. Stamped story-trainer foes are already scaled at build
+            // time (unified curve × difficulty); these two passes only touch unstamped
+            // foes — the Battle Frontier ladder and wild encounters. Wrap each so a
+            // single bad mon entry can't crash init and strand the player on the
+            // placeholder MissingNo HUD.
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
                 try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
-            }
-            // `sm` lives inside the StoryMode IIFE (`let sm` at line ~27235) — it is NOT
-            // visible at this script-top scope, so bare `sm.crucibleHardMode` here threw
-            // ReferenceError on EVERY story battle since the balance-overhaul commit,
-            // crashing startBattle mid-init and stranding the player on the static
-            // MissingNo HUD. Read via `window.StoryMode.state` (the public getter).
-            const _smRef = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-            if (state.mode === 'story' && _smRef && _smRef.crucibleHardMode && _smRef.crucibleBattleSource
-                && typeof window.crucibleApplyHardModeToFoes === 'function') {
-                try { window.crucibleApplyHardModeToFoes(); } catch (e) { console.warn('[startBattle] crucibleApplyHardModeToFoes failed:', e); }
             }
             if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
                 try { state.foeParty.forEach(window.applyFoeDifficultyScaling); } catch (e) { console.warn('[startBattle] applyFoeDifficultyScaling failed:', e); }
             }
+            // Persistent difficulty badge — a story run always shows its active
+            // difficulty so it can never silently masquerade as another.
+            try {
+                const _db = document.getElementById('story-diff-badge');
+                if (_db) {
+                    const _sm2 = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+                    if (state.mode === 'story' && _sm2) {
+                        const _lbl = ({ veryeasy: 'Very Easy', easy: 'Easy', normal: 'Normal', hard: 'Hard', challenge: 'Very Hard' })[_sm2.storyDifficulty || 'normal'] || 'Normal';
+                        _db.textContent = 'Difficulty: ' + _lbl;
+                        _db.classList.remove('hidden');
+                    } else {
+                        _db.classList.add('hidden');
+                    }
+                }
+            } catch (e) {}
             state.pActive = state.playerParty[0];
             // Reset story battle-EV tracking. onBattleEnd reads this set from
             // window to credit the mons that actually battled. Always init —
@@ -18934,7 +18927,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 document.getElementById('sum-page-1').innerHTML = `
                     <div class="sum-stats-grid">${statBars}</div>
-                    <div class="sum-stat-total"><span>Base stat total</span><b>${total}</b></div>
+                    <div class="sum-stat-total"><span>Stat total</span><b>${total}</b></div>
                     <div class="sum-overview-details">
                         <div class="sum-detail-cell"><span class="sum-detail-lbl">Item</span><span class="sum-detail-val hover-text" data-tip-key="${encodeURIComponent(itemNow)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${itemDisplay}</span></div>
                         <div class="sum-detail-cell"><span class="sum-detail-lbl">Ability</span><span class="sum-detail-val hover-text" data-tip-key="${encodeURIComponent(abilityNow)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${abilityDisplay}</span></div>
@@ -30119,54 +30112,54 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Ghetsis',     type:'Mixed',          sigs:['Hydreigon','Cofagrigus','Eelektross','Drapion','Toxicroak'],            charGen:5, pkmGens:[4,5] },
           { role:'Elite Trainer', name:'Guzma',       type:'Bug',            sigs:['Golisopod','Pinsir','Ariados','Masquerain','Scizor'],                  charGen:7, pkmGens:[1,2,3,7] },
           // Gym Leader 1
-          { role:'Gym Leader 1', name:'Brock',    type:'Rock',    sigs:['Onix','Geodude','Golem','Kabutops','Omastar'],                      charGen:1, pkmGens:[1] },
-          { role:'Gym Leader 1', name:'Falkner',  type:'Flying',  sigs:['Pidgeotto','Pidgey','Pidgeot','Noctowl','Swellow'],                 charGen:2, pkmGens:[1,2,3] },
-          { role:'Gym Leader 1', name:'Roxanne',  type:'Rock',    sigs:['Nosepass','Geodude','Probopass','Golem','Carracosta'],              charGen:3, pkmGens:[1,3,4,5] },
-          { role:'Gym Leader 1', name:'Roark',    type:'Rock',    sigs:['Cranidos','Rampardos','Onix','Geodude','Aerodactyl'],              charGen:4, pkmGens:[1,4] },
-          { role:'Gym Leader 1', name:'Cilan',    type:'Grass',   sigs:['Pansage','Simisage','Maractus','Lillipup','Leavanny'],             charGen:5, pkmGens:[5] },
-          { role:'Gym Leader 1', name:'Viola',    type:'Bug',     sigs:['Vivillon','Surskit','Masquerain','Vespiquen'],                     charGen:6, pkmGens:[3,4,6] },
-          { role:'Gym Leader 1', name:'Milo',     type:'Grass',   sigs:['Eldegoss','Gossifleur','Flapple','Appletun','Bellossom'],          charGen:8, pkmGens:[2,8] },
-          { role:'Gym Leader 1', name:'Katy',     type:'Bug',     sigs:['Spidops','Tarountula','Nymble','Lokix'],                           charGen:9, pkmGens:[2,9] },
+          { role:'Gym Leader 1', name:'Brock',    type:'Rock',    sigs:['Onix','Golem','Kabutops','Omastar','Sudowoodo'],                      charGen:1, pkmGens:[1] },
+          { role:'Gym Leader 1', name:'Falkner',  type:'Flying',  sigs:['Pidgeot','Noctowl','Swellow','Staraptor','Honchkrow'],                 charGen:2, pkmGens:[1,2,3] },
+          { role:'Gym Leader 1', name:'Roxanne',  type:'Rock',    sigs:['Probopass','Golem','Carracosta','Aerodactyl','Cradily'],              charGen:3, pkmGens:[1,3,4,5] },
+          { role:'Gym Leader 1', name:'Roark',    type:'Rock',    sigs:['Rampardos','Onix','Aerodactyl','Golem','Cradily'],              charGen:4, pkmGens:[1,4] },
+          { role:'Gym Leader 1', name:'Cilan',    type:'Grass',   sigs:['Simisage','Maractus','Leavanny','Lilligant','Sawsbuck'],             charGen:5, pkmGens:[5] },
+          { role:'Gym Leader 1', name:'Viola',    type:'Bug',     sigs:['Vivillon','Masquerain','Vespiquen','Beautifly','Ribombee'],                     charGen:6, pkmGens:[3,4,6] },
+          { role:'Gym Leader 1', name:'Milo',     type:'Grass',   sigs:['Eldegoss','Flapple','Appletun','Bellossom','Tsareena'],          charGen:8, pkmGens:[2,8] },
+          { role:'Gym Leader 1', name:'Katy',     type:'Bug',     sigs:['Spidops','Lokix','Rabsca','Kleavor','Vespiquen'],                           charGen:9, pkmGens:[2,9] },
           // Gym Leader 2
-          { role:'Gym Leader 2', name:'Misty',    type:'Water',   sigs:['Starmie','Staryu','Psyduck','Golduck','Lapras'],                  charGen:1, pkmGens:[1,2] },
+          { role:'Gym Leader 2', name:'Misty',    type:'Water',   sigs:['Starmie','Golduck','Lapras','Gyarados','Politoed'],                  charGen:1, pkmGens:[1,2] },
           { role:'Gym Leader 2', name:'Bugsy',    type:'Bug',     sigs:['Scyther','Metapod','Kakuna','Pinsir','Heracross'],                charGen:2, pkmGens:[1,2] },
-          { role:'Gym Leader 2', name:'Brawly',   type:'Fighting',sigs:['Makuhita','Hariyama','Machop','Meditite','Breloom'],              charGen:3, pkmGens:[1,3] },
+          { role:'Gym Leader 2', name:'Brawly',   type:'Fighting',sigs:['Hariyama','Breloom','Machamp','Medicham','Hawlucha'],              charGen:3, pkmGens:[1,3] },
           { role:'Gym Leader 2', name:'Gardenia', type:'Grass',   sigs:['Roserade','Turtwig','Cherrim','Bellossom','Tangrowth'],           charGen:4, pkmGens:[2,3,4] },
-          { role:'Gym Leader 2', name:'Lenora',   type:'Normal',  sigs:['Watchog','Herdier','Stoutland','Bouffalant','Cinccino'],          charGen:5, pkmGens:[5] },
-          { role:'Gym Leader 2', name:'Grant',    type:'Rock',    sigs:['Tyrunt','Amaura','Tyrantrum','Aurorus','Aerodactyl'],             charGen:6, pkmGens:[1,6] },
+          { role:'Gym Leader 2', name:'Lenora',   type:'Normal',  sigs:['Watchog','Stoutland','Bouffalant','Cinccino','Braviary'],          charGen:5, pkmGens:[5] },
+          { role:'Gym Leader 2', name:'Grant',    type:'Rock',    sigs:['Tyrantrum','Aurorus','Aerodactyl','Carbink','Cradily'],             charGen:6, pkmGens:[1,6] },
           { role:'Gym Leader 2', name:'Nessa',    type:'Water',   sigs:['Drednaw','Arrokuda','Golisopod','Toxapex','Pelipper'],            charGen:8, pkmGens:[1,7,8] },
-          { role:'Gym Leader 2', name:'Brassius', type:'Grass',   sigs:['Arboliva','Smoliv','Petilil','Breloom'],                          charGen:9, pkmGens:[2,3,5,9] },
+          { role:'Gym Leader 2', name:'Brassius', type:'Grass',   sigs:['Arboliva','Lilligant','Gogoat','Toedscruel','Breloom'],                          charGen:9, pkmGens:[2,3,5,9] },
           // Gym Leader 3
-          { role:'Gym Leader 3', name:'Lt. Surge', type:'Electric',sigs:['Raichu','Voltorb','Electrode','Electabuzz','Magneton'],          charGen:1, pkmGens:[1] },
+          { role:'Gym Leader 3', name:'Lt. Surge', type:'Electric',sigs:['Raichu','Electrode','Magneton','Electivire','Manectric'],          charGen:1, pkmGens:[1] },
           { role:'Gym Leader 3', name:'Whitney',  type:'Normal',  sigs:['Miltank','Clefairy','Lickitung','Wigglytuff','Blissey'],          charGen:2, pkmGens:[1,2] },
-          { role:'Gym Leader 3', name:'Wattson',  type:'Electric',sigs:['Magneton','Voltorb','Electrike','Manectric','Magnezone'],         charGen:3, pkmGens:[1,3,4] },
-          { role:'Gym Leader 3', name:'Maylene',  type:'Fighting',sigs:['Lucario','Meditite','Machoke','Medicham','Infernape'],            charGen:4, pkmGens:[1,3,4] },
-          { role:'Gym Leader 3', name:'Burgh',    type:'Bug',     sigs:['Leavanny','Whirlipede','Dwebble','Crustle','Scolipede'],          charGen:5, pkmGens:[4,5] },
+          { role:'Gym Leader 3', name:'Wattson',  type:'Electric',sigs:['Magnezone','Manectric','Electrode','Ampharos','Heliolisk'],         charGen:3, pkmGens:[1,3,4] },
+          { role:'Gym Leader 3', name:'Maylene',  type:'Fighting',sigs:['Lucario','Medicham','Machamp','Infernape','Toxicroak'],            charGen:4, pkmGens:[1,3,4] },
+          { role:'Gym Leader 3', name:'Burgh',    type:'Bug',     sigs:['Leavanny','Crustle','Scolipede','Volcarona','Galvantula'],          charGen:5, pkmGens:[4,5] },
           { role:'Gym Leader 3', name:'Korrina',  type:'Fighting',sigs:['Hawlucha','Mienfoo','Machoke','Lucario'],                         charGen:6, pkmGens:[1,4,5,6] },
           { role:'Gym Leader 3', name:'Kabu',     type:'Fire',    sigs:['Centiskorch','Ninetales','Arcanine','Torkoal','Salazzle'],        charGen:8, pkmGens:[1,3,7,8] },
-          { role:'Gym Leader 3', name:'Iono',     type:'Electric',sigs:['Bellibolt','Wattrel','Luxio','Kilowattrel'],                      charGen:9, pkmGens:[4,9] },
+          { role:'Gym Leader 3', name:'Iono',     type:'Electric',sigs:['Bellibolt','Kilowattrel','Luxray','Pawmot','Magnezone'],                      charGen:9, pkmGens:[4,9] },
           // Gym Leader 4
           { role:'Gym Leader 4', name:'Erika',    type:'Grass',   sigs:['Vileplume','Tangela','Victreebel','Bellossom','Jumpluff'],        charGen:1, pkmGens:[1,2] },
-          { role:'Gym Leader 4', name:'Morty',    type:'Ghost',   sigs:['Gengar','Haunter','Gastly','Misdreavus','Dusknoir'],              charGen:2, pkmGens:[1,2,4] },
-          { role:'Gym Leader 4', name:'Flannery', type:'Fire',    sigs:['Torkoal','Slugma','Magcargo','Numel','Camerupt'],                 charGen:3, pkmGens:[2,3] },
+          { role:'Gym Leader 4', name:'Morty',    type:'Ghost',   sigs:['Gengar','Mismagius','Dusknoir','Drifblim','Chandelure'],              charGen:2, pkmGens:[1,2,4] },
+          { role:'Gym Leader 4', name:'Flannery', type:'Fire',    sigs:['Torkoal','Magcargo','Camerupt','Houndoom','Arcanine'],                 charGen:3, pkmGens:[2,3] },
           { role:'Gym Leader 4', name:'Crasher Wake',type:'Water',sigs:['Floatzel','Gyarados','Quagsire','Gastrodon','Ludicolo'],         charGen:4, pkmGens:[1,2,3,4] },
-          { role:'Gym Leader 4', name:'Elesa',    type:'Electric',sigs:['Zebstrika','Emolga','Flaaffy','Ampharos','Luxray'],               charGen:5, pkmGens:[2,4,5] },
-          { role:'Gym Leader 4', name:'Ramos',    type:'Grass',   sigs:['Gogoat','Jumpluff','Weepinbell','Victreebel','Exeggutor'],        charGen:6, pkmGens:[1,2,6] },
+          { role:'Gym Leader 4', name:'Elesa',    type:'Electric',sigs:['Zebstrika','Emolga','Ampharos','Luxray','Eelektross'],               charGen:5, pkmGens:[2,4,5] },
+          { role:'Gym Leader 4', name:'Ramos',    type:'Grass',   sigs:['Gogoat','Jumpluff','Victreebel','Exeggutor','Tangrowth'],        charGen:6, pkmGens:[1,2,6] },
           { role:'Gym Leader 4', name:'Bea',      type:'Fighting',sigs:['Machamp','Hitmontop','Pangoro','Hawlucha'],                       charGen:8, pkmGens:[1,2,6,8] },
           { role:'Gym Leader 4', name:'Allister', type:'Ghost',   sigs:['Gengar','Cursola','Mimikyu','Polteageist'],                       charGen:8, pkmGens:[1,7,8] },
           { role:'Gym Leader 4', name:'Kofu',     type:'Water',   sigs:['Veluza','Wugtrio','Clawitzer'],                                  charGen:9, pkmGens:[6,7,9] },
           // Gym Leader 5
           { role:'Gym Leader 5', name:'Koga',     type:'Poison',  sigs:['Weezing','Muk','Venomoth','Crobat','Toxicroak'],                 charGen:1, pkmGens:[1,2,4] },
           { role:'Gym Leader 5', name:'Chuck',    type:'Fighting',sigs:['Poliwrath','Primeape','Machamp','Hitmontop','Hitmonlee'],         charGen:2, pkmGens:[1,2] },
-          { role:'Gym Leader 5', name:'Norman',   type:'Normal',  sigs:['Slaking','Vigoroth','Spinda','Linoone','Staraptor'],             charGen:3, pkmGens:[3,4] },
+          { role:'Gym Leader 5', name:'Norman',   type:'Normal',  sigs:['Slaking','Linoone','Staraptor','Exploud','Kangaskhan'],             charGen:3, pkmGens:[3,4] },
           { role:'Gym Leader 5', name:'Fantina',  type:'Ghost',   sigs:['Mismagius','Drifblim','Gengar','Spiritomb','Dusknoir'],          charGen:4, pkmGens:[1,4] },
           { role:'Gym Leader 5', name:'Clay',     type:'Ground',  sigs:['Excadrill','Krokorok','Palpitoad','Sandslash','Flygon'],          charGen:5, pkmGens:[1,3,5] },
-          { role:'Gym Leader 5', name:'Clemont',  type:'Electric',sigs:['Heliolisk','Emolga','Magneton','Magnezone','Lanturn'],            charGen:6, pkmGens:[1,2,4,5,6] },
+          { role:'Gym Leader 5', name:'Clemont',  type:'Electric',sigs:['Heliolisk','Emolga','Magnezone','Lanturn','Luxray'],            charGen:6, pkmGens:[1,2,4,5,6] },
           { role:'Gym Leader 5', name:'Opal',     type:'Fairy',   sigs:['Alcremie','Mawile','Togekiss','Sylveon'],                        charGen:8, pkmGens:[1,3,4,6,8] },
           { role:'Gym Leader 5', name:'Larry',    type:'Normal',  sigs:['Dudunsparce','Komala','Braviary'],                               charGen:9, pkmGens:[4,5,7,9] },
           // Gym Leader 6
-          { role:'Gym Leader 6', name:'Sabrina',  type:'Psychic', sigs:['Alakazam','Kadabra','Mr. Mime','Espeon','Jynx'],                 charGen:1, pkmGens:[1,2] },
-          { role:'Gym Leader 6', name:'Jasmine',  type:'Steel',   sigs:['Steelix','Magnemite','Magneton','Skarmory','Metagross'],          charGen:2, pkmGens:[1,2,3] },
+          { role:'Gym Leader 6', name:'Sabrina',  type:'Psychic', sigs:['Alakazam','Mr. Mime','Espeon','Jynx','Slowbro'],                 charGen:1, pkmGens:[1,2] },
+          { role:'Gym Leader 6', name:'Jasmine',  type:'Steel',   sigs:['Steelix','Magneton','Skarmory','Metagross','Bronzong'],          charGen:2, pkmGens:[1,2,3] },
           { role:'Gym Leader 6', name:'Winona',   type:'Flying',  sigs:['Altaria','Swellow','Pelipper','Skarmory','Tropius'],              charGen:3, pkmGens:[2,3,5] },
           { role:'Gym Leader 6', name:'Byron',    type:'Steel',   sigs:['Bastiodon','Bronzong','Steelix','Magnezone','Skarmory'],          charGen:4, pkmGens:[2,4] },
           { role:'Gym Leader 6', name:'Skyla',    type:'Flying',  sigs:['Swanna','Swoobat','Unfezant','Skarmory','Archeops'],              charGen:5, pkmGens:[2,5] },
@@ -30175,20 +30168,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Gym Leader 6', name:'Melony',   type:'Ice',     sigs:['Lapras','Frosmoth','Eiscue'],                                    charGen:8, pkmGens:[1,8] },
           { role:'Gym Leader 6', name:'Ryme',     type:'Ghost',   sigs:['Houndstone','Banette','Mimikyu'],                               charGen:9, pkmGens:[3,7,8,9] },
           // Gym Leader 7
-          { role:'Gym Leader 7', name:'Blaine',   type:'Fire',    sigs:['Arcanine','Rapidash','Magmar','Ninetales','Magmortar'],          charGen:1, pkmGens:[1,4] },
-          { role:'Gym Leader 7', name:'Pryce',    type:'Ice',     sigs:['Piloswine','Seel','Dewgong','Jynx','Mamoswine'],                charGen:2, pkmGens:[1,2,4] },
+          { role:'Gym Leader 7', name:'Blaine',   type:'Fire',    sigs:['Arcanine','Rapidash','Ninetales','Magmortar','Charizard'],          charGen:1, pkmGens:[1,4] },
+          { role:'Gym Leader 7', name:'Pryce',    type:'Ice',     sigs:['Mamoswine','Dewgong','Jynx','Walrein','Glalie'],                charGen:2, pkmGens:[1,2,4] },
           { role:'Gym Leader 7', name:'Tate',     type:'Psychic', sigs:['Solrock','Gallade','Xatu','Claydol','Slowbro'],                  charGen:3, pkmGens:[2,3,4] },
-          { role:'Gym Leader 7', name:'Candice',  type:'Ice',     sigs:['Froslass','Abomasnow','Sneasel','Medicham','Weavile'],           charGen:4, pkmGens:[2,3,4] },
+          { role:'Gym Leader 7', name:'Candice',  type:'Ice',     sigs:['Froslass','Abomasnow','Weavile','Medicham','Glaceon'],           charGen:4, pkmGens:[2,3,4] },
           { role:'Gym Leader 7', name:'Brycen',   type:'Ice',     sigs:['Beartic','Vanillish','Cryogonal','Dewgong','Lapras'],            charGen:5, pkmGens:[1,2,5] },
           { role:'Gym Leader 7', name:'Olympia',  type:'Psychic', sigs:['Meowstic','Sigilyph','Slowking','Gardevoir'],                   charGen:6, pkmGens:[1,2,3,5,6] },
           { role:'Gym Leader 7', name:'Piers',    type:'Dark',    sigs:['Obstagoon','Scrafty','Malamar','Skuntank','Pangoro'],            charGen:8, pkmGens:[4,5,6,8] },
           { role:'Gym Leader 7', name:'Tulip',    type:'Psychic', sigs:['Espathra','Farigiraf','Gallade','Gardevoir'],                   charGen:9, pkmGens:[3,6,9] },
           // Gym Leader 8 — final badge (no Kanto repeats: Brock–Blaine/Koga already appear in GL1–7; Giovanni stays as Viridian-only GL8)
-          { role:'Gym Leader 8', name:'Giovanni',type:'Ground',sigs:['Rhydon','Dugtrio','Nidoqueen','Nidoking','Rhyperior'],        charGen:1, pkmGens:[1,4] },
-          { role:'Gym Leader 8', name:'Clair',    type:'Dragon',  sigs:['Kingdra','Dragonair','Gyarados','Dragonite','Salamence'],        charGen:2, pkmGens:[1,2,3] },
-          { role:'Gym Leader 8', name:'Wallace',  type:'Water',   sigs:['Milotic','Luvdisc','Sealeo','Whiscash','Walrein'],              charGen:3, pkmGens:[3] },
+          { role:'Gym Leader 8', name:'Giovanni',type:'Ground',sigs:['Rhyperior','Dugtrio','Nidoqueen','Nidoking','Garchomp'],        charGen:1, pkmGens:[1,4] },
+          { role:'Gym Leader 8', name:'Clair',    type:'Dragon',  sigs:['Kingdra','Gyarados','Dragonite','Salamence','Altaria'],        charGen:2, pkmGens:[1,2,3] },
+          { role:'Gym Leader 8', name:'Wallace',  type:'Water',   sigs:['Milotic','Whiscash','Walrein','Ludicolo','Gyarados'],              charGen:3, pkmGens:[3] },
           { role:'Gym Leader 8', name:'Volkner',  type:'Electric',sigs:['Electivire','Luxray','Raichu','Jolteon','Rotom'],               charGen:4, pkmGens:[1,4] },
-          { role:'Gym Leader 8', name:'Drayden',  type:'Dragon',  sigs:['Haxorus','Druddigon','Fraxure','Altaria','Flygon'],             charGen:5, pkmGens:[3,5] },
+          { role:'Gym Leader 8', name:'Drayden',  type:'Dragon',  sigs:['Haxorus','Druddigon','Altaria','Flygon','Hydreigon'],             charGen:5, pkmGens:[3,5] },
           { role:'Gym Leader 8', name:'Wulfric',  type:'Ice',     sigs:['Avalugg','Abomasnow','Cryogonal','Mamoswine'],                  charGen:6, pkmGens:[4,5,6] },
           { role:'Gym Leader 8', name:'Raihan',   type:'Dragon',  sigs:['Duraludon','Flygon','Sandaconda','Goodra','Turtonator'],         charGen:8, pkmGens:[3,5,6,7,8] },
           { role:'Gym Leader 8', name:'Grusha',   type:'Ice',     sigs:['Cetitan','Beartic','Frosmoth','Weavile'],                       charGen:9, pkmGens:[3,5,8,9] },
@@ -30204,15 +30197,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           // Elite Four E2
           { role:'E2', name:'Bruno',    type:'Fighting', sigs:['Machamp','Hitmonlee','Hitmonchan','Onix','Lucario'],                   charGen:1, pkmGens:[1,2,4] },
           { role:'E2', name:'Koga',     type:'Poison',   sigs:['Crobat','Ariados','Forretress','Muk','Venomoth'],                     charGen:2, pkmGens:[1,2,3] },
-          { role:'E2', name:'Phoebe',   type:'Ghost',    sigs:['Dusknoir','Dusclops','Banette','Sableye','Mismagius'],                charGen:3, pkmGens:[3,4] },
+          { role:'E2', name:'Phoebe',   type:'Ghost',    sigs:['Dusknoir','Banette','Sableye','Mismagius','Drifblim'],                charGen:3, pkmGens:[3,4] },
           { role:'E2', name:'Bertha',   type:'Ground',   sigs:['Hippowdon','Whiscash','Golem','Rhyperior','Gliscor'],                 charGen:4, pkmGens:[1,2,3,4] },
           { role:'E2', name:'Marshal',  type:'Fighting', sigs:['Conkeldurr','Throh','Sawk','Mienshao','Lucario'],                    charGen:5, pkmGens:[4,5] },
           { role:'E2', name:'Siebold',  type:'Water',    sigs:['Clawitzer','Barbaracle','Gyarados','Starmie','Blastoise'],            charGen:6, pkmGens:[1,6] },
           { role:'E2', name:'Olivia',   type:'Rock',     sigs:['Lycanroc','Relicanth','Carbink','Golem'],                             charGen:7, pkmGens:[1,3,6,7] },
           { role:'E2', name:'Poppy',    type:'Steel',    sigs:['Tinkaton','Copperajah','Corviknight','Bronzong','Magnezone'],          charGen:9, pkmGens:[4,8,9] },
           // Elite Four E3
-          { role:'E3', name:'Agatha',   type:'Ghost',    sigs:['Gengar','Haunter','Golbat','Arbok','Misdreavus'],                     charGen:1, pkmGens:[1,2] },
-          { role:'E3', name:'Glacia',   type:'Ice',      sigs:['Walrein','Glalie','Sealeo','Froslass','Beartic'],                     charGen:3, pkmGens:[3,4,5] },
+          { role:'E3', name:'Agatha',   type:'Ghost',    sigs:['Gengar','Crobat','Arbok','Misdreavus','Drapion'],                     charGen:1, pkmGens:[1,2] },
+          { role:'E3', name:'Glacia',   type:'Ice',      sigs:['Walrein','Glalie','Froslass','Beartic','Abomasnow'],                     charGen:3, pkmGens:[3,4,5] },
           { role:'E3', name:'Flint',    type:'Fire',     sigs:['Infernape','Magmortar','Rapidash','Flareon','Arcanine'],              charGen:4, pkmGens:[1,2,4] },
           { role:'E3', name:'Grimsley', type:'Dark',     sigs:['Bisharp','Liepard','Scrafty','Krookodile','Honchkrow'],               charGen:5, pkmGens:[2,4,5] },
           { role:'E3', name:'Wikstrom', type:'Steel',    sigs:['Aegislash','Klefki','Probopass','Scizor','Empoleon'],                 charGen:6, pkmGens:[2,4,6] },
@@ -30221,7 +30214,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           // Elite Four E4
           { role:'E4', name:'Lance',    type:'Dragon',   sigs:['Dragonite','Dragonite','Dragonite','Aerodactyl','Gyarados','Charizard'],charGen:1, pkmGens:[1,2] },
           { role:'E4', name:'Karen',    type:'Dark',     sigs:['Houndoom','Umbreon','Murkrow','Vileplume','Gengar','Weavile'],         charGen:2, pkmGens:[1,2,4] },
-          { role:'E4', name:'Drake',    type:'Dragon',   sigs:['Salamence','Altaria','Flygon','Shelgon','Kingdra'],                   charGen:3, pkmGens:[2,3,5] },
+          { role:'E4', name:'Drake',    type:'Dragon',   sigs:['Salamence','Altaria','Flygon','Kingdra','Dragonite'],                   charGen:3, pkmGens:[2,3,5] },
           { role:'E4', name:'Lucian',   type:'Psychic',  sigs:['Bronzong','Gallade','Alakazam','Mr. Mime','Espeon'],                  charGen:4, pkmGens:[1,2,3,4] },
           { role:'E4', name:'Caitlin',  type:'Psychic',  sigs:['Gothitelle','Reuniclus','Musharna','Sigilyph','Gallade'],             charGen:5, pkmGens:[3,4,5] },
           { role:'E4', name:'Drasna',   type:'Dragon',   sigs:['Noivern','Dragalge','Altaria','Druddigon','Hydreigon'],               charGen:6, pkmGens:[3,5,6] },
@@ -30231,15 +30224,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Champion', name:'Blue',          type:'Mixed', sigs:['Blastoise','Pidgeot','Alakazam','Rhydon','Arcanine','Exeggutor'],     charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Blue-Champion' },
           { role:'Champion', name:'Lance',         type:'Dragon',sigs:['Dragonite','Dragonite','Dragonite','Aerodactyl','Gyarados','Charizard'],charGen:2, pkmGens:[1,3,4] },
           { role:'Champion', name:'Steven Stone',  type:'Steel', sigs:['Metagross','Aggron','Skarmory','Claydol','Cradily','Armaldo'],        charGen:3, pkmGens:[1,3,6] },
-          { role:'Champion', name:'Wallace',       type:'Water', sigs:['Milotic','Wailord','Tentacruel','Ludicolo','Gyarados'],               charGen:3, pkmGens:[1,3] },
+          { role:'Champion', name:'Wallace',       type:'Water', sigs:['Milotic','Wailord','Tentacruel','Ludicolo','Gyarados','Whiscash'],               charGen:3, pkmGens:[1,3] },
           { role:'Champion', name:'Cynthia',       type:'Mixed', sigs:['Garchomp','Lucario','Milotic','Spiritomb','Roserade','Togekiss'],      charGen:4, pkmGens:[4] },
-          { role:'Champion', name:'Alder',         type:'Bug',   sigs:['Volcarona','Bouffalant','Accelgor','Escavalier','Conkeldurr'],         charGen:5, pkmGens:[5] },
+          { role:'Champion', name:'Alder',         type:'Bug',   sigs:['Volcarona','Bouffalant','Accelgor','Escavalier','Conkeldurr','Vanilluxe'],         charGen:5, pkmGens:[5] },
           { role:'Champion', name:'Iris',          type:'Dragon',sigs:['Haxorus','Hydreigon','Druddigon','Aggron','Archeops','Lapras'],        charGen:5, pkmGens:[1,3,5] },
           { role:'Champion', name:'Diantha',       type:'Mixed', sigs:['Gardevoir','Hawlucha','Tyrantrum','Aurorus','Gourgeist','Goodra'],     charGen:6, pkmGens:[3,6] },
-          { role:'Champion', name:'Prof. Kukui',   type:'Mixed', sigs:['Lycanroc','Ninetales','Braviary','Magnezone','Snorlax'],              charGen:7, pkmGens:[1,4,5,7] },
-          { role:'Champion', name:'Leon',          type:'Mixed', sigs:['Charizard','Aegislash','Dragapult','Haxorus','Seismitoad'],            charGen:8, pkmGens:[1,5,6,8] },
-          { role:'Champion', name:'Geeta',         type:'Mixed', sigs:['Glimmora','Espathra','Kingambit','Avalugg','Veluza'],                 charGen:9, pkmGens:[6,9] },
-          { role:'Champion', name:'Red',           type:'Mixed', sigs:['Pikachu','Venusaur','Charizard','Blastoise','Snorlax'],               charGen:1, pkmGens:[1] },
+          { role:'Champion', name:'Prof. Kukui',   type:'Mixed', sigs:['Lycanroc','Ninetales','Braviary','Magnezone','Snorlax','Incineroar'],              charGen:7, pkmGens:[1,4,5,7] },
+          { role:'Champion', name:'Leon',          type:'Mixed', sigs:['Charizard','Aegislash','Dragapult','Haxorus','Seismitoad','Rhyperior'],            charGen:8, pkmGens:[1,5,6,8] },
+          { role:'Champion', name:'Geeta',         type:'Mixed', sigs:['Glimmora','Espathra','Kingambit','Avalugg','Veluza','Gogoat'],                 charGen:9, pkmGens:[6,9] },
+          { role:'Champion', name:'Red',           type:'Mixed', sigs:['Pikachu','Venusaur','Charizard','Blastoise','Snorlax','Lapras'],               charGen:1, pkmGens:[1] },
 
           // Thematic Elite Trainer variants — same sprite as the canonical character, darker pool.
           // tag:'eldritch' lets the build engine reach beyond toggled gens (it knows this trainer's lineup
@@ -30292,14 +30285,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Ariana', type:'Poison', sigs:['Arbok','Vileplume','Murkrow','Crobat','Gloom'], charGen:2, pkmGens:[1,2], spriteFile:'Ariana' },
           { role:'Basic Trainer', name:'Aroma Lady', type:'Grass', sigs:['Oddish','Seedot','Shroomish','Petilil','Grookey'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Aroma_Lady' },
           { role:'Basic Trainer', name:'Artist', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Artist' },
-          { role:'Elite Trainer', name:'Ash', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Ash' },
-          { role:'Elite Trainer', name:'Ash Alola', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Alola' },
-          { role:'Elite Trainer', name:'Ash Cap Backward', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Ash-Cap_Backward' },
-          { role:'Elite Trainer', name:'Ash Hoenn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Hoenn' },
-          { role:'Elite Trainer', name:'Ash Johto', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Johto' },
-          { role:'Elite Trainer', name:'Ash Kalos', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Kalos' },
-          { role:'Elite Trainer', name:'Ash Sinnoh', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Ash-Sinnoh' },
-          { role:'Elite Trainer', name:'Ash Unova', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Unova' },
+          { role:'Elite Trainer', name:'Ash', type:'Mixed', sigs:['Pikachu','Charizard','Snorlax','Pidgeot','Kingler'], charGen:4, pkmGens:[1,2,3,4,5,6,7,8], spriteFile:'Ash' },
+          { role:'Elite Trainer', name:'Ash Alola', type:'Mixed', sigs:['Pikachu','Incineroar','Lycanroc','Melmetal','Toucannon'], charGen:7, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Ash-Alola' },
+          { role:'Elite Trainer', name:'Ash Cap Backward', type:'Mixed', sigs:['Pikachu','Dragonite','Lucario','Gengar','Dracovish'], charGen:8, pkmGens:[1,2,3,4,5,6,7,8], spriteFile:'Ash-Cap_Backward' },
+          { role:'Elite Trainer', name:'Ash Hoenn', type:'Mixed', sigs:['Pikachu','Sceptile','Swellow','Crawdaunt','Torkoal'], charGen:3, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Hoenn' },
+          { role:'Elite Trainer', name:'Ash Johto', type:'Mixed', sigs:['Pikachu','Typhlosion','Feraligatr','Heracross','Noctowl'], charGen:2, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Johto' },
+          { role:'Elite Trainer', name:'Ash Kalos', type:'Mixed', sigs:['Pikachu','Greninja','Talonflame','Hawlucha','Noivern'], charGen:6, pkmGens:[1,2,3,4,5,6], spriteFile:'Ash-Kalos' },
+          { role:'Elite Trainer', name:'Ash Sinnoh', type:'Mixed', sigs:['Pikachu','Infernape','Staraptor','Torterra','Gliscor'], charGen:4, pkmGens:[1,2,3,4,5,6], spriteFile:'Ash-Sinnoh' },
+          { role:'Elite Trainer', name:'Ash Unova', type:'Mixed', sigs:['Pikachu','Krookodile','Unfezant','Leavanny','Seismitoad'], charGen:5, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Unova' },
           { role:'Elite Trainer', name:'AZ', type:'Mixed', sigs:['Torkoal','Sigilyph','Golurk','Flygon','Tyranitar'], charGen:6, pkmGens:[3,5,6], spriteFile:'AZ' },
           { role:'Basic Trainer', name:'Backers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Backers' },
           { role:'Basic Trainer', name:'Backers F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Backers~F' },
@@ -30389,7 +30382,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Ilima', type:'Normal', sigs:['Smeargle','Yungoos','Gumshoos','Eevee','Komala'], charGen:7, pkmGens:[1,2,7], spriteFile:'Ilima' },
           { role:'Basic Trainer', name:'Infielder', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Infielder' },
           { role:'Elite Trainer', name:'Ingo', type:'Mixed', sigs:['Excadrill','Crustle','Garchomp','Conkeldurr','Eelektross'], charGen:5, pkmGens:[4,5,8], spriteFile:'Ingo' },
-          { role:'Elite Trainer', name:'Interviewers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Interviewers' },
+          { role:'Basic Trainer', name:'Interviewers', type:'Normal', sigs:[], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Interviewers' },
           { role:'Elite Trainer', name:'Janine', type:'Poison', sigs:['Crobat','Ariados','Weezing','Muk','Venomoth'], charGen:2, pkmGens:[1,2], spriteFile:'Janine' },
           { role:'Basic Trainer', name:'Janitor', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Janitor' },
           { role:'Basic Trainer', name:'Jogger', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Jogger' },
@@ -30407,7 +30400,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Lady', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lady' },
           { role:'Elite Trainer', name:'Lana', type:'Water', sigs:['Araquanid','Lanturn','Wishiwashi','Cloyster','Bruxish'], charGen:7, pkmGens:[7], spriteFile:'Lana' },
           { role:'Elite Trainer', name:'Leaf', type:'Mixed', sigs:['Venusaur','Charizard','Blastoise','Pidgeot','Clefable'], charGen:1, pkmGens:[1], spriteFile:'Leaf' },
-          { role:'Elite Trainer', name:'Li', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Li' },
+          { role:'Basic Trainer', name:'Li', type:'Normal', sigs:[], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Li' },
           { role:'Elite Trainer', name:'Lillie', type:'Fairy', sigs:['Clefable','Ribombee','Comfey','Mismagius','Wigglytuff'], charGen:7, pkmGens:[1,7], spriteFile:'Lillie' },
           { role:'Elite Trainer', name:'Lillie 2', type:'Fairy', sigs:['Clefable','Comfey','Ribombee','Lopunny','Mismagius','Polteageist'], charGen:7, pkmGens:[1,7,8], spriteFile:'Lillie-2' },
           { role:'Basic Trainer', name:'Linebacker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Linebacker' },
@@ -30420,7 +30413,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Mallow', type:'Grass', sigs:['Tsareena','Steenee','Lurantis','Tropius','Shiinotic'], charGen:7, pkmGens:[3,6,7], spriteFile:'Mallow' },
           { role:'Elite Trainer', name:'Marley', type:'Dark', sigs:['Arcanine','Houndoom','Liepard','Murkrow','Roserade'], charGen:4, pkmGens:[1,4], spriteFile:'Marley' },
           { role:'Elite Trainer', name:'Mars', type:'Dark', sigs:['Purugly','Bronzor','Croagunk','Yanmega','Houndoom'], charGen:4, pkmGens:[4], spriteFile:'Mars' },
-          { role:'Elite Trainer', name:'Masked Royal', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Masked_Royal' },
+          { role:'Elite Trainer', name:'Masked Royal', type:'Mixed', sigs:['Incineroar','Machamp','Lucario','Hawlucha','Bewear'], charGen:7, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Masked_Royal' },
           { role:'Elite Trainer', name:'Matt', type:'Water', sigs:['Sharpedo','Crawdaunt','Walrein','Mightyena','Tentacruel'], charGen:3, pkmGens:[3], spriteFile:'Matt' },
           { role:'Elite Trainer', name:'Maxie', type:'Fire', sigs:['Camerupt','Mightyena','Crobat','Houndoom','Magcargo'], charGen:3, pkmGens:[3], spriteFile:'Maxie' },
           { role:'Basic Trainer', name:'Medium', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Medium' },
@@ -30432,12 +30425,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Musician', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Musician' },
           { role:'Elite Trainer', name:'Nanu', type:'Dark', sigs:['Persian','Honchkrow','Krookodile','Absol','Skuntank'], charGen:7, pkmGens:[1,5,7], spriteFile:'Nanu' },
           { role:'Basic Trainer', name:'Ninja Boy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ninja_Boy' },
-          { role:'Elite Trainer', name:'Nita', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nita' },
+          { role:'Basic Trainer', name:'Nita', type:'Normal', sigs:[], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nita' },
           { role:'Elite Trainer', name:'Noland', type:'Mixed', sigs:['Articuno','Latias','Latios','Snorlax','Heracross'], charGen:3, pkmGens:[1,3], spriteFile:'Noland' },
           { role:'Basic Trainer', name:'Nurse', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Nurse' },
           { role:'Basic Trainer', name:'Nursery Aide', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Nursery_Aide' },
           { role:'Elite Trainer', name:'N Young', type:'Mixed', sigs:['Reshiram','Zekrom','Carracosta','Archeops','Vanilluxe','Zoroark'], charGen:5, pkmGens:[5], spriteFile:'N-Young' },
-          { role:'Elite Trainer', name:'Oak', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Oak' },
+          { role:'Elite Trainer', name:'Oak', type:'Mixed', sigs:['Dragonite','Charizard','Gyarados','Arcanine','Exeggutor','Tauros'], charGen:1, pkmGens:[1,2,3,4,5,6,7,8], spriteFile:'Oak' },
           { role:'Basic Trainer', name:'Office Worker', type:'Normal', sigs:['Pidgey','Rattata','Furret','Chatot','Bidoof'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Office_Worker' },
           { role:'Basic Trainer', name:'Officer', type:'Normal', sigs:['Growlithe','Arcanine','Herdier','Stoutland','Snubbull'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Officer' },
           { role:'Basic Trainer', name:'Old Couple', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Old_Couple' },
@@ -30445,7 +30438,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Palmer', type:'Mixed', sigs:['Milotic','Rhyperior','Dragonite','Cresselia','Heatran'], charGen:4, pkmGens:[1,4], spriteFile:'Palmer' },
           { role:'Basic Trainer', name:'Parasol Lady', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Parasol_Lady' },
           { role:'Elite Trainer', name:'Petrel', type:'Poison', sigs:['Weezing','Koffing','Crobat','Golbat','Muk'], charGen:2, pkmGens:[1,2], spriteFile:'Petrel' },
-          { role:'Elite Trainer', name:'PI', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'PI' },
+          { role:'Basic Trainer', name:'PI', type:'Normal', sigs:[], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'PI' },
           { role:'Basic Trainer', name:'Picnicker', type:'Grass', sigs:['Oddish','Bellsprout','Sunkern','Sunflora','Hoppip'], charGen:1, pkmGens:[1,2], spriteFile:'Picnicker' },
           { role:'Basic Trainer', name:'Pilot', type:'Flying', sigs:['Starly','Pidove','Fletchling','Rookidee','Pidgey'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Pilot' },
           { role:'Basic Trainer', name:'Plasma Grunt', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Plasma_Grunt' },
@@ -30517,7 +30510,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Swimmer JPN', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Swimmer-JPN' },
           { role:'Elite Trainer', name:'Tabitha', type:'Fire', sigs:['Camerupt','Mightyena','Magcargo','Numel','Houndoom'], charGen:3, pkmGens:[3], spriteFile:'Tabitha' },
           { role:'Basic Trainer', name:'Tamer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Tamer' },
-          { role:'Elite Trainer', name:'Tate and Liza', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Tate_and_Liza' },
+          { role:'Elite Trainer', name:'Tate and Liza', type:'Psychic', sigs:['Solrock','Lunatone','Xatu','Claydol','Gardevoir'], charGen:3, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Tate_and_Liza' },
           { role:'Basic Trainer', name:'Teacher', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Teacher' },
           { role:'Basic Trainer', name:'Team Aqua Grunt F', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:9, pkmGens:[7,8,9], spriteFile:'Team_Aqua_Grunt~F' },
           { role:'Basic Trainer', name:'Team Aqua Grunt Beta', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Team_Aqua_Grunt-Beta' },
@@ -30699,9 +30692,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         })();
         // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
-        // `applyFoeDifficultyScaling` and `_earlyGameFoeStatMult` live outside the IIFE and need
-        // to look up the current row's event type — without this, `typeof STORY_EVENTS_RAW`
-        // resolves to 'undefined' from there and the early-game softening silently no-ops.
+        // Engine-scope code outside the IIFE looks up the current row's event type via this
+        // reference — without it, `typeof STORY_EVENTS_RAW` resolves to 'undefined' from there.
         window.STORY_EVENTS_RAW = STORY_EVENTS_RAW;
 
         // 3-track story-mode pools (v22+). One villain + one extra is rolled at
@@ -33599,30 +33591,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyTrainerBaseName(name) {
             return String(name||'').replace(/\s*\([^)]*\)\s*/g, '').replace(/\s+Rival\s*$/i,'').trim();
         }
-        /** Story `STORY_EVENTS_RAW` row ids for the fixed Rival battles (same trainer + sprite for the run). League rival row must match STORY_LEAGUE_RIVAL_ROW below. */
+        /** Story `STORY_EVENTS_RAW` row ids for the fixed Rival battles (same trainer + sprite for the run). */
         const STORY_RIVAL_ROW_INTRO = 68;
         const STORY_RIVAL_ROW_EARLY = 12;
         const STORY_RIVAL_ROW_MID = 39;
         const STORY_RIVAL_ROW_LEAGUE = 65;
-        // Phase 4.4 — per-event enemy stat multiplier. Trainer mons read this
-        // multiplier on top of their (already city-scaled) IV/EV/nature stats: at
-        // C0 the band is -20%, smoothly climbing per city to +20% at C9, with three
-        // narrative overrides (intro rival -25%, Champion +25%, Mystery Figure +30%).
-        // Wilds + Professor gifts are EXEMPT — they use their natural city curve.
-        const _STORY_FOE_STAT_BAND = Object.freeze([-20,-17,-13,-10,-7,-3,0,7,13,20]);
+        // ── Unified foe stat scaling ──────────────────────────────────────────
+        // ONE source of truth for how much stronger (or weaker) a story foe is than
+        // a bare Lv50 mon with the same IV/EV/nature. The value is a single final
+        // multiplier applied ONCE to every foe stat (incl. maxHP) in buildPokemon —
+        // no compounding bands, no double floors. Spe 100 × 1.20 → 120, full stop.
+        //
+        //   _storyEnemyStatMult(): the progression curve at NORMAL difficulty, a pure
+        //     function of (event, city, row). City 0 starts soft (×0.80) and climbs to
+        //     ×1.15 by the League; boss events override the city curve.
+        //   _foeDifficultyMult(): the orthogonal difficulty knob, layered on top.
+        //
+        // The two are multiplied together once at the stamp site (enterBattleEvent)
+        // into a single build._storyStatMult. Wilds + Professor gifts are EXEMPT —
+        // they keep their natural Lv50 line.
+        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.00, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
         function _storyEnemyStatMult(eventType, city, storyRowIdx) {
             const e = String(eventType || '');
-            if (e === 'Mystery Figure') return 1.30;
-            if (e === 'Champion') return 1.25;
-            // Intro rival is the explicit narrative debuff floor (-25%).
-            if (e === 'Rival' && (storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) return 0.75;
-            // Out-of-story context (city < 0 from an invalid storyRowIdx): no scaling.
-            // Without this, Math.max(0, ...) would clamp -1 to 0 and apply the C0 -20%
-            // band to non-story callers (Pits / Crucible / Frontier forwarding city=-1).
+            const row = storyRowIdx | 0;
+            // Boss / narrative overrides take precedence over the city curve. The
+            // late-game ladder climbs smoothly through the Elite Four to the Champion
+            // and then the post-Champion Rival finale (the last main-story fight,
+            // timeline row 65), with the post-game Mystery Figure topping everything.
+            if (e === 'Mystery Figure') return 1.30;                              // post-game superboss
+            if (e === 'Rival' && row === STORY_RIVAL_ROW_INTRO) return 0.75;      // intro debuff floor (−25%)
+            if (e === 'Rival' && row === STORY_RIVAL_ROW_LEAGUE) return 1.26;     // main-story finale (after Champion)
+            if (e === 'Champion') return 1.23;
+            if (e === 'E1') return 1.14;
+            if (e === 'E2') return 1.16;
+            if (e === 'E3') return 1.18;
+            if (e === 'E4') return 1.20;
+            // Out-of-story callers (Crucible / Frontier forward city = −1): no curve.
             const ci = city | 0;
             if (ci < 0) return 1;
-            const c = Math.min(_STORY_FOE_STAT_BAND.length - 1, ci);
-            return 1 + (_STORY_FOE_STAT_BAND[c] || 0) / 100;
+            const c = Math.min(FOE_POWER_CURVE.length - 1, ci);
+            return FOE_POWER_CURVE[c] || 1;
+        }
+        // Difficulty multiplier — the single knob layered on top of the curve.
+        // Normal is the 1.00 baseline; everything else scales the whole curve.
+        function _foeDifficultyMult(diff) {
+            switch (diff) {
+                case 'veryeasy':  return 0.70;
+                case 'easy':      return 0.85;
+                case 'hard':      return 1.15;
+                case 'challenge': return 1.30; // "Very Hard" in the UI
+                default:          return 1.00; // normal
+            }
         }
         /** Hand-picked mid-run battle eventIds that become THEMED on every run. The
          * theme biases the trainer pool toward tagged variants; eldritch-tagged
@@ -35375,22 +35394,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
         }
 
-        // Pokémon League arc: per-stat foe boosts (startBattle applies this before applyFoeDifficultyScaling).
-        // Hard / Very Hard still multiply on top via applyFoeDifficultyScaling. E1–E4 / Champion / league Rival / post-HoF Mystery.
-        const STORY_LEAGUE_RIVAL_ROW = 65;
-        const STORY_POST_HOF_MYSTERY_ROW = 67;
+        // Battle Frontier per-round foe scaling. (League / boss stat boosts no
+        // longer live here — E1–E4 / Champion / Mystery / league Rival are scaled
+        // through the unified foe curve at build time; see _storyEnemyStatMult.)
         window.applyStoryLeagueFoeStatBoost = function(mon) {
             if (!mon || !sm.active) return;
             // Battle Frontier override — scales every round; ignores the timeline.
-            // Post-overhaul: accelerated ramp. HP starts at +50% (round 1)
-            // and caps at +300% (round 21+); bulk/speed start at +25% and cap
-            // at +100% (round 18+). The sharper curve means a fresh Frontier
-            // run feels noticeably harder than the post-HoF Mystery climax by
-            // round 3-4, and round 10+ demands a fully-tuned team to survive.
-            // Crucible Hard Mode multiplier is applied separately by
-            // crucibleApplyHardModeToFoes after this boost so it stacks on
-            // ALL Crucible fights (gym rematches included), not just the
-            // league/boss subset this function handles.
+            // Accelerated ramp: HP starts at +50% (round 1) and caps at +300%
+            // (round 21+); bulk/speed start at +25% and cap at +100% (round 18+).
+            // The sharp curve means a fresh Frontier run outpaces the post-HoF
+            // Mystery climax by round 3-4, and round 10+ demands a tuned team.
             if (sm.frontier && sm.frontier.active) {
                 const round = (sm.frontier.currentRound | 0) || 1;
                 const hpM   = Math.min(3.00, 1.50 + (round - 1) * 0.075);
@@ -35406,50 +35419,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * bulkM));
                     mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * speM));
                 }
-                return;
             }
-            const ev = STORY_EVENTS_RAW[sm.eventIndex];
-            if (!ev || ev[1] !== 'Battle') return;
-            const rowIdx = ev[0] | 0;
-            const eventName = String(ev[2] || '');
-            let hpM = 1;
-            let bulkM = 1;
-            let speM = 1;
-            // Boss-tier stat boosts (applied BEFORE difficulty scaling, so
-            // hard/challenge mode stacks on top multiplicatively). Tuned post-
-            // overhaul to make Champion / Mystery a real wall — the player
-            // has perm-boost vitamins to invest and Cable Link Upgrade for a
-            // last polish, so the curve needs to bite harder to stay tense.
-            if (/^E[1-4]$/.test(eventName)) {
-                hpM = 1.22;
-                bulkM = 1.17;
-                speM = 1.12;
-            } else if (eventName === 'Champion' || (eventName === 'Rival' && rowIdx === STORY_LEAGUE_RIVAL_ROW)) {
-                hpM = 1.40;
-                bulkM = 1.22;
-                speM = 1.18;
-            } else if (eventName === 'Mystery Figure' && rowIdx === STORY_POST_HOF_MYSTERY_ROW) {
-                hpM = 1.35;
-                bulkM = 1.216;
-                speM = 1.125;
-            } else {
-                return;
-            }
-            // Per-event boss boost. Store as an ADDITIVE delta on the mon so
-            // applyFoeDifficultyScaling can merge with the difficulty multiplier
-            // additively (e.g., Challenge 1.30 + Champion 0.40 = 1.70, not the
-            // multiplicative 1.30 × 1.40 = 1.82 cliff). startBattle calls this
-            // BEFORE applyFoeDifficultyScaling at lines 15318-15332. Difficulty
-            // scaling reads `mon._leagueStatBonus` and applies the merged
-            // multiplier to maxHp / stats once. Crucible Hard Mode multiplier
-            // is applied separately by crucibleApplyHardModeToFoes so every
-            // Crucible-sourced fight (including gym rematches that fall outside
-            // this function's filter) gets the +30%.
-            mon._leagueStatBonus = {
-                hp:   hpM   - 1,
-                bulk: bulkM - 1,
-                spe:  speM  - 1,
-            };
         };
 
         /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
@@ -36420,47 +36390,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _perMonMechChance(eventType) {
             // Battle Frontier per-round mechanic frequency. Rounds 1–2 ~25%
             // (gentle entry), 3–4 ~45%, 5–6 ~70%, 7–8 ~90%, 9+ ~100%
-            // (every eligible mon gets a gimmick). Hard Mode bumps each
-            // band by +15% absolute (capped at 1.0).
+            // (every eligible mon gets a gimmick).
             if (sm && sm.frontier && sm.frontier.active) {
                 const round = (sm.frontier.currentRound | 0) || 1;
-                let base;
-                if (round <= 2)      base = 0.25;
-                else if (round <= 4) base = 0.45;
-                else if (round <= 6) base = 0.70;
-                else if (round <= 8) base = 0.90;
-                else                 base = 1.00;
-                if (sm.crucibleHardMode) base = Math.min(1.0, base + 0.15);
-                return base;
+                if (round <= 2)      return 0.25;
+                else if (round <= 4) return 0.45;
+                else if (round <= 6) return 0.70;
+                else if (round <= 8) return 0.90;
+                return 1.00;
             }
-            // Crucible Hard Mode bumps non-Frontier rematches by +20% absolute
-            // — a rematch Mystery Figure or League Run feels noticeably more
-            // gimmick-dense than the canonical version.
             const e = String(eventType || '');
-            if (sm && sm.crucibleHardMode && sm.crucibleBattleSource) {
-                if (e === 'Mystery Figure') return 1.0;
-                if (e === 'Champion') return Math.min(1.0, 0.85 + 0.20);
-                if (e === 'Rival') return Math.min(1.0, ((sm.badges|0) >= 8 ? 0.85 : 0.55) + 0.20);
-                if (e === 'E4') return Math.min(1.0, 0.75 + 0.20);
-                if (e === 'E3') return Math.min(1.0, 0.65 + 0.20);
-                if (e === 'E2') return Math.min(1.0, 0.55 + 0.20);
-                if (e === 'E1') return Math.min(1.0, 0.45 + 0.20);
-                const glHard = e.match(/^Gym Leader\s*(\d)$/);
-                if (glHard) {
-                    const tiers = {1:0.10, 2:0.15, 3:0.20, 4:0.25, 5:0.30, 6:0.35, 7:0.40, 8:0.45};
-                    return Math.min(1.0, (tiers[+glHard[1]] || 0.20) + 0.20);
-                }
-            }
             if (e === 'Mystery Figure') return 1.0;
             const tier = _trainerTierForEvent(e);
             const prog = _storyProgressFactor(sm && sm.badges);
-            // Difficulty-mode gimmick scaling — mirrors the foe-stat-mult ramp
-            // (`applyFoeDifficultyScaling`) so the chosen difficulty also shifts
-            // gimmick density. Frontier/Crucible Hard Mode bands above already
-            // returned without falling through here, so this only affects the
-            // standard story-mode roll.
+            // Difficulty-mode gimmick scaling — mirrors the foe-stat-mult ramp so the
+            // chosen difficulty also shifts gimmick density. Frontier bands above
+            // already returned, so this only affects the standard story-mode roll.
             const diff = (sm && sm.storyDifficulty) || 'normal';
-            const diffMult = ({ veryeasy: 0.70, easy: 0.85, normal: 1.00, hard: 1.15, challenge: 1.30 })[diff] || 1.00;
+            const diffMult = _foeDifficultyMult(diff);
             return Math.max(0, Math.min(1, tier * prog * diffMult));
         }
         // Minimum guaranteed gimmick mons by event type — beats the random
@@ -36694,6 +36641,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pickT2FlavorItemForSpecies: (...a) => _pickT2FlavorItemForSpecies(...a),
                 makeBuild: (...a) => makeBuild(...a),
                 storyBuildTierForEvent: (...a) => _storyBuildTierForEvent(...a),
+                isStoryRollExcluded: (...a) => isStoryRollExcluded(...a),
+                weightedPickFromGrades: (...a) => weightedPickFromGrades(...a),
                 get baseStats() { return baseStats; },
                 get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
                 get T2_TYPE_BOOST_ITEM() { return _T2_TYPE_BOOST_ITEM; },
@@ -37560,7 +37509,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //       story-mult) so the % cleanly stacks.
         //
         // Every step is data-driven via constants you can tune without touching the
-        // pipeline order: _STORY_FOE_STAT_BAND, STORY_IV_CITY_TRAINER,
+        // pipeline order: FOE_POWER_CURVE, STORY_IV_CITY_TRAINER,
         // STORY_EV_CITY_TOTAL, NPC_STAGE_CITY, _T2_TYPE_BOOST_ITEM, etc.
         // ──────────────────────────────────────────────────────────────────────────
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
@@ -37584,11 +37533,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // encounters specifically meant to surface species the player chose not to
             // include. Their pkmGens already covers all 9 gens; the tag is the green light.
             const _isEldritch = !!(trainer && trainer.tag === 'eldritch');
+            // Player's enabled-gens toggle — the ONLY legit gen gate for a trainer's
+            // *signatures* (see sigGenSet below). pkmGens narrows the FILLER theme only.
+            const _playerGens = _isEldritch
+                ? [1,2,3,4,5,6,7,8,9]
+                : normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             let allowedGens;
             if (_isEldritch) {
                 allowedGens = [1,2,3,4,5,6,7,8,9];
             } else {
-                allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
+                allowedGens = _playerGens.slice();
                 const pg = trainer && trainer.pkmGens;
                 if (pg && pg.length) {
                     const crossed = allowedGens.filter((g) => pg.includes(g));
@@ -37602,6 +37556,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             const genSet = new Set(allowedGens);
+            // Signatures respect ONLY the player's gen toggle, not the trainer's
+            // self-imposed pkmGens — so an iconic ace (Cynthia's Gen-3 Milotic in an
+            // all-gen run) is never silently deleted by the trainer's own gen window.
+            // Gen-illegal sigs still fall back via _genLegalEvoLineForm → synthetic
+            // thematic pool → grade pool, exactly as before. pkmGens still themes filler.
+            const sigGenSet = new Set(_playerGens);
             const types = parseTrainerTypes(trainer.type);
             const _trainerIsPlaceholder = isPlaceholderSignatureList(trainer.sigs || []);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder') || _trainerIsPlaceholder;
@@ -37612,7 +37572,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Dragonite), and _sigMult/_canUse below allow each instance one slot.
             let S = (trainer.sigs || []).map(name => {
                 if (!baseStats[name]) return null;
-                return _genLegalEvoLineForm(name, genSet);
+                return _genLegalEvoLineForm(name, sigGenSet);
             }).filter(Boolean);
             // v19 sig-grade cap: drop any sig whose tier exceeds the row's
             // gradeWeights ceiling. Boss events (Rival/E1-E4/Champion/Mystery)
@@ -37634,8 +37594,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     S = _topUpGymLeaderSigsForCeiling(trainer, S, _ceiling, genSet);
                 }
             }
-            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, genSet, rng);
-            else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
+            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng);
+            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng);
             // Synthetic-pool fallback also respects the ceiling so a trainer whose
             // actual sigs filter to empty (e.g. Tea Aroma in a gen-1-only run, where
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
@@ -37655,7 +37615,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const fitted = [];
                 for (const n of S) {
                     const d = _storyEvoStageOf(n) <= _evoStageCap ? n : _devolveToStage(n, _evoStageCap);
-                    if (d && genSet.has((baseStats[d] || {}).gen) && !seen.has(d)) { seen.add(d); fitted.push(d); }
+                    if (d && sigGenSet.has((baseStats[d] || {}).gen) && !seen.has(d)) { seen.add(d); fitted.push(d); }
                 }
                 S = fitted;
             }
@@ -37777,11 +37737,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // That let Zapdos land on Lt. Surge at GL4 in a gen-1-only run via
             // the Electric-type spiral. Same exemption rule as the sig cap.
             const _fillerCeiling = _exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn);
-            // Per-species slot allowance: a species may fill as many slots as it appears in the
-            // (already gen/ceiling-filtered) signature pool S. This lets an intentional duplicate
-            // sig list — e.g. Lance's triple-Dragonite — actually field three Dragonites instead
-            // of one + thematic fillers. Every non-duplicated species resolves to a count of 1,
-            // exactly the old unique-name Set, so non-duplicate trainers roll identically.
+            // Per-species slot allowance. Authored multiplicity comes from the ORIGINAL sigs
+            // list (verbatim): only an intentional same-species duplicate — Lance's triple
+            // Dragonite — earns >1 slot. The gen/grade/evo transforms above can collapse
+            // DIFFERENT sigs onto one form (Clair's Dragonite devolving onto her listed
+            // Dragonair; two finals devolving to the same basic at an early ceiling); those
+            // collisions must NOT read as authored multiplicity, or the leader fields two
+            // identical mons. So cap each species in S at its verbatim authored count before
+            // building _sigMult. Non-duplicate trainers are unaffected (every count = 1).
+            const _origMult = new Map();
+            for (const _o of (trainer.sigs || [])) _origMult.set(_o, (_origMult.get(_o) || 0) + 1);
+            {
+                const _seenCnt = new Map();
+                const _dedupS = [];
+                for (const _n of S) {
+                    const _allow = Math.max(1, _origMult.get(_n) || 0);
+                    const _c = _seenCnt.get(_n) || 0;
+                    if (_c < _allow) { _seenCnt.set(_n, _c + 1); _dedupS.push(_n); }
+                }
+                S = _dedupS;
+            }
             const _sigMult = new Map();
             for (const _n of S) _sigMult.set(_n, (_sigMult.get(_n) || 0) + 1);
             const _used = new Map();
@@ -37945,6 +37920,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     moveTagIndexResultFor: (...a) => _moveTagIndexResultFor(...a),
                     ensureMoveData: (...a) => ensureMoveData(...a),
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
+                    foeDifficultyMult: (...a) => _foeDifficultyMult(...a),
                     buildPokemon: (...a) => buildPokemon(...a),
                     getStatTooltipHTML: (...a) => getStatTooltipHTML(...a),
                     findTrainerDataByName,
@@ -38727,18 +38703,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _tcState.name = '';
                 _tcState.sprite = TRAINER_DEFAULT;
             }
-            // Try last-run defaults for difficulty / mechanics.
-            try {
-                const raw = localStorage.getItem(STORY_MENU_DEFAULTS_KEY);
-                if (raw) {
-                    const d = JSON.parse(raw);
-                    if (d && typeof d === 'object') {
-                        if (typeof d.storyDifficulty === 'string' && ['veryeasy','easy','normal','hard','challenge'].indexOf(d.storyDifficulty) >= 0) {
-                            _tcState.difficulty = d.storyDifficulty;
-                        }
-                    }
-                }
-            } catch (e) {}
+            // Difficulty always starts at Normal on the create screen — it is never
+            // silently inherited from a prior run (an abandoned Hard run must not
+            // masquerade as the next run's setting). The player picks it for the run,
+            // and the choice is shown on a persistent in-battle badge. Other menu
+            // defaults (gens / mechanics) are still restored below.
+            _tcState.difficulty = 'normal';
             // Show screen + populate.
             showScreen('screen-story-trainercreate');
             const nameInput = document.getElementById('story-create-name');
@@ -38956,6 +38926,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const j = (journal && typeof journal === 'object') ? journal : {};
             if (!trainer || !_storyIsSignatureTrainerRole(trainer.role)) return j;
             if (!Array.isArray(trainer.sigs) || !trainer.sigs.length) return j;
+            // Trainers still on the rodent-placeholder list (canon-less sprite classes
+            // like PI / Li / Interviewers) field a synthetic thematic pool, not real
+            // signatures — they must not register in the journal as signature collectors.
+            if (isPlaceholderSignatureList(trainer.sigs)) return j;
             const base = _baseTrainerName(trainer.name);
             if (!base) return j;
             const entry = j[base] || { seen: false, mons: {} };
@@ -38985,6 +38959,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const t of TRAINER_DATA) {
                 if (!_storyIsSignatureTrainerRole(t.role)) continue;
                 if (!Array.isArray(t.sigs) || !t.sigs.length) continue;
+                if (isPlaceholderSignatureList(t.sigs)) continue; // canon-less placeholder — not a signature collector
                 const base = _baseTrainerName(t.name);
                 if (!byBase.has(base)) byBase.set(base, { base, role: t.role, charGen: t.charGen | 0, sigs: new Set() });
                 const rec = byBase.get(base);
@@ -44579,36 +44554,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // The "+1 grade tier" is implemented by sampling from a richer grade than the parent.
-        // The species also shares ≥1 type with the parent. Falls back to a random Normal-typed
-        // mon of the target grade if no overlap exists in the pool (rare for legendary parents).
+        // The species also shares ≥1 type with the parent. Falls back to a random same-grade
+        // mon if no type overlap exists in the pool (rare for legendary parents).
+        //
+        // The candidate pool is drawn through the SAME guards every story roll uses:
+        //   • isStoryRollExcluded — never hatch a forme entry (Inteleon-Gmax,
+        //     Charizard-Mega-X, Kyogre-Primal). baseStats holds these because it's seeded
+        //     from gen-9 randbats + @pkmn/dex, but they are not draftable species.
+        //   • storySettingsGens — honor the run's enabled-gens toggle.
+        //   • seeded storyRngNext — deterministic replays.
         function _daycareRollHatchSpecies(parentName) {
             try {
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const genSet = new Set(storySettingsGens());
                 const parentBase = baseStats[parentName] || {};
                 const parentTypes = [parentBase.t1, parentBase.t2].filter(Boolean);
                 const parentGrade = getMonGrade(parentName, getBST(parentName));
                 // Hatchling grade = max(1, parent grade - 1) (lower number = better tier).
                 const hatchGrade = Math.max(1, parentGrade - 1);
-                const candidates = [];
-                for (const name of Object.keys(baseStats)) {
-                    if (name === parentName) continue;
+                // Gen-legal, forme-filtered base pool (everything but the parent itself).
+                const eligible = Object.keys(baseStats).filter(name => {
+                    if (name === parentName || isStoryRollExcluded(name)) return false;
                     const bs = baseStats[name];
-                    if (!bs) continue;
+                    return !!bs && genSet.has(bs.gen);
+                });
+                const candidates = [];
+                for (const name of eligible) {
+                    const bs = baseStats[name];
                     const t = [bs.t1, bs.t2].filter(Boolean);
-                    const overlap = t.some(x => parentTypes.includes(x));
-                    if (!overlap) continue;
-                    const g = getMonGrade(name, getBST(name));
-                    if (g !== hatchGrade) continue;
+                    if (!t.some(x => parentTypes.includes(x))) continue;
+                    if (getMonGrade(name, getBST(name)) !== hatchGrade) continue;
                     candidates.push(name);
                 }
                 if (!candidates.length) {
-                    // Type-overlap pool is empty — fall back to same-grade only.
-                    for (const name of Object.keys(baseStats)) {
-                        const g = getMonGrade(name, getBST(name));
-                        if (g === hatchGrade) candidates.push(name);
+                    // Type-overlap pool is empty — fall back to same-grade only (still
+                    // gen-legal and forme-filtered).
+                    for (const name of eligible) {
+                        if (getMonGrade(name, getBST(name)) === hatchGrade) candidates.push(name);
                     }
                 }
                 if (!candidates.length) return parentName; // give up, return parent
-                return candidates[Math.floor(Math.random() * candidates.length)];
+                return candidates[Math.floor(rng() * candidates.length)];
             } catch (e) {
                 console.warn('[Daycare] hatch species roll', e);
                 return parentName;
@@ -44827,10 +44813,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return { badges: snapshotBadges | 0, capturedAt: Date.now(), teamSummary: [], seed: 0 };
             }
         }
-        function _pitsActiveSnapshot() {
-            const p = sm.pits || {};
-            return p.championSnapshot || p.gym6Snapshot || null;
-        }
         // Post-Champion the Fight Club becomes a repeatable, money-only loop with no
         // daycare/egg wrapping and no permanent stat reward — just functional.
         function _pitsIsEndgame() {
@@ -44845,65 +44827,126 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _pitsIsEndgame() || _pitsStoryAvailable();
         }
 
-        // Roll a 5-round enemy gauntlet using the snapshot's grade distribution.
+        // Roll a 5-round enemy gauntlet scaled to the player's CURRENT CITY.
         // Each round is a full 3v3: the house fields a TRAINER OF SIX, then
         // counter-picks its best 3 vs the player's locked trio (see
-        // _pitsCounterPick). Rounds skew by grade — warm-up easier, last round
-        // the "boss" (stronger band + a +2 bonus layer on the whole six).
+        // _pitsCounterPick).
         //
-        // Build strength: foes pass through `_applyStoryBuildPowerTier` with a
-        // synthetic "Gym Leader N" event name (N = current badge count, clamped
-        // 1..8). That means Pit foes get the exact tier polish, IV roll, and
-        // move/EV depth a same-stage Gym Leader fight would have — no special
-        // "Pit power curve" to balance, just lean on the existing gym ladder.
-        // The boss round tags its highest-BST mon as a signature ace for the
-        // top-quartile IV bump.
+        // Difficulty source (per the design): the house fields the kind of trainer
+        // you'd actually meet at this point in the run — an ACE TRAINER at your
+        // current city — instead of a fixed snapshot average. Two axes stack, both
+        // reusing the canonical story-roll machinery so there's no bespoke "Pit
+        // curve" to balance:
+        //   • City pace — each round seeds from the AUTHORED grade weights of that
+        //     trainer class at the player's current city (STORY_EVENTS_RAW), so City8
+        //     foes carry the G2 mass City6 foes don't. The progress ramp then nudges it
+        //     a touch further on the live row.
+        //   • Trainer-type difficulty — each round's class escalates across the bracket:
+        //     warm-up Basic Trainer → three Ace Trainer (Elite) rounds at city pace → a
+        //     Gym-Leader-class boss. The authored per-class weights already differ
+        //     (City6 Basic→g3-heavy, Elite→g2:40, Leader→g3:100); _applyTrainerGradeMatrix
+        //     re-skews on top (Basic→G4, Ace→G3, Leader→G2).
+        // Species pass through `weightedPickFromGrades` (→ buildGradePool), which is
+        // already gen-toggle-aware and forme-filtered (isStoryRollExcluded), so the
+        // Pit can never field a mega/gmax/primal entry or an off-gen mon. Build depth
+        // (IV/EV/item/ability gating) comes from `_applyStoryBuildPowerTier` keyed to
+        // the SAME class + live row, so foes stay parity-locked to the city. The boss
+        // round keeps its +2 bonus layer and tags its highest-BST mon as the ace.
+        //
+        // CRITICAL: the base grade weights MUST come from the authored STORY_EVENTS_RAW
+        // rows, not a synthetic flat base. The progress ramp and the trainer matrix only
+        // *reshape* existing grade mass (they multiply), so a {g3,g4}-only base can never
+        // produce a G1/G2 foe — the maintainer's per-(city,class) weights are the only
+        // place G1/G2 mass is authored (e.g. City6 Elite = g2:40/g3:60, City8 GL = g2:100).
+        // _pitsCityClassWeights pulls those authored numbers so the Pit mirrors a real
+        // Basic / Ace (Elite) / Gym-Leader roll at the player's city — no invented balance.
+        //
+        // Per-(city, class) authored base weights, scanned once from STORY_EVENTS_RAW in
+        // play order. Missing classes (early cities have no Elite row) fall back to the
+        // nearest lower city that authored one, then to the city's leader weights.
+        let _pitsCityClassWeightsCache = null;
+        function _pitsBuildCityClassWeights() {
+            if (_pitsCityClassWeightsCache) return _pitsCityClassWeightsCache;
+            const byCity = {};
+            let curCity = 0;
+            for (const row of (typeof STORY_EVENTS_RAW !== 'undefined' ? STORY_EVENTS_RAW : [])) {
+                const type = row[1], ev = row[2], gw = row[3];
+                if (type === 'City') { const m = /City(\d+)/.exec(ev || ''); if (m) curCity = +m[1]; continue; }
+                if (type !== 'Battle' || !gw) continue;
+                const slot = byCity[curCity] || (byCity[curCity] = {});
+                if (ev === 'Basic Trainer') { if (!slot.basic) slot.basic = gw; }
+                else if (ev === 'Elite Trainer') { if (!slot.elite) slot.elite = gw; }
+                else if (/^Gym Leader/.test(ev)) { slot.leader = gw; }
+            }
+            _pitsCityClassWeightsCache = byCity;
+            return byCity;
+        }
+        function _pitsCityClassWeights(city) {
+            const byCity = _pitsBuildCityClassWeights();
+            const pick = (key) => {
+                for (let c = (city | 0); c >= 0; c--) { if (byCity[c] && byCity[c][key]) return byCity[c][key]; }
+                for (let c = (city | 0); c <= 12; c++) { if (byCity[c] && byCity[c][key]) return byCity[c][key]; }
+                return null;
+            };
+            const leader = pick('leader') || { g1: 0, g2: 0, g3: 100, g4: 0 };
+            return {
+                basic: pick('basic') || leader,
+                elite: pick('elite') || leader,
+                leader,
+            };
+        }
         function _pitsRollEnemyRoster() {
-            const snap = _pitsActiveSnapshot();
-            const avgGrade = snap && snap.teamSummary && snap.teamSummary.length
-                ? Math.max(1, Math.min(4, Math.round(snap.teamSummary.reduce((a,t)=>a+(t.grade|0),0) / snap.teamSummary.length)))
-                : 3;
-            // Round grades (grade# 1=strongest…4=weakest): warm-up (avg+1, weaker),
-            // two mid (avg), two harder (avg-1), last = boss.
-            const tiers = [Math.min(4, avgGrade + 1), avgGrade, avgGrade, Math.max(1, avgGrade - 1), Math.max(1, avgGrade - 1)];
-            const badges = Math.max(1, Math.min(8, (sm.badges | 0) || 6));
-            const tierEventName = `Gym Leader ${badges}`;
-            return tiers.map((tier, roundIdx) => {
-                const isBoss = roundIdx === tiers.length - 1;
-                const six = _pitsRollTrainerSix(tier, isBoss);
-                // Gym-leader tier polish across the whole six; the highest-BST mon is
-                // tagged as the ace so its IV roll lands in the top quartile.
+            const gens = storySettingsGens();
+            const rowIdx = (sm && sm.eventIndex != null) ? (sm.eventIndex | 0) : null;
+            const city = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(rowIdx | 0) : 6;
+            const W = _pitsCityClassWeights(city);
+            // Five back-to-back rounds, escalating by trainer-type difficulty class. Each
+            // round seeds from that class's authored city weights, then runs the SAME
+            // grade-weight front matter rollTrainerTeam uses (player-difficulty skew →
+            // progress ramp on the live row → G4 strip → trainer-type matrix).
+            const gymNo = Math.max(1, Math.min(8, city | 0));
+            const rounds = [
+                { cls: 'Basic Trainer',     base: W.basic },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Gym Leader ' + gymNo, base: W.leader },
+            ];
+            return rounds.map((r, roundIdx) => {
+                const isBoss = roundIdx === rounds.length - 1;
+                let gw = applyDifficultyToGradeWeights(r.base);
+                gw = applyStoryProgressToGradeWeights(gw, rowIdx);
+                gw = storyStripGrade4IfPartyMature(gw);
+                gw = _applyTrainerGradeMatrix(gw, r.cls);
+                const six = _pitsRollTrainerSix(gw, gens, isBoss);
+                // Class-matched tier polish across the whole six; the highest-BST mon
+                // is tagged as the ace so its IV roll lands in the top quartile. The
+                // live row keeps item/ability tiers parity-locked to the city.
                 try {
                     if (typeof _applyStoryBuildPowerTier === 'function' && six.length) {
                         let aceName = six[0].name, aceBst = -1;
                         for (const e of six) { const b = getBST(e.name) | 0; if (b > aceBst) { aceBst = b; aceName = e.name; } }
-                        _applyStoryBuildPowerTier(six, tierEventName, -1, [aceName]);
+                        _applyStoryBuildPowerTier(six, r.cls, rowIdx, [aceName]);
                     }
                 } catch (e) { console.warn('[Pits] tier polish', e); }
-                return { tier, isBoss, six, picked: null };
+                return { tier: r.cls, isBoss, six, picked: null };
             });
         }
-        // Build one round's TRAINER OF SIX. Species are drawn from a grade band
-        // around `centerTier` (±1, clamped 1..4) and kept distinct where the pool
-        // allows. The boss round stamps every mon with a +2 bonus layer (capped to
-        // the 41 effective-IV ceiling by buildPokemon) so whichever three get
-        // counter-picked still read as the house's toughest.
-        function _pitsRollTrainerSix(centerTier, isBoss) {
-            const lo = Math.max(1, centerTier - 1); // stronger bound (lower grade#)
-            const hi = Math.min(4, centerTier + 1); // weaker bound
-            const pool = [];
-            for (const name of Object.keys(baseStats)) {
-                const g = getMonGrade(name, getBST(name));
-                if (g >= lo && g <= hi) pool.push(name);
-            }
-            const allNames = pool.length ? pool : Object.keys(baseStats);
+        // Build one round's TRAINER OF SIX from the round's grade weights. Species
+        // are drawn via `weightedPickFromGrades` (gen-toggle-aware, forme-filtered,
+        // seeded) and kept distinct where the pool allows. The boss round stamps
+        // every mon with a +2 bonus layer (capped to the 41 effective-IV ceiling by
+        // buildPokemon) so whichever three get counter-picked read as the toughest.
+        function _pitsRollTrainerSix(gradeWeights, gens, isBoss) {
             const six = [];
             const used = new Set();
             for (let k = 0; k < 6; k++) {
-                let name = allNames[Math.floor(Math.random() * allNames.length)];
+                let name = weightedPickFromGrades(gradeWeights, gens) || 'Rattata';
                 let tries = 0;
-                while (used.has(name) && tries < 16 && used.size < allNames.length) {
-                    name = allNames[Math.floor(Math.random() * allNames.length)]; tries++;
+                while (used.has(name) && tries < 16) {
+                    const pick = weightedPickFromGrades(gradeWeights, gens);
+                    if (!pick) break;
+                    name = pick; tries++;
                 }
                 used.add(name);
                 let build = null;
@@ -47654,7 +47697,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     let _enemyCity = -1;
                     try { _enemyCity = _cityIndexForStoryRow(idx); } catch (_e) {} // idx is a ROW ID (fixes #23 off-by-city)
-                    const _enemyMult = _storyEnemyStatMult(event, _enemyCity, idx);
+                    // ONE resolved multiplier = progression curve × difficulty knob,
+                    // computed from the EXPLICIT battle row (never the live eventIndex)
+                    // and applied once in buildPokemon. This is the only place a story
+                    // trainer foe is scaled — no second pass can compound on top.
+                    const _enemyMult = _storyEnemyStatMult(event, _enemyCity, idx)
+                                     * _foeDifficultyMult((sm && sm.storyDifficulty) || 'normal');
                     for (const s of enemyTeam) if (s && s.build) s.build._storyStatMult = _enemyMult;
                 } catch (_e) {}
                 try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
@@ -49019,10 +49067,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hardOn = !!sm.crucibleHardMode;
             body.innerHTML = `
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
-                <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 10px;background:rgba(40,0,0,${hardOn ? '0.55' : '0.25'});border:1px solid ${hardOn ? '#ff5252' : '#5a2a2a'};cursor:pointer;font-size:11px;color:${hardOn ? '#ffcdd2' : '#bba'};">
-                    <input type="checkbox" ${hardOn ? 'checked' : ''} onchange="window.StoryMode.toggleCrucibleHardMode(this.checked)" style="margin:0;cursor:pointer;">
-                    <span><b style="color:#ff5252;">Hard Mode</b> — +30% foe HP / bulk / speed and +1 gimmick budget on every Crucible rematch. Stacks on top of difficulty mode and per-event boss boosts.</span>
-                </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
                     ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
                     ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked trainer (a 6-mon trainer fight).')}
@@ -49082,36 +49126,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const row = _CRUCIBLE_GYM_ROWS[Math.floor(Math.random() * _CRUCIBLE_GYM_ROWS.length)];
             _crucibleBattleSetup(row, 'gym');
         }
-        // Hard Mode toggle. Single boolean read by applyStoryLeagueFoeStatBoost
-        // (for Mystery / Rival / League / Frontier) and crucibleApplyHardModeToFoes
-        // (for Random Gym Rematch, which falls outside the league boss filter).
-        function toggleCrucibleHardMode(on) {
-            sm.crucibleHardMode = !!on;
-            try { save(); } catch (e) {}
-            try { _renderCrucible(); } catch (e) {}
-        }
-        // Random Gym Rematch doesn't pass through the league boss boost path,
-        // so apply the Hard Mode multiplier here when launching the battle.
-        // No-op for non-Hard sessions. Safe to call multiple times — guarded
-        // by mon._crucibleHardApplied so a re-entry doesn't double-stack.
-        window.crucibleApplyHardModeToFoes = function() {
-            if (!sm.crucibleHardMode) return;
-            if (typeof state === 'undefined' || !state.foeParty) return;
-            const m = 1.30;
-            for (const mon of state.foeParty) {
-                if (!mon || mon._crucibleHardApplied) continue;
-                mon._crucibleHardApplied = true;
-                mon.maxHp = Math.max(1, Math.floor(mon.maxHp * m));
-                mon.currentHp = mon.maxHp;
-                if (mon.stats) {
-                    mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * m));
-                    mon.stats.def = Math.max(1, Math.floor(mon.stats.def * m));
-                    mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * m));
-                    mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * m));
-                    mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * m));
-                }
-            }
-        };
         function crucibleWildEncounter() {
             // Post-HoF, so the badge curve resolves to the 8-badge entry —
             // same curve a player would see on a late-route wild. Keeps the
@@ -54980,7 +54994,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── MOVE TUTOR ────────────────────────────────────────────────────
         // Tutor pricing (overhaul pass 2): Ability dropped from 2500 → 2000
         // so it matches Item cost. Hidden abilities are now gated and
-        // gimmick-enemy density rose with the Frontier/Hard Mode changes;
+        // gimmick-enemy density rose with the Frontier changes;
         // the +500G ability premium wasn't earning its keep.
         const TUTOR_COST_MOVE    = 1500;  // fallback only — see _moveCostForStage (staged 1000/2500)
         const TUTOR_COST_ITEM    = 2000;  // fallback only — see _itemCostForTier (tiered 500/1000/2500)
@@ -55063,19 +55077,68 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _hasHeartScale() {
             return !!(sm && sm.inventory && (sm.inventory.heartScale | 0) > 0);
         }
-        // Battle Dojo held-item tiers (cumulative): 1 = berries, 2 = decent staples,
-        // 3 = the meta-defining power items. Unlisted items default to tier 2 so a
-        // stray item is never locked to the very top. Tunable by editing the sets.
+        // Battle Dojo held-item tiers (cumulative): 1 = Foundation (berries + mild
+        // type-boosters + Eviolite), 2 = Staples (Leftovers/Boots/AV/Sash/Helmet/…),
+        // 3 = Meta (the snowball/win-more items). Unlisted items default to tier 2.
+        // SHARED with the foe item gate (_storyFoeItemTier derives the cap from this
+        // same clock), so editing these sets re-paces foes automatically — they can
+        // never field an item above the tier the player can hold at that city.
+        // Tunable by editing the sets.
         const _DOJO_ITEM_BEST = new Set([
-            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb', 'Assault Vest',
-            'Heavy-Duty Boots', 'Weakness Policy', 'Booster Energy', 'Loaded Dice',
+            // Tier 3 (Grandmaster) — snowball / win-more only. (Heavy-Duty Boots and
+            // Assault Vest were demoted to tier 2: they're defensive staples, not win-more.)
+            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb',
+            'Weakness Policy', 'Booster Energy', 'Loaded Dice',
             'Light Ball', 'Thick Club', 'Covert Cloak', 'Clear Amulet',
         ]);
+        // Type-boost held items (+20% to one type) keyed by the type they boost. Mild,
+        // role-defining offense — a fair Foundation (tier-1) pick. The Dojo item pool
+        // injects the mon's STAB booster(s) from here (the Smogon-derived pool never
+        // includes them). Mirrors the engine's typeItemBoosts table.
+        const _DOJO_TYPE_BOOST_BY_TYPE = {
+            Fire: 'Charcoal', Water: 'Mystic Water', Grass: 'Miracle Seed', Electric: 'Magnet',
+            Ice: 'Never-Melt Ice', Fighting: 'Black Belt', Poison: 'Poison Barb', Ground: 'Soft Sand',
+            Flying: 'Sharp Beak', Psychic: 'Twisted Spoon', Bug: 'Silver Powder', Rock: 'Hard Stone',
+            Ghost: 'Spell Tag', Dragon: 'Dragon Fang', Dark: 'Black Glasses', Steel: 'Metal Coat',
+            Fairy: 'Fairy Feather', Normal: 'Silk Scarf',
+        };
+        const _DOJO_TYPE_BOOST_ITEMS = new Set(Object.values(_DOJO_TYPE_BOOST_BY_TYPE));
+        // Tier-1 (Foundation) curated additions: the type-boosters above + Eviolite
+        // (does nothing off an NFE, so it's fair early).
+        // Eviolite is a Tier-2 (Black Belt) item, NOT Tier-1: at White Belt nearly every
+        // team is still NFE, so a +50% Def/SpD NFE item would be a near-universal early
+        // power pick. Gating it to Black Belt (where many mons have evolved) keeps it from
+        // dominating the opening. Mirrors to foes/wild via _dojoItemTier.
+        const _DOJO_ITEM_TIER1 = new Set([..._DOJO_TYPE_BOOST_ITEMS]);
+        // Resist berry that halves one super-effective hit, keyed by the incoming type.
+        const _DOJO_RESIST_BERRY = {
+            Fire: 'Occa Berry', Water: 'Passho Berry', Electric: 'Wacan Berry', Grass: 'Rindo Berry',
+            Ice: 'Yache Berry', Fighting: 'Chople Berry', Poison: 'Kebia Berry', Ground: 'Shuca Berry',
+            Flying: 'Coba Berry', Psychic: 'Payapa Berry', Bug: 'Tanga Berry', Rock: 'Charti Berry',
+            Ghost: 'Kasib Berry', Dragon: 'Haban Berry', Dark: 'Colbur Berry', Steel: 'Babiri Berry',
+            Fairy: 'Roseli Berry', Normal: 'Chilan Berry',
+        };
+        // Worst defensive weakness for a (type1[,type2]) pair via the live type chart.
+        // Returns { type, mult } for the highest-multiplier attacking type (≥2), else null.
+        function _dojoWorstWeakness(type1, type2) {
+            if (typeof typeChart !== 'object' || !type1) return null;
+            let best = null;
+            for (const atk of Object.keys(typeChart)) {
+                const m1 = (typeChart[atk] && typeChart[atk][type1] !== undefined) ? typeChart[atk][type1] : 1;
+                const m2 = type2 ? ((typeChart[atk] && typeChart[atk][type2] !== undefined) ? typeChart[atk][type2] : 1) : 1;
+                const mult = m1 * m2;
+                if (mult >= 2 && (!best || mult > best.mult || (mult === best.mult && atk < best.type))) {
+                    best = { type: atk, mult };
+                }
+            }
+            return best;
+        }
         function _dojoItemTier(name) {
             if (!name || name === '(none)') return 1;
             if (/Berry$/.test(name)) return 1;
-            if (_DOJO_ITEM_BEST.has(name)) return 3;
-            return 2;
+            if (_DOJO_ITEM_TIER1.has(name)) return 1;   // type-boosters + Eviolite → Foundation
+            if (_DOJO_ITEM_BEST.has(name)) return 3;    // snowball items → Meta
+            return 2;                                    // everything else → Staples
         }
         // One-time "stage up" beat: the first time the player reaches a higher tier
         // of a staged NPC, the NPC re-introduces itself and hands over one free use
@@ -55353,6 +55416,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it) && !BANNED_ITEMS.has(it)) safeItems.add(it);
             });
             TUTOR_UNIVERSAL_ITEMS.forEach(it => { if (!BANNED_ITEMS.has(it)) safeItems.add(it); });
+            // Inject the mon's STAB-type booster(s) (+20%, e.g. Soft Sand for Ground) —
+            // a fair tier-1 offense pick the Smogon-derived pool never carries. Types
+            // come from baseStats (.t1/.t2), which is always available.
+            try {
+                for (const _ty of [bs && bs.t1, bs && bs.t2]) {
+                    const _boost = _ty && _DOJO_TYPE_BOOST_BY_TYPE[_ty];
+                    if (_boost && !BANNED_ITEMS.has(_boost)) safeItems.add(_boost);
+                }
+            } catch (e3) {}
             try {
                 const _D = (typeof getPssDex === 'function') ? getPssDex() : null;
                 if (_D && _D.species && typeof _D.species.get === 'function') {
@@ -55658,7 +55730,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // yet (jsdom thin dex / async race), the gate would over-restrict — fall
             // through to the full pool. The tutor UI re-renders once warm.
             const coldCache = !(learn.natural || []).length && !(learn.learnt || []).length && !(learn.awakened || []).length;
-            if (coldCache) return full;
+            if (coldCache) { try { full.fullPool = full; } catch (e) {} return full; }
             // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
             // NB: syncMoves (Smogon competitive moves) are NOT unconditionally unioned —
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
@@ -55694,7 +55766,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // current loadout out from under the player at a tutor visit.
             if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
             const gated = full.filter(m => allow.has(m));
-            return gated.length ? gated : full;
+            const out = gated.length ? gated : full;
+            // Expose the COMPLETE movepool so the picker can render every move (off-stage
+            // ones shown locked, like the Dojo's item/ability roster) while the teachable
+            // acceptance set still reads only `out`. Display-only — never widens the gate.
+            try { out.fullPool = full; } catch (e) {}
+            return out;
         }
 
         // ── REDESIGN HELPERS — categorization & recommendations ──────────
@@ -55721,6 +55798,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // every kind so first-time players see the curated list; toggle
                 // off via the ★ chip to expand to the full option list.
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
+                // Stage/tier filter — a Set of tier keys per picker. Empty = "All" (no
+                // filter). Lets the player check what unlocks at each belt/tutor tier and
+                // combine several (e.g. T1+T2). Tier keys: moves natural/learnt/awakened,
+                // items '1'/'2'/'3', abilities legal/hidden/awakened. (Strings throughout.)
+                tier: { moves: new Set(), items: new Set(), abilities: new Set() },
             },
             sort: {
                 // Default to honest "By usage %" so the grid order matches the % badge
@@ -55729,7 +55811,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // about popularity. (natures render as a matrix — no list sort.)
                 moves: 'usage',
                 items: 'usage',
-                abilities: 'usage',
+                // Abilities default to "Legal first" (the mon's real 2-3 lead, off-legal
+                // Awakened last) — there's no "Best abilities" panel to carry that signal,
+                // and raw usage% floats high-heuristic off-legal picks above legal ones.
+                abilities: 'recommended',
                 natures: 'recommended',
             },
         };
@@ -55738,8 +55823,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'moves') { _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear(); }
             if (kind === 'items') _txState.filter.itemCat = 'all';
             if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
+            if (_txState.filter.tier && _txState.filter.tier[kind]) _txState.filter.tier[kind].clear();
             _txState.filter.recOnly[kind] = true;
-            _txState.sort[kind] = 'usage';
+            // Abilities default to "Legal first"; everything else to usage %.
+            _txState.sort[kind] = (kind === 'abilities') ? 'recommended' : 'usage';
         }
         const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
         const _TX_ALL_CATS  = ["Physical","Special","Status"];
@@ -56449,10 +56536,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!ab.pctOf.has(a)) ab.pctOf.set(a, 0);
                         if (slot !== 'H' || hiddenUnlocked) legal.push(a);
                     }
-                    let best = null, bestPct = -1;
+                    // Best legal ability gets the ★. Usage % leads; an ability-quality
+                    // heuristic breaks ties AND carries the pick on data-sparse early /
+                    // NFE mons (e.g. a starter's Torrent that has no Smogon build — usage
+                    // 0 for all, so the heuristic decides instead of grabbing slot 0).
+                    let best = null, bestScore = -1;
                     for (const a of legal) {
                         const p = ab.pctOf.get(a) || 0;
-                        if (p > bestPct) { bestPct = p; best = a; }
+                        const score = p * 1000 + ((typeof _txAbilityHeuristic === 'function') ? _txAbilityHeuristic(a) : 0);
+                        if (score > bestScore) { bestScore = score; best = a; }
                     }
                     if (best) ab.starred.add(best);
                 }
@@ -56637,7 +56729,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txAbilityHeuristic(abilityName) {
             if (!abilityName || abilityName === '(none)') return 5;
             if (_TX_GOOD_ABILITIES.has(abilityName)) return 90;
+            // Starter-line pinch boosters & a few signature abilities — below the
+            // "obvious-good" tier but clearly better than a passive filler, so the
+            // ★ favours them on data-sparse early mons (e.g. a starter's Torrent).
+            if (_TX_DECENT_ABILITIES.has(abilityName)) return 68;
             return 50;
+        }
+        // Intrinsic role of an ability — usage-INDEPENDENT, so an early / NFE mon with
+        // no Smogon build (e.g. Torrent on a starter) still gets a meaningful tag. Every
+        // ability card carries this; unlisted abilities default to Utility. Tunable.
+        const _TX_DECENT_ABILITIES = new Set([
+            'Overgrow','Blaze','Torrent','Swarm','Shield Dust','Run Away','Keen Eye',
+            'Inner Focus','Static','Poison Point','Rough Skin','Effect Spore','Synchronize',
+            'Cute Charm','Rivalry','Hyper Cutter','Battle Bond','Libero','Protean','Stamina',
+        ]);
+        const _TX_ABILITY_ROLE_SETS = {
+            Weather: new Set(['Drought','Drizzle','Sand Stream','Snow Warning','Orichalcum Pulse','Hadron Engine','Primordial Sea','Desolate Land','Delta Stream','Electric Surge','Psychic Surge','Misty Surge','Grassy Surge','Sand Spit','Snow Cloak']),
+            Setup: new Set(['Speed Boost','Moody','Beast Boost','Soul-Heart','Moxie','Chilling Neigh','Grim Neigh','As One','Quark Drive','Protosynthesis','Anger Shell','Weak Armor','Berserk','Download','Intrepid Sword','Dauntless Shield','Opportunist','Guard Dog','Costar','Hospitality','Supreme Overlord']),
+            Offensive: new Set(['Adaptability','Tough Claws','Strong Jaw','Sheer Force','Technician','Skill Link','Iron Fist','Mega Launcher','Aerilate','Pixilate','Galvanize','Refrigerate','Normalize','Huge Power','Pure Power','Hustle','Guts','Toxic Boost','Flare Boost','Tinted Lens','Sand Force','Steelworker','Steely Spirit','Rocky Payload','Transistor',"Dragon's Maw",'Punk Rock','Reckless','Sniper','Super Luck','Stakeout','Analytic','Neuroforce','Gorilla Tactics','Overgrow','Blaze','Torrent','Swarm','Sand Rush','Slush Rush','Chlorophyll','Swift Swim','Surge Surfer','Unburden','Quick Feet','Libero','Protean','Battle Bond','Sharpness','Rivalry','Merciless','Tough Claws','Long Reach']),
+            Immunity: new Set(['Levitate','Flash Fire','Water Absorb','Volt Absorb','Storm Drain','Lightning Rod','Motor Drive','Sap Sipper','Dry Skin','Earth Eater','Wind Rider','Soundproof','Bulletproof','Overcoat','Sap Sipper','Magic Bounce','Well-Baked Body','Purifying Salt','Wonder Guard','Disguise']),
+            Defensive: new Set(['Magic Guard','Multiscale','Shadow Shield','Regenerator','Unaware','Filter','Solid Rock','Prism Armor','Fluffy','Ice Scales','Thick Fat','Fur Coat','Marvel Scale','Water Bubble','Heatproof','Thermal Exchange','Grass Pelt','Sturdy','Battle Armor','Shell Armor','Cotton Down','Stamina','Cursed Body','Gooey','Tangling Hair','Rough Skin','Iron Barbs','Sand Veil','Snow Cloak','Mirror Armor','Big Pecks','Clear Body','White Smoke','Full Metal Body']),
+            Utility: new Set(['Intimidate','Prankster','Triage','Gale Wings','Serene Grace','Compound Eyes','No Guard','Victory Star','Trace','Imposter','Pickpocket','Frisk','Mummy','Lingering Aroma','Wandering Spirit','Pressure','Unnerve','Healer','Natural Cure','Hydration','Shed Skin','Immunity','Limber','Vital Spirit','Insomnia','Sweet Veil','Leaf Guard','Sticky Hold','Suction Cups','Quick Draw','Stall','Arena Trap','Shadow Tag','Magnet Pull','Defiant','Competitive','Justified','Mold Breaker','Magic Bounce','Tablets of Ruin','Sword of Ruin','Vessel of Ruin','Beads of Ruin']),
+        };
+        const _TX_ABILITY_ROLE_ORDER = ['Weather','Setup','Offensive','Immunity','Defensive','Utility'];
+        function _txAbilityRole(abilityName) {
+            if (!abilityName) return 'Utility';
+            for (const role of _TX_ABILITY_ROLE_ORDER) {
+                if (_TX_ABILITY_ROLE_SETS[role] && _TX_ABILITY_ROLE_SETS[role].has(abilityName)) return role;
+            }
+            return 'Utility';
         }
         function _txScoreAbility(abilityName, mon, build, monName) {
             const heur = _txAbilityHeuristic(abilityName);
@@ -56673,192 +56793,199 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return best;
         }
 
-        // Move tutor — produce 3-4 categorized recommendations for distinct purposes
-        // (STAB / Coverage / Setup / Utility / Recovery / Priority / Speed Control)
-        // so the player sees several genuinely different builds, not just the
-        // top-scoring damage move. Each entry includes a short reason for the pick.
+        // Move tutor — produce up to 4 categorized recommendations (STAB / Coverage /
+        // Status) for the "✨ Suggest a balanced set" helper. Each entry includes a
+        // short reason for the pick.
+        // Suggest a balanced, POPULARITY-FIRST set: the moves this species actually
+        // runs most, arranged so each slot reads clearly. Composition follows the
+        // mon's typing — dual-type → 2 STAB + 1 Coverage + 1 flex; mono-type →
+        // 1 STAB + 2 Coverage + 1 flex — and every damaging pick is a DISTINCT type
+        // (no two STAB/coverage moves share a type; that's the whole point of running
+        // two STABs on a dual-type). Within each slot we take the highest Smogon
+        // usage % (the same "% of sets" the grid sorts by). Physical-vs-Special is a
+        // SOFT tiebreak toward the mon's bigger attacking stat, so a STAB type is
+        // never dropped just because its popular move happens to be the "wrong"
+        // category. The flex 4th slot becomes a Status move only when the species
+        // runs status MORE than the next coverage option would add — otherwise it
+        // coverage-fills, so a pure attacker never gets a status move it never uses.
+        // Final tiebreak is alphabetical → a fully deterministic, replay-stable list.
         function _txMoveRecsByPurpose(availMoves, mon, build, monName) {
             if (!availMoves || !availMoves.length) return [];
-            const types = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const md = (m) => movesDB[m] || (typeof ensureMoveData === 'function' ? ensureMoveData(m) : null);
+            const types = [mon && mon.type1, mon && mon.type2]
+                .filter(Boolean).filter((t, i, a) => a.indexOf(t) === i); // distinct, in order
+            const typeSet = new Set(types);
             const stats = _txMonStats(mon, monName);
-            const physical = stats.atk >= stats.spa;
-            const slow = stats.spe < 70;
+            // Preferred damaging category from the bigger attacking stat; null on a
+            // tie (no bias — usage % alone decides, exactly as requested).
+            const catPref = stats.atk > stats.spa ? 'Physical' : stats.spa > stats.atk ? 'Special' : null;
+            const pctOf = (() => { try { return _txStarredPoolMemo(monName).moves.pctOf; } catch (e) { return new Map(); } })();
+            const usage = (m) => pctOf.get(m) || 0;
 
-            const isDamage = m => { const md = movesDB[m]; return md && (md.cat === 'Physical' || md.cat === 'Special'); };
-            const isStab = m => { const md = movesDB[m]; return md && types.has(md.type) && isDamage(m); };
-            const isPriority = m => { const md = movesDB[m]; return md && md.pri && md.pri > 0 && isDamage(m); };
-            const isCoverage = m => { const md = movesDB[m]; return md && !types.has(md.type) && isDamage(m); };
+            const isDamaging   = (m) => { const d = md(m); return !!d && (d.cat === 'Physical' || d.cat === 'Special'); };
+            const isStatusMove = (m) => { const d = md(m); return !!d && d.cat === 'Status'; };
+            const typeOf = (m) => { const d = md(m); return d ? d.type : null; };
+            const catOf  = (m) => { const d = md(m); return d ? d.cat : null; };
+            const powOf  = (m) => { const d = md(m); return d ? (d.pow | 0) : 0; };
 
-            const SETUP = new Set(['Swords Dance','Nasty Plot','Dragon Dance','Quiver Dance','Calm Mind','Bulk Up','Iron Defense','Cosmic Power','Coil','Shell Smash','Geomancy','Tail Glow','Belly Drum','Curse','Agility','Rock Polish','Autotomize','Work Up','Hone Claws','Power-Up Punch','Howl']);
-            const RECOVERY = new Set(['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Morning Sun','Moonlight','Rest','Wish','Strength Sap','Shore Up','Milk Drink','Heal Order','Pain Split','Leech Life','Drain Punch','Giga Drain','Horn Leech','Parabolic Charge','Oblivion Wing','Aqua Ring','Ingrain']);
-            const STATUS_AILMENT = new Set(['Toxic','Will-O-Wisp','Thunder Wave','Sleep Powder','Spore','Hypnosis','Sing','Yawn','Glare','Stun Spore','Lovely Kiss','Dark Void']);
-            const SPEED_CONTROL = new Set(['Tailwind','Trick Room','Sticky Web','Icy Wind','Electroweb','Bulldoze','Rock Tomb','Glaciate','Drum Beating','Mud Shot','Low Sweep']);
-            const HAZARDS = new Set(['Stealth Rock','Spikes','Toxic Spikes','Sticky Web']);
-            const SCREENS = new Set(['Reflect','Light Screen','Aurora Veil']);
-            const PIVOT   = new Set(['U-turn','Volt Switch','Flip Turn','Teleport','Parting Shot','Baton Pass','Chilly Reception']);
+            // Damaging order: usage% → category match (when there's a preference) →
+            // power → alphabetical. Status order: usage% → alphabetical.
+            const cmpDmg = (a, b) => {
+                const du = usage(b) - usage(a); if (du) return du;
+                if (catPref) { const ca = catOf(a) === catPref ? 1 : 0, cb = catOf(b) === catPref ? 1 : 0; if (cb - ca) return cb - ca; }
+                const dp = powOf(b) - powOf(a); if (dp) return dp;
+                return a.localeCompare(b);
+            };
+            const cmpStatus = (a, b) => (usage(b) - usage(a)) || a.localeCompare(b);
 
-            const used = new Set();
+            const damaging = availMoves.filter(isDamaging);
+            const statusMoves = availMoves.filter(isStatusMove).sort(cmpStatus);
+
+            const usedTypes = new Set();
+            const usedMoves = new Set();
             const out = [];
-            const push = (purpose, move, reason, hint) => {
-                if (!move || used.has(move)) return;
-                used.add(move);
-                out.push({ purpose, move, reason, hint });
+            const add = (purpose, move) => {
+                if (!move || usedMoves.has(move)) return false;
+                usedMoves.add(move);
+                const t = typeOf(move); if (t) usedTypes.add(t);
+                const pct = usage(move);
+                const pctStr = pct >= 1 ? `${Math.round(pct)}% of sets` : null;
+                let reason;
+                if (purpose === 'Status') {
+                    reason = pctStr ? `${pctStr} · most-run non-damaging move` : 'Top non-damaging option for this set';
+                } else {
+                    const tc = `${t || '—'} ${catOf(move) || ''}`.trim();
+                    const tail = purpose === 'STAB' ? 'STAB' : 'off-type coverage';
+                    reason = pctStr ? `${pctStr} · ${tc} ${tail}` : `${tc} ${tail}`;
+                }
+                out.push({ purpose, move, reason });
+                return true;
             };
 
-            // 1) Best STAB damage move — STAB × power × accuracy, prefer matching offensive category.
-            const bestStab = _txBestBy(availMoves, isStab, m => _txScoreMove(m, mon, build, monName));
-            if (bestStab) {
-                const md = movesDB[bestStab];
-                push('STAB', bestStab, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — same type as ${monName} for the 1.5× boost.`, 'core');
+            // ── STAB ──────────────────────────────────────────────────────
+            // One pick per type when the mon is dual-typed AND both types have a
+            // damaging move in the (stage-gated) pool — that's when two STABs earn
+            // their slots. Otherwise the single most-popular STAB.
+            const stabByType = {};
+            for (const t of types) stabByType[t] = damaging.filter(m => typeOf(m) === t).sort(cmpDmg);
+            const dualStab = types.length >= 2 && types.every(t => stabByType[t] && stabByType[t].length);
+            if (dualStab) {
+                for (const t of types) add('STAB', stabByType[t][0]);
+            } else {
+                const anyStab = damaging.filter(m => typeSet.has(typeOf(m))).sort(cmpDmg);
+                if (anyStab.length) add('STAB', anyStab[0]);
             }
 
-            // 2) Best Coverage damage — different type than the mon, fills holes.
-            const bestCoverage = _txBestBy(availMoves, isCoverage, m => {
-                const md = movesDB[m];
-                if (!md) return 0;
-                // Bias toward the mon's stronger offense
-                const catBias = (md.cat === 'Physical' && physical) || (md.cat === 'Special' && !physical) ? 1.0 : 0.5;
-                return (md.pow || 0) * ((md.acc || 100) / 100) * catBias;
-            });
-            if (bestCoverage) {
-                const md = movesDB[bestCoverage];
-                push('Coverage', bestCoverage, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — answers types your STAB can't hit.`, 'core');
+            // ── Coverage ──────────────────────────────────────────────────
+            // Distinct-typed off-STAB damage. dual STAB → 1 coverage; else → 2.
+            const nextCoverage = () => damaging
+                .filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m)))
+                .sort(cmpDmg)[0];
+            const coverageTarget = dualStab ? 1 : 2;
+            for (let i = 0; i < coverageTarget; i++) {
+                const c = nextCoverage();
+                if (!c) break;
+                add('Coverage', c);
             }
 
-            // 3) Setup move — only if the mon has the bulk or speed to invest a turn.
-            const bestSetup = _txBestBy(availMoves, m => SETUP.has(m), m => {
-                // Prefer setup that boosts the user's strongest offense or speed
-                if (m === 'Swords Dance' && physical) return 100;
-                if (m === 'Nasty Plot' && !physical) return 100;
-                if (m === 'Dragon Dance' && physical) return 95;
-                if (m === 'Quiver Dance' && !physical) return 95;
-                if (m === 'Calm Mind' && !physical) return 80;
-                if (m === 'Bulk Up' && physical) return 80;
-                if (m === 'Shell Smash') return 85;
-                return 50;
-            });
-            if (bestSetup) push('Setup', bestSetup, `Boosts a key stat. Use on a free turn to snowball.`, 'flex');
-
-            // 4) Recovery — heal moves are gold on bulkier mons.
-            const bestRecovery = _txBestBy(availMoves, m => RECOVERY.has(m), m => {
-                if (['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Strength Sap','Shore Up','Milk Drink'].includes(m)) return 100;
-                if (['Morning Sun','Moonlight'].includes(m)) return 90;
-                if (m === 'Wish') return 85;
-                if (m === 'Rest') return 70;
-                return 50;
-            });
-            if (bestRecovery && (stats.hp + stats.def + stats.spd >= 200 || used.size <= 2)) {
-                push('Recovery', bestRecovery, 'Heals roughly half HP — keeps tanks alive across exchanges.', 'flex');
-            }
-
-            // 5) Status / threat — cripple a fast attacker or stall.
-            const bestStatus = _txBestBy(availMoves, m => STATUS_AILMENT.has(m), m => {
-                if (m === 'Will-O-Wisp' || m === 'Spore') return 100;
-                if (m === 'Thunder Wave') return 90;
-                if (m === 'Toxic') return 85;
-                if (m === 'Sleep Powder') return 80;
-                return 60;
-            });
-            if (bestStatus && out.length < 4) push('Status', bestStatus, 'Burn / paralyze / sleep — wins matchups against bulky attackers.', 'flex');
-
-            // 6) Priority — for revenge-killing or making up for speed.
-            const bestPriority = _txBestBy(availMoves, isPriority, m => _txScoreMove(m, mon, build, monName));
-            if (bestPriority && out.length < 4 && slow) {
-                const md = movesDB[bestPriority];
-                push('Priority', bestPriority, `${md.pow > 0 ? md.pow + ' BP ' : ''}${md.type} — moves first, plugs slow speed.`, 'flex');
-            }
-
-            // 7) Hazards (entry damage) — if no offense gap yet.
-            const bestHazard = _txBestBy(availMoves, m => HAZARDS.has(m), m => {
-                if (m === 'Stealth Rock') return 100;
-                if (m === 'Sticky Web') return 80;
-                if (m === 'Spikes') return 75;
-                return 60;
-            });
-            if (bestHazard && out.length < 4) push('Hazards', bestHazard, 'Entry damage — wears down switch-ins all match.', 'flex');
-
-            // 8) Speed control — Tailwind, Trick Room, etc.
-            const bestSpeedCtrl = _txBestBy(availMoves, m => SPEED_CONTROL.has(m), m => {
-                if (m === 'Tailwind') return 95;
-                if (m === 'Trick Room' && slow) return 100;
-                if (m === 'Sticky Web') return 80;
-                return 50;
-            });
-            if (bestSpeedCtrl && out.length < 4) push('Speed', bestSpeedCtrl, 'Shifts the speed tier — flip the matchup before it starts.', 'flex');
-
-            // 9) Pivot move — for momentum-keeping.
-            const bestPivot = _txBestBy(availMoves, m => PIVOT.has(m), m => {
-                if (m === 'U-turn' || m === 'Volt Switch' || m === 'Flip Turn') return 95;
-                if (m === 'Teleport') return 75;
-                return 60;
-            });
-            if (bestPivot && out.length < 4) push('Pivot', bestPivot, 'Hits and switches — keeps you in control of the matchup.', 'flex');
-
-            // Screens for support builds.
-            if (out.length < 4) {
-                const bestScreens = _txBestBy(availMoves, m => SCREENS.has(m), m => m === 'Aurora Veil' ? 100 : 80);
-                if (bestScreens) push('Screens', bestScreens, 'Halves damage for 5 turns — anchors a defensive team.', 'flex');
+            // ── Remaining slots — adaptive fill by usage ─────────────────────
+            // For each open slot take whichever the species RUNS more (Smogon usage):
+            // the next status/utility move, or the next damaging move. Distinct types
+            // are preferred for damaging; on a narrow early pool with no distinct
+            // coverage left, a 2nd same-type STAB is allowed (a different move) rather
+            // than leaving the slot empty — better than stacking nothing. Ties go to
+            // the damaging move so a pure attacker isn't handed an unused status move.
+            while (out.length < 4) {
+                const nextStatus = statusMoves.find(m => !usedMoves.has(m));
+                const distinctDmg = damaging.filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m))).sort(cmpDmg)[0];
+                const nextDmg = distinctDmg || damaging.filter(m => !usedMoves.has(m)).sort(cmpDmg)[0];
+                if (!nextStatus && !nextDmg) break;
+                if (nextStatus && (!nextDmg || usage(nextStatus) > usage(nextDmg))) {
+                    add('Status', nextStatus);
+                } else {
+                    add(typeSet.has(typeOf(nextDmg)) ? 'STAB' : 'Coverage', nextDmg);
+                }
             }
 
             return out.slice(0, 4);
         }
 
         // Item recs by purpose — choose distinct offensive / defensive / utility picks
+        // Battle Dojo "Best items" — a profile-driven, tier-aware shortlist that works
+        // even when early Smogon item usage is sparse/misleading. `availItems` is already
+        // the items UNLOCKED at the current belt, so every pick is equippable now. Four
+        // fixed role slots: Primary (offense or bulk by archetype) · Sustain · Status
+        // insurance · Defensive-tech (a resist berry matched to the mon's worst type
+        // weakness). Archetype is read from BASE stats (built stats would skew every mon
+        // to "sweeper"); Smogon usage only breaks ties via _txScoreItem in the backfill.
         function _txItemRecsByPurpose(availItems, mon, build, monName) {
             if (!availItems || !availItems.length) return [];
-            const stats = _txMonStats(mon, monName);
-            const physical = stats.atk >= stats.spa;
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
+            const bAtk = base.atk | 0, bSpa = base.spa | 0;
+            const isPhys = bAtk >= bSpa;
+            const off = Math.max(bAtk, bSpa);
+            const bulk = (base.hp | 0) + (base.def | 0) + (base.spd | 0);
+            const spe = base.spe | 0;
+            const wall = bulk >= 280 && off < 100;
+            const sweeper = off >= 100 && spe >= 90;
+            const frail = bulk < 230;
+            const types = [mon && mon.type1, mon && mon.type2].filter(Boolean);
+            const isPoison = types.includes('Poison');
+            const nfe = availItems.includes('Eviolite'); // pool adds Eviolite only for NFE mons
+            const stabBoost = types.map(t => _DOJO_TYPE_BOOST_BY_TYPE[t]).filter(Boolean);
+            const worst = _dojoWorstWeakness(types[0], types[1]);
+            const sustainItem = isPoison ? 'Black Sludge' : 'Leftovers';
 
+            // INCLUDE the currently-held item (don't filter it out): the panel shows the
+            // ideal item per role and marks the one you already hold ✓, so it's a STABLE
+            // recommendation rather than a moving target that drops your current item and
+            // points at a worse alternative for that role.
             const curItem = (build && build.i) || '(none)';
-            const pool = availItems.filter(it => it !== curItem);
-            if (!pool.length) return [];
-
-            const bestIn = (cat) => _txBestBy(pool, it => _txItemCategory(it) === cat, it => _txScoreItem(it, mon, build, monName));
-
-            const out = [];
+            const have = new Set(availItems);
             const used = new Set();
-            const push = (purpose, item, reason) => {
-                if (!item || used.has(item)) return;
-                used.add(item);
-                out.push({ purpose, item, reason });
+            const out = [];
+            const pick = (...cands) => cands.flat().find(it => it && have.has(it) && !used.has(it)) || null;
+            const add = (purpose, item, reason) => {
+                if (!item || used.has(item)) return false;
+                used.add(item); out.push({ purpose, item, reason, equipped: item === curItem }); return true;
             };
 
-            // 1) Offensive — power up the stronger stat with a Choice item or Life Orb.
-            const offChoice = physical ? 'Choice Band' : 'Choice Specs';
-            const choiceOk = pool.includes(offChoice);
-            if (choiceOk) push('Offensive', offChoice, `Locks in ${physical ? 'Atk +50%' : 'SpA +50%'} — wallbreaker.`);
-            else {
-                const bestOff = bestIn('offensive');
-                if (bestOff) push('Offensive', bestOff, 'Boosts damage output every turn.');
-            }
-
-            // 2) Defensive — sustain over the long game.
-            const wantsBoots = pool.includes('Heavy-Duty Boots') && (mon && (mon.type1 === 'Flying' || mon.type2 === 'Flying' || (stats.spd + stats.def >= 200)));
-            if (wantsBoots) push('Defensive', 'Heavy-Duty Boots', 'Ignores hazards on switch-in.');
-            else if (pool.includes('Leftovers')) push('Defensive', 'Leftovers', 'Heals 1/16 HP each turn — anchor for bulky sets.');
-            else {
-                const bestDef = bestIn('defensive');
-                if (bestDef) push('Defensive', bestDef, 'Improves longevity in the matchup.');
-            }
-
-            // 3) Speed — Choice Scarf if fast-leaning, otherwise utility.
-            if (pool.includes('Choice Scarf') && stats.spe >= 70 && stats.spe <= 110) {
-                push('Speed', 'Choice Scarf', 'Speed +50% — outspeeds tier-leaders.');
-            } else if (pool.includes('Focus Sash') && stats.hp < 200) {
-                push('Insurance', 'Focus Sash', 'Survives any one OHKO at full HP — guarantees a hit.');
+            // 1) PRIMARY — the headline item by archetype.
+            if (wall) {
+                add('Bulk', pick(nfe ? 'Eviolite' : null, sustainItem, !isPhys ? 'Assault Vest' : null, 'Rocky Helmet', 'Sitrus Berry'),
+                    nfe ? 'Eviolite — +50% Def & Sp.Def on a not-fully-evolved Pokémon.' : 'Best sustain item to anchor a wall.');
             } else {
-                const bestUtil = bestIn('utility');
-                if (bestUtil) push('Utility', bestUtil, 'Disrupts the opponent — momentum tool.');
+                const choice = isPhys ? 'Choice Band' : 'Choice Specs';
+                add('Offensive', pick(
+                    sweeper ? choice : null, 'Life Orb', choice,
+                    isPhys ? 'Muscle Band' : 'Wise Glasses', stabBoost, 'Expert Belt',
+                    isPhys ? 'Liechi Berry' : 'Petaya Berry', 'Salac Berry',
+                ), 'The biggest damage boost this Pokémon can hold right now.');
             }
 
-            // 4) Special / niche — Life Orb is the universal damage upgrade if not yet picked.
-            if (out.length < 4 && pool.includes('Life Orb') && !used.has('Life Orb')) {
-                push('Power', 'Life Orb', '+30% damage at 10% HP cost — best on hit-and-switch sets.');
-            } else if (out.length < 4) {
-                const bestRest = _txBestBy(pool, it => !used.has(it), it => _txScoreItem(it, mon, build, monName));
-                if (bestRest) push('Flex', bestRest, _txDescriptionFor(bestRest, 'item').slice(0, 80));
+            // 2) SUSTAIN — stay healthy over the long game.
+            add('Sustain', pick(sustainItem, nfe ? 'Eviolite' : null, 'Sitrus Berry',
+                (off >= 100 || spe >= 95 || frail) ? 'Focus Sash' : null, 'Figy Berry'),
+                'Sustain to win the long exchanges.');
+
+            // 3) STATUS INSURANCE — shrug off a crippling status once.
+            add('Status', pick('Lum Berry', 'Chesto Berry', 'Cheri Berry'),
+                'Cures a status once — frees you from a burn / paralysis / sleep.');
+
+            // 4) DEFENSIVE TECH — resist berry vs the worst weakness, else passive defense.
+            if (worst && _DOJO_RESIST_BERRY[worst.type]) {
+                add('Defensive', pick(_DOJO_RESIST_BERRY[worst.type], 'Rocky Helmet', 'Covert Cloak'),
+                    `Softens a ${worst.type}-type hit once — covers this Pokémon's ${worst.mult}x weakness.`);
+            } else {
+                add('Defensive', pick('Rocky Helmet', 'Covert Cloak', 'Sitrus Berry'),
+                    'Defensive tech for trickier matchups.');
             }
 
+            // Backfill any empty slots with the next best-scoring available item.
+            if (out.length < 4) {
+                const rest = _txBestBy([...have].filter(it => !used.has(it)), () => true, it => _txScoreItem(it, mon, build, monName));
+                if (rest) add('Flex', rest, (_txDescriptionFor(rest, 'item') || '').slice(0, 80) || 'A solid extra option.');
+            }
             return out.slice(0, 4);
         }
 
@@ -57485,6 +57612,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             _txState.filter.moveCats.clear();
                             if (!wasActive) _txState.filter.moveCats.add('Status');
                         }
+                    } else if (kind === 'tier') {
+                        // Multi-select stage/tier filter. "All" clears; any other chip toggles
+                        // its tier in the per-picker Set, so several tiers can be combined.
+                        const tk = chip.dataset.tierKind;
+                        if (tk && _txState.filter.tier) {
+                            if (!_txState.filter.tier[tk]) _txState.filter.tier[tk] = new Set();
+                            const sel = _txState.filter.tier[tk];
+                            if (value === 'all') sel.clear();
+                            else if (sel.has(value)) sel.delete(value);
+                            else sel.add(value);
+                        }
                     }
                     if ((kind === 'moveType' || kind === 'quick') && _txMoveGridFastUpdate()) return;
                     void renderTutorTeam(true);
@@ -57562,8 +57700,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The ★ Recommended chip lives outside the drawer (on the search row) so
         // we don't include it here.
         function _txActiveFilterCount(kind) {
-            if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size;
-            if (kind === 'items') return _txState.filter.itemCat !== 'all' ? 1 : 0;
+            const tierN = (_txState.filter.tier && _txState.filter.tier[kind]) ? _txState.filter.tier[kind].size : 0;
+            if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size + tierN;
+            if (kind === 'items') return (_txState.filter.itemCat !== 'all' ? 1 : 0) + tierN;
+            if (kind === 'abilities') return tierN;
             if (kind === 'natures') return (_txState.filter.natureUp !== 'any' ? 1 : 0) + (_txState.filter.natureDown !== 'any' ? 1 : 0);
             return 0;
         }
@@ -57815,6 +57955,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }</div>`;
         }
 
+        // Stage/tier filter chips — multi-select per picker (toggle each tier; "All"
+        // clears). Lets the player browse what's available at each belt / tutor tier and
+        // combine several (e.g. T1+T2). Tier keys are STRINGS so they sit in a Set cleanly.
+        const _TX_TIER_DEFS = {
+            moves:     [['natural', 'Natural'], ['learnt', 'Learnt'], ['awakened', 'Awakened']],
+            items:     [['1', 'T1'], ['2', 'T2'], ['3', 'T3']],
+            abilities: [['legal', 'Legal'], ['hidden', 'Hidden'], ['awakened', 'Awakened']],
+        };
+        function _txTierChipsHtml(kind) {
+            const defs = _TX_TIER_DEFS[kind];
+            if (!defs) return '';
+            const sel = (_txState.filter.tier && _txState.filter.tier[kind]) || new Set();
+            const chip = (val, label, active) =>
+                `<button type="button" class="tx-chip tx-chip--tier" data-filter-kind="tier" data-tier-kind="${kind}" data-filter-value="${val}" data-active="${active ? 1 : 0}" aria-pressed="${active ? 'true' : 'false'}">${_esc(label)}</button>`;
+            return `<div class="tx-chip-row tx-tier-row" role="group" aria-label="Filter by stage / tier">`
+                + `<span class="tx-tier-row-label">Stage</span>`
+                + chip('all', 'All', sel.size === 0)
+                + defs.map(([v, l]) => chip(v, l, sel.has(v))).join('')
+                + `</div>`;
+        }
+
         // Format usage % as a tiny inline tag — only rendered when ctx.pctOf
         // has a non-trivial value for this option, so non-meta picks (which
         // would render "· 0%") stay clean.
@@ -57900,11 +58061,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             : 'Awakened move — off-legal Smogon pick';
                     }
                     if (!isEquipped) {
-                        const reqStage = tag === 'awakened' ? 2 : tag === 'learnt' ? 1 : 0;
-                        const curStage = (typeof ctx.tutorStage === 'number') ? ctx.tutorStage : 0;
-                        if (reqStage > curStage) {
-                            const name = reqStage === 2 ? 'L3 Guru' : 'L2 Expert';
-                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${name}">🔒 ${name}</span>`;
+                        // Authoritative lock: a move is locked iff it's NOT in the teachable
+                        // acceptance set (matches the gate exactly — incl. the Inner ≤75 BP cap,
+                        // which a tag→stage rule would miss). The unlock-tier LABEL is derived
+                        // from the tag: Learnt/Awakened open at Guru; an over-cap Natural at Expert.
+                        const _base = String(moveName).split('/')[0];
+                        if (ctx.acceptSet && !ctx.acceptSet.has(_base)) {
+                            const unlockStage = (tag === 'learnt' || tag === 'awakened') ? 2 : 1;
+                            const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Expert');
+                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
                             locked = true; // gate the card so off-stage moves can't be picked
                         }
                     }
@@ -57963,7 +58128,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // is exactly where a shared shell would do more harm than good.
         function _txSimpleCardHtml(kind, name, ctx, o) {
             const star = o.isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
-            const pctHtml = _txUsagePctHtml(ctx, name);
+            // hidePct: suppress the usage %. Used for Awakened (off-legal) abilities —
+            // their % comes from illegal-format Smogon builds and misleads the player.
+            const pctHtml = o.hidePct ? '' : _txUsagePctHtml(ctx, name);
             return `<button type="button" class="tx-card${o.extraClass || ''}" data-card-kind="${kind}" data-card-value="${_esc(name)}" data-search-value="${_esc(name.toLowerCase())}"
                 ${o.tierAttr || ''}data-recommended="${o.isRec?1:0}" data-current="${o.isPending?1:0}" data-disabled="${o.disabled?1:0}" data-locked="${o.locked?1:0}" ${o.disabled?'disabled':''}>
                 <div class="tx-card-head">
@@ -58014,13 +58181,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (abilityName === ctx.haName) lockStage = 1;
             }
             const locked = lockStage > (ctx ? ctx.dojoStage : 99);
+            // Role tag (intrinsic — independent of Smogon usage), so every ability reads
+            // as Offensive / Defensive / Utility / Setup / Weather / Immunity at a glance,
+            // even on an early/NFE mon that has no competitive build yet.
+            const role = (typeof _txAbilityRole === 'function') ? _txAbilityRole(abilityName) : 'Utility';
             const pills = [
-                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awakened</span>` : '',
+                `<span class="tx-rec-tag tx-rec-tag--card" data-purpose="${_esc(role)}">${_esc(role)}</span>`,
+                isAwaken ? `<span class="tx-pill tx-pill--awaken" title="Off-legal ability — illegal in standard play, but often very strong. Only the Grandmaster Dojo can teach it.">⛔ Off-legal</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
-            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" ` });
+            // Awakened picks never show a usage % (off-legal builds only) and never
+            // carry the ★ recommended treatment.
+            return _txSimpleCardHtml('ability', abilityName, ctx, { isRec: isRec && !isAwaken, isPending, disabled: (isCurrent || locked), locked, desc, pills, extraClass: ' tx-card--ability', tierAttr: `data-tier="${tier}" `, hidePct: isAwaken });
         }
 
         // Per-action voucher metadata. Adding a 5th tutor kind = add a row here +
@@ -58067,6 +58241,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="tx-confirm-bar-text" style="opacity:0.7;">Pick ${verb} to preview. Confirm appears here.</span>
                     <button type="button" class="tx-confirm-bar-btn" disabled>Confirm</button>
                 </div>`;
+            }
+            // Stage gate (moves): mirror tutorChangeMove's acceptance check EXACTLY so
+            // the bar never shows a Confirm the gate would silently reject. Below Guru
+            // (stage 2) only moves in the staged acceptance pool are teachable; an
+            // off-stage pending move (reachable via the Suggest panel, a cold-cache
+            // render, etc.) gets a clear Locked state explaining what unlocks it,
+            // instead of a dead Confirm that does nothing. Presentational — it reads
+            // the staging gate, never changes what is gated.
+            if (kind === 'move') {
+                const base = String(pending.value).split('/')[0];
+                const accept = _txMoveTier1Cache.get(teamIdx);
+                const stageLocked = (typeof _npcStage === 'function' && _npcStage('tutor') < 2)
+                    && !(accept && accept.has(base));
+                if (stageLocked) {
+                    const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
+                    let tag = null;
+                    try { tag = monName ? _txMoveTagMemo(monName, pending.value) : null; } catch (e) {}
+                    const unlock = (tag === 'learnt' || tag === 'awakened')
+                        ? 'It opens at the <strong>Guru</strong> tier — TMs, tutor moves and off-legal picks.'
+                        : (tag === 'natural'
+                            ? 'It opens at the <strong>Expert</strong> tier, which lifts the power cap on level-up moves.'
+                            : 'It opens as the Move Tutor levels up.');
+                    return `<div class="tx-confirm-bar tx-confirm-bar--locked">
+                        <span class="tx-confirm-bar-text">🔒 <strong>${_esc(pending.value)}</strong> isn't in this Move Tutor's lesson tier yet. ${unlock}</span>
+                        <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
+                        <button type="button" class="tx-confirm-bar-btn" disabled title="This move unlocks at a higher Move Tutor tier">Locked</button>
+                    </div>`;
+                }
             }
             let current = '(none)';
             let isAppendMove = false;
@@ -58115,17 +58317,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!entries || !entries.length) return '';
             const rows = entries.map(e => {
                 const isPending = pendingValue === e.value;
+                // Already-equipped picks are MARKED (not hidden), so the recommendation
+                // is STABLE: the panel shows the ideal set and tells the player which
+                // picks they already run, instead of dropping the equipped pick and
+                // surfacing a worse alternative (a confusing moving target — the moment
+                // you swap to the "recommendation", the panel flips to recommend the
+                // move/item you just gave up). Equipped rows are inert (✓ instead of ›).
+                const isEquipped = !!e.equipped;
                 const tagHtml = `<span class="tx-rec-tag" data-purpose="${_esc(e.purpose)}">${_esc(e.purpose)}</span>`;
-                return `<button type="button" class="tx-rec-row"
+                const goHtml = isEquipped
+                    ? `<span class="tx-rec-equipped">${window.uiSvgCheck ? window.uiSvgCheck() : '✓'} Equipped</span>`
+                    : `<span class="tx-rec-go" aria-hidden="true">›</span>`;
+                return `<button type="button" class="tx-rec-row${isEquipped ? ' tx-rec-row--equipped' : ''}"
                             data-card-kind="${_esc(e.kind)}" data-card-value="${_esc(e.value)}"
-                            data-pending="${isPending?1:0}"
-                            aria-label="${_esc(e.purpose)}: ${_esc(e.value)}">
+                            data-pending="${isPending?1:0}" data-disabled="${isEquipped?1:0}"
+                            aria-label="${_esc(e.purpose)}: ${_esc(e.value)}${isEquipped ? ' (already equipped)' : ''}">
                     ${tagHtml}
                     <span class="tx-rec-body">
                         <span class="tx-rec-name">${_esc(e.value)}${e.extraHtml || ''}</span>
                         <span class="tx-rec-reason">${_esc(e.reason)}</span>
                     </span>
-                    <span class="tx-rec-go" aria-hidden="true">›</span>
+                    ${goHtml}
                 </button>`;
             }).join('');
             const hintHtml = hint ? `<span class="tx-recs-panel-hint">${_esc(hint)}</span>` : '';
@@ -58163,13 +58375,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cats  = _txState.filter.moveCats;
             const sortKey = _txState.sort.moves || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
+            const tierSel = (_txState.filter.tier && _txState.filter.tier.moves) || null;
+            // An active Stage filter shows the FULL tier (it bypasses ★), so "check what's
+            // at each tutor tier" reveals everything, not just the curated subset.
+            const recOnly = !pool.sparse && _txState.filter.recOnly.moves && !(tierSel && tierSel.size);
             const filt = allMoves.filter(m => {
-                // Equipped moves (extraInclude) always pass the ★ filter so the
-                // player never loses sight of a move they currently run — they
-                // still obey the search box + type/category chips, though.
+                // Equipped moves (extraInclude) always pass the ★ and Stage filters so the
+                // player never loses sight of a move they currently run — they still obey
+                // the search box + type/category chips, though.
                 const forced = extraInclude && extraInclude.has(m);
                 if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
+                if (tierSel && tierSel.size && !forced) {
+                    const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, m) : null;
+                    if (!tierSel.has(tag)) return false; // tier keys: natural / learnt / awakened
+                }
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
                 if (!md) return true;
@@ -58211,55 +58430,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const catFilter = _txState.filter.itemCat || 'all';
             const sortKey = _txState.sort.items || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            const recOnly = !pool.sparse && _txState.filter.recOnly.items;
+            const tierSel = (_txState.filter.tier && _txState.filter.tier.items) || null;
+            // An active Stage filter shows the FULL tier (bypasses ★) so the player can
+            // browse everything that unlocks at each belt, not just the curated picks.
+            const recOnly = !pool.sparse && _txState.filter.recOnly.items && !(tierSel && tierSel.size);
+            const curItem = (build && build.i) || null; // held item is exempt from the Stage filter
             const filt = allItems.filter(it => {
                 if (recOnly && !pool.items.inPool.has(it)) return false;
+                if (tierSel && tierSel.size && it !== curItem) {
+                    const t = (typeof _dojoItemTier === 'function') ? _dojoItemTier(it) : 1;
+                    if (!tierSel.has(String(t))) return false; // tier keys: '1' / '2' / '3'
+                }
                 if (q && !it.toLowerCase().includes(q)) return false;
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            // ★ view + explicit usage share one honest order: usage % desc, fit-score
-            // tiebreak (keeps sparse / 0%-usage items quality-ordered, not alphabetical).
-            if (recOnly || sortKey === 'usage') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => ((pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0))
-                    || (scoreOf.get(b) - scoreOf.get(a))
-                    || a.localeCompare(b));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
-                    || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
-                    || a.localeCompare(b));
-            } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            const scoreOf = new Map();
+            for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+            const pct = (x) => pool.items.pctOf.get(x) || 0;
+            const cmpUsage = (a, b) => (pct(b) - pct(a)) || (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b);
+            const cmpScore = (a, b) => (scoreOf.get(b) - scoreOf.get(a)) || (pct(b) - pct(a)) || a.localeCompare(b);
+            // Default ("recommended") + the ★ view are TIER-AWARE: at White/Black Belt the
+            // heuristic fit-score leads (early item usage is sparse / misleading, so usage%
+            // order is the "initial view is not optimal" complaint); at Grandmaster usage%
+            // leads (the data is reliable there). Explicit "usage" is always usage%.
+            const dojoStage = (typeof _npcStage === 'function' && typeof sm !== 'undefined' && sm && sm.active) ? (_npcStage('dojo') | 0) : 2;
+            if (sortKey === 'usage') filt.sort(cmpUsage);
+            else if (sortKey === 'category' || sortKey === 'name') filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            else filt.sort(dojoStage < 2 ? cmpScore : cmpUsage); // 'recommended' default + ★ view
             return filt;
         }
-        function _txApplyAbilityFilters(allAbils, mon, build, monName, extraStarred) {
+        function _txApplyAbilityFilters(allAbils, mon, build, monName, awakenSet, haName) {
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
             const pool = _txStarredPoolMemo(monName);
-            const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
-            // Awaken / OP picks aren't Smogon-derived but ARE meant to be
-            // surfaced when unlocked — accept an extra "always-in-pool" Set
-            // from the caller so they survive the ★ Recommended filter.
+            // Group rank: legal slots (0/1) first, Hidden next, off-legal Awakened last.
+            const rankOf = (a) => (awakenSet && awakenSet.has(a)) ? 2 : (a === haName ? 1 : 0);
+            // Abilities are never hidden by the ★ chip (a mon has only 2-3) — the search
+            // box and the Stage filter narrow the list. Tier key: legal / hidden / awakened
+            // (rankOf 0/1/2). The equipped ability is exempt so it's never hidden.
+            const tierSel = (_txState.filter.tier && _txState.filter.tier.abilities) || null;
+            const tierKeyOf = (a) => ['legal', 'hidden', 'awakened'][rankOf(a)];
+            const curAbil = (build && build.a) || (mon && mon.ability) || null;
             const filt = allAbils.filter(a => {
-                if (recOnly && !pool.abilities.inPool.has(a) && !(extraStarred && extraStarred.has(a))) return false;
-                return !q || a.toLowerCase().includes(q);
+                if (q && !a.toLowerCase().includes(q)) return false;
+                if (tierSel && tierSel.size && a !== curAbil && !tierSel.has(tierKeyOf(a))) return false;
+                return true;
             });
-            // ★ view + explicit usage: usage % desc with a fit-score tiebreak. The shared
-            // helper already accepts a scoreFn — pass it so sparse / 0%-usage abilities
-            // stay quality-ordered instead of alphabetical.
-            if (recOnly || sortKey === 'usage') {
-                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf,
-                    a => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility)));
-            } else if (sortKey === 'recommended') {
-                const scoreOf = new Map();
-                for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
-                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
-                    || (pool.abilities.pctOf.get(b) || 0) - (pool.abilities.pctOf.get(a) || 0)
-                    || a.localeCompare(b));
-            } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
+            const usageOf = (a) => pool.abilities.pctOf.get(a) || 0;
+            const heurOf = (a) => _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility);
+            if (sortKey === 'name') {
+                filt.sort((a, b) => a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                filt.sort((a, b) => (usageOf(b) - usageOf(a)) || (heurOf(b) - heurOf(a)) || a.localeCompare(b));
+            } else {
+                // 'recommended' (default) — LEGAL-FIRST, then usage %, then a quality
+                // heuristic so a good ability on a data-sparse early/NFE mon (e.g. a
+                // starter's Torrent with no Smogon build) still leads its group.
+                filt.sort((a, b) => (rankOf(a) - rankOf(b)) || (usageOf(b) - usageOf(a)) || (heurOf(b) - heurOf(a)) || a.localeCompare(b));
+            }
             return filt;
         }
         function _txApplyNatureFilters(allNat, mon, build, monName) {
@@ -58344,7 +58573,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // render and the partial fast path (_txMoveGridFastUpdate), so a fast-path-built
         // card is byte-identical to a full-render one. ctx is stable across filter/sort
         // toggles (it only changes when the build/pending changes, which take the full path).
-        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves) {
+        function _txMoveCtx(t, mon, b, currentMoves, mergedMoves, acceptSet) {
             const sPool = _txStarredPoolMemo(t.name);
             const equippedSet = new Set(currentMoves);
             const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
@@ -58358,6 +58587,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slotOf,
                 monName: t.name,
                 tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
+                // Teachable set (gated) — the card locks any move NOT in it, authoritatively
+                // (matches the gate incl. the Inner BP cap). Undefined → no locks (safe).
+                acceptSet: acceptSet || null,
             };
             const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
             return { sPool, equippedSet, ctx, gridSource };
@@ -58391,7 +58623,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let mon = null;
                 try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
                 const currentMoves = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
-                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+                const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves, _txMoveTier1Cache.get(idx));
                 const ordered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
                 // Keyed reconcile by data-card-value.
@@ -58496,7 +58728,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // grid source (every legal move PLUS the equipped ones, so the player sees their
             // current moves alongside the alternatives) — built by the shared _txMoveCtx so
             // the partial fast path renders cards identically to this full render.
-            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves);
+            const { sPool, equippedSet, ctx, gridSource } = _txMoveCtx(t, mon, b, currentMoves, mergedMoves, _txMoveTier1Cache.get(idx));
             const pendingMove = ctx.pending;
             // Distinct move types in the CURRENT view (respecting the ★ filter) — drives
             // the "Type ▾" menu so it only offers types the player can actually filter to
@@ -58529,15 +58761,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const searchingMoves = !!(_txState.search && _txState.search.moves);
                 if (!sPool.sparse && _txState.filter.recOnly.moves && !searchingMoves) {
-                    // Exclude already-equipped moves so the panel reads as "what to ADD",
-                    // not a list of picks that no-op on tap (matches the item/ability panels,
-                    // which drop the current pick).
-                    const recPool = mergedMoves.filter(m => !equippedSet.has(String(m).split('/')[0]));
+                    // Restrict to the TEACHABLE acceptance set (the grid renders the full
+                    // pool with off-stage moves locked, so without this the suggester would
+                    // recommend moves the player can't learn at this tier). We INCLUDE
+                    // already-equipped moves and mark them — the recommendation is the ideal
+                    // STABLE set, with the picks you already run flagged ✓, instead of a
+                    // moving target that drops your best move and surfaces a worse one.
+                    const _accept = ctx.acceptSet;
+                    const recPool = mergedMoves.filter(m => {
+                        const base = String(m).split('/')[0];
+                        return (!_accept || _accept.has(base));
+                    });
                     const recEntries = _txMoveRecsByPurpose(recPool, mon, b, t.name)
-                        .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move' }));
+                        .map(e => ({ purpose: e.purpose, value: e.move, reason: e.reason, kind: 'move',
+                            equipped: equippedSet.has(String(e.move).split('/')[0]) }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
-                            'Tap to preview — grab one of each role for a balanced set.');
+                            'Your ideal set — ✓ marks moves you already run.');
                     }
                 }
             } catch (e) {}
@@ -58553,7 +58793,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sparse: sPool.sparse,
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
                 chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml(),
-                belowChipsHtml: _txMoveTypeMenuRowHtml(availTypes),
+                belowChipsHtml: _txTierChipsHtml('moves') + _txMoveTypeMenuRowHtml(availTypes),
                 sortOptions: [
                     { value:'usage', label:'By usage %' },
                     { value:'recommended', label:'Best for this mon' },
@@ -58642,10 +58882,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { for (const a of opAbils) awakenSet.add(a); }
             const haSet = new Set();
             if (_haName) haSet.add(_haName);
-            // #47: Awakened picks are NOT recommendations — pass no extra-starred set so
-            // they drop out of the ★ Recommended view (still selectable under "show all"
-            // once unlocked at Grandmaster; "they appear when they appear").
-            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, null);
+            // Order legal-first → Hidden → off-legal Awakened (pass the awaken set + HA
+            // name so the sort can rank groups). Every ability stays visible.
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet, _haName);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
             const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, dojoStage: _dojoStage, haName: _haName };
 
@@ -58670,10 +58909,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const tierCap = _dojoStage + 1;
                         const unlockedItems = items.filter(it => (typeof _dojoItemTier === 'function' ? _dojoItemTier(it) : 1) <= tierCap);
                         const recEntries = _txItemRecsByPurpose(unlockedItems, mon, b, t.name)
-                            .map(e => ({ purpose: e.purpose, value: e.item, reason: e.reason, kind: 'item' }));
+                            .map(e => ({ purpose: e.purpose, value: e.item, reason: e.reason, kind: 'item', equipped: e.equipped }));
                         if (recEntries.length) {
                             itemRecsPanel = _txRecsPanelHtml('Best items for ' + t.name, recEntries, pendingItem,
-                                'Tap to preview — one held item per Pokémon. Browse the full list below.');
+                                'Your ideal items — ✓ marks the one you already hold.');
                         }
                     }
                 } catch (e) {}
@@ -58683,6 +58922,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sparse: sPool.sparse,
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
+                    belowChipsHtml: _txTierChipsHtml('items'),
                     sortOptions: [
                         { value:'usage', label:'By usage %' },
                         { value:'recommended', label:'Best for this mon' },
@@ -58693,49 +58933,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return sparseBanner + toolbar + _txActiveFiltersHtml('items') + itemRecsPanel + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
-            // Ability tab content
+            // Ability tab content — a mon runs exactly ONE ability, so there's no
+            // "balanced set" to recommend. We drop the "Best abilities" panel AND the ★
+            // toggle and just show every ability as a card: each role-tagged, ordered
+            // legal-first (see _txApplyAbilityFilters), with the single best legal pick
+            // carrying the ★. Off-legal Awakened picks sort last and read as ⛔.
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.abilities)
-                    ? `No starred abilities match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="abilities">★ Show all</button> to expand, or clear the search.`
-                    : 'No abilities match the search.';
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
-                    : `<div class="tx-grid-empty">${emptyMsg}</div>`;
-                // Phase 5b — curated "Best abilities" panel. Candidates are filtered to
-                // what's UNLOCKED at the current Dojo stage (Hidden → Black Belt,
-                // Awakened → Grandmaster) so it never points at a 🔒 pick. The one-line
-                // reason is the real win here: bare ability cards never explained WHY.
-                let abilRecsPanel = '';
-                try {
-                    const searchingAbils = !!(_txState.search && _txState.search.abilities);
-                    if (!sPool.sparse && _txState.filter.recOnly.abilities && !searchingAbils) {
-                        const unlockedAbils = abils.filter(a => {
-                            if (awakenSet.has(a)) return _dojoStage >= 2;
-                            if (a === _haName) return _dojoStage >= 1;
-                            return true;
-                        });
-                        const recEntries = _txAbilityRecsByPurpose(unlockedAbils, mon, b, t.name)
-                            .map(e => ({ purpose: e.purpose, value: e.ability, reason: e.reason, kind: 'ability',
-                                extraHtml: e.hidden ? ' <span class="tx-pill tx-pill--ha" style="margin-left:6px;font-size:0.7em;">Hidden</span>' : '' }));
-                        if (recEntries.length) {
-                            abilRecsPanel = _txRecsPanelHtml('Best abilities for ' + t.name, recEntries, pendingAbility,
-                                'Tap to preview — one ability per Pokémon. Browse the full list below.');
-                        }
-                    }
-                } catch (e) {}
+                    : `<div class="tx-grid-empty">No abilities match the search.</div>`;
                 const toolbar = _txToolbarHtml('abilities', {
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
                     sparse: sPool.sparse,
-                    leadingChipsHtml: _txRecChipHtml('abilities', t.name),
+                    belowChipsHtml: _txTierChipsHtml('abilities'),
                     sortOptions: [
+                        { value:'recommended', label:'Legal first' },
                         { value:'usage', label:'By usage %' },
-                        { value:'recommended', label:'Best for this mon' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + abilRecsPanel + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
@@ -58905,11 +59124,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txState.typeMenuOpen = false;
             _txState.filter.itemCat = 'all';
             _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any';
+            // Stage/tier filter resets to "All" on entry.
+            if (_txState.filter.tier) { _txState.filter.tier.moves.clear(); _txState.filter.tier.items.clear(); _txState.filter.tier.abilities.clear(); }
             // Reset ★ Recommended filter to ON for every picker — fresh entry
             // always leads with the curated Smogon-usable pool.
             _txState.filter.recOnly.moves = true; _txState.filter.recOnly.items = true;
             _txState.filter.recOnly.abilities = true; _txState.filter.recOnly.natures = true;
-            _txState.sort.moves = 'usage'; _txState.sort.items = 'usage'; _txState.sort.abilities = 'usage'; _txState.sort.natures = 'recommended';
+            // Abilities default to "Legal first" (no Best-abilities panel to carry that
+            // signal, and raw usage% floats off-legal picks above the mon's real ones).
+            _txState.sort.moves = 'usage'; _txState.sort.items = 'usage'; _txState.sort.abilities = 'recommended'; _txState.sort.natures = 'recommended';
             _txPending = null;
             _txMovePoolCache.clear();
             _applyStoryTutorHeader();
@@ -58980,12 +59203,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _tm = sm.team[ti];
                         const _cur = (_tm.build && _tm.build.m) || [];
                         const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur);
-                        _txMovePoolCache.set(ti, _staged);
+                        // The GRID renders the full movepool so off-stage moves show (locked),
+                        // matching the Dojo's all-items roster. The acceptance set below stays
+                        // the GATED/teachable set, so only in-stage moves are selectable.
+                        _txMovePoolCache.set(ti, _staged.fullPool || _staged);
                         // Phase 2 (BUG A fix): the teachable acceptance set is EXACTLY the
-                        // staged pool the picker surfaces (gold AND Heart-Scale paths read it),
-                        // so the handler can never accept a move the gate hides. Previously this
-                        // unioned the FULL Smogon CSV pool, which let Learnt/Awakened coverage
-                        // moves be bought at City 0. currentMoves are already in `_staged`.
+                        // staged/gated pool (gold AND Heart-Scale paths read it), so the handler
+                        // can never accept a move the gate hides. Built from `_staged` (gated),
+                        // NOT the full pool. currentMoves are already in `_staged`.
                         const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
                         _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
                         _txMoveTier1Cache.set(ti, _t1);
@@ -59082,7 +59307,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                const moveCost = _moveCostForStage();
+                // Price by the MOVE's tier (Natural 1000 / Learnt 2500 / Awakened 5000),
+                // exactly as the confirm bar displays it. Calling _moveCostForStage() with
+                // no tag falls back to the per-STAGE price (Guru = 5000 flat), which made
+                // the charge diverge from the shown price (bug: shows 2500, charges 5000).
+                const _moveTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
+                const moveCost = _moveCostForStage(_moveTag === 'unknown' ? null : _moveTag);
                 if (sm.gold < moveCost) return;
                 const moves = mon.build.m || (mon.build.m = []);
                 const currentMoves = moves.map(m => m.split('/')[0]);
@@ -59317,9 +59547,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isAppend = moveSlot >= moves.length;
                 if (isAppend && moves.length >= 4) return false;
                 const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
+                // "Saves" = the per-move-tier gold cost a Heart Scale waives (matches the
+                // confirm bar + tutorChangeMove), not the per-stage fallback.
+                const _vTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
+                const _vSaved = _moveCostForStage(_vTag === 'unknown' ? null : _vTag).toLocaleString();
                 const prompt = isAppend
-                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
-                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
                 if (!await _storyConfirmTutorChange(prompt, 0)) return false;
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
@@ -59378,9 +59612,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
         // Colress (gimmick swap) — 10000 → 7500 → 5000. Enemy gimmick density
-        // rose with the Frontier per-round bands and Crucible Hard Mode (+20%
-        // absolute). The player needs to keep up without spending a small
-        // fortune per change.
+        // rose with the Frontier per-round bands. The player needs to keep up
+        // without spending a small fortune per change.
         const COLRESS_COST = 5000;
         const COLRESS_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
 
@@ -60801,7 +61034,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCrucible, leaveCrucible,
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,
             crucibleMysteryFight, crucibleRivalFight, crucibleLeagueRun, crucibleGymPick, crucibleWildEncounter,
-            toggleCrucibleHardMode,
             enterLink, linkReroll, linkUpgrade, linkRebuild, linkMoveUp, linkMoveDown,
             enterEvolutionLab, evoLabEvolve, evoLabEvolveWithCandy,
             enterCasino, casinoToggleStats,

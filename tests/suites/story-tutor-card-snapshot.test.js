@@ -1,7 +1,9 @@
-// Step 3 — the item + ability card renderers were merged into one shared shell
-// (_txSimpleCardHtml). This is a STRICT 1:1 refactor: every rendered card must
-// serialize byte-for-byte identically to the pre-refactor output captured in
-// tests/fixtures/tx-cards-before.json. If this fails, the merge changed output.
+// The item + ability card renderers share one shell (_txSimpleCardHtml). Every
+// rendered card must serialize byte-for-byte to the baseline in
+// tests/fixtures/tx-cards-before.json — a guard against UNINTENDED render drift.
+// Baseline note: the ability cards reflect the Awakened "off-legal" treatment
+// (⛔ pill, no usage %, never starred); item cards are the original output.
+// If you intentionally change a renderer, regenerate the affected baseline.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

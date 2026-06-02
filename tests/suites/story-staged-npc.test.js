@@ -59,15 +59,23 @@ test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('dojo', 9), 'Grandmaster', 'over-cap stage clamps to last label');
 });
 
-test('dojoItemTier: berries=1, decent staples=2, meta power items=3', () => {
+test('dojoItemTier: Foundation=1 (berries + type-boosters), Staples=2 (Eviolite + …), Meta=3', () => {
+  // Tier 1 — Foundation: berries and the mild +20% type-boosters.
   assert.equal(ST.dojoItemTier('Lum Berry'), 1);
   assert.equal(ST.dojoItemTier('Sitrus Berry'), 1);
+  assert.equal(ST.dojoItemTier('Charcoal'), 1);       // type-booster → Foundation
+  assert.equal(ST.dojoItemTier('Soft Sand'), 1);      // type-booster → Foundation
+  // Tier 2 — Staples: the defensive baseline (incl. Eviolite — too strong at White
+  // Belt where every team is NFE — plus Heavy-Duty Boots + Assault Vest).
+  assert.equal(ST.dojoItemTier('Eviolite'), 2);       // NFE power item → gated to Black Belt
   assert.equal(ST.dojoItemTier('Leftovers'), 2);
-  assert.equal(ST.dojoItemTier('Eviolite'), 2);
-  assert.equal(ST.dojoItemTier('Charcoal'), 2);
+  assert.equal(ST.dojoItemTier('Heavy-Duty Boots'), 2);
+  assert.equal(ST.dojoItemTier('Assault Vest'), 2);
+  assert.equal(ST.dojoItemTier('Focus Sash'), 2);
+  // Tier 3 — Meta: snowball / win-more only.
   assert.equal(ST.dojoItemTier('Choice Band'), 3);
   assert.equal(ST.dojoItemTier('Life Orb'), 3);
-  assert.equal(ST.dojoItemTier('Assault Vest'), 3);
+  assert.equal(ST.dojoItemTier('Weakness Policy'), 3);
 });
 
 test('Awakened picks are stage-independent (lock lives in the UI/handler, not the data)', () => {
