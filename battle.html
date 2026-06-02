@@ -36635,6 +36635,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pickT2FlavorItemForSpecies: (...a) => _pickT2FlavorItemForSpecies(...a),
                 makeBuild: (...a) => makeBuild(...a),
                 storyBuildTierForEvent: (...a) => _storyBuildTierForEvent(...a),
+                isStoryRollExcluded: (...a) => isStoryRollExcluded(...a),
+                weightedPickFromGrades: (...a) => weightedPickFromGrades(...a),
                 get baseStats() { return baseStats; },
                 get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
                 get T2_TYPE_BOOST_ITEM() { return _T2_TYPE_BOOST_ITEM; },
@@ -44475,36 +44477,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // The "+1 grade tier" is implemented by sampling from a richer grade than the parent.
-        // The species also shares ≥1 type with the parent. Falls back to a random Normal-typed
-        // mon of the target grade if no overlap exists in the pool (rare for legendary parents).
+        // The species also shares ≥1 type with the parent. Falls back to a random same-grade
+        // mon if no type overlap exists in the pool (rare for legendary parents).
+        //
+        // The candidate pool is drawn through the SAME guards every story roll uses:
+        //   • isStoryRollExcluded — never hatch a forme entry (Inteleon-Gmax,
+        //     Charizard-Mega-X, Kyogre-Primal). baseStats holds these because it's seeded
+        //     from gen-9 randbats + @pkmn/dex, but they are not draftable species.
+        //   • storySettingsGens — honor the run's enabled-gens toggle.
+        //   • seeded storyRngNext — deterministic replays.
         function _daycareRollHatchSpecies(parentName) {
             try {
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const genSet = new Set(storySettingsGens());
                 const parentBase = baseStats[parentName] || {};
                 const parentTypes = [parentBase.t1, parentBase.t2].filter(Boolean);
                 const parentGrade = getMonGrade(parentName, getBST(parentName));
                 // Hatchling grade = max(1, parent grade - 1) (lower number = better tier).
                 const hatchGrade = Math.max(1, parentGrade - 1);
-                const candidates = [];
-                for (const name of Object.keys(baseStats)) {
-                    if (name === parentName) continue;
+                // Gen-legal, forme-filtered base pool (everything but the parent itself).
+                const eligible = Object.keys(baseStats).filter(name => {
+                    if (name === parentName || isStoryRollExcluded(name)) return false;
                     const bs = baseStats[name];
-                    if (!bs) continue;
+                    return !!bs && genSet.has(bs.gen);
+                });
+                const candidates = [];
+                for (const name of eligible) {
+                    const bs = baseStats[name];
                     const t = [bs.t1, bs.t2].filter(Boolean);
-                    const overlap = t.some(x => parentTypes.includes(x));
-                    if (!overlap) continue;
-                    const g = getMonGrade(name, getBST(name));
-                    if (g !== hatchGrade) continue;
+                    if (!t.some(x => parentTypes.includes(x))) continue;
+                    if (getMonGrade(name, getBST(name)) !== hatchGrade) continue;
                     candidates.push(name);
                 }
                 if (!candidates.length) {
-                    // Type-overlap pool is empty — fall back to same-grade only.
-                    for (const name of Object.keys(baseStats)) {
-                        const g = getMonGrade(name, getBST(name));
-                        if (g === hatchGrade) candidates.push(name);
+                    // Type-overlap pool is empty — fall back to same-grade only (still
+                    // gen-legal and forme-filtered).
+                    for (const name of eligible) {
+                        if (getMonGrade(name, getBST(name)) === hatchGrade) candidates.push(name);
                     }
                 }
                 if (!candidates.length) return parentName; // give up, return parent
-                return candidates[Math.floor(Math.random() * candidates.length)];
+                return candidates[Math.floor(rng() * candidates.length)];
             } catch (e) {
                 console.warn('[Daycare] hatch species roll', e);
                 return parentName;
@@ -44723,10 +44736,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return { badges: snapshotBadges | 0, capturedAt: Date.now(), teamSummary: [], seed: 0 };
             }
         }
-        function _pitsActiveSnapshot() {
-            const p = sm.pits || {};
-            return p.championSnapshot || p.gym6Snapshot || null;
-        }
         // Post-Champion the Fight Club becomes a repeatable, money-only loop with no
         // daycare/egg wrapping and no permanent stat reward — just functional.
         function _pitsIsEndgame() {
@@ -44741,65 +44750,126 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _pitsIsEndgame() || _pitsStoryAvailable();
         }
 
-        // Roll a 5-round enemy gauntlet using the snapshot's grade distribution.
+        // Roll a 5-round enemy gauntlet scaled to the player's CURRENT CITY.
         // Each round is a full 3v3: the house fields a TRAINER OF SIX, then
         // counter-picks its best 3 vs the player's locked trio (see
-        // _pitsCounterPick). Rounds skew by grade — warm-up easier, last round
-        // the "boss" (stronger band + a +2 bonus layer on the whole six).
+        // _pitsCounterPick).
         //
-        // Build strength: foes pass through `_applyStoryBuildPowerTier` with a
-        // synthetic "Gym Leader N" event name (N = current badge count, clamped
-        // 1..8). That means Pit foes get the exact tier polish, IV roll, and
-        // move/EV depth a same-stage Gym Leader fight would have — no special
-        // "Pit power curve" to balance, just lean on the existing gym ladder.
-        // The boss round tags its highest-BST mon as a signature ace for the
-        // top-quartile IV bump.
+        // Difficulty source (per the design): the house fields the kind of trainer
+        // you'd actually meet at this point in the run — an ACE TRAINER at your
+        // current city — instead of a fixed snapshot average. Two axes stack, both
+        // reusing the canonical story-roll machinery so there's no bespoke "Pit
+        // curve" to balance:
+        //   • City pace — each round seeds from the AUTHORED grade weights of that
+        //     trainer class at the player's current city (STORY_EVENTS_RAW), so City8
+        //     foes carry the G2 mass City6 foes don't. The progress ramp then nudges it
+        //     a touch further on the live row.
+        //   • Trainer-type difficulty — each round's class escalates across the bracket:
+        //     warm-up Basic Trainer → three Ace Trainer (Elite) rounds at city pace → a
+        //     Gym-Leader-class boss. The authored per-class weights already differ
+        //     (City6 Basic→g3-heavy, Elite→g2:40, Leader→g3:100); _applyTrainerGradeMatrix
+        //     re-skews on top (Basic→G4, Ace→G3, Leader→G2).
+        // Species pass through `weightedPickFromGrades` (→ buildGradePool), which is
+        // already gen-toggle-aware and forme-filtered (isStoryRollExcluded), so the
+        // Pit can never field a mega/gmax/primal entry or an off-gen mon. Build depth
+        // (IV/EV/item/ability gating) comes from `_applyStoryBuildPowerTier` keyed to
+        // the SAME class + live row, so foes stay parity-locked to the city. The boss
+        // round keeps its +2 bonus layer and tags its highest-BST mon as the ace.
+        //
+        // CRITICAL: the base grade weights MUST come from the authored STORY_EVENTS_RAW
+        // rows, not a synthetic flat base. The progress ramp and the trainer matrix only
+        // *reshape* existing grade mass (they multiply), so a {g3,g4}-only base can never
+        // produce a G1/G2 foe — the maintainer's per-(city,class) weights are the only
+        // place G1/G2 mass is authored (e.g. City6 Elite = g2:40/g3:60, City8 GL = g2:100).
+        // _pitsCityClassWeights pulls those authored numbers so the Pit mirrors a real
+        // Basic / Ace (Elite) / Gym-Leader roll at the player's city — no invented balance.
+        //
+        // Per-(city, class) authored base weights, scanned once from STORY_EVENTS_RAW in
+        // play order. Missing classes (early cities have no Elite row) fall back to the
+        // nearest lower city that authored one, then to the city's leader weights.
+        let _pitsCityClassWeightsCache = null;
+        function _pitsBuildCityClassWeights() {
+            if (_pitsCityClassWeightsCache) return _pitsCityClassWeightsCache;
+            const byCity = {};
+            let curCity = 0;
+            for (const row of (typeof STORY_EVENTS_RAW !== 'undefined' ? STORY_EVENTS_RAW : [])) {
+                const type = row[1], ev = row[2], gw = row[3];
+                if (type === 'City') { const m = /City(\d+)/.exec(ev || ''); if (m) curCity = +m[1]; continue; }
+                if (type !== 'Battle' || !gw) continue;
+                const slot = byCity[curCity] || (byCity[curCity] = {});
+                if (ev === 'Basic Trainer') { if (!slot.basic) slot.basic = gw; }
+                else if (ev === 'Elite Trainer') { if (!slot.elite) slot.elite = gw; }
+                else if (/^Gym Leader/.test(ev)) { slot.leader = gw; }
+            }
+            _pitsCityClassWeightsCache = byCity;
+            return byCity;
+        }
+        function _pitsCityClassWeights(city) {
+            const byCity = _pitsBuildCityClassWeights();
+            const pick = (key) => {
+                for (let c = (city | 0); c >= 0; c--) { if (byCity[c] && byCity[c][key]) return byCity[c][key]; }
+                for (let c = (city | 0); c <= 12; c++) { if (byCity[c] && byCity[c][key]) return byCity[c][key]; }
+                return null;
+            };
+            const leader = pick('leader') || { g1: 0, g2: 0, g3: 100, g4: 0 };
+            return {
+                basic: pick('basic') || leader,
+                elite: pick('elite') || leader,
+                leader,
+            };
+        }
         function _pitsRollEnemyRoster() {
-            const snap = _pitsActiveSnapshot();
-            const avgGrade = snap && snap.teamSummary && snap.teamSummary.length
-                ? Math.max(1, Math.min(4, Math.round(snap.teamSummary.reduce((a,t)=>a+(t.grade|0),0) / snap.teamSummary.length)))
-                : 3;
-            // Round grades (grade# 1=strongest…4=weakest): warm-up (avg+1, weaker),
-            // two mid (avg), two harder (avg-1), last = boss.
-            const tiers = [Math.min(4, avgGrade + 1), avgGrade, avgGrade, Math.max(1, avgGrade - 1), Math.max(1, avgGrade - 1)];
-            const badges = Math.max(1, Math.min(8, (sm.badges | 0) || 6));
-            const tierEventName = `Gym Leader ${badges}`;
-            return tiers.map((tier, roundIdx) => {
-                const isBoss = roundIdx === tiers.length - 1;
-                const six = _pitsRollTrainerSix(tier, isBoss);
-                // Gym-leader tier polish across the whole six; the highest-BST mon is
-                // tagged as the ace so its IV roll lands in the top quartile.
+            const gens = storySettingsGens();
+            const rowIdx = (sm && sm.eventIndex != null) ? (sm.eventIndex | 0) : null;
+            const city = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(rowIdx | 0) : 6;
+            const W = _pitsCityClassWeights(city);
+            // Five back-to-back rounds, escalating by trainer-type difficulty class. Each
+            // round seeds from that class's authored city weights, then runs the SAME
+            // grade-weight front matter rollTrainerTeam uses (player-difficulty skew →
+            // progress ramp on the live row → G4 strip → trainer-type matrix).
+            const gymNo = Math.max(1, Math.min(8, city | 0));
+            const rounds = [
+                { cls: 'Basic Trainer',     base: W.basic },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Elite Trainer',     base: W.elite },
+                { cls: 'Gym Leader ' + gymNo, base: W.leader },
+            ];
+            return rounds.map((r, roundIdx) => {
+                const isBoss = roundIdx === rounds.length - 1;
+                let gw = applyDifficultyToGradeWeights(r.base);
+                gw = applyStoryProgressToGradeWeights(gw, rowIdx);
+                gw = storyStripGrade4IfPartyMature(gw);
+                gw = _applyTrainerGradeMatrix(gw, r.cls);
+                const six = _pitsRollTrainerSix(gw, gens, isBoss);
+                // Class-matched tier polish across the whole six; the highest-BST mon
+                // is tagged as the ace so its IV roll lands in the top quartile. The
+                // live row keeps item/ability tiers parity-locked to the city.
                 try {
                     if (typeof _applyStoryBuildPowerTier === 'function' && six.length) {
                         let aceName = six[0].name, aceBst = -1;
                         for (const e of six) { const b = getBST(e.name) | 0; if (b > aceBst) { aceBst = b; aceName = e.name; } }
-                        _applyStoryBuildPowerTier(six, tierEventName, -1, [aceName]);
+                        _applyStoryBuildPowerTier(six, r.cls, rowIdx, [aceName]);
                     }
                 } catch (e) { console.warn('[Pits] tier polish', e); }
-                return { tier, isBoss, six, picked: null };
+                return { tier: r.cls, isBoss, six, picked: null };
             });
         }
-        // Build one round's TRAINER OF SIX. Species are drawn from a grade band
-        // around `centerTier` (±1, clamped 1..4) and kept distinct where the pool
-        // allows. The boss round stamps every mon with a +2 bonus layer (capped to
-        // the 41 effective-IV ceiling by buildPokemon) so whichever three get
-        // counter-picked still read as the house's toughest.
-        function _pitsRollTrainerSix(centerTier, isBoss) {
-            const lo = Math.max(1, centerTier - 1); // stronger bound (lower grade#)
-            const hi = Math.min(4, centerTier + 1); // weaker bound
-            const pool = [];
-            for (const name of Object.keys(baseStats)) {
-                const g = getMonGrade(name, getBST(name));
-                if (g >= lo && g <= hi) pool.push(name);
-            }
-            const allNames = pool.length ? pool : Object.keys(baseStats);
+        // Build one round's TRAINER OF SIX from the round's grade weights. Species
+        // are drawn via `weightedPickFromGrades` (gen-toggle-aware, forme-filtered,
+        // seeded) and kept distinct where the pool allows. The boss round stamps
+        // every mon with a +2 bonus layer (capped to the 41 effective-IV ceiling by
+        // buildPokemon) so whichever three get counter-picked read as the toughest.
+        function _pitsRollTrainerSix(gradeWeights, gens, isBoss) {
             const six = [];
             const used = new Set();
             for (let k = 0; k < 6; k++) {
-                let name = allNames[Math.floor(Math.random() * allNames.length)];
+                let name = weightedPickFromGrades(gradeWeights, gens) || 'Rattata';
                 let tries = 0;
-                while (used.has(name) && tries < 16 && used.size < allNames.length) {
-                    name = allNames[Math.floor(Math.random() * allNames.length)]; tries++;
+                while (used.has(name) && tries < 16) {
+                    const pick = weightedPickFromGrades(gradeWeights, gens);
+                    if (!pick) break;
+                    name = pick; tries++;
                 }
                 used.add(name);
                 let build = null;
