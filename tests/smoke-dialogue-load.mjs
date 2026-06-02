@@ -92,12 +92,12 @@ for (const [label, [expr, expected]] of Object.entries(ballChecks)) {
 
 // Shop catalogs — Wave 5B. Confirms CSV→JSON load + derived sets are populated.
 const shopChecks = {
-  'POKEMART_ITEMS.length':                   ['(POKEMART_ITEMS.length)', 18],
+  'POKEMART_ITEMS.length':                   ['(POKEMART_ITEMS.length)', 16],
   'DEPT_ITEMS.length':                       ['(DEPT_ITEMS.length)', 14],
   'STONE_SHOP_ITEMS.length':                 ['(STONE_SHOP_ITEMS.length)', 24],
   'STONE_SHOP_ITEM_IDS.size':                ['(STONE_SHOP_ITEM_IDS.size)', 24],
-  'STORY_BATTLE_BAG_SHOP_IDS.size':          ['(STORY_BATTLE_BAG_SHOP_IDS.size)', 29],
-  'POKEMART pokeBall price':                 ['(POKEMART_ITEMS.find(x=>x.id==="pokeBall").price)', 300],
+  'STORY_BATTLE_BAG_SHOP_IDS.size':          ['(STORY_BATTLE_BAG_SHOP_IDS.size)', 27],
+  'POKEMART pokeBall price':                 ['(POKEMART_ITEMS.find(x=>x.id==="pokeBall").price)', 500],
   'POKEMART pokeBall battleBag false':       ['(POKEMART_ITEMS.find(x=>x.id==="pokeBall").battleBag === false)', true],
   'DEPT greatBall price':                    ['(DEPT_ITEMS.find(x=>x.id==="greatBall").price)', 1000],
   'STONE fireStone has stone field':         ['(STONE_SHOP_ITEMS.find(x=>x.id==="fireStone").stone)', 'Fire Stone'],

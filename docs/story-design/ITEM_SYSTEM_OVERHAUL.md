@@ -3,7 +3,7 @@
 > **Status:** Phase 1 **IMPLEMENTED** (Potion-line regen + Ether/Elixir cut + Ultra Ball
 > featured; tests in `tests/suites/potion-regen.test.js`). Decisions resolved in §11.
 > Phase 2 (enemy item scaling) is outlined in §10 and is NOT started yet.
-> Prices kept at current values; any reprice is the maintainer's call (per CLAUDE.md).
+> Maintainer-set prices: regen Potions 500 / 1000 / 1500, Poké Ball 500 (per CLAUDE.md).
 >
 > **How to edit the catalog:** the shop catalog is data-driven. Edit
 > `docs/story-design/story-shops.csv`, then run
@@ -152,10 +152,10 @@ force/increase-encounter items. The code says these don't fit:
 ### PokéMart — *common, spammable staples*
 | Item | Effect string | Price | Change |
 |---|---|---|---|
-| Poké Ball | `ball` | 300 | unchanged (reprice to 500 is an open suggestion — §11.3) |
-| Potion | `regen16` (1/16 ×3) | 200 | effect changed (was `heal20`), **price kept** |
-| Super Potion | `regen8` (1/8 ×3) | 500 | effect changed (was `heal60`), price kept |
-| Hyper Potion | `regen4` (1/4 ×3) | 1000 | effect changed (was `heal120`), price kept |
+| Poké Ball | `ball` | **500** | ↑ from 300 (gold pressure) |
+| Potion | `regen16` (1/16 ×3) | **500** | effect changed (was `heal20`@200); repriced up for the stronger regen |
+| Super Potion | `regen8` (1/8 ×3) | **1000** | effect changed (was `heal60`@500) |
+| Hyper Potion | `regen4` (1/4 ×3) | **1500** | effect changed (was `heal120`@1000) |
 | Max Potion | `healFull` | 1500 | kept |
 | Full Restore | `fullRestore` | 2000 | kept |
 | Full Heal | `cureStatus` | 300 | kept |
@@ -178,11 +178,14 @@ Emergency Teleporter 800 · EV Reset Charm 3000.
 - **No Master Ball.**
 
 ## 9. Pricing rationale
-- **Prices kept at current values this pass.** The only behavioural change is the
-  Potion *effect* (regen); balance numbers are maintainer-owned, so the regen Potions
-  stay at 200 / 500 / 1000 until the maintainer picks new ones.
-- **Open suggestions** (one-line CSV edits when wanted): Poké Ball 300→500 (gold
-  pressure); reprice the now-stronger regen Potions (e.g. 350 / 700 / 1400).
+- **Regen Potions 500 / 1000 / 1500** (maintainer-set) — repriced up from 200/500/1000
+  because sustained %-of-maxHP healing is worth far more than the old dead flat heals.
+  Clean +500 ladder; Hyper gives the best gold-per-% as a bulk buy.
+- **Poké Ball 300 → 500** (maintainer-set) — restores early gold pressure.
+- **Hyper Potion 1500 = Max Potion 1500 by design** — different niches: Hyper is
+  proactive sustain (heals end-of-turn while you keep attacking), Max Potion is instant
+  emergency burst (full HP now, uninterruptible). Drop Hyper to ~1200 if you ever want
+  it clearly cheaper than Max Potion.
 - **Featured stays ×2**; Ultra Ball is a flat **1500** (no base shelf price).
 
 ## 10. Phase 2 — enemy item usage & difficulty scaling (outline, not started)
@@ -204,8 +207,8 @@ All Phase-2 numbers are maintainer-owned and get their own decision pass.
   healing shape was "complexity for little gain." Flat rejected (clones the held
   Leftovers, trivial on bulky mons).
 - **11.2 Sacred Ash → cut.** Even the 1-HP anti-wipe variant was judged not worth it.
-- **11.3 Cuts & prices.** Ether + Elixir **cut**, Max Elixir kept. Prices **kept**;
-  Poké Ball 300→500 and regen-Potion repricing remain optional maintainer tweaks.
+- **11.3 Cuts & prices.** Ether + Elixir **cut**, Max Elixir kept. Maintainer set:
+  regen Potions **500 / 1000 / 1500**, Poké Ball **500**.
 - **11.4 Lava Cookie → cut.** Full Heal (cure) + Guard Spec (stat-drop block) already
   cover status utility.
 - **11.5 Catch / encounter items → skip.** No formula/loop hook (catch = grade × ball;
