@@ -3,6 +3,22 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Evolution Tutor: flat pricing + Master PC evolution 2026-06-02 (`claude/affectionate-bohr-5WJdH`)
+
+- **The Evolution Tutor / Evolution Master now charges a flat fee per tier.** The
+  old "first evolution is cheaper, then each repeat on the same slot costs ×1.5
+  more" ramp is gone — every evolution costs the same, every time:
+  **first-stage (G3) 3,000G · mid (G2) 6,000G · final (G1) 12,000G**, on every
+  difficulty (the easy / very-easy first-use discount was removed too). A 🍬 Rare
+  Candy still evolves for free, one candy per evolution.
+- **The Evolution Master can now evolve Pokémon straight from your PC.** Once the
+  Tutor levels up to the **Evolution Master** (5th city onward), an "Evolve from
+  PC" section lists every stored Pokémon that's ready to evolve and lets you do it
+  **in place** — the Pokémon stays in the box and your battle team is never
+  disturbed, so no more shuffling mons in and out to evolve a benched partner.
+  Before the Master, the Lab shows a one-line hint explaining that boxed Pokémon
+  must be withdrawn to your party first.
+
 ## 1.2.2 — Evolution staging, required intros, bag polish & egg animation 2026-05-26 (`claude/early-game-pacing-finish`)
 
 - **Evolution staging** — Stage-1 evolutions from the first gym city, Stones from the
