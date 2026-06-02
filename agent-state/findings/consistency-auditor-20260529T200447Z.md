@@ -99,7 +99,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 369bf4e2180e
 confidence: medium
-status: open
+status: fixed-claude/cagedgod-excision
 ---
 
 **Title**: Caged God uses three names for one entity (Specimen 0001 / Subject Zero / Subject 0001) without a stated rule

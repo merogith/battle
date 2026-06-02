@@ -27,7 +27,7 @@ const REWARD_BLOCK = `
         // goldFrac scales the Gym-Leader gold table for the current city;
         // vouchers/vitamins given as [min, max] or flat number (rolled per battle).
         const STORY_REWARD_TIERS = {
-            flavor: { goldFrac: 0.05, vouchers: 0,      vitamins: 0,      items: [] },
+            flavor: { goldFrac: 0,    vouchers: 0,      vitamins: 0,      items: [] },
             low:    { goldFrac: 0.80, vouchers: [0, 1], vitamins: 0,      items: [] },
             mid:    { goldFrac: 1.00, vouchers: [1, 2], vitamins: 1,      items: [] },
             big:    { goldFrac: 1.00, vouchers: [3, 5], vitamins: [2, 3], items: ['voucher_artifact'] },

@@ -11468,7 +11468,7 @@ All four are always on. In Classic mode each team gets one per battle; in Unlimi
 <b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a matching Z-Crystal unleashes one colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
 The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
-Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. A Master Ball guarantees any catch — save it for a legendary you cannot afford to let flee.<br>
+Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. The Master Ball — a guaranteed catch from the villain story-track boss — is best saved for a roaming legendary.<br>
 <b>Catch chance</b> = species rate × ball multiplier. Poké Ball <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates climb with rarity: G1 12%, G2 22%, G3 35%, G4 50%. On a missed throw the wild may flee, with G1 the most likely to bolt and G4 the least.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Build Power Tiers (T1 → T4)</h3>
 Every Pokémon carries a training tier, separate from its species grade:<br>
@@ -11479,7 +11479,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Cities &amp; Facilities</h3>
 <b>Pokémart</b> — Poké Balls (300G), potions, X items.<br>
 <b>Department Store</b> — Great Balls (1,000G), revives, weather and terrain orbs.<br>
-<b>Pokémon Center</b> — <b>PC Storage</b> (cap 30) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member and Subject Zero are not for sale.<br>
+<b>Pokémon Center</b> — <b>PC Storage</b> (cap 30) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member is not for sale.<br>
 <b>Move Tutor</b> — Swap any move slot for any move the species can legally learn.<br>
 <b>Nature Rater</b> — Re-pick a nature for the +10%/-10% spread you actually want.<br>
 <b>Battle Dojo</b> — Swap held item and/or ability.<br>
@@ -12492,8 +12492,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // exception (maintainer decision 2026-05-25): _makePlayerLinkBuild
         // calls makeBuild ungated so a paid Cable Link can surface a
         // run-enabled gimmick before the Gym-5 badge gate. All other paths
-        // (starter, professor, wild catch, evolution, pending builds, the
-        // Caged God roll) stay gated so pre-unlock leaks remain impossible.
+        // (starter, professor, wild catch, evolution, pending builds) stay
+        // gated so pre-unlock leaks remain impossible.
         function _withStoryPlayerGimmickGate(fn) {
             try {
                 window._pbsStoryUsePlayerGimmickGate = true;
@@ -30851,21 +30851,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   "event6": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "E1",
                             "sceneKey": "main.event6"
                   },
                   "event7": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "Champion",
                             "sceneKey": "main.event7"
                   },
                   "event8": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "fireAtEvent": "Rival",
                             "sceneKey": "main.event8"
                   },
                   "event9": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.event9"
                   },
                   "mfBattle": {
@@ -30876,11 +30880,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   "mfReveal": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.mfReveal"
                   },
                   "ending": {
                             "roadAnchor": "league",
                             "kind": "event",
+                            "firePostHoF": true,
                             "sceneKey": "main.ending"
                   }
         };
@@ -32906,6 +32912,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  Champion regardless of which canonical champion was rolled —
          *  the variant's voice overrides the per-name personality at this
          *  one beat. */
+        // ⚠️ DORMANT (2026-06): tone layer retired — every run uses 'classic', so only
+        // the `classic` entry is reachable. Other entries (and any Caged God / boss
+        // references in them) are preserved-but-dormant. See STORYLINE_VARIANTS / CLAUDE.md.
         const _CHAMPION_DIALOGUE_BY_VARIANT = {
             classic: {
                 // No overrides — falls through to existing per-name pool.
@@ -33026,24 +33035,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const table = _MYSTERY_OUTRO_BY_VARIANT[variantId];
             if (!table) return '';
             return table[identityKey] || '';
-        }
-
-        /** Per-variant Caged-God / Subject Zero capture epilogue. Replaces
-         *  the generic "Subject Zero is yours" success message with a
-         *  storyline-tone line that closes the boss arc. */
-        const _SUBJECT_ZERO_EPILOGUE_BY_VARIANT = {
-            classic: 'Subject Zero is yours.\n\nThe cage closes behind you. The Underground is quiet again. Whatever comes next, you walk into it together.',
-            second_sun: 'Subject Zero is yours.\n\nYour rival is at the cage door. They didn\'t walk in. "I couldn\'t. You could. The chair was always going to be yours. So is this." They turn and walk back to the road.',
-            bone_keepers: 'Subject Zero is yours.\n\nThe Tower Attendant is at the cage door. "It found peace through you. The candle stays lit. The chimes in the tower will ring tonight." They walk back to the tower without another word.',
-            project_mewtwo: 'Subject Zero is yours.\n\nColress is at the cage door. He removes his lab coat and folds it once. "The lab is closed. Officially. Permanently. The leash is broken on all three of us." He hands you the magnetic key. It will not open the cage again.',
-            hypnos_lullaby: 'Subject Zero is yours.\n\nThe rival\'s sister is at the cage door. She is awake. She does not remember the dream. She holds her brother\'s hand. The radio in the broker\'s office is silent for the first time in two years.',
-            dead_raticate: 'Subject Zero is yours.\n\nYour rival is at the cage door. They look at the empty slot on their belt. They look at Subject Zero. "Not for me. For you. The slot stays empty. That\'s how it should be." They walk back to the road.',
-            lavender_frequency: 'Subject Zero is yours.\n\nThe figure that watched you for eight gyms is no longer in the doorway. The Pokémart radio is silent. The Champion\'s plaque shows only your name now, weathered clean. The loop is over.',
-            static: 'Subject Zero is yours.\n\nThe save file logs: SUBJECT 0001 / RECAPTURED / LOOP RESOLVED.\n\nThe loop counter resets. The trainer sprite in the next save is your own.\n\nThe save file is quiet.'
-        };
-        function _variantSubjectZeroEpilogue() {
-            const variantId = (sm && sm.storyLine) || 'classic';
-            return _SUBJECT_ZERO_EPILOGUE_BY_VARIANT[variantId] || _SUBJECT_ZERO_EPILOGUE_BY_VARIANT.classic;
         }
 
         /** Per-variant post-Hall-of-Fame epilogue scene. Fires once per save
@@ -35779,7 +35770,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.storyEventsFired || typeof sm.storyEventsFired !== 'object') sm.storyEventsFired = {};
                 if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
                 if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
-                // Per-mon bonus/tired back-fill on every build (active team + PC).
+                // TONE RETIREMENT (2026-06): force every loaded save onto the clean
+                // 'classic' tone. The 8-tone STORYLINE_VARIANTS layer is retired in favor
+                // of the 3-track system (sm.tracks); some tones pointed the player at the
+                // removed post-HoF boss. Idempotent normalization (no SAVE_VER bump) —
+                // mirrors the new-run roll-retirement in _readStorylineFromUI().
+                sm.storyLine = 'classic';
                 try {
                     for (const arr of [sm.team || [], sm.pcBox || []]) {
                         for (const slot of arr) {
@@ -35795,8 +35791,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
                 // Starter is a visual reminder only — strip the legacy `unsellable`
-                // flag that older saves co-applied with `starter:true`. Subject Zero
-                // and other bonded mons (no `starter` flag) keep their unsellable lock.
+                // flag that older saves co-applied with `starter:true`. Bonded story
+                // mons (no `starter` flag) keep their unsellable lock.
                 try {
                     for (const arr of [sm.team || [], sm.pcBox || []]) {
                         for (const slot of arr) {
@@ -38027,6 +38023,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     getTrainerData: () => TRAINER_DATA,
                     get sm() { return sm; },
                     set sm(v) { sm = v; },
+                    // Tone-retirement regression hooks (see _readStorylineFromUI).
+                    readStorylineFromUI: () => _readStorylineFromUI(),
+                    loadSaveForTest: () => load(),
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
                     cityIndexForStoryRow: (...a) => _cityIndexForStoryRow(...a),
@@ -38116,6 +38115,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Post-battle scenes (PR-D).
                     get STORY_POST_SCENES() { return STORY_POST_SCENES; },
                     playPostBattleScene: (k, cb) => _playPostBattleScene(k, cb),
+                    // Post-HoF Mystery Figure reveal (finale-spoiler fix).
+                    fireMysteryRevealThenEnding: (cb) => _fireMysteryRevealThenEnding(cb),
                     // Mystery Figure single-voice (PR-6).
                     get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
                     pickMysteryIdentity: () => _storyPickMysteryIdentity(),
@@ -38830,9 +38831,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             _tcState.genPreset = allChecked ? 'all' : (onlyG1 ? 'kanto' : 'custom');
             _tcSyncGenPresetButtons();
-            // Storyline is ALWAYS rolled at random on Begin Adventure (per spec) — the
-            // player no longer picks one. Force the 'surprise_me' sentinel; it resolves
-            // to one of the real variants in _readStorylineFromUI() at run construction.
+            // Storyline TONE is retired (2026-06): every run uses the clean 'classic'
+            // tone — run variety now comes from the 3-track system (sm.tracks). The
+            // 'surprise_me' sentinel still resolves to 'classic' in _readStorylineFromUI().
+            // Tone scripts stay in STORYLINE_VARIANTS for a possible future fold-in.
             _tcState.storyline = 'surprise_me';
             const warn = document.getElementById('story-create-warning');
             if (warn) warn.textContent = '';
@@ -39586,7 +39588,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             62: { kind: 'elite',    eliteNumber: 3 },
             63: { kind: 'elite',    eliteNumber: 4 },
             64: { kind: 'champion' },
-            67: { kind: 'mystery',  tags: ['postHoFMystery', 'cagedGod'], coldOpen: 'mystery67' }
+            67: { kind: 'mystery',  tags: ['postHoFMystery'], coldOpen: 'mystery67' }
         };
 
         /** Cold-open scenes — one-shot narrative overlays that fire before a
@@ -39610,6 +39612,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             },
             // ── Per-variant beat scenes ─────────────────────────────────────
+            // ⚠️ DORMANT (2026-06): the 8-tone layer is retired — every run uses the
+            // 'classic' tone, so only the `classic_*` entries in the per-variant
+            // families below (beat scenes, E4 NPC, E5 twist, K mystery-intro, B choice)
+            // are reachable. The tone-prefixed entries (secondsun_ / bonekeepers_ /
+            // projectmewtwo_ / hypnos_ / deadraticate_ / lavender_ / static_) are
+            // PRESERVED-BUT-DORMANT — not live bugs. See the STORYLINE_VARIANTS banner /
+            // CLAUDE.md "Retired/cut systems".
             // Each scene reuses _renderNarrativeOverlay so the layout matches the
             // intro-rival cold-open and dedupe stays in the same per-run bucket.
             // Sprite choices lean on existing trainer roster: Oak / Veteran for
@@ -40930,12 +40939,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
-        /** Storyline variants — let the same STORY_EVENTS_RAW timeline play
+        /** STORYLINE VARIANTS — ⚠️ RETIRED / DORMANT (2026-06).
+         *  This 8-tone narrative layer is NO LONGER reachable at runtime: every run
+         *  is forced to the 'classic' tone (see _readStorylineFromUI + the load()
+         *  back-fill). The dirty tones (project_mewtwo / hypnos_lullaby / static /
+         *  bone_keepers) and their cold-opens, broker/cage prose, "Subject Zero"
+         *  starter, and Mystery-Figure biases are PRESERVED INTENTIONALLY for a
+         *  possible future fold-in — they are NOT live bugs, and references here to
+         *  the excised post-HoF "Caged God" boss are expected dormant content.
+         *  Design spec: docs/STORY_NARRATIVE_VARIANTS.md (also marked retired);
+         *  canonical status in CLAUDE.md. To revive, restore the roll in
+         *  _readStorylineFromUI().
+         *
+         *  Original behavior: variants let the same STORY_EVENTS_RAW timeline play
          *  differently from run to run. A variant can shadow any beat
-         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default
-         *  tone for the dialogue layer. Pokémon picks remain driven by the
-         *  per-row gradeWeights and `sm.settings.enabledGens`, so variants
-         *  cannot break the difficulty curve. */
+         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default tone for
+         *  the dialogue layer. Pokémon picks remain driven by the per-row
+         *  gradeWeights and `sm.settings.enabledGens`, so variants cannot break the
+         *  difficulty curve. */
         const STORYLINE_VARIANTS = {
             // ── TIER: CLASSIC ────────────────────────────────────────────
             classic: {
@@ -41165,7 +41186,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // already knowing which tone they got.
             try {
                 if (typeof _tcState !== 'undefined' && _tcState && _tcState.storyline) {
-                    if (_tcState.storyline === 'surprise_me') return _pickRandomStorylineVariant();
+                    // TONE RETIREMENT (2026-06): the 8-tone STORYLINE_VARIANTS layer is
+                    // retired in favor of the 3-track system (sm.tracks). Several tones
+                    // (project_mewtwo / hypnos_lullaby / static / bone_keepers) sent the
+                    // player toward the removed post-HoF boss (broker / cage / Subject
+                    // Zero). The 'surprise_me' roll now resolves to the clean 'classic'
+                    // tone; run variety comes from sm.tracks (10 villains x 8 extras).
+                    // Tone scripts + _pickRandomStorylineVariant() are preserved for a
+                    // future fold-in — to revive rolling, restore the call below.
+                    if (_tcState.storyline === 'surprise_me') return 'classic'; // was: _pickRandomStorylineVariant()
                     if (STORYLINE_VARIANTS[_tcState.storyline]) return _tcState.storyline;
                 }
             } catch (e) {}
@@ -41180,6 +41209,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  when an active run is mid-flight so a shared seed reproduces the
          *  rolled variant. */
         function _pickRandomStorylineVariant() {
+            // RETIRED (2026-06): no longer called — tone rolling was retired in
+            // _readStorylineFromUI() (every run uses 'classic'). Body preserved for a
+            // future fold-in into the 3-track tone layer.
             const ids = Object.keys(STORYLINE_VARIANTS).filter(k => {
                 const v = STORYLINE_VARIANTS[k];
                 return v && v.tier !== 'random';
@@ -42195,10 +42227,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!road || !sm || !sm.tracks) return [];
             if (!sm.storyEventsFired) sm.storyEventsFired = {};
             const out = [];
-            const eligible = (slot) =>
-                slot && slot.kind === 'event'
-                    && slot.roadAnchor === road
-                    && !sm.storyEventsFired[slot.sceneKey];
+            // Current row name — used to honor league beats' sub-anchors so the
+            // single coarse 'league' road (E1→Mystery Figure, 8 rows) doesn't
+            // drain every league beat at E1.
+            const curRow = STORY_EVENTS_RAW[sm.eventIndex | 0];
+            const curName = curRow ? String(curRow[2] || '') : '';
+            const eligible = (slot) => {
+                if (!slot || slot.kind !== 'event') return false;
+                if (slot.roadAnchor !== road) return false;
+                if (sm.storyEventsFired[slot.sceneKey]) return false;
+                // League sub-positioning. firePostHoF beats (event9 lead-in,
+                // mfReveal, ending) are delivered by the post-Hall-of-Fame
+                // climax flow — never road-dispatched. fireAtEvent beats fire
+                // only on their named league row, in narrative order.
+                if (road === 'league') {
+                    if (slot.firePostHoF) return false;
+                    if (slot.fireAtEvent && slot.fireAtEvent !== curName) return false;
+                }
+                return true;
+            };
             for (const slot of Object.values(MAIN_STORY_BEATS)) if (eligible(slot)) out.push(slot);
             const v = sm.tracks.villain && VILLAIN_STORY_BEATS[sm.tracks.villain];
             if (v) for (const slot of Object.values(v)) if (eligible(slot)) out.push(slot);
@@ -42284,6 +42331,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 console.warn('[Story] beat overlay failed for', sceneKey, e);
                 try { onDone && onDone(); } catch (e2) {}
             }
+        }
+        // Fires the one-time Mystery Figure reveal (the cap comes off) then the
+        // ending, in order, then calls onDone. Deduped via storyEventsFired so
+        // a lost post-HoF climax that's later avenged from the Crucible's
+        // Mystery button still delivers the reveal — exactly once. If the
+        // reveal already played, this is a no-op that calls onDone immediately.
+        function _fireMysteryRevealThenEnding(onDone) {
+            if (!sm) { try { onDone && onDone(); } catch (e) {} return; }
+            if (!sm.storyEventsFired) sm.storyEventsFired = {};
+            if (sm.storyEventsFired['main.mfReveal']) { try { onDone && onDone(); } catch (e) {} return; }
+            _playStoryBeatScene('main.mfReveal', () => {
+                sm.storyEventsFired['main.mfReveal'] = true;
+                try { save(); } catch (e) {}
+                _playStoryBeatScene('main.ending', () => {
+                    sm.storyEventsFired['main.ending'] = true;
+                    try { save(); } catch (e) {}
+                    try { onDone && onDone(); } catch (e) {}
+                });
+            });
         }
         function _playStoryBeatQueue(queue, i, onDone) {
             if (i >= queue.length) { try { onDone && onDone(); } catch (e) {} return; }
@@ -42922,7 +42988,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  skipped the catch tutorial, firstWildRoute still fires on their first
          *  wild, so catching is taught exactly once either way.) */
         function _catchIntroSceneId(st) {
-            if (!st || st.bossMode) return null;
+            if (!st) return null;
             if (st.tutorialMode) return 'firstWild';
             if (st.safariMode) return 'firstSafariCatch';
             if (_storyRunSceneSeen('tutorial-first-wild')) return null;
@@ -43143,7 +43209,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             for (let i = 1; i <= 8; i++) sm.gymCleared[i] = true;
             sm.postHofMysteryClimaxDone = false;
-            if (sm.bossArc) sm.bossArc.available = false;
             sm.crucibleBattleSource = null;
             sm.gold = (sm.gold | 0) || 10000;
             save();
@@ -43881,7 +43946,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('recover', makeActionBtn('🦒 Safari Zone', 'safari', 'window.StoryMode.enterSafariZone()', 'center', _facOpts('safari', safariMeta, { soft: safariFree })));
             }
             // The Crucible — post-Hall-of-Fame super-hub. All facilities + Battle Frontier.
-            if (sm.bossArc && sm.bossArc.available) {
+            // Gated on the post-HoF Mystery Figure climax (when the post-game opens); was
+            // previously gated on the now-removed Caged God `bossArc.available` flag.
+            if (sm.postHofMysteryClimaxDone) {
                 _push('recover', makeActionBtn('🧨 The Crucible','crucible','window.StoryMode.enterCrucible()','center', _facOpts('crucible', [{label:'Post-game',tone:'info'}])));
             }
             const _partyN = sm.team.length;
@@ -46842,7 +46909,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Pokédex caught-count milestones — cross-run safe (sm.pokedexMilestones is
         // per-save, so each run earns its own once). 100 deliberately drops a unique
         // trophy bundle instead of a 2nd Master Ball, keeping the Master Ball uniquely
-        // tied to the Caged God arc.
+        // tied to the villain-track reward.
         const POKEDEX_CAUGHT_MILESTONES = [
             { n: 25,  reward: { ultraBall:1, hpUp:1, carbos:1, gold:2000 },
               msg:'25 species in the Pokédex — a quarter-region survey. +1 Ultra Ball, +1 HP Up, +1 Carbos, +2,000G.' },
@@ -47662,7 +47729,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // wins. Each interrupt fires `enterCatchEncounter` and, on dismiss,
             // re-enters this function with `_wildAlreadyChecked=true` so the
             // chain doesn't loop. Skipped entirely on rematch / retry. Post-HoF
-            // Mystery (the Caged God arc) opts out via its own predicates.
+            // Mystery opts out via its own predicates.
             if (!_wildAlreadyChecked) {
                 const _firedInterrupt = _runFirstStoryInterrupt(sm.eventIndex, ev,
                     () => enterBattleEvent(ev, true));
@@ -47833,7 +47900,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const e = String(eventType || '');
             if (/^Gym Leader/i.test(e)) return 'leader';
             if (e === 'Rival') return 'rival';
-            if (e === 'Champion' || e === 'Mystery Figure' || /Caged God|Boss/i.test(e)) return 'boss';
+            if (e === 'Champion' || e === 'Mystery Figure' || /Boss/i.test(e)) return 'boss';
             if (/^E[1-4]$/.test(e) || e === 'Elite Trainer' || e === 'Victory Road') return 'elite';
             return 'trainer';
         }
@@ -49064,7 +49131,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             if (!rows.length) {
                 html += `<div class="pc-empty">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
-                html += _bossArcRenderSection();
                 return html;
             }
             html += `<div class="pc-grid">`;
@@ -49073,12 +49139,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const unsellable = slot.unsellable === true;
                 const isLastParty = source === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
-                const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
-                const reason = isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
+                const reason = unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
                 html += _pcCardHtml(slot, 'sell', { price: _pcSellPriceForSlot(slot), canSell, reason, source });
             });
             html += `</div>`;
-            html += _bossArcRenderSection();
             return html;
         }
 
@@ -49270,7 +49334,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\n🔮 If the Caged God hunt is open, it sits at the very top: collect its three Underground leads right here, then enter the Cage to capture the specimen. (The Mystery Figure is a separate masked trainer — not the Caged God.)\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
+                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -49294,16 +49358,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
-            // Post-game quest: the Caged God hunt. Surfaced here (the post-game Underground
-            // hub) so it's discoverable and reachable — previously it only appeared inside
-            // a Pokémon Center of Cities 2/5/8, which the post-game can't travel back to.
-            const cagedGodHtml = _bossArcRenderSection(true);
+            const hardOn = !!sm.crucibleHardMode;
             body.innerHTML = `
-                ${cagedGodHtml ? `<h4 style="color:#ce93d8;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Post-Game Quest</h4>${cagedGodHtml}<div style="height:18px;"></div>` : ''}
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
                     ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
-                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked trainer (a 6-mon trainer fight). Distinct from the Caged God hunt above.')}
+                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked trainer (a 6-mon trainer fight).')}
                     ${btn('🌀',                                     'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
                     ${btn(png('icons/story/story_league.png'),     'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
                     ${btn(png('icons/story/story_gym.png'),        'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
@@ -49559,12 +49619,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (won) { try { _storyAchievementUnlock('r_mystery'); } catch (e) {} }
                 sm.postHofMysteryClimaxDone = true;
                 try { save(); } catch (e) {}
-                try {
-                    window.showGameAlert && window.showGameAlert(won
-                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.\n\n+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.'
-                        : 'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
-                } catch (e) {}
-                continuePostGame();
+                if (won) {
+                    // The mask only comes off on a win: play the reveal + ending
+                    // beats (moved here from the league road, where they used to
+                    // spoil at E1), then the reward toast, then open the post-game.
+                    _fireMysteryRevealThenEnding(function () {
+                        try {
+                            window.showGameAlert && window.showGameAlert(
+                                '+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.');
+                        } catch (e) {}
+                        continuePostGame();
+                    });
+                } else {
+                    try {
+                        window.showGameAlert && window.showGameAlert(
+                            'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
+                    } catch (e) {}
+                    continuePostGame();
+                }
+                return;
+            }
+            if (source === 'mystery') {
+                // Crucible Mystery-button rematch. If the post-HoF climax was
+                // lost, the mask still hasn't come off — deliver the one-time
+                // reveal + ending on this win (deduped via storyEventsFired, so
+                // a win after the reveal already played just shows a plain
+                // victory toast and returns to the hub).
+                if (won) {
+                    _fireMysteryRevealThenEnding(function () {
+                        try { window.showGameAlert && window.showGameAlert('Victory!'); } catch (e) {}
+                        enterCrucible();
+                    });
+                } else {
+                    try { window.showGameAlert && window.showGameAlert('The mask stays on. Try again.'); } catch (e) {}
+                    enterCrucible();
+                }
                 return;
             }
             if (source === 'league') {
@@ -49586,251 +49675,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.showGameAlert && window.showGameAlert(won ? 'Victory!' : 'Defeated.'); } catch (e) {}
             }
             enterCrucible();
-        }
-
-        // ── BOSS ARC — "The Caged God" ────────────────────────────────────
-        // Unlocked after Hall of Fame; surfaces in every Center's Underground tab.
-        // Three brokers (one per fixed city) gate the Cage entry; the boss is a random
-        // legendary with insane HP, ending in a forced 1%-catch step where the Master
-        // Ball is the intended answer. Caught: "Subject Zero" — unsellable, post-game over.
-        const _BOSS_LEAD_CITIES = { 2: 'ledger', 5: 'recording', 8: 'key' };
-        const _BOSS_LEAD_FLAVOR = {
-            ledger:    { title: 'The Ledger',    body: 'The Underground broker hands you a worn ledger. "Specimen 0001 — Grade 1. Held for decades. Read it."' },
-            recording: { title: 'The Recording', body: 'The broker plays a static-filled audio log of the original keepers. Their voices are urgent and afraid.' },
-            key:       { title: 'The Key',       body: 'The broker holds up a locked iron box. "I won\'t take gold. Only your strongest Pokémon — temporarily." Lead acquired.' }
-        };
-        /** Per-variant Caged-God broker voice. Each entry overrides the three
-         *  default lead bodies above with prose that fits the storyline's tone.
-         *  Variants without an entry (or with `null` slots) fall back to the
-         *  base `_BOSS_LEAD_FLAVOR` lines, so we only override where the
-         *  variant has something genuinely different to say. */
-        const _BOSS_LEAD_FLAVOR_BY_VARIANT = {
-            classic: null,
-            second_sun: {
-                ledger:    '"Your rival came in last week looking for this ledger. They paid. They walked. They couldn\'t bring themselves to open it. They\'re fine — but you\'re the one I\'m handing it to."',
-                recording: '"Same broker, same recording. They listened. They left. They didn\'t come back to talk. The cage is your fight now."',
-                key:       '"Your rival left this box at the door before walking back to the Plateau. They couldn\'t finish it. They asked me to give it to you. Don\'t make their walk away wasted."'
-            },
-            bone_keepers: {
-                ledger:    'The broker hands you a tower attendant\'s ledger. The cover is wrapped in faded cloth. "Specimen 0001. Held in the cage since before the tower was built. The keepers used to be paid to keep the chimes ringing for it. They are not paid anymore. The chimes are quiet."',
-                recording: 'The broker plays a wax-cylinder recording of the original keepers. Their voices are kind, then tired, then frightened. The last keeper speaks like she is at a funeral. "Whatever is in there deserved to be put down. We could not bring ourselves to do it."',
-                key:       'The broker hands you the iron box without negotiating. "You\'ve walked the tower with respect. The keepers would have given you this anyway. Bring it peace, not a battle."'
-            },
-            project_mewtwo: {
-                ledger:    'The broker locks the door before handing you the ledger. "Specimen 0001 — Cinnabar Annex / Project Subject Zero / Initial Volunteer: [REDACTED]. The redaction is yours to live with."',
-                recording: 'The broker plays a hard-drive backup of the lab\'s last morning. Lab assistants apologizing into the recorder. A director\'s voice ordering the cage closed. Someone screaming. The recording cuts where the door cut."',
-                key:       'The broker hands you a magnetic key tagged with a barcode. "This is the same lock the lab used. They never updated it. They never expected the volunteer to be the one walking back in. Master Ball\'s in the drawer. Take both."'
-            },
-            hypnos_lullaby: {
-                ledger:    'The broker passes you a missing-persons binder. Each child has a Pokémon listed at the bottom of their page. Every page says \'HYPNO.\' Every page is signed by a different parent."',
-                recording: 'The broker plays a child\'s voice memo. The child is humming. The child is not afraid. The hummed melody is the Pokémart radio song. The recording is fourteen seconds long. There is nothing else on the device."',
-                key:       'The broker hands you a small pendulum on a chain. "This was found in the last gym town. Not on any of the children — on a bench. We don\'t know who put it there. The cage opens for the song. Don\'t hum it on the way."'
-            },
-            dead_raticate: {
-                ledger:    'There\'s a stuffed Raticate on the broker\'s shelf. It\'s old. They don\'t bring it up. They hand you a ledger of \'specimen returns\' — partners that came back to the broker after their trainers couldn\'t keep going. Specimen 0001 is at the top of the list. So is your rival\'s name, twice."',
-                recording: 'The broker plays a child\'s voice memo from years ago — a trainer cheering on a Raticate sweep. The voice gets cut off mid-laugh by a thud. The recording ends. \'Came in with the kid who couldn\'t keep going. We keep it for them. Take what you came for.\'',
-                key:       'The broker hands you the iron box without ceremony. "Your rival walked past this drawer six times. They couldn\'t open it. You will. Bring it peace — not for me, for them."'
-            },
-            lavender_frequency: {
-                ledger:    'The broker is in the room but you can\'t look at them directly. The ledger is on the counter. "READ IT, the song reads, every time you reach for the page."',
-                recording: 'The recording is the Lavender Town theme. There is no other content. The broker mouths the words \'turn it off\' and cannot reach the switch."',
-                key:       'The iron box is already in your hands. The broker is in the doorway. They are smiling kindly. They were not in the doorway when you came in."'
-            },
-            static: {
-                ledger:    'BROKER (FILE B) hands you the LEDGER (corrupted). The first page reads: SPECIMEN ???? / SUBJECT 0001 / LOOP COUNT: ???. The handwriting is yours."',
-                recording: 'The recording is your own voice. You don\'t remember saying any of it. The broker shrugs. \'You said it last time too. The drawer is over there.\'',
-                key:       'The IRON BOX has YOUR TRAINER NAME engraved on the lid. The broker hands it over without comment. \'It always was yours. You\'re just finally taking it.\''
-            }
-        };
-        /** Resolve the per-variant body line for a lead, falling back to the
-         *  shared default if the variant doesn't override it. */
-        function _bossLeadBodyForVariant(key) {
-            const variant = _storyActiveVariant();
-            const override = (_BOSS_LEAD_FLAVOR_BY_VARIANT[variant.id] || null);
-            if (override && override[key]) return override[key];
-            return (_BOSS_LEAD_FLAVOR[key] || {}).body || '';
-        }
-        function _bossArcEnsureState() {
-            if (!sm.bossArc || typeof sm.bossArc !== 'object') {
-                sm.bossArc = { available: false, leads: { ledger:false, recording:false, key:false }, cageUnlocked: false, boss: null, cleared: false };
-            }
-            if (!sm.bossArc.leads) sm.bossArc.leads = { ledger:false, recording:false, key:false };
-        }
-        function _bossArcCheckCageUnlock() {
-            _bossArcEnsureState();
-            const L = sm.bossArc.leads;
-            const all = !!(L.ledger && L.recording && L.key);
-            if (all && !sm.bossArc.cageUnlocked) {
-                if (!sm.bossArc.boss) {
-                    sm.bossArc.boss = _bossArcRollLegendary();
-                }
-                if (!sm.bossArc.boss) {
-                    // No legendary in the enabled generations — do NOT flip cageUnlocked.
-                    // (Flipping it left a permanent dead "Enter the Cage — ???" button that
-                    // bossEnterCage could never resolve.) Warn once; this re-checks whenever
-                    // leads change or a Center re-renders, so enabling a gen later still works.
-                    if (!sm.bossArc._sealedWarned) {
-                        sm.bossArc._sealedWarned = true;
-                        try { save(); } catch (e) {}
-                        try { window.showGameAlert && window.showGameAlert('The Cage stays sealed — no legendary Pokémon exists in your enabled generations. Enable a generation that has one (Settings) to face the Caged God.'); } catch (e) {}
-                    }
-                    return;
-                }
-                sm.bossArc._sealedWarned = false;
-                sm.bossArc.cageUnlocked = true;
-                try { save(); } catch (e) {}
-                // Big-moment alert — the audit noted players could miss the cage opening
-                // because the button just silently appeared.
-                try {
-                    const bossName = (sm.bossArc.boss && sm.bossArc.boss.name) ? sm.bossArc.boss.name : 'Specimen 0001';
-                    window.showGameAlert && window.showGameAlert(
-                        `Three leads in your hand. The broker stops smiling.\n\n${bossName} is in the Cage — and the door is open. A new button now sits in every Pokémon Center: "🔥 Enter the Cage — ${bossName}". Walk in when you\'re ready.`
-                    );
-                } catch (e) {}
-            }
-        }
-        function _bossArcRollLegendary() {
-            const gens = storySettingsGens();
-            const genSet = new Set(gens);
-            const D = (typeof getPssDex === 'function') ? getPssDex() : null;
-            const pool = [];
-            for (const name of Object.keys(baseStats)) {
-                const b = baseStats[name];
-                if (!b || !genSet.has(b.gen)) continue;
-                if (isStoryRollExcluded(name)) continue;
-                if (!D) continue;
-                try {
-                    const sp = D.species.get(name);
-                    if (sp && speciesDexIsLegendaryTier(sp)) pool.push(name);
-                } catch (e) {}
-            }
-            if (!pool.length) return null;
-            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const name = pool[Math.floor(_rng() * pool.length)];
-            const build = _withStoryPlayerGimmickGate(() => makeBuild(name));
-            // Lock shiny up front so the Subject Zero cage sprite and the
-            // post-catch teampanel agree (and so the Pokédex marker fires
-            // correctly on capture).
-            if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
-            return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
-        }
-        function _bossArcRenderSection(hubMode) {
-            _bossArcEnsureState();
-            if (!sm.bossArc.available || sm.bossArc.cleared) return '';
-            const L = sm.bossArc.leads;
-            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-            const localLeadKey = _BOSS_LEAD_CITIES[cityIdx] || null;
-            const allLeads = !!(L.ledger && L.recording && L.key);
-
-            let html = '';
-            html += `<div style="margin-top:18px;padding:12px;background:linear-gradient(180deg,rgba(20,8,20,0.85) 0%,rgba(8,4,12,0.85) 100%);border:1px solid #6a1b9a;color:#ce93d8;font-size:11px;line-height:1.55;">
-                <div style="font-weight:bold;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
-                <div style="color:#bcaaa4;margin-bottom:10px;">The Underground is holding a specimen they don\'t want talked about. Three pieces of evidence — scattered through Pokémon Centers in three cities — open the Cage.</div>`;
-
-            const collectedCount = (L.ledger?1:0) + (L.recording?1:0) + (L.key?1:0);
-            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">' + window.uiSvgCheck() + '</span>' : '<span style="color:#666;">○</span>';
-            html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(0,0,0,0.35);border:1px solid #3a1b4a;">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-                    <span style="font-size:10px;color:#bcaaa4;letter-spacing:0.06em;text-transform:uppercase;">Broker Leads</span>
-                    <span style="font-size:10px;color:${collectedCount === 3 ? '#aed581' : '#888'};font-weight:bold;">${collectedCount}/3</span>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:#d0bfe0;">
-                    <span>${leadStatus('ledger')} Ledger — Pokémon Center, City 2</span>
-                    <span>${leadStatus('recording')} Recording — Pokémon Center, City 5</span>
-                    <span>${leadStatus('key')} Key — Pokémon Center, City 8</span>
-                </div>
-            </div>`;
-
-            if (hubMode && !allLeads) {
-                // Crucible hub = the post-game Underground: the whole broker network is
-                // reachable here, so any uncollected lead can be pulled (each still plays
-                // its broker scene). Keeps the 3-city lore in the labels.
-                const _leadCity = { ledger: 2, recording: 5, key: 8 };
-                for (const k of ['ledger', 'recording', 'key']) {
-                    if (L[k]) continue;
-                    const flav = _BOSS_LEAD_FLAVOR[k];
-                    html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${k}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)} <span style="color:#9a8aa8;">· City ${_leadCity[k]}</span></button>`;
-                }
-            } else if (localLeadKey && !L[localLeadKey]) {
-                const flav = _BOSS_LEAD_FLAVOR[localLeadKey];
-                html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${localLeadKey}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Collect Lead — ${_esc(flav.title)}</button>`;
-            } else if (localLeadKey && L[localLeadKey]) {
-                html += `<div style="font-size:10px;color:#888;margin-bottom:8px;">Lead collected.</div>`;
-            } else if (!allLeads) {
-                html += `<div style="font-size:10px;color:#888;margin-bottom:8px;">No lead here. Try City 2, 5, or 8.</div>`;
-            }
-
-            if (allLeads && !sm.bossArc.cleared) {
-                _bossArcCheckCageUnlock();
-                const bossName = sm.bossArc.boss && sm.bossArc.boss.name ? sm.bossArc.boss.name : '???';
-                html += `<button type="button" onclick="window.StoryMode.bossEnterCage()" style="display:block;width:100%;padding:10px;background:linear-gradient(180deg,#6a1b9a 0%,#3a0d54 100%);border:1px solid #ce93d8;color:#fff;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;">🔥 Enter the Cage — ${_esc(bossName)}</button>`;
-            }
-            html += `</div>`;
-            return html;
-        }
-        function bossCollectLead(key) {
-            _bossArcEnsureState();
-            if (!sm.bossArc.available) return;
-            if (sm.bossArc.leads[key]) return;
-            const flav = _BOSS_LEAD_FLAVOR[key];
-            if (!flav) return;
-            const body = _bossLeadBodyForVariant(key) || flav.body;
-            const variant = _storyActiveVariant();
-            const finish = function () {
-                sm.bossArc.leads[key] = true;
-                _bossArcCheckCageUnlock();
-                try { save(); } catch (e) {}
-                try { _pcRefresh(); } catch (e) {}
-                // Collected from the Crucible hub? Re-render it so the tracker updates.
-                try { if (sm.atCrucible) _renderCrucible(); } catch (e) {}
-            };
-            // Promote the lead from a plain window.alert() to the standard
-            // narrative overlay. Per-variant body line is used when the
-            // variant has overridden the broker voice; otherwise we fall
-            // through to the classic body.
-            try {
-                _renderNarrativeOverlay({
-                    metaKey: 'boss-lead-' + key + '-v2',
-                    banner: '— THE UNDERGROUND —',
-                    sprite: 'Veteran',
-                    name: 'The broker',
-                    nameplate: flav.title,
-                    toneClass: variant.toneClass || '',
-                    lines: [body],
-                    continueLabel: 'Take the lead →',
-                    onDone: finish
-                });
-            } catch (e) {
-                console.warn('[Story] boss lead overlay fallback to alert:', e);
-                try { window.alert(flav.title + '\n\n' + body); } catch (e2) {}
-                finish();
-            }
-        }
-        function bossEnterCage() {
-            _bossArcEnsureState();
-            if (!sm.bossArc.cageUnlocked || sm.bossArc.cleared) return;
-            if (!sm.bossArc.boss || !sm.bossArc.boss.name) {
-                sm.bossArc.boss = _bossArcRollLegendary();
-                if (!sm.bossArc.boss) {
-                    try { window.showGameAlert && window.showGameAlert('No legendary Pokémon available for your enabled generations.'); } catch (e) {}
-                    return;
-                }
-            }
-            const boss = sm.bossArc.boss;
-            const enc = {
-                name: boss.name,
-                build: boss.build,
-                id: boss.id,
-                wild: true,
-                bossArc: true
-            };
-            enterCatchEncounter(enc, () => {
-                // After the boss arc completes — return to last city.
-                const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
-                sm.eventIndex = lastCityEv;
-                try { save(); } catch (e) {}
-                enterCity();
-            }, { boss: true, forcedCatchRate: 0.01 });
         }
 
         function pcDeposit(monId) {
@@ -50620,22 +50464,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 onComplete: onComplete || null,
                 message: null,
                 ended: false,
-                bossMode: !!(options && options.boss),
                 safariMode: !!(options && options.safari),
                 tutorialMode: !!(options && options.tutorialMode),
                 forcedCatchRate: (options && typeof options.forcedCatchRate === 'number') ? options.forcedCatchRate : null,
                 forcedFleeRate: (options && typeof options.forcedFleeRate === 'number') ? options.forcedFleeRate : null,
-                roamingLabel: (options && typeof options.roamingLabel === 'string') ? options.roamingLabel : null,
-                bossHp: null,
-                bossMaxHp: null
+                roamingLabel: (options && typeof options.roamingLabel === 'string') ? options.roamingLabel : null
             };
-            if (_catchState.bossMode) {
-                const base = (baseStats[wildMon.name] || {});
-                const baseHp = (base && base.baseStats && base.baseStats.hp) || (base && base.hp) || 100;
-                _catchState.bossMaxHp = Math.max(500, baseHp * 10);
-                _catchState.bossHp = _catchState.bossMaxHp;
-                _catchState.message = `The cage opens. ${wildMon.name} stirs. Wear it down, then throw your strongest ball.`;
-            }
             try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
             try { _storyMarkDexSeen(wildMon && wildMon.name, wildShiny); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
@@ -50646,21 +50480,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const headerEl = document.querySelector('#screen-story-catch .story-screen-head-text');
                 if (headerEl) {
-                    if (_catchState.bossMode) headerEl.textContent = '🔮 The Caged God';
-                    else if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
+                    if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
                     else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
                     else headerEl.textContent = '🌿 Wild Encounter';
                 }
             } catch (e) {}
-            // Scene backdrop matches the encounter mode (gen3 pixel art): the Caged
-            // God boss gets the cavern, Safari its zone, wild routes the forest.
+            // Scene backdrop matches the encounter mode (gen3 pixel art): Safari
+            // gets its zone, wild routes the forest.
             try {
                 syncStorySceneBackground('story-catch-bg-layer',
-                    _catchState.bossMode ? 'cave' : (_catchState.safariMode ? 'safari' : 'forest'));
+                    _catchState.safariMode ? 'safari' : 'forest');
             } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
-            if (_catchState.roamingLabel && !_catchState.bossMode) {
+            if (_catchState.roamingLabel) {
                 _catchState.message = `A roaming ${wildMon.name}! One throw — catch or it's gone forever. (Running also forfeits it.)`;
             }
             // Per-variant catch-intro line — prepended to the standard
@@ -50668,7 +50501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // boss / safari / tutorial / roaming, which all carry their
             // own framing). Skipped when the active variant has no
             // intro pool (classic stays silent).
-            if (!_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode && !_catchState.roamingLabel) {
+            if (!_catchState.safariMode && !_catchState.tutorialMode && !_catchState.roamingLabel) {
                 try {
                     const _vIntro = _variantCatchIntro();
                     if (_vIntro) {
@@ -50725,13 +50558,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _catchThrowInFlight = false;
             _catchRender();
             // Fire the slide-in + cry only when the wild actually appears.
-            // Boss mode has its own HP-bar phase (no stage), so skip.
             try {
-                if (!_catchState.bossMode && _catchStageEl && window.StoryFx) {
+                if (_catchStageEl && window.StoryFx) {
                     window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, { shiny: wildShiny });
                 }
             } catch (e) {}
-            if (!_catchState.bossMode) {
+            {
                 // Story-embedded tutorial scenes — NPC cameo with sprite +
                 // dialogue + Continue. Each scene fires once per run (per-run-
                 // deduped via sm.scenesShown). The catch screen is already
@@ -50765,7 +50597,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // button would be redundant. Hide it in safari, boss, and tutorial
                 // mode. The tutorial is a "must-catch" — the wild can't flee, so
                 // there's no need for an escape hatch.
-                runBtn.style.display = (_catchState.bossMode || _catchState.safariMode || _catchState.tutorialMode) ? 'none' : '';
+                runBtn.style.display = (_catchState.safariMode || _catchState.tutorialMode) ? 'none' : '';
                 runBtn.disabled = false;
             }
             showScreen('screen-story-catch');
@@ -50780,35 +50612,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 catch (e) { return 4; }
             })();
             const baseRate = (_catchState.forcedCatchRate != null) ? _catchState.forcedCatchRate : (_CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4]);
-            const message = _catchState.message ? `<div style="text-align:center;color:${_catchState.bossMode ? '#ce93d8' : '#aed581'};font-size:12px;margin:6px 0;line-height:1.5;">${_esc(_catchState.message)}</div>` : '';
-
-            // Boss-mode HP-attrition phase: show the boss + HP bar + Attack button until HP=0.
-            if (_catchState.bossMode && _catchState.bossHp > 0) {
-                const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
-                let bossSpriteHtml = '';
-                try {
-                    const _bossShiny = !!(enc && enc.build && enc.build._isShiny);
-                    const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), _bossShiny) : '';
-                    if (spriteUrl) {
-                        bossSpriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 8px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 10px rgba(206,147,216,0.7));" onerror="this.style.display='none'">`;
-                    }
-                } catch (e) {}
-                body.innerHTML = `
-                    <div style="text-align:center;padding:18px 12px;background:linear-gradient(180deg,rgba(40,16,52,0.7) 0%,rgba(14,8,20,0.7) 100%);border:1px solid #6a1b9a;">
-                        <div style="font-size:11px;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
-                        ${bossSpriteHtml}
-                        <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
-                        <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#ce93d8;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
-                        <div style="margin-top:14px;height:14px;background:rgba(0,0,0,0.55);border:1px solid #444;position:relative;overflow:hidden;">
-                            <div style="height:100%;width:${pct}%;background:linear-gradient(180deg,#e91e63 0%,#880e4f 100%);transition:width 220ms ease-out;"></div>
-                            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;text-shadow:0 0 3px #000;">${_catchState.bossHp.toLocaleString()} / ${_catchState.bossMaxHp.toLocaleString()}</div>
-                        </div>
-                    </div>
-                    ${message}
-                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;">Strike</button>
-                `;
-                return;
-            }
+            const message = _catchState.message ? `<div style="text-align:center;color:#aed581;font-size:12px;margin:6px 0;line-height:1.5;">${_esc(_catchState.message)}</div>` : '';
 
             // ── Safari Mode: a different UI. Safari Ball only (session pool), plus
             //    Bait and Rock actions that stack modifiers on this encounter. The
@@ -50912,7 +50716,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
                     const pct = Math.round(chance * 100);
                     // Master Ball is a normal guaranteed-catch ball — usable on any
-                    // encounter, not reserved/locked for the Caged God boss. (It still
+                    // encounter, not reserved for a special boss capture. (It still
                     // reads as the guaranteed throw via the purple glow + ✨ below.)
                     const canThrow = have > 0;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
@@ -50929,39 +50733,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </button>`;
                 }).join('');
             }
-            // Boss-mode escape hatch: the Run button is hidden so the player can't flee
-            // mid-fight, but if all four ball stacks are empty the catch screen has no
-            // exit. Surface a retreat option that returns to the last city with the
-            // boss still alive (sm.bossArc.boss persists), so the player can buy/farm
-            // balls and return.
-            const _totalBalls = ['poke','great','ultra','master'].reduce((s,k)=>s+((sm.balls && sm.balls[k]|0)||0),0);
-            const bossRetreat = (_catchState.bossMode && _totalBalls <= 0)
-                ? `<div style="margin-top:14px;padding:10px;border:1px dashed #6a1b9a;background:rgba(40,16,52,0.4);text-align:center;">
-                       <div style="font-size:11px;color:#ce93d8;margin-bottom:8px;line-height:1.5;">Out of Poké Balls. Stock up and return.</div>
-                       <button type="button" onclick="window.StoryMode.bossRetreatToCity()" style="padding:8px 16px;background:rgba(0,0,0,0.4);border:1px solid #a060c0;color:#e0c0ff;font-family:inherit;font-size:12px;cursor:pointer;">↩ Retreat to City</button>
-                   </div>`
-                : '';
             // Shiny encounters get a sparkle on the name, a friendlier header
             // line, and a soft gold accent on the grade chip — the player
             // should always know they're staring at a 1% roll before they
             // decide which ball to spend.
             const _encShiny = !!(enc && enc.build && enc.build._isShiny);
-            const headerLabel = _catchState.bossMode
-                ? 'The Caged Pokémon stirs.'
-                : _catchState.safariMode
-                    ? (_encShiny ? '✨ A Shiny Safari Pokémon comes into view!' : 'A Safari Pokémon comes into view.')
-                    : (_encShiny ? '✨ A Shiny Pokémon stepped out of the grass!' : 'A wild Pokémon stepped out of the grass!');
-            const headerColor = _catchState.bossMode ? '#ce93d8' : (_encShiny ? '#ffd54f' : '#a5d6a7');
-            const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
-            const gradeBg = _catchState.bossMode ? '#ce93d8' : (_encShiny ? '#ffd54f' : '#a5d6a7');
-            const subText = _catchState.bossMode
-                ? 'One percent per throw with a standard ball. A Master Ball never misses.'
-                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
+            const headerLabel = _catchState.safariMode
+                ? (_encShiny ? '✨ A Shiny Safari Pokémon comes into view!' : 'A Safari Pokémon comes into view.')
+                : (_encShiny ? '✨ A Shiny Pokémon stepped out of the grass!' : 'A wild Pokémon stepped out of the grass!');
+            const headerColor = _encShiny ? '#ffd54f' : '#a5d6a7';
+            const headerBg = 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
+            const gradeBg = _encShiny ? '#ffd54f' : '#a5d6a7';
+            const subText = _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
             // "Up next" pill — surfaced on route catch screens (not safari /
             // boss / tutorial, which have their own framing). Tells the player
             // what they walk into next: another wild on the same route, or
             // the trainer waiting at the end of it.
-            const _showUpNext = !_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode;
+            const _showUpNext = !_catchState.safariMode && !_catchState.tutorialMode;
             const upNextHtml = _showUpNext
                 ? `<div style="text-align:center;margin:-2px 0 6px;">${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
                 : '';
@@ -50983,7 +50771,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${ballRows}
                 </div>
                 ${safariActionRow}
-                ${bossRetreat}
             `;
             // Mount the persistent stage element under the placeholder. Build
             // it on first render of a new encounter so encounterReveal can
@@ -50994,7 +50781,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (host) {
                     if (!_catchStageEl || _catchStageEncToken !== _catchState) {
                         if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
-                        const tone = _catchState.bossMode ? 'boss' : (_catchState.safariMode ? 'safari' : 'wild');
+                        const tone = _catchState.safariMode ? 'safari' : 'wild';
                         _catchStageEl = window.StoryFx && window.StoryFx.buildEncounterStage(host, { tone })
                             || null;
                         _catchStageEncToken = _catchState;
@@ -51004,50 +50791,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
         }
-        function bossRetreatToCity() {
-            if (!_catchState || !_catchState.bossMode) return;
-            // Boss state persists — boss HP is reset on next re-entry by enterCatchEncounter
-            // (it always rolls bossHp = bossMaxHp on init), so the player can return when
-            // they've stocked balls. The cageUnlocked flag is unchanged.
-            _catchState = null;
-            try { save(); } catch (e) {}
-            try {
-                window.showGameAlert && window.showGameAlert('You retreat from the cage. Stock up on Poké Balls at a Mart, then return to finish the catch.');
-            } catch (e) {}
-            try { enterCity(); } catch (e) { try { showMenu(true); } catch (_) {} }
-        }
-        function bossAttack() {
-            if (!_catchState || !_catchState.bossMode || _catchState.bossHp == null || _catchState.bossHp <= 0) return;
-            const dmg = Math.floor(_catchState.bossMaxHp * (0.05 + Math.random() * 0.07));
-            _catchState.bossHp = Math.max(0, _catchState.bossHp - dmg);
-            const pctAfter = _catchState.bossHp / _catchState.bossMaxHp;
-            if (_catchState.bossHp === 0) {
-                _catchState.message = `${_catchState.encounter.name} is exhausted. Throw a ball to catch it.`;
-            } else {
-                // Per-HP-band flavor — short, escalating tension.
-                let frame;
-                if (pctAfter > 0.75) {
-                    frame = `Clean strike! -${dmg.toLocaleString()} HP.`;
-                } else if (pctAfter > 0.5) {
-                    frame = `Another solid hit. -${dmg.toLocaleString()} HP.`;
-                } else if (pctAfter > 0.25) {
-                    frame = `-${dmg.toLocaleString()} HP. It's starting to slow down.`;
-                } else if (pctAfter > 0.10) {
-                    frame = `-${dmg.toLocaleString()} HP. Nearly worn out.`;
-                } else {
-                    frame = `-${dmg.toLocaleString()} HP. One more hit should finish it.`;
-                }
-                _catchState.message = frame;
-            }
-            _catchRender();
-        }
         async function catchThrow(ballKey) {
             if (!_catchState || _catchState.ended) return;
             // Reject overlapping throws while a ball animation is already running
             // — fast double-clicks would otherwise burn a second ball.
             if (_catchThrowInFlight) return;
-            // Boss mode: can't throw until HP has been drained to zero.
-            if (_catchState.bossMode && _catchState.bossHp > 0) return;
             const enc = _catchState.encounter;
             if (!enc) return;
             const isSafariThrow = ballKey === 'safari';
@@ -51085,8 +50833,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let fleeMessage = null;
             if (roll < chance) {
                 outcome = 'catch';
-            } else if (_catchState.bossMode) {
-                outcome = 'wobble';
             } else {
                 const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
                 let fleeThreshold;
@@ -51132,17 +50878,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _catchHandleSuccess(enc, ballKey);
                 return;
             }
-            if (_catchState.bossMode) {
-                const _bossMisses = [
-                    'The ball wobbles once — then snaps open. It\'s still in there, and it\'s not happy.',
-                    'So close. The ball flies wide and the seal cracks.',
-                    'The latch holds for a heartbeat. Then nothing.',
-                    'Almost. The next throw matters more than this one did.'
-                ];
-                _catchState.message = _bossMisses[Math.floor(Math.random() * _bossMisses.length)];
-                _catchRender();
-                return;
-            }
             if (outcome === 'flee') {
                 _catchFinishWithMessage(fleeMessage);
                 return;
@@ -51165,7 +50900,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxParty = _storyMaxPartySize();
             const partyFull = (sm.team || []).length >= maxParty;
             const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
-            const bossMode = !!(_catchState && _catchState.bossMode);
             if (partyFull && pcFull) {
                 _catchFinishWithMessage(`Your party (${(sm.team||[]).length}/${maxParty}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Free a slot at the Pokémon Center, then try again.`);
                 return;
@@ -51177,20 +50911,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 wild: true,
                 caughtAt: cityIndexFromEventIndex(sm.eventIndex)
             };
-            if (bossMode) {
-                caught.unsellable = true;
-                caught.nickname = 'Subject Zero';
-                caught.bossArc = true;
-                // Subject Zero is a one-of-a-kind experimental partner — perfect 31 IVs
-                // override whatever the wild encounter rolled. No vitamins needed.
-                if (caught.build) caught.build.ivs = { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
-            }
-            // Boss-arc catch always goes to party (or PC if full). No swap prompt —
-            // the story beat needs the unique mon in your hand right now.
             if (!partyFull) {
                 sm.team.push(caught);
-            } else if (bossMode) {
-                sm.pcBox.push(caught);
             } else {
                 // Party full + PC has room — give the player a real choice rather
                 // than silently sending the new catch to PC. They can default to
@@ -51205,24 +50927,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
             if (!sm.pokedex.caught.includes(enc.name)) sm.pokedex.caught.push(enc.name);
             try { _storyCheckPokedexMilestones(); } catch (e) {}
-            try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}            try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
-            if (bossMode) {
-                _bossArcEnsureState();
-                sm.bossArc.cleared = true;
-                // Caged God reward — the apex of the post-game arc. A full
-                // vitamin set lets the player fully boost a second favorite mon,
-                // plus an oversized voucher bundle for Evolution Tutor / EV Trainer
-                // polish on Subject Zero itself.
-                if (!sm.staticDrops) sm.staticDrops = {};
-                if (!sm.staticDrops.rwdCagedGod) {
-                    _storyGrantBundle({
-                        rareCandy:3, vitamin:5,
-                        hpUp:5, protein:5, iron:5, calcium:5, zinc:5, carbos:5,
-                        gold:10000
-                    });
-                    sm.staticDrops.rwdCagedGod = true;
-                }
-            }
+            try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
+            try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
             // Catch tutorial: mark done only on actual catch success, so a
             // mid-tutorial reload doesn't lock the once-per-save flag without
             // the partner ever landing in the team.
@@ -51232,9 +50938,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
             const _caughtShiny = !!(caught && caught.build && caught.build._isShiny);
             const _shinyLine = _caughtShiny ? '\n\n✨ It\'s a shiny! One in a hundred — keep it close.' : '';
-            const successMsg = bossMode
-                ? _variantSubjectZeroEpilogue() + _shinyLine
-                : `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
+            const successMsg = `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
             _catchFinishWithMessage(successMsg);
         }
         // Holds the just-caught mon while the player picks "send to PC" or
@@ -51312,7 +51016,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Skip the up-next pill in safari (per-encounter loop has its own
                 // counter), boss (cage-only flow), and tutorial (the next step is
                 // narrative-baked into the tutorial message itself).
-                const _showUpNext = !_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode;
+                const _showUpNext = !_catchState.safariMode && !_catchState.tutorialMode;
                 const upNextHtml = _showUpNext
                     ? `<div>${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
                     : '';
@@ -54966,10 +54670,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Climax flag is flipped on battle end (in _handleCrucibleBattleEnd's
                     // 'postHofMystery' branch) so a tab-close before victory still resumes
                     // via processNextEvent's recovery branch and finishes cleanly.
-                    sm.eventIndex = mysteryIdx;
-                    sm.crucibleBattleSource = 'postHofMystery';
-                    save();
-                    processNextEvent();
+                    const _routeToMysteryClimax = function () {
+                        sm.eventIndex = mysteryIdx;
+                        sm.crucibleBattleSource = 'postHofMystery';
+                        save();
+                        processNextEvent();
+                    };
+                    // "Hall of Fame closes" lead-in (main.event9) plays once here —
+                    // post-HoF, immediately before the masked challenger — instead of
+                    // being drained early on the league road. Then the climax fight.
+                    if (!sm.storyEventsFired) sm.storyEventsFired = {};
+                    if (!sm.storyEventsFired['main.event9']) {
+                        _playStoryBeatScene('main.event9', function () {
+                            sm.storyEventsFired['main.event9'] = true;
+                            try { save(); } catch (e) {}
+                            _routeToMysteryClimax();
+                        });
+                    } else {
+                        _routeToMysteryClimax();
+                    }
                     return;
                 }
                 // Row 67 is gone for some reason — flag done and fall through so the
@@ -61606,7 +61325,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             catchThrow, catchRun, catchContinue,
             catchResolveSendToPC, catchResolveSwap,
             safariBait, safariRock, safariLeaveEarly,
-            bossCollectLead, bossEnterCage, bossAttack, bossRetreatToCity,
             enterSafariZone,
             enterCrucible, leaveCrucible,
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,

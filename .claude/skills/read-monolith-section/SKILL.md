@@ -1,13 +1,13 @@
 ---
 name: read-monolith-section
-description: Reads a bounded region of `battle.html` (the 48,416-line / 3.2 MB monolith). Enforces a 400-line cap per read to prevent context burn. Use anchor symbols to find the right region, not raw line numbers.
+description: Reads a bounded region of `battle.html` (the ~61k-line / ~4 MB monolith). Enforces a 400-line cap per read to prevent context burn. Use anchor symbols to find the right region, not raw line numbers.
 ---
 
 # read-monolith-section
 
 ## When to use
 
-Whenever you need to study a chunk of `battle.html`. **Never** read the whole file — it's 48,416 lines and will exhaust your context. Always bound by anchor symbols or a tight line range.
+Whenever you need to study a chunk of `battle.html`. **Never** read the whole file — it's ~61k lines and will exhaust your context. Always bound by anchor symbols or a tight line range.
 
 ## How to use
 
@@ -37,7 +37,7 @@ If you need to study more than 400 lines, do two reads with different offsets. *
 - ❌ `Read battle.html` with no offset (reads first 2000 lines — wastes 2000 lines of context on CSS).
 - ❌ `Read battle.html` with `limit: 5000` (hard refusal — your context will overflow before you finish).
 - ❌ Reading by raw line number from an older design doc (stale by thousands of lines — resolve via `find-anchor` first).
-- ❌ `cat battle.html | grep ...` via Bash — slow on a 3.2 MB file; use grep directly without cat.
+- ❌ `cat battle.html | grep ...` via Bash — slow on a ~4 MB file; use grep directly without cat.
 
 ## Good patterns
 

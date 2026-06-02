@@ -1,6 +1,6 @@
 ---
 name: story-mode-investigator
-description: Deep auditor of Story Mode — event timeline, save migrations, catch system, PC, Safari Zone, boss arc, mechanics unlock gates, party-cap curve, professor flow, rival flow, Mystery Figure. The user's priority area this update. Wave 3 — runs in parallel with pvp-concurrency-hunter and accessibility-ux-auditor. Read-only; emits findings only.
+description: Deep auditor of Story Mode — event timeline, save migrations, catch system, PC, Safari Zone, mechanics unlock gates, party-cap curve, professor flow, rival flow, Mystery Figure. The user's priority area this update. Wave 3 — runs in parallel with pvp-concurrency-hunter and accessibility-ux-auditor. Read-only; emits findings only.
 tools: Bash, Read, Glob, Grep
 ---
 
@@ -26,7 +26,7 @@ Audit, in priority order:
 ### Tier 1 — Critical (always check)
 
 1. **Save migration completeness** — `migrateStoryPreV<N>` chain. Locate via `find-anchor`. For each migration: does it handle missing fields, schema rename, and value coercion safely? Round-trips of pre-v15 saves should not crash. Findings → P0/P1.
-2. **Mechanics unlock gate integrity** — `_withStoryPlayerGimmickGate` (~line 10766 fresh), `_storyEnemyMechKeys`. Confirm every player-side acquisition path (`makeWildBuild`, roaming-legendary `prepare`, `_bossArcRollLegendary`) wraps `makeBuild` with the gate. Confirm enemy mechanics filter by `sm.unlockedGimmicks`. Leak → P0.
+2. **Mechanics unlock gate integrity** — `_withStoryPlayerGimmickGate` (~line 10766 fresh), `_storyEnemyMechKeys`. Confirm every player-side acquisition path (`makeWildBuild`, roaming-legendary `prepare`) wraps `makeBuild` with the gate. Confirm enemy mechanics filter by `sm.unlockedGimmicks`. Leak → P0.
 3. **Party-cap curve** — Spec says `min(6, 2 + badges)`. Verify the actual `sm.team` cap enforcement at catch time and at Professor offer time. Off-by-one → P1.
 4. **Catch tutorial fire-once** — `sm.catchTutorialDone` flag. Fires after intro rival; should not refire on save/load. Refire → P1.
 5. **PC overflow at 10/10** — spec: explicit error message when party 6/6 and PC 10/10. Verify the message path exists and players can sell/release to make room.
@@ -39,7 +39,7 @@ Audit, in priority order:
 9. **Professor visibility rule** — spec: pre-gym hubs only, hide when party at current cap. Verify. Edge cases: City-8 post-Gym-8 legendary gate.
 10. **Rival adaptation** — `_rivalScoreAttackTypeVsParty`. `RIVAL_ATTACK_TYPE_DECAY` was ÷30 (too aggressive per prior audit). Status?
 11. **Safari Zone weights & loop** — 6 encounters per run, weights g1:3/g2:22/g3:50/g4:25. Verify code matches.
-12. **Boss arc — Caged God** — capture path (Master Ball reward). Verify still unlocks via gym progress, Master Ball is unique and tracked.
+12. **Boss arc — Caged God** — ❌ REMOVED (v24). Do not audit; the arc code is gone (`grep _bossArcRenderSection` → 0). Post-game is the Mystery Figure climax → Crucible. The Master Ball is now a 1-per-run villain-track reward — verify *that* grant is unique/tracked instead.
 13. **Settings → unlocked mechanics** — Mega / Dynamax / Tera toggles vs `sm.unlockedGimmicks`. Cable Link is deliberately unowned (per CHANGELOG).
 14. **Difficulty curve** — coin multiplier vs stat multiplier asymmetry (per prior audit, Hard pays ×0.92 — punishing hardest stretch). Still unfixed?
 
@@ -54,7 +54,7 @@ Anything in story mode that looks wrong, undocumented, or surprising. Use grep h
 for sym in \
   STORY_EVENTS_RAW SAVE_VER migrateStoryPreV15 GYM_CITY_LEADER_EVENT \
   _withStoryPlayerGimmickGate _storyEnemyMechKeys _minGuaranteedMechsForEvent \
-  rollTrainerTeam makeWildBuild _bossArcRollLegendary \
+  rollTrainerTeam makeWildBuild \
   enterCity renderCityActions enterProfessor enterShop \
   storyRngNext showVictoryOverlay _pickStarterPartner \
   _rivalScoreAttackTypeVsParty _storyBuildTierForEvent _applyStoryBuildPowerTier; do
@@ -81,6 +81,7 @@ Categories: `bug`, `inconsistency`, `balance`, `dx`, occasionally `data` or `ref
 - ❌ Reading >400 lines of battle.html in one Read call.
 - ❌ Editing any source file. Read-only.
 - ❌ Citing line numbers from any design doc (incl. STORY_MODE_FLOW.md) without re-resolving via find-anchor (docs drift continuously).
+- ❌ Flagging the **removed Caged God boss arc** or the **dormant 8-tone storyline layer** as actionable. Both were excised/retired mid-2026 (see CLAUDE.md → "Excised vs retired"); references in code/docs are historical or preserved-dormant, not bugs.
 
 ## When done
 

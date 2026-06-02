@@ -36,6 +36,12 @@ Five spec systems were authored but never shipped. They are now **permanently cu
 
 Verify before reviving: `grep -niE 'blackMarket|illegalDealer|pendingWager|traderOfferByCity|itineraryProgress' battle.html` → 0 hits today. Past spec text lives in git history.
 
+### Excised vs retired (mid-2026 cleanup) — both distinct from "cut" above
+
+- **Caged God boss arc** (the post-HoF boss: broker → 3 underground leads → "the Cage" → "Subject Zero" capture, with a dedicated Master-Ball sink) — **EXCISED**. The arc code is removed; `migrateStoryPreV24` strips the vestigial `sm.bossArc` from old saves, and `migrateStoryPreV15` first bridges `bossArc.available` → `postHofMysteryClimaxDone` so post-game access is preserved. The post-game is now the Mystery Figure climax → Crucible. A few *accurate* "now-removed" comments + that migration code legitimately still name `sm.bossArc` — **that is expected, not an incomplete excision.** Revival via git history.
+  Verify the arc *code* is gone: `grep -niE '_bossArcRenderSection|bossCollectLead|_bossArcCheckCageUnlock' battle.html` → 0 hits. (`sm.bossArc` survives only in the two migrations above.)
+- **8-storyline TONE layer** (`STORYLINE_VARIANTS` = `classic` + 7 tones: `second_sun` / `bone_keepers` / `project_mewtwo` / `hypnos_lullaby` / `dead_raticate` / `lavender_frequency` / `static`) — **RETIRED to `classic`, but KEPT in code (dormant, reversible)** — *not* cut. Every run is forced to `classic` (`_readStorylineFromUI` + the `load()` back-fill); run variety now comes from the 3-track system (`sm.tracks`). The tone scripts — per-variant cold-opens (`STORY_COLD_OPENS` non-`classic_*` keys), `_CHAMPION_DIALOGUE_BY_VARIANT`, the "Subject Zero" starter, and broker/cage prose (some naming the excised Caged God) — are **DORMANT, NOT live bugs; do not flag them.** Each carries a `⚠️ DORMANT` banner. Design spec: `docs/STORY_NARRATIVE_VARIANTS.md` (marked retired). To revive: restore the roll in `_readStorylineFromUI()`. Tests: `tests/suites/story-tone-retirement.test.js`.
+
 ## Workflow (solo developer, single branch → main)
 
 This is a **solo project**. There are no parallel "session lineages" — work on the active
