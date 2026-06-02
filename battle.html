@@ -32886,47 +32886,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Per-champion victory line. If the matched champion has no entry we still emit
         // the generic "You defeated the Champion!" line as before.
 
-        /** Per-storyline-variant Champion fight dialogue. Each variant gets
-         *  three intro options (rolled randomly per fight) and a single
-         *  outro line (the post-victory crown moment). Falls through to the
-         *  existing CHAMPION_VICTORY_LINES + TRAINER_QUOTES_BY_NAME pool
-         *  when a variant has no entry. The intros are voiced by the
-         *  Champion regardless of which canonical champion was rolled —
-         *  the variant's voice overrides the per-name personality at this
-         *  one beat. */
-        // ⚠️ DORMANT (2026-06): tone layer retired — every run uses 'classic', so only
-        // the `classic` entry is reachable. Other entries (and any Caged God / boss
-        // references in them) are preserved-but-dormant. See STORYLINE_VARIANTS / CLAUDE.md.
-        const _CHAMPION_DIALOGUE_BY_VARIANT = {
-            classic: {
-                // No overrides — falls through to existing per-name pool.
-            }
-        };
-        /** Look up per-variant Champion lines. Returns
-         *  `{ intros: [...], outro: '...' }` or null for variants without
-         *  overrides (`classic` and any unknown id). */
-        function _variantChampionDialogue() {
-            const variantId = (sm && sm.storyLine) || 'classic';
-            const entry = _CHAMPION_DIALOGUE_BY_VARIANT[variantId];
-            return (entry && (entry.intros || entry.outro)) ? entry : null;
-        }
-
-        /** Per-variant Mystery Figure outro override. Maps
-         *  `variantId → identityKey → outro string`. When a variant has
-         *  an exclusive identity (`buried_alive` for lavender_frequency,
-         *  `cartridge_self` for static) the per-variant entry is the only
-         *  outro the player ever sees. For shared identities the override
-         *  reframes the outro through the variant's lens. */
-        const _MYSTERY_OUTRO_BY_VARIANT = {
-            // classic: no overrides — uses MYSTERY_FIGURE_IDENTITIES[id].outro as-is.
-        };
-        function _variantMysteryOutro(identityKey) {
-            const variantId = (sm && sm.storyLine) || 'classic';
-            const table = _MYSTERY_OUTRO_BY_VARIANT[variantId];
-            if (!table) return '';
-            return table[identityKey] || '';
-        }
-
         /** Per-variant post-Hall-of-Fame epilogue scene. Fires once per save
          *  on the first post-HoF city re-entry, before the standard
          *  orientation tip. Closes the variant's narrative arc — the
@@ -33684,33 +33643,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             3: ['Six badges. Two gyms left, and you can hear the Plateau from here.','This is the dress rehearsal. Fight it like the curtain\'s up.','I rebuilt the whole bench for the late game. I assume you did too.','Late-game roster check. If your seventh slot is filler, this hurts.','I\'ve been writing scouting notes since week one. This is the prepared fight.','The Plateau\'s waiting. Earn the right to make it wait a little longer.'],
             4: ['Crown or no crown, you\'re still my rival.','Being Champion means nothing the moment you slack against me.','Hall of Fame ink dries fast. Mine\'s still wet — and I\'m still here.','League titles age fast. Rivalries don\'t. Let\'s renew yours.','Post-Hall fight. Different stakes, same opponent.','I waited at the gates for this match. Don\'t make me wait again.'],
         };
-        /** Per-storyline-variant Rival dialogue overrides for the three
-         *  rebattle rows: 12 (early, post-Gym 3), 39 (mid, post-Gym 6),
-         *  65 (league rival, post-Champion route). The intro rival (row 68)
-         *  is already covered by per-variant cold-opens; these are the
-         *  in-battle quotes that play when the player meets the Rival again.
-         *
-         *  Falls through to the existing RIVAL_PROGRESS_PRIMARY_QUOTES +
-         *  TRAINER_QUOTES_BY_NAME pool when a variant has no override for
-         *  a row. `classic` intentionally has no overrides so existing
-         *  saves replay identically. */
-        const _RIVAL_DIALOGUE_BY_VARIANT = {
-            classic: {
-                // No overrides — falls through to the existing merged pool.
-            }
-        };
-
-        /** Look up per-variant Rival lines for a given storyBattleRowIdx.
-         *  Returns an array (possibly empty) of intro quote strings. Used by
-         *  mergeRivalQuotePools to prepend variant-specific lines on top of
-         *  the existing merged pool. Empty for classic. */
-        function _variantRivalIntros(storyBattleRowIdx) {
-            const variantId = (sm && sm.storyLine) || 'classic';
-            const table = _RIVAL_DIALOGUE_BY_VARIANT[variantId];
-            if (!table) return [];
-            const arr = table[storyBattleRowIdx | 0];
-            return Array.isArray(arr) ? arr : [];
-        }
 
         function rivalStandingPrimaryQuotePool(phase) {
             const last = sm && sm.rivalLastWinner;
@@ -33743,18 +33675,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const prog = (phase !== null && phase !== undefined && RIVAL_PROGRESS_PRIMARY_QUOTES[phase]) ? RIVAL_PROGRESS_PRIMARY_QUOTES[phase].slice() : [];
             const generic = (TRAINER_QUOTES['Rival'] || []).slice();
             const standing = rivalStandingPrimaryQuotePool(phase);
-            // Per-storyline-variant overrides go to the front of the pool so
-            // they win on first roll. The variant lines are written for the
-            // specific rebattle row, not just the phase, so they should
-            // dominate the picker.
-            const variantLines = (storyBattleRowIdx !== null && storyBattleRowIdx !== undefined)
-                ? _variantRivalIntros(storyBattleRowIdx) : [];
-            // Variant lines weighted ~2× by duplication so the roll favors
-            // them without locking out the existing personality/standing
-            // quotes entirely. A pure prepend would still see all variant
-            // lines but the original pool would dominate by sheer count.
-            const variantWeighted = variantLines.concat(variantLines);
-            const merged = variantWeighted.concat(standing).concat(prog).concat(charPool).concat(generic);
+            const merged = standing.concat(prog).concat(charPool).concat(generic);
             return merged.length ? merged : generic;
         }
 
@@ -33779,35 +33700,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
                 if (phase !== null && phase !== undefined) {
-                    // Per-variant Rival overlay — 50% chance to draw from
-                    // the variant pool when one exists for this phase.
-                    try {
-                        const vp = _variantRivalQuoteFor(phase);
-                        if (vp && vp.length && rng() < 0.5) {
-                            return vp[Math.floor(rng() * vp.length)];
-                        }
-                    } catch (e) {}
                     const pool = mergeRivalQuotePools(nm, phase, storyBattleRowIdx);
                     return pool[Math.floor(rng() * pool.length)];
-                }
-            }
-            // Per-variant generic trainer-class overlay — 35% chance when
-            // the variant has a pool for this trainer's classKey/role.
-            try {
-                const classKey = (trainer && (trainer.classKey || trainer.class || trainer.role)) || quoteRole;
-                const vp = _variantTrainerQuoteFor(classKey);
-                if (vp && vp.length && rng() < 0.35) {
-                    return vp[Math.floor(rng() * vp.length)];
-                }
-            } catch (e) {}
-            // Per-variant Champion intro override — fires only on the row-64
-            // Champion fight, not Crucible Champion rematches (those route
-            // through a different storyBattleRowIdx). Variant intros win
-            // when present; falls through to the existing name pool otherwise.
-            if (quoteRole === 'Champion' && (storyBattleRowIdx | 0) === 64) {
-                const champVoice = _variantChampionDialogue();
-                if (champVoice && Array.isArray(champVoice.intros) && champVoice.intros.length) {
-                    return champVoice.intros[Math.floor(rng() * champVoice.intros.length)];
                 }
             }
             const skipNameQuotes = quoteRole === 'Champion' && trainer && trainer.role === 'Champion' && nm === 'Blue';
@@ -33967,24 +33861,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pickCityQuoteLine(poolArr, cityIdx) {
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
             const lines = poolArr[idx] || poolArr[0];
-            // Variant overlay — when the active variant has a per-city
-            // override that matches this pool's identity (City Guide vs.
-            // City Professor), mix it in at the front of the pool with
-            // moderate probability. Falls through cleanly when missing.
-            try {
-                const isProfessor = (typeof CITY_PROFESSOR_QUOTES !== 'undefined' && poolArr === CITY_PROFESSOR_QUOTES);
-                const isGuide     = (typeof CITY_GUIDE_QUOTES !== 'undefined' && poolArr === CITY_GUIDE_QUOTES);
-                let ovLines = null;
-                if (isProfessor) ovLines = _variantCityProfessorOverride(cityIdx);
-                else if (isGuide) ovLines = _variantCityGuideOverride(cityIdx);
-                if (ovLines && ovLines.length) {
-                    // City Guide: 65% variant. City Professor: 50% variant.
-                    const variantBias = isGuide ? 0.65 : 0.5;
-                    if (Math.random() < variantBias) {
-                        return ovLines[Math.floor(Math.random() * ovLines.length)];
-                    }
-                }
-            } catch (e) {}
             return lines[Math.floor(Math.random() * lines.length)];
         }
 
@@ -34069,13 +33945,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? getStoryDisplayTownNameForCityRow(STORY_EVENTS_RAW[sm.eventIndex])
                 : ('City ' + (cityIdx | 0));
             const blurb = _cityBlurbFor(cityIdx);
-            const lines = (function() {
-                try {
-                    const ov = _variantCityArrivalOverride(cityIdx);
-                    if (ov && ov.length) return ov;
-                } catch (e) {}
-                return _cityArrivalLines(cityIdx);
-            })();
+            const lines = _cityArrivalLines(cityIdx);
             const bgUrls = (getStoryBgManifest().cityUrls || DEFAULT_STORY_BG_MANIFEST.cityUrls);
             const bg = (bgUrls && bgUrls.length) ? bgUrls[(cityIdx | 0) % bgUrls.length] : '';
             const spriteFile = _cityArrivalSpeakerSpriteFile(cityIdx);
@@ -39465,7 +39335,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         nameplate: scene.nameplate || 'The figure in the doorway',
                         lines: scene.lines || [],
                         continueLabel: 'Step into the chamber →',
-                        sfx: _variantSfxMotif(),
+                        sfx: null,
                         onDone
                     });
                 }
@@ -39802,24 +39672,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
-        /** STORYLINE VARIANTS — ⚠️ RETIRED / DORMANT (2026-06).
-         *  This 8-tone narrative layer is NO LONGER reachable at runtime: every run
-         *  is forced to the 'classic' tone (see _readStorylineFromUI + the load()
-         *  back-fill). The dirty tones (project_mewtwo / hypnos_lullaby / static /
-         *  bone_keepers) and their cold-opens, broker/cage prose, "Subject Zero"
-         *  starter, and Mystery-Figure biases are PRESERVED INTENTIONALLY for a
-         *  possible future fold-in — they are NOT live bugs, and references here to
-         *  the excised post-HoF "Caged God" boss are expected dormant content.
-         *  Design spec: docs/STORY_NARRATIVE_VARIANTS.md (also marked retired);
-         *  canonical status in CLAUDE.md. To revive, restore the roll in
-         *  _readStorylineFromUI().
-         *
-         *  Original behavior: variants let the same STORY_EVENTS_RAW timeline play
-         *  differently from run to run. A variant can shadow any beat
-         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default tone for
-         *  the dialogue layer. Pokémon picks remain driven by the per-row
-         *  gradeWeights and `sm.settings.enabledGens`, so variants cannot break the
-         *  difficulty curve. */
+        /** STORYLINE_VARIANTS — the 8-tone narrative layer was CUT (2026-06); only the
+         *  single `classic` entry remains. Every run is `classic` (forced by
+         *  _readStorylineFromUI + the load() back-fill); run variety comes from the
+         *  3-track system (sm.tracks). The dead variant DATA + `_variant*` readers were
+         *  removed in two stages (see CLAUDE.md → "Excised vs retired"); revive via git
+         *  history. This single entry still drives the LIVE cold-open dispatch through
+         *  its `beatOverrides` (getStoryBeatForRow merges derived ← base ← override), so
+         *  it must stay. Pokémon picks remain driven by per-row gradeWeights +
+         *  `sm.settings.enabledGens`. */
         const STORYLINE_VARIANTS = {
             // ── TIER: CLASSIC ────────────────────────────────────────────
             classic: {
@@ -39884,152 +39745,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ═════════════════════════════════════════════════════════════════
         // VARIANT PROSE DENSITY LAYER
         // ═════════════════════════════════════════════════════════════════
-        // Per-variant override tables for the recurring NPC surfaces that
-        // are otherwise variant-blind: city arrival, city guide quotes,
-        // city professor quotes, mart greeter, rival quotes, generic
-        // trainer classes, gym victory cards, wild-catch intro lines,
-        // retreat/game-over flavor, Hall of Fame card, and the post-HoF
-        // Mystery Figure pre-fight beat (row 67).
+        // Per-variant override tables for the two recurring story-climax
+        // surfaces that remain variant-aware: the Hall of Fame card and the
+        // post-HoF Mystery Figure pre-fight beat (row 67). (The tone layer is
+        // retired to 'classic'; the other prose-density surfaces — city
+        // arrival/guide/professor, mart greeter, rival/trainer quotes, gym
+        // victory cards, catch intro, retreat flavor — were collapsed back to
+        // their variant-blind defaults.)
         //
         // Layout contract: every table is keyed by variant id; values are
-        // either a single string, an array of strings, or a per-key map
-        // (e.g. per-city, per-class). A missing variant entry — or a
-        // missing key inside a present entry — falls through cleanly to
-        // the existing variant-blind path. Classic (and second_sun where
-        // appropriate) stay sparse on purpose so the warm-baseline tone
-        // doesn't drift.
-        //
-        // Each variant declares a single SFX motif fired on cold-open
-        // dismiss via window.StoryFx.playSfx. Classic and second_sun stay
-        // silent.
-
-        const _VARIANT_SFX_MOTIF = {
-            classic: null
-        };
-        function _variantSfxMotif() {
-            const v = _storyActiveVariant();
-            return _VARIANT_SFX_MOTIF[v.id] || null;
-        }
-
-        // ── A5: per-variant city arrival overrides ──────────────────────
-        // Replaces _cityArrivalLines() output. Keys are city indices 0–9.
-        const _VARIANT_CITY_ARRIVAL = {
-        };
-        function _variantCityArrivalOverride(cityIdx) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_CITY_ARRIVAL[v.id];
-            if (!tbl) return null;
-            const arr = tbl[cityIdx | 0];
-            return (Array.isArray(arr) && arr.length) ? arr : null;
-        }
-
-        // ── A1: per-variant City Guide quote overrides ──────────────────
-        // When a variant has a line for the active city, used 65% of the
-        // time (mixed with the base pool so the variant tints rather than
-        // monopolizes the City Guide voice).
-        const _VARIANT_CITY_GUIDE = {
-        };
-        function _variantCityGuideOverride(cityIdx) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_CITY_GUIDE[v.id];
-            if (!tbl) return null;
-            const arr = tbl[cityIdx | 0];
-            return (Array.isArray(arr) && arr.length) ? arr : null;
-        }
-
-        // ── A6: per-variant City Professor quote overrides ──────────────
-        // Used 50% of the time for variants with a line for that city.
-        const _VARIANT_CITY_PROFESSOR = {
-        };
-        function _variantCityProfessorOverride(cityIdx) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_CITY_PROFESSOR[v.id];
-            if (!tbl) return null;
-            const arr = tbl[cityIdx | 0];
-            return (Array.isArray(arr) && arr.length) ? arr : null;
-        }
-
-        // ── A3: per-variant mart greeter (used on first mart entry per
-        // city) and per-variant department-store greeter. One line each.
-        const _VARIANT_MART_GREETER = {
-            classic: ''
-        };
-        function _variantMartGreeter() {
-            const v = _storyActiveVariant();
-            return _VARIANT_MART_GREETER[v.id] || '';
-        }
-
-        // ── A4: per-variant generic trainer-class quote pools ──────────
-        // Used 35% of the time when a variant has an entry for the
-        // trainer's class. Falls through to TRAINER_QUOTES otherwise.
-        const _VARIANT_TRAINER_QUOTES = {
-        };
-        function _variantTrainerQuoteFor(className) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_TRAINER_QUOTES[v.id];
-            if (!tbl) return null;
-            const arr = tbl[String(className || '')];
-            return (Array.isArray(arr) && arr.length) ? arr : null;
-        }
-
-        // ── G: per-variant Rival quote pool, used 50% of the time when
-        // the active variant has an entry. Phase-keyed (0=intro/starter,
-        // 1=early, 2=mid, 3=late, 4=league).
-        const _VARIANT_RIVAL_QUOTES = {
-        };
-        function _variantRivalQuoteFor(phase) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_RIVAL_QUOTES[v.id];
-            if (!tbl) return null;
-            const arr = tbl[(phase | 0)];
-            return (Array.isArray(arr) && arr.length) ? arr : null;
-        }
-
-        // ── A2: per-variant Gym Leader victory card prose. One short
-        // line per leader index 1–8. Replaces the generic "You received
-        // the X Badge!" when a variant entry exists for that gym index.
-        // Sparse on purpose — only the gyms that the variant can speak
-        // to. Leader name substituted as {leader}.
-        const _VARIANT_VICTORY_CARDS = {
-        };
-        function _variantVictoryCardFor(leaderIdx, leaderName) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_VICTORY_CARDS[v.id];
-            if (!tbl) return '';
-            const tmpl = tbl[leaderIdx | 0];
-            if (!tmpl) return '';
-            const nm = String(leaderName || 'The Gym Leader');
-            return tmpl.replace(/\{leader\}/g, nm);
-        }
-
-        // ── I: per-variant catch-encounter intro line, prepended to the
-        // standard "A wild X appeared!" message on wild route catches.
-        // Single short line per variant; skipped for boss/safari/tutorial
-        // and for the catch-tutorial first throw. Pasta variants get a
-        // light visual touch via the variant tone class on the catch
-        // screen header. Rotation through the per-variant pool is mild.
-        const _VARIANT_CATCH_INTRO = {
-            classic: null
-        };
-        function _variantCatchIntro() {
-            const v = _storyActiveVariant();
-            const arr = _VARIANT_CATCH_INTRO[v.id];
-            if (!Array.isArray(arr) || !arr.length) return '';
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
-            return arr[Math.floor(rng() * arr.length)];
-        }
-
-        // ── H: per-variant retreat / game-over hint. Two short lines —
-        // one for the standard battle loss, one for the rival concede.
-        const _VARIANT_RETREAT_LINES = {
-            classic: { loss: '', concede: '' }
-        };
-        function _variantRetreatLine(kind) {
-            const v = _storyActiveVariant();
-            const tbl = _VARIANT_RETREAT_LINES[v.id];
-            if (!tbl) return '';
-            return tbl[kind] || '';
-        }
+        // either a single string, an array of strings, or a per-key map.
+        // A missing variant entry falls through cleanly to the classic entry.
 
         // ── J: per-variant Hall of Fame card. Shown once before the HoF
         // grid renders. Closes the variant arc at the climax moment.
@@ -40052,9 +39778,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Figure climax (event row 67). Wires through the standard cold-
         // open dispatcher via STORY_BEATS[67] + per-variant beatOverrides.
         // The scene plays once per save (cross-run dedupe), framed by the
-        // variant's tone class. Identity-specific (bias-driven) prose
-        // continues to fire through _MYSTERY_OUTRO_BY_VARIANT after the
-        // fight; this beat is the *intro* the variant lacked.
+        // variant's tone class. This beat is the *intro* to the climax fight;
+        // the post-fight outro uses MYSTERY_FIGURE_IDENTITIES[id].outro.
         const _MYSTERY67_BY_VARIANT = {
             classic: {
                 banner: '— THE FINAL MASK —',
@@ -40069,19 +39794,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _variantMystery67Scene() {
             const v = _storyActiveVariant();
             return _MYSTERY67_BY_VARIANT[v.id] || _MYSTERY67_BY_VARIANT.classic;
-        }
-
-        // ── B: per-variant multi-choice moment. Inserted as an alternate
-        // cold-open scene the variant points to in its beatOverrides for
-        // row 33 (mid-late NPC). The pick is persisted to sm.storyChoices
-        // for downstream prose to reference, but does not alter battles,
-        // economy, or progression. Classic and second_sun stay silent
-        // (warm baseline + the rival arc is its own beat).
-        const _VARIANT_CHOICE_R33 = {
-        };
-        function _variantChoiceR33() {
-            const v = _storyActiveVariant();
-            return _VARIANT_CHOICE_R33[v.id] || null;
         }
 
         // ═════════════════════════════════════════════════════════════════
@@ -41046,7 +40758,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const INTRO_PRIORITY = {
             facility_first_time:  100,
             market_giveaway:       60,
-            variant_greeter:       50,
             npc_tip:               30,
             one_time_lesson:       10,
         };
@@ -43833,32 +43544,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
-            // Per-variant retreat/concede flavor — appended as an italic
-            // banner under the buttons. Skipped silently when the active
-            // variant has no entry. Pulls from #story-gameover-variant-line
-            // (lazy-created) so we don't fight the existing layout.
-            try {
-                const screenEl = document.getElementById('screen-story-gameover');
-                if (screenEl) {
-                    let banner = document.getElementById('story-gameover-variant-line');
-                    const kind = isRivalLoss ? 'concede' : 'loss';
-                    const line = _variantRetreatLine(kind);
-                    if (line) {
-                        if (!banner) {
-                            banner = document.createElement('div');
-                            banner.id = 'story-gameover-variant-line';
-                            banner.style.cssText = 'max-width:380px;margin:8px auto 0;font-size:12px;color:#ffd54f;line-height:1.45;font-style:italic;text-align:center;opacity:0.95;border-top:1px solid #4a6a9a;padding-top:8px;';
-                            // Insert near the bottom of the screen so the
-                            // primary buttons stay on top.
-                            screenEl.appendChild(banner);
-                        }
-                        banner.textContent = line;
-                        banner.style.display = 'block';
-                    } else if (banner) {
-                        banner.style.display = 'none';
-                    }
-                }
-            } catch (e) {}
         }
 
         function preferredTypeBeforeGymBattle(battleIdx) {
@@ -45292,16 +44977,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _storyRunSceneMark(o.metaKey);
                 }
                 try {
-                    // Per-variant SFX motif default — when the caller
-                    // didn't specify an explicit sfx, fall back to the
-                    // active storyline's cue (set on cold-open dismiss
-                    // and per-variant epilogue overlays for pasta /
-                    // mature tiers). Classic and second_sun resolve to
-                    // null, which silences the cue cleanly.
-                    let _sfx = o.sfx;
-                    if (!_sfx) {
-                        try { _sfx = _variantSfxMotif(); } catch (e2) {}
-                    }
+                    const _sfx = o.sfx;
                     if (_sfx && window.StoryFx && typeof window.StoryFx.playSfx === 'function') {
                         window.StoryFx.playSfx(_sfx, 0.65);
                     }
@@ -46539,14 +46215,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _leaderReflect = (LEADER_BADGE_REFLECTIONS[_trainerName] || LEADER_BADGE_REFLECTIONS[_baseTrainerName] || '');
             const _badgeName = (LEADER_BADGE_NAMES[_trainerName] || LEADER_BADGE_NAMES[_baseTrainerName] || 'Gym Badge');
             const _eliteLookup = (ELITE_VICTORY_LINES[_trainerName] || ELITE_VICTORY_LINES[_baseTrainerName] || '');
-            // Per-variant Champion outro override wins when the active
-            // storyline has a custom finale line. Falls through to the
-            // existing name-based pool for classic and any variant without
-            // an outro. Only fires on the row-64 Champion fight (not
-            // Crucible Champion rematches).
-            const _variantChampVoice = ((storyRowIdx | 0) === 64) ? _variantChampionDialogue() : null;
-            const _variantChampOutro = (_variantChampVoice && _variantChampVoice.outro) ? _variantChampVoice.outro : '';
-            const _champLookup = _variantChampOutro || (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
+            const _champLookup = (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
             // Per-run first-clear: every fresh run replays the full first-time
             // finale (extra confetti + the summit epilogue line). Within a run
             // each milestone is cleared once, so a rematch won't re-trigger it.
@@ -46567,22 +46236,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const reflectHtml = _leaderReflect
                         ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${speakerName}: ${_leaderReflect}</div>`
                         : '';
-                    // Per-variant gym victory card — when the active
-                    // storyline has a line for this leader index, render
-                    // it as a third beat tinted by the variant accent.
-                    // The standard leader line + reflection stay so the
-                    // base game-feel isn't displaced.
-                    let _variantCardHtml = '';
-                    try {
-                        const _glMatch = evn.match(/^Gym Leader ([1-8])$/i);
-                        if (_glMatch) {
-                            const _vcard = _variantVictoryCardFor(+_glMatch[1], speakerName);
-                            if (_vcard) {
-                                _variantCardHtml = `<div style="font-size:12px;color:#ffd54f;line-height:1.45;max-width:380px;margin-top:6px;font-style:italic;border-left:2px solid #ffd54f;padding-left:8px;text-align:left;">${_vcard}</div>`;
-                            }
-                        }
-                    } catch (e) {}
-                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}${_variantCardHtml}`;
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}`;
                     // First-time cap teach. badges 1-4 expand the player's party (cap = 2 + badges,
                     // capped at 6). The cap change happens silently in code; surface it here once
                     // per badge-tier per run (every fresh run replays the guide). badges 5-8 don't grow the cap.
@@ -46630,12 +46284,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (evn === 'Mystery Figure') {
                     const face = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
                     const reveal = face ? face.reveal : null;
-                    // Per-variant outro wins when the active storyline has
-                    // a specific reading of this identity. Falls through to
-                    // the identity's default outro otherwise (so non-pasta
-                    // saves keep the original line).
-                    const variantOutro = sm && sm.mysteryIdentity ? _variantMysteryOutro(sm.mysteryIdentity) : '';
-                    const outro = variantOutro || (face ? face.outro : '');
+                    const outro = face ? face.outro : '';
                     badgeFlavor = reveal
                         ? `<div style="font-size:14px;color:#ce93d8;line-height:1.55;max-width:400px;">The mask falls. It was <strong>${reveal}</strong> all along.${outro ? `<div style="margin-top:10px;font-style:italic;color:#e1bee7;font-size:13px;">${outro}</div>` : ''}</div>`
                         : `<div style="font-size:14px;color:#ce93d8;">The mask falls — but the figure dissolves before you can see who wore it.</div>`;
@@ -48541,19 +48190,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_catchState.roamingLabel) {
                 _catchState.message = `A roaming ${wildMon.name}! One throw — catch or it's gone forever. (Running also forfeits it.)`;
             }
-            // Per-variant catch-intro line — prepended to the standard
-            // wild encounter framing, only on plain wild routes (not
-            // boss / safari / tutorial / roaming, which all carry their
-            // own framing). Skipped when the active variant has no
-            // intro pool (classic stays silent).
-            if (!_catchState.safariMode && !_catchState.tutorialMode && !_catchState.roamingLabel) {
-                try {
-                    const _vIntro = _variantCatchIntro();
-                    if (_vIntro) {
-                        _catchState.message = _vIntro + '\n\nA wild ' + (wildMon && wildMon.name ? wildMon.name : 'Pokémon') + ' appeared.';
-                    }
-                } catch (e) {}
-            }
             // Tutorial framing — warm "your first catch" opener so the player
             // reads the new mechanic with curiosity, not panic. The tutorial
             // mon is always a Grade 4 friendly species and the catch is
@@ -49293,31 +48929,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     catch (e) { console.warn('[Story] mart tutorial failed', e); done(); }
                 }
             });
-            // Per-variant mart greeter — fires once per city per run
-            // (city-keyed via sm.scenesShown). Skipped for the department
-            // store (separate dept-store identity) and for variants without an
-            // entry. Now queues AFTER the tutorial so it never overlaps it.
-            try {
-                if (type !== 'dept') {
-                    const greet = _variantMartGreeter();
-                    if (greet) {
-                        const cityIdx = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(sm.eventIndex) : 0;
-                        const key = 'variant-mart-greet-' + (_storyActiveVariantId() || 'classic') + '-c' + (cityIdx | 0);
-                        if (!_storyRunSceneSeen(key)) {
-                            IntroQueue.enqueue({
-                                priority: INTRO_PRIORITY.variant_greeter,
-                                run: (done) => {
-                                    try {
-                                        _storyRunSceneMark(key);
-                                        window.showGameAlert && window.showGameAlert(greet);
-                                    } catch (e) {}
-                                    done();
-                                }
-                            });
-                        }
-                    }
-                }
-            } catch (e) {}
             _storyRenderShopGrid(type);
             // Shop-door bell — fires only when transitioning from a different
             // screen (not on the buy→re-render loop, which would stutter).
@@ -52677,7 +52288,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 nameplate: 'The wall',
                                 lines: _vCard.lines,
                                 continueLabel: 'Enter the Hall →',
-                                sfx: _variantSfxMotif()
+                                sfx: null
                             });
                         }
                     }

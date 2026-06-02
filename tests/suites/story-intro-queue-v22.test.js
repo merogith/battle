@@ -89,11 +89,10 @@ test('INTRO_PRIORITY has the expected ranks', () => {
     const p = ST.INTRO_PRIORITY;
     assert.equal(p.facility_first_time, 100);
     assert.equal(p.market_giveaway,     60);
-    assert.equal(p.variant_greeter,     50);
     assert.equal(p.npc_tip,             30);
     assert.equal(p.one_time_lesson,     10);
     // Priority ordering invariant: facility intros outrank greeters / tips.
-    assert.ok(p.facility_first_time > p.variant_greeter);
+    assert.ok(p.facility_first_time > p.market_giveaway);
     assert.ok(p.facility_first_time > p.npc_tip);
 });
 
