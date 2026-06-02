@@ -53290,6 +53290,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { const _h = document.getElementById('story-evolab-head-text'); if (_h) _h.textContent = _npcStageName('evolab'); } catch (e) {}
                 // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
                 _storyEvoLabOpenIdx = 0;
+                _storyEvoLabPcOpenId = null;
                 renderEvoLabTeam();
                 syncStoryEvoLabBackground();
                 showScreen('screen-story-evolab');
@@ -53398,6 +53399,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return evoBlockHtml;
         }
 
+        // Master-only "Evolve from PC" section, appended below the party accordion.
+        // The Evolution Master (City 4+) evolves a boxed Pokémon in place inside
+        // sm.pcBox — no party shuffle. Rows are addressed by stable id and reuse the
+        // shared evo-card helper. Pre-Master it degrades to a one-line hint so the
+        // player understands why their stored Pokémon aren't listed.
+        function _evoLabPcSectionHtml(sg, enabledGensLabel) {
+            const box = Array.isArray(sm.pcBox) ? sm.pcBox : [];
+            if (_npcStage('evolab') < 1) {
+                if (!box.length) return '';
+                const masterCity = _cityOrdinalWord(NPC_STAGE_CITY.evolab[1]);
+                return `<div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;font-size:11px;color:#9aa3b8;">🗄️ Pokémon in your PC must be withdrawn to your party to evolve here. The <strong style="color:#cfd5dd;">Evolution Master</strong> — from the ${masterCity} city — can evolve them straight from storage.</div>`;
+            }
+            // Nothing stored → no section at all (an empty box needn't add clutter;
+            // the capability already re-announces itself via the Master's intro).
+            if (!box.length) return '';
+            // Only list boxed mons that have an evolution available right now — keeps
+            // the section scannable when the PC holds many Pokémon.
+            const eligible = box.filter(m => m && !m.isEgg && _getAllEvosWithStatus(m.name, sg).some(e => e.allowed));
+            const head = `<div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#b39ddb;font-weight:bold;">🗄️ Evolve from PC <span style="font-weight:normal;color:#9aa3b8;">· ${eligible.length ? eligible.length + ' ready' : 'none ready'}</span></div>
+                <div style="font-size:10px;color:#8a93a8;margin-top:2px;">The Master evolves stored Pokémon in place — your battle team isn't touched.</div>
+            </div>`;
+            if (!eligible.length) {
+                return head + `<div class="tx-grid-empty" style="margin-top:6px;">No PC Pokémon are ready to evolve right now.</div>`;
+            }
+            const rows = eligible.map(m => {
+                const shiny = !!(m.build && m.build._isShiny);
+                const expanded = m.id === _storyEvoLabPcOpenId;
+                const evosAll = _getAllEvosWithStatus(m.name, sg);
+                const g = getMonGrade(m.name, getBST(m.name));
+                const nReady = evosAll.filter(e => e.allowed).length;
+                const idArg = String(m.id).replace(/'/g, "\\'");
+                const nameLine = (shiny ? '&#10024; ' : '') + _esc(m.nickname ? `${m.nickname} (${m.name})` : m.name);
+                const header = `<button type="button" class="story-tutor-mon-toggle" onclick="event.stopPropagation();window.StoryMode.evoLabTogglePcRow('${idArg}')" aria-expanded="${expanded?'true':'false'}">
+                    <div class="story-tutor-mon-main">
+                        <img src="${getSprite(spriteDisplayName(m), shiny)}" alt="${_esc(m.name)}" style="width:38px;height:38px;image-rendering:pixelated;flex-shrink:0;${shiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;flex:1;">
+                            <div class="story-tutor-mon-name">${nameLine}</div>
+                            <div class="story-tutor-mon-meta">G${g} · BST ${getBST(m.name)} · ${nReady} evolution${nReady===1?'':'s'} ready</div>
+                        </div>
+                    </div>
+                    <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+                </button>`;
+                if (!expanded) return `<div class="story-tutor-mon" id="evolab-pc-${idArg}">${header}</div>`;
+                return `<div class="story-tutor-mon" id="evolab-pc-${idArg}">
+                    ${header}
+                    <div class="story-tutor-mon-body">${_evoLabEvoCardsHtml(m, evosAll, enabledGensLabel)}</div>
+                </div>`;
+            }).join('');
+            return head + rows;
+        }
+
+        // Accordion toggle for a single "Evolve from PC" row (id-keyed, mirrors the
+        // party accordion's one-open-at-a-time behaviour).
+        function evoLabTogglePcRow(id) {
+            _storyEvoLabPcOpenId = (_storyEvoLabPcOpenId === id) ? null : id;
+            renderEvoLabTeam();
+        }
+
         function renderEvoLabTeam() {
             const el = document.getElementById('story-evolab-team');
             if (!el) return;
@@ -53420,7 +53480,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             const switcherHtml = _txMonSwitcherHtml(sm.team, _storyEvoLabOpenIdx, 'evolab');
 
-            el.innerHTML = switcherHtml + sm.team.map((t, i) => {
+            const _partyHtml = sm.team.map((t, i) => {
                 if (t && t.isEgg) return '';
                 const expanded = i === _storyEvoLabOpenIdx;
                 const g       = getMonGrade(t.name, getBST(t.name));
@@ -53489,6 +53549,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="story-tutor-mon-body">${evoBlockHtml}</div>
                 </div>`;
             }).join('');
+            el.innerHTML = switcherHtml + _partyHtml + _evoLabPcSectionHtml(sg, enabledGensLabel);
             try {
                 const sw = el.querySelector('.tx-mon-switcher');
                 if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
@@ -55447,7 +55508,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 2: 'Dojo Master: "Grandmaster. Nothing is off-limits in my dojo. An Ability Capsule and an Emblem of Honor — spend them however you like."',
             },
             evolab: {
-                1: 'Evolution Master: "Your bond has deepened; the final forms will ascend at your word. Take this token — one free pick from the shop, gratis."',
+                1: 'Evolution Master: "Your bond has deepened; the final forms will ascend at your word — and my reach now extends to your PC: I can evolve a stored partner in place, with no need to free a slot on your team. Take this token, too — one free pick from the shop, gratis."',
             },
         };
         // Sprite for each staged-NPC tier-up re-intro (mirrors the facility's
@@ -55531,6 +55592,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Colress / Evo Lab / Link Station / Fan Club accordions — same pattern.
         let _storyColressOpenIdx  = 0;
         let _storyEvoLabOpenIdx   = 0;
+        let _storyEvoLabPcOpenId  = null;  // Master "Evolve from PC": which boxed mon's cards are expanded (by stable id)
         let _storyLinkOpenIdx     = 0;
         let _storyFanClubOpenIdx  = 0;
 
@@ -61308,6 +61370,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     applyEvolution: typeof _evoLabApplyEvolution === 'function' ? _evoLabApplyEvolution : null,
                     findSlotById: typeof _pcFindSlotById === 'function' ? _pcFindSlotById : null,
                     makeBuild: typeof makeBuild === 'function' ? makeBuild : null,
+                    pcSectionHtml: typeof _evoLabPcSectionHtml === 'function' ? _evoLabPcSectionHtml : null,
+                    npcStage: typeof _npcStage === 'function' ? (k) => _npcStage(k) : null,
+                    setPcOpenId: (id) => { _storyEvoLabPcOpenId = id; },
                     get sm() { return sm; },
                     set sm(v) { sm = v; },
                 };
@@ -61338,7 +61403,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,
             crucibleMysteryFight, crucibleRivalFight, crucibleLeagueRun, crucibleGymPick, crucibleWildEncounter,
             enterLink, linkReroll, linkUpgrade, linkRebuild, linkMoveUp, linkMoveDown,
-            enterEvolutionLab, evoLabEvolve, evoLabEvolveWithCandy,
+            enterEvolutionLab, evoLabEvolve, evoLabEvolveWithCandy, evoLabTogglePcRow,
             enterCasino, casinoToggleStats,
             casinoSwitchTab, casinoBetChip,
             casinoFlipPick, casinoFlipSpin,
