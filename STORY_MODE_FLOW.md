@@ -2,10 +2,19 @@
 
 This is the **working spec** for the new story-mode flow: catching, the PC, the
 Underground (corrupted Centers), wild routes, the Safari Zone, and the post-Champion
-boss arc ("The Caged God").
+boss arc ("The Caged God" — ❌ removed v24; see §9 and the status note below).
 
 It supersedes the project's earlier story-mode design notes where they conflict.
 Conflicts are noted inline so old context isn't silently contradicted.
+
+> **⚠️ Status (2026-06):** Two systems described in this doc have since changed —
+> references to either *anywhere below* are **historical**, not live:
+> - The **Caged God boss arc** (§9) was **REMOVED (v24)**. Post-game is now the Mystery
+>   Figure climax → Crucible; "Subject Zero" is no longer granted, and the Master Ball is a
+>   1-per-run villain-track reward.
+> - The **8-tone storyline layer** was **RETIRED to `classic`** (kept dormant in code, reversible).
+>
+> Canonical status: `CLAUDE.md` → "Excised vs retired (mid-2026 cleanup)".
 
 **Code anchors** below use `battle.html:LINE` so each subsystem can be jumped to
 directly. All line numbers are against the current main file at the time of

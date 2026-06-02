@@ -1,3 +1,10 @@
+// ⚠️ DEPRECATED (2026-06) — ad-hoc diagnostic, NOT part of `npm test`.
+// The 8-tone storyline layer it exercises has been RETIRED to 'classic' (see
+// CLAUDE.md → "Excised vs retired"), and the variant ids below ('radio_silence',
+// 'crimson_clade') never existed in the shipped STORYLINE_VARIANTS. Kept only as a
+// boot-smoke pattern. The maintained tone coverage now lives in
+// tests/suites/story-tone-retirement.test.js. Do not treat failures here as actionable.
+//
 // Test all 5 difficulty modes (veryeasy, easy, normal, hard, challenge) and
 // the storyline variants to confirm starting state is right and no obvious
 // crashes happen on entry.

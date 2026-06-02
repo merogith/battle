@@ -1,5 +1,16 @@
 # Story Narrative Variants — Design Spec
 
+> ## ⚠️ RETIRED / DORMANT (2026-06)
+> This 8-tone system was **built and shipped, then retired**. Every run is now forced to
+> the `classic` tone (`_readStorylineFromUI` + the `load()` back-fill); run variety now
+> comes from the 3-track system (`sm.tracks`). The code described below
+> (`STORYLINE_VARIANTS`, `_CHAMPION_DIALOGUE_BY_VARIANT`, the per-variant `STORY_COLD_OPENS`
+> entries, etc.) is **preserved but dormant — not a live bug.** Some prose references the
+> **excised** post-HoF "Caged God" boss; that too is expected dormant content. This doc is
+> kept as the design record for a possible future fold-in. To revive: restore the roll in
+> `_readStorylineFromUI()`. See `CLAUDE.md` → "Excised vs retired (mid-2026 cleanup)".
+> **Do not file findings against this system as actionable.**
+
 > **Anchor drift**: `battle.html:LINE` refs below were point-in-time. Resolve
 > via `node scripts/debug/symbol-index.mjs --lookup <symbol>` or browse
 > `agent-state/ANCHOR_INDEX.md`. Symbol names are the durable anchors.
