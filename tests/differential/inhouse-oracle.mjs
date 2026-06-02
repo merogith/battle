@@ -82,6 +82,26 @@ export async function runInhouseBattle(opts) {
   engine.state.isOver = false;
   engine.state.isLocked = false;
 
+  // Full neutral field-state, mirroring startBattle (battle.html:17317-17321) +
+  // the sports. CRITICAL: the bare harness reset() omits state.magicRoom, which
+  // would leave it `undefined` and make `_defItemActive` (magicRoom === 0) FALSE —
+  // silently suppressing every held-item effect (Air Balloon, Choice Band, Life
+  // Orb, berries, Rocky Helmet, …) and producing false divergences.
+  engine.state.weather = null; engine.state.weatherTurns = 0;
+  engine.state.terrain = null; engine.state.terrainTurns = 0;
+  engine.state.trickRoom = 0;
+  engine.state.gravity = 0;
+  engine.state.magicRoom = 0;
+  engine.state.mudSport = 0;
+  engine.state.waterSport = 0;
+  // Fuller side-state (screens / hazards / Wish / Tailwind), matching launchBattle.
+  const freshSide = () => ({
+    stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0,
+    auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0,
+  });
+  engine.state.pSide = freshSide();
+  engine.state.fSide = freshSide();
+
   const turns = [];
   const maxT = Math.max(choices1.length, choices2.length, 1);
   for (let t = 0; t < maxT; t++) {

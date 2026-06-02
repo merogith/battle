@@ -86,6 +86,11 @@ export function diffTraces(showdown, inhouse, scenario = {}) {
           if (sDmg > 0 && hDmg > 0) {
             const ratio = Math.max(sDmg, hDmg) / Math.min(sDmg, hDmg);
             if (ratio > 2.2) { confidence = 'high'; note = `damage differs ×${ratio.toFixed(1)} — likely type/effectiveness/formula`; }
+          } else if (scenario.noMiss) {
+            // one side took 0 on a move that always connects → immunity / absorb /
+            // type-chart divergence, not accuracy RNG.
+            confidence = 'high';
+            note = 'one side took 0 on a no-miss move — immunity / absorb / type-chart divergence';
           }
           add({
             turn: sT.n, slot, field: 'hp/damage',

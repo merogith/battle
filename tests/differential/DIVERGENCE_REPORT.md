@@ -8,12 +8,15 @@
 
 ## Headline
 - **Known bugs confirmed by the oracle:** 5/5
-- **Sanity scenarios in agreement:** 5/5
+- **Sanity scenarios in agreement:** 13/13
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 0/4
+- **Probes flagging a divergence to investigate:** 0/22
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
+
+## 🔎 New divergences to investigate
+None — every should-match / exploratory scenario agreed with Showdown at high confidence.
 
 ## Summary
 | Scenario | Category | Expect | HIGH | med | low | Verdict |
@@ -23,15 +26,41 @@ Confidence: **high** = boosts / faint / winner (RNG-independent — real diverge
 | `seminvuln-selfboost-dive` | two-turn / semi-invulnerable | diverge | 2 | 0 | 0 | ✅ bug caught |
 | `seminvuln-selfboost-bounce` | two-turn / semi-invulnerable | diverge | 2 | 0 | 2 | ✅ bug caught |
 | `seminvuln-selfboost-phantomforce` | two-turn / semi-invulnerable | diverge | 2 | 0 | 0 | ✅ bug caught |
+| `seminvuln-gust-hits-fly` | two-turn / allow-list | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `seminvuln-twave-misses-fly` | two-turn / opponent-status | match | 0 | 0 | 0 | ✅ agrees |
+| `stat-growl-atk` | stat change | match | 0 | 0 | 0 | ✅ agrees |
+| `stat-leer-def` | stat change | match | 0 | 0 | 0 | ✅ agrees |
+| `stat-scaryface-spe` | stat change | match | 0 | 0 | 0 | ✅ agrees |
+| `stat-charm-atk2` | stat change | match | 0 | 0 | 0 | ✅ agrees |
+| `status-thunderwave-par` | status | match | 0 | 0 | 0 | ✅ agrees |
+| `status-willowisp-brn` | status | match | 0 | 0 | 0 | ✅ agrees |
+| `status-toxic-tox` | status | match | 0 | 0 | 0 | ✅ agrees |
+| `status-spore-slp` | status | match | 0 | 0 | 0 | ✅ agrees |
+| `status-glare-par` | status | match | 0 | 0 | 0 | ✅ agrees |
+| `status-willowisp-vs-fire` | status | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `status-twave-vs-electric` | status | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `status-twave-vs-ground` | status | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-eq-vs-flying` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-eq-vs-levitate` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-eq-vs-airballoon` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-tbolt-vs-ground` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-tbolt-vs-voltabsorb` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-surf-vs-waterabsorb` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-flamethrower-vs-flashfire` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-gigadrain-vs-sapsipper` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-bodyslam-vs-ghost` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `imm-aurasphere-vs-ghost` | immunity / absorb | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `fixed-seismic-toss` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `fixed-night-shade` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `fixed-dragon-rage` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `fixed-sonic-boom` | fixed-damage | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
+| `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
+| `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
 | `gravity-blocks-fly` | two-turn / precondition | probe | 0 | 0 | 4 | 🔍 no divergence |
 | `probe-freeze-dry-vs-water` | type-chart | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `probe-toxic-residual-ramp` | status / residual | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `probe-multi-hit-bullet-seed` | multi-hit | probe | 0 | 0 | 0 | 🔍 no divergence |
-| `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
-| `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
-| `sanity-thunder-wave-guaranteed` | sanity / status | match | 0 | 0 | 0 | ✅ agrees |
-| `sanity-willowisp-guaranteed` | sanity / status | match | 0 | 0 | 0 | ✅ agrees |
-| `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
 
 ## Details
 
@@ -92,6 +121,192 @@ Booster uses Swords Dance while foe is mid-Phantom Force; the self-boost must st
 | 2 | p1a | boost.atk | `4` | `2` | high |
 | 3 | p1a | boost.atk | `6` | `4` | high |
 
+### `seminvuln-gust-hits-fly` — 🔍 no divergence
+Gust (in the allow-list) must hit — and double on — a foe mid-Fly.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
+
+### `seminvuln-twave-misses-fly` — ✅ agrees
+Thunder Wave (opponent-targeting status) must MISS a foe mid-Fly in both engines.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `stat-growl-atk` — ✅ agrees
+Growl lowers the foe Attack by 1.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `stat-leer-def` — ✅ agrees
+Leer lowers the foe Defense by 1.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `stat-scaryface-spe` — ✅ agrees
+Scary Face lowers the foe Speed by 2.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `stat-charm-atk2` — ✅ agrees
+Charm lowers the foe Attack by 2.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-thunderwave-par` — ✅ agrees
+Thunder Wave paralyzes a non-immune foe.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-willowisp-brn` — ✅ agrees
+Will-O-Wisp burns a non-Fire foe.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-toxic-tox` — ✅ agrees
+Toxic badly-poisons a non-Poison/Steel foe.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-spore-slp` — ✅ agrees
+Spore sleeps a non-Grass foe.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-glare-par` — ✅ agrees
+Glare paralyzes a Normal foe.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-willowisp-vs-fire` — 🔍 no divergence
+Will-O-Wisp must NOT burn a Fire-type.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-twave-vs-electric` — 🔍 no divergence
+Thunder Wave must NOT paralyze an Electric-type (Gen 6+).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `status-twave-vs-ground` — 🔍 no divergence
+Thunder Wave must NOT paralyze a Ground-type.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-eq-vs-flying` — 🔍 no divergence
+Earthquake vs a Flying-type
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-eq-vs-levitate` — 🔍 no divergence
+Earthquake vs Levitate
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-eq-vs-airballoon` — 🔍 no divergence
+Earthquake vs an Air Balloon holder
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-tbolt-vs-ground` — 🔍 no divergence
+Thunderbolt vs a Ground-type
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-tbolt-vs-voltabsorb` — 🔍 no divergence
+Thunderbolt vs Volt Absorb (absorb + heal)
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-surf-vs-waterabsorb` — 🔍 no divergence
+Surf vs Water Absorb (absorb + heal)
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-flamethrower-vs-flashfire` — 🔍 no divergence
+Flamethrower vs Flash Fire
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-gigadrain-vs-sapsipper` — 🔍 no divergence
+Giga Drain vs Sap Sipper
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-bodyslam-vs-ghost` — 🔍 no divergence
+Body Slam (Normal) vs a Ghost-type
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `imm-aurasphere-vs-ghost` — 🔍 no divergence
+Aura Sphere (Fighting) vs a Ghost-type
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `fixed-seismic-toss` — 🔍 no divergence
+Seismic Toss deals damage equal to user level (expect ~50 HP).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `fixed-night-shade` — 🔍 no divergence
+Night Shade deals damage equal to user level (expect ~50 HP).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `fixed-dragon-rage` — 🔍 no divergence
+Dragon Rage deals a flat 40 (expect ~40 HP).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `fixed-sonic-boom` — 🔍 no divergence
+Sonic Boom deals a flat 20 (expect ~20 HP).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `sanity-swords-dance-normal` — ✅ agrees
+Swords Dance x3 vs a passive foe — boosts must reach +2/+4/+6 in both engines.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
+
+### `sanity-tackle-neutral-damage` — ✅ agrees
+One Strength (no secondary) into a passive foe — damage must agree within the 85-100% roll band.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `sanity-super-effective-faint` — ✅ agrees
+A clearly super-effective hit must register comparable damage (and same faint outcome).
+
+- Winner: Showdown=`P1` · in-house=`P1` · turns compared: 1
+- No divergences.
+
 ### `gravity-blocks-fly` — 🔍 no divergence
 Under Gravity, Fly cannot be used; the in-house engine charges it anyway.
 
@@ -107,7 +322,7 @@ Under Gravity, Fly cannot be used; the in-house engine charges it anyway.
 | 3 | p2a | hp/damage | `230/267 (dmg~37)` | `248/267 (dmg~19)` | low |
 
 ### `probe-freeze-dry-vs-water` — 🔍 no divergence
-Freeze-Dry is Ice that hits Water super-effectively (×2). A normal Ice calc would resist it (×0.5) — a ×4 damage gap exposes the special case.
+Freeze-Dry is Ice that hits Water super-effectively (×2). A normal Ice calc would resist it (×0.5).
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 1
 - No divergences.
@@ -119,37 +334,7 @@ Toxic deals 1/16, 2/16, 3/16 max HP (no roll). The residual ramp should match ex
 - No divergences.
 
 ### `probe-multi-hit-bullet-seed` — 🔍 no divergence
-Bullet Seed hits 2-5 times (RNG). Hit count differs across engines — expected; surfaced as a low-confidence HP gap.
-
-- Winner: Showdown=`P1` · in-house=`P1` · turns compared: 1
-- No divergences.
-
-### `sanity-swords-dance-normal` — ✅ agrees
-Swords Dance x3 vs a passive foe — boosts must reach +2/+4/+6 in both engines.
-
-- Winner: Showdown=`null` · in-house=`null` · turns compared: 3
-- No divergences.
-
-### `sanity-tackle-neutral-damage` — ✅ agrees
-One Strength (no secondary) into a passive foe — damage must agree within the 85-100% roll band.
+Bullet Seed hits 2-5 times (RNG); hit count differs across engines — expected.
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 1
-- No divergences.
-
-### `sanity-thunder-wave-guaranteed` — ✅ agrees
-Thunder Wave must paralyze a non-Electric, non-Ground foe in both engines.
-
-- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
-- No divergences.
-
-### `sanity-willowisp-guaranteed` — ✅ agrees
-Will-O-Wisp must burn a non-Fire foe in both engines.
-
-- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
-- No divergences.
-
-### `sanity-super-effective-faint` — ✅ agrees
-A clearly super-effective hit must register comparable damage (and same faint outcome).
-
-- Winner: Showdown=`P1` · in-house=`P1` · turns compared: 1
 - No divergences.

@@ -58,6 +58,21 @@ async function main() {
   const probesWithDiv = results.filter(r => r.scn.expect === 'probe' && r.counts.high > 0).length;
   const probesTotal = results.filter(r => r.scn.expect === 'probe').length;
 
+  // High-confidence disagreements on anything that was NOT a known bug = the new map.
+  const findings = results.filter(r => !r.error && r.counts.high > 0 && r.scn.expect !== 'diverge');
+  let findingsSection;
+  if (findings.length) {
+    findingsSection = `\n## 🔎 New divergences to investigate (${findings.length})\nHigh-confidence disagreements on should-match / exploratory scenarios — candidate bugs beyond the known catalogue.\n\n`;
+    for (const r of findings) {
+      findingsSection += `- **\`${r.scn.id}\`** (${r.scn.category}) — ${r.scn.desc}\n`;
+      for (const d of r.divergences.filter(x => x.confidence === 'high').slice(0, 6)) {
+        findingsSection += `  - T${d.turn} ${d.slot} \`${d.field}\`: Showdown=\`${d.showdown}\` vs in-house=\`${d.inhouse}\`${d.note ? ` — ${d.note}` : ''}\n`;
+      }
+    }
+  } else {
+    findingsSection = `\n## 🔎 New divergences to investigate\nNone — every should-match / exploratory scenario agreed with Showdown at high confidence.\n`;
+  }
+
   let md = `# Differential Divergence Report
 
 > Generated ${date} by \`tests/differential/run-report.mjs\`.
@@ -74,7 +89,7 @@ async function main() {
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
-
+${findingsSection}
 ## Summary
 | Scenario | Category | Expect | HIGH | med | low | Verdict |
 |---|---|---|---:|---:|---:|---|

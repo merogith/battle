@@ -18,8 +18,14 @@ kept in CI, stops fixed bugs from silently regressing.
 ## Run it
 
 ```bash
-# Full battery → writes DIVERGENCE_REPORT.md, prints a summary
-node tests/differential/run-report.mjs        # or: npm run test:differential
+# Categorical battery → writes DIVERGENCE_REPORT.md
+node tests/differential/run-report.mjs
+
+# Damage-modifier sweep → writes DAMAGE_SWEEP_REPORT.md
+node tests/differential/damage-sweep.mjs
+
+# Both of the above
+npm run test:differential
 
 # CI gate (also runs under `npm test`)
 node --test tests/differential/oracle.test.js
@@ -32,10 +38,19 @@ node --test tests/differential/oracle.test.js
 | `showdown-oracle.mjs` | Drives a scripted singles battle in `@pkmn/sim`; parses the sim protocol into a normalized per-turn trace. |
 | `inhouse-oracle.mjs` | Drives the **same** script through `battle.html` (via the jsdom harness); emits the same trace shape. |
 | `diff.mjs` | Compares two traces; emits divergences tagged by confidence. |
-| `scenarios.mjs` | Engine-neutral scenario battery (teams + scripted choices). |
-| `run-report.mjs` | Runs the battery, writes `DIVERGENCE_REPORT.md`. |
+| `scenarios.mjs` | Engine-neutral categorical scenario battery (teams + scripted choices). |
+| `run-report.mjs` | Runs the categorical battery, writes `DIVERGENCE_REPORT.md`. |
+| `damage-sweep.mjs` | Multi-seed damage-range probe of the multiplier layer (items / abilities / stat calc); writes `DAMAGE_SWEEP_REPORT.md`. |
 | `oracle.test.js` | CI gate: sanity scenarios must agree; known bugs are marked. |
-| `DIVERGENCE_REPORT.md` | Generated artifact — the current divergence snapshot. |
+| `DIVERGENCE_REPORT.md` · `DAMAGE_SWEEP_REPORT.md` | Generated artifacts — the current divergence snapshots. |
+
+### The damage-modifier sweep
+
+A single-roll damage comparison can't separate a 1.3× item bug from the 85-100%
+roll band. `damage-sweep.mjs` runs each matchup over many seeds **per engine** and
+compares the damage **ranges**: overlapping = the multiplier layer agrees; disjoint
+= a real items/abilities/stat-calc divergence. (Showdown's wider max often reflects
+occasional crits; matching minimums confirm the base formula.)
 
 ## Confidence model
 
