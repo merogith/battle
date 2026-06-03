@@ -308,3 +308,37 @@ test('converted arc endings branch on their arc choice', () => {
     assert.ok(def.length, `${c.key}: has a default branch`);
   }
 });
+
+// ── Main spine (the loop / Mystery Figure) ──────────────────────────────────
+const MAIN_SCENES = ['event1', 'event2', 'event3', 'battle1', 'event4', 'battle2',
+                     'event5', 'event6', 'event7', 'event8', 'event9', 'mfBattle',
+                     'mfReveal', 'ending'];
+
+test('every main-spine scene is structured', () => {
+  const S = nt.STORY_SCENES;
+  for (const k of MAIN_SCENES) {
+    const sc = S[`main.${k}`];
+    assert.ok(sc && Array.isArray(sc.acts) && sc.acts.length, `main.${k} has acts`);
+  }
+});
+
+test('main-spine battles carry a win outro; the reveal is a full multi-act build', () => {
+  const S = nt.STORY_SCENES;
+  for (const k of ['battle1', 'battle2', 'mfBattle']) {
+    const o = S[`main.${k}`].outro;
+    assert.ok(o && Array.isArray(o.win) && o.win.length, `main.${k} has outro.win`);
+  }
+  assert.ok(S['main.mfReveal'].acts.length >= 4, 'mfReveal builds across >=4 acts');
+});
+
+test('the ending offers the loop choice (remember vs forget)', () => {
+  const ending = nt.STORY_SCENES['main.ending'];
+  const choiceAct = ending.acts.find(a => a.choice);
+  assert.ok(choiceAct, 'ending has a choice act');
+  assert.equal(choiceAct.choice.persistKey, 'main.loop.remember');
+  const vals = choiceAct.choice.options.map(o => o.value).sort();
+  assert.deepEqual(vals, ['forget', 'remember']);
+  for (const o of choiceAct.choice.options) {
+    assert.ok(Array.isArray(o.reply) && o.reply.length, `ending option ${o.value} has a reply`);
+  }
+});
