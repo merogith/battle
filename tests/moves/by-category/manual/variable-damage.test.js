@@ -5,10 +5,6 @@
 // assertion under-tests them. Setup-shape: fire the move under two opposed
 // conditions and assert the *relationship* (the oracle-style differential check),
 // or assert the exact fraction/relation where the move defines one.
-//
-// Observed engine note (NOT asserted as correct): Crush Grip does not scale with
-// the target's HP here (constant ~2 dmg) — filed as a behaviour observation, so
-// it only gets a "deals damage" assertion below.
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../../../helpers/load-engine.js';
@@ -95,7 +91,7 @@ describe('Variable-damage moves (draft fills)', () => {
   }
 
   // ── target current HP: higher → more ──
-  for (const m of ['Wring Out', 'Hard Press']) {
+  for (const m of ['Wring Out', 'Hard Press', 'Crush Grip']) {
     it(`${m} is stronger versus a high-HP target`, async () => {
       const lowHp = (await fire(m, { defSpecies: 'Blissey', defHpFrac: 0.3 })).dealt;
       const fullHp = (await fire(m, { defSpecies: 'Blissey', defHpFrac: 1 })).dealt;
@@ -134,7 +130,7 @@ describe('Variable-damage moves (draft fills)', () => {
   });
 
   // ── random / non-monotone here: assert only that damage is dealt ──
-  for (const m of ['Magnitude', 'Trump Card', 'Psywave', 'Crush Grip']) {
+  for (const m of ['Magnitude', 'Trump Card', 'Psywave']) {
     it(`${m} deals damage`, async () => {
       const r = await fire(m, { defSpecies: 'Blissey' });
       assert.ok(r.dealt > 0, `${m} should deal damage`);

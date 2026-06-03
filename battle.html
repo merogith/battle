@@ -23549,13 +23549,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`It dealt ${actualDmg} damage!`, 'dmg'); updateUI(); await sleep(1000); return;
                 }
 
-                // METAL BURST: deals 1.5× the last damage received this turn
-                if (move.name === "Metal Burst") {
+                // METAL BURST / COMEUPPANCE: deal 1.5× the last damage received this turn.
+                // (Both read the user's own taken-damage volatiles; Comeuppance is the
+                // Dark-type twin. The later move.name==="Comeuppance" branch read the
+                // defender's volatiles and always failed, so route it through here.)
+                if (move.name === "Metal Burst" || move.name === "Comeuppance") {
                     let lastDmg = Math.max(attacker.volatile.lastPhysicalDmg || 0, attacker.volatile.lastSpecialDmg || 0);
-                    if (lastDmg <= 0) { logMsg(`${attacker.name}'s Metal Burst failed!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
+                    if (lastDmg <= 0) { logMsg(`${attacker.name}'s ${move.name} failed!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let burstDmg = Math.floor(lastDmg * 1.5);
                     if (defender.volatile.sub > 0) { let s = Math.min(defender.volatile.sub, burstDmg); defender.volatile.sub -= s; logMsg(`The substitute took ${s} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
-                    else { let a = Math.min(defender.currentHp, burstDmg); defender.currentHp -= a; defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`Metal Burst dealt ${a} damage!`, 'dmg'); }
+                    else { let a = Math.min(defender.currentHp, burstDmg); defender.currentHp -= a; defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`${move.name} dealt ${a} damage!`, 'dmg'); }
                     updateUI(); await sleep(1000); return;
                 }
 
@@ -23884,7 +23887,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let _fp = getFlingBasePower(attacker.item);
                     if (_fp) basePower = _fp;
                 }
-                if ((move.name === "Wring Out" || move.name === "Hard Press") && !basePower) basePower = Math.max(1, Math.floor(120 * defender.currentHp / defender.maxHp));
+                if ((move.name === "Wring Out" || move.name === "Hard Press" || move.name === "Crush Grip") && !basePower) basePower = Math.max(1, Math.floor(120 * defender.currentHp / defender.maxHp));
                 if (move.name === "Eruption" || move.name === "Water Spout" || move.name === "Dragon Energy") basePower = Math.max(1, Math.floor(150 * attacker.currentHp / attacker.maxHp));
                 // Final Gambit: damage = user's current HP, then user faints (handled after damage)
                 if (move.name === "Final Gambit") basePower = 1; // placeholder; actual damage overridden below

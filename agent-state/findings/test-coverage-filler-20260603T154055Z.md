@@ -7,10 +7,16 @@ file: battle.html
 agents: [test-coverage-filler]
 fingerprint: f5fbfd6fa9b5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Trick / Switcheroo swap is one-directional — the user's item is destroyed
+
+**Resolution**: No longer reproduces on HEAD (`battle.html:~27762` swaps both items
+and clears choice locks). Re-verified via the jsdom harness on
+claude/inspiring-shannon-MP5aq with the original pairs (Iron Ball/Oran Berry,
+Oran/Lum) incl. a low-HP foe: Trick and Switcheroo each swap both items correctly.
+Stale finding — fixed upstream.
 
 **Evidence**:
 ```js

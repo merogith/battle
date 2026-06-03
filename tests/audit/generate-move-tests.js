@@ -62,8 +62,6 @@ const NEEDS_MANUAL_SETUP = new Set([
 // apostrophes) — jsLit only affects the emitted string literal, not this match.
 // See agent-state/handoff/03-fill-remaining-move-todos.md for the breakdown.
 const DEFERRED = new Set([
-  // damage — broken (ISSUE_LEDGER, test-coverage-filler)
-  'Comeuppance',
   // status — broken / no-op (ISSUE_LEDGER, test-coverage-filler)
   'Trick', 'Switcheroo', 'Power Shift', 'Corrosive Gas', 'Purify', 'Venom Drench',
   'Ion Deluge', 'Crafty Shield', 'Mat Block', 'Nature Power', 'Copycat', 'Mirror Move',

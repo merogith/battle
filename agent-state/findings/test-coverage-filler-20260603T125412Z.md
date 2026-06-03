@@ -2,15 +2,20 @@
 severity: P2
 category: bug
 anchor_symbol: Comeuppance
-current_line_hint: ~23412
+current_line_hint: ~23553
 file: battle.html
 agents: [test-coverage-filler]
 fingerprint: d1fcc81fbdea
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Comeuppance reflects 0 damage in all cases (twin Metal Burst works)
+
+**Resolution**: Routed Comeuppance through the working Metal Burst reflect path
+(`battle.html:~23553`), which reads the user's own `attacker.volatile` taken-damage.
+Confirmed on HEAD: 124 (phys) / 19 (spec) / 0 (no prior hit), identical to Metal
+Burst. Regression test in `manual/prior-context.test.js`.
 
 **Evidence**:
 ```js
@@ -36,15 +41,20 @@ if (move.name === "Metal Burst" || move.name === "Comeuppance") {
 severity: P2
 category: bug
 anchor_symbol: Crush Grip
-current_line_hint: ~23746
+current_line_hint: ~23887
 file: battle.html
 agents: [test-coverage-filler]
 fingerprint: 052224dd33cd
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Crush Grip doesn't scale with target HP (constant ~2 dmg); siblings do
+
+**Resolution**: Added `Crush Grip` to the Wring Out / Hard Press HP-scaling line
+(`battle.html:~23887`, `120 * currentHp/maxHp`). Confirmed on HEAD: scales 281
+(full HP) → 85 (30% HP) vs Blissey. Regression test in `manual/variable-damage.test.js`
+(now asserted in the Wring Out / Hard Press scaling loop).
 
 **Evidence**:
 ```js

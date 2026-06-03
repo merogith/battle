@@ -7,9 +7,9 @@
 // resolve after the foe even with the harness's forced-fast player; Metal Burst
 // (0 priority) must be made the slower mon to have something to reflect.
 //
-// Engine gaps found while writing this (NOT covered here — see session notes):
-//   • Comeuppance reflects 0 in every case (its twin Metal Burst works) — appears
-//     unimplemented; left as it.todo rather than pinned to broken behaviour.
+// Engine gaps found while writing this:
+//   • Comeuppance reflected 0 in every case — FIXED (now routed through the same
+//     attacker-volatile reflect path as its twin Metal Burst); asserted below.
 //   • Upper Hand / Shell Trap don't enforce their precondition gate (they damage
 //     regardless of the foe's move); they get an honest "deals damage" assertion.
 import { describe, it, before } from 'node:test';
@@ -49,6 +49,11 @@ describe('Prior-context moves (draft fills)', () => {
     assert.ok(await react('Metal Burst', 'Body Slam', { slow: true }) > 0, 'reflects a physical hit');
     assert.ok(await react('Metal Burst', 'Water Gun', { slow: true }) > 0, 'reflects a special hit');
     assert.equal(await react('Metal Burst', 'Splash', { slow: true }), 0, 'fails with no prior hit');
+  });
+  it('Comeuppance reflects the last hit like its twin Metal Burst, and needs a prior hit', async () => {
+    assert.ok(await react('Comeuppance', 'Body Slam', { slow: true }) > 0, 'reflects a physical hit');
+    assert.ok(await react('Comeuppance', 'Water Gun', { slow: true }) > 0, 'reflects a special hit');
+    assert.equal(await react('Comeuppance', 'Splash', { slow: true }), 0, 'fails with no prior hit');
   });
 
   it('Avalanche is stronger when the user was hit first', async () => {

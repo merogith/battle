@@ -387,9 +387,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Comet Punch should reduce defender HP');
   });
 
-  it.todo('Comeuppance' + ' [0 BP Dark Physical]', async () => {
-    // TODO: assert Comeuppance's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Comeuppance' — covered by a manual test (see by-category/manual/).
 
   it('Constrict' + ' [10 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Constrict', 'Splash', 'Splash', 'Splash'] });
