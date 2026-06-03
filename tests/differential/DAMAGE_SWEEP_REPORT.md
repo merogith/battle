@@ -6,7 +6,7 @@
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
 > (roll variance removed). Reference: @pkmn/sim (MIT).
 
-**Unexpected divergences: 0/53** ✅ · known/expected divergences: 1 (see notes)
+**Unexpected divergences: 0/53** ✅
 
 A row "diverges" only when ranges are disjoint AND the crit-proof min-skew confirms
 it (so a stray crit can't mask a real multiplier gap). Rows tagged **known** are
@@ -66,7 +66,7 @@ documented engine findings, not surprises.
 | `weather-ball-rain` | Weather Ball → Water + 100 BP in rain (Rain Dance → Weather Ball) | 69–79 (μ74) | 69–114 (μ78) | ✅ overlap |
 | `stored-power-boosts` | Stored Power BP = 20 + 20×boosts (Calm Mind first) | 52–59 (μ56) | 52–85 (μ59) | ✅ overlap |
 | `ability-analytic` | Analytic ×1.3 when the user moves last | 59–102 (μ65) | 58–97 (μ66) | ✅ overlap |
-| `ability-stakeout-lead` | Stakeout wrongly ×2 vs a turn-1 lead (in-house turnCount lags) — symptom of finding #2 | 92–108 (μ101) | 47–77 (μ53) | 🟡 known divergence |
+| `ability-stakeout-lead` | Stakeout does NOT ×2 a turn-1 lead — finding #2 FIXED | 47–55 (μ51) | 47–77 (μ53) | ✅ overlap |
 
 Ranges are HP damage to the defender. A correct multiplier yields overlapping
 bands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in

@@ -194,16 +194,27 @@ export const SCENARIOS = [
     choices1: ['move 1'], choices2: ['move 1'],
   },
 
-  // ══ Speed Boost: +1 Speed stage each end-of-turn (PROBE) ══
+  // ══ Speed Boost: +1 Speed stage each end-of-turn ══
   {
     id: 'speed-boost-ramp',
     category: 'ability / end-of-turn',
-    desc: 'Speed Boost grants +1 Speed at the end of each turn (+1/+2/+3).',
-    bug: 'CONFIRMED real divergence (not harness): battle.html:28706 gates Speed Boost on `turnCount > 0` ("after first turn"), and turnCount++ runs AFTER endOfTurnEffects (battle.html:21676 vs 21682), so a lead skips its end-of-turn-1 boost → in-house 0/1/2 vs Showdown 1/2/3.',
-    expect: 'probe',
+    desc: 'Speed Boost grants +1 Speed at the end of each turn, starting turn 1 (+1/+2/+3).',
+    note: 'FIXED finding #2: Speed Boost now keys off the turn-start active snapshot (not turnCount>0), so a LEAD boosts at the end of turn 1 — matching Showdown 1/2/3 (was 0/1/2).',
+    expect: 'match',
     team1: [{ species: 'Yanmega', ability: 'Speed Boost', moves: ['Quick Attack', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
     team2: [SLOW_WALL(['Splash', 'Splash'])],
     choices1: ['move 2', 'move 2', 'move 2'],
+    choices2: threeTurns,
+  },
+  {
+    id: 'speed-boost-switchin',
+    category: 'ability / end-of-turn',
+    desc: 'A Speed Boost mon SWITCHED IN on turn 1 must NOT boost on its entry turn, but must on the next (switch-in ≠ lead).',
+    note: 'Switch-aware guard for finding #2: proves the turn-start snapshot distinguishes a mid-turn switch-in (no boost on entry) from a lead (boosts on turn 1).',
+    expect: 'match',
+    team1: [SLOW_WALL(['Splash', 'Splash']), { species: 'Yanmega', ability: 'Speed Boost', moves: ['Quick Attack', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    team2: [SLOW_WALL(['Splash', 'Splash'])],
+    choices1: ['switch 2', 'move 2', 'move 2'],
     choices2: threeTurns,
   },
 

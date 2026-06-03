@@ -8,20 +8,15 @@
 
 ## Headline
 - **Known bugs confirmed by the oracle:** 0/0
-- **Sanity scenarios in agreement:** 19/19
+- **Sanity scenarios in agreement:** 21/21
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 1/45
+- **Probes flagging a divergence to investigate:** 0/44
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
 
-## 🔎 New divergences to investigate (1)
-High-confidence disagreements on should-match / exploratory scenarios — candidate bugs beyond the known catalogue.
-
-- **`speed-boost-ramp`** (ability / end-of-turn) — Speed Boost grants +1 Speed at the end of each turn (+1/+2/+3).
-  - T1 p1a `boost.spe`: Showdown=`1` vs in-house=`0`
-  - T2 p1a `boost.spe`: Showdown=`2` vs in-house=`1`
-  - T3 p1a `boost.spe`: Showdown=`3` vs in-house=`2`
+## 🔎 New divergences to investigate
+None — every should-match / exploratory scenario agreed with Showdown at high confidence.
 
 ## Summary
 | Scenario | Category | Expect | HIGH | med | low | Verdict |
@@ -66,7 +61,8 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `scrappy-hits-ghost` | ability-ignoring | probe | 0 | 1 | 0 | 🔍 no divergence |
 | `sturdy-survives-ohko` | survival | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `focussash-survives-ohko` | survival | probe | 0 | 0 | 0 | 🔍 no divergence |
-| `speed-boost-ramp` | ability / end-of-turn | probe | 3 | 0 | 0 | 🔍 divergence (investigate) |
+| `speed-boost-ramp` | ability / end-of-turn | match | 0 | 0 | 0 | ✅ agrees |
+| `speed-boost-switchin` | ability / end-of-turn | match | 0 | 0 | 0 | ✅ agrees |
 | `switchin-intimidate` | switch-in ability | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `hazard-stealth-rock-entry` | entry hazard | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `prankster-vs-dark` | ability / priority | probe | 0 | 1 | 0 | 🔍 no divergence |
@@ -348,17 +344,19 @@ Focus Sash survives a would-be OHKO from full HP (defender not fainted).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 1
 - No divergences.
 
-### `speed-boost-ramp` — 🔍 divergence (investigate)
-Speed Boost grants +1 Speed at the end of each turn (+1/+2/+3).
+### `speed-boost-ramp` — ✅ agrees
+Speed Boost grants +1 Speed at the end of each turn, starting turn 1 (+1/+2/+3).
 
-- **Maps to:** CONFIRMED real divergence (not harness): battle.html:28706 gates Speed Boost on `turnCount > 0` ("after first turn"), and turnCount++ runs AFTER endOfTurnEffects (battle.html:21676 vs 21682), so a lead skips its end-of-turn-1 boost → in-house 0/1/2 vs Showdown 1/2/3.
+- **Note:** FIXED finding #2: Speed Boost now keys off the turn-start active snapshot (not turnCount>0), so a LEAD boosts at the end of turn 1 — matching Showdown 1/2/3 (was 0/1/2).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
 
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 1 | p1a | boost.spe | `1` | `0` | high |
-| 2 | p1a | boost.spe | `2` | `1` | high |
-| 3 | p1a | boost.spe | `3` | `2` | high |
+### `speed-boost-switchin` — ✅ agrees
+A Speed Boost mon SWITCHED IN on turn 1 must NOT boost on its entry turn, but must on the next (switch-in ≠ lead).
+
+- **Note:** Switch-aware guard for finding #2: proves the turn-start snapshot distinguishes a mid-turn switch-in (no boost on entry) from a lead (boosts on turn 1).
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
 
 ### `switchin-intimidate` — 🔍 no divergence
 Switching in an Intimidate Pokémon lowers the foe Attack by 1.

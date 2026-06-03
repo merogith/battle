@@ -164,13 +164,10 @@ const DAMAGE_SCENARIOS = [
   // Analytic: ×1.3 when the user moves LAST — attacker is made slower than the
   // (faster) passive Blissey, so Blissey's Splash resolves first.
   { id: 'ability-analytic', desc: 'Analytic ×1.3 when the user moves last', attacker: { species: 'Magnezone', ability: 'Analytic', nature: 'Quiet', evs: { spa: 252 }, ivs: { spe: 0 } }, move: 'Flash Cannon', defender: WALL_SPEC },
-  // Stakeout: ×2 vs a target that "switched in this turn". KNOWN DIVERGENCE — a
-  // second symptom of finding #2's root cause: in-house turnCount is incremented at
-  // END of turn (battle.html:21682) while Showdown's activeTurns increments at turn
-  // START, so on turn 1 a lead's turnCount is still 0 → in-house Stakeout wrongly
-  // doubles (verified: T1 in-house 2× Showdown, T2 they match). Same off-by-one
-  // makes Speed Boost skip its first turn.
-  { id: 'ability-stakeout-lead', desc: 'Stakeout wrongly ×2 vs a turn-1 lead (in-house turnCount lags) — symptom of finding #2', expectDiverge: true, attacker: { species: 'Bisharp', ability: 'Stakeout', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: WALL_PHYS_HP },
+  // Stakeout: ×2 vs a target that switched in this turn. FIXED (finding #2): it now
+  // keys off the turn-start active snapshot, so a turn-1 LEAD is NOT treated as freshly
+  // switched in → no ×2, matching Showdown (was in-house ~2× Showdown on T1).
+  { id: 'ability-stakeout-lead', desc: 'Stakeout does NOT ×2 a turn-1 lead — finding #2 FIXED', attacker: { species: 'Bisharp', ability: 'Stakeout', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: WALL_PHYS_HP },
 ];
 
 async function main() {

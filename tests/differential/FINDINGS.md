@@ -23,13 +23,12 @@ Ice Scales, Heatproof, Fluffy, Dry Skin, Mold Breaker; weather, screens, terrain
 
 ## Real divergences from Showdown (candidate fixes)
 
-Stage 1 status: **3 of 4 fixed** (oracle-verified, 0 regressions). #2 is open pending a
-design call (it touches the AI's Dynamax window).
+Stage 1 status: **4 of 4 fixed** (oracle-verified, 0 regressions).
 
 | # | Status | Finding | Root cause | Location | Severity |
 |---|---|---|---|---|---|
 | 1 | ✅ **FIXED** | **Self-target / field moves "miss" vs a semi-invulnerable foe** (Fly/Dig/Dive/Bounce/Phantom Force/Shadow Force/Sky Drop) — the reported Fly bug | invuln check lacked the `move.cat !== "Status" \|\| !SELF_TARGETING_STATUS.has(name)` guard — **added**, mirroring the Protect guard | `battle.html` invuln check (~23099) | High |
-| 2 | ⏳ **OPEN** | **`turnCount` lags Showdown's `activeTurns` by one on turn 1** — `turnCount++` runs at END of turn (`battle.html:21682`) while Showdown increments at turn START. Two symptoms: (a) **Speed Boost** skips its end-of-T1 boost (in-house 0/1/2 vs Showdown 1/2/3); (b) **Stakeout** wrongly ×2 vs a turn-1 lead (in-house 2× Showdown on T1, equal on T2) | end-of-turn `turnCount++` timing vs the `turnCount===0` / `> 0` gates | `battle.html:28706` (Speed Boost), `:24149` (Stakeout) | Low–Med |
+| 2 | ✅ **FIXED** | **`turnCount` lagged Showdown's `activeTurns` by one on turn 1** — two symptoms: (a) **Speed Boost** skipped its end-of-T1 boost (in-house 0/1/2 vs Showdown 1/2/3); (b) **Stakeout** wrongly ×2 vs a turn-1 lead | the two gates read `turnCount` (incremented at END of turn) — **repointed** to a turn-start active snapshot (`state._turnStartActives`) that mirrors `activeTurns`: a lead counts on T1, a mid-turn switch-in does not. `turnCount` itself is unchanged, so the AI's `isFreshMatchup`/Dynamax window is **untouched** | `battle.html` Speed Boost gate + Stakeout gate + turn-start snapshot | Low–Med |
 | 3 | ✅ **FIXED** | **Gravity did not restrict Gravity-incompatible moves** — Fly/Bounce/Splash/Jump Kick/Magnet Rise worked under Gravity | move-resolution had no `state.gravity` precondition — **added** a Gravity-banned set that fails the move before charge | `battle.html` (Gravity gate before the two-turn block) | Med |
 | 4 | ✅ **FIXED** | **Facade did not bypass the burn Attack-drop** — a burned Facade netted ×2 (Facade) × ½ (burn) = ×1, half its real power | burn-halving wasn't exempted for Facade — **added** `&& move.name !== "Facade"` | `battle.html` burn-halving line (~24186) | Low–Med |
 
@@ -40,10 +39,12 @@ Finding #3 was thought to need a bespoke legality test; the oracle corroborated 
 and a direct test (`engine-fixes.test.js`) now locks the fix in.
 
 **Fix verification:** #1 — the 5 `seminvuln-selfboost-*` scenarios flipped `diverge→match`
-and the fix-proof marker in `oracle.test.js` asserts 0 divergence. #3 & #4 — direct
-in-house assertions in `engine-fixes.test.js` (differential play can't cleanly assert a
-move-legality fix, since Showdown substitutes a default for the illegal choice). All with
-**sanity 14/14, 0 false positives** unchanged.
+plus a fix-proof marker in `oracle.test.js`. #2 — `speed-boost-ramp` now agrees (lead 1/2/3),
+a new `speed-boost-switchin` scenario proves a switched-in mon does NOT boost on entry,
+the `ability-stakeout-lead` sweep now overlaps, and `engine-fixes.test.js` asserts Stakeout
+×2 for a switch-in but not a lead. #3 & #4 — direct in-house assertions in `engine-fixes.test.js`
+(differential play can't cleanly assert a move-legality fix, since Showdown substitutes a
+default for the illegal choice). Oracle CI **22/22**, engine-fixes **3/3**, **0 false positives**.
 
 ## Confirmed CORRECT (broad agreement with Showdown — do not re-investigate)
 Damage formula & flooring · STAB · type chart incl. **Freeze-Dry vs Water** ·
@@ -112,14 +113,9 @@ of findings — verify the harness before blaming the engine.)
    unaffected; the recharge scenario was withdrawn.
 
 ## Next step
-**#1, #3, #4 are fixed and committed** (oracle-verified, CI-guarded). Remaining: **#2**
-(the `turnCount` timing — Speed Boost + Stakeout). It's the only AI-adjacent one (its
-sole other reader, `isFreshMatchup`, gates the AI's Dynamax decision), so it needs a
-design call rather than a quiet edit. Options:
-- **Targeted flag (recommended):** an "active-at-turn-start" marker used *only* by
-  Speed Boost + Stakeout, leaving `turnCount`/`isFreshMatchup` untouched. Fixes both
-  symptoms with no AI side effect; needs careful plumbing across lead/switch/faint
-  entry paths + a switch-aware differential test to lock it down.
-- **Global increment move:** shift `turnCount++` to turn start. Simplest, but also
-  shifts the AI's Dynamax "fresh matchup" window 2→1 turn (a balance change).
-- **Defer:** leave Stakeout marked as a known divergence for now.
+**Stage 1 is complete — all four findings fixed, oracle-verified, CI-guarded** (oracle
+22/22, engine-fixes 3/3, 0 false positives). #2 used the recommended targeted approach:
+Speed Boost + Stakeout now read a turn-start active snapshot, so `turnCount` and the AI's
+`isFreshMatchup`/Dynamax window are untouched. No open differential findings remain in
+scope; re-run `npm run test:differential` (or the `tests/differential/*.test.js` CI gate)
+to regenerate the evidence.

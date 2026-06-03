@@ -21374,6 +21374,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Reset per-turn move tracking (used by Zoom Lens / Analytic)
                 if (state.pActive) state.pActive.volatile.movedThisTurn = false;
                 if (state.fActive) state.fActive.volatile.movedThisTurn = false;
+                // Snapshot who is on the field at the START of this turn, before any
+                // switch resolves. Speed Boost (end-of-turn) and Stakeout (vs a target
+                // that just entered) key off this so a LEAD counts on turn 1 but a
+                // mid-turn switch-in does not — matching Showdown's activeTurns. Replaces
+                // the off-by-one turnCount===0 / >0 gates (finding #2); turnCount itself
+                // is untouched (still drives the AI's isFreshMatchup / Dynamax window).
+                state._turnStartActives = [state.pActive, state.fActive].filter(Boolean);
                 // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
                 if (state.turnNumber > 200) {
                     logMsg(`Turn limit reached! The battle ends in a draw.`, 'info');
@@ -24160,7 +24167,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Dry Skin: Fire moves deal 25% more to Dry Skin users
                 if (defender.ability === "Dry Skin" && move.type === "Fire") basePower = Math.floor(basePower * 1.25);
                 // Stakeout: 2x power vs freshly switched-in target
-                if (attacker.ability === "Stakeout" && defender.turnCount === 0) basePower = Math.floor(basePower * 2);
+                if (attacker.ability === "Stakeout" && !(Array.isArray(state._turnStartActives) && state._turnStartActives.includes(defender))) basePower = Math.floor(basePower * 2);
                 // Minimize: double damage from certain moves
                 const _minimizeMoves = new Set(["Stomp","Body Slam","Heavy Slam","Heat Crash","Dragon Rush","Steamroller","Phantom Force","Shadow Force","Flying Press"]);
                 if (defender.volatile.minimized && _minimizeMoves.has(move.name)) basePower = Math.floor(basePower * 2);
@@ -28716,8 +28723,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.obstruct = false;
             mon.volatile.burningBulwark = false;
 
-            // Speed Boost: +1 Speed stage per turn (after first turn)
-            if (mon.ability === "Speed Boost" && mon.turnCount > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
+            // Speed Boost: +1 Speed stage at the end of each turn the mon was on the
+            // field at turn start (a lead counts on turn 1; a mid-turn switch-in doesn't).
+            if (mon.ability === "Speed Boost" && Array.isArray(state._turnStartActives) && state._turnStartActives.includes(mon) && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                 changeStage(mon, 'spe', 1);
             }
             // Slow Start: decrement counter; clear when it reaches 0

@@ -64,6 +64,44 @@ test('finding #3: Gravity blocks ground-defying moves; legal moves are unaffecte
   assert.equal(noGrav.p.volatile.charging, 'Fly', 'Fly should charge normally without Gravity');
 });
 
+test('finding #2: Stakeout ×2 vs a freshly-switched-in target, but NOT vs a turn-1 lead', async () => {
+  // The FOE is the Stakeout attacker; the player's target is either the lead or a
+  // mon switched in on turn 1. A target that just switched in is "fresh" (×2); a lead
+  // is not. Average over rolls.
+  async function foeStakeoutDmg({ switchIn }) {
+    let total = 0;
+    const N = 8;
+    for (let i = 0; i < N; i++) {
+      eng.seedRng(200 + i);
+      const filler = eng.mkMon({ species: 'Pidgey', ability: 'Keen Eye', moves: ['Splash', 'Splash'], nature: 'Hardy' });
+      const target = eng.mkMon({ species: 'Snorlax', ability: 'Thick Fat', moves: ['Splash', 'Splash'], nature: 'Impish', evs: { hp: 252, def: 252 } });
+      const attacker = eng.mkMon({ species: 'Bisharp', ability: 'Stakeout', moves: ['Strength', 'Splash'], nature: 'Adamant', evs: { atk: 252 } });
+      const party = switchIn ? [filler, target] : [target];
+      const lead = switchIn ? filler : target;
+      eng.reset();
+      Object.assign(eng.engine.state, {
+        playerParty: party, foeParty: [attacker], pActive: lead, fActive: attacker, mode: 'pve',
+        turnNumber: 0, isOver: false, isLocked: false, weather: null, weatherTurns: 0,
+        terrain: null, terrainTurns: 0, trickRoom: 0, gravity: 0, magicRoom: 0, mudSport: 0, waterSport: 0, wonderRoom: 0,
+      });
+      const side = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
+      eng.engine.state.pSide = { ...side };
+      eng.engine.state.fSide = { ...side };
+      eng.engine.setForcedFoeMoveSlot(0); // foe uses Strength (Stakeout attack)
+      const before = target.currentHp;
+      if (switchIn) await W.playTurn(null, 1); // player switches to target this turn
+      else await W.playTurn(0, null);          // player (target) Splashes
+      total += before - target.currentHp;
+    }
+    return total / N;
+  }
+  const lead = await foeStakeoutDmg({ switchIn: false });
+  const fresh = await foeStakeoutDmg({ switchIn: true });
+  const ratio = fresh / lead;
+  assert.ok(ratio > 1.7 && ratio < 2.3,
+    `Stakeout should ×2 a freshly-switched-in target but not a lead; got lead=${lead.toFixed(1)} switch-in=${fresh.toFixed(1)} ratio=${ratio.toFixed(2)}`);
+});
+
 test('finding #4: a burned Facade keeps its ×2 (burn Attack-drop exempted)', async () => {
   // Facade damage to a fixed wall, burned vs unburned, averaged over several damage
   // rolls. Burned Facade is ×2 (status boost) with NO burn halving → ~2× unburned.
