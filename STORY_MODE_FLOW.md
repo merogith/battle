@@ -1081,7 +1081,7 @@ gets new leader picks for unvisited slots.
 
 ## 16. References
 
-- `docs/STORY_NARRATIVE_VARIANTS.md` — the 8-storyline variant design layered over the timeline
+- The 8-storyline variant design (`docs/STORY_NARRATIVE_VARIANTS.md`) was **CUT (2026-06)** — removed from code + docs; see git history + CLAUDE.md → "Excised vs retired". Run variety now comes from the 3-track system (`sm.tracks`).
 - `docs/PROGRESSION_CURVE_MASTER.md` — difficulty-curve reference (flat-Lv50 / 3-axis model)
 - `docs/EVOLUTION_FLOW_REBUILD.md` — evolution / stone / facility-intro subsystem spec
 - `README.md` — top-level project README; references this file
