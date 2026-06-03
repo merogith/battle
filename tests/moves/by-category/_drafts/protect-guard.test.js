@@ -5,9 +5,10 @@
 // foe uses Body Slam; assert the user took no damage. Endure instead survives a
 // lethal hit at 1 HP.
 //
-// Excluded: King's Shield — it does NOT block here (Body Slam connects for ~58; see
-// findings). Quick Guard / Wide Guard / Crafty Shield / Mat Block are doubles-only
-// targeted guards and left as todo.
+// Quick Guard / Wide Guard / Crafty Shield / Mat Block are doubles-only targeted
+// guards and left as todo. (Note: move names must keep their apostrophe — "King's
+// Shield" — since an apostrophe-stripped name silently resolves to a damaging
+// fallback rather than the real move.)
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../../../helpers/load-engine.js';
@@ -28,7 +29,7 @@ async function guard(move) {
 }
 
 describe('Protect / guard moves (draft fills)', () => {
-  for (const move of ['Protect', 'Detect', 'Spiky Shield', 'Baneful Bunker', 'Obstruct', 'Silk Trap', 'Burning Bulwark']) {
+  for (const move of ['Protect', 'Detect', "King's Shield", 'Spiky Shield', 'Baneful Bunker', 'Obstruct', 'Silk Trap', 'Burning Bulwark']) {
     it(`${move} blocks the foe's attack`, async () => {
       assert.equal(await guard(move), 0, `${move} should block the incoming hit`);
     });

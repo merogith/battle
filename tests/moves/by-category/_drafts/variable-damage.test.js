@@ -119,6 +119,10 @@ describe('Variable-damage moves (draft fills)', () => {
     const r = await fire('Ruination', { defSpecies: 'Blissey' });
     assert.equal(r.dealt, Math.floor(r.foeMax / 2), 'Ruination should remove half the foe HP');
   });
+  it("Nature's Madness deals half the target's current HP", async () => {
+    const r = await fire("Nature's Madness", { defSpecies: 'Blissey' });
+    assert.equal(r.dealt, Math.floor(r.foeMax / 2), "Nature's Madness should remove half the foe HP");
+  });
   it("Endeavor drops the target to the user's HP", async () => {
     const r = await fire('Endeavor', { defSpecies: 'Blissey' }); // user (175) below full-HP Blissey
     assert.equal(r.foe.currentHp, r.attacker.currentHp, 'Endeavor should equalise HP downward');
@@ -130,7 +134,7 @@ describe('Variable-damage moves (draft fills)', () => {
   });
 
   // ── random / non-monotone here: assert only that damage is dealt ──
-  for (const m of ['Magnitude', 'Trump Card', 'Psywave', 'Natures Madness', 'Crush Grip']) {
+  for (const m of ['Magnitude', 'Trump Card', 'Psywave', 'Crush Grip']) {
     it(`${m} deals damage`, async () => {
       const r = await fire(m, { defSpecies: 'Blissey' });
       assert.ok(r.dealt > 0, `${m} should deal damage`);

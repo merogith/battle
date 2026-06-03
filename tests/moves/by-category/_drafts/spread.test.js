@@ -43,7 +43,7 @@ const DAMAGE_ONLY = [
   // physical
   'Brutal Swing', 'Diamond Storm', 'Earthquake', 'Glacial Lance', 'Petal Blizzard',
   'Precipice Blades', 'Razor Leaf', 'Rock Slide', 'Thousand Arrows', 'Thousand Waves',
-  'Lands Wrath',
+  "Land's Wrath",
   // special
   'Acid', 'Air Cutter', 'Astral Barrage', 'Bleakwind Storm', 'Blizzard', 'Boomburst',
   'Bubble', 'Burning Jealousy', 'Clanging Scales', 'Core Enforcer', 'Dazzling Gleam',
