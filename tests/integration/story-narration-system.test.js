@@ -45,15 +45,18 @@ test('rocket boss has a pre-fight arc AND a structured win outro', () => {
     'pre-fight acts must not leak boss-mechanic telegraph text');
 });
 
-test('legacy-flat scenes (no acts) still carry a renderable body', () => {
-  // Self-adjusting: pick whatever scene is still unconverted, so this stays
-  // green as the rollout converts more arcs.
+test('rollout complete: every scene is structured AND keeps a legacy body', () => {
+  // The rollout is 100%: every scene now carries an `acts` arc, and every one
+  // also retains its original flat `body`. That retained body keeps
+  // _playStoryBeatScene's legacy single-overlay fallback valid for old saves or
+  // any future flat scene, and locks the conversion against silent regression.
   const S = nt.STORY_SCENES;
-  const flatKey = Object.keys(S).find(k => S[k] && !S[k].acts);
-  assert.ok(flatKey, 'a legacy-flat scene exists during rollout');
-  const flat = S[flatKey];
-  assert.ok(typeof flat.body === 'string' && flat.body.length, 'legacy scene has a body');
-  assert.equal(flat.acts, undefined, 'legacy scene has no acts');
+  const keys = Object.keys(S);
+  assert.ok(keys.length >= 100, `STORY_SCENES populated (${keys.length})`);
+  const missingActs = keys.filter(k => !(Array.isArray(S[k].acts) && S[k].acts.length));
+  assert.deepEqual(missingActs, [], `scenes missing acts: ${missingActs.join(', ')}`);
+  const missingBody = keys.filter(k => !(typeof S[k].body === 'string' && S[k].body.length));
+  assert.deepEqual(missingBody, [], `scenes missing a legacy body: ${missingBody.join(', ')}`);
 });
 
 // ── Branching text (cross-event callback) ───────────────────────────────────
@@ -362,6 +365,19 @@ test('converted extra arcs have structured events + a raid with outro.win', () =
   }
 });
 
+test('every extra mid-raid (miniRaid/miniRaid2) is structured + clean of meta', () => {
+  const S = nt.STORY_SCENES;
+  for (const track of CONVERTED_EXTRA) {
+    for (const beat of ['miniRaid', 'miniRaid2']) {
+      const sc = S[`extra.${track}.${beat}`];
+      assert.ok(sc && Array.isArray(sc.acts) && sc.acts.length, `extra.${track}.${beat} has acts`);
+      const text = sc.acts.flatMap(a => a.lines || []).join(' ');
+      assert.ok(!/\bAt \d+%|\bHP\b|\+\d+ priority|priority-locked|immunity round|telegraph|Terrain locked|Sp\.\s?(Atk|Def)/i.test(text),
+        `extra.${track}.${beat} acts are clean of raid-mechanic meta`);
+    }
+  }
+});
+
 test('extra-arc choices are unique and pay off in the ending', () => {
   const S = nt.STORY_SCENES;
   const cases = [
@@ -391,4 +407,82 @@ test('extra-arc choices are unique and pay off in the ending', () => {
     const def = nt.resolveActLines(branchAct).join(' ');
     assert.ok(a.length && b.length && a !== b && def.length, `extra.${track}: branches differ + default`);
   }
+});
+
+// ── End-to-end DOM render + interaction ─────────────────────────────────────
+// Drives a real scene through the live overlay machinery (not just the
+// resolvers): acts paginate, the choice renders buttons, the pick persists,
+// the body swaps to the reply, the overlay clears, and a later scene's branch
+// reacts to the stored pick. This is the layer the unit tests can't reach.
+const _body = () => { const b = document.querySelector('[data-narr-body="1"]'); return b ? b.textContent.trim() : ''; };
+const _choiceBtns = () => [...document.querySelectorAll('button[data-narr-choice-idx]')];
+const _drainStage = () => { // clear any overlay a prior test left live
+  let g = 0;
+  while (nt.isNarrationLive() && g++ < 50) {
+    const choice = document.querySelector('button[data-narr-choice-idx]');
+    if (choice) { choice.click(); continue; } // swaps to reply, exposes Continue
+    const cont = document.querySelector('button[data-narr-continue="1"]');
+    if (cont) { cont.click(); continue; }
+    break;
+  }
+};
+const _clickContinue = () => {
+  const b = document.querySelector('button[data-narr-continue="1"]');
+  assert.ok(b, `a Continue button is present to advance (body="${_body().slice(0, 40)}")`);
+  b.click();
+};
+
+test('e2e: a scene plays acts → choice → persistence → branch → cleared overlay', () => {
+  _drainStage();
+  nt.sm = { storyChoices: {} };
+  let done = false;
+  nt.playStoryBeatScene('villain.rocket.event2', () => { done = true; });
+
+  // intro act is in the live overlay DOM, with a progress banner
+  assert.match(_body(), /Three Rattata/i, 'intro act rendered into the overlay');
+  assert.ok((document.querySelector('.story-narr-progress') || {}).textContent,
+    'progress dots banner present');
+
+  // advance to the climax choice
+  let guard = 0;
+  while (!_choiceBtns().length && !done && guard++ < 12) _clickContinue();
+  assert.equal(_choiceBtns().length, 2, 'reached the choice act with two options');
+
+  // pick → persists + swaps body to the reply
+  _choiceBtns()[0].click();
+  assert.equal(nt.sm.storyChoices['villain.rocket.driver'], 'leaned',
+    'pick persisted to sm.storyChoices');
+  assert.match(_body(), /gives you a name|drop-point/i, 'body swapped to the chosen reply');
+
+  // finish; overlay clears
+  guard = 0;
+  while (!done && guard++ < 12) _clickContinue();
+  assert.ok(done, 'scene reached onDone');
+  assert.equal(document.querySelector('[data-narr-body="1"]'), null, 'overlay cleared after the scene');
+
+  // cross-scene branch payoff
+  const drive = (key) => {
+    let fin = false, text = '';
+    nt.playStoryBeatScene(key, () => { fin = true; });
+    let g = 0;
+    while (!fin && g++ < 12) { text += ' ' + _body(); try { _clickContinue(); } catch (e) { break; } }
+    return text + ' ' + _body();
+  };
+  assert.match(drive('villain.rocket.event4'), /trucker traded|thread you started|grave at the other end/i,
+    'event4 rendered the leaned branch');
+  nt.sm = { storyChoices: { 'villain.rocket.driver': 'freed' } };
+  assert.match(drive('villain.rocket.event4'), /three Rattata|arithmetic of a road/i,
+    'event4 rendered the freed branch on the alternate pick');
+
+  assert.ok(document.querySelectorAll('[data-narr-body="1"]').length <= 1, 'no overlay stacking');
+});
+
+test('e2e: a structured boss outro renders post-battle', () => {
+  _drainStage();
+  nt.sm = { storyChoices: {} };
+  let done = false;
+  const fired = nt.playPostBattleScene('villain.rocket.boss', () => { done = true; });
+  assert.ok(fired, 'playPostBattleScene used the structured outro.win');
+  assert.ok(_body().length > 0, 'boss aftermath rendered into the overlay');
+  _drainStage(); // clean up
 });

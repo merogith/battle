@@ -1,9 +1,12 @@
 # Story Narration System — unified visual + narrative language
 
-> **Status:** foundation shipped (one vertical slice converted). This doc is the
-> contract every story scene converts onto, and the roadmap for finishing the
-> unification. Pairs with `docs/STORY_OVERHAUL_PLAN.md` §3–§4 (the notification /
-> presentation problem and the "ONE notification registry" target).
+> **Status:** ROLLOUT COMPLETE — all 198 story scenes converted to the structured
+> schema (10 villain arcs + the 14-scene main spine + 8 extra arcs; **0 flat scenes
+> remain**). The render/interaction pipeline is verified end-to-end in jsdom (26
+> tests). This doc is the contract every story scene is built on. The *remaining*
+> unification work — folding the **other** overlays (`_storyScene`, tutorials,
+> cold-opens, banners) onto this one renderer — is still open; see §6. Pairs with
+> `docs/STORY_OVERHAUL_PLAN.md` §3–§4.
 
 ## 0. Why this exists
 
@@ -133,19 +136,31 @@ trainer in `enterBattleEvent` *after* the preview was computed.
 source the dispatcher uses (`_activeBattleBeatForCurrentRow` + `BEAT_CANON_TRAINER`),
 so label == reality. Used by `_storyEventRowToUpNext` for the imminent battle.
 
-## 5. What's converted (the vertical slice)
+## 5. What's converted
 
-The **Team Rocket** arc is the worked example end-to-end:
-`event1` (arc, no choice) · `event2` (interactive choice → `villain.rocket.driver`)
-· `event3` (branches on that choice) · `event6` · `boss` (pre-fight acts +
-`outro.win`) · `ending` (branches on the choice). `event4`/`event5` are left
-legacy-flat on purpose — they show what an *unconverted* scene still looks like.
+**Everything — all 198 scenes, 0 flat remaining:**
+
+- **10 villain arcs** (rocket, magma, aqua, galactic, plasma, flare, skull, yell,
+  macroCosmos, star) — every event, both mid-battles, the mini-boss, and the boss.
+  One interactive choice + a cross-scene branch payoff per arc; structured
+  boss/admin `outro.win`; roster (`Lead - …`) and boss-mechanic telegraph text
+  stripped out of the pre-fight acts (kept only on the legacy `body`).
+- **The 14-scene main spine** — loop foreshadowing → the "it was you all along /
+  The First" reveal (a full multi-act build) → the Run #1 ending (with a
+  remember-vs-forget choice). The established loop canon is preserved exactly.
+- **8 extra (horror) arcs** (cubone, yamask, hypno, phantump, mimikyu, drifloon,
+  parasect, mewtwo) — event spines, both mid-raids, the climactic raid `outro.win`,
+  one choice + an ending branch each, tone matched per arc.
+
+The **Team Rocket** arc is still the clearest reference: `event2` (choice →
+`villain.rocket.driver`) pays off in `event4` and `ending`; `boss` shows pre-fight
+acts + `outro.win`. Every other arc follows the same shape.
 
 ## 6. Roadmap to finish the unification
 
-1. **Convert the remaining 198 scenes** to `acts` (9 other villain arcs, 8 extra
-   arcs, the main spine). Pure data edits against this schema; one arc per PR,
-   each guarded by a test like `tests/integration/story-narration-system.test.js`.
+1. ~~**Convert the remaining scenes** to `acts`.~~ **DONE** — all 198 scenes
+   (10 villain arcs · the main spine · 8 extra arcs) converted against this schema,
+   guarded by `tests/integration/story-narration-system.test.js`.
 2. **Fold the other overlays onto `_renderNarrativeOverlay` + the tokens**:
    `_storyScene` (Daycare/Fight Club), `_showStoryTutorialScene`,
    `_showIntroRivalColdOpen`, the legendary-sighting cinematic, boss banners.
@@ -159,7 +174,11 @@ legacy-flat on purpose — they show what an *unconverted* scene still looks lik
 
 `window.__narrationTest` (jsdom harness only) exposes the schema resolvers
 (`resolveActLines`, `resolveActChoices`, `sceneProgressDots`), the overlay
-(`renderNarrativeOverlay`, queue introspection), the scene players, and the
-parity helpers (`canonTrainerForUpcomingBattle`, `storyEventRowToUpNext`,
+(`renderNarrativeOverlay`, queue introspection), the scene players
+(`playStoryBeatScene`, `playPostBattleScene`), and the parity helpers
+(`canonTrainerForUpcomingBattle`, `storyEventRowToUpNext`,
 `activeBattleBeatForCurrentRow`, `roadForArrayIdx`). See
-`tests/integration/story-narration-system.test.js`.
+`tests/integration/story-narration-system.test.js` — **26 tests**, including two
+**end-to-end DOM** tests that drive a scene through the live overlay (acts →
+choice → persistence → reply swap → cleared overlay → cross-scene branch), plus a
+completion invariant (every scene has `acts` **and** a legacy `body`).
