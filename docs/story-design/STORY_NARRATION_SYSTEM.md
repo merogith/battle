@@ -8,6 +8,10 @@
 > cold-opens, banners) onto this one renderer — is still open; see §6. Pairs with
 > `docs/STORY_OVERHAUL_PLAN.md` §3–§4.
 
+> **Related spec:** the **Camp System** (event buffering between route events,
+> Pokémon bonding, and the next event-cinematics work — which continues the §6
+> folds) builds on this renderer. See [`camp/`](./camp/README.md).
+
 ## 0. Why this exists
 
 Story narration had accreted **~19 parallel presentation paths** across **5
