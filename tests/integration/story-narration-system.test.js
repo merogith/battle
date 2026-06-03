@@ -45,15 +45,18 @@ test('rocket boss has a pre-fight arc AND a structured win outro', () => {
     'pre-fight acts must not leak boss-mechanic telegraph text');
 });
 
-test('legacy-flat scenes (no acts) still carry a renderable body', () => {
-  // Self-adjusting: pick whatever scene is still unconverted, so this stays
-  // green as the rollout converts more arcs.
+test('rollout complete: every scene is structured AND keeps a legacy body', () => {
+  // The rollout is 100%: every scene now carries an `acts` arc, and every one
+  // also retains its original flat `body`. That retained body keeps
+  // _playStoryBeatScene's legacy single-overlay fallback valid for old saves or
+  // any future flat scene, and locks the conversion against silent regression.
   const S = nt.STORY_SCENES;
-  const flatKey = Object.keys(S).find(k => S[k] && !S[k].acts);
-  assert.ok(flatKey, 'a legacy-flat scene exists during rollout');
-  const flat = S[flatKey];
-  assert.ok(typeof flat.body === 'string' && flat.body.length, 'legacy scene has a body');
-  assert.equal(flat.acts, undefined, 'legacy scene has no acts');
+  const keys = Object.keys(S);
+  assert.ok(keys.length >= 100, `STORY_SCENES populated (${keys.length})`);
+  const missingActs = keys.filter(k => !(Array.isArray(S[k].acts) && S[k].acts.length));
+  assert.deepEqual(missingActs, [], `scenes missing acts: ${missingActs.join(', ')}`);
+  const missingBody = keys.filter(k => !(typeof S[k].body === 'string' && S[k].body.length));
+  assert.deepEqual(missingBody, [], `scenes missing a legacy body: ${missingBody.join(', ')}`);
 });
 
 // ── Branching text (cross-event callback) ───────────────────────────────────
@@ -359,6 +362,19 @@ test('converted extra arcs have structured events + a raid with outro.win', () =
     const raid = S[`extra.${track}.raid`];
     assert.ok(raid && raid.outro && Array.isArray(raid.outro.win) && raid.outro.win.length,
       `extra.${track}.raid has outro.win`);
+  }
+});
+
+test('every extra mid-raid (miniRaid/miniRaid2) is structured + clean of meta', () => {
+  const S = nt.STORY_SCENES;
+  for (const track of CONVERTED_EXTRA) {
+    for (const beat of ['miniRaid', 'miniRaid2']) {
+      const sc = S[`extra.${track}.${beat}`];
+      assert.ok(sc && Array.isArray(sc.acts) && sc.acts.length, `extra.${track}.${beat} has acts`);
+      const text = sc.acts.flatMap(a => a.lines || []).join(' ');
+      assert.ok(!/\bAt \d+%|\bHP\b|\+\d+ priority|priority-locked|immunity round|telegraph|Terrain locked|Sp\.\s?(Atk|Def)/i.test(text),
+        `extra.${track}.${beat} acts are clean of raid-mechanic meta`);
+    }
   }
 });
 
