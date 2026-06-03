@@ -27,12 +27,10 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 2, 'def stage should be 2');
   });
 
-  it.todo('Acupressure' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Acupressure's declared behavior
-  });
+  // 'Acupressure' — covered by a manual test (see by-category/manual/).
 
   it.todo('After You' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert After You's declared behavior
+    // TODO: assert After You's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Agility' + ' [0 BP Psychic Status]', async () => {
@@ -44,7 +42,7 @@ describe('Status moves', () => {
   });
 
   it.todo('Ally Switch' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Ally Switch's declared behavior
+    // TODO: assert Ally Switch's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Amnesia' + ' [0 BP Psychic Status]', async () => {
@@ -55,29 +53,19 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spd, 2, 'spd stage should be 2');
   });
 
-  it.todo('Aqua Ring' + ' [0 BP Water Status]', async () => {
-    // TODO: assert Aqua Ring's declared behavior
-  });
+  // 'Aqua Ring' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Aromatherapy' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Aromatherapy's declared behavior
-  });
+  // 'Aromatherapy' — covered by a manual test (see by-category/manual/).
 
   it.todo('Aromatic Mist' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Aromatic Mist's declared behavior
+    // TODO: assert Aromatic Mist's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Assist' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Assist's declared behavior
-  });
+  // 'Assist' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Attract' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Attract's declared behavior
-  });
+  // 'Attract' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Aurora Veil' + ' [0 BP Ice Status]', async () => {
-    // TODO: assert Aurora Veil's declared behavior
-  });
+  // 'Aurora Veil' — covered by a manual test (see by-category/manual/).
 
   it('Autotomize' + ' [0 BP Steel Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Autotomize', 'Splash', 'Splash', 'Splash'] });
@@ -95,9 +83,7 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, -1, 'atk stage should be -1');
   });
 
-  it.todo('Baneful Bunker' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Baneful Bunker's declared behavior
-  });
+  // 'Baneful Bunker' — covered by a manual test (see by-category/manual/).
 
   it('Barrier' + ' [0 BP Psychic Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Barrier', 'Splash', 'Splash', 'Splash'] });
@@ -107,21 +93,13 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 2, 'def stage should be 2');
   });
 
-  it.todo('Baton Pass' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Baton Pass's declared behavior
-  });
+  // 'Baton Pass' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Belly Drum' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Belly Drum's declared behavior
-  });
+  // 'Belly Drum' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Bestow' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Bestow's declared behavior
-  });
+  // 'Bestow' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Block' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Block's declared behavior
-  });
+  // 'Block' — covered by a manual test (see by-category/manual/).
 
   it('Bulk Up' + ' [0 BP Fighting Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bulk Up', 'Splash', 'Splash', 'Splash'] });
@@ -131,9 +109,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 1, 'atk stage should be 1');
   });
 
-  it.todo('Burning Bulwark' + ' [0 BP Fire Status]', async () => {
-    // TODO: assert Burning Bulwark's declared behavior
-  });
+  // 'Burning Bulwark' — covered by a manual test (see by-category/manual/).
 
   it('Calm Mind' + ' [0 BP Psychic Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Calm Mind', 'Splash', 'Splash', 'Splash'] });
@@ -143,17 +119,11 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spa, 1, 'spa stage should be 1');
   });
 
-  it.todo('Camouflage' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Camouflage's declared behavior
-  });
+  // 'Camouflage' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Captivate' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Captivate's declared behavior
-  });
+  // 'Captivate' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Celebrate' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Celebrate's declared behavior
-  });
+  // 'Celebrate' — covered by a manual test (see by-category/manual/).
 
   it('Charge' + ' [0 BP Electric Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Charge', 'Splash', 'Splash', 'Splash'] });
@@ -171,9 +141,7 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, -2, 'atk stage should be -2');
   });
 
-  it.todo('Chilly Reception' + ' [0 BP Ice Status]', async () => {
-    // TODO: assert Chilly Reception's declared behavior
-  });
+  // 'Chilly Reception' — covered by a manual test (see by-category/manual/).
 
   it('Clangorous Soul' + ' [0 BP Dragon Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Clangorous Soul', 'Splash', 'Splash', 'Splash'] });
@@ -184,7 +152,7 @@ describe('Status moves', () => {
   });
 
   it.todo('Coaching' + ' [0 BP Fighting Status]', async () => {
-    // TODO: assert Coaching's declared behavior
+    // TODO: assert Coaching's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Coil' + ' [0 BP Poison Status]', async () => {
@@ -203,24 +171,18 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spa, -1, 'spa stage should be -1');
   });
 
-  it.todo('Confuse Ray' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Confuse Ray's declared behavior
-  });
+  // 'Confuse Ray' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Conversion' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Conversion's declared behavior
-  });
+  // 'Conversion' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Conversion 2' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Conversion 2's declared behavior
-  });
+  // 'Conversion 2' — covered by a manual test (see by-category/manual/).
 
   it.todo('Copycat' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Copycat's declared behavior
+    // TODO: assert Copycat's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Corrosive Gas' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Corrosive Gas's declared behavior
+    // TODO: assert Corrosive Gas's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Cosmic Power' + ' [0 BP Psychic Status]', async () => {
@@ -239,28 +201,22 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 3, 'def stage should be 3');
   });
 
-  it.todo('Cotton Spore' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Cotton Spore's declared behavior
-  });
+  // 'Cotton Spore' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Court Change' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Court Change's declared behavior
-  });
+  // 'Court Change' — covered by a manual test (see by-category/manual/).
 
   it.todo('Crafty Shield' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Crafty Shield's declared behavior
+    // TODO: assert Crafty Shield's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Curse' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Curse's declared behavior
-  });
+  // 'Curse' — covered by a manual test (see by-category/manual/).
 
   it.todo('Dark Void' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Dark Void's declared behavior
+    // TODO: assert Dark Void's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Decorate' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Decorate's declared behavior
+    // TODO: assert Decorate's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Defend Order' + ' [0 BP Bug Status]', async () => {
@@ -279,24 +235,18 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 1, 'def stage should be 1');
   });
 
-  it.todo('Defog' + ' [0 BP Flying Status]', async () => {
-    // TODO: assert Defog's declared behavior
-  });
+  // 'Defog' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Destiny Bond' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Destiny Bond's declared behavior
-  });
+  // 'Destiny Bond' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Detect' + ' [0 BP Fighting Status]', async () => {
-    // TODO: assert Detect's declared behavior
-  });
+  // 'Detect' — covered by a manual test (see by-category/manual/).
 
   it.todo('Disable' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Disable's declared behavior
+    // TODO: assert Disable's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Doodle' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Doodle's declared behavior
+    // TODO: assert Doodle's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Double Team' + ' [0 BP Normal Status]', async () => {
@@ -308,7 +258,7 @@ describe('Status moves', () => {
   });
 
   it.todo('Dragon Cheer' + ' [0 BP Dragon Status]', async () => {
-    // TODO: assert Dragon Cheer's declared behavior
+    // TODO: assert Dragon Cheer's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Dragon Dance' + ' [0 BP Dragon Status]', async () => {
@@ -327,32 +277,22 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spa, -2, 'spa stage should be -2');
   });
 
-  it.todo('Electric Terrain' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Electric Terrain's declared behavior
-  });
+  // 'Electric Terrain' — covered by a manual test (see by-category/manual/).
 
   it.todo('Electrify' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Electrify's declared behavior
+    // TODO: assert Electrify's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Embargo' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Embargo's declared behavior
-  });
+  // 'Embargo' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Encore' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Encore's declared behavior
-  });
+  // 'Encore' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Endure' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Endure's declared behavior
-  });
+  // 'Endure' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Entrainment' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Entrainment's declared behavior
-  });
+  // 'Entrainment' — covered by a manual test (see by-category/manual/).
 
   it.todo('Fairy Lock' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Fairy Lock's declared behavior
+    // TODO: assert Fairy Lock's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Fake Tears' + ' [0 BP Dark Status]', async () => {
@@ -396,60 +336,42 @@ describe('Status moves', () => {
   });
 
   it.todo('Floral Healing' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Floral Healing's declared behavior
+    // TODO: assert Floral Healing's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Flower Shield' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Flower Shield's declared behavior
+    // TODO: assert Flower Shield's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Focus Energy' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Focus Energy's declared behavior
-  });
+  // 'Focus Energy' — covered by a manual test (see by-category/manual/).
 
   it.todo('Follow Me' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Follow Me's declared behavior
+    // TODO: assert Follow Me's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Foresight' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Foresight's declared behavior
-  });
+  // 'Foresight' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Forests Curse' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Forest's Curse's declared behavior
-  });
+  // 'Forest\'s Curse' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Gastro Acid' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Gastro Acid's declared behavior
-  });
+  // 'Gastro Acid' — covered by a manual test (see by-category/manual/).
 
   it.todo('Gear Up' + ' [0 BP Steel Status]', async () => {
-    // TODO: assert Gear Up's declared behavior
+    // TODO: assert Gear Up's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Geomancy' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Geomancy's declared behavior
-  });
+  // 'Geomancy' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Glare' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Glare's declared behavior
-  });
+  // 'Glare' — covered by a manual test (see by-category/manual/).
 
   it.todo('Grass Whistle' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Grass Whistle's declared behavior
+    // TODO: assert Grass Whistle's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Grassy Terrain' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Grassy Terrain's declared behavior
-  });
+  // 'Grassy Terrain' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Gravity' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Gravity's declared behavior
-  });
+  // 'Gravity' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Growl' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Growl's declared behavior
-  });
+  // 'Growl' — covered by a manual test (see by-category/manual/).
 
   it('Growth' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Growth', 'Splash', 'Splash', 'Splash'] });
@@ -459,25 +381,15 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 1, 'atk stage should be 1');
   });
 
-  it.todo('Grudge' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Grudge's declared behavior
-  });
+  // 'Grudge' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Guard Split' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Guard Split's declared behavior
-  });
+  // 'Guard Split' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Guard Swap' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Guard Swap's declared behavior
-  });
+  // 'Guard Swap' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Hail' + ' [0 BP Ice Status]', async () => {
-    // TODO: assert Hail's declared behavior
-  });
+  // 'Hail' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Happy Hour' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Happy Hour's declared behavior
-  });
+  // 'Happy Hour' — covered by a manual test (see by-category/manual/).
 
   it('Harden' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Harden', 'Splash', 'Splash', 'Splash'] });
@@ -487,41 +399,29 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 1, 'def stage should be 1');
   });
 
-  it.todo('Haze' + ' [0 BP Ice Status]', async () => {
-    // TODO: assert Haze's declared behavior
-  });
+  // 'Haze' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Heal Bell' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Heal Bell's declared behavior
-  });
+  // 'Heal Bell' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Heal Block' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Heal Block's declared behavior
-  });
+  // 'Heal Block' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Heal Order' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert Heal Order's declared behavior
-  });
+  // 'Heal Order' — covered by a manual test (see by-category/manual/).
 
   it.todo('Heal Pulse' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Heal Pulse's declared behavior
+    // TODO: assert Heal Pulse's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Healing Wish' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Healing Wish's declared behavior
+    // TODO: assert Healing Wish's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Heart Swap' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Heart Swap's declared behavior
-  });
+  // 'Heart Swap' — covered by a manual test (see by-category/manual/).
 
   it.todo('Helping Hand' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Helping Hand's declared behavior
+    // TODO: assert Helping Hand's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Hold Hands' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Hold Hands's declared behavior
-  });
+  // 'Hold Hands' — covered by a manual test (see by-category/manual/).
 
   it('Hone Claws' + ' [0 BP Dark Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Hone Claws', 'Splash', 'Splash', 'Splash'] });
@@ -531,28 +431,18 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 1, 'atk stage should be 1');
   });
 
-  it.todo('Howl' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Howl's declared behavior
-  });
+  // 'Howl' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Hypnosis' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Hypnosis's declared behavior
-  });
+  // 'Hypnosis' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Imprison' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Imprison's declared behavior
-  });
+  // 'Imprison' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Ingrain' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Ingrain's declared behavior
-  });
+  // 'Ingrain' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Instruct' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Instruct's declared behavior
-  });
+  // 'Instruct' — covered by a manual test (see by-category/manual/).
 
   it.todo('Ion Deluge' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Ion Deluge's declared behavior
+    // TODO: assert Ion Deluge's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Iron Defense' + ' [0 BP Steel Status]', async () => {
@@ -563,9 +453,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 2, 'def stage should be 2');
   });
 
-  it.todo('Jungle Healing' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Jungle Healing's declared behavior
-  });
+  // 'Jungle Healing' — covered by a manual test (see by-category/manual/).
 
   it('Kinesis' + ' [0 BP Psychic Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Kinesis', 'Splash', 'Splash', 'Splash'] });
@@ -575,81 +463,53 @@ describe('Status moves', () => {
     assert.equal(defender.stages.acc, -1, 'accuracy stage should be -1');
   });
 
-  it.todo('Kings Shield' + ' [0 BP Steel Status]', async () => {
-    // TODO: assert King's Shield's declared behavior
-  });
+  // 'King\'s Shield' — covered by a manual test (see by-category/manual/).
 
   it.todo('Laser Focus' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Laser Focus's declared behavior
+    // TODO: assert Laser Focus's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Leech Seed' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Leech Seed's declared behavior
-  });
+  // 'Leech Seed' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Leer' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Leer's declared behavior
-  });
+  // 'Leer' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Life Dew' + ' [0 BP Water Status]', async () => {
-    // TODO: assert Life Dew's declared behavior
-  });
+  // 'Life Dew' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Light Screen' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Light Screen's declared behavior
-  });
+  // 'Light Screen' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Lock-On' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Lock-On's declared behavior
-  });
+  // 'Lock-On' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Lovely Kiss' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Lovely Kiss's declared behavior
-  });
+  // 'Lovely Kiss' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Lucky Chant' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Lucky Chant's declared behavior
-  });
+  // 'Lucky Chant' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Lunar Blessing' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Lunar Blessing's declared behavior
-  });
+  // 'Lunar Blessing' — covered by a manual test (see by-category/manual/).
 
   it.todo('Lunar Dance' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Lunar Dance's declared behavior
+    // TODO: assert Lunar Dance's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Magic Coat' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Magic Coat's declared behavior
-  });
+  // 'Magic Coat' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Magic Powder' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Magic Powder's declared behavior
-  });
+  // 'Magic Powder' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Magic Room' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Magic Room's declared behavior
-  });
+  // 'Magic Room' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Magnet Rise' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Magnet Rise's declared behavior
-  });
+  // 'Magnet Rise' — covered by a manual test (see by-category/manual/).
 
   it.todo('Magnetic Flux' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Magnetic Flux's declared behavior
+    // TODO: assert Magnetic Flux's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Mat Block' + ' [0 BP Fighting Status]', async () => {
-    // TODO: assert Mat Block's declared behavior
+    // TODO: assert Mat Block's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Me First' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Me First's declared behavior
+    // TODO: assert Me First's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Mean Look' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Mean Look's declared behavior
-  });
+  // 'Mean Look' — covered by a manual test (see by-category/manual/).
 
   it('Meditate' + ' [0 BP Psychic Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Meditate', 'Splash', 'Splash', 'Splash'] });
@@ -675,21 +535,13 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spd, -2, 'spd stage should be -2');
   });
 
-  it.todo('Metronome' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Metronome's declared behavior
-  });
+  // 'Metronome' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Milk Drink' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Milk Drink's declared behavior
-  });
+  // 'Milk Drink' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Mimic' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Mimic's declared behavior
-  });
+  // 'Mimic' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Mind Reader' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Mind Reader's declared behavior
-  });
+  // 'Mind Reader' — covered by a manual test (see by-category/manual/).
 
   it('Minimize' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Minimize', 'Splash', 'Splash', 'Splash'] });
@@ -699,33 +551,21 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.eva, 2, 'evasion stage should be 2');
   });
 
-  it.todo('Miracle Eye' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Miracle Eye's declared behavior
-  });
+  // 'Miracle Eye' — covered by a manual test (see by-category/manual/).
 
   it.todo('Mirror Move' + ' [0 BP Flying Status]', async () => {
-    // TODO: assert Mirror Move's declared behavior
+    // TODO: assert Mirror Move's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Mist' + ' [0 BP Ice Status]', async () => {
-    // TODO: assert Mist's declared behavior
-  });
+  // 'Mist' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Misty Terrain' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Misty Terrain's declared behavior
-  });
+  // 'Misty Terrain' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Moonlight' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Moonlight's declared behavior
-  });
+  // 'Moonlight' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Morning Sun' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Morning Sun's declared behavior
-  });
+  // 'Morning Sun' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Mud Sport' + ' [0 BP Ground Status]', async () => {
-    // TODO: assert Mud Sport's declared behavior
-  });
+  // 'Mud Sport' — covered by a manual test (see by-category/manual/).
 
   it('Nasty Plot' + ' [0 BP Dark Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Nasty Plot', 'Splash', 'Splash', 'Splash'] });
@@ -736,11 +576,11 @@ describe('Status moves', () => {
   });
 
   it.todo('Nature Power' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Nature Power's declared behavior
+    // TODO: assert Nature Power's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Nightmare' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Nightmare's declared behavior
+    // TODO: assert Nightmare's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('No Retreat' + ' [0 BP Fighting Status]', async () => {
@@ -759,29 +599,19 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, -1, 'atk stage should be -1');
   });
 
-  it.todo('Obstruct' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Obstruct's declared behavior
-  });
+  // 'Obstruct' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Octolock' + ' [0 BP Fighting Status]', async () => {
-    // TODO: assert Octolock's declared behavior
-  });
+  // 'Octolock' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Odor Sleuth' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Odor Sleuth's declared behavior
-  });
+  // 'Odor Sleuth' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Pain Split' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Pain Split's declared behavior
-  });
+  // 'Pain Split' — covered by a manual test (see by-category/manual/).
 
   it.todo('Parting Shot' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Parting Shot's declared behavior
+    // TODO: assert Parting Shot's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Perish Song' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Perish Song's declared behavior
-  });
+  // 'Perish Song' — covered by a manual test (see by-category/manual/).
 
   it('Play Nice' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Play Nice', 'Splash', 'Splash', 'Splash'] });
@@ -791,61 +621,41 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, -1, 'atk stage should be -1');
   });
 
-  it.todo('Poison Gas' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Poison Gas's declared behavior
-  });
+  // 'Poison Gas' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Poison Powder' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Poison Powder's declared behavior
-  });
+  // 'Poison Powder' — covered by a manual test (see by-category/manual/).
 
   it.todo('Powder' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert Powder's declared behavior
+    // TODO: assert Powder's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Power Shift' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Power Shift's declared behavior
+    // TODO: assert Power Shift's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Power Split' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Power Split's declared behavior
-  });
+  // 'Power Split' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Power Swap' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Power Swap's declared behavior
-  });
+  // 'Power Swap' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Power Trick' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Power Trick's declared behavior
-  });
+  // 'Power Trick' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Protect' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Protect's declared behavior
-  });
+  // 'Protect' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Psych Up' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Psych Up's declared behavior
-  });
+  // 'Psych Up' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Psychic Terrain' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Psychic Terrain's declared behavior
-  });
+  // 'Psychic Terrain' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Psycho Shift' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Psycho Shift's declared behavior
-  });
+  // 'Psycho Shift' — covered by a manual test (see by-category/manual/).
 
   it.todo('Purify' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Purify's declared behavior
+    // TODO: assert Purify's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it.todo('Quash' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Quash's declared behavior
+    // TODO: assert Quash's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Quick Guard' + ' [0 BP Fighting Status]', async () => {
-    // TODO: assert Quick Guard's declared behavior
-  });
+  // 'Quick Guard' — covered by a manual test (see by-category/manual/).
 
   it('Quiver Dance' + ' [0 BP Bug Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Quiver Dance', 'Splash', 'Splash', 'Splash'] });
@@ -856,44 +666,28 @@ describe('Status moves', () => {
   });
 
   it.todo('Rage Powder' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert Rage Powder's declared behavior
+    // TODO: assert Rage Powder's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Rain Dance' + ' [0 BP Water Status]', async () => {
-    // TODO: assert Rain Dance's declared behavior
-  });
+  // 'Rain Dance' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Recover' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Recover's declared behavior
-  });
+  // 'Recover' — covered by a manual test (see by-category/manual/).
 
   it.todo('Recycle' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Recycle's declared behavior
+    // TODO: assert Recycle's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Reflect' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Reflect's declared behavior
-  });
+  // 'Reflect' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Reflect Type' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Reflect Type's declared behavior
-  });
+  // 'Reflect Type' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Refresh' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Refresh's declared behavior
-  });
+  // 'Refresh' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Rest' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Rest's declared behavior
-  });
+  // 'Rest' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Revival Blessing' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Revival Blessing's declared behavior
-  });
+  // 'Revival Blessing' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Roar' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Roar's declared behavior
-  });
+  // 'Roar' — covered by a manual test (see by-category/manual/).
 
   it('Rock Polish' + ' [0 BP Rock Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Rock Polish', 'Splash', 'Splash', 'Splash'] });
@@ -903,21 +697,15 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spe, 2, 'spe stage should be 2');
   });
 
-  it.todo('Role Play' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Role Play's declared behavior
-  });
+  // 'Role Play' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Roost' + ' [0 BP Flying Status]', async () => {
-    // TODO: assert Roost's declared behavior
-  });
+  // 'Roost' — covered by a manual test (see by-category/manual/).
 
   it.todo('Rototiller' + ' [0 BP Ground Status]', async () => {
-    // TODO: assert Rototiller's declared behavior
+    // TODO: assert Rototiller's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Safeguard' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Safeguard's declared behavior
-  });
+  // 'Safeguard' — covered by a manual test (see by-category/manual/).
 
   it('Sand Attack' + ' [0 BP Ground Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sand Attack', 'Splash', 'Splash', 'Splash'] });
@@ -927,9 +715,7 @@ describe('Status moves', () => {
     assert.equal(defender.stages.acc, -1, 'accuracy stage should be -1');
   });
 
-  it.todo('Sandstorm' + ' [0 BP Rock Status]', async () => {
-    // TODO: assert Sandstorm's declared behavior
-  });
+  // 'Sandstorm' — covered by a manual test (see by-category/manual/).
 
   it('Scary Face' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Scary Face', 'Splash', 'Splash', 'Splash'] });
@@ -955,9 +741,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 1, 'atk stage should be 1');
   });
 
-  it.todo('Shed Tail' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Shed Tail's declared behavior
-  });
+  // 'Shed Tail' — covered by a manual test (see by-category/manual/).
 
   it('Shell Smash' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Shell Smash', 'Splash', 'Splash', 'Splash'] });
@@ -983,41 +767,23 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spe, 2, 'spe stage should be 2');
   });
 
-  it.todo('Shore Up' + ' [0 BP Ground Status]', async () => {
-    // TODO: assert Shore Up's declared behavior
-  });
+  // 'Shore Up' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Silk Trap' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert Silk Trap's declared behavior
-  });
+  // 'Silk Trap' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Simple Beam' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Simple Beam's declared behavior
-  });
+  // 'Simple Beam' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sing' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Sing's declared behavior
-  });
+  // 'Sing' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sketch' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Sketch's declared behavior
-  });
+  // 'Sketch' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Skill Swap' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Skill Swap's declared behavior
-  });
+  // 'Skill Swap' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Slack Off' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Slack Off's declared behavior
-  });
+  // 'Slack Off' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sleep Powder' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Sleep Powder's declared behavior
-  });
+  // 'Sleep Powder' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sleep Talk' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Sleep Talk's declared behavior
-  });
+  // 'Sleep Talk' — covered by a manual test (see by-category/manual/).
 
   it('Smokescreen' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Smokescreen', 'Splash', 'Splash', 'Splash'] });
@@ -1027,25 +793,15 @@ describe('Status moves', () => {
     assert.equal(defender.stages.acc, -1, 'accuracy stage should be -1');
   });
 
-  it.todo('Snatch' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Snatch's declared behavior
-  });
+  // 'Snatch' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Snowscape' + ' [0 BP Ice Status]', async () => {
-    // TODO: assert Snowscape's declared behavior
-  });
+  // 'Snowscape' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Soak' + ' [0 BP Water Status]', async () => {
-    // TODO: assert Soak's declared behavior
-  });
+  // 'Soak' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Soft-Boiled' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Soft-Boiled's declared behavior
-  });
+  // 'Soft-Boiled' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Speed Swap' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Speed Swap's declared behavior
-  });
+  // 'Speed Swap' — covered by a manual test (see by-category/manual/).
 
   it('Spicy Extract' + ' [0 BP Grass Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Spicy Extract', 'Splash', 'Splash', 'Splash'] });
@@ -1055,73 +811,41 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, 2, 'atk stage should be 2');
   });
 
-  it.todo('Spider Web' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert Spider Web's declared behavior
-  });
+  // 'Spider Web' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Spikes' + ' [0 BP Ground Status]', async () => {
-    // TODO: assert Spikes's declared behavior
-  });
+  // 'Spikes' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Spiky Shield' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Spiky Shield's declared behavior
-  });
+  // 'Spiky Shield' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Spite' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Spite's declared behavior
-  });
+  // 'Spite' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Splash' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Splash's declared behavior
-  });
+  // 'Splash' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Spore' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Spore's declared behavior
-  });
+  // 'Spore' — covered by a manual test (see by-category/manual/).
 
   it.todo('Spotlight' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Spotlight's declared behavior
+    // TODO: assert Spotlight's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Stealth Rock' + ' [0 BP Rock Status]', async () => {
-    // TODO: assert Stealth Rock's declared behavior
-  });
+  // 'Stealth Rock' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sticky Web' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert Sticky Web's declared behavior
-  });
+  // 'Sticky Web' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Stockpile' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Stockpile's declared behavior
-  });
+  // 'Stockpile' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Strength Sap' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Strength Sap's declared behavior
-  });
+  // 'Strength Sap' — covered by a manual test (see by-category/manual/).
 
-  it.todo('String Shot' + ' [0 BP Bug Status]', async () => {
-    // TODO: assert String Shot's declared behavior
-  });
+  // 'String Shot' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Stuff Cheeks' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Stuff Cheeks's declared behavior
-  });
+  // 'Stuff Cheeks' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Stun Spore' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Stun Spore's declared behavior
-  });
+  // 'Stun Spore' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Substitute' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Substitute's declared behavior
-  });
+  // 'Substitute' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sunny Day' + ' [0 BP Fire Status]', async () => {
-    // TODO: assert Sunny Day's declared behavior
-  });
+  // 'Sunny Day' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Supersonic' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Supersonic's declared behavior
-  });
+  // 'Supersonic' — covered by a manual test (see by-category/manual/).
 
   it('Swagger' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Swagger', 'Splash', 'Splash', 'Splash'] });
@@ -1131,20 +855,14 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, 2, 'atk stage should be 2');
   });
 
-  it.todo('Swallow' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Swallow's declared behavior
-  });
+  // 'Swallow' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sweet Kiss' + ' [0 BP Fairy Status]', async () => {
-    // TODO: assert Sweet Kiss's declared behavior
-  });
+  // 'Sweet Kiss' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sweet Scent' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Sweet Scent's declared behavior
-  });
+  // 'Sweet Scent' — covered by a manual test (see by-category/manual/).
 
   it.todo('Switcheroo' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Switcheroo's declared behavior
+    // TODO: assert Switcheroo's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Swords Dance' + ' [0 BP Normal Status]', async () => {
@@ -1155,9 +873,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 2, 'atk stage should be 2');
   });
 
-  it.todo('Synthesis' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Synthesis's declared behavior
-  });
+  // 'Synthesis' — covered by a manual test (see by-category/manual/).
 
   it('Tail Glow' + ' [0 BP Bug Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Tail Glow', 'Splash', 'Splash', 'Splash'] });
@@ -1167,17 +883,11 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spa, 3, 'spa stage should be 3');
   });
 
-  it.todo('Tail Whip' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Tail Whip's declared behavior
-  });
+  // 'Tail Whip' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Tailwind' + ' [0 BP Flying Status]', async () => {
-    // TODO: assert Tailwind's declared behavior
-  });
+  // 'Tailwind' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Take Heart' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Take Heart's declared behavior
-  });
+  // 'Take Heart' — covered by a manual test (see by-category/manual/).
 
   it('Tar Shot' + ' [0 BP Rock Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Tar Shot', 'Splash', 'Splash', 'Splash'] });
@@ -1187,9 +897,7 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spe, -1, 'spe stage should be -1');
   });
 
-  it.todo('Taunt' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Taunt's declared behavior
-  });
+  // 'Taunt' — covered by a manual test (see by-category/manual/).
 
   it('Tearful Look' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Tearful Look', 'Splash', 'Splash', 'Splash'] });
@@ -1199,25 +907,15 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, -1, 'atk stage should be -1');
   });
 
-  it.todo('Teatime' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Teatime's declared behavior
-  });
+  // 'Teatime' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Teeter Dance' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Teeter Dance's declared behavior
-  });
+  // 'Teeter Dance' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Telekinesis' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Telekinesis's declared behavior
-  });
+  // 'Telekinesis' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Teleport' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Teleport's declared behavior
-  });
+  // 'Teleport' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Thunder Wave' + ' [0 BP Electric Status]', async () => {
-    // TODO: assert Thunder Wave's declared behavior
-  });
+  // 'Thunder Wave' — covered by a manual test (see by-category/manual/).
 
   it('Tickle' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Tickle', 'Splash', 'Splash', 'Splash'] });
@@ -1227,25 +925,15 @@ describe('Status moves', () => {
     assert.equal(defender.stages.atk, -1, 'atk stage should be -1');
   });
 
-  it.todo('Tidy Up' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Tidy Up's declared behavior
-  });
+  // 'Tidy Up' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Topsy-Turvy' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Topsy-Turvy's declared behavior
-  });
+  // 'Topsy-Turvy' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Torment' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Torment's declared behavior
-  });
+  // 'Torment' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Toxic' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Toxic's declared behavior
-  });
+  // 'Toxic' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Toxic Spikes' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Toxic Spikes's declared behavior
-  });
+  // 'Toxic Spikes' — covered by a manual test (see by-category/manual/).
 
   it('Toxic Thread' + ' [0 BP Poison Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Toxic Thread', 'Splash', 'Splash', 'Splash'] });
@@ -1255,24 +943,18 @@ describe('Status moves', () => {
     assert.equal(defender.stages.spe, -1, 'spe stage should be -1');
   });
 
-  it.todo('Transform' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Transform's declared behavior
-  });
+  // 'Transform' — covered by a manual test (see by-category/manual/).
 
   it.todo('Trick' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Trick's declared behavior
+    // TODO: assert Trick's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Trick Room' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Trick Room's declared behavior
-  });
+  // 'Trick Room' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Trick-or-Treat' + ' [0 BP Ghost Status]', async () => {
-    // TODO: assert Trick-or-Treat's declared behavior
-  });
+  // 'Trick-or-Treat' — covered by a manual test (see by-category/manual/).
 
   it.todo('Venom Drench' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Venom Drench's declared behavior
+    // TODO: assert Venom Drench's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
   it('Victory Dance' + ' [0 BP Fighting Status]', async () => {
@@ -1283,25 +965,15 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 1, 'atk stage should be 1');
   });
 
-  it.todo('Water Sport' + ' [0 BP Water Status]', async () => {
-    // TODO: assert Water Sport's declared behavior
-  });
+  // 'Water Sport' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Whirlwind' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Whirlwind's declared behavior
-  });
+  // 'Whirlwind' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Wide Guard' + ' [0 BP Rock Status]', async () => {
-    // TODO: assert Wide Guard's declared behavior
-  });
+  // 'Wide Guard' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Will-O-Wisp' + ' [0 BP Fire Status]', async () => {
-    // TODO: assert Will-O-Wisp's declared behavior
-  });
+  // 'Will-O-Wisp' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Wish' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Wish's declared behavior
-  });
+  // 'Wish' — covered by a manual test (see by-category/manual/).
 
   it('Withdraw' + ' [0 BP Water Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Withdraw', 'Splash', 'Splash', 'Splash'] });
@@ -1311,9 +983,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.def, 1, 'def stage should be 1');
   });
 
-  it.todo('Wonder Room' + ' [0 BP Psychic Status]', async () => {
-    // TODO: assert Wonder Room's declared behavior
-  });
+  // 'Wonder Room' — covered by a manual test (see by-category/manual/).
 
   it('Work Up' + ' [0 BP Normal Status]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Work Up', 'Splash', 'Splash', 'Splash'] });
@@ -1323,11 +993,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.atk, 1, 'atk stage should be 1');
   });
 
-  it.todo('Worry Seed' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Worry Seed's declared behavior
-  });
+  // 'Worry Seed' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Yawn' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Yawn's declared behavior
-  });
+  // 'Yawn' — covered by a manual test (see by-category/manual/).
 });

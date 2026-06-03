@@ -15,8 +15,14 @@ import { loadAllMoves } from '../helpers/load-moves.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(__dirname, '..', 'moves', 'by-category');
 
-function safeName(s) {
-  return s.replace(/[`"']/g, '');
+// Escape a string for embedding inside a single-quoted JS string literal.
+// NOTE: this used to strip apostrophes/quotes, which corrupted real move names
+// (e.g. "King's Shield" -> "Kings Shield", "Land's Wrath" -> "Lands Wrath").
+// The engine matches move names exactly and silently runs an unknown name as a
+// ~187-dmg fallback, so a stripped name made mistyped fills "pass" against the
+// wrong move. Keep the real name; escape only what a single-quoted literal needs.
+function jsLit(s) {
+  return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
 }
 
 // Moves with non-trivial preconditions - generate as it.todo() so they show up
@@ -28,6 +34,9 @@ const NEEDS_MANUAL_SETUP = new Set([
   'Geomancy', 'Meteor Beam', 'Electro Shot', 'Freeze Shock', 'Ice Burn', 'Sky Drop',
   // User-type preconditions
   'Burn Up', 'Double Shock', 'Snore',
+  // Berry precondition (needs an eaten Berry -> volatile.belchReady); covered by
+  // a manual test in by-category/manual/gender-precondition.test.js.
+  'Belch',
   // Delayed damage
   'Future Sight', 'Doom Desire',
   // Need terrain
@@ -44,6 +53,29 @@ const NEEDS_MANUAL_SETUP = new Set([
   'Sheer Cold', 'Fissure', 'Horn Drill', 'Guillotine',
   // Ally-targeting status moves with target: normal in JSON but ally semantics in engine
   'Decorate',
+]);
+
+// Moves that are STILL legitimately unfilled -> keep emitting it.todo() for these.
+// Everything else that would be a todo is now covered by a hand-written test in
+// tests/moves/by-category/manual/, so the generator emits a pointer comment
+// instead of a duplicate it.todo(). Keyed on the REAL move name (with
+// apostrophes) — jsLit only affects the emitted string literal, not this match.
+// See agent-state/handoff/03-fill-remaining-move-todos.md for the breakdown.
+const DEFERRED = new Set([
+  // damage — broken (ISSUE_LEDGER, test-coverage-filler)
+  'Comeuppance',
+  // status — broken / no-op (ISSUE_LEDGER, test-coverage-filler)
+  'Trick', 'Switcheroo', 'Power Shift', 'Corrosive Gas', 'Purify', 'Venom Drench',
+  'Ion Deluge', 'Crafty Shield', 'Mat Block', 'Nature Power', 'Copycat', 'Mirror Move',
+  'Parting Shot', 'Doodle', 'Powder', 'Me First', 'Grass Whistle', 'Dark Void',
+  // status — no readable effect in a 1v1 harness (verify before filling)
+  'Electrify', 'Fairy Lock', 'Nightmare', 'Disable', 'Laser Focus',
+  // status — complex switch/heal choreography (fillable later)
+  'Healing Wish', 'Lunar Dance', 'Heal Pulse', 'Floral Healing', 'Recycle',
+  // status — doubles-only, no singles effect
+  'After You', 'Ally Switch', 'Aromatic Mist', 'Coaching', 'Decorate', 'Dragon Cheer',
+  'Flower Shield', 'Follow Me', 'Gear Up', 'Helping Hand', 'Magnetic Flux', 'Quash',
+  'Rage Powder', 'Rototiller', 'Spotlight',
 ]);
 
 function buildAssertionLines(move) {
@@ -76,7 +108,7 @@ function buildAssertionLines(move) {
   if (move.basePower > 0) {
     return {
       setup: `    const beforeHp = defender.currentHp;`,
-      assert: `assert.ok(defender.currentHp < beforeHp, '${safeName(move.name)} should reduce defender HP');`,
+      assert: `assert.ok(defender.currentHp < beforeHp, ${jsLit(move.name + ' should reduce defender HP')});`,
       isTodo: false,
     };
   }
@@ -85,12 +117,16 @@ function buildAssertionLines(move) {
 
 function buildItBlock(move) {
   const { setup, assert: assertLine, isTodo } = buildAssertionLines(move);
-  const name = safeName(move.name);
-  const moveLit = `'${name.replace(/'/g, "\\'")}'`;
+  const moveLit = jsLit(move.name);
 
   if (isTodo) {
+    if (!DEFERRED.has(move.name)) {
+      // Covered by a hand-written test under tests/moves/by-category/manual/ —
+      // emit a pointer comment instead of a duplicate it.todo().
+      return `  // ${moveLit} — covered by a manual test (see by-category/manual/).`;
+    }
     return `  it.todo(${moveLit} + ' [${move.basePower || 0} BP ${move.type || '?'} ${move.category || '?'}]', async () => {
-    // TODO: assert ${move.name}'s declared behavior
+    // TODO: assert ${move.name}'s declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });`;
   }
   return `  it(${moveLit} + ' [${move.basePower || 0} BP ${move.type || '?'} ${move.category || '?'}]', async () => {
@@ -144,15 +180,33 @@ async function main() {
   }
 
   await mkdir(OUT_DIR, { recursive: true });
+  const wouldBeTodo = [];
   for (const cat of ['Physical', 'Special', 'Status']) {
     const lower = cat.toLowerCase();
     const content = buildFile(cat, byCat[cat]);
     await writeFile(join(OUT_DIR, `${lower}.test.js`), content);
-    const auto = byCat[cat].filter((m) => !buildAssertionLines(m).isTodo).length;
-    const todo = byCat[cat].length - auto;
-    console.log(`${cat.padEnd(8)} ${String(byCat[cat].length).padStart(4)} moves  (${auto} auto, ${todo} todo)`);
+    const todos = byCat[cat].filter((m) => buildAssertionLines(m).isTodo);
+    const auto = byCat[cat].length - todos.length;
+    const deferred = todos.filter((m) => DEFERRED.has(m.name)).length;
+    const covered = todos.length - deferred;
+    for (const m of todos) wouldBeTodo.push(m.name);
+    console.log(`${cat.padEnd(8)} ${String(byCat[cat].length).padStart(4)} moves  `
+      + `(${auto} auto, ${covered} covered-by-manual, ${deferred} todo)`);
   }
   console.log(`\nWrote to ${OUT_DIR}`);
+
+  // Self-check: keep DEFERRED honest against the actual would-be-todo set so the
+  // "covered-by-manual" pointer comments never silently hide an unfilled move.
+  const wouldBeTodoSet = new Set(wouldBeTodo);
+  const totalDeferred = wouldBeTodo.filter((n) => DEFERRED.has(n)).length;
+  console.log(`\nit.todo() emitted (DEFERRED): ${totalDeferred}`);
+  console.log(`covered-by-manual pointers:  ${wouldBeTodo.length - totalDeferred}`);
+  const staleDeferred = [...DEFERRED].filter((n) => !wouldBeTodoSet.has(n));
+  if (staleDeferred.length) {
+    console.log(`\nWARN: ${staleDeferred.length} DEFERRED name(s) are not currently would-be-todos`);
+    console.log('      (already auto-asserted, or renamed/removed in move data):');
+    console.log('      ' + staleDeferred.join(', '));
+  }
 }
 
 main().catch((err) => {
