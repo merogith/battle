@@ -91,9 +91,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Arm Thrust should reduce defender HP');
   });
 
-  it.todo('Assurance' + ' [60 BP Dark Physical]', async () => {
-    // TODO: assert Assurance's declared behavior
-  });
+  // 'Assurance' — covered by a manual test (see by-category/manual/).
 
   it('Astonish' + ' [30 BP Ghost Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Astonish', 'Splash', 'Splash', 'Splash'] });
@@ -119,9 +117,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Aura Wheel should reduce defender HP');
   });
 
-  it.todo('Avalanche' + ' [60 BP Ice Physical]', async () => {
-    // TODO: assert Avalanche's declared behavior
-  });
+  // 'Avalanche' — covered by a manual test (see by-category/manual/).
 
   it('Axe Kick' + ' [120 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Axe Kick', 'Splash', 'Splash', 'Splash'] });
@@ -155,9 +151,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Beak Blast should reduce defender HP');
   });
 
-  it.todo('Beat Up' + ' [0 BP Dark Physical]', async () => {
-    // TODO: assert Beat Up's declared behavior
-  });
+  // 'Beat Up' — covered by a manual test (see by-category/manual/).
 
   it('Behemoth Bash' + ' [100 BP Steel Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Behemoth Bash', 'Splash', 'Splash', 'Splash'] });
@@ -175,9 +169,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Behemoth Blade should reduce defender HP');
   });
 
-  it.todo('Bide' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Bide's declared behavior
-  });
+  // 'Bide' — covered by a manual test (see by-category/manual/).
 
   it('Bind' + ' [15 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bind', 'Splash', 'Splash', 'Splash'] });
@@ -275,9 +267,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Bonemerang should reduce defender HP');
   });
 
-  it.todo('Bounce' + ' [85 BP Flying Physical]', async () => {
-    // TODO: assert Bounce's declared behavior
-  });
+  // 'Bounce' — covered by a manual test (see by-category/manual/).
 
   it('Branch Poke' + ' [40 BP Grass Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Branch Poke', 'Splash', 'Splash', 'Splash'] });
@@ -295,9 +285,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Brave Bird should reduce defender HP');
   });
 
-  it.todo('Breaking Swipe' + ' [60 BP Dragon Physical]', async () => {
-    // TODO: assert Breaking Swipe's declared behavior
-  });
+  // 'Breaking Swipe' — covered by a manual test (see by-category/manual/).
 
   it('Brick Break' + ' [75 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Brick Break', 'Splash', 'Splash', 'Splash'] });
@@ -307,9 +295,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Brick Break should reduce defender HP');
   });
 
-  it.todo('Brutal Swing' + ' [60 BP Dark Physical]', async () => {
-    // TODO: assert Brutal Swing's declared behavior
-  });
+  // 'Brutal Swing' — covered by a manual test (see by-category/manual/).
 
   it('Bug Bite' + ' [60 BP Bug Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bug Bite', 'Splash', 'Splash', 'Splash'] });
@@ -319,9 +305,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Bug Bite should reduce defender HP');
   });
 
-  it.todo('Bulldoze' + ' [60 BP Ground Physical]', async () => {
-    // TODO: assert Bulldoze's declared behavior
-  });
+  // 'Bulldoze' — covered by a manual test (see by-category/manual/).
 
   it('Bullet Punch' + ' [40 BP Steel Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bullet Punch', 'Splash', 'Splash', 'Splash'] });
@@ -403,9 +387,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Comet Punch should reduce defender HP');
   });
 
-  it.todo('Comeuppance' + ' [0 BP Dark Physical]', async () => {
-    // TODO: assert Comeuppance's declared behavior
-  });
+  // 'Comeuppance' — covered by a manual test (see by-category/manual/).
 
   it('Constrict' + ' [10 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Constrict', 'Splash', 'Splash', 'Splash'] });
@@ -415,9 +397,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Constrict should reduce defender HP');
   });
 
-  it.todo('Counter' + ' [0 BP Fighting Physical]', async () => {
-    // TODO: assert Counter's declared behavior
-  });
+  // 'Counter' — covered by a manual test (see by-category/manual/).
 
   it('Covet' + ' [60 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Covet', 'Splash', 'Splash', 'Splash'] });
@@ -467,9 +447,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Crush Claw should reduce defender HP');
   });
 
-  it.todo('Crush Grip' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Crush Grip's declared behavior
-  });
+  // 'Crush Grip' — covered by a manual test (see by-category/manual/).
 
   it('Cut' + ' [50 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Cut', 'Splash', 'Splash', 'Splash'] });
@@ -487,13 +465,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Darkest Lariat should reduce defender HP');
   });
 
-  it.todo('Diamond Storm' + ' [100 BP Rock Physical]', async () => {
-    // TODO: assert Diamond Storm's declared behavior
-  });
+  // 'Diamond Storm' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Dig' + ' [80 BP Ground Physical]', async () => {
-    // TODO: assert Dig's declared behavior
-  });
+  // 'Dig' — covered by a manual test (see by-category/manual/).
 
   it('Dire Claw' + ' [80 BP Poison Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dire Claw', 'Splash', 'Splash', 'Splash'] });
@@ -503,9 +477,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dire Claw should reduce defender HP');
   });
 
-  it.todo('Dive' + ' [80 BP Water Physical]', async () => {
-    // TODO: assert Dive's declared behavior
-  });
+  // 'Dive' — covered by a manual test (see by-category/manual/).
 
   it('Dizzy Punch' + ' [70 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dizzy Punch', 'Splash', 'Splash', 'Splash'] });
@@ -539,9 +511,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Double Kick should reduce defender HP');
   });
 
-  it.todo('Double Shock' + ' [120 BP Electric Physical]', async () => {
-    // TODO: assert Double Shock's declared behavior
-  });
+  // 'Double Shock' — covered by a manual test (see by-category/manual/).
 
   it('Double Slap' + ' [15 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Double Slap', 'Splash', 'Splash', 'Splash'] });
@@ -663,9 +633,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dynamic Punch should reduce defender HP');
   });
 
-  it.todo('Earthquake' + ' [100 BP Ground Physical]', async () => {
-    // TODO: assert Earthquake's declared behavior
-  });
+  // 'Earthquake' — covered by a manual test (see by-category/manual/).
 
   it('Egg Bomb' + ' [100 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Egg Bomb', 'Splash', 'Splash', 'Splash'] });
@@ -675,13 +643,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Egg Bomb should reduce defender HP');
   });
 
-  it.todo('Endeavor' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Endeavor's declared behavior
-  });
+  // 'Endeavor' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Explosion' + ' [250 BP Normal Physical]', async () => {
-    // TODO: assert Explosion's declared behavior
-  });
+  // 'Explosion' — covered by a manual test (see by-category/manual/).
 
   it('Extreme Speed' + ' [80 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Extreme Speed', 'Splash', 'Splash', 'Splash'] });
@@ -699,9 +663,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Facade should reduce defender HP');
   });
 
-  it.todo('Fake Out' + ' [40 BP Normal Physical]', async () => {
-    // TODO: assert Fake Out's declared behavior
-  });
+  // 'Fake Out' — covered by a manual test (see by-category/manual/).
 
   it('False Surrender' + ' [80 BP Dark Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['False Surrender', 'Splash', 'Splash', 'Splash'] });
@@ -767,9 +729,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Fire Punch should reduce defender HP');
   });
 
-  it.todo('First Impression' + ' [90 BP Bug Physical]', async () => {
-    // TODO: assert First Impression's declared behavior
-  });
+  // 'First Impression' — covered by a manual test (see by-category/manual/).
 
   it('Fishious Rend' + ' [85 BP Water Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Fishious Rend', 'Splash', 'Splash', 'Splash'] });
@@ -779,13 +739,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Fishious Rend should reduce defender HP');
   });
 
-  it.todo('Fissure' + ' [0 BP Ground Physical]', async () => {
-    // TODO: assert Fissure's declared behavior
-  });
+  // 'Fissure' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Flail' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Flail's declared behavior
-  });
+  // 'Flail' — covered by a manual test (see by-category/manual/).
 
   it('Flame Charge' + ' [50 BP Fire Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Flame Charge', 'Splash', 'Splash', 'Splash'] });
@@ -811,9 +767,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Flare Blitz should reduce defender HP');
   });
 
-  it.todo('Fling' + ' [0 BP Dark Physical]', async () => {
-    // TODO: assert Fling's declared behavior
-  });
+  // 'Fling' — covered by a manual test (see by-category/manual/).
 
   it('Flip Turn' + ' [60 BP Water Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Flip Turn', 'Splash', 'Splash', 'Splash'] });
@@ -839,9 +793,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Flower Trick should reduce defender HP');
   });
 
-  it.todo('Fly' + ' [90 BP Flying Physical]', async () => {
-    // TODO: assert Fly's declared behavior
-  });
+  // 'Fly' — covered by a manual test (see by-category/manual/).
 
   it('Flying Press' + ' [100 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Flying Press', 'Splash', 'Splash', 'Splash'] });
@@ -851,9 +803,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Flying Press should reduce defender HP');
   });
 
-  it.todo('Focus Punch' + ' [150 BP Fighting Physical]', async () => {
-    // TODO: assert Focus Punch's declared behavior
-  });
+  // 'Focus Punch' — covered by a manual test (see by-category/manual/).
 
   it('Force Palm' + ' [60 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Force Palm', 'Splash', 'Splash', 'Splash'] });
@@ -871,13 +821,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Foul Play should reduce defender HP');
   });
 
-  it.todo('Freeze Shock' + ' [140 BP Ice Physical]', async () => {
-    // TODO: assert Freeze Shock's declared behavior
-  });
+  // 'Freeze Shock' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Frustration' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Frustration's declared behavior
-  });
+  // 'Frustration' — covered by a manual test (see by-category/manual/).
 
   it('Fury Attack' + ' [15 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Fury Attack', 'Splash', 'Splash', 'Splash'] });
@@ -935,9 +881,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Gigaton Hammer should reduce defender HP');
   });
 
-  it.todo('Glacial Lance' + ' [120 BP Ice Physical]', async () => {
-    // TODO: assert Glacial Lance's declared behavior
-  });
+  // 'Glacial Lance' — covered by a manual test (see by-category/manual/).
 
   it('Glaive Rush' + ' [120 BP Dragon Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Glaive Rush', 'Splash', 'Splash', 'Splash'] });
@@ -963,9 +907,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Grav Apple should reduce defender HP');
   });
 
-  it.todo('Guillotine' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Guillotine's declared behavior
-  });
+  // 'Guillotine' — covered by a manual test (see by-category/manual/).
 
   it('Gunk Shot' + ' [120 BP Poison Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Gunk Shot', 'Splash', 'Splash', 'Splash'] });
@@ -975,9 +917,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Gunk Shot should reduce defender HP');
   });
 
-  it.todo('Gyro Ball' + ' [0 BP Steel Physical]', async () => {
-    // TODO: assert Gyro Ball's declared behavior
-  });
+  // 'Gyro Ball' — covered by a manual test (see by-category/manual/).
 
   it('Hammer Arm' + ' [100 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Hammer Arm', 'Splash', 'Splash', 'Splash'] });
@@ -987,9 +927,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Hammer Arm should reduce defender HP');
   });
 
-  it.todo('Hard Press' + ' [0 BP Steel Physical]', async () => {
-    // TODO: assert Hard Press's declared behavior
-  });
+  // 'Hard Press' — covered by a manual test (see by-category/manual/).
 
   it('Head Charge' + ' [120 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Head Charge', 'Splash', 'Splash', 'Splash'] });
@@ -1031,13 +969,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Heart Stamp should reduce defender HP');
   });
 
-  it.todo('Heat Crash' + ' [0 BP Fire Physical]', async () => {
-    // TODO: assert Heat Crash's declared behavior
-  });
+  // 'Heat Crash' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Heavy Slam' + ' [0 BP Steel Physical]', async () => {
-    // TODO: assert Heavy Slam's declared behavior
-  });
+  // 'Heavy Slam' — covered by a manual test (see by-category/manual/).
 
   it('High Horsepower' + ' [95 BP Ground Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['High Horsepower', 'Splash', 'Splash', 'Splash'] });
@@ -1071,9 +1005,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Horn Attack should reduce defender HP');
   });
 
-  it.todo('Horn Drill' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Horn Drill's declared behavior
-  });
+  // 'Horn Drill' — covered by a manual test (see by-category/manual/).
 
   it('Horn Leech' + ' [75 BP Grass Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Horn Leech', 'Splash', 'Splash', 'Splash'] });
@@ -1147,9 +1079,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Ice Shard should reduce defender HP');
   });
 
-  it.todo('Ice Spinner' + ' [80 BP Ice Physical]', async () => {
-    // TODO: assert Ice Spinner's declared behavior
-  });
+  // 'Ice Spinner' — covered by a manual test (see by-category/manual/).
 
   it('Icicle Crash' + ' [85 BP Ice Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Icicle Crash', 'Splash', 'Splash', 'Splash'] });
@@ -1239,9 +1169,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Kowtow Cleave should reduce defender HP');
   });
 
-  it.todo('Lands Wrath' + ' [90 BP Ground Physical]', async () => {
-    // TODO: assert Land's Wrath's declared behavior
-  });
+  // 'Land\'s Wrath' — covered by a manual test (see by-category/manual/).
 
   it('Lash Out' + ' [75 BP Dark Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Lash Out', 'Splash', 'Splash', 'Splash'] });
@@ -1251,9 +1179,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Lash Out should reduce defender HP');
   });
 
-  it.todo('Last Resort' + ' [140 BP Normal Physical]', async () => {
-    // TODO: assert Last Resort's declared behavior
-  });
+  // 'Last Resort' — covered by a manual test (see by-category/manual/).
 
   it('Last Respects' + ' [50 BP Ghost Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Last Respects', 'Splash', 'Splash', 'Splash'] });
@@ -1303,9 +1229,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Liquidation should reduce defender HP');
   });
 
-  it.todo('Low Kick' + ' [0 BP Fighting Physical]', async () => {
-    // TODO: assert Low Kick's declared behavior
-  });
+  // 'Low Kick' — covered by a manual test (see by-category/manual/).
 
   it('Low Sweep' + ' [65 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Low Sweep', 'Splash', 'Splash', 'Splash'] });
@@ -1347,9 +1271,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Magnet Bomb should reduce defender HP');
   });
 
-  it.todo('Magnitude' + ' [0 BP Ground Physical]', async () => {
-    // TODO: assert Magnitude's declared behavior
-  });
+  // 'Magnitude' — covered by a manual test (see by-category/manual/).
 
   it('Mega Kick' + ' [120 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mega Kick', 'Splash', 'Splash', 'Splash'] });
@@ -1375,9 +1297,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Megahorn should reduce defender HP');
   });
 
-  it.todo('Metal Burst' + ' [0 BP Steel Physical]', async () => {
-    // TODO: assert Metal Burst's declared behavior
-  });
+  // 'Metal Burst' — covered by a manual test (see by-category/manual/).
 
   it('Metal Claw' + ' [50 BP Steel Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Metal Claw', 'Splash', 'Splash', 'Splash'] });
@@ -1411,9 +1331,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mighty Cleave should reduce defender HP');
   });
 
-  it.todo('Mortal Spin' + ' [30 BP Poison Physical]', async () => {
-    // TODO: assert Mortal Spin's declared behavior
-  });
+  // 'Mortal Spin' — covered by a manual test (see by-category/manual/).
 
   it('Mountain Gale' + ' [100 BP Ice Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mountain Gale', 'Splash', 'Splash', 'Splash'] });
@@ -1431,9 +1349,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Multi-Attack should reduce defender HP');
   });
 
-  it.todo('Natural Gift' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Natural Gift's declared behavior
-  });
+  // 'Natural Gift' — covered by a manual test (see by-category/manual/).
 
   it('Needle Arm' + ' [60 BP Grass Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Needle Arm', 'Splash', 'Splash', 'Splash'] });
@@ -1507,13 +1423,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Peck should reduce defender HP');
   });
 
-  it.todo('Petal Blizzard' + ' [90 BP Grass Physical]', async () => {
-    // TODO: assert Petal Blizzard's declared behavior
-  });
+  // 'Petal Blizzard' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Phantom Force' + ' [90 BP Ghost Physical]', async () => {
-    // TODO: assert Phantom Force's declared behavior
-  });
+  // 'Phantom Force' — covered by a manual test (see by-category/manual/).
 
   it('Pin Missile' + ' [25 BP Bug Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Pin Missile', 'Splash', 'Splash', 'Splash'] });
@@ -1635,13 +1547,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Power-Up Punch should reduce defender HP');
   });
 
-  it.todo('Precipice Blades' + ' [120 BP Ground Physical]', async () => {
-    // TODO: assert Precipice Blades's declared behavior
-  });
+  // 'Precipice Blades' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Present' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Present's declared behavior
-  });
+  // 'Present' — covered by a manual test (see by-category/manual/).
 
   it('Psyblade' + ' [80 BP Psychic Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Psyblade', 'Splash', 'Splash', 'Splash'] });
@@ -1675,13 +1583,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Psyshield Bash should reduce defender HP');
   });
 
-  it.todo('Punishment' + ' [0 BP Dark Physical]', async () => {
-    // TODO: assert Punishment's declared behavior
-  });
+  // 'Punishment' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Pursuit' + ' [40 BP Dark Physical]', async () => {
-    // TODO: assert Pursuit's declared behavior
-  });
+  // 'Pursuit' — covered by a manual test (see by-category/manual/).
 
   it('Pyro Ball' + ' [120 BP Fire Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Pyro Ball', 'Splash', 'Splash', 'Splash'] });
@@ -1739,9 +1643,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Rapid Spin should reduce defender HP');
   });
 
-  it.todo('Razor Leaf' + ' [55 BP Grass Physical]', async () => {
-    // TODO: assert Razor Leaf's declared behavior
-  });
+  // 'Razor Leaf' — covered by a manual test (see by-category/manual/).
 
   it('Razor Shell' + ' [75 BP Water Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Razor Shell', 'Splash', 'Splash', 'Splash'] });
@@ -1759,17 +1661,11 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Retaliate should reduce defender HP');
   });
 
-  it.todo('Return' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Return's declared behavior
-  });
+  // 'Return' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Revenge' + ' [60 BP Fighting Physical]', async () => {
-    // TODO: assert Revenge's declared behavior
-  });
+  // 'Revenge' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Reversal' + ' [0 BP Fighting Physical]', async () => {
-    // TODO: assert Reversal's declared behavior
-  });
+  // 'Reversal' — covered by a manual test (see by-category/manual/).
 
   it('Rock Blast' + ' [25 BP Rock Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Rock Blast', 'Splash', 'Splash', 'Splash'] });
@@ -1787,9 +1683,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Rock Climb should reduce defender HP');
   });
 
-  it.todo('Rock Slide' + ' [75 BP Rock Physical]', async () => {
-    // TODO: assert Rock Slide's declared behavior
-  });
+  // 'Rock Slide' — covered by a manual test (see by-category/manual/).
 
   it('Rock Smash' + ' [40 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Rock Smash', 'Splash', 'Splash', 'Splash'] });
@@ -1911,13 +1805,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Seed Bomb should reduce defender HP');
   });
 
-  it.todo('Seismic Toss' + ' [0 BP Fighting Physical]', async () => {
-    // TODO: assert Seismic Toss's declared behavior
-  });
+  // 'Seismic Toss' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Self-Destruct' + ' [200 BP Normal Physical]', async () => {
-    // TODO: assert Self-Destruct's declared behavior
-  });
+  // 'Self-Destruct' — covered by a manual test (see by-category/manual/).
 
   it('Shadow Bone' + ' [85 BP Ghost Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Shadow Bone', 'Splash', 'Splash', 'Splash'] });
@@ -1935,9 +1825,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Shadow Claw should reduce defender HP');
   });
 
-  it.todo('Shadow Force' + ' [120 BP Ghost Physical]', async () => {
-    // TODO: assert Shadow Force's declared behavior
-  });
+  // 'Shadow Force' — covered by a manual test (see by-category/manual/).
 
   it('Shadow Punch' + ' [60 BP Ghost Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Shadow Punch', 'Splash', 'Splash', 'Splash'] });
@@ -1979,17 +1867,11 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Skitter Smack should reduce defender HP');
   });
 
-  it.todo('Skull Bash' + ' [130 BP Normal Physical]', async () => {
-    // TODO: assert Skull Bash's declared behavior
-  });
+  // 'Skull Bash' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sky Attack' + ' [140 BP Flying Physical]', async () => {
-    // TODO: assert Sky Attack's declared behavior
-  });
+  // 'Sky Attack' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sky Drop' + ' [60 BP Flying Physical]', async () => {
-    // TODO: assert Sky Drop's declared behavior
-  });
+  // 'Sky Drop' — covered by a manual test (see by-category/manual/).
 
   it('Sky Uppercut' + ' [85 BP Fighting Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sky Uppercut', 'Splash', 'Splash', 'Splash'] });
@@ -2047,9 +1929,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Snap Trap should reduce defender HP');
   });
 
-  it.todo('Solar Blade' + ' [125 BP Grass Physical]', async () => {
-    // TODO: assert Solar Blade's declared behavior
-  });
+  // 'Solar Blade' — covered by a manual test (see by-category/manual/).
 
   it('Spark' + ' [65 BP Electric Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Spark', 'Splash', 'Splash', 'Splash'] });
@@ -2107,9 +1987,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Steamroller should reduce defender HP');
   });
 
-  it.todo('Steel Roller' + ' [130 BP Steel Physical]', async () => {
-    // TODO: assert Steel Roller's declared behavior
-  });
+  // 'Steel Roller' — covered by a manual test (see by-category/manual/).
 
   it('Steel Wing' + ' [70 BP Steel Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Steel Wing', 'Splash', 'Splash', 'Splash'] });
@@ -2183,9 +2061,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Submission should reduce defender HP');
   });
 
-  it.todo('Sucker Punch' + ' [70 BP Dark Physical]', async () => {
-    // TODO: assert Sucker Punch's declared behavior
-  });
+  // 'Sucker Punch' — covered by a manual test (see by-category/manual/).
 
   it('Sunsteel Strike' + ' [100 BP Steel Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sunsteel Strike', 'Splash', 'Splash', 'Splash'] });
@@ -2195,9 +2071,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Sunsteel Strike should reduce defender HP');
   });
 
-  it.todo('Super Fang' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Super Fang's declared behavior
-  });
+  // 'Super Fang' — covered by a manual test (see by-category/manual/).
 
   it('Supercell Slam' + ' [100 BP Electric Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Supercell Slam', 'Splash', 'Splash', 'Splash'] });
@@ -2263,13 +2137,9 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Thief should reduce defender HP');
   });
 
-  it.todo('Thousand Arrows' + ' [90 BP Ground Physical]', async () => {
-    // TODO: assert Thousand Arrows's declared behavior
-  });
+  // 'Thousand Arrows' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Thousand Waves' + ' [90 BP Ground Physical]', async () => {
-    // TODO: assert Thousand Waves's declared behavior
-  });
+  // 'Thousand Waves' — covered by a manual test (see by-category/manual/).
 
   it('Thrash' + ' [120 BP Normal Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Thrash', 'Splash', 'Splash', 'Splash'] });
@@ -2375,9 +2245,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'U-turn should reduce defender HP');
   });
 
-  it.todo('Upper Hand' + ' [65 BP Fighting Physical]', async () => {
-    // TODO: assert Upper Hand's declared behavior
-  });
+  // 'Upper Hand' — covered by a manual test (see by-category/manual/).
 
   it('V-create' + ' [180 BP Fire Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['V-create', 'Splash', 'Splash', 'Splash'] });
@@ -2387,9 +2255,7 @@ describe('Physical moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'V-create should reduce defender HP');
   });
 
-  it.todo('Veevee Volley' + ' [0 BP Normal Physical]', async () => {
-    // TODO: assert Veevee Volley's declared behavior
-  });
+  // 'Veevee Volley' — covered by a manual test (see by-category/manual/).
 
   it('Vine Whip' + ' [45 BP Grass Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Vine Whip', 'Splash', 'Splash', 'Splash'] });

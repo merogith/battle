@@ -23,6 +23,7 @@ const HP_TOUCHING = new Set([
   'Floral Healing',
   'Aromatic Mist',
   'Sparkling Aria', // not a status move technically
+  'Nature Power', // status-categorized, but dispatches a real damaging move (terrain-based; Tri Attack by default)
 ]);
 
 function isEligible(move) {

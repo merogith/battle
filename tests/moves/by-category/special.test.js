@@ -3,8 +3,8 @@
 //
 // Category: Special
 // Total moves: 251
-// Auto-asserted: 177
-// TODO (manual fill-in required): 74
+// Auto-asserted: 176
+// TODO (manual fill-in required): 75
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,9 +27,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Absorb should reduce defender HP');
   });
 
-  it.todo('Acid' + ' [40 BP Poison Special]', async () => {
-    // TODO: assert Acid's declared behavior
-  });
+  // 'Acid' — covered by a manual test (see by-category/manual/).
 
   it('Acid Spray' + ' [40 BP Poison Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Acid Spray', 'Splash', 'Splash', 'Splash'] });
@@ -47,9 +45,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Aeroblast should reduce defender HP');
   });
 
-  it.todo('Air Cutter' + ' [60 BP Flying Special]', async () => {
-    // TODO: assert Air Cutter's declared behavior
-  });
+  // 'Air Cutter' — covered by a manual test (see by-category/manual/).
 
   it('Air Slash' + ' [75 BP Flying Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Air Slash', 'Splash', 'Splash', 'Splash'] });
@@ -91,9 +87,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Armor Cannon should reduce defender HP');
   });
 
-  it.todo('Astral Barrage' + ' [120 BP Ghost Special]', async () => {
-    // TODO: assert Astral Barrage's declared behavior
-  });
+  // 'Astral Barrage' — covered by a manual test (see by-category/manual/).
 
   it('Aura Sphere' + ' [80 BP Fighting Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Aura Sphere', 'Splash', 'Splash', 'Splash'] });
@@ -119,23 +113,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Baddy Bad should reduce defender HP');
   });
 
-  it('Belch' + ' [120 BP Poison Special]', async () => {
-    // Without a berry eaten, Belch must fail (no damage).
-    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Belch', 'Splash', 'Splash', 'Splash'] });
-    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
-    const beforeHp = defender.currentHp;
-    await runTurn({ playerMon: attacker, foeMon: defender });
-    assert.equal(defender.currentHp, beforeHp, 'Belch should fail when the user has not eaten a Berry');
-
-    // After belchReady is set (berry eaten earlier), Belch lands and deals damage.
-    const attacker2 = mkMon({ species: 'Mew', ability: 'None', moves: ['Belch', 'Splash', 'Splash', 'Splash'] });
-    const defender2 = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
-    attacker2.volatile = attacker2.volatile || {};
-    attacker2.volatile.belchReady = true;
-    const beforeHp2 = defender2.currentHp;
-    await runTurn({ playerMon: attacker2, foeMon: defender2 });
-    assert.ok(defender2.currentHp < beforeHp2, 'Belch should reduce defender HP after a Berry has been eaten');
-  });
+  // 'Belch' — covered by a manual test (see by-category/manual/).
 
   it('Bitter Malice' + ' [75 BP Ghost Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bitter Malice', 'Splash', 'Splash', 'Splash'] });
@@ -153,13 +131,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Blast Burn should reduce defender HP');
   });
 
-  it.todo('Bleakwind Storm' + ' [100 BP Flying Special]', async () => {
-    // TODO: assert Bleakwind Storm's declared behavior
-  });
+  // 'Bleakwind Storm' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Blizzard' + ' [110 BP Ice Special]', async () => {
-    // TODO: assert Blizzard's declared behavior
-  });
+  // 'Blizzard' — covered by a manual test (see by-category/manual/).
 
   it('Blood Moon' + ' [140 BP Normal Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Blood Moon', 'Splash', 'Splash', 'Splash'] });
@@ -177,9 +151,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Blue Flare should reduce defender HP');
   });
 
-  it.todo('Boomburst' + ' [140 BP Normal Special]', async () => {
-    // TODO: assert Boomburst's declared behavior
-  });
+  // 'Boomburst' — covered by a manual test (see by-category/manual/).
 
   it('Bouncy Bubble' + ' [60 BP Water Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bouncy Bubble', 'Splash', 'Splash', 'Splash'] });
@@ -197,9 +169,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Brine should reduce defender HP');
   });
 
-  it.todo('Bubble' + ' [40 BP Water Special]', async () => {
-    // TODO: assert Bubble's declared behavior
-  });
+  // 'Bubble' — covered by a manual test (see by-category/manual/).
 
   it('Bubble Beam' + ' [65 BP Water Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Bubble Beam', 'Splash', 'Splash', 'Splash'] });
@@ -217,13 +187,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Bug Buzz should reduce defender HP');
   });
 
-  it.todo('Burn Up' + ' [130 BP Fire Special]', async () => {
-    // TODO: assert Burn Up's declared behavior
-  });
+  // 'Burn Up' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Burning Jealousy' + ' [70 BP Fire Special]', async () => {
-    // TODO: assert Burning Jealousy's declared behavior
-  });
+  // 'Burning Jealousy' — covered by a manual test (see by-category/manual/).
 
   it('Buzzy Buzz' + ' [60 BP Electric Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Buzzy Buzz', 'Splash', 'Splash', 'Splash'] });
@@ -265,9 +231,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Chloroblast should reduce defender HP');
   });
 
-  it.todo('Clanging Scales' + ' [110 BP Dragon Special]', async () => {
-    // TODO: assert Clanging Scales's declared behavior
-  });
+  // 'Clanging Scales' — covered by a manual test (see by-category/manual/).
 
   it('Clear Smog' + ' [50 BP Poison Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Clear Smog', 'Splash', 'Splash', 'Splash'] });
@@ -285,9 +249,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Confusion should reduce defender HP');
   });
 
-  it.todo('Core Enforcer' + ' [100 BP Dragon Special]', async () => {
-    // TODO: assert Core Enforcer's declared behavior
-  });
+  // 'Core Enforcer' — covered by a manual test (see by-category/manual/).
 
   it('Dark Pulse' + ' [80 BP Dark Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dark Pulse', 'Splash', 'Splash', 'Splash'] });
@@ -297,21 +259,13 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dark Pulse should reduce defender HP');
   });
 
-  it.todo('Dazzling Gleam' + ' [80 BP Fairy Special]', async () => {
-    // TODO: assert Dazzling Gleam's declared behavior
-  });
+  // 'Dazzling Gleam' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Disarming Voice' + ' [40 BP Fairy Special]', async () => {
-    // TODO: assert Disarming Voice's declared behavior
-  });
+  // 'Disarming Voice' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Discharge' + ' [80 BP Electric Special]', async () => {
-    // TODO: assert Discharge's declared behavior
-  });
+  // 'Discharge' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Doom Desire' + ' [140 BP Steel Special]', async () => {
-    // TODO: assert Doom Desire's declared behavior
-  });
+  // 'Doom Desire' — covered by a manual test (see by-category/manual/).
 
   it('Draco Meteor' + ' [130 BP Dragon Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Draco Meteor', 'Splash', 'Splash', 'Splash'] });
@@ -329,9 +283,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dragon Breath should reduce defender HP');
   });
 
-  it.todo('Dragon Energy' + ' [150 BP Dragon Special]', async () => {
-    // TODO: assert Dragon Energy's declared behavior
-  });
+  // 'Dragon Energy' — covered by a manual test (see by-category/manual/).
 
   it('Dragon Pulse' + ' [85 BP Dragon Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dragon Pulse', 'Splash', 'Splash', 'Splash'] });
@@ -341,9 +293,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Dragon Pulse should reduce defender HP');
   });
 
-  it.todo('Dragon Rage' + ' [0 BP Dragon Special]', async () => {
-    // TODO: assert Dragon Rage's declared behavior
-  });
+  // 'Dragon Rage' — covered by a manual test (see by-category/manual/).
 
   it('Draining Kiss' + ' [50 BP Fairy Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Draining Kiss', 'Splash', 'Splash', 'Splash'] });
@@ -393,9 +343,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Eerie Spell should reduce defender HP');
   });
 
-  it.todo('Electro Ball' + ' [0 BP Electric Special]', async () => {
-    // TODO: assert Electro Ball's declared behavior
-  });
+  // 'Electro Ball' — covered by a manual test (see by-category/manual/).
 
   it('Electro Drift' + ' [100 BP Electric Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Electro Drift', 'Splash', 'Splash', 'Splash'] });
@@ -405,13 +353,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Electro Drift should reduce defender HP');
   });
 
-  it.todo('Electro Shot' + ' [130 BP Electric Special]', async () => {
-    // TODO: assert Electro Shot's declared behavior
-  });
+  // 'Electro Shot' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Electroweb' + ' [55 BP Electric Special]', async () => {
-    // TODO: assert Electroweb's declared behavior
-  });
+  // 'Electroweb' — covered by a manual test (see by-category/manual/).
 
   it('Ember' + ' [40 BP Fire Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Ember', 'Splash', 'Splash', 'Splash'] });
@@ -429,9 +373,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Energy Ball should reduce defender HP');
   });
 
-  it.todo('Eruption' + ' [150 BP Fire Special]', async () => {
-    // TODO: assert Eruption's declared behavior
-  });
+  // 'Eruption' — covered by a manual test (see by-category/manual/).
 
   it('Esper Wing' + ' [80 BP Psychic Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Esper Wing', 'Splash', 'Splash', 'Splash'] });
@@ -489,13 +431,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Fiery Dance should reduce defender HP');
   });
 
-  it.todo('Fiery Wrath' + ' [90 BP Dark Special]', async () => {
-    // TODO: assert Fiery Wrath's declared behavior
-  });
+  // 'Fiery Wrath' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Final Gambit' + ' [0 BP Fighting Special]', async () => {
-    // TODO: assert Final Gambit's declared behavior
-  });
+  // 'Final Gambit' — covered by a manual test (see by-category/manual/).
 
   it('Fire Blast' + ' [110 BP Fire Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Fire Blast', 'Splash', 'Splash', 'Splash'] });
@@ -609,9 +547,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Fusion Flare should reduce defender HP');
   });
 
-  it.todo('Future Sight' + ' [120 BP Psychic Special]', async () => {
-    // TODO: assert Future Sight's declared behavior
-  });
+  // 'Future Sight' — covered by a manual test (see by-category/manual/).
 
   it('Giga Drain' + ' [75 BP Grass Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Giga Drain', 'Splash', 'Splash', 'Splash'] });
@@ -621,9 +557,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Giga Drain should reduce defender HP');
   });
 
-  it.todo('Glaciate' + ' [65 BP Ice Special]', async () => {
-    // TODO: assert Glaciate's declared behavior
-  });
+  // 'Glaciate' — covered by a manual test (see by-category/manual/).
 
   it('Glitzy Glow' + ' [80 BP Psychic Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Glitzy Glow', 'Splash', 'Splash', 'Splash'] });
@@ -633,9 +567,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Glitzy Glow should reduce defender HP');
   });
 
-  it.todo('Grass Knot' + ' [0 BP Grass Special]', async () => {
-    // TODO: assert Grass Knot's declared behavior
-  });
+  // 'Grass Knot' — covered by a manual test (see by-category/manual/).
 
   it('Grass Pledge' + ' [80 BP Grass Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Grass Pledge', 'Splash', 'Splash', 'Splash'] });
@@ -653,9 +585,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Gust should reduce defender HP');
   });
 
-  it.todo('Heat Wave' + ' [95 BP Fire Special]', async () => {
-    // TODO: assert Heat Wave's declared behavior
-  });
+  // 'Heat Wave' — covered by a manual test (see by-category/manual/).
 
   it('Hex' + ' [65 BP Ghost Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Hex', 'Splash', 'Splash', 'Splash'] });
@@ -841,9 +771,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Hyper Beam should reduce defender HP');
   });
 
-  it.todo('Hyper Voice' + ' [90 BP Normal Special]', async () => {
-    // TODO: assert Hyper Voice's declared behavior
-  });
+  // 'Hyper Voice' — covered by a manual test (see by-category/manual/).
 
   it('Hyperspace Hole' + ' [80 BP Psychic Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Hyperspace Hole', 'Splash', 'Splash', 'Splash'] });
@@ -861,17 +789,11 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Ice Beam should reduce defender HP');
   });
 
-  it.todo('Ice Burn' + ' [140 BP Ice Special]', async () => {
-    // TODO: assert Ice Burn's declared behavior
-  });
+  // 'Ice Burn' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Icy Wind' + ' [55 BP Ice Special]', async () => {
-    // TODO: assert Icy Wind's declared behavior
-  });
+  // 'Icy Wind' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Incinerate' + ' [60 BP Fire Special]', async () => {
-    // TODO: assert Incinerate's declared behavior
-  });
+  // 'Incinerate' — covered by a manual test (see by-category/manual/).
 
   it('Infernal Parade' + ' [60 BP Ghost Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Infernal Parade', 'Splash', 'Splash', 'Splash'] });
@@ -905,9 +827,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Judgment should reduce defender HP');
   });
 
-  it.todo('Lava Plume' + ' [80 BP Fire Special]', async () => {
-    // TODO: assert Lava Plume's declared behavior
-  });
+  // 'Lava Plume' — covered by a manual test (see by-category/manual/).
 
   it('Leaf Storm' + ' [130 BP Grass Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Leaf Storm', 'Splash', 'Splash', 'Splash'] });
@@ -965,9 +885,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Magma Storm should reduce defender HP');
   });
 
-  it.todo('Make It Rain' + ' [120 BP Steel Special]', async () => {
-    // TODO: assert Make It Rain's declared behavior
-  });
+  // 'Make It Rain' — covered by a manual test (see by-category/manual/).
 
   it('Malignant Chain' + ' [100 BP Poison Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Malignant Chain', 'Splash', 'Splash', 'Splash'] });
@@ -977,9 +895,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Malignant Chain should reduce defender HP');
   });
 
-  it.todo('Matcha Gotcha' + ' [80 BP Grass Special]', async () => {
-    // TODO: assert Matcha Gotcha's declared behavior
-  });
+  // 'Matcha Gotcha' — covered by a manual test (see by-category/manual/).
 
   it('Mega Drain' + ' [40 BP Grass Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mega Drain', 'Splash', 'Splash', 'Splash'] });
@@ -989,17 +905,11 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mega Drain should reduce defender HP');
   });
 
-  it.todo('Meteor Beam' + ' [120 BP Rock Special]', async () => {
-    // TODO: assert Meteor Beam's declared behavior
-  });
+  // 'Meteor Beam' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Mind Blown' + ' [150 BP Fire Special]', async () => {
-    // TODO: assert Mind Blown's declared behavior
-  });
+  // 'Mind Blown' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Mirror Coat' + ' [0 BP Psychic Special]', async () => {
-    // TODO: assert Mirror Coat's declared behavior
-  });
+  // 'Mirror Coat' — covered by a manual test (see by-category/manual/).
 
   it('Mirror Shot' + ' [65 BP Steel Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mirror Shot', 'Splash', 'Splash', 'Splash'] });
@@ -1017,9 +927,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mist Ball should reduce defender HP');
   });
 
-  it.todo('Misty Explosion' + ' [100 BP Fairy Special]', async () => {
-    // TODO: assert Misty Explosion's declared behavior
-  });
+  // 'Misty Explosion' — covered by a manual test (see by-category/manual/).
 
   it('Moonblast' + ' [95 BP Fairy Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Moonblast', 'Splash', 'Splash', 'Splash'] });
@@ -1061,9 +969,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mud-Slap should reduce defender HP');
   });
 
-  it.todo('Muddy Water' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Muddy Water's declared behavior
-  });
+  // 'Muddy Water' — covered by a manual test (see by-category/manual/).
 
   it('Mystical Fire' + ' [75 BP Fire Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Mystical Fire', 'Splash', 'Splash', 'Splash'] });
@@ -1081,9 +987,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Mystical Power should reduce defender HP');
   });
 
-  it.todo('Natures Madness' + ' [0 BP Fairy Special]', async () => {
-    // TODO: assert Nature's Madness's declared behavior
-  });
+  // 'Nature\'s Madness' — covered by a manual test (see by-category/manual/).
 
   it('Night Daze' + ' [85 BP Dark Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Night Daze', 'Splash', 'Splash', 'Splash'] });
@@ -1093,13 +997,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Night Daze should reduce defender HP');
   });
 
-  it.todo('Night Shade' + ' [0 BP Ghost Special]', async () => {
-    // TODO: assert Night Shade's declared behavior
-  });
+  // 'Night Shade' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Nihil Light' + ' [100 BP Dragon Special]', async () => {
-    // TODO: assert Nihil Light's declared behavior
-  });
+  // 'Nihil Light' — covered by a manual test (see by-category/manual/).
 
   it('Oblivion Wing' + ' [80 BP Flying Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Oblivion Wing', 'Splash', 'Splash', 'Splash'] });
@@ -1125,13 +1025,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Ominous Wind should reduce defender HP');
   });
 
-  it.todo('Origin Pulse' + ' [110 BP Water Special]', async () => {
-    // TODO: assert Origin Pulse's declared behavior
-  });
+  // 'Origin Pulse' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Overdrive' + ' [80 BP Electric Special]', async () => {
-    // TODO: assert Overdrive's declared behavior
-  });
+  // 'Overdrive' — covered by a manual test (see by-category/manual/).
 
   it('Overheat' + ' [130 BP Fire Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Overheat', 'Splash', 'Splash', 'Splash'] });
@@ -1149,9 +1045,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Paleo Wave should reduce defender HP');
   });
 
-  it.todo('Parabolic Charge' + ' [65 BP Electric Special]', async () => {
-    // TODO: assert Parabolic Charge's declared behavior
-  });
+  // 'Parabolic Charge' — covered by a manual test (see by-category/manual/).
 
   it('Petal Dance' + ' [120 BP Grass Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Petal Dance', 'Splash', 'Splash', 'Splash'] });
@@ -1169,13 +1063,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Photon Geyser should reduce defender HP');
   });
 
-  it.todo('Pika Papow' + ' [0 BP Electric Special]', async () => {
-    // TODO: assert Pika Papow's declared behavior
-  });
+  // 'Pika Papow' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Polar Flare' + ' [75 BP Fire Special]', async () => {
-    // TODO: assert Polar Flare's declared behavior
-  });
+  // 'Polar Flare' — covered by a manual test (see by-category/manual/).
 
   it('Pollen Puff' + ' [90 BP Bug Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Pollen Puff', 'Splash', 'Splash', 'Splash'] });
@@ -1185,9 +1075,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Pollen Puff should reduce defender HP');
   });
 
-  it.todo('Powder Snow' + ' [40 BP Ice Special]', async () => {
-    // TODO: assert Powder Snow's declared behavior
-  });
+  // 'Powder Snow' — covered by a manual test (see by-category/manual/).
 
   it('Power Gem' + ' [80 BP Rock Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Power Gem', 'Splash', 'Splash', 'Splash'] });
@@ -1253,17 +1141,11 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Psystrike should reduce defender HP');
   });
 
-  it.todo('Psywave' + ' [0 BP Psychic Special]', async () => {
-    // TODO: assert Psywave's declared behavior
-  });
+  // 'Psywave' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Razor Wind' + ' [80 BP Normal Special]', async () => {
-    // TODO: assert Razor Wind's declared behavior
-  });
+  // 'Razor Wind' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Relic Song' + ' [75 BP Normal Special]', async () => {
-    // TODO: assert Relic Song's declared behavior
-  });
+  // 'Relic Song' — covered by a manual test (see by-category/manual/).
 
   it('Revelation Dance' + ' [90 BP Normal Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Revelation Dance', 'Splash', 'Splash', 'Splash'] });
@@ -1297,13 +1179,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Round should reduce defender HP');
   });
 
-  it.todo('Ruination' + ' [0 BP Dark Special]', async () => {
-    // TODO: assert Ruination's declared behavior
-  });
+  // 'Ruination' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sandsear Storm' + ' [100 BP Ground Special]', async () => {
-    // TODO: assert Sandsear Storm's declared behavior
-  });
+  // 'Sandsear Storm' — covered by a manual test (see by-category/manual/).
 
   it('Scald' + ' [80 BP Water Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Scald', 'Splash', 'Splash', 'Splash'] });
@@ -1321,9 +1199,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Scorching Sands should reduce defender HP');
   });
 
-  it.todo('Searing Shot' + ' [100 BP Fire Special]', async () => {
-    // TODO: assert Searing Shot's declared behavior
-  });
+  // 'Searing Shot' — covered by a manual test (see by-category/manual/).
 
   it('Secret Sword' + ' [85 BP Fighting Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Secret Sword', 'Splash', 'Splash', 'Splash'] });
@@ -1349,9 +1225,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Shadow Ball should reduce defender HP');
   });
 
-  it.todo('Sheer Cold' + ' [0 BP Ice Special]', async () => {
-    // TODO: assert Sheer Cold's declared behavior
-  });
+  // 'Sheer Cold' — covered by a manual test (see by-category/manual/).
 
   it('Shell Side Arm' + ' [90 BP Poison Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Shell Side Arm', 'Splash', 'Splash', 'Splash'] });
@@ -1361,9 +1235,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Shell Side Arm should reduce defender HP');
   });
 
-  it.todo('Shell Trap' + ' [150 BP Fire Special]', async () => {
-    // TODO: assert Shell Trap's declared behavior
-  });
+  // 'Shell Trap' — covered by a manual test (see by-category/manual/).
 
   it('Shock Wave' + ' [60 BP Electric Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Shock Wave', 'Splash', 'Splash', 'Splash'] });
@@ -1405,9 +1277,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Sludge Bomb should reduce defender HP');
   });
 
-  it.todo('Sludge Wave' + ' [95 BP Poison Special]', async () => {
-    // TODO: assert Sludge Wave's declared behavior
-  });
+  // 'Sludge Wave' — covered by a manual test (see by-category/manual/).
 
   it('Smog' + ' [30 BP Poison Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Smog', 'Splash', 'Splash', 'Splash'] });
@@ -1417,9 +1287,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Smog should reduce defender HP');
   });
 
-  it.todo('Snarl' + ' [55 BP Dark Special]', async () => {
-    // TODO: assert Snarl's declared behavior
-  });
+  // 'Snarl' — covered by a manual test (see by-category/manual/).
 
   it('Snipe Shot' + ' [80 BP Water Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Snipe Shot', 'Splash', 'Splash', 'Splash'] });
@@ -1429,17 +1297,11 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Snipe Shot should reduce defender HP');
   });
 
-  it.todo('Snore' + ' [50 BP Normal Special]', async () => {
-    // TODO: assert Snore's declared behavior
-  });
+  // 'Snore' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Solar Beam' + ' [120 BP Grass Special]', async () => {
-    // TODO: assert Solar Beam's declared behavior
-  });
+  // 'Solar Beam' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Sonic Boom' + ' [0 BP Normal Special]', async () => {
-    // TODO: assert Sonic Boom's declared behavior
-  });
+  // 'Sonic Boom' — covered by a manual test (see by-category/manual/).
 
   it('Spacial Rend' + ' [100 BP Dragon Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Spacial Rend', 'Splash', 'Splash', 'Splash'] });
@@ -1449,9 +1311,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Spacial Rend should reduce defender HP');
   });
 
-  it.todo('Sparkling Aria' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Sparkling Aria's declared behavior
-  });
+  // 'Sparkling Aria' — covered by a manual test (see by-category/manual/).
 
   it('Sparkly Swirl' + ' [120 BP Fairy Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Sparkly Swirl', 'Splash', 'Splash', 'Splash'] });
@@ -1461,17 +1321,11 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Sparkly Swirl should reduce defender HP');
   });
 
-  it.todo('Spit Up' + ' [0 BP Normal Special]', async () => {
-    // TODO: assert Spit Up's declared behavior
-  });
+  // 'Spit Up' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Splishy Splash' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Splishy Splash's declared behavior
-  });
+  // 'Splishy Splash' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Springtide Storm' + ' [100 BP Fairy Special]', async () => {
-    // TODO: assert Springtide Storm's declared behavior
-  });
+  // 'Springtide Storm' — covered by a manual test (see by-category/manual/).
 
   it('Steam Eruption' + ' [110 BP Water Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Steam Eruption', 'Splash', 'Splash', 'Splash'] });
@@ -1505,21 +1359,13 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Strange Steam should reduce defender HP');
   });
 
-  it.todo('Struggle Bug' + ' [50 BP Bug Special]', async () => {
-    // TODO: assert Struggle Bug's declared behavior
-  });
+  // 'Struggle Bug' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Surf' + ' [90 BP Water Special]', async () => {
-    // TODO: assert Surf's declared behavior
-  });
+  // 'Surf' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Swift' + ' [60 BP Normal Special]', async () => {
-    // TODO: assert Swift's declared behavior
-  });
+  // 'Swift' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Synchronoise' + ' [120 BP Psychic Special]', async () => {
-    // TODO: assert Synchronoise's declared behavior
-  });
+  // 'Synchronoise' — covered by a manual test (see by-category/manual/).
 
   it('Syrup Bomb' + ' [60 BP Grass Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Syrup Bomb', 'Splash', 'Splash', 'Splash'] });
@@ -1625,9 +1471,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Tri Attack should reduce defender HP');
   });
 
-  it.todo('Trump Card' + ' [0 BP Normal Special]', async () => {
-    // TODO: assert Trump Card's declared behavior
-  });
+  // 'Trump Card' — covered by a manual test (see by-category/manual/).
 
   it('Twin Beam' + ' [40 BP Psychic Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Twin Beam', 'Splash', 'Splash', 'Splash'] });
@@ -1637,9 +1481,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Twin Beam should reduce defender HP');
   });
 
-  it.todo('Twister' + ' [40 BP Dragon Special]', async () => {
-    // TODO: assert Twister's declared behavior
-  });
+  // 'Twister' — covered by a manual test (see by-category/manual/).
 
   it('Uproar' + ' [90 BP Normal Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Uproar', 'Splash', 'Splash', 'Splash'] });
@@ -1705,9 +1547,7 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Water Shuriken should reduce defender HP');
   });
 
-  it.todo('Water Spout' + ' [150 BP Water Special]', async () => {
-    // TODO: assert Water Spout's declared behavior
-  });
+  // 'Water Spout' — covered by a manual test (see by-category/manual/).
 
   it('Weather Ball' + ' [50 BP Normal Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Weather Ball', 'Splash', 'Splash', 'Splash'] });
@@ -1725,13 +1565,9 @@ describe('Special moves', () => {
     assert.ok(defender.currentHp < beforeHp, 'Whirlpool should reduce defender HP');
   });
 
-  it.todo('Wildbolt Storm' + ' [100 BP Electric Special]', async () => {
-    // TODO: assert Wildbolt Storm's declared behavior
-  });
+  // 'Wildbolt Storm' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Wring Out' + ' [0 BP Normal Special]', async () => {
-    // TODO: assert Wring Out's declared behavior
-  });
+  // 'Wring Out' — covered by a manual test (see by-category/manual/).
 
   it('Zap Cannon' + ' [120 BP Electric Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Zap Cannon', 'Splash', 'Splash', 'Splash'] });

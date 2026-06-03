@@ -20,6 +20,7 @@ const NEEDS_CONTEXT = new Set([
   'Fake Out',    // requires turn 1; fakeOutOk persists but engine zeroes it
   'Sucker Punch', // requires opponent picking attack
   'Upper Hand',  // requires opponent priority
+  'Shell Trap',  // requires being hit by a physical move first
   'Pursuit',     // requires switching opponent
   'Revenge', 'Avalanche', 'Assurance', // require being hit first
   'Focus Punch', // charges turn first

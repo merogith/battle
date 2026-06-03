@@ -69,8 +69,11 @@ Nine invariants iterating over all 954 moves. All passing:
 
 ### `/tests/moves/by-category/`
 
-Auto-generated per-move skeleton tests. 867 `it()` blocks (516 with auto-assertions,
-351 marked `todo` for manual fill-in). Regenerate via:
+Auto-generated per-move skeleton tests (`physical/special/status.test.js`). The
+generator auto-asserts the trivial cases; for moves that need manual setup it
+checks the `DEFERRED` set: covered moves get a `// … covered by a manual test`
+pointer, and only the genuinely-unfilled `DEFERRED` moves stay `it.todo()`.
+Regenerate via:
 
 ```bash
 node tests/audit/generate-move-tests.js
@@ -80,7 +83,16 @@ Auto-assertion rules:
 - Damaging moves: defender HP decreases after `runTurn`
 - Status moves with declared `boosts`: target stat stage matches declared delta
 
-Moves requiring manual setup (charge moves, OHKO, Counter-like, ally-target, variable-power) are emitted as `it.todo()`.
+Moves requiring manual setup (charge moves, OHKO, Counter-like, ally-target,
+variable-power, precondition-gated like Belch) are hand-written under
+[`manual/`](moves/by-category/manual/) — 26 files, ~307 deterministic fills.
+Only ~44 `DEFERRED` moves remain `it.todo()` (broken / doubles-only / complex
+choreography); see `agent-state/handoff/03-fill-remaining-move-todos.md`. The
+full move suite runs **0 fail / 44 todo**:
+
+```bash
+node --test --test-concurrency=4 'tests/moves/**/*.test.js'
+```
 
 ### In-Browser Self-Test
 
