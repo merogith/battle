@@ -238,6 +238,9 @@ export async function runShowdownBattle(opts) {
   const nTurns = Math.max(choices1.length, choices2.length, 1);
   const allTurns = parseProtocol(raw);
   const turns = allTurns.filter(t => t.n <= nTurns);
+  // Move-execution order per turn (for the opt-in order check); actions are in
+  // protocol order, which is execution order.
+  for (const t of turns) t.order = (t.actions || []).filter(a => a.kind === 'move').map(a => a.slot);
   const concludedWithinScript = allTurns.length <= nTurns;
   const winnerLine = raw.split('\n').find(l => l.startsWith('|win|'));
   const winner = (concludedWithinScript && winnerLine) ? winnerLine.slice('|win|'.length) : null;

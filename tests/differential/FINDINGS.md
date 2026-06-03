@@ -6,8 +6,9 @@
 > `DAMAGE_SWEEP_REPORT.md`). **No engine code has been changed yet.**
 
 ## Coverage
-**~102 probes** — 57 categorical scenarios (`scenarios.mjs`) + 45 damage-modifier
-sweeps (`damage-sweep.mjs`) — across: two-turn/semi-invulnerable, type/ability/item
+**~107 probes** — 60 categorical scenarios (`scenarios.mjs`) + 47 damage-modifier
+sweeps (`damage-sweep.mjs`) — including an opt-in **move-order check** (priority,
+speed, Trick Room) — across: two-turn/semi-invulnerable, type/ability/item
 immunities & absorbs, ability-ignoring (Mold Breaker, Scrappy), status application
 & immunities, self-status items (Flame/Toxic Orb), stat-change moves, fixed-damage,
 Protect/Substitute, survival (Sturdy/Focus Sash), Speed Boost, switch-in hooks
@@ -25,12 +26,14 @@ Ice Scales, Heatproof, Fluffy, Dry Skin, Mold Breaker; weather, screens, terrain
 | # | Finding | Root cause | Location | Catchable by | Severity |
 |---|---|---|---|---|---|
 | 1 | **Self-target / field moves "miss" vs a semi-invulnerable foe** (Fly/Dig/Dive/Bounce/Phantom Force/Shadow Force/Sky Drop) — the reported Fly bug | invuln check lacks the `move.cat !== "Status" \|\| !SELF_TARGETING_STATUS.has(name)` guard | `battle.html:23087-23110` | differential (boosts) | High |
-| 2 | **Speed Boost off-by-one** — a lead skips its end-of-turn-1 boost (in-house 0/1/2 vs Showdown 1/2/3) | gated on `turnCount > 0`, and `turnCount++` (battle.html:21682) runs *after* `endOfTurnEffects` (21676) | `battle.html:28706` | differential (boosts) | Low–Med |
+| 2 | **`turnCount` lags Showdown's `activeTurns` by one on turn 1** — `turnCount++` runs at END of turn (`battle.html:21682`) while Showdown increments at turn START. Two symptoms: (a) **Speed Boost** skips its end-of-T1 boost (in-house 0/1/2 vs Showdown 1/2/3); (b) **Stakeout** wrongly ×2 vs a turn-1 lead (in-house 2× Showdown on T1, equal on T2) | end-of-turn `turnCount++` timing vs the `turnCount===0` / `> 0` gates | `battle.html:28706` (Speed Boost), `:24149` (Stakeout) | differential (boosts + damage sweep) | Low–Med |
 | 3 | **Gravity does not restrict Gravity-incompatible moves** — Fly/Bounce/Splash/Jump Kick/Magnet Rise still work under Gravity (Fly charges & goes airborne; Splash executes) | two-turn / move-lock block has no `state.gravity` precondition | `battle.html:22611-22667` | differential (corroborated: a Gravity-locked Splash made Showdown Struggle; in-house Splashed) | Med |
 
 Findings #1 and #3 are the original hand-audit catalogue (#1, #2). **Finding #2
-(Speed Boost) is new — surfaced by the oracle, not the hand audit.** Finding #3 was
-thought to need a bespoke legality test; the oracle now corroborates it directly.
+(the `turnCount` timing) is new — surfaced by the oracle, not the hand audit; the
+Stakeout symptom was found in the order/timing round and confirms the root cause.**
+Finding #3 was thought to need a bespoke legality test; the oracle corroborates it
+directly.
 
 ## Confirmed CORRECT (broad agreement with Showdown — do not re-investigate)
 Damage formula & flooring · STAB · type chart incl. **Freeze-Dry vs Water** ·
@@ -44,7 +47,9 @@ Toxic ramp · multi-hit · **Protect** & **Substitute** · **Sturdy** & **Focus 
 immunity) · **Weakness Policy** (+2 on super-effective) · **recoil** (Brave Bird
 33%, Life Orb 10% — exact) · **contact-punish** (Rough Skin 1/8, Rocky Helmet 1/6 —
 exact) · **Knock Off** ×1.5 vs item-holder · **Skill Link** 5-hit · **Flame/Toxic
-Orb** self-status · **Sandstorm** chip + Rock ×1.5 SpD · **Guts** ×1.5 (ignores
+Orb** self-status · **Sandstorm** chip + Rock ×1.5 SpD · **turn order** (faster-first), **priority** (Quick Attack lets the slower move
+first), **Trick Room** (slower-first reversal) · **Analytic** ×1.3 (moving last) ·
+**Guts** ×1.5 (ignores
 burn drop) · **Marvel Scale** ×1.5 Def · **burn** halves physical (catalogue #4
 confirmed within roll tolerance — the ±1 HP stage-order quirk does not shift the
 range) · the full multiplier layer (Choice Band/Specs, Life Orb, type items, Expert
@@ -53,10 +58,10 @@ Sheer Force, Tough Claws, Iron Fist, Strong Jaw, Mega Launcher, Reckless,
 Neuroforce, Thick Fat, Multiscale, Filter, Fur Coat, Ice Scales, Heatproof, Fluffy,
 Dry Skin; weather ×1.5/×0.5, Reflect/Light Screen, Electric/Grassy Terrain).
 
-**Bottom line:** across ~100 probes the engine matches Showdown *everywhere* except
-the three findings above. The correctness floor is high — the gap was coverage and
-proof, not pervasive wrongness — which supports converging the in-house engine
-against the oracle rather than replacing it.
+**Bottom line:** across ~107 probes the engine matches Showdown *everywhere* except
+the three findings above (and Stakeout, a second face of #2). The correctness floor
+is high — the gap was coverage and proof, not pervasive wrongness — which supports
+converging the in-house engine against the oracle rather than replacing it.
 
 ## Harness-fidelity issues found & fixed during the build
 The oracle is only as trustworthy as the harness; **four** apparent "divergences"

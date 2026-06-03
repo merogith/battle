@@ -297,6 +297,35 @@ export const SCENARIOS = [
     choices1: ['move 1', 'move 2', 'move 2'], choices2: threeTurns,
   },
 
+  // ══ Move-execution order (opt-in checkOrder) — PROBE ══
+  {
+    id: 'speed-order-baseline',
+    category: 'turn order',
+    desc: 'Control: the faster Pokémon acts first when both use a normal-priority move.',
+    expect: 'probe', checkOrder: true,
+    team1: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Strength', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    team2: [{ species: 'Snorlax', ability: 'Thick Fat', moves: ['Strength', 'Splash'], nature: 'Brave', evs: { hp: 252 }, ivs: { spe: 0 } }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'priority-quick-attack',
+    category: 'turn order / priority',
+    desc: 'A +1 priority move (Quick Attack) lets the SLOWER Pokémon act first.',
+    expect: 'probe', checkOrder: true,
+    team1: [{ species: 'Snorlax', ability: 'Thick Fat', moves: ['Quick Attack', 'Splash'], nature: 'Brave', evs: { hp: 252 }, ivs: { spe: 0 } }],
+    team2: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Strength', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'trick-room-order',
+    category: 'turn order / field',
+    desc: 'Under Trick Room the SLOWER Pokémon acts first (turn 2 reverses).',
+    expect: 'probe', checkOrder: true,
+    team1: [{ species: 'Snorlax', ability: 'Thick Fat', moves: ['Trick Room', 'Strength'], nature: 'Brave', evs: { hp: 252 }, ivs: { spe: 0 } }],
+    team2: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Splash', 'Strength'], nature: 'Jolly', evs: { spe: 252 } }],
+    choices1: ['move 1', 'move 2'], choices2: ['move 1', 'move 2'],
+  },
+
   // ══ Sanity / regression (must MATCH) ══
   {
     id: 'sanity-swords-dance-normal',

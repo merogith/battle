@@ -6,7 +6,11 @@
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
 > (roll variance removed). Reference: @pkmn/sim (MIT).
 
-**Divergences found: 0/45**
+**Unexpected divergences: 0/47** ✅ · known/expected divergences: 1 (see notes)
+
+A row "diverges" only when ranges are disjoint AND the crit-proof min-skew confirms
+it (so a stray crit can't mask a real multiplier gap). Rows tagged **known** are
+documented engine findings, not surprises.
 
 | Probe | What it checks | In-house [min–max] | Showdown [min–max] | Verdict |
 |---|---|---|---|---|
@@ -55,6 +59,8 @@
 | `knockoff-item-boost` | Knock Off ×1.5 when the target holds a removable item | 170–198 (μ186) | 169–282 (μ191) | ✅ overlap |
 | `sand-spd-rock` | Sandstorm grants Rock-types ×1.5 SpD | 43–51 (μ47) | 43–72 (μ49) | ✅ overlap |
 | `multihit-skill-link` | Skill Link → 5-hit multi-hit move (always max hits) | 95–105 (μ100) | 96–117 (μ103) | ✅ overlap |
+| `ability-analytic` | Analytic ×1.3 when the user moves last | 59–102 (μ65) | 58–97 (μ66) | ✅ overlap |
+| `ability-stakeout-lead` | Stakeout wrongly ×2 vs a turn-1 lead (in-house turnCount lags) — symptom of finding #2 | 92–108 (μ101) | 47–77 (μ53) | 🟡 known (finding #2) |
 
 Ranges are HP damage to the defender. A correct multiplier yields overlapping
 bands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in

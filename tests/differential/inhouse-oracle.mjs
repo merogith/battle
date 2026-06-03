@@ -110,16 +110,28 @@ export async function runInhouseBattle(opts) {
     const f = parseChoice(choices2[t]);
     if (f.kind === 'move') engine.setForcedFoeMoveSlot(f.slot);
 
+    // Names of the actives at turn START, to map "<name> used …" log lines to a
+    // slot for the move-order check (order tests never switch, so this is stable).
+    const p1Name = engine.state.pActive && engine.state.pActive.name;
+    const p2Name = engine.state.fActive && engine.state.fActive.name;
+
     const startLog = E.logs.length;
     try {
       if (p.kind === 'switch') await window.playTurn(null, p.slot);
       else await window.playTurn(p.slot, null);
     } catch (err) {
-      turns.push({ n: t + 1, logs: [`__ENGINE_THREW__: ${err && err.message}`], end: snapEnd(engine), threw: true });
+      turns.push({ n: t + 1, logs: [`__ENGINE_THREW__: ${err && err.message}`], order: [], end: snapEnd(engine), threw: true });
       break;
     }
     const logs = E.logs.slice(startLog).map(x => x.text);
-    turns.push({ n: t + 1, logs, end: snapEnd(engine) });
+    const order = [];
+    for (const line of logs) {
+      const m = /^(.+?) used /.exec(line);
+      if (!m) continue;
+      if (m[1] === p1Name) order.push('p1a');
+      else if (m[1] === p2Name) order.push('p2a');
+    }
+    turns.push({ n: t + 1, logs, order, end: snapEnd(engine) });
     if (engine.state.isOver) break;
   }
 

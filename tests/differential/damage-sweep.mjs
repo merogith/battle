@@ -149,6 +149,18 @@ const DAMAGE_SCENARIOS = [
 
   // ── multi-hit: Skill Link forces the max 5 hits (deterministic) ──
   { id: 'multihit-skill-link', desc: 'Skill Link → 5-hit multi-hit move (always max hits)', attacker: { species: 'Cloyster', ability: 'Skill Link', nature: 'Adamant', evs: { atk: 252 } }, move: 'Icicle Spear', defender: WALL_PHYS_HP },
+
+  // ── timing-dependent abilities ──
+  // Analytic: ×1.3 when the user moves LAST — attacker is made slower than the
+  // (faster) passive Blissey, so Blissey's Splash resolves first.
+  { id: 'ability-analytic', desc: 'Analytic ×1.3 when the user moves last', attacker: { species: 'Magnezone', ability: 'Analytic', nature: 'Quiet', evs: { spa: 252 }, ivs: { spe: 0 } }, move: 'Flash Cannon', defender: WALL_SPEC },
+  // Stakeout: ×2 vs a target that "switched in this turn". KNOWN DIVERGENCE — a
+  // second symptom of finding #2's root cause: in-house turnCount is incremented at
+  // END of turn (battle.html:21682) while Showdown's activeTurns increments at turn
+  // START, so on turn 1 a lead's turnCount is still 0 → in-house Stakeout wrongly
+  // doubles (verified: T1 in-house 2× Showdown, T2 they match). Same off-by-one
+  // makes Speed Boost skip its first turn.
+  { id: 'ability-stakeout-lead', desc: 'Stakeout wrongly ×2 vs a turn-1 lead (in-house turnCount lags) — symptom of finding #2', expectDiverge: true, attacker: { species: 'Bisharp', ability: 'Stakeout', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: WALL_PHYS_HP },
 ];
 
 async function main() {
@@ -156,11 +168,12 @@ async function main() {
   for (const scn of DAMAGE_SCENARIOS) {
     const r = await sweep(scn);
     rows.push({ scn, ...r });
-    const tag = r.invalid ? '⚠️ KO (invalid)' : r.flag ? '❌ DIVERGES' : '✅ ranges overlap';
+    const tag = r.invalid ? '⚠️ KO (invalid)' : r.flag ? (scn.expectDiverge ? '✅ known divergence' : '❌ DIVERGES') : '✅ ranges overlap';
     process.stderr.write(`  ${tag.padEnd(20)} ${scn.id}  ih[${r.ih.min}-${r.ih.max}] sd[${r.sd.min}-${r.sd.max}]\n`);
   }
 
-  const flagged = rows.filter(r => r.flag).length;
+  const unexpected = rows.filter(r => r.flag && !r.scn.expectDiverge).length;
+  const known = rows.filter(r => r.flag && r.scn.expectDiverge).length;
   const date = new Date().toISOString().slice(0, 10);
   let md = `# Damage-Modifier Sweep Report
 
@@ -170,20 +183,24 @@ async function main() {
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
 > (roll variance removed). Reference: @pkmn/sim (MIT).
 
-**Divergences found: ${flagged}/${rows.length}**
+**Unexpected divergences: ${unexpected}/${rows.length}** ${unexpected === 0 ? '✅' : '❌'}${known ? ` · known/expected divergences: ${known} (see notes)` : ''}
+
+A row "diverges" only when ranges are disjoint AND the crit-proof min-skew confirms
+it (so a stray crit can't mask a real multiplier gap). Rows tagged **known** are
+documented engine findings, not surprises.
 
 | Probe | What it checks | In-house [min–max] | Showdown [min–max] | Verdict |
 |---|---|---|---|---|
 `;
   for (const r of rows) {
-    const verdict = r.invalid ? '⚠️ KO (invalid)' : r.flag ? '❌ **diverges**' : '✅ overlap';
+    const verdict = r.invalid ? '⚠️ KO (invalid)' : r.flag ? (r.scn.expectDiverge ? '🟡 known (finding #2)' : '❌ **diverges**') : '✅ overlap';
     md += `| \`${r.scn.id}\` | ${r.scn.desc} | ${r.ih.min}–${r.ih.max} (μ${r.ih.mean.toFixed(0)}) | ${r.sd.min}–${r.sd.max} (μ${r.sd.mean.toFixed(0)}) | ${verdict} |\n`;
   }
   md += `\nRanges are HP damage to the defender. A correct multiplier yields overlapping\nbands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in\nsome run, capping measured damage — pick a bulkier wall to re-measure.\n`;
 
   const out = join(__dirname, 'DAMAGE_SWEEP_REPORT.md');
   writeFileSync(out, md, 'utf8');
-  process.stderr.write(`\nWrote ${out}\nDamage-modifier divergences: ${flagged}/${rows.length}\n`);
+  process.stderr.write(`\nWrote ${out}\nUnexpected divergences: ${unexpected}/${rows.length}${known ? ` (+${known} known)` : ''}\n`);
   process.exit(0);
 }
 

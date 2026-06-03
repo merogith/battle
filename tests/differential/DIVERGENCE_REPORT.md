@@ -10,7 +10,7 @@
 - **Known bugs confirmed by the oracle:** 5/5
 - **Sanity scenarios in agreement:** 14/14
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 1/38
+- **Probes flagging a divergence to investigate:** 1/41
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
@@ -76,6 +76,9 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `flame-orb-self-burn` | item / status | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `toxic-orb-self-poison` | item / status | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `sand-chip` | weather / residual | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `speed-order-baseline` | turn order | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `priority-quick-attack` | turn order / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `trick-room-order` | turn order / field | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
@@ -427,6 +430,24 @@ Toxic Orb badly-poisons its holder at the end of the turn.
 Sandstorm chips non-Rock/Ground/Steel types 1/16 per turn.
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
+
+### `speed-order-baseline` — 🔍 no divergence
+Control: the faster Pokémon acts first when both use a normal-priority move.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `priority-quick-attack` — 🔍 no divergence
+A +1 priority move (Quick Attack) lets the SLOWER Pokémon act first.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `trick-room-order` — 🔍 no divergence
+Under Trick Room the SLOWER Pokémon acts first (turn 2 reverses).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
 - No divergences.
 
 ### `sanity-swords-dance-normal` — ✅ agrees

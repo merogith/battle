@@ -38,6 +38,17 @@ export function diffTraces(showdown, inhouse, scenario = {}) {
     const hT = inhouse.turns[i];
     if (!sT?.end || !hT?.end) continue;
 
+    // --- move-execution order (HIGH, opt-in via scenario.checkOrder) ---
+    // Priority, speed and Trick Room determine who acts first; the end-state diff
+    // can't see it, so compare the per-turn order sequence when asked.
+    if (scenario.checkOrder && Array.isArray(sT.order) && Array.isArray(hT.order)) {
+      const so = sT.order.join('>');
+      const ho = hT.order.join('>');
+      if (so && ho && so !== ho) {
+        add({ turn: sT.n, slot: '-', field: 'move-order', showdown: so, inhouse: ho, confidence: 'high' });
+      }
+    }
+
     for (const slot of ['p1a', 'p2a']) {
       const s = sT.end[slot];
       const h = hT.end[slot];
