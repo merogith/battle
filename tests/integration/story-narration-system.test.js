@@ -342,3 +342,46 @@ test('the ending offers the loop choice (remember vs forget)', () => {
     assert.ok(Array.isArray(o.reply) && o.reply.length, `ending option ${o.value} has a reply`);
   }
 });
+
+// ── Extra (horror) arcs ─────────────────────────────────────────────────────
+const CONVERTED_EXTRA = ['cubone', 'mewtwo'];
+
+test('converted extra arcs have structured events + a raid with outro.win', () => {
+  const S = nt.STORY_SCENES;
+  for (const track of CONVERTED_EXTRA) {
+    for (const n of [1, 2, 3, 4, 5, 6]) {
+      const sc = S[`extra.${track}.event${n}`];
+      assert.ok(sc && Array.isArray(sc.acts) && sc.acts.length, `extra.${track}.event${n} has acts`);
+    }
+    const ending = S[`extra.${track}.ending`];
+    assert.ok(ending && Array.isArray(ending.acts) && ending.acts.length, `extra.${track}.ending has acts`);
+    const raid = S[`extra.${track}.raid`];
+    assert.ok(raid && raid.outro && Array.isArray(raid.outro.win) && raid.outro.win.length,
+      `extra.${track}.raid has outro.win`);
+  }
+});
+
+test('extra-arc choices are unique and pay off in the ending', () => {
+  const S = nt.STORY_SCENES;
+  const cases = [
+    { key: 'extra.cubone.burial',  a: 'accepted', b: 'declined' },
+    { key: 'extra.mewtwo.drawing', a: 'took',     b: 'left' },
+  ];
+  for (const c of cases) {
+    const track = c.key.split('.')[1];
+    let choiceCount = 0;
+    for (const n of [1, 2, 3, 4, 5, 6]) {
+      for (const act of (S[`extra.${track}.event${n}`].acts || [])) if (act.choice) choiceCount++;
+    }
+    assert.equal(choiceCount, 1, `extra.${track} has exactly one choice`);
+    const branchAct = S[`extra.${track}.ending`].acts.find(a => a.branches);
+    assert.ok(branchAct, `extra.${track}.ending branches`);
+    nt.sm = { storyChoices: { [c.key]: c.a } };
+    const a = nt.resolveActLines(branchAct).join(' ');
+    nt.sm = { storyChoices: { [c.key]: c.b } };
+    const b = nt.resolveActLines(branchAct).join(' ');
+    nt.sm = { storyChoices: {} };
+    const def = nt.resolveActLines(branchAct).join(' ');
+    assert.ok(a.length && b.length && a !== b && def.length, `extra.${track}: branches differ + default`);
+  }
+});
