@@ -62,12 +62,12 @@ const NEEDS_MANUAL_SETUP = new Set([
 // apostrophes) — jsLit only affects the emitted string literal, not this match.
 // See agent-state/handoff/03-fill-remaining-move-todos.md for the breakdown.
 const DEFERRED = new Set([
-  // status — broken / no-op (ISSUE_LEDGER, test-coverage-filler)
-  'Trick', 'Switcheroo', 'Power Shift', 'Corrosive Gas', 'Purify', 'Venom Drench',
-  'Ion Deluge', 'Crafty Shield', 'Mat Block', 'Nature Power', 'Copycat', 'Mirror Move',
-  'Parting Shot', 'Doodle', 'Powder', 'Me First', 'Grass Whistle', 'Dark Void',
-  // status — no readable effect in a 1v1 harness (verify before filling)
-  'Electrify', 'Fairy Lock', 'Nightmare', 'Disable', 'Laser Focus',
+  // banned / not story-reachable, or unimplemented (no fix this pass)
+  'Corrosive Gas', 'Venom Drench', 'Doodle',                                       // banned in normal play
+  'Crafty Shield', 'Mat Block', 'Powder', 'Electrify', 'Nightmare', 'Laser Focus', // unimplemented (no handler)
+  'Dark Void',                                                                     // Darkrai-only (correctly fails)
+  // work on HEAD but not asserted in a 1v1 harness yet (no engine bug; future test-fill)
+  'Trick', 'Switcheroo', 'Ion Deluge', 'Disable', 'Fairy Lock',
   // status — complex switch/heal choreography (fillable later)
   'Healing Wish', 'Lunar Dance', 'Heal Pulse', 'Floral Healing', 'Recycle',
   // status — doubles-only, no singles effect

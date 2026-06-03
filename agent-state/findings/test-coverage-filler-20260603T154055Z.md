@@ -49,6 +49,17 @@ status: open
 
 **Title**: Several status moves have no observable effect in the battle engine
 
+**Progress** (P3 re-verification on HEAD, branch claude/inspiring-shannon-MP5aq):
+  - FIXED this pass: Power Shift (Atk<->Def swap), Purify (cure + 50% heal), Nature Power
+    (terrain dispatch -> Tri Attack), Copycat / Mirror Move / Me First (now route through
+    performAction so damaging copies land), Parting Shot (guard read the never-assigned
+    `state.pTeam`; now `state.playerParty` — also unblocks Healing Wish / Lunar Dance).
+    Each has a regression test under by-category/manual/.
+  - WORK ON HEAD (finding had drifted, no fix needed): Ion Deluge, Disable, Fairy Lock.
+  - BANNED / not story-reachable: Corrosive Gas, Venom Drench, Doodle.
+  - STILL UNIMPLEMENTED (Tier 3, outside this pass's approved scope) — keeps this finding open:
+    Crafty Shield, Mat Block, Powder, Electrify, Nightmare, Laser Focus.
+
 **Evidence**:
 ```text
 Confirmed no-op (state directly inspected, jsdom harness):

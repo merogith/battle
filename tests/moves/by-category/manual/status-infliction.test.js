@@ -8,8 +8,7 @@
 // depending on where seed 0 happens to fall. Status strings are uppercase
 // (PAR/BRN/TOX/PSN/SLP); confusion/drowsiness are volatiles.
 //
-// Excluded: Dark Void (Darkrai-only — correctly fails from other users) and
-// Grass Whistle (never lands across 30 seeds — appears unimplemented; left todo).
+// Excluded: Dark Void (Darkrai-only — correctly fails from other users).
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../../../helpers/load-engine.js';
@@ -60,7 +59,7 @@ describe('Status-infliction moves (draft fills)', () => {
     ['Will-O-Wisp', 'BRN'],
     ['Toxic', 'TOX'],
     ['Poison Powder', 'PSN'], ['Poison Gas', 'PSN'],
-    ['Spore', 'SLP'], ['Sleep Powder', 'SLP'], ['Hypnosis', 'SLP'], ['Sing', 'SLP'], ['Lovely Kiss', 'SLP'],
+    ['Spore', 'SLP'], ['Sleep Powder', 'SLP'], ['Hypnosis', 'SLP'], ['Sing', 'SLP'], ['Lovely Kiss', 'SLP'], ['Grass Whistle', 'SLP'],
   ]) {
     it(`${move} can inflict ${status}`, async () => {
       assert.ok(await inflicts(move, (d) => d.status === status), `${move} should be able to inflict ${status}`);

@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-03T17:02:58.751Z
+> **Generated**: 2026-06-03T19:19:24.200Z
 > **Source**: `agent-state/findings/*.md` (441 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -13035,10 +13035,15 @@ file: battle.html
 agents: [test-coverage-filler]
 fingerprint: bac185d08e2a
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Grass Whistle never puts the target to sleep
+
+**Resolution**: Added `"Grass Whistle"` to the SLP named-handler at `battle.html:~27115`
+(alongside Sing), so it now applies sleep with the same Soundproof treatment as its
+sound-move sibling. Verified: seed-sweep lands SLP at seed 0. Regression test added to
+the SLP loop in `manual/status-infliction.test.js`.
 
 **Evidence**:
 ```text
@@ -14357,6 +14362,17 @@ status: open
 
 **Title**: Several status moves have no observable effect in the battle engine
 
+**Progress** (P3 re-verification on HEAD, branch claude/inspiring-shannon-MP5aq):
+  - FIXED this pass: Power Shift (Atk<->Def swap), Purify (cure + 50% heal), Nature Power
+    (terrain dispatch -> Tri Attack), Copycat / Mirror Move / Me First (now route through
+    performAction so damaging copies land), Parting Shot (guard read the never-assigned
+    `state.pTeam`; now `state.playerParty` — also unblocks Healing Wish / Lunar Dance).
+    Each has a regression test under by-category/manual/.
+  - WORK ON HEAD (finding had drifted, no fix needed): Ion Deluge, Disable, Fairy Lock.
+  - BANNED / not story-reachable: Corrosive Gas, Venom Drench, Doodle.
+  - STILL UNIMPLEMENTED (Tier 3, outside this pass's approved scope) — keeps this finding open:
+    Crafty Shield, Mat Block, Powder, Electrify, Nightmare, Laser Focus.
+
 **Evidence**:
 ```text
 Confirmed no-op (state directly inspected, jsdom harness):
@@ -14951,10 +14967,16 @@ file: tests/audit/generate-move-tests.js
 agents: [test-coverage-filler]
 fingerprint: 99aa9ad46225
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Move-test generator strips apostrophes, and the engine silently runs unknown move names as a 187-dmg fallback
+
+**Resolution**: Replaced `safeName` (which stripped `` ` `` `"` `'`) with `jsLit()` in
+`tests/audit/generate-move-tests.js` — it keeps the real move name and escapes only what a
+single-quoted JS literal needs. Generated titles/literals now use the canonical names
+(`King's Shield`, `Land's Wrath`, `Nature's Madness`, `Conversion 2`). (Engine-side
+unknown-name fallback left as-is; the generator no longer produces stripped names.)
 
 **Evidence**:
 ```js
@@ -16784,10 +16806,17 @@ file: battle.html
 agents: [test-coverage-filler]
 fingerprint: 0443b0ccfa4b
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Upper Hand / Shell Trap don't enforce their precondition gate
+
+**Resolution**: Added both gates in the pre-move block (`battle.html:~22451`). Upper Hand
+now fails unless the target's queued move is a priority attacking move (peeks
+`state.p2Action`, like Sucker Punch); the move data already carried pri 3 + the flinch.
+Shell Trap now fails unless the user took a physical hit this turn (`volatile.lastPhysicalDmg > 0`).
+Verified: Upper Hand 110 vs Quick Attack / 0 vs Body Slam & Splash; Shell Trap 53 after a
+physical hit / 0 vs special & none. Gate regression tests in `manual/prior-context.test.js`.
 
 **Evidence**:
 ```text

@@ -10,8 +10,8 @@
 // Engine gaps found while writing this:
 //   • Comeuppance reflected 0 in every case — FIXED (now routed through the same
 //     attacker-volatile reflect path as its twin Metal Burst); asserted below.
-//   • Upper Hand / Shell Trap don't enforce their precondition gate (they damage
-//     regardless of the foe's move); they get an honest "deals damage" assertion.
+//   • Upper Hand / Shell Trap now enforce their gates (priority-attacking foe /
+//     having taken a physical hit); asserted below — connect under the gate, fail otherwise.
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../../../helpers/load-engine.js';
@@ -110,10 +110,20 @@ describe('Prior-context moves (draft fills)', () => {
   // Plain damaging hits in singles (no special context to trigger the bonus).
   for (const [m, foeMove] of [
     ['Pursuit', 'Splash'], ['Beat Up', 'Splash'], ['Assurance', 'Splash'],
-    ['Upper Hand', 'Quick Attack'], ['Shell Trap', 'Body Slam'],
   ]) {
     it(`${m} deals damage`, async () => {
       assert.ok(await react(m, foeMove) > 0, `${m} should deal damage`);
     });
   }
+
+  it('Upper Hand connects only versus a priority attacking move', async () => {
+    assert.ok(await react('Upper Hand', 'Quick Attack') > 0, 'connects versus a priority move');
+    assert.equal(await react('Upper Hand', 'Body Slam'), 0, 'fails versus a non-priority move');
+    assert.equal(await react('Upper Hand', 'Splash'), 0, 'fails versus a status move');
+  });
+  it('Shell Trap connects only after the user takes a physical hit', async () => {
+    assert.ok(await react('Shell Trap', 'Body Slam', { slow: true }) > 0, 'connects after a physical hit');
+    assert.equal(await react('Shell Trap', 'Water Gun', { slow: true }), 0, 'fails versus a special hit');
+    assert.equal(await react('Shell Trap', 'Splash', { slow: true }), 0, 'fails with no prior hit');
+  });
 });

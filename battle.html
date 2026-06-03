@@ -22449,6 +22449,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // UPPER HAND: Fails unless the target is about to use a priority ATTACKING move.
+            // (Move data already carries pri 3 + the flinch; only the gate was missing.)
+            if (move.name === "Upper Hand") {
+                let defenderAction = isPlayer ? state.p2Action : state.p1Action;
+                let uhDef = null;
+                if (defenderAction && defenderAction.moveIndex !== null && defenderAction.switchIndex === null) {
+                    uhDef = defender.moves[defenderAction.moveIndex] || (defenderAction.aiMove);
+                }
+                let uhPri = uhDef ? ((uhDef.pri != null ? uhDef.pri : (ensureMoveData(uhDef.name) || {}).pri) || 0) : 0;
+                if (!uhDef || uhDef.cat === "Status" || uhPri <= 0) {
+                    if (move.pp > 0) move.pp--;
+                    logMsg(`${attacker.name} used Upper Hand!`);
+                    logMsg(`But it failed!`);
+                    attacker.volatile.lastMoveUsed = move.name;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
+                }
+            }
+
+            // SHELL TRAP: Fails unless the user took PHYSICAL damage this turn (pri -3, so it
+            // resolves after the foe; lastPhysicalDmg is set when a physical hit lands, cleared each turn).
+            if (move.name === "Shell Trap") {
+                if (!(attacker.volatile && attacker.volatile.lastPhysicalDmg > 0)) {
+                    if (move.pp > 0) move.pp--;
+                    logMsg(`${attacker.name} set a Shell Trap, but it failed!`, 'info');
+                    attacker.volatile.lastMoveUsed = move.name;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
+                }
+            }
+
             // BELCH: requires the user to have eaten a berry this battle. Gate before damage application.
             if (move.name === "Belch" && !attacker.volatile.belchReady) {
                 if (move.pp > 0) move.pp--;
@@ -27112,7 +27141,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 applyStatus(defender, "PAR"); return;
             }
-            if (move.name === "Sleep Powder" || move.name === "Spore" || move.name === "Hypnosis" || move.name === "Lovely Kiss" || move.name === "Sing") { applyStatus(defender, "SLP"); return; }
+            if (move.name === "Sleep Powder" || move.name === "Spore" || move.name === "Hypnosis" || move.name === "Lovely Kiss" || move.name === "Sing" || move.name === "Grass Whistle") { applyStatus(defender, "SLP"); return; }
+            // === PURIFY: cure the target's status; if it did, heal the user 50% max HP (else fail) ===
+            if (move.name === "Purify") {
+                if (!defender.status) { logMsg(`But it failed!`, 'info'); return; }
+                const _cured = defender.status;
+                defender.status = null; defender.statusTurns = 0;
+                logMsg(`${defender.name} was cured of its ${_cured}!`, 'heal');
+                attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + Math.floor(attacker.maxHp / 2));
+                logMsg(`${attacker.name} restored its HP!`, 'heal');
+                updateUI(); return;
+            }
             if (move.name === "Yawn") {
                 if (defender.status || defender.volatile.yawnTurns > 0) { logMsg(`But it failed!`, 'info'); return; }
                 if (defender.ability === "Insomnia" || defender.ability === "Vital Spirit" || defender.ability === "Sweet Veil" || defender.ability === "Comatose") { logMsg(`${defender.name}'s ${defender.ability} prevents sleep!`, 'info'); return; }
@@ -27136,7 +27175,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Poison Powder" || move.name === "Poison Gas") { applyStatus(defender, "PSN"); return; }
             if (move.name === "Healing Wish" || move.name === "Lunar Dance") {
                 // Fails if no benched ally available to switch in
-                const _team = isPlayer ? state.pTeam : state.fTeam;
+                const _team = isPlayer ? state.playerParty : state.foeParty;
                 const _self = attacker;
                 const _hasBench = _team && _team.some(t => t && t !== _self && t.currentHp > 0);
                 if (!_hasBench) { logMsg(`But it failed!`, 'info'); return; }
@@ -27198,10 +27237,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _ccBanned = new Set(["Assist","Baneful Bunker","Beak Blast","Behemoth Bash","Behemoth Blade","Belch","Bestow","Celebrate","Chatter","Circle Throw","Copycat","Counter","Covet","Destiny Bond","Detect","Dragon Tail","Dynamax Cannon","Endure","Feint","Focus Punch","Follow Me","Helping Hand","Hold Hands","King's Shield","Mat Block","Me First","Metal Burst","Metronome","Mimic","Mirror Coat","Mirror Move","Nature Power","Obstruct","Protect","Quash","Rage Powder","Roar","Shell Trap","Silk Trap","Sketch","Sleep Talk","Snatch","Spiky Shield","Spotlight","Struggle","Switcheroo","Thief","Transform","Trick","Whirlwind","Bide","Burning Bulwark"]);
                 let lastUsed = state.fieldLastMove;
                 if (!lastUsed || _ccBanned.has(lastUsed)) { logMsg(`But it failed!`, 'info'); return; }
-                let ccMd = ensureMoveData(lastUsed);
-                let ccMove = { name: lastUsed, pp: 1, maxPP: 1, type: ccMd.type, cat: ccMd.cat, pow: ccMd.pow, acc: ccMd.acc, pri: ccMd.pri || 0, eff: ccMd.eff || '', mathEff: ccMd.mathEff || '' };
+                let ccMove = { ...ensureMoveData(lastUsed), name: lastUsed, pp: 1, maxPP: 1 };
                 logMsg(`${attacker.name} copied ${lastUsed}!`, 'info');
-                await parseMoveEffects(attacker, defender, ccMove, isPlayer);
+                await performAction(isPlayer, ccMove);
+                return;
+            }
+            // === NATURE POWER: becomes a move based on the active terrain (Tri Attack with none) ===
+            if (move.name === "Nature Power") {
+                let npName = state.terrain === "Electric" ? "Thunderbolt"
+                           : state.terrain === "Grassy" ? "Energy Ball"
+                           : state.terrain === "Misty" ? "Moonblast"
+                           : state.terrain === "Psychic" ? "Psychic"
+                           : "Tri Attack";
+                let npMove = { ...ensureMoveData(npName), name: npName, pp: 1, maxPP: 1 };
+                logMsg(`${attacker.name}'s Nature Power turned into ${npName}!`, 'info');
+                await performAction(isPlayer, npMove);
                 return;
             }
             // Conversion: changes attacker's type to match its first move's type
@@ -27985,7 +28035,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Tickle") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'def', -1, true); return; }
             if (move.name === "Parting Shot") {
-                const _psTeam = isPlayer ? state.pTeam : state.fTeam;
+                const _psTeam = isPlayer ? state.playerParty : state.foeParty;
                 const _psBench = _psTeam && _psTeam.some(t => t && t !== attacker && t.currentHp > 0);
                 if (!_psBench) { logMsg(`But it failed!`, 'info'); return; }
                 changeStage(defender, 'atk', -1, true); changeStage(defender, 'spa', -1, true);
@@ -28008,10 +28058,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _mmBanned = new Set(["Mirror Move","Copycat","Me First","Sketch","Transform","Counter","Mirror Coat","Metal Burst","Feint","Focus Punch","Bide","Chatter","Assist","Sleep Talk","Metronome","Snatch","Nature Power","Struggle"]);
                 let mmLast = defender.volatile.lastMoveUsed;
                 if (!mmLast || _mmBanned.has(mmLast)) { logMsg(`But it failed!`, 'info'); return; }
-                let mmMd = ensureMoveData(mmLast);
-                let mmMove = { name: mmLast, pp: 1, maxPP: 1, type: mmMd.type, cat: mmMd.cat, pow: mmMd.pow, acc: mmMd.acc, pri: mmMd.pri || 0, eff: mmMd.eff || '', mathEff: mmMd.mathEff || '' };
+                let mmMove = { ...ensureMoveData(mmLast), name: mmLast, pp: 1, maxPP: 1 };
                 logMsg(`${attacker.name} mirrored ${mmLast}!`, 'info');
-                await parseMoveEffects(attacker, defender, mmMove, isPlayer);
+                await performAction(isPlayer, mmMove);
                 return;
             }
             // === ME FIRST: use foe's chosen attacking move this turn at 1.5x power (same queue as Sucker Punch) ===
@@ -28024,9 +28073,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (!defMove || _mfBanned.has(defMove.name) || defMove.cat === "Status") { logMsg(`But it failed!`, 'info'); return; }
                 let mfMd = ensureMoveData(defMove.name);
-                let mfMove = { name: defMove.name, pp: 1, maxPP: 1, type: mfMd.type, cat: mfMd.cat, pow: Math.floor((mfMd.pow || 0) * 1.5), acc: mfMd.acc, pri: mfMd.pri || 0, eff: mfMd.eff || '', mathEff: mfMd.mathEff || '' };
+                let mfMove = { ...mfMd, name: defMove.name, pp: 1, maxPP: 1, pow: Math.floor((mfMd.pow || 0) * 1.5) };
                 logMsg(`${attacker.name} used Me First and copied ${defMove.name}!`, 'info');
-                await parseMoveEffects(attacker, defender, mfMove, isPlayer);
+                await performAction(isPlayer, mfMove);
                 return;
             }
             // === SPITE: reduce foe's last move PP by 4 ===
@@ -28619,6 +28668,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const a = attacker.stats.atk; attacker.stats.atk = attacker.stats.def; attacker.stats.def = a;
                 attacker.volatile.powerTrick = !attacker.volatile.powerTrick;
                 logMsg(`${attacker.name} switched its own Attack and Defense!`, 'info');
+                return;
+            }
+            // === POWER SHIFT: swap user's own Attack and Defense (reverts on switch via the
+            // shared powerTrick flag). NOTE: implemented as Atk<->Def only, mirroring Power Trick;
+            // if canon should also swap SpA<->SpD, that is a maintainer-owned extension. ===
+            if (move.name === "Power Shift") {
+                const a = attacker.stats.atk; attacker.stats.atk = attacker.stats.def; attacker.stats.def = a;
+                attacker.volatile.powerTrick = !attacker.volatile.powerTrick;
+                logMsg(`${attacker.name} shifted its Attack and Defense!`, 'info');
                 return;
             }
             // === REFLECT TYPE: change user's types to match the target ===

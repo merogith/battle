@@ -75,4 +75,13 @@ describe('Stat-swap / split moves (draft fills)', () => {
     // After the swap the user holds Shuckle's (much lower) Speed.
     assert.ok(r.after.spe < r.before.spe, 'Speed Swap should hand the user Shuckle\'s low Speed');
   });
+  it("Power Shift swaps the user's own Attack and Defense", async () => {
+    // Shuckle has tiny Attack and huge Defense, so the swap is unmistakable.
+    const a = mkMon({ species: 'Shuckle', ability: 'None', moves: ['Power Shift', 'Splash', 'Splash', 'Splash'] });
+    const d = mkMon({ species: 'Snorlax', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    const beforeAtk = a.stats.atk, beforeDef = a.stats.def;
+    await runTurn({ playerMon: a, foeMon: d });
+    assert.equal(a.stats.atk, beforeDef, 'Attack should become the old Defense');
+    assert.equal(a.stats.def, beforeAtk, 'Defense should become the old Attack');
+  });
 });

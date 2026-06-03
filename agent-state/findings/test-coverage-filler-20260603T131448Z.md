@@ -7,10 +7,15 @@ file: battle.html
 agents: [test-coverage-filler]
 fingerprint: bac185d08e2a
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Grass Whistle never puts the target to sleep
+
+**Resolution**: Added `"Grass Whistle"` to the SLP named-handler at `battle.html:~27115`
+(alongside Sing), so it now applies sleep with the same Soundproof treatment as its
+sound-move sibling. Verified: seed-sweep lands SLP at seed 0. Regression test added to
+the SLP loop in `manual/status-infliction.test.js`.
 
 **Evidence**:
 ```text
@@ -35,10 +40,16 @@ file: tests/audit/generate-move-tests.js
 agents: [test-coverage-filler]
 fingerprint: 99aa9ad46225
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Move-test generator strips apostrophes, and the engine silently runs unknown move names as a 187-dmg fallback
+
+**Resolution**: Replaced `safeName` (which stripped `` ` `` `"` `'`) with `jsLit()` in
+`tests/audit/generate-move-tests.js` — it keeps the real move name and escapes only what a
+single-quoted JS literal needs. Generated titles/literals now use the canonical names
+(`King's Shield`, `Land's Wrath`, `Nature's Madness`, `Conversion 2`). (Engine-side
+unknown-name fallback left as-is; the generator no longer produces stripped names.)
 
 **Evidence**:
 ```js

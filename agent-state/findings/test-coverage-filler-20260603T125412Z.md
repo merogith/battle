@@ -81,10 +81,17 @@ file: battle.html
 agents: [test-coverage-filler]
 fingerprint: 0443b0ccfa4b
 confidence: high
-status: open
+status: fixed-claude/inspiring-shannon-MP5aq
 ---
 
 **Title**: Upper Hand / Shell Trap don't enforce their precondition gate
+
+**Resolution**: Added both gates in the pre-move block (`battle.html:~22451`). Upper Hand
+now fails unless the target's queued move is a priority attacking move (peeks
+`state.p2Action`, like Sucker Punch); the move data already carried pri 3 + the flinch.
+Shell Trap now fails unless the user took a physical hit this turn (`volatile.lastPhysicalDmg > 0`).
+Verified: Upper Hand 110 vs Quick Attack / 0 vs Body Slam & Splash; Shell Trap 53 after a
+physical hit / 0 vs special & none. Gate regression tests in `manual/prior-context.test.js`.
 
 **Evidence**:
 ```text

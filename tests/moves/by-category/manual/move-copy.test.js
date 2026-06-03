@@ -4,8 +4,9 @@
 // have moved (user made slower); Metronome calls a random move (assert it called
 // *something*, not itself); Bestow hands the user's item to the foe.
 //
-// Deferred (no-op here): Nature Power, Copycat, Mirror Move, Me First, Assist,
-// Instruct, Sleep Talk.
+// Deferred (no-op here): Assist, Instruct, Sleep Talk.
+// (Copycat / Mirror Move / Me First / Nature Power now dispatch the real move via
+//  performAction — the copied damaging move actually lands; asserted below.)
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../../../helpers/load-engine.js';
@@ -50,5 +51,21 @@ describe('Move-copy / calling moves (draft fills)', () => {
     const { a, d } = await use('Bestow', { item: 'Oran Berry' });
     assert.equal(a.item, null, 'Bestow should give away the user\'s item');
     assert.equal(d.item, 'Oran Berry', 'the foe should receive the item');
+  });
+  it('Copycat copies and actually uses the last damaging move', async () => {
+    const { d } = await use('Copycat', { slow: true }); // foe Tackles first; Copycat copies Tackle
+    assert.ok(d.currentHp < d.maxHp, 'Copycat should deal damage with the copied move');
+  });
+  it("Mirror Move copies and uses the foe's last damaging move", async () => {
+    const { d } = await use('Mirror Move', { slow: true });
+    assert.ok(d.currentHp < d.maxHp, 'Mirror Move should deal damage with the copied move');
+  });
+  it("Me First copies and uses the foe's queued damaging move", async () => {
+    const { d } = await use('Me First'); // player faster; copies the foe's queued Tackle
+    assert.ok(d.currentHp < d.maxHp, 'Me First should deal damage with the copied move');
+  });
+  it('Nature Power becomes a damaging move (Tri Attack with no terrain)', async () => {
+    const { d } = await use('Nature Power');
+    assert.ok(d.currentHp < d.maxHp, 'Nature Power should deal damage as Tri Attack');
   });
 });

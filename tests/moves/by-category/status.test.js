@@ -177,9 +177,7 @@ describe('Status moves', () => {
 
   // 'Conversion 2' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Copycat' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Copycat's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Copycat' — covered by a manual test (see by-category/manual/).
 
   it.todo('Corrosive Gas' + ' [0 BP Poison Status]', async () => {
     // TODO: assert Corrosive Gas's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
@@ -363,9 +361,7 @@ describe('Status moves', () => {
 
   // 'Glare' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Grass Whistle' + ' [0 BP Grass Status]', async () => {
-    // TODO: assert Grass Whistle's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Grass Whistle' — covered by a manual test (see by-category/manual/).
 
   // 'Grassy Terrain' — covered by a manual test (see by-category/manual/).
 
@@ -505,9 +501,7 @@ describe('Status moves', () => {
     // TODO: assert Mat Block's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Me First' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Me First's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Me First' — covered by a manual test (see by-category/manual/).
 
   // 'Mean Look' — covered by a manual test (see by-category/manual/).
 
@@ -553,9 +547,7 @@ describe('Status moves', () => {
 
   // 'Miracle Eye' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Mirror Move' + ' [0 BP Flying Status]', async () => {
-    // TODO: assert Mirror Move's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Mirror Move' — covered by a manual test (see by-category/manual/).
 
   // 'Mist' — covered by a manual test (see by-category/manual/).
 
@@ -575,9 +567,7 @@ describe('Status moves', () => {
     assert.equal(attacker.stages.spa, 2, 'spa stage should be 2');
   });
 
-  it.todo('Nature Power' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Nature Power's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Nature Power' — covered by a manual test (see by-category/manual/).
 
   it.todo('Nightmare' + ' [0 BP Ghost Status]', async () => {
     // TODO: assert Nightmare's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
@@ -607,9 +597,7 @@ describe('Status moves', () => {
 
   // 'Pain Split' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Parting Shot' + ' [0 BP Dark Status]', async () => {
-    // TODO: assert Parting Shot's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Parting Shot' — covered by a manual test (see by-category/manual/).
 
   // 'Perish Song' — covered by a manual test (see by-category/manual/).
 
@@ -629,9 +617,7 @@ describe('Status moves', () => {
     // TODO: assert Powder's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
   });
 
-  it.todo('Power Shift' + ' [0 BP Normal Status]', async () => {
-    // TODO: assert Power Shift's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Power Shift' — covered by a manual test (see by-category/manual/).
 
   // 'Power Split' — covered by a manual test (see by-category/manual/).
 
@@ -647,9 +633,7 @@ describe('Status moves', () => {
 
   // 'Psycho Shift' — covered by a manual test (see by-category/manual/).
 
-  it.todo('Purify' + ' [0 BP Poison Status]', async () => {
-    // TODO: assert Purify's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md
-  });
+  // 'Purify' — covered by a manual test (see by-category/manual/).
 
   it.todo('Quash' + ' [0 BP Dark Status]', async () => {
     // TODO: assert Quash's declared behavior — see agent-state/handoff/03-fill-remaining-move-todos.md

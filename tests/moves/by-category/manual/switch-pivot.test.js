@@ -67,4 +67,12 @@ describe('Switch / pivot moves (draft fills)', () => {
     await pivot(t);
     assert.equal(engine.state.pActive, t.b);
   });
+
+  it("Parting Shot lowers the foe's Attack & Sp.Atk, then switches the user out", async () => {
+    const t = team('Parting Shot');
+    await pivot(t);
+    assert.equal(engine.state.pActive, t.b, 'should switch to the bench mon');
+    assert.equal(t.d.stages.atk, -1, 'foe Attack should drop by 1');
+    assert.equal(t.d.stages.spa, -1, 'foe Sp.Atk should drop by 1');
+  });
 });

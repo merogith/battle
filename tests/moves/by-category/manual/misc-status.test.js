@@ -62,4 +62,15 @@ describe('Misc status moves (draft fills)', () => {
     assert.ok(b.currentHp > 0, 'the fainted teammate should be revived');
     assert.equal(b.status, null, 'the revived teammate should no longer be fainted');
   });
+
+  it("Purify cures the foe's status and heals the user (fails if the foe has none)", async () => {
+    const a = mkMon({ species: 'Mew', ability: 'None', moves: ['Purify', 'Splash', 'Splash', 'Splash'] });
+    const d = mkMon({ species: 'Snorlax', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    d.status = 'PSN';
+    a.currentHp = Math.floor(a.maxHp / 2);
+    const before = a.currentHp;
+    await runTurn({ playerMon: a, foeMon: d, forcePlayerFast: true });
+    assert.equal(d.status, null, "Purify should cure the foe's status");
+    assert.ok(a.currentHp > before, 'Purify should heal the user ~50% when it cures something');
+  });
 });
