@@ -46,9 +46,9 @@ test('rocket boss has a pre-fight arc AND a structured win outro', () => {
 });
 
 test('unconverted scenes stay legacy-flat (backward compatible)', () => {
-  const magma = nt.STORY_SCENES['villain.magma.event1'];
-  assert.ok(magma && typeof magma.body === 'string', 'legacy scene intact');
-  assert.equal(magma.acts, undefined, 'unconverted scene has no acts');
+  const flat = nt.STORY_SCENES['villain.plasma.event1']; // not yet converted
+  assert.ok(flat && typeof flat.body === 'string', 'legacy scene intact');
+  assert.equal(flat.acts, undefined, 'unconverted scene has no acts');
 });
 
 // ── Branching text (cross-event callback) ───────────────────────────────────
@@ -189,4 +189,77 @@ test('up-next previews the canon boss the dispatcher will actually swap in', () 
 test('canonTrainerForUpcomingBattle returns null when no boss beat is active', () => {
   nt.sm = { tracks: { villain: null, extra: null }, storyEventsFired: {}, eventIndex: 0 };
   assert.equal(nt.canonTrainerForUpcomingBattle(), null);
+});
+
+// ── Converted villain arcs (rollout) ────────────────────────────────────────
+const CONVERTED_VILLAIN = ['rocket', 'magma', 'aqua', 'galactic'];
+// Fully converted = every event1..6 has an arc. Rocket is intentionally partial
+// (event4/event5 left legacy-flat as the unconverted baseline / worked example).
+const FULLY_CONVERTED = ['magma', 'aqua', 'galactic'];
+
+test('fully converted arcs have event1-6 arcs', () => {
+  const S = nt.STORY_SCENES;
+  for (const track of FULLY_CONVERTED) {
+    for (const n of [1, 2, 3, 4, 5, 6]) {
+      const sc = S[`villain.${track}.event${n}`];
+      assert.ok(sc && Array.isArray(sc.acts) && sc.acts.length,
+        `villain.${track}.event${n} has acts`);
+    }
+  }
+});
+
+test('every converted arc has an ending arc + a boss with outro.win', () => {
+  const S = nt.STORY_SCENES;
+  for (const track of CONVERTED_VILLAIN) {
+    const ending = S[`villain.${track}.ending`];
+    assert.ok(ending && Array.isArray(ending.acts) && ending.acts.length,
+      `villain.${track}.ending has acts`);
+    const boss = S[`villain.${track}.boss`];
+    assert.ok(boss && boss.outro && Array.isArray(boss.outro.win) && boss.outro.win.length,
+      `villain.${track}.boss has outro.win`);
+  }
+});
+
+test('each converted arc has exactly one persisted choice with a unique key', () => {
+  const S = nt.STORY_SCENES;
+  const seenKeys = new Set();
+  for (const track of CONVERTED_VILLAIN) {
+    let choiceCount = 0;
+    let persistKey = null;
+    for (const n of [1, 2, 3, 4, 5, 6]) {
+      for (const act of (S[`villain.${track}.event${n}`].acts || [])) {
+        if (act.choice) { choiceCount++; persistKey = act.choice.persistKey; }
+      }
+    }
+    assert.equal(choiceCount, 1, `villain.${track} has exactly one choice`);
+    assert.ok(persistKey && persistKey.startsWith(`villain.${track}.`),
+      `villain.${track} choice key is namespaced`);
+    assert.ok(!seenKeys.has(persistKey), `persistKey ${persistKey} is unique`);
+    seenKeys.add(persistKey);
+  }
+});
+
+test('arc choices drive a later branch payoff (magma / aqua / galactic)', () => {
+  const S = nt.STORY_SCENES;
+  // magma.water → event4 development branch reacts to "took".
+  const magmaDev = S['villain.magma.event4'].acts.find(a => a.branches);
+  nt.sm = { storyChoices: { 'villain.magma.water': 'took' } };
+  assert.match(nt.resolveActLines(magmaDev).join(' '), /can't take this too/i);
+  nt.sm = { storyChoices: {} };
+  const magmaDefault = nt.resolveActLines(magmaDev).join(' ');
+  assert.ok(magmaDefault.length && !/can't take this too/i.test(magmaDefault));
+
+  // aqua.chart → event4 intro branch reacts to "warned".
+  const aquaIntro = S['villain.aqua.event4'].acts.find(a => a.branches);
+  nt.sm = { storyChoices: { 'villain.aqua.chart': 'warned' } };
+  assert.match(nt.resolveActLines(aquaIntro).join(' '), /the one you warned/i);
+
+  // galactic.keeper → ending branch distinguishes stayed vs told.
+  const galDev = S['villain.galactic.ending'].acts.find(a => a.branches);
+  nt.sm = { storyChoices: { 'villain.galactic.keeper': 'stayed' } };
+  const stayed = nt.resolveActLines(galDev).join(' ');
+  nt.sm = { storyChoices: { 'villain.galactic.keeper': 'told' } };
+  const told = nt.resolveActLines(galDev).join(' ');
+  assert.ok(stayed.length && told.length && stayed !== told,
+    'galactic ending branches differ by keeper choice');
 });
