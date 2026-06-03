@@ -2937,15 +2937,42 @@
         .party-sort-btn:disabled { opacity:0.2; }
         .party-lead-btn { width:34px; min-height:30px; font-size:13px; padding:0; line-height:1; border-radius:3px; color:var(--accent); border:1px solid #6a5a2a; background:rgba(255,213,79,0.08); cursor:pointer; font-family:inherit; }
         .party-lead-btn:disabled { opacity:0.25; cursor:default; }
-        .party-drag-handle { flex-shrink:0; display:flex; align-items:center; justify-content:center; width:24px; align-self:stretch; color:#667; font-size:16px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; border-radius:3px; }
-        .party-drag-handle:hover { color:var(--accent); background:rgba(255,255,255,0.04); }
-        .party-row.party-dragging { opacity:0.5; }
-        .party-row.party-drop-target { outline:2px dashed var(--accent); outline-offset:-2px; }
+        /* 6-dot grip drawn in CSS so it reads as a drag affordance in any font. */
+        .party-drag-handle {
+            flex-shrink:0; align-self:stretch; width:26px; min-width:26px;
+            cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none;
+            border-radius:4px; color:#6b7388;
+            background-image:
+                radial-gradient(circle, currentColor 1.3px, transparent 1.7px),
+                radial-gradient(circle, currentColor 1.3px, transparent 1.7px),
+                radial-gradient(circle, currentColor 1.3px, transparent 1.7px),
+                radial-gradient(circle, currentColor 1.3px, transparent 1.7px),
+                radial-gradient(circle, currentColor 1.3px, transparent 1.7px),
+                radial-gradient(circle, currentColor 1.3px, transparent 1.7px);
+            background-repeat: no-repeat;
+            background-size: 4px 4px;
+            background-position:
+                calc(50% - 3px) calc(50% - 6px), calc(50% + 3px) calc(50% - 6px),
+                calc(50% - 3px) 50%,             calc(50% + 3px) 50%,
+                calc(50% - 3px) calc(50% + 6px), calc(50% + 3px) calc(50% + 6px);
+            transition: color .12s, background-color .12s;
+        }
+        .party-drag-handle:hover, .party-drag-handle:active { color:var(--accent); background-color:rgba(255,255,255,0.05); }
+        /* Picked-up row lifts; insertion line shows exactly where it will drop;
+           the landed row gives a brief settle flash. */
+        .party-row.party-dragging { opacity:0.96; border-color:var(--accent); box-shadow:0 6px 18px rgba(0,0,0,0.45); transform:scale(1.012); position:relative; z-index:3; cursor:grabbing; }
+        .party-row.drop-before { box-shadow: inset 0 3px 0 -1px var(--accent); }
+        .party-row.drop-after  { box-shadow: inset 0 -3px 0 -1px var(--accent); }
+        .party-row.party-just-moved { animation: partyJustMoved 0.6s ease-out; }
+        @keyframes partyJustMoved { 0% { background-color:rgba(255,213,79,0.22); } 100% { background-color:transparent; } }
         .party-lead-flag { display:inline-block; font-size:8.5px; font-weight:bold; color:#1a1800; background:var(--accent); padding:1px 5px; border-radius:2px; letter-spacing:0.06em; vertical-align:1px; margin-right:2px; }
         .party-slot-num { display:inline-block; font-size:9px; font-weight:bold; color:#8a92a6; margin-right:2px; vertical-align:1px; }
         @media (max-width: 768px) and (orientation: portrait) {
-            .party-sort-btn, .party-lead-btn { min-height:40px; width:40px; }
-            .party-drag-handle { width:34px; }
+            .party-drag-handle { width:30px; min-width:30px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .party-row, .party-row.party-dragging { transition:none !important; transform:none !important; }
+            .party-row.party-just-moved { animation:none !important; }
         }
 
         /* ── PC roster grid (Pokémon Center → Storage tab) ───────────────────
@@ -7668,7 +7695,7 @@
         }
         .story-bag-close-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 
-        #modal-story-party .story-party-modal-content { max-width: 420px; }
+        #modal-story-party .story-party-modal-content { max-width: 460px; }
         #modal-story-party .story-party-modal-title {
             font-family: var(--battle-font) !important;
             font-size: 12px !important;
@@ -7688,11 +7715,12 @@
             line-height: 1.4;
         }
         #modal-story-party .story-party-modal-scroll {
-            max-height: min(55dvh, 380px);
+            max-height: min(66dvh, 470px);
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 10px;
             overscroll-behavior: contain;
+            padding: 2px; /* room so the picked-up row's lift shadow isn't clipped */
         }
         #modal-story-party #story-team-panel {
             display: flex !important;
@@ -7700,25 +7728,50 @@
             flex-wrap: nowrap !important;
             gap: 6px;
         }
-        #modal-story-party .story-team-slot { width: 100%; box-sizing: border-box; align-items: center; }
         #modal-story-party .story-party-card-hit {
             cursor: pointer;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-        /* Keep the body (and its 2-col move grid) from overflowing under the drag
-           handle + reorder column on narrow phones — let everything shrink to fit. */
-        #modal-story-party .draft-card-sprite { min-width: 48px; }
-        #modal-story-party .draft-card-sprite .mini-sprite { width: 48px; height: 48px; }
-        #modal-story-party .draft-card-header > span { min-width: 0; }
-        #modal-story-party .draft-card-moves { min-width: 0; }
-        #modal-story-party .draft-card-moves > div { min-width: 0; overflow-wrap: anywhere; }
-        #modal-story-party .party-sort-col {
-            display: flex !important;
-            flex-direction: column;
-            gap: 2px;
-            flex-shrink: 0;
+
+        /* ── Compact reorder row ─────────────────────────────────────────────
+           A purpose-built sortable row (NOT the big draft summary card): sprite +
+           name + types + one info line. Keeps the whole party (up to 6) visible at
+           once so drag-to-reorder always has a visible drop target. Full detail is
+           one tap away (opens the summary). */
+        #modal-story-party .party-reorder-row {
+            display: flex; align-items: center; gap: 8px;
+            width: 100%; box-sizing: border-box;
+            padding: 6px 8px 6px 2px; min-height: 60px;
+            border: 1px solid #2f3340; border-left: 3px solid #2f3340;
+            border-radius: 6px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(0,0,0,0.12));
+            font-size: 11px;
         }
+        #modal-story-party .party-reorder-row.tier-1 { border-left-color:#ff8c00; }
+        #modal-story-party .party-reorder-row.tier-2 { border-left-color:#9c27b0; }
+        #modal-story-party .party-reorder-row.tier-3 { border-left-color:#1565c0; }
+        #modal-story-party .party-reorder-row.tier-4 { border-left-color:#2e7d32; }
+        #modal-story-party .party-reorder-row--egg { border-left-color:#ffd54f; border-style:dashed; }
+        #modal-story-party .party-reorder-row .story-party-card-hit { display:flex; align-items:center; gap:9px; min-width:0; flex:1; }
+        #modal-story-party .prr-sprite { position:relative; flex:0 0 auto; width:44px; height:44px; display:flex; align-items:center; justify-content:center; }
+        #modal-story-party .prr-sprite .mini-sprite { width:44px; height:44px; image-rendering:pixelated; }
+        #modal-story-party .prr-sprite .tier-badge { position:absolute; left:-3px; bottom:-4px; transform:scale(0.78); transform-origin:left bottom; box-shadow:0 0 0 1px rgba(0,0,0,0.55); }
+        #modal-story-party .prr-body { min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
+        #modal-story-party .prr-line1 { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:14px; font-weight:bold; line-height:1.15; }
+        #modal-story-party .prr-line1 .type-badge { font-size:8px; padding:1px 5px; margin:0; }
+        #modal-story-party .prr-name { min-width:0; overflow-wrap:anywhere; }
+        #modal-story-party .prr-info { font-size:10.5px; color:#9aa0aa; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        /* Reorder controls — drag is the primary path; these are the precise /
+           keyboard-accessible fallback. Lead (⤒) is one tall button; ▲/▼ stack so
+           up/down keep their natural vertical meaning. */
+        #modal-story-party .party-sort-col {
+            display:grid; grid-template-columns:auto auto; grid-template-rows:1fr 1fr; gap:3px;
+            flex:0 0 auto; align-self:center;
+        }
+        #modal-story-party .party-lead-btn { grid-column:1; grid-row:1 / span 2; width:30px; min-height:0; height:auto; font-size:14px; }
+        #modal-story-party .party-sort-btn { grid-column:2; width:30px; min-height:25px; font-size:11px; }
 
         /* --- Move buttons: type-colored with pixel border --- */
         #move-menu .move-menu-scroll button.battle-btn-move {
@@ -9507,7 +9560,7 @@
     <div id="modal-story-party" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline story-party-modal-content">
             <h3 class="story-party-modal-title"><img class="story-screen-head-ico" src="icons/story/story_party.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span>Party <span id="story-party-count" style="color:#9aa0aa;font-size:10px;letter-spacing:0;font-weight:normal;"></span></span></h3>
-            <p class="story-party-modal-hint">Tap a Pokémon for its full summary. Drag the ↕ handle to reorder, or use ⤒ to send one to the front (lead).</p>
+            <p class="story-party-modal-hint">Drag a Pokémon by its handle to reorder, or tap <span aria-hidden="true">⤒</span> to set your lead. Tap a Pokémon for its full summary.</p>
             <div id="story-party-modal-scroll" class="story-party-modal-scroll">
                 <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
             </div>
@@ -46081,8 +46134,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
                 return;
             }
-            // Lead slot = battle order index 0. Drag the ↕ handle (mouse or touch) to
-            // reorder; "Lead" jumps a mon to the front; ▲/▼ are the keyboard fallback.
+            // Lead slot = battle order index 0. Drag the grip handle (mouse or touch)
+            // to reorder; "Lead" (⤒) jumps a mon to the front; ▲/▼ are the keyboard
+            // fallback. Rows are compact (identity + one info line) so the whole party
+            // is visible at once — full detail is one tap away (opens the summary).
             const _leadFlag = (i) => i === 0
                 ? '<span class="party-lead-flag" title="Battles start with this Pokémon">LEAD</span>'
                 : `<span class="party-slot-num">#${i + 1}</span>`;
@@ -46091,18 +46146,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <button type="button" class="party-sort-btn" title="Move up in party" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)" aria-label="Move up">&#9650;</button>
                 <button type="button" class="party-sort-btn" title="Move down in party" ${i === n - 1 ? 'disabled' : ''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},1)" aria-label="Move down">&#9660;</button>
             </div>`;
-            const _handle = '<div class="party-drag-handle" title="Drag to reorder" aria-hidden="true">&#8597;</div>';
+            const _handle = '<div class="party-drag-handle" title="Drag to reorder" aria-hidden="true"></div>';
             panel.innerHTML = sm.team.map((t,i) => {
                 const n = sm.team.length;
                 if (t && t.isEgg) {
-                    return `<div class="story-team-slot draft-card party-row" data-party-idx="${i}" style="align-items:stretch;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;border:1px dashed #ffd54f;">
+                    return `<div class="party-reorder-row party-reorder-row--egg party-row" data-party-idx="${i}">
                         ${_handle}
-                        <div class="story-party-card-hit" style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="It's an egg" aria-label="Mystery Egg">
-                            <div class="draft-card-sprite">${_eggIconHTML(40)}</div>
-                            <div class="draft-card-body" style="min-width:0;flex:1;">
-                                <div class="draft-card-header"><span>${_leadFlag(i)} 🥚 Mystery Egg</span></div>
-                                <div class="draft-card-details" style="color:#ffd54f;">Something stirs inside…</div>
-                                <div class="draft-card-moves" style="color:#888;">Hatches a couple of towns on</div>
+                        <div class="story-party-card-hit" role="button" tabindex="0" data-party-idx="${i}" title="It's an egg" aria-label="Mystery Egg">
+                            <div class="prr-sprite">${_eggIconHTML(40)}</div>
+                            <div class="prr-body">
+                                <div class="prr-line1">${_leadFlag(i)}<span class="prr-name">🥚 Mystery Egg</span></div>
+                                <div class="prr-info" style="color:#ffd54f;white-space:normal;">Something stirs inside — hatches in a couple of towns.</div>
                             </div>
                         </div>
                         ${_reorderCol(i, n)}
@@ -46111,23 +46165,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const rawBuild = (t && (t.build || t.buildData)) ? (t.build || t.buildData) : {};
                 const mon = buildPokemon(String(t.name || '').trim(), shallowCloneBuildForDisplay(rawBuild));
-                const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
-                while (moveNames.length < 4) moveNames.push('—');
                 const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
-                const movesHtml = moveNames.map(mn => `<div>${mn}</div>`).join('');
-                return `<div class="story-team-slot draft-card party-row tier-${g}" data-party-idx="${i}" style="align-items:stretch;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;">
+                const _markers = `${t.starter ? ' <span title="Your starter — keepsake marker only, no restrictions." style="display:inline-block;font-size:8px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:8px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:8px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''}`;
+                const _nameHtml = `${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}`;
+                return `<div class="party-reorder-row party-row tier-${g}" data-party-idx="${i}">
                     ${_handle}
-                    <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary" aria-label="View ${_esc(String(t.nickname || t.name))} summary">
-                        <div class="draft-card-sprite">
+                    <div class="story-party-card-hit" role="button" tabindex="0" data-party-idx="${i}" title="View summary" aria-label="View ${_esc(String(t.nickname || t.name))} summary">
+                        <div class="prr-sprite">
                             <img src="${getSprite(spriteDisplayName(t), !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
                             <span class="tier-badge bg-tier-${g}" title="Grade (1 = strongest pool tier, 4 = cutest/weakest)">G${g}</span>
                         </div>
-                        <div class="draft-card-body" style="min-width:0;flex:1;">
-                            <div class="draft-card-header">
-                                <span>${_leadFlag(i)} ${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Your starter — keepsake marker only, no restrictions." style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:9px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
-                            </div>
-                            <div class="draft-card-details">${details}</div>
-                            <div class="draft-card-moves">${movesHtml}</div>
+                        <div class="prr-body">
+                            <div class="prr-line1">${_leadFlag(i)}<span class="prr-name">${_nameHtml}${_markers}</span> ${getTypeHTML(mon.type1, mon.type2)}</div>
+                            <div class="prr-info">${details}</div>
                         </div>
                     </div>
                     ${_reorderCol(i, n)}
@@ -46187,38 +46237,86 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _installPartyDrag(panel) {
             if (!panel || panel._partyDragBound) return;
             panel._partyDragBound = true;
-            let fromIdx = -1;
+            // The clipping viewport — used for edge auto-scroll so a mon can be
+            // dragged onto a slot that is currently scrolled off-screen.
+            const scroller = () => panel.closest('.story-party-modal-scroll') || document.getElementById('story-party-modal-scroll');
+            let fromIdx = -1;   // index of the picked-up row
+            let insAt = -1;     // current insertion gap, 0..n
+            let lastY = 0;      // last pointer Y (kept current so auto-scroll can re-target)
+            let autoRAF = 0;    // edge auto-scroll rAF handle
+            let autoVel = 0;    // px/frame; sign = direction
             const cards = () => Array.from(panel.querySelectorAll('.party-row[data-party-idx]'));
-            const idxUnder = (clientY) => {
-                for (const c of cards()) {
-                    const r = c.getBoundingClientRect();
-                    if (clientY >= r.top && clientY <= r.bottom) return parseInt(c.getAttribute('data-party-idx'), 10);
+            const clearMarks = () => cards().forEach(c => c.classList.remove('party-dragging', 'drop-before', 'drop-after'));
+            // Insertion gap (0..n) nearest clientY, by each row's vertical midpoint.
+            const insertionAt = (clientY) => {
+                const cs = cards();
+                for (let k = 0; k < cs.length; k++) {
+                    const r = cs[k].getBoundingClientRect();
+                    if (clientY < r.top + r.height / 2) return k;
                 }
-                return -1;
+                return cs.length;
             };
-            const clearMarks = () => cards().forEach(c => c.classList.remove('party-dragging', 'party-drop-target'));
-            // Move/up are bound on document (capture) for the duration of a drag, so the
+            // Draw the insertion line, hidden when the gap is a no-op for fromIdx.
+            const paintInsert = () => {
+                const cs = cards();
+                cs.forEach(c => c.classList.remove('drop-before', 'drop-after'));
+                if (insAt < 0 || insAt === fromIdx || insAt === fromIdx + 1) return;
+                if (insAt < cs.length) cs[insAt].classList.add('drop-before');
+                else if (cs.length) cs[cs.length - 1].classList.add('drop-after');
+            };
+            const stopAuto = () => { if (autoRAF) cancelAnimationFrame(autoRAF); autoRAF = 0; autoVel = 0; };
+            const autoStep = () => {
+                autoRAF = 0;
+                if (fromIdx < 0 || !autoVel) return;
+                const sc = scroller();
+                if (sc) sc.scrollTop += autoVel;
+                insAt = insertionAt(lastY);   // content scrolled under a held pointer
+                paintInsert();
+                autoRAF = requestAnimationFrame(autoStep);
+            };
+            // Set the auto-scroll velocity from how deep the pointer is in either
+            // end hot-zone (0 outside the zones → no scroll).
+            const updateAuto = (clientY) => {
+                const sc = scroller();
+                if (!sc) { stopAuto(); return; }
+                const r = sc.getBoundingClientRect();
+                const EDGE = 38, MAX = 14;
+                let v = 0;
+                if (clientY < r.top + EDGE) v = -Math.ceil(MAX * Math.min(1, (r.top + EDGE - clientY) / EDGE));
+                else if (clientY > r.bottom - EDGE) v = Math.ceil(MAX * Math.min(1, (clientY - (r.bottom - EDGE)) / EDGE));
+                autoVel = v;
+                if (autoVel && !autoRAF) autoRAF = requestAnimationFrame(autoStep);
+                else if (!autoVel) stopAuto();
+            };
+            // Move/up are bound on document (capture) for the drag's duration, so the
             // gesture keeps tracking even if the pointer leaves the handle or the list
             // repaints — more robust than setPointerCapture across touch + mouse.
             const onMove = (ev) => {
                 if (fromIdx < 0) return;
                 if (ev.cancelable) ev.preventDefault();
-                const over = idxUnder(ev.clientY);
-                cards().forEach(c => {
-                    const ci = parseInt(c.getAttribute('data-party-idx'), 10);
-                    c.classList.toggle('party-drop-target', ci === over && ci !== fromIdx);
-                });
+                lastY = ev.clientY;
+                insAt = insertionAt(lastY);
+                paintInsert();
+                updateAuto(lastY);
             };
             const onUp = (ev) => {
                 document.removeEventListener('pointermove', onMove, true);
                 document.removeEventListener('pointerup', onUp, true);
                 document.removeEventListener('pointercancel', onUp, true);
+                stopAuto();
                 const from = fromIdx;
-                fromIdx = -1;
-                if (from < 0) { clearMarks(); return; }
-                const over = idxUnder(ev.clientY);
+                const ins = (insAt >= 0) ? insAt : insertionAt(ev.clientY);
+                fromIdx = -1; insAt = -1;
                 clearMarks();
-                if (over >= 0 && over !== from) _reorderTeam(from, over);
+                if (from < 0) return;
+                // partyReorder's `to` is the post-removal index, so shift the gap down
+                // by one when the row moves downward past its own slot.
+                const to = ins > from ? ins - 1 : ins;
+                if (to === from || to < 0) return;
+                _reorderTeam(from, to);
+                // Settle flash on the landed row (DOM is freshly repainted).
+                const landed = panel.querySelector(`.party-row[data-party-idx="${to}"]`);
+                if (landed) { landed.classList.add('party-just-moved'); setTimeout(() => landed.classList.remove('party-just-moved'), 600); }
             };
             panel.addEventListener('pointerdown', (ev) => {
                 const handle = ev.target.closest('.party-drag-handle');
@@ -46227,6 +46325,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!card) return;
                 ev.preventDefault();
                 fromIdx = parseInt(card.getAttribute('data-party-idx'), 10);
+                insAt = -1; lastY = ev.clientY;
                 card.classList.add('party-dragging');
                 document.addEventListener('pointermove', onMove, true);
                 document.addEventListener('pointerup', onUp, true);
