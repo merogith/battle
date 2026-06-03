@@ -45,10 +45,15 @@ test('rocket boss has a pre-fight arc AND a structured win outro', () => {
     'pre-fight acts must not leak boss-mechanic telegraph text');
 });
 
-test('unconverted scenes stay legacy-flat (backward compatible)', () => {
-  const flat = nt.STORY_SCENES['villain.plasma.event1']; // not yet converted
-  assert.ok(flat && typeof flat.body === 'string', 'legacy scene intact');
-  assert.equal(flat.acts, undefined, 'unconverted scene has no acts');
+test('legacy-flat scenes (no acts) still carry a renderable body', () => {
+  // Self-adjusting: pick whatever scene is still unconverted, so this stays
+  // green as the rollout converts more arcs.
+  const S = nt.STORY_SCENES;
+  const flatKey = Object.keys(S).find(k => S[k] && !S[k].acts);
+  assert.ok(flatKey, 'a legacy-flat scene exists during rollout');
+  const flat = S[flatKey];
+  assert.ok(typeof flat.body === 'string' && flat.body.length, 'legacy scene has a body');
+  assert.equal(flat.acts, undefined, 'legacy scene has no acts');
 });
 
 // ── Branching text (cross-event callback) ───────────────────────────────────
@@ -192,10 +197,10 @@ test('canonTrainerForUpcomingBattle returns null when no boss beat is active', (
 });
 
 // ── Converted villain arcs (rollout) ────────────────────────────────────────
-const CONVERTED_VILLAIN = ['rocket', 'magma', 'aqua', 'galactic'];
+const CONVERTED_VILLAIN = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull'];
 // Fully converted = every event1..6 has an arc. Rocket is intentionally partial
 // (event4/event5 left legacy-flat as the unconverted baseline / worked example).
-const FULLY_CONVERTED = ['magma', 'aqua', 'galactic'];
+const FULLY_CONVERTED = ['magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull'];
 
 test('fully converted arcs have event1-6 arcs', () => {
   const S = nt.STORY_SCENES;
@@ -262,4 +267,25 @@ test('arc choices drive a later branch payoff (magma / aqua / galactic)', () => 
   const told = nt.resolveActLines(galDev).join(' ');
   assert.ok(stayed.length && told.length && stayed !== told,
     'galactic ending branches differ by keeper choice');
+});
+
+test('plasma / flare / skull endings branch on their arc choice', () => {
+  const S = nt.STORY_SCENES;
+  const cases = [
+    { key: 'villain.plasma.ending', choice: 'villain.plasma.n',      a: 'uncaged', b: 'ball' },
+    { key: 'villain.flare.ending',  choice: 'villain.flare.sticker', a: 'kept',    b: 'peeled' },
+    { key: 'villain.skull.ending',  choice: 'villain.skull.kids',    a: 'gave',    b: 'straight' },
+  ];
+  for (const c of cases) {
+    const branchAct = S[c.key].acts.find(a => a.branches);
+    assert.ok(branchAct, `${c.key} has a branching act`);
+    nt.sm = { storyChoices: { [c.choice]: c.a } };
+    const a = nt.resolveActLines(branchAct).join(' ');
+    nt.sm = { storyChoices: { [c.choice]: c.b } };
+    const b = nt.resolveActLines(branchAct).join(' ');
+    nt.sm = { storyChoices: {} };
+    const def = nt.resolveActLines(branchAct).join(' ');
+    assert.ok(a.length && b.length && a !== b, `${c.key}: branches differ`);
+    assert.ok(def.length, `${c.key}: has a default branch`);
+  }
 });
