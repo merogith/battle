@@ -102,6 +102,20 @@ test('the migrated CSS-class overlays sit on the overlay tier via the token', ()
   }
 });
 
+test('the casino celebration overlays sit on the scale (jackpot below the prize reveal)', () => {
+  // Jackpot is the full-screen backdrop (overlay tier); the prize-reveal card
+  // rides above it on the spotlight tier — the casino's "victory card". The
+  // relative order (jackpot below prize) matches the old 9000 < 9100 layering.
+  assert.ok(/\.casino-jackpot-overlay\s*\{[\s\S]*?z-index: var\(--sn-z-overlay\);/.test(HTML),
+    '.casino-jackpot-overlay must use var(--sn-z-overlay)');
+  assert.ok(/\.casino-prize-banner\s*\{[\s\S]*?z-index: var\(--sn-z-spotlight\);/.test(HTML),
+    '.casino-prize-banner must use var(--sn-z-spotlight)');
+  assert.ok(!/\.casino-jackpot-overlay\s*\{[\s\S]*?z-index: 9000;/.test(HTML),
+    'casino jackpot literal z9000 must be gone');
+  assert.ok(!/\.casino-prize-banner\s*\{[\s\S]*?z-index: 9100;/.test(HTML),
+    'casino prize literal z9100 must be gone');
+});
+
 test('the save toast no longer hand-rolls a z-index:99999 literal', () => {
   // 99999 may still appear in the dev/debug overlay (monospace), but never on
   // the .story-save-toast element built by _maybeShowSaveToast.

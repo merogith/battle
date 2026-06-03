@@ -175,11 +175,12 @@ acts + `outro.win`. Every other arc follows the same shape.
    (`_storyScene` z10000, `_daycareOpenDropOff` z9990) were folded onto the
    overlay tier — they live in the city hub and never co-occur with the
    spotlight-tier battle cards, so stacking is unchanged in practice. Token
-   consumers went 1 → 18; no ad-hoc literal ≥ 1200 remains in a story narrative
-   path. Guarded by `tests/suites/overlay-zindex-tokens.test.js` and a
-   live-overlay DOM check in the integration suite. **Still pending:** the casino
-   banners (`.casino-prize-banner` z9100, `.casino-jackpot-overlay` z9000) are in
-   active scope but off-scale — a small follow-up once their tier is chosen.
+   consumers went 1 → 21; no ad-hoc literal ≥ 1200 remains in a story path.
+   Guarded by `tests/suites/overlay-zindex-tokens.test.js` and a live-overlay DOM
+   check in the integration suite. The casino celebration overlays are on the
+   scale too: `.casino-jackpot-overlay` (full-screen backdrop) on the overlay
+   tier and `.casino-prize-banner` (reward reveal) on the spotlight tier — the
+   casino's "victory card" — preserving their jackpot-below-prize order.
    **Out of scope:** the Frontier/Pits overlays.
 4. **Battle wrapper**: give every boss/raid a structured `outro` (retire the
    regex `STORY_POST_SCENES` once all are converted).
