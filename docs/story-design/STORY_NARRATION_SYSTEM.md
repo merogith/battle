@@ -165,8 +165,18 @@ acts + `outro.win`. Every other arc follows the same shape.
    `_storyScene` (Daycare/Fight Club), `_showStoryTutorialScene`,
    `_showIntroRivalColdOpen`, the legendary-sighting cinematic, boss banners.
    Each migration deletes a bespoke style block.
-3. **Route toasts/alerts through the z-scale** (`--sn-z-toast`, `--sn-z-scrim`)
-   and a shared queue so nothing paints behind an overlay.
+3. ~~**Route the overlays onto the z-scale**~~ **z-index tokens DONE (PR1).**
+   Every value-aligned story overlay now sets `z-index: var(--sn-z-*)` instead of
+   an ad-hoc literal — scrim (`.modal`), battle-banner (`.gimmick-banner`),
+   overlay (city-arrival / city0 cold-open / wander / tutorial / evolution /
+   legendary-sighting), spotlight (boss banner / battle intro / victory card /
+   first-sighting / Hall-of-Fame), toast (`#toast-host` + the save pill). Token
+   consumers went 1 → 16; no ad-hoc literal ≥ 1200 remains in a migrated story
+   path. Guarded by `tests/suites/overlay-zindex-tokens.test.js` and a live-overlay
+   DOM check in the integration suite. **Deferred** (off-scale, tier is a real
+   decision made when their render logic is folded — see item 2): `_storyScene`
+   (z 10000), `_daycareOpenDropOff` (z 9990). **Out of scope:** the Frontier/Pits
+   overlays and casino banners.
 4. **Battle wrapper**: give every boss/raid a structured `outro` (retire the
    regex `STORY_POST_SCENES` once all are converted).
 
@@ -178,7 +188,11 @@ acts + `outro.win`. Every other arc follows the same shape.
 (`playStoryBeatScene`, `playPostBattleScene`), and the parity helpers
 (`canonTrainerForUpcomingBattle`, `storyEventRowToUpNext`,
 `activeBattleBeatForCurrentRow`, `roadForArrayIdx`). See
-`tests/integration/story-narration-system.test.js` — **26 tests**, including two
+`tests/integration/story-narration-system.test.js` — **27 tests**, including
 **end-to-end DOM** tests that drive a scene through the live overlay (acts →
-choice → persistence → reply swap → cleared overlay → cross-scene branch), plus a
-completion invariant (every scene has `acts` **and** a legacy `body`).
+choice → persistence → reply swap → cleared overlay → cross-scene branch), a
+completion invariant (every scene has `acts` **and** a legacy `body`), and a
+live-overlay z-tier check (the canonical overlay carries `var(--sn-z-overlay)`,
+never a literal). The z-index token contract itself is locked source-level in
+`tests/suites/overlay-zindex-tokens.test.js` — **6 tests** (tokens defined,
+scale strictly ascending, every migrated overlay on its token).

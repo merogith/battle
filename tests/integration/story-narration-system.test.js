@@ -486,3 +486,25 @@ test('e2e: a structured boss outro renders post-battle', () => {
   assert.ok(_body().length > 0, 'boss aftermath rendered into the overlay');
   _drainStage(); // clean up
 });
+
+// §6 overlay unification (PR1: z-index tokenization). The live canonical
+// overlay must sit on the --sn-z-overlay token, never a hard-coded literal —
+// this is what keeps it from colliding with the spotlight / toast tiers. The
+// source-level token contract is locked in tests/suites/overlay-zindex-tokens.
+test('e2e: the live canonical overlay carries the --sn-z-overlay token, no literal', () => {
+  _drainStage();
+  assert.equal(nt.isNarrationLive(), false, 'clean stage to start');
+  const ov = nt.renderNarrativeOverlay({ name: 'Prof. Oak', lines: ['Layer check.'] });
+  assert.ok(ov, 'overlay element returned');
+  assert.ok(nt.isNarrationLive(), 'overlay went live on a clear stage');
+  assert.match(ov.style.cssText, /z-index:\s*var\(--sn-z-overlay\)/,
+    'overlay z-index resolves through the --sn-z-overlay token');
+  assert.ok(!/z-index:\s*\d{3,}/.test(ov.style.cssText),
+    'overlay carries no hard-coded high z-index literal');
+  // dismisses cleanly, leaves nothing stacked
+  const cont = ov.querySelector('button[data-narr-continue="1"]');
+  assert.ok(cont, 'continue button present');
+  cont.click();
+  assert.equal(nt.isNarrationLive(), false, 'stage clear after dismiss');
+  assert.equal(document.querySelector('[data-narr-body="1"]'), null, 'overlay removed from the DOM');
+});
