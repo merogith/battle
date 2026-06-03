@@ -1291,21 +1291,21 @@
         }
         .tx-card[data-disabled="1"] { opacity: 0.55; cursor: not-allowed; }
         .tx-card[data-disabled="1"]:hover { transform: none; }
-        /* Phase 4 — 4px left stripe encodes the Natural/Learnt/Awakened
-           classification without adding another text pill to the foot row.
-           Greater visual signal-to-noise: a single colored bar scans faster
-           than another "Natural" / "Learnt" pill. The card's tooltip
-           explains the stripe on hover for first-time players. */
-        .tx-card[data-tag] {
+        /* 4px left stripe encodes the Move Tutor STAGE that unlocks the move —
+           Inner Strength (innate, capped), Unleashed (innate, cap lifted), Guru
+           (taught / off-legal). One colored bar scans faster than a text pill and
+           speaks the same three-stage language as the Stage filter and the lock
+           pill. The card's tooltip spells it out on hover for first-time players. */
+        .tx-card[data-stage] {
             position: relative; padding-left: 14px;
         }
-        .tx-card[data-tag]::before {
+        .tx-card[data-stage]::before {
             content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
             width: 4px; border-radius: 0 3px 3px 0;
         }
-        .tx-card[data-tag="natural"]::before  { background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.55); }
-        .tx-card[data-tag="learnt"]::before   { background: #4fc3f7; box-shadow: 0 0 6px rgba(79,195,247,0.55); }
-        .tx-card[data-tag="awakened"]::before { background: #ce93d8; box-shadow: 0 0 6px rgba(206,147,216,0.55); }
+        .tx-card[data-stage="inner"]::before     { background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.55); }  /* green — innate, held in check */
+        .tx-card[data-stage="unleashed"]::before { background: #ffb74d; box-shadow: 0 0 6px rgba(255,183,77,0.55); }   /* amber — the ceiling comes off */
+        .tx-card[data-stage="guru"]::before      { background: #ce93d8; box-shadow: 0 0 6px rgba(206,147,216,0.55); }  /* violet — taught / forbidden */
         /* ★ marker on starred cards — gold star prefix before the title. */
         .tx-card-star {
             display: inline-flex; align-items: center; justify-content: center;
@@ -41247,9 +41247,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-move-tutor',
                 sprite: 'Veteran', name: 'Move Tutor', nameplate: 'Move Tutor',
                 lines: [
-                    '"Every move your Pokémon was meant to learn is in here somewhere — level-up, TM, egg moves, all of it."',
-                    '"Tap a slot to see what\'s available; tap Teach to confirm. Costs scale with power and the mon\'s training tier, so polishing a weaker partner stays cheap."',
-                    '"Coverage matters more than raw base power. A single Fairy hit for the one Dragon you keep losing to. A status-clearing move. A way to plug a 4× Ice weakness. The new move is permanent — no second-thought penalty. Take a Heart Scale — first lesson\'s on me."'
+                    '"I don\'t put anything into your partner. I draw out what already sleeps in it — the moves it was born knowing how to throw. We begin gentle. There\'s a ceiling on the strength I\'ll let it reach, and for now I keep it there."',
+                    '"Tap a slot to see what it can reach today; tap Teach to make the change permanent. The price follows the move, not my mood — so sharpening a half-trained partner stays cheap."',
+                    '"Choose for the gaps, not the spectacle. One Fairy answer for the Dragon that keeps ending your runs. A way to shake a sleeping status. Cover a fourfold weakness before the world finds it first. Come back as we both grow — the ceiling lifts, and later still I open the books no one should hand a child. Here: a Heart Scale. The first lesson is mine to give."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ heartScale: 1 }); } catch (e) {}
@@ -43899,7 +43899,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // has not yet introduced themselves anywhere in the run AND (c) this city
         // is the FACILITY_DEBUT_CITY for that key (the canonical debut location).
         // Staged facilities (Dojo / Move Tutor / Evolution Tutor) re-introduce
-        // themselves each time they cross into a higher tier (Black Belt, Expert,
+        // themselves each time they cross into a higher tier (Black Belt, Unleashed,
         // Evolution Master, …). A tier-up the player hasn't seen yet is a pending
         // "must-see" intro — it joins the same force-visit gate as a first-time
         // intro so the upgrade can't be missed. Stage 0 (debut) has no tier-up line
@@ -44004,13 +44004,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // they do not drain the seeded story RNG used for trainer rolls / catches.
         const STORY_FACILITY_QUOTES = {
             moveTutor: [
-                'Move Tutor: "Half my students show up trying to win with raw power. The other half listen, and pick a move that closes a hole."',
-                'Move Tutor: "Pick any slot. Anything you swap out, you can swap back — the partner won\'t hold a grudge."',
-                'Move Tutor: "A good coverage move is worth two TMs. A clever status move is worth four."',
-                'Move Tutor: "Every species has a quirk in its learnset. Find that, and the rest of the build writes itself."',
-                'Move Tutor: "Take your time on this one. A wrong move slot is a hole the foe finds in the first round."',
-                'Move Tutor: "You\'d be surprised what these things will learn when you ask politely. And pay."',
-                'Move Tutor: "Fifteen hundred a lesson, free with a Heart Scale. Gyms drop those — keep one in your bag and the next swap\'s on the house."',
+                'Move Tutor: "Half who come to me want to win by hitting harder. The other half ask what gap the foe slips through first — and we close it. Only one half keeps winning."',
+                'Move Tutor: "Nothing here is taught wrong forever. Swap a move out, swap it back; the partner forgives. People rarely return the courtesy."',
+                'Move Tutor: "One clean answer to the thing that keeps killing you beats a second way to do what you already do. Coverage over power. Always."',
+                'Move Tutor: "Every species hides one strange thing in what it knows. Find that, and the rest of the creature explains itself."',
+                'Move Tutor: "I start everyone behind a ceiling. Not because the strength isn\'t there — because few are ready to answer for it."',
+                'Move Tutor: "They learn more than you\'d think, these creatures. You only have to ask them right. And pay."',
+                'Move Tutor: "Bring a Heart Scale and the lesson costs nothing but the choosing. The gyms shed them — keep one on you, and your partner\'s next move is free."',
             ],
             natureRater: [
                 'Nature Rater: "Show me your partner. I\'ll tell you what it\'s built for, and what we can make it built for."',
@@ -47235,15 +47235,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
-        // Parity move gate (#1): before the player's Move Tutor reaches TM Expert (City 4)
-        // the player only has egg + level-up moves, so foes are held to the same access.
+        // Parity move gate (#1): before the player's Move Tutor reaches Guru (City 5)
+        // the player has only innate (egg/level-up/transfer) moves — no TMs — so foes
+        // are held to the same access.
         // Pre-warm the egg/level-up learnset for the rolled foe species (reusing the Move
         // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
         // full. From City 5 (Guru) on both sides have full move access → no-op. Deterministic.
         // Enemy move pool mirrors the player's TUTOR STAGE at this city (tutor:[0,2,5]):
         //   C0–C1 (Inner Strength): Natural only, BP ≤ 75.
-        //   C2–C4 (Expert):         ALL Natural (cap lifts; no Learnt yet).
+        //   C2–C4 (Unleashed):      ALL Natural (cap lifts; no Learnt yet).
         //   C5+   (Guru):           + Learnt + Awakened — i.e. unfiltered.
         // When a Smogon preset move sits above the allowed tag, drop it and refill from
         // the allowed pool (ordered by usage % so the replacement is meta-sensible, not
@@ -47252,9 +47253,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The single move-pacing authority, shared by the foe gate and (Phase 3)
         // player-obtainable builds. Keyed on the TUTOR STAGE so both sides unlock in
         // lockstep with the player's Move Tutor:
-        //   stage 0 (Inner, C0–C3): Natural-tag moves only, BP ≤ 75.
-        //   stage 1 (Expert, C4–C6): Natural + Learnt, no BP cap.
-        //   stage 2 (Guru,  C7+):    no gate (full Smogon pool).
+        //   stage 0 (Inner Strength, C0–C1): Natural-tag moves only, BP ≤ 75.
+        //   stage 1 (Unleashed,       C2–C4): ALL Natural — the BP cap lifts; still no Learnt.
+        //   stage 2 (Guru,            C5+):   no gate (full Smogon pool).
         // STORY_MOVE_BP_CAP_BY_STAGE is a user-owned balance number (0 = no cap).
         const STORY_MOVE_BP_CAP_BY_STAGE = [75, 0, 0];
         function _storyMoveBpCapForStage(stage) {
@@ -47310,7 +47311,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
             if (!learn) return false; // cache cold → leave as-is (offline-safe via the index)
-            // Staging (user model): L1 Inner = Natural ≤ BP cap; L2 Expert = ALL Natural
+            // Staging (user model): L1 Inner = Natural ≤ BP cap; L2 Unleashed = ALL Natural
             // (cap lifts, still no Learnt); L3 Guru = no gate at all (handled by the early
             // return above). Learnt (TM/tutor) therefore unlocks only at Guru — it is NOT
             // added at L2 the way it was previously.
@@ -55036,8 +55037,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_NATURE  = 2000;
         // Move Tutor charge is staged by tutor tier (cost = the stage CEILING, by stage):
         //   L1 Inner Strength: 1,000 G per move (Natural pool, BP ≤ 75).
-        //   L2 Expert:         2,500 G per move (ALL Natural — BP cap lifts; still no TMs).
+        //   L2 Unleashed:      Natural only, so still 1,000 G per move (BP cap lifts, no TMs).
         //   L3 Guru:           5,000 G per move (+ Learnt TM/HM/Tutor/TR/event + Awakened).
+        // NB: per-move price follows the move's TAG, not the tutor's stage — see the
+        // tag branch below. The no-tag "starting from" label is the stage ceiling.
         function _moveCostForStage(moveTag) {
             // If a specific move's tag is supplied, price by the move's TIER (a Natural
             // move at L3 Guru still costs 1000 — the player pays for what the move IS,
@@ -55069,9 +55072,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //             → Grandmaster (+Awakened abilities · +all items)
             // Matrix (post-merge from main): White Belt C2–C4, Black Belt C5–C7, Grandmaster C8+.
             dojo:   [2, 5, 8],
-            // Move Tutor (user model): three stages keyed on the move-tag system —
-            //   Inner Strength (L1) — Natural moves (level-up/egg/transfer/evo), BP ≤ 75.  C0-C1.
-            //   Expert         (L2) — ALL Natural moves (BP cap lifts; still no TMs/tutor). C2-C4.
+            // Move Tutor (user model): three stages along TWO axes — what a move IS
+            // (innate vs taught) AND how hard it hits (the Inner power cap):
+            //   Inner Strength (L1) — innate moves (level-up/egg/transfer/evo), BP ≤ 75.   C0-C1.
+            //   Unleashed      (L2) — the SAME innate pool, cap lifted; still no TMs/tutor. C2-C4.
             //   Guru           (L3) — + Learnt (TM / HM / TR / Tutor / event) + Awakened.   C5+.
             // Drives BOTH the player tutor and the foe move-gate (they pace together).
             tutor:  [0, 2, 5],
@@ -55082,7 +55086,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         const NPC_STAGE_NAMES = {
             dojo:   ['White Belt', 'Black Belt', 'Grandmaster'],
-            tutor:  ['Inner Strength', 'Expert', 'Guru'],
+            tutor:  ['Inner Strength', 'Unleashed', 'Guru'],
             evolab: ['Evolution Teacher', 'Evolution Master'],
         };
         function _npcStageForCity(key, cityIdx) {
@@ -55184,8 +55188,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         const _NPC_STAGE_INTRO = {
             tutor:  {
-                1: 'Move Tutor — Expert: "You\'ve trained enough that your partner\'s full natural arsenal is on the table — every level-up, egg and transfer move it can muster, no power ceiling. Here\'s a Heart Scale; the first lesson is on me."',
-                2: 'Move Tutor — Guru: "You\'ve come this far — the technical book AND the Awakened lessons are both open now. TMs, HMs, tutor moves, and moves no trainer is supposed to teach. Take two Heart Scales; experiment freely."',
+                1: 'Move Tutor — Unleashed: "Every partner that comes to me, I teach to hold back first. The kindest lie in my trade. You\'ve earned the truth now — that ceiling on its strength was mine to set, never its limit. Tonight it comes off. Take a Heart Scale; the first lesson is on me, the rest it earns the hard way."',
+                2: 'Move Tutor — Guru: "You came further than most. Past instinct, past blood — into the part of this craft I don\'t teach where children can hear. The machines, the tutor\'s old verses, the moves no honest trainer admits to knowing. All of it, open to you. Two Heart Scales — spend them on something you can live with."',
             },
             dojo:   {
                 1: 'Dojo Master: "Black Belt material. Hidden talents are on the table now — take this Ability Capsule and wake one up, no charge."',
@@ -55287,7 +55291,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let quoteKey = 'moveTutor';
             let iconSrc = 'icons/story/story_tutor.png?v=20260516';
             let label = 'Move Tutor';
-            let desc = 'Teach or replace battle moves. Options come from the species\' learnset and competitive sets.';
+            let desc = 'Teach or replace a move — drawn from what each partner can reach at the tutor\'s current tier.';
             if (mode === 'nature') {
                 iconSrc = 'icons/story/story_nature.png?v=20260516';
                 label = 'Nature Rater';
@@ -55299,7 +55303,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 desc = 'Equip held items and abilities. Options are species-legal and drawn from competitive sets.';
                 quoteKey = 'battleDojo';
             } else {
-                desc = 'Tap a move slot to swap it. Available moves come from each Pokémon\'s learnset and competitive sets.';
+                desc = 'Tap a move slot to swap it. The pool is whatever your partner can reach at this tutor\'s tier — and it widens as the tutor does.';
             }
             if (titleEl) titleEl.innerHTML = `<img class="story-screen-head-ico" src="${iconSrc}" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">${label}</span>`;
             if (descEl) descEl.textContent = desc;
@@ -55611,11 +55615,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   all      = every move reachable in any gen's learnset (legal pool)
         //   tier1    = legacy: L + E (level-up + egg) — read by the old Heart-Scale path
         //   natural  = L + E + V  (level-up, egg, transferred; evolution-learned uses L0).
-        //              "Anything the mon learns BY ITSELF" — Phase 4.1 Inner Strength tier.
+        //              "Anything the mon knows BY ITSELF" — fuels BOTH Inner Strength
+        //              (capped) and Unleashed (uncapped); the BP cap splits the two stages.
         //   learnt   = M + T + R + S + D + C  (TM / HM / Tutor / TR / event / dream / cave).
-        //              Phase 4.1 Expert tier — external teaching.
+        //              External teaching — opens at the Guru tier.
         //   awakened = moves used by this species' Smogon CSV builds (legal or off-legal)
-        //              that are NOT in any gen's learnset. Phase 4.1 Guru tier.
+        //              that are NOT in any gen's learnset. Also Guru tier (the off-legal book).
         async function _tutorFetchLearnsetMoveNames(monName) {
             const cached = _tutorLearnsetCache.get(monName);
             if (cached) return cached;
@@ -55737,7 +55742,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Move Tutor view pool — gated by the tutor's city stage via the move-tag
         // index (Phase 4.2):
         //   L1 Inner Strength: Natural only (egg/level-up/transfer/evolution), BP ≤ 75.
-        //   L2 Expert:         ALL Natural (BP cap lifts; still no TMs).
+        //   L2 Unleashed:      ALL Natural (BP cap lifts; still no TMs).
         //   L3 Guru:           + Learnt (TM/HM/Tutor/TR/event) + Awakened.
         // The mon's CURRENTLY-known moves are always kept selectable so an existing
         // tagged-above-stage move doesn't disappear from the editor. A Heart Scale
@@ -55769,7 +55774,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
             // / Choice item move bypasses Natural-only). They're already merged into
             // `full` for the Show-All view; gating reads ONLY the cache buckets here.
-            // Staging (user model): L1 Inner = Natural within the BP cap (≤75); L2 Expert =
+            // Staging (user model): L1 Inner = Natural within the BP cap (≤75); L2 Unleashed =
             // ALL Natural (cap lifts); L3 Guru = + Learnt (TM/HM/TR/tutor) + Awakened.
             // Mirrors the foe move-gate so the player and enemies pace together.
             const _bpCap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(stage) : Infinity;
@@ -56349,7 +56354,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
         // #47 staged recommendation counts. Early Move Tutor (Inner Strength) surfaces
-        // 18 recommended moves; the Expert tier opens up to 30. Battle Dojo item
+        // 18 recommended moves; the Unleashed tier opens up to 30. Battle Dojo item
         // recs grow 5 (White Belt — berries) → 5 (Black Belt — +mediocre staples) →
         // 7 (Grandmaster — +best meta items), and the candidate item tier widens in
         // lockstep. Outside an active story run (e.g. quick-play loadout editor) the
@@ -56431,7 +56436,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const buildBucketCap = (kind, rule) => {
                 let sorted = _txMetaSorted(meta, kind);
                 if (kind === 'moves') sorted = sorted.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
-                // #47 stage-gated rec counts: moves 18 (Heart Scale) → 30 (TM Expert);
+                // #47 stage-gated rec counts: moves 18 (Inner Strength) → 30 (Unleashed);
                 // items 3 → 5 → 7 by Dojo tier, with the candidate item tier widening
                 // (berries → +mediocre staples → +best meta). `sorted` stays full so the
                 // usage-% tag still shows for every entry in "show all"; only the rec
@@ -57260,9 +57265,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Cache of move pool per Pokémon (filled by renderTutorTeam, used by partial re-renders)
         const _txMovePoolCache = new Map();
-        // Per-team-slot set of "tier-1" moves (own competitive + egg/level-up +
-        // already-known) used to keep the gold path honest: below TM Expert a move
-        // outside this set is a TM-tier pick only reachable via a Heart Scale.
+        // Per-team-slot set of teachable moves at the current tutor stage (the staged
+        // acceptance set) used to keep the gold path honest: below Guru a move outside
+        // this set sits above the tutor's current lesson tier and can't be taught yet.
         const _txMoveTier1Cache = new Map();
         // Pending selection (the card the user has "chosen" but not yet confirmed)
         // Shape: { kind: 'move'|'item'|'ability'|'nature', value: string, slot?: number }
@@ -57335,6 +57340,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const v = _moveTagForSpecies(monName, moveName);
             _txRender.tagCache.set(key, v);
             return v;
+        }
+        // The Move Tutor STAGE that first makes a move teachable for this species —
+        // the single source of truth shared by the Stage filter chips AND the card's
+        // color stripe, so both speak the same language the gate enforces:
+        //   'inner'     — an innate (Natural) move within the Inner-Strength power cap.
+        //   'unleashed' — an innate move ABOVE the cap (opens once the ceiling lifts).
+        //   'guru'      — a Learnt (TM/HM/tutor/TR/event) or Awakened (off-legal) move.
+        // Returns null while the learnset tag is still cold — the picker re-renders once
+        // the cache warms — so an unclassified move shows no stripe and no stage match,
+        // exactly as before the stripe was stage-keyed.
+        function _txMoveStageKey(monName, moveName) {
+            const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, moveName) : null;
+            if (tag === 'learnt' || tag === 'awakened') return 'guru';
+            if (tag !== 'natural') return null; // unknown / cold cache — no stage yet
+            const cap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(0) : 75;
+            if (cap === Infinity) return 'inner';
+            const md = ensureMoveData(String(moveName).split('/')[0]);
+            const pow = (md && md.pow) ? (md.pow | 0) : 0;
+            return pow <= cap ? 'inner' : 'unleashed';
         }
         // Phase 2 — search-only fast path. When the player types in the search
         // box, the only filter input that changed is the search string. We
@@ -57992,7 +58016,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // clears). Lets the player browse what's available at each belt / tutor tier and
         // combine several (e.g. T1+T2). Tier keys are STRINGS so they sit in a Set cleanly.
         const _TX_TIER_DEFS = {
-            moves:     [['natural', 'Natural'], ['learnt', 'Learnt'], ['awakened', 'Awakened']],
+            // Moves filter by the tutor STAGE that unlocks them (innate-capped /
+            // innate-uncapped / taught), not by raw obtainability — so the chips match
+            // the three-stage ladder the player actually climbs. See _txMoveStageKey.
+            moves:     [['inner', 'Inner Strength'], ['unleashed', 'Unleashed'], ['guru', 'Guru']],
             items:     [['1', 'T1'], ['2', 'T2'], ['3', 'T3']],
             abilities: [['legal', 'Legal'], ['hidden', 'Hidden'], ['awakened', 'Awakened']],
         };
@@ -58066,43 +58093,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isEquipped = !!(ctx && ctx.equippedSet && ctx.equippedSet.has(moveName));
             const equippedSlot = isEquipped && ctx.slotOf ? ctx.slotOf.get(moveName) : null;
             const canUnlearn   = isEquipped && ctx.equippedSet.size > 1;
-            // Phase 4.2 polish — surface the move's stage tag (Natural / Learnt /
-            // Awakened) on every card so the player knows which tutor tier teaches it,
-            // and shows a "Unlocks at L<N>" lock chip when the move is above the
-            // current tutor stage. Equipped moves skip the lock badge (the player
-            // already has them; the tag still renders for context).
+            // Surface the move's tutor STAGE (Inner Strength / Unleashed / Guru) on
+            // every card so the player knows which tier teaches it, and show a lock
+            // chip when the move is above the current tutor stage. Equipped moves skip
+            // the lock badge (the player already has them; the stripe still renders).
             //
-            // Phase 4 — the Natural/Learnt/Awakened tag pill is replaced with a
-            // 4px color-coded left stripe on the card (see .tx-card[data-tag]
-            // CSS). Drops 1 text pill from the foot row + ~20px of visual
-            // weight per card. The STAB pill is also dropped — the type-badge
-            // in the card head already encodes it, redundantly with a colored
-            // pill bloated the foot row.
-            let tagAttr = '';
+            // The stage is encoded as a 4px color-coded left stripe (see
+            // .tx-card[data-stage] CSS) rather than a text pill — drops 1 pill from the
+            // foot row + ~20px of visual weight per card. The STAB pill is also dropped:
+            // the type-badge in the card head already encodes it.
+            let stageAttr = '';
             let tagTitle = '';
             let lockPill = '';
             let locked = false; // Phase 2: out-of-stage moves render disabled (Dojo parity)
             try {
-                if (ctx && ctx.monName && typeof _moveTagForSpecies === 'function') {
-                    const tag = _txMoveTagMemo(ctx.monName, moveName);
-                    if (tag === 'natural' || tag === 'learnt' || tag === 'awakened') {
-                        tagAttr = ` data-tag="${tag}"`;
-                        tagTitle = tag === 'natural'
-                            ? 'Natural move — egg / level-up / transfer / evolution-learned'
-                            : tag === 'learnt'
-                            ? 'Learnt move — TM / HM / Tutor / TR / event'
-                            : 'Awakened move — off-legal Smogon pick';
+                if (ctx && ctx.monName && typeof _txMoveStageKey === 'function') {
+                    // The card's stripe + tooltip name the Move Tutor STAGE that unlocks it:
+                    // inner (innate, capped) · unleashed (innate, cap lifted) · guru (taught/off-legal).
+                    const stageKey = _txMoveStageKey(ctx.monName, moveName);
+                    if (stageKey === 'inner' || stageKey === 'unleashed' || stageKey === 'guru') {
+                        stageAttr = ` data-stage="${stageKey}"`;
+                        tagTitle = stageKey === 'inner'
+                            ? 'Inner Strength — your partner\'s own move, within the early power cap.'
+                            : stageKey === 'unleashed'
+                            ? 'Unleashed — your partner\'s own move, above the cap; opens once the tutor lifts the ceiling.'
+                            : 'Guru — a taught (TM / tutor) or off-legal move; opens at the tutor\'s final tier.';
                     }
                     if (!isEquipped) {
                         // Authoritative lock: a move is locked iff it's NOT in the teachable
-                        // acceptance set (matches the gate exactly — incl. the Inner ≤75 BP cap,
-                        // which a tag→stage rule would miss). The unlock-tier LABEL is derived
-                        // from the tag: Learnt/Awakened open at Guru; an over-cap Natural at Expert.
+                        // acceptance set (matches the gate exactly — incl. the Inner ≤75 BP cap).
+                        // The unlock-tier LABEL follows the stage: guru → Guru; an over-cap
+                        // innate move → Unleashed (inner-stage moves are never locked).
                         const _base = String(moveName).split('/')[0];
                         if (ctx.acceptSet && !ctx.acceptSet.has(_base)) {
-                            const unlockStage = (tag === 'learnt' || tag === 'awakened') ? 2 : 1;
-                            const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Expert');
-                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
+                            const unlockStage = (stageKey === 'guru') ? 2 : 1;
+                            const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Unleashed');
+                            lockPill = `<span class="tx-pill tx-pill--locked" title="Opens when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
                             locked = true; // gate the card so off-stage moves can't be picked
                         }
                     }
@@ -58146,10 +58172,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="tx-card-foot">${pills}${footExtra}</div>`;
             // data-search-value carries the lowercased card name so the
             // Phase 2 search-fast-update can match without re-reading text.
-            // data-tag carries the Natural/Learnt/Awakened classification so
-            // the Phase 4 CSS can paint a 4px left stripe in the right color.
+            // data-stage carries the inner/unleashed/guru tutor-stage classification
+            // so the CSS can paint a 4px left stripe in the matching color.
             const tagTitleAttr = tagTitle ? ` title="${_esc(tagTitle)}"` : '';
-            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}"${tagAttr}${tagTitleAttr} data-card-kind="move" data-card-value="${_esc(moveName)}" data-search-value="${_esc(moveName.toLowerCase())}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}" data-locked="${locked?1:0}" data-disabled="${locked?1:0}">${inner}</${tag}>`;
+            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}"${stageAttr}${tagTitleAttr} data-card-kind="move" data-card-value="${_esc(moveName)}" data-search-value="${_esc(moveName.toLowerCase())}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}" data-locked="${locked?1:0}" data-disabled="${locked?1:0}">${inner}</${tag}>`;
         }
 
         // Build an Item card.
@@ -58292,12 +58318,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let tag = null;
                     try { tag = monName ? _txMoveTagMemo(monName, pending.value) : null; } catch (e) {}
                     const unlock = (tag === 'learnt' || tag === 'awakened')
-                        ? 'It opens at the <strong>Guru</strong> tier — TMs, tutor moves and off-legal picks.'
+                        ? 'It opens at <strong>Guru</strong> — the machines, the tutor\'s old verses, the off-legal picks.'
                         : (tag === 'natural'
-                            ? 'It opens at the <strong>Expert</strong> tier, which lifts the power cap on level-up moves.'
-                            : 'It opens as the Move Tutor levels up.');
+                            ? 'It opens at <strong>Unleashed</strong>, when the tutor stops capping your partner\'s own strength.'
+                            : 'It opens further up the tutor\'s craft.');
                     return `<div class="tx-confirm-bar tx-confirm-bar--locked">
-                        <span class="tx-confirm-bar-text">🔒 <strong>${_esc(pending.value)}</strong> isn't in this Move Tutor's lesson tier yet. ${unlock}</span>
+                        <span class="tx-confirm-bar-text">🔒 <strong>${_esc(pending.value)}</strong> sits above this tutor's current lesson tier. ${unlock}</span>
                         <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
                         <button type="button" class="tx-confirm-bar-btn" disabled title="This move unlocks at a higher Move Tutor tier">Locked</button>
                     </div>`;
@@ -58419,8 +58445,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const forced = extraInclude && extraInclude.has(m);
                 if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
                 if (tierSel && tierSel.size && !forced) {
-                    const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, m) : null;
-                    if (!tierSel.has(tag)) return false; // tier keys: natural / learnt / awakened
+                    const sk = (typeof _txMoveStageKey === 'function') ? _txMoveStageKey(monName, m) : null;
+                    if (!sk || !tierSel.has(sk)) return false; // stage keys: inner / unleashed / guru
                 }
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
@@ -59323,7 +59349,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             // Stage gate (Phase 2, BUG A/B fix): below Guru, only moves in the staged
             // pool are teachable AT ALL — Natural ≤75 at Inner (C0–1), ALL Natural at
-            // Expert (C2–4). An off-stage move is rejected outright; a Heart Scale does NOT
+            // Unleashed (C2–4). An off-stage move is rejected outright; a Heart Scale does NOT
             // bypass the gate (it only waives the gold cost of an in-stage teach, via the
             // separate voucher button). The full pool (Learnt + Awakened) unlocks at Guru (C5+).
             if (_npcStage('tutor') < 2) {
@@ -59333,7 +59359,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // off-stage move could slip through before the staged pool resolves.
                 // (voucherOk already fails safe; this matches it.)
                 if (!_t1 || !_t1.has(String(newMove).split('/')[0])) {
-                    if (_t1) { try { window.showGameAlert && window.showGameAlert('That move is above the Move Tutor\'s current lesson tier. The tutor opens more of its book as it levels up — Expert teaches your full natural movepool, Guru teaches TMs and everything else.'); } catch (e) {} }
+                    if (_t1) { try { window.showGameAlert && window.showGameAlert('That move sits above the tutor\'s current lesson. The book opens as the tutor deepens — Unleashed lifts the cap on your partner\'s own moves; Guru opens the machines and everything past them.'); } catch (e) {} }
                     return;
                 }
             }

@@ -137,7 +137,7 @@ test('beat EV: miniBoss/miniRaid beats grant ACE EV (14), boss-tier beats grant 
 // ── Item 2 — staged tier-up is a pending must-see intro ───────────────────────
 test('staged tier-up registers as a pending intro at the upgrade city', () => {
   setSm({ npcStageSeen: { tutor: 0, evolab: 0, dojo: 0 } });
-  assert.equal(ST.isFacilityStageUpPendingHere(4, 'tutor'), true, 'Move Tutor → Expert pending at C4');
+  assert.equal(ST.isFacilityStageUpPendingHere(4, 'tutor'), true, 'Move Tutor → Unleashed pending at C4');
   assert.equal(ST.isFacilityStageUpPendingHere(4, 'evolab'), true, 'Evolution Tutor → Master pending at C4');
   assert.equal(ST.isFacilityStageUpPendingHere(4, 'dojo'), false, 'Dojo still White Belt at C4 — no tier-up');
   assert.equal(ST.isFacilityStageUpPendingHere(5, 'dojo'), true, 'Dojo → Black Belt pending at C5');

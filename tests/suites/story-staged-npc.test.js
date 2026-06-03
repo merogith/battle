@@ -35,7 +35,7 @@ test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/2/5, evolab
   assert.equal(ST.npcStageForCity('dojo', 5), 1);
   assert.equal(ST.npcStageForCity('dojo', 7), 1);
   assert.equal(ST.npcStageForCity('dojo', 8), 2);
-  // Move Tutor thresholds tutor:[0,2,5] — Inner C0-1, Expert C2-4, Guru C5+.
+  // Move Tutor thresholds tutor:[0,2,5] — Inner C0-1, Unleashed C2-4, Guru C5+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 1), 0);
   assert.equal(ST.npcStageForCity('tutor', 2), 1);
@@ -52,7 +52,7 @@ test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('dojo', 2), 'Grandmaster');
   // Phase 4.2: Move Tutor is now 3-stage with renamed labels.
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
-  assert.equal(ST.npcStageName('tutor', 1), 'Expert');
+  assert.equal(ST.npcStageName('tutor', 1), 'Unleashed');
   assert.equal(ST.npcStageName('tutor', 2), 'Guru');
   assert.equal(ST.npcStageName('evolab', 0), 'Evolution Teacher');
   assert.equal(ST.npcStageName('evolab', 1), 'Evolution Master');
@@ -129,10 +129,10 @@ test('stage-up beat: one-time free use, fires once, debut grants nothing', () =>
   ST.npcStageUpCheck('tutor');                 // C0 = Heart Scale tier (debut)
   assert.equal(sm.npcStageSeen.tutor, 0, 'debut stage recorded');
   assert.equal(sm.inventory.heartScale | 0, 0, 'no gift at the debut tier');
-  sm.eventIndex = cityRow(4);                   // → TM Expert
+  sm.eventIndex = cityRow(4);                   // → Unleashed
   ST.npcStageUpCheck('tutor');
-  assert.equal(sm.npcStageSeen.tutor, 1, 'TM Expert recorded');
-  assert.equal(sm.inventory.heartScale | 0, 1, 'one Heart Scale granted at TM Expert');
+  assert.equal(sm.npcStageSeen.tutor, 1, 'Unleashed recorded');
+  assert.equal(sm.inventory.heartScale | 0, 1, 'one Heart Scale granted at Unleashed');
   ST.npcStageUpCheck('tutor');                  // re-entry must not re-gift
   assert.equal(sm.inventory.heartScale | 0, 1, 'no double-grant on re-entry');
 });
@@ -155,9 +155,9 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Evolution Tutor (Evolu
 });
 
 test('city-screen chip tags advance with the arrived city', () => {
-  // Phase 4.2: Move Tutor is 3-stage — Inner Strength (C0-C3) → Expert (C4-C6) → Guru (C7+).
+  // Move Tutor is 3-stage (tutor:[0,2,5]) — Inner Strength (C0-1) → Unleashed (C2-4) → Guru (C5+).
   assert.ok(renderCity(0).includes('Move Tutor — Inner Strength'), 'C0 Move Tutor = Inner Strength');
-  assert.ok(renderCity(4).includes('Move Tutor — Expert'), 'C4 Move Tutor = Expert');
+  assert.ok(renderCity(4).includes('Move Tutor — Unleashed'), 'C4 Move Tutor = Unleashed');
   assert.ok(renderCity(7).includes('Move Tutor — Guru'), 'C7 Move Tutor = Guru');
   assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');

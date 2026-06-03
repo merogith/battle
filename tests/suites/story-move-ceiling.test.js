@@ -5,9 +5,9 @@
 //   no-ops without a CDN.
 // Phase 1: the gate is the single move-pacing authority, keyed on tutor stage
 // (user model — TMs/tutor moves unlock only at Guru). Thresholds tutor:[0,2,5]:
-//   stage 0 (Inner,  C0–C1): Natural-tag only, BP ≤ 75.
-//   stage 1 (Expert, C2–C4): ALL Natural (BP cap lifts; still NO Learnt/TM).
-//   stage 2 (Guru,   C5+):   no gate (Natural + Learnt + Awakened).
+//   stage 0 (Inner,     C0–C1): Natural-tag only, BP ≤ 75.
+//   stage 1 (Unleashed, C2–C4): ALL Natural (BP cap lifts; still NO Learnt/TM).
+//   stage 2 (Guru,      C5+):   no gate (Natural + Learnt + Awakened).
 // NB: tests resolve cities via cityAtTutorStage() so they survive threshold tuning.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -74,19 +74,19 @@ test('Phase 1: stage 0 (Inner) = Natural only AND BP ≤ 75', async () => {
   assert.equal(team[0].build.m.length, 4, 'still a full 4-move set after coherent backfill');
 });
 
-test('Phase 1: stage 1 (Expert) = ALL Natural, NO Learnt, no BP cap', async () => {
+test('Phase 1: stage 1 (Unleashed) = ALL Natural, NO Learnt, no BP cap', async () => {
   primeStory();
-  // Outrage(120) + Dragon Claw(80) are high-BP Natural → KEPT (cap lifts at Expert).
+  // Outrage(120) + Dragon Claw(80) are high-BP Natural → KEPT (cap lifts at Unleashed).
   // Earthquake + Stone Edge are TMs (Learnt) → STRIPPED (Learnt unlocks only at Guru).
   const team = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(1)));
   const kept = team[0].build.m;
-  assert.ok(kept.includes('Outrage'), 'Expert keeps high-BP Natural (Outrage 120) — cap is lifted');
+  assert.ok(kept.includes('Outrage'), 'Unleashed keeps high-BP Natural (Outrage 120) — cap is lifted');
   for (const m of kept) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.notEqual(tag, 'learnt', `Expert must NOT keep a Learnt/TM move ("${m}")`);
+    assert.notEqual(tag, 'learnt', `Unleashed must NOT keep a Learnt/TM move ("${m}")`);
   }
-  assert.ok(!kept.includes('Earthquake') && !kept.includes('Stone Edge'), 'Expert strips TMs (Earthquake/Stone Edge)');
+  assert.ok(!kept.includes('Earthquake') && !kept.includes('Stone Edge'), 'Unleashed strips TMs (Earthquake/Stone Edge)');
 });
 
 test('Phase 1: stage 2 (Guru) leaves moves untouched', async () => {

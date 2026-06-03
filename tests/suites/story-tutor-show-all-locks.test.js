@@ -54,7 +54,7 @@ test('off-stage moves are locked, disabled, and carry a 🔒 unlock-tier pill', 
     assert.ok(c.hasAttribute('disabled'), `${c.getAttribute('data-card-value')} locked card is disabled (not selectable)`);
     const pill = c.querySelector('.tx-pill--locked');
     assert.ok(pill, 'locked card shows a 🔒 pill');
-    assert.match(pill.textContent, /Expert|Guru/, 'pill names the unlock tier (Expert or Guru)');
+    assert.match(pill.textContent, /Unleashed|Guru/, 'pill names the unlock tier (Unleashed or Guru)');
   }
 });
 
