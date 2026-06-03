@@ -38,6 +38,11 @@ test('legendaries / mythicals stay G1 even with the dex stubbed', () => {
   for (const n of ['Mewtwo', 'Rayquaza', 'Giratina', 'Mew', 'Koraidon']) {
     assert.equal(g(n), 1, `${n} (legendary) is grade 1`);
   }
+  // Low-BST legendaries/mythicals are kept at G1 by maintainer call — being a
+  // legendary outranks raw BST (Phione 480, Terapagos base 450 / 700 in form).
+  for (const n of ['Phione', 'Terapagos']) {
+    assert.equal(g(n), 1, `${n} is grade 1 (legendary tier, low BST notwithstanding)`);
+  }
   // Pseudo-legendaries (hardcoded set) are G1 too.
   for (const n of ['Dragonite', 'Garchomp', 'Tyranitar', 'Dragapult']) {
     assert.equal(g(n), 1, `${n} (pseudo) is grade 1`);
