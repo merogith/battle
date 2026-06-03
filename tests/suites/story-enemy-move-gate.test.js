@@ -1,7 +1,7 @@
 // Enemy move pool is gated by the city's TUTOR STAGE (user model), mirroring what
 // the player can teach at that city. Thresholds tutor:[0,2,5]:
 //   C0–C1 (Inner Strength): Natural only, BP ≤ 75.
-//   C2–C4 (Expert):         ALL Natural (cap lifts; still NO Learnt/TM).
+//   C2–C4 (Unleashed):      ALL Natural (cap lifts; still NO Learnt/TM).
 //   C5+   (Guru):           no gate — full pool (Natural + Learnt + Awakened).
 //
 // We test by warming the learnset cache for a real species (Garchomp), then
@@ -61,7 +61,7 @@ test('foe gate: at Inner, only Natural moves survive (Learnt stripped)', async (
   }
 });
 
-test('foe gate: at Expert, Learnt AND Awakened are filtered (Natural only)', async () => {
+test('foe gate: at Unleashed, Learnt AND Awakened are filtered (Natural only)', async () => {
   primeStory();
   const learn = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   assert.ok(learn.learnt.length && learn.awakened.length, 'precondition: buckets populated (offline index)');
@@ -69,12 +69,12 @@ test('foe gate: at Expert, Learnt AND Awakened are filtered (Natural only)', asy
   const awakened   = learn.awakened[0];
   const team = [{ name: 'Garchomp', build: { m: [learntMove, awakened, learntMove, awakened] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(1)));
-  // User model: at Expert (stage 1) ONLY Natural is allowed — both Learnt/TM and
+  // User model: at Unleashed (stage 1) ONLY Natural is allowed — both Learnt/TM and
   // Awakened are stripped (TMs unlock only at Guru). The all-Learnt/Awakened set is
   // fully replaced by Natural backfill.
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.notEqual(tag, 'awakened', `Expert kept move "${m}" must not be Awakened`);
-    assert.notEqual(tag, 'learnt', `Expert kept move "${m}" must not be Learnt/TM`);
+    assert.notEqual(tag, 'awakened', `Unleashed kept move "${m}" must not be Awakened`);
+    assert.notEqual(tag, 'learnt', `Unleashed kept move "${m}" must not be Learnt/TM`);
   }
 });

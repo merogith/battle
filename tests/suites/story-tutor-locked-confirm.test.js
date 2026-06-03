@@ -67,7 +67,7 @@ test('an off-stage move shows a clean Locked bar — never a dead Confirm', asyn
   assert.ok(!enabledMoveConfirm(), 'no actionable move-Confirm is offered for a locked move');
   const text = bar.querySelector('.tx-confirm-bar-text').textContent;
   assert.match(text, /lesson tier/i, 'explains the move is not in the tutor lesson tier yet');
-  assert.match(text, /Expert|Guru/, 'names the tier that unlocks it');
+  assert.match(text, /Unleashed|Guru/, 'names the tier that unlocks it');
   // A disabled "Locked" button stands in for Confirm.
   const lockedBtn = bar.querySelector('.tx-confirm-bar-btn[disabled]');
   assert.ok(lockedBtn && /lock/i.test(lockedBtn.textContent), 'shows a disabled Locked button');

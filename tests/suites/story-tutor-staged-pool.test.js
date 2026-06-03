@@ -1,10 +1,10 @@
 // 3-stage Move Tutor (user model, tutor:[0,2,5]) — Inner Strength (Natural ≤75) at
-// C0-C1, Expert (ALL Natural, no TMs) at C2-C4, Guru (+Learnt +Awakened) at C5+. Verifies:
+// C0-C1, Unleashed (ALL Natural, no TMs) at C2-C4, Guru (+Learnt +Awakened) at C5+. Verifies:
 //   • the staged pool's contents grow as the tutor levels up,
 //   • _moveCostForStage by-tag returns 1000 / 2500 / 5000 per Natural / Learnt /
 //     Awakened (independent of tutor stage), and matches the no-arg legacy
 //     behavior (stage's CEILING) so existing UI text stays consistent.
-//   • npcStageName('tutor', s) returns Inner Strength / Expert / Guru.
+//   • npcStageName('tutor', s) returns Inner Strength / Unleashed / Guru.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -33,11 +33,11 @@ function cityAtTutorStage(stage) {
   return 0;
 }
 
-test('Move Tutor: 3 stages — Inner Strength → Expert → Guru', () => {
+test('Move Tutor: 3 stages — Inner Strength → Unleashed → Guru', () => {
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
-  assert.equal(ST.npcStageName('tutor', 1), 'Expert');
+  assert.equal(ST.npcStageName('tutor', 1), 'Unleashed');
   assert.equal(ST.npcStageName('tutor', 2), 'Guru');
-  // Thresholds tutor:[0,2,5] — Inner C0-1, Expert C2-4, Guru C5+.
+  // Thresholds tutor:[0,2,5] — Inner C0-1, Unleashed C2-4, Guru C5+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 1), 0);
   assert.equal(ST.npcStageForCity('tutor', 2), 1);
@@ -55,12 +55,12 @@ test('_moveCostForStage no-arg returns the tutor stage ceiling for that city', (
   primeAtCity(0);
   assert.equal(ST.moveCostForStage(), 1000, 'C0: Inner Strength ceiling = 1000');
   primeAtCity(4);
-  assert.equal(ST.moveCostForStage(), 2500, 'C4: Expert ceiling = 2500');
+  assert.equal(ST.moveCostForStage(), 2500, 'C4: Unleashed ceiling = 2500');
   primeAtCity(7);
   assert.equal(ST.moveCostForStage(), 5000, 'C7: Guru ceiling = 5000');
 });
 
-test('staged pool: Inner→Expert→Guru unlock ladder (user model) end-to-end', async () => {
+test('staged pool: Inner→Unleashed→Guru unlock ladder (user model) end-to-end', async () => {
   // Warm the cache for Garchomp + verify the ACTUAL gating function (not a helper).
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   assert.ok(ls.natural.length && ls.learnt.length && ls.awakened.length, 'precondition: all buckets populated (offline index)');
@@ -75,7 +75,7 @@ test('staged pool: Inner→Expert→Guru unlock ladder (user model) end-to-end',
   assert.ok(poolL1.has(nat), `L1 includes a ≤75 Natural "${nat}"`);
   assert.ok(!poolL1.has(lrn), `L1 must NOT include Learnt "${lrn}"`);
   assert.ok(!poolL1.has(awk), `L1 must NOT include Awakened "${awk}"`);
-  // L2 Expert: ALL Natural, but still NO Learnt/TM and NO Awakened (TMs wait for Guru).
+  // L2 Unleashed: ALL Natural, but still NO Learnt/TM and NO Awakened (TMs wait for Guru).
   primeAtCity(cityAtTutorStage(1));
   const poolL2 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(poolL2.has(nat), 'L2 includes Natural');
