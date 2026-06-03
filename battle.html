@@ -43562,6 +43562,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Shops
+            // City facility price badge. CONVENTION (consistent across every facility):
+            // `amount` is the FLOOR — the cheapest single action the facility can perform —
+            // and the ' +' suffix marks "pricier options exist above this". A flat-price
+            // facility (one fixed charge) passes NO suffix. Never show a stage ceiling here:
+            // the badge is a "from" hint, and the per-action breakdown lives inside the screen.
             const _costBadge = (amount, suffix) => {
                 const cant = sm.gold < amount;
                 return { label: amount.toLocaleString() + 'G' + (suffix || ''), tone: 'cost', cantAfford: cant, title: cant ? `You need ${(amount - sm.gold).toLocaleString()}G more` : '' };
@@ -43629,13 +43634,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // facility's capability grows (see NPC_STAGE_CITY / NPC_STAGE_NAMES).
             const _stageTag = (key) => { const t = _npcStageName(key); return t ? ' — ' + t : ''; };
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(_moveCostForStage(), '+')])));
+                // FLOOR, not the stage ceiling: a natural move (1,000G) is teachable at
+                // every tier, so the "from" price is constant; the stage chip carries the
+                // tier signal, and the per-move 1k/2.5k/5k breakdown lives inside the screen.
+                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(_moveCostForStage('natural'), '+')])));
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
                 _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(500, '+')])));
             }
             if (actions.includes('Evolution Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('🧬 ' + _npcStageName('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(3000)])));
+                // Evolution price varies by target grade (3k → 6k → 12k); show the floor + '+'.
+                _push('train', makeActionBtn('🧬 ' + _npcStageName('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(EVOLVE_COST_BY_TARGET[3], '+')])));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
                 _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
