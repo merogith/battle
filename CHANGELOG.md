@@ -3,21 +3,65 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Evolution Tutor: flat pricing + Master PC evolution 2026-06-02 (`claude/affectionate-bohr-5WJdH`)
+## 1.4.0 — Narration system, facility polish, party UI, Evolution Tutor & engine fixes 2026-06-03
 
-- **The Evolution Tutor / Evolution Master now charges a flat fee per tier.** The
-  old "first evolution is cheaper, then each repeat on the same slot costs ×1.5
-  more" ramp is gone — every evolution costs the same, every time:
-  **first-stage (G3) 3,000G · mid (G2) 6,000G · final (G1) 12,000G**, on every
-  difficulty (the easy / very-easy first-use discount was removed too). A 🍬 Rare
-  Candy still evolves for free, one candy per evolution.
-- **The Evolution Master can now evolve Pokémon straight from your PC.** Once the
-  Tutor levels up to the **Evolution Master** (5th city onward), an "Evolve from
-  PC" section lists every stored Pokémon that's ready to evolve and lets you do it
-  **in place** — the Pokémon stays in the box and your battle team is never
-  disturbed, so no more shuffling mons in and out to evolve a benched partner.
-  Before the Master, the Lab shows a one-line hint explaining that boxed Pokémon
-  must be withdrawn to your party first.
+### Story narration system — all 198 scenes converted to structured acts
+
+Every pre-battle and mid-battle story scene (villain arcs, horror species
+encounters, mid-raid interrupts, the full 14-scene main spine) has been ported
+from bare dialogue strings to the **structured acts schema**: each scene is a
+list of `{ speaker, lines, sfx? }` acts that the overlay steps through one card
+at a time. Scenes can now chain multiple speakers, play per-act SFX, and support
+a "continue" beat between acts rather than dumping all lines at once. End-to-end
+DOM render and interaction tests verify that every scene renders at least one
+card, advances correctly, and dismisses without errors (198 / 198 scenes verified).
+
+### Story facilities — unified Pokémon header + shared ℹ info button
+
+Every training facility (Move Tutor, Battle Dojo, EV Trainer, Nature Rater,
+Cable Link, Evolution Lab, Pokémon Center) now opens **all party slots closed**
+on entry — no more jumping to the last-expanded mon on re-entry. Every facility
+also gains a consistent **ℹ** info button in the slot header that opens a
+read-only summary modal (same as the draft-pick inspect modal), so players can
+review a mon's full build without leaving the trainer screen.
+
+### Party reorder UI — compact rows + drag auto-scroll
+
+The party reorder modal was rebuilt from scratch. Rows are now **compact** (44 px
+each, sprite + name + type chips in one line) so all six slots fit without
+scrolling on a typical phone. Drag auto-scroll activates when a held row is
+dragged within 48 px of the top or bottom edge, enabling smooth reorders on small
+viewports. Drop zones are larger (full-row hit target) to reduce mis-drops.
+
+### Evolution Tutor — flat pricing + Master PC evolution
+
+- **Flat fee per tier, no ramp.** The old "first evo cheaper, each repeat costs
+  ×1.5 more" ramp is gone — every evolution costs the same, every time:
+  **G3 (first-stage) 3,000G · G2 (mid) 6,000G · G1 (final) 12,000G**, on every
+  difficulty. The easy / very-easy first-use discount was also removed for
+  consistency. A 🍬 Rare Candy still evolves for free, one candy per evolution.
+- **Evolution Master can now evolve directly from the PC.** From the 5th city
+  onward, the Evolution Master shows an "Evolve from PC" section listing every
+  boxed Pokémon ready to evolve — evolve it in place without pulling it to your
+  party first. Before the Master, a one-line hint explains the restriction.
+
+### Department Store prices reduced
+
+Orbs: **500G** (was higher) · Teleporter: **300G** · EV Reset Charm: **500G** ·
+Max Elixir: **500G**.
+
+### Battle engine fixes (Stage 1)
+
+- **Speed Boost / Stakeout timing** — ability triggers that should fire at
+  turn-start were firing at turn-end; fixed to the correct phase.
+- **Semi-invulnerable self-target** — a Pokémon using a two-turn dive/fly move
+  could incorrectly be targeted by its own recoil/crash check during the
+  invulnerable turn; patched.
+- **Gravity move-ban** — Gravity now correctly prevents Fly, Bounce, and other
+  airborne moves on both sides for the full duration.
+- **Facade + burn damage** — Facade now correctly doubles its base power when the
+  user is burned (matching the gen-5+ ruling), instead of being suppressed by the
+  burn's physical-move penalty.
 
 ## 1.2.2 — Evolution staging, required intros, bag polish & egg animation 2026-05-26 (`claude/early-game-pacing-finish`)
 
