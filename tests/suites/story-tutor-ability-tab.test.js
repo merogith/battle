@@ -9,7 +9,7 @@
 //     ★ and a meaningful role tag (not buried under high-usage off-legal picks).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -26,6 +26,7 @@ async function openAbilityTab(city, monName, build) {
   ST.sm.eventIndex = idx;
   ST.sm.team = [{ name: monName, build }];
   await w.StoryMode.enterTutor('loadout');
+  await openTutorMon(doc); // screen starts all-closed — open the first mon
   for (let i = 0; i < 30; i++) { await wait(40); if (doc.querySelector('.tx-grid')) break; }
   doc.querySelector('button.tx-tab[data-tab="ability"]').click();
   for (let i = 0; i < 25; i++) { await wait(40); if (doc.querySelector('.tx-card--ability')) break; }

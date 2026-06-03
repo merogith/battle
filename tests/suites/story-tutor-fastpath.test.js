@@ -6,7 +6,7 @@
 // (state persists), which never takes the fast path.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -30,6 +30,7 @@ const monNode = (i) => { const tg = host().querySelector(`.story-tutor-mon-toggl
 const openBody = () => monNode(0) && monNode(0).querySelector('.story-tutor-mon-body');
 async function enterMovesAndSettle() {
   await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w, 0); // screen starts all-closed — open the first mon
   for (let i = 0; i < 25; i++) { await sleep(40); if (host() && host().innerHTML.includes('tx-grid')) break; }
 }
 async function gridReady(i) { for (let k = 0; k < 25; k++) { await sleep(40); if (monNode(i) && monNode(i).querySelector('.tx-grid > .tx-card')) return; } }

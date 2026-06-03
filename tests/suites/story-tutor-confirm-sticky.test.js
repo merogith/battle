@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HTML = readFileSync(join(__dirname, '..', '..', 'battle.html'), 'utf8');
@@ -32,6 +32,7 @@ const host = () => w.document.getElementById('story-tutor-team');
 test('confirm/buy bar lives in the open mon body (so the sticky CSS applies)', async () => {
   prime(7);
   await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w); // screen starts all-closed — open the first mon
   for (let i = 0; i < 25; i++) { await sleep(40); if (host() && host().innerHTML.includes('tx-grid')) break; }
   const bar = host().querySelector('.tx-confirm-bar');
   assert.ok(bar, 'confirm bar renders');

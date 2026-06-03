@@ -4,7 +4,7 @@
 // Damage / Status quick chips already cover that split).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -29,6 +29,7 @@ const GARCHOMP = [{ name: 'Garchomp', build: { m: ['Earthquake', 'Dragon Claw', 
 const host = () => w.document.getElementById('story-tutor-team');
 async function enterMovesAndSettle() {
   await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w); // screen starts all-closed — open the first mon
   for (let i = 0; i < 25; i++) { await sleep(40); if (host() && host().innerHTML.includes('tx-grid')) break; }
   return host();
 }

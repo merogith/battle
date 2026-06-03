@@ -5,7 +5,7 @@
 //      show NO usage % (their % comes from illegal-format builds and misleads).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -22,6 +22,7 @@ async function openDojoAbilityTabAtGrandmaster() {
   ST.sm.eventIndex = idx;
   ST.sm.team = [{ name: 'Garchomp', build: { m: ['Earthquake'], n: 'Jolly', a: 'Rough Skin' } }];
   await w.StoryMode.enterTutor('loadout');
+  await openTutorMon(doc); // screen starts all-closed — open the first mon
   for (let i = 0; i < 25; i++) { await wait(50); if (doc.querySelector('.tx-grid')) break; }
   const tabBtn = doc.querySelector('button.tx-tab[data-tab="ability"]');
   if (tabBtn) tabBtn.click();
