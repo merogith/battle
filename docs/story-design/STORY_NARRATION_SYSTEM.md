@@ -165,18 +165,22 @@ acts + `outro.win`. Every other arc follows the same shape.
    `_storyScene` (Daycare/Fight Club), `_showStoryTutorialScene`,
    `_showIntroRivalColdOpen`, the legendary-sighting cinematic, boss banners.
    Each migration deletes a bespoke style block.
-3. ~~**Route the overlays onto the z-scale**~~ **z-index tokens DONE (PR1).**
-   Every value-aligned story overlay now sets `z-index: var(--sn-z-*)` instead of
-   an ad-hoc literal — scrim (`.modal`), battle-banner (`.gimmick-banner`),
-   overlay (city-arrival / city0 cold-open / wander / tutorial / evolution /
-   legendary-sighting), spotlight (boss banner / battle intro / victory card /
-   first-sighting / Hall-of-Fame), toast (`#toast-host` + the save pill). Token
-   consumers went 1 → 16; no ad-hoc literal ≥ 1200 remains in a migrated story
-   path. Guarded by `tests/suites/overlay-zindex-tokens.test.js` and a live-overlay
-   DOM check in the integration suite. **Deferred** (off-scale, tier is a real
-   decision made when their render logic is folded — see item 2): `_storyScene`
-   (z 10000), `_daycareOpenDropOff` (z 9990). **Out of scope:** the Frontier/Pits
-   overlays and casino banners.
+3. ~~**Route the overlays onto the z-scale**~~ **z-index tokens DONE.**
+   Every story-overlay z-index literal now resolves through `var(--sn-z-*)` —
+   scrim (`.modal`), battle-banner (`.gimmick-banner`), overlay (city-arrival /
+   city0 cold-open / wander / tutorial / evolution / legendary-sighting /
+   `_storyScene` Daycare–Fight-Club engine / daycare drop-off), spotlight (boss
+   banner / battle intro / victory card / first-sighting / Hall-of-Fame), toast
+   (`#toast-host` + the save pill). The two formerly off-scale narrative overlays
+   (`_storyScene` z10000, `_daycareOpenDropOff` z9990) were folded onto the
+   overlay tier — they live in the city hub and never co-occur with the
+   spotlight-tier battle cards, so stacking is unchanged in practice. Token
+   consumers went 1 → 18; no ad-hoc literal ≥ 1200 remains in a story narrative
+   path. Guarded by `tests/suites/overlay-zindex-tokens.test.js` and a
+   live-overlay DOM check in the integration suite. **Still pending:** the casino
+   banners (`.casino-prize-banner` z9100, `.casino-jackpot-overlay` z9000) are in
+   active scope but off-scale — a small follow-up once their tier is chosen.
+   **Out of scope:** the Frontier/Pits overlays.
 4. **Battle wrapper**: give every boss/raid a structured `outro` (retire the
    regex `STORY_POST_SCENES` once all are converted).
 

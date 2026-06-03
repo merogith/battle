@@ -1,11 +1,13 @@
 // §6 Story Overlay Unification — z-index token contract (PR1: tokenization sweep).
 //
-// PR1 collapsed every *value-aligned* story-overlay z-index literal onto the
-// --sn-z-* scale defined in :root. This is a behaviour-preserving change: each
-// migrated site already painted at its tier's numeric value, so swapping the
-// literal for the token keeps the exact same stacking order while removing the
-// ad-hoc literals that historically collided ("overlay paints behind/over the
-// wrong thing").
+// This sweep collapsed every story-overlay z-index literal onto the --sn-z-*
+// scale defined in :root. The value-aligned sites (most overlays) are a pure
+// behaviour-preserving swap — each already painted at its tier's numeric value.
+// Two formerly off-scale narrative overlays (_storyScene z10000,
+// _daycareOpenDropOff z9990) were also folded onto the overlay tier; they live
+// in the city hub and never co-occur with the spotlight-tier battle cards, so
+// their stacking order is unchanged in practice. Removing the literals kills the
+// ad-hoc collisions ("overlay paints behind/over the wrong thing").
 //
 // This guard locks that migration so a later session can't silently
 // re-introduce a literal or drift the scale:
@@ -70,6 +72,9 @@ const MIGRATED = [
   ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px', null, '_showCityArrivalScreen'],
   ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px', null, 'city0 cold-open (enterCity)'],
   ['height:100%;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;background:linear-gradient', null, '_showWanderScreen'],
+  // overlay tier — formerly off-scale (z10000 / z9990), folded onto the scale here
+  ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
+  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.92);z-index:9990', '_daycareOpenDropOff (was z9990)'],
   // spotlight tier (9999)
   ['z-index:var(--sn-z-spotlight);pointer-events:none;opacity:0;', null, '_showBossBanner'],
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-spotlight);', null, '_showFirstSightingLoreOverlay'],
