@@ -197,10 +197,12 @@ test('canonTrainerForUpcomingBattle returns null when no boss beat is active', (
 });
 
 // ── Converted villain arcs (rollout) ────────────────────────────────────────
-const CONVERTED_VILLAIN = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull'];
+const CONVERTED_VILLAIN = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare',
+                          'skull', 'yell', 'macroCosmos', 'star'];
 // Fully converted = every event1..6 has an arc. Rocket is intentionally partial
 // (event4/event5 left legacy-flat as the unconverted baseline / worked example).
-const FULLY_CONVERTED = ['magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull'];
+const FULLY_CONVERTED = ['magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull',
+                         'yell', 'macroCosmos', 'star'];
 
 test('fully converted arcs have event1-6 arcs', () => {
   const S = nt.STORY_SCENES;
@@ -269,12 +271,15 @@ test('arc choices drive a later branch payoff (magma / aqua / galactic)', () => 
     'galactic ending branches differ by keeper choice');
 });
 
-test('plasma / flare / skull endings branch on their arc choice', () => {
+test('converted arc endings branch on their arc choice', () => {
   const S = nt.STORY_SCENES;
   const cases = [
-    { key: 'villain.plasma.ending', choice: 'villain.plasma.n',      a: 'uncaged', b: 'ball' },
-    { key: 'villain.flare.ending',  choice: 'villain.flare.sticker', a: 'kept',    b: 'peeled' },
-    { key: 'villain.skull.ending',  choice: 'villain.skull.kids',    a: 'gave',    b: 'straight' },
+    { key: 'villain.plasma.ending',      choice: 'villain.plasma.n',           a: 'uncaged',    b: 'ball' },
+    { key: 'villain.flare.ending',       choice: 'villain.flare.sticker',      a: 'kept',       b: 'peeled' },
+    { key: 'villain.skull.ending',       choice: 'villain.skull.kids',         a: 'gave',       b: 'straight' },
+    { key: 'villain.yell.ending',        choice: 'villain.yell.proof',         a: 'leaked',     b: 'marnie' },
+    { key: 'villain.macroCosmos.ending', choice: 'villain.macroCosmos.drone',  a: 'smashed',    b: 'ignored' },
+    { key: 'villain.star.ending',        choice: 'villain.star.bullies',       a: 'confronted', b: 'walked' },
   ];
   for (const c of cases) {
     const branchAct = S[c.key].acts.find(a => a.branches);
