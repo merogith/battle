@@ -199,10 +199,9 @@ test('canonTrainerForUpcomingBattle returns null when no boss beat is active', (
 // ── Converted villain arcs (rollout) ────────────────────────────────────────
 const CONVERTED_VILLAIN = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare',
                           'skull', 'yell', 'macroCosmos', 'star'];
-// Fully converted = every event1..6 has an arc. Rocket is intentionally partial
-// (event4/event5 left legacy-flat as the unconverted baseline / worked example).
-const FULLY_CONVERTED = ['magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull',
-                         'yell', 'macroCosmos', 'star'];
+// All ten villain arcs are now fully structured: every event1..6 + ending + the
+// three battles (battle1/battle2/miniBoss) + boss carry an `acts` arc.
+const FULLY_CONVERTED = CONVERTED_VILLAIN;
 
 test('fully converted arcs have event1-6 arcs', () => {
   const S = nt.STORY_SCENES;
@@ -224,6 +223,21 @@ test('every converted arc has an ending arc + a boss with outro.win', () => {
     const boss = S[`villain.${track}.boss`];
     assert.ok(boss && boss.outro && Array.isArray(boss.outro.win) && boss.outro.win.length,
       `villain.${track}.boss has outro.win`);
+  }
+});
+
+test('every villain mid-battle (battle1/battle2/miniBoss) is structured', () => {
+  const S = nt.STORY_SCENES;
+  for (const track of CONVERTED_VILLAIN) {
+    for (const beat of ['battle1', 'battle2', 'miniBoss']) {
+      const sc = S[`villain.${track}.${beat}`];
+      assert.ok(sc && Array.isArray(sc.acts) && sc.acts.length,
+        `villain.${track}.${beat} has acts`);
+      // Pre-fight acts must not leak roster meta or in-battle mechanic text.
+      const text = sc.acts.flatMap(a => a.lines || []).join(' ');
+      assert.ok(!/\bLead -|Phase (change|mechanic)|Field (locked|mechanic)|\bHP -|\+1 priority/i.test(text),
+        `villain.${track}.${beat} acts are clean of roster/mechanic meta`);
+    }
   }
 });
 
