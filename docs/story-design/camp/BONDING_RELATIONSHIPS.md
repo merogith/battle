@@ -1,276 +1,252 @@
-# Pokémon Bonding — the 6-path relationship system
+# Pokémon Bonding — the 6-path relationship system (FINALIZED)
 
-> Part of the [Camp System spec](./README.md). **Draft — balance numbers are
-> [MAINTAINER]-owned and unset.** Anchors are symbol-first (resolve with
-> `find-anchor`). Grounded in the buff-mechanic + save-schema research sweeps.
+> Part of the [Camp System spec](./README.md). **Design decisions are now locked**
+> (maintainer review, 2026-06-03); remaining items are tuning knobs. Balance
+> numbers stay [MAINTAINER]-owned. Anchors symbol-first (`find-anchor`).
 
 ---
 
 ## 1. Concept
 
-Each party Pokémon has **six relationship paths** — the maintainer's brief:
-
-> *"multiple ways to interact with your pokemon, some good some weird some
-> cruel… a very simplified tomogochi addition… mostly minigame and pokemon
-> bonding vibe."*
-
-> *"each [of] 6 relation path… 2 good, 2 cruel, 1 creepy (romance), 1 weird
-> (relation increases with tickling or imitating each other)… each relation path
-> when maxed gives 5% boost to stat, like how enemies get % buff/debuff."*
-
-The hook is emotional (a pet-sim layer that makes the team *yours*); the payoff
-is a **small** mechanical nudge so there's a reason beyond flavour. The
-interactions themselves live in [`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md); this
-doc defines the **paths, the buff, the data, and the battle hook.**
+Each party Pokémon has **six relationship paths** you build up at camp through
+**six dedicated mini-games (one per path)**. The vibe is a simplified Tamagotchi
+pet-sim; the payoff is a **small** per-stat buff. Two creative layers give it
+character: **Temperament** (every Pokémon likes some paths and resists others)
+and **Titles** (your bond *shape* names the Pokémon). The mini-games themselves
+are in [`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md); this doc defines the paths,
+earning, temperament, titles, the buff, the data, and the battle hook.
 
 ---
 
-## 2. The six paths
+## 2. The six paths → six stats (LOCKED: clean bijection)
 
-There are exactly **six battle stats** (`hp/atk/def/spa/spd/spe`, confirmed in
-`buildPokemon`) and **six paths** — so each path maxes into **one stat**. This
-1:1 bijection is the clean resolution of the maintainer's (slightly
-inconsistent) stat notes — see §3.
+There are exactly six battle stats (`hp/atk/def/spa/spd/spe`) and six paths, so
+each path masters into **one** stat:
 
-| Path | Tone | Vibe / sample interactions | Maxed → stat | Maintainer's rationale |
-|------|------|----------------------------|--------------|------------------------|
-| **Praise** | good | cheer, high-five, reward a win | **`atk`** | "motivated to do more" |
-| **Nurture** | good | feed, groom, nap together | **`spa`** | "motivated to do more" |
-| **Discipline** | cruel | strict drills, cold training | **`def`** | "toughens up" |
-| **Intimidate** | cruel | scare, withhold, harsh tone | **`spd`** | "toughens up" (the other defense) |
-| **Mimicry** | weird | tickle, copy each other, mirror-game | **`spe`** | "act together faster" |
-| **Devotion** | romance/creepy | romanticize, whisper, obsessive care | **`hp`** | "tank hardships of life together" |
+| Path | Tone | Action / vibe | Masters → stat |
+|------|------|----------------|----------------|
+| **Praise** | 😊 good | cheer, hype them up after a win | **`atk`** |
+| **Nurture** | 😊 good | feed, groom, find their favourite treat | **`spa`** |
+| **Discipline** | 😠 cruel | strict drills, push them | **`def`** |
+| **Intimidate** | 😠 cruel | cold stare, withhold, spook | **`spd`** |
+| **Mimicry** | 🤪 weird | tickle, copy/mirror each other | **`spe`** |
+| **Devotion** | 💀 romance | romanticize, dote, whisper | **`hp`** |
 
-Path identity (id, display name, tone, copy, the interactions that feed it, and
-its target stat) is **data-driven** → `data/camp/relationship-paths.json`. The
-table above is the *default* mapping; the maintainer can repoint any path→stat
-or rename freely without code changes (**D2**).
+Mapping is **data-driven** (`data/camp/relationship-paths.json`) and freely
+repointable. Good→offense, cruel→defense, weird→speed, romance→tank-together.
 
 ---
 
-## 3. Reconciliation note (why this mapping) — **[MAINTAINER] D2**
+## 3. Earning — the action-count model (LOCKED)
 
-The brief gave two lists that don't perfectly line up:
+Per the maintainer: *"6 mini-games to 6 actions you can do in camp with any
+Pokémon in your party, as many as you want. On average a Pokémon needs the action
+that gives a stat ~10 times, ± the Pokémon's preferences."*
 
-- **Path list:** 2 good, 2 cruel, **1 romance**, **1 weird**.
-- **Stat list:** good→`atk`+`spa`, cruel→"spd and other defense", **weird→speed**,
-  **weird→HP** (two "weird"s, no romance stat).
+- Each path has a per-Pokémon **action counter**: `slot.bonds[path]` (integer,
+  starts 0). Each **successful** mini-game of that path = **+1**.
+- A path is **mastered** (its +5% turns on) when the counter reaches that
+  Pokémon's **threshold** for the path:
+  `threshold = round(BASE_ACTIONS × tempMult)`, `BASE_ACTIONS = 10` **[MAINTAINER]**.
+- `tempMult` comes from **Temperament** (§4): **loved 0.7** (~7 reps),
+  **neutral 1.0** (~10), **resisted 1.4** (~14). All tunable.
+- **No per-camp cap** — do as many actions as you like, on any party member, any
+  time you're camped. The "grind" is the *total rep count across the team*, not a
+  daily limit.
 
-I reconciled to the **6-stat bijection** above: good→offense (`atk`/`spa`),
-cruel→defenses (`def`/`spd`), the weird *Mimicry* path→`spe` ("act together
-faster"), and the romance *Devotion* path→`hp` ("tank hardships of life
-together" reads as devotion). This honours every thematic cue and uses each stat
-exactly once. **If you'd rather** HP sit on a "weird" path and romance take a
-different stat, just remap in the JSON — nothing in code assumes a specific
-path→stat pairing.
-
----
-
-## 4. Progression model
-
-- Each path has a **bond bar**: `slot.bonds[pathId]`, an integer **0 → 100**
-  (100 = "maxed", buff active). Stored per-Pokémon (§6).
-- Camp interactions grant points to **one** path each (a minigame score →
-  seeded points, e.g. **+8…+15**; tuning in the minigames doc).
-- **Interaction budget per camp visit: 3 [MAINTAINER] D5.** You can't grind a
-  path to max in one sitting — progress is paced across the many camps of a
-  route journey.
-
-**Pacing sanity check** (with defaults): ~12 pts/interaction ⇒ ~9 interactions
-to max one path ⇒ ~3 focused camps per path ⇒ ~18 interactions (~6 camps) to max
-all six paths on **one** Pokémon. A full story run produces many camps (one per
-route transition — see `CAMP_FLOW.md`), so maxing a *favourite* is achievable
-with intent, while fully bonding all six party members is a long-haul, opt-in
-goal. Knobs (points/interaction, bar size, budget) are all [MAINTAINER].
+**Scale of the commitment** (defaults): one path on a neutral Pokémon ≈ 10
+mini-games; a Pokémon's full six paths ≈ 60 (more if it resists some); a full
+party of six ≈ **~360 mini-games** to 100% everything. Mastering a *favourite*
+path is quick; mastering *everything on everyone* is a long-haul, opt-in goal —
+the "some play" the maintainer asked for, paced by effort rather than by a timer.
 
 ---
 
-## 5. The buff — **[MAINTAINER] D1, D4**
+## 4. Temperament (creative layer 1 — LOCKED)
 
-- **Default:** a path at max (100) grants **+5%** to its mapped stat. Below max:
-  **no buff** (binary at-max, matching "*when maxed* gives 5%") — **D4**.
-- **Aggregate:** all six paths maxed ⇒ +5% to each of the six stats ⇒ a Pokémon
-  ~5% stronger overall, spread evenly. For scale, that's **≈ one step of
-  `FOE_POWER_CURVE`** (whose steps are 5%: `[0.80, 0.85, 0.90, 0.95, 1.00, 1.00,
-  1.05, 1.08, 1.10, 1.15]`). Per stat at Lv50 it's a point or two — "a reason,
-  not a power spike," matching the brief's "very small, not game-changing."
-- **Knobs (D1):** magnitude per path (5% default); whether to cap the *aggregate*
-  (e.g. only the 2 highest paths' buffs apply); whether to go **gradual** instead
-  of binary (D4: e.g. `+0.05 × bar/100`). The implementing agent exposes these in
-  `data/camp/relationship-paths.json` / a tuning block and the maintainer picks.
-- **Curve fit:** because this stacks on top of the existing player vs
-  `FOE_POWER_CURVE` math, it must be sanity-checked against
-  `docs/PROGRESSION_CURVE_MASTER.md`. A fully-bonded team shifts the effective
-  difficulty down by ~one curve step; if that's unwanted, lower the % or cap the
-  aggregate. **Flag for sign-off before shipping.**
+Every Pokémon **bonds faster with some paths and resists others**, so full-mastery
+takes real work and each Pokémon feels like an individual.
+
+**Default source = the Pokémon's Nature** (reuses existing data — builds carry a
+nature `n` whose `nMults` raise one stat and lower another in `buildPokemon`):
+
+- The path whose stat the Nature **raises** (+10%) is **loved** → `tempMult 0.7`.
+- The path whose stat the Nature **lowers** (−10%) is **resisted** → `tempMult 1.4`.
+- Everything else (and the whole bar for **neutral natures**) is **neutral** → `1.0`.
+- **HP/Devotion is always neutral** — no Nature touches HP. (If you want Devotion
+  to also have like/resist, that needs a non-Nature source; flagged as a knob.)
+
+*Example:* an **Adamant** Pokémon (+Atk, −SpA) **loves Praise** (Atk, ~7 reps)
+and **resists Nurture** (SpA, ~14 reps) — a fighter that eats up praise but
+bristles at being coddled. This is consistent with the path↔stat design and is
+**data-free** (derived from the nature's existing stat bias).
+
+> **Knob [MAINTAINER]:** the temperament source — Nature (default), a per-species
+> table, or a dedicated per-Pokémon roll — and the loved/resisted multipliers
+> (0.7 / 1.4). Lives in `data/camp/relationship-paths.json`.
+
+The edgier tone (§ tone in minigames) keys off temperament: a Pokémon you push
+on a **resisted cruel** path reacts with visible distrust; one you bond with on a
+**loved** path lights up.
 
 ---
 
-## 6. Data model & save schema
+## 5. Titles (creative layer 2 — LOCKED, cosmetic)
 
-**Per-Pokémon, on the party/box slot** (slots already persist via `sm.team` /
-`sm.pcBox`; research confirmed slots are plain objects with `name`, `build`,
-`id`, optional `shinyCaught`/`isEgg`):
+A Pokémon's **bond shape** (which paths it has mastered) earns it a **title** —
+pure flavour, no mechanics, leaning into the edgy tone. First match wins
+(most-specific first); data-driven in `data/camp/titles.json`:
+
+| Title | Condition |
+|-------|-----------|
+| **Soulbonded** | all 6 paths mastered |
+| **the Obsession** | Devotion + any cruel path mastered (creepy combo) |
+| **the Adored** | Devotion + Nurture mastered |
+| **the Hardened** | both cruel paths (Discipline + Intimidate) mastered |
+| **the Beloved** | both good paths (Praise + Nurture) mastered |
+| **the Mirror** | Mimicry mastered |
+| *(none)* | otherwise |
+
+Shown on the summary card / camp party panel (§9). The table is the maintainer's
+to flavour/extend.
+
+---
+
+## 6. The buff (LOCKED: +5% per mastered path, small)
+
+- A **mastered** path grants **+5%** to its stat. Below threshold: nothing
+  (binary at-master, matching "*when maxed*").
+- **Aggregate:** all six mastered ⇒ +5% to each stat ⇒ a Pokémon ~5% stronger
+  overall — **≈ one step of `FOE_POWER_CURVE`** (whose steps are 5%). Per stat at
+  Lv50 that's a point or two: "a reason, not a power spike."
+- Temperament changes only *how many reps* to get there, **never the buff size**,
+  so balance footprint is fixed regardless of personality. Titles/hexagon are
+  cosmetic. → The whole creative system stays balance-tiny.
+- **Curve fit:** still sanity-check a fully-bonded team against
+  `docs/PROGRESSION_CURVE_MASTER.md` (it shifts effective difficulty ~one step).
+  **Sign-off before it ships live** (it goes live in PR D — see roadmap).
+
+---
+
+## 7. Data model & save schema
+
+**Per-Pokémon, on the party/box slot** (slots persist via `sm.team` / `sm.pcBox`):
 
 ```js
-slot.bonds = {            // 0..100 each; absent on eggs until hatch
-  praise: 0, nurture: 0,  // good   → atk, spa
-  discipline: 0, intimidate: 0,  // cruel → def, spd
-  mimicry: 0,             // weird  → spe
-  devotion: 0,            // romance→ hp
+slot.bonds = {            // action COUNTERS (0..threshold); absent on eggs
+  praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0,
 };
+// derived at read time, not stored:
+//   threshold(path) = round(10 × tempMult(path, slot.build.n))
+//   mastered(path)  = slot.bonds[path] >= threshold(path)
+//   title(slot)     = first matching rule over the mastered set
 ```
 
-Storing on the slot means bonds **travel with the Pokémon** into the PC box and
-**survive evolution** (the slot object is mutated in place by
-`evolutionScene`'s `onCommit`, so `slot.bonds` is preserved — call this out in
-the evolution path). They are discarded naturally on release/trade.
+Counters travel with the Pokémon (PC box, evolution — the slot is mutated in
+place by `evolutionScene.onCommit`, so bonds survive; verify in the evolve path).
 
-**Migration (single bump `SAVE_VER` 24 → 25, `migrateStoryPreV25`)** — mirror
-the `migrateStoryPreV21` egg-field loop:
+**Migration — single bump `SAVE_VER` 24 → 25** (`migrateStoryPreV25`), mirror the
+`migrateStoryPreV21` egg-field loop:
 
 ```js
 function migrateStoryPreV25() {
-  const DEFAULT_BONDS = () => ({ praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0 });
+  const D = () => ({ praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0 });
   for (const arr of [sm.team, sm.pcBox]) {
     if (!Array.isArray(arr)) continue;
-    for (const slot of arr) {
-      if (!slot || slot.isEgg) continue;
-      if (!slot.bonds || typeof slot.bonds !== 'object') slot.bonds = DEFAULT_BONDS();
-    }
+    for (const s of arr) { if (s && !s.isEgg && (!s.bonds || typeof s.bonds!=='object')) s.bonds = D(); }
   }
-  // camp-flow fields (sm.campByEventIdx, sm.campReturnPoint) added here too — see CAMP_FLOW §7
+  // + camp-flow fields (sm.campByEventIdx, sm.campReturnPoint) — see CAMP_FLOW §7
 }
 // load(): if (d.version < 25) migrateStoryPreV25();
 ```
 
-> **Sensitive area.** Saves migration must be exactly-once and idempotent. Read
-> `STORY_MODE_FLOW.md` and the existing `migrateStoryPreV*` chain before writing
-> this. Add a migration test (below).
-
-**Data file** `data/camp/relationship-paths.json` (loaded via the early-`let` +
-`Object.assign` pattern, per `CLAUDE.md` sloppy-mode rule):
-
-```jsonc
-{
-  "praise":     { "tone": "good",    "stat": "atk", "name": "Praise",     "max": 100, "buff": 0.05 },
-  "nurture":    { "tone": "good",    "stat": "spa", "name": "Nurture",    "max": 100, "buff": 0.05 },
-  "discipline": { "tone": "cruel",   "stat": "def", "name": "Discipline", "max": 100, "buff": 0.05 },
-  "intimidate": { "tone": "cruel",   "stat": "spd", "name": "Intimidate", "max": 100, "buff": 0.05 },
-  "mimicry":    { "tone": "weird",   "stat": "spe", "name": "Mimicry",    "max": 100, "buff": 0.05 },
-  "devotion":   { "tone": "romance", "stat": "hp",  "name": "Devotion",   "max": 100, "buff": 0.05 }
-}
-```
+**Data files** (loaded via early-`let` + `Object.assign`, per `CLAUDE.md`):
+`data/camp/relationship-paths.json` (path → {tone, stat, buff, baseActions,
+tempMults}), `data/camp/titles.json` (title rules).
 
 ---
 
-## 7. Battle integration (mirror the foe multiplier)
+## 8. Battle integration (mirror the foe multiplier — unchanged)
 
-The research pinned the exact mechanic to copy. **Foes** get a single scalar
-`build._storyStatMult` (set in `enterBattleEvent`, ≈`48361-48363`, as
-`_storyEnemyStatMult × _foeDifficultyMult`), applied in **`buildPokemon`**
-(≈`15310-15323`) to `maxHp` and every `stats[k]` for `k in
-['atk','def','spa','spd','spe']`.
+Foes scale via a single `build._storyStatMult` applied in `buildPokemon`
+(≈`15310-15323`). Players use the **same hook** with a **player-only per-stat
+object**, stamped only on player builds (presence == player guard):
 
-**Player relationship buffs** use the *same hook*, but as a **per-stat object**
-that is only ever stamped on **player** builds (so presence == player guard,
-exactly like `_storyStatMult` is only on foes):
-
-1. **Compute** (pure, testable): `relationshipStatMult(bonds, pathDefs) → { hp, atk, def, spa, spd, spe }`, each `1.0` or `1.0 + buff` when that stat's path is at max.
-
+1. **Compute** (pure, testable):
    ```js
-   function relationshipStatMult(bonds) {
+   function relationshipStatMult(slot) {
      const m = { hp:1, atk:1, def:1, spa:1, spd:1, spe:1 };
-     for (const [pid, def] of Object.entries(RELATIONSHIP_PATHS)) {
-       if ((bonds?.[pid] | 0) >= def.max) m[def.stat] *= (1 + def.buff);
-     }
+     for (const [pid, def] of Object.entries(RELATIONSHIP_PATHS))
+       if ((slot.bonds?.[pid]|0) >= bondThreshold(pid, slot)) m[def.stat] *= (1 + def.buff);
      return m;
    }
    ```
-
-2. **Stamp** at battle entry: for each player party slot, set
-   `build._relationshipStatMult = relationshipStatMult(slot.bonds)`. **TODO for
-   implementer:** locate the player-team build-prep site (the player-side analogue
-   of the foe stamp at ≈`48361`; the team is launched via `launchBattle(...)`).
-   This is the one anchor to nail during implementation.
-
-3. **Apply** in `buildPokemon`, in a block symmetric to the foe one (right after
-   it), guarded by field presence:
-
+2. **Stamp** at battle entry, per player slot: `build._relationshipStatMult =
+   relationshipStatMult(slot)`. **TODO:** locate the player-team build-prep site
+   (player analogue of the foe stamp ≈`48361`; team launches via `launchBattle`).
+3. **Apply** in `buildPokemon`, symmetric to the foe block, guarded by presence:
    ```js
    if (build && build._relationshipStatMult) {
      const rm = build._relationshipStatMult;
-     mon.maxHp = Math.max(1, Math.floor(mon.maxHp * (rm.hp || 1)));
+     mon.maxHp = Math.max(1, Math.floor(mon.maxHp * (rm.hp||1)));
      for (const k of ['atk','def','spa','spd','spe'])
-       mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * (rm[k] || 1)));
+       mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * (rm[k]||1)));
    }
    ```
 
-This makes the buff flow correctly into damage, speed order, and HP — same as
-the foe path — with **zero risk to foes** (they never carry the field). Order vs
-the foe multiplier doesn't matter for player mons (they don't carry
-`_storyStatMult`), but keep the player block *after* the foe block for clarity.
-
-> This is a **damage/stat behaviour change** → needs explicit sign-off per
-> `CLAUDE.md` before the diff ships.
-
----
-
-## 8. Decay — **[MAINTAINER] D3**
-
-Tamagotchi convention is upkeep (neglect → sad → decay). **Recommendation: OFF
-(or very slow) for v1.** The buff is meant as a reward for engagement, not a
-chore that punishes you for playing the actual game; aggressive decay would make
-a maxed buff feel unreliable and nag the player. If wanted later: a small
-per-camp or per-N-events decay on un-tended paths, exposed as a knob. Default
-`decayPerCamp: 0`.
+Flows into damage/speed/HP exactly like the foe path, zero foe risk. **Damage/
+stat behaviour change → explicit sign-off before the diff ships.**
 
 ---
 
 ## 9. UI & feedback
 
-- **In camp**, the party-sort panel (`CAMP_FLOW.md` §6) shows six tiny bond
-  meters per Pokémon (tone-coloured: good=green, cruel=red, weird=violet,
-  romance=pink). Reuse existing meter/badge CSS where possible.
-- **Maxing a path** is a celebratory beat — reuse the spotlight-tier reveal
-  pattern (the casino "victory card" lane / `_storyScene`) for a small "Praise
-  maxed — +5% Attack!" card. Cross-link [`EVENT_CINEMATICS.md`](./EVENT_CINEMATICS.md).
-- **In battle**, optionally surface a subtle "bonded" marker on buffed mons
-  (out of scope for v1; note only).
+- **Bond hexagon (creative layer 3):** a 6-spoke radar on each Pokémon's camp
+  card, each spoke = `bonds[path] / threshold(path)` (full spoke = mastered),
+  spokes tone-coloured (good=green, cruel=red, weird=violet, romance=pink). Shows
+  your relationship's *shape* at a glance.
+- **Title** shown under the Pokémon's name on the card / summary.
+- **Mastering a path** fires a small spotlight-tier reveal ("Praise mastered —
+  +5% Attack!"); earning a **title** fires a bigger one. Reuse the casino
+  "victory-card" lane / `_storyScene` — see [`EVENT_CINEMATICS.md`](./EVENT_CINEMATICS.md).
 
 ---
 
 ## 10. Edge cases
 
-- **Eggs:** no `bonds` until hatch; initialise to defaults on hatch.
-- **Evolution:** bonds persist (same slot object) — verify in the evolve path.
-- **PC box mons:** carry bonds but can't be tended (you camp with your party)
-  and their buff is inert until they re-enter the party. Acceptable for v1.
-- **Fainted/again:** bonds are persistent state, unaffected by faint/heal.
-- **Buff + status/ability interactions:** none — this is a pure stat multiply at
-  build time, identical to the foe path; no new battle-loop surface.
+- **Eggs:** no `bonds` until hatch (init defaults on hatch).
+- **Evolution:** counters persist (same slot); Nature is unchanged by evolution,
+  so temperament is stable. Verify in the evolve path.
+- **PC box:** carries bonds; can't be tended (you camp with your party) and the
+  buff is inert until back in the party. OK for v1.
+- **Backfire (cruel/romance overdo):** a botched mini-game = **+0** (a sulk
+  reaction), never a decrement, so play never *loses* progress. Knob: allow small
+  setback for the edgier tone — default off.
 
 ---
 
 ## 11. Test plan (leave-behind)
 
-- **Unit:** `relationshipStatMult({praise:100})` → `{atk:1.05, …rest 1}`; empty
-  bonds → all `1`; all-maxed → all `1.05`.
-- **Integration (jsdom):** build a player mon with `discipline:100`; assert
-  built `def === floor(baseDef × 1.05)` and other stats unchanged; build an
-  identical foe and assert it is unaffected (no `_relationshipStatMult`).
-- **HP path:** `devotion:100` → `maxHp === floor(base × 1.05)`.
-- **Migration:** load a synthetic pre-V25 save with mons lacking `bonds`; assert
-  every non-egg party/box slot gains default `bonds`, eggs don't, idempotent on
-  re-run.
-- **Determinism:** an interaction-point roll with a fixed `runSeed` reproduces.
+- **Pure:** `relationshipStatMult` — a mastered path → its stat ×1.05, others 1;
+  empty → all 1; all mastered → all 1.05.
+- **Threshold/temperament:** Adamant nature → Praise threshold 7, Nurture 14,
+  others 10; neutral nature → all 10; HP always 10.
+- **Integration (jsdom):** player mon with `discipline` at threshold → built
+  `def === floor(base×1.05)`, others unchanged; foe unaffected; `devotion`
+  mastered → `maxHp` scaled.
+- **Title rules:** mastered-set → expected title (priority order).
+- **Migration:** pre-V25 save gains default `bonds`; eggs don't; idempotent.
+- **Dormant guard:** all counters 0 ⇒ built stats byte-identical to pre-feature.
 
 ---
 
-## 12. Decisions for the maintainer (this doc)
+## 12. Decisions
 
-- **D1** buff magnitude (default +5%/path) and whether to cap the aggregate.
-- **D2** the path→stat mapping (default bijection in §2).
-- **D3** decay on/off (default off).
-- **D4** binary-at-max vs gradual buff (default binary).
-- **D5** interactions per camp visit (default 3).
+**Locked:** path→stat bijection (§2) · +5%/path, binary at-master (§6) ·
+unlimited actions per camp, ~10-rep base threshold (§3) · all three creative
+layers (§4, §5, §9) · edgier tone with copy sign-off (minigames doc).
+
+**Remaining knobs [MAINTAINER] (tuning, in data):** `BASE_ACTIONS` (10) ·
+loved/resisted multipliers (0.7 / 1.4) · temperament source (Nature default) ·
+whether Devotion/HP gets like-resist · whether backfire can decrement · title
+copy/rules · aggregate cap if +5%×6 proves too strong on the curve.

@@ -93,7 +93,7 @@ layout — a short **arrival scene** then a **menu**:
 - **Arrival beat** (`_storyScene`, one short beat): "You set up camp. The fire
   catches. {leadMon} settles in." Keeps the buffer feel even on a fast skip.
 - **Menu actions:**
-  - **Spend time with your team** → bonding interactions ([`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md)); up to *D5* interactions this visit.
+  - **Spend time with your team** → the six bonding mini-games ([`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md)); **unlimited per visit**, any party member.
   - **Sort party** → camp party panel (§6).
   - **Head back to {previousCity}** → return-to-city (§5); hidden if none / at start.
   - **Break camp ▶▶** → sets the done flag, `save()`, resumes the route.
@@ -216,9 +216,11 @@ things." Keep it short (sub-2s, skippable) so the buffer never becomes a wall.
 
 ---
 
-## 11. Decisions for the maintainer (this doc)
+## 11. Decisions (RESOLVED 2026-06-03)
 
-- **D6** camp forced (with 1-tap skip) vs fully skippable / settings toggle.
-- **D7** return-to-city cost (free vs gold/time/decay) + revisit cinematic
-  suppression.
-- **D8** which transitions get a camp (all route transitions vs a subset).
+- **D6 — LOCKED:** camp is **forced once per transition** with a prominent 1-tap
+  **"Break camp ▶▶"** skip.
+- **D7 — LOCKED:** return-to-city is a **free round-trip**; still suppress the
+  revisit arrival cinematics (engineering detail, §5).
+- **D8 — LOCKED:** a camp fires on **all non-city→city route transitions**.
+- Bonding actions per camp are **unlimited** (see `BONDING_RELATIONSHIPS.md` §3).

@@ -44,7 +44,7 @@
 | **A** | Sighting fold + cinematics POC (`EVENT_CINEMATICS` §3) | low | none | direction (folds) |
 | **B** | `migrateStoryPreV25` (all new fields) + `relationshipStatMult` + `buildPokemon` apply block + player-build stamp — **dormant** (bonds all 0) | **high** (saves+battle) | **V25** | save-schema + stat-hook diff |
 | **C** | Camp flow: interpose seam, `enterCamp`, `screen-story-camp`, arrival beat, gating | med (flow) | uses V25 | **flow ordering** |
-| **D** | Bonding minigames (4 templates) + `renderCampPartyPanel` + wire interactions → `slot.bonds` | med | uses V25 | **balance (D1/D4/D5)** + content (D10) |
+| **D** | Bonding micro-games (18 = 6 actions × 3 on a shared input toolkit; ship 1/action, expand to 3) + Temperament + Titles + `renderCampPartyPanel` (bond hexagon) + wire → `slot.bonds` | med | uses V25 | **balance** + content tone |
 | **E** | Return-to-previous-city round-trip + revisit-cinematic suppression | med (flow) | uses V25 | flow |
 | **F** | Cinematics catalogue Pri 2–3 + wild/catch/victory polish | low | none | direction |
 

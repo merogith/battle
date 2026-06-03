@@ -44,8 +44,8 @@ wants.
 | # | Pillar | Doc | Depends on code |
 |---|--------|-----|-----------------|
 | 1 | **Event buffering** — interpose a camp beat between route events | [`CAMP_FLOW.md`](./CAMP_FLOW.md) | `processNextEvent` / `proceedToNextBattle` seam |
-| 2 | **Pokémon bonding** — 6 relationship paths, each maxes into a small per-stat buff | [`BONDING_RELATIONSHIPS.md`](./BONDING_RELATIONSHIPS.md) | `buildPokemon` stat hook; save slot shape |
-| 3 | **Bonding minigames** — Tamagotchi-style interactions that feed the 6 paths | [`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md) | scene engine + casino minigame pattern |
+| 2 | **Pokémon bonding** — 6 paths (+ temperament + titles), each masters into a small per-stat buff | [`BONDING_RELATIONSHIPS.md`](./BONDING_RELATIONSHIPS.md) | `buildPokemon` stat hook; save slot shape |
+| 3 | **Bonding micro-games** — 6 actions × 3 random WarioWare-style micro-games (18) feed the 6 paths | [`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md) | scene engine + casino minigame pattern |
 | 4 | **Camp hub utility** — party sorting + return-to-previous-city | [`CAMP_FLOW.md`](./CAMP_FLOW.md) §4–6 | party UI; `lastStoryCityEventIndexAtOrBefore` |
 | 5 | **Event cinematics** — richer animation/visual beats per event type | [`EVENT_CINEMATICS.md`](./EVENT_CINEMATICS.md) | `_renderNarrativeOverlay` / `_storyScene` |
 
@@ -55,14 +55,14 @@ Build order and dependencies are in [`IMPLEMENTATION_ROADMAP.md`](./IMPLEMENTATI
 
 ## 3. The bonding system in one breath
 
-Six ways to relate to each of your Pokémon — **2 kind, 2 cruel, 1 romance, 1
-weird** — each advanced by Tamagotchi-ish camp interactions. Because there are
-exactly **6 battle stats** (`hp/atk/def/spa/spd/spe`) and **6 paths**, each path
-maxes into **+5% of one stat [MAINTAINER]**. The vibe is a pet sim bolted onto
-the journey; the buff is a *small* mechanical reason to engage, not a power
-spike. Full design + the stat mapping (and a reconciliation of two slightly
-different stat lists the maintainer gave) is in
-[`BONDING_RELATIONSHIPS.md`](./BONDING_RELATIONSHIPS.md).
+Six ways to relate to each Pokémon — **2 kind, 2 cruel, 1 weird, 1 romance** —
+each built up by a **camp action** that rolls **one of 3 quick WarioWare-style
+micro-games** (18 in all), playable on any party member, **unlimited per visit**. Because there are exactly **6 battle stats** and
+**6 paths**, each path **masters into +5% of one stat** (small — ≈ one foe-curve
+step). It takes **~10 successful actions** to master a stat, shifted **± by the
+Pokémon's Temperament** (its Nature makes some paths easy, others a grind). Your
+bond *shape* earns each Pokémon a **Title**, shown with a 6-spoke **bond
+hexagon**. Full design in [`BONDING_RELATIONSHIPS.md`](./BONDING_RELATIONSHIPS.md).
 
 ---
 
@@ -99,23 +99,29 @@ agent **must** honour them:
 
 ---
 
-## 5. Decisions for the maintainer (rollup)
+## 5. Decisions — RESOLVED (maintainer review 2026-06-03)
 
-Each is explained in context in the linked doc; collected here so they can be
-answered in one pass. **None are blocking for reading the spec** — they're the
-knobs to set before implementation.
+These are locked; what remains are data-side tuning knobs (bottom row).
 
-| ID | Decision | Where | Author's recommendation |
-|----|----------|-------|--------------------------|
-| D1 | Per-path maxed buff magnitude (default **+5%/stat**) | BONDING §5 | +5% — ≈ one `FOE_POWER_CURVE` step; small per-stat |
-| D2 | Stat ↔ path mapping (reconcile the two stat lists) | BONDING §3 | 6-stat bijection (table in §2) |
-| D3 | Do bonds **decay** between visits? | BONDING §8 | Off (or very slow) for v1 — reward, not chore |
-| D4 | Buff at **max only**, or gradual as the bar fills? | BONDING §5 | Max-only (matches "when maxed") |
-| D5 | Interactions allowed **per camp visit** (pacing) | BONDING §4 | 3 — maxing spans many camps across the route |
-| D6 | Is camp **forced** (true buffer) or **skippable**? | CAMP_FLOW §8 | Forced first time per transition, 1-tap skip after |
-| D7 | Return-to-previous-city: free visit, or costs progress/turn? | CAMP_FLOW §5 | Free round-trip via a return-point stash |
-| D8 | Which event transitions get a camp (all? only some)? | CAMP_FLOW §2 | All non-city→city route transitions |
-| D9 | Cinematics scope for v1 (which event types) | EVENT_CINEMATICS §3 | Legendary-sighting fold first (POC) |
+| ID | Decision | Resolution |
+|----|----------|------------|
+| D1 | Maxed buff magnitude | **+5%/path**, stays small (≈ one `FOE_POWER_CURVE` step) |
+| D2 | Stat ↔ path mapping | **clean 6-stat bijection** (BONDING §2) |
+| D2b | Creative depth | **all three layers** — Temperament + Titles + Bond-hexagon |
+| D3 | Bond decay | **off** (reward, not chore) |
+| D4 | Buff timing | **binary at-master** |
+| D5 | Actions per camp | **unlimited** (the grind is total reps, not a per-visit cap) |
+| D5b | Reps to master a stat | **~10 actions** × temperament (loved 0.7 / resisted 1.4) |
+| D6 | Camp cadence | **forced + 1-tap "Break camp"** skip |
+| D7 | Return-to-city | **free round-trip** via a return-point stash |
+| D8 | Which transitions | **all non-city→city** route transitions |
+| D9 | Cinematics v1 | sighting fold (POC) + camp arrival + mastery/title reveals |
+| D10 | Cruel/romance tone | **edgier** — maintainer signs off on the actual copy |
+
+**Remaining tuning knobs (data, [MAINTAINER]):** `BASE_ACTIONS` (10) ·
+temperament multipliers + source (Nature default) · title copy/rules · per-game
+difficulty · an aggregate buff cap *if* +5%×6 proves too strong on the curve.
+See each doc's Decisions section.
 
 ---
 
@@ -124,7 +130,12 @@ knobs to set before implementation.
 - **Camp** — the recurring between-events hub/buffer screen.
 - **Path** — one of 6 relationship tracks per Pokémon (Praise, Nurture,
   Discipline, Intimidate, Mimicry, Devotion).
-- **Bond bar** — a path's 0→max progress on a given Pokémon (`slot.bonds[path]`).
+- **Bond counter** — a path's action count on a Pokémon (`slot.bonds[path]`);
+  masters at its threshold.
+- **Master** — a path reaching its threshold; its +5% stat buff turns on.
+- **Temperament** — a Pokémon's Nature-driven like/resist that shifts a path's
+  threshold (~10 reps × 0.7 / 1.0 / 1.4).
+- **Title** — a cosmetic name from your bond *shape* (e.g. "the Hardened").
 - **Transition** — the seam between event N and event N+1, keyed by `eventIndex`.
 - **Interpose** — inserting camp into the flow without adding a timeline row.
 - **`sm`** — the Story-mode save object (`pbs_story_save` in localStorage).

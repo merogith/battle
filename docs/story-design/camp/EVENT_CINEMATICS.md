@@ -76,7 +76,7 @@ all magnitudes/lengths are tunable and skippable.
 |-----|-----------|-----------|----------|
 | 1 | **Legendary sighting** | fold + emerge animation (the POC) | `_renderNarrativeOverlay` + `evolutionScene` motifs |
 | 2 | **Camp arrival / break** | campfire backdrop, settle-in sprite, 1 short beat | `_storyScene` (see `CAMP_FLOW.md` §9) |
-| 3 | **Bond path maxed** | spotlight "victory card": "Praise maxed — +5% Atk!" | spotlight-tier reveal / casino prize lane |
+| 3 | **Bond path mastered / title earned** | spotlight "victory card": "Praise mastered — +5% Atk!"; a bigger card when a new Title trips | spotlight-tier reveal / casino prize lane |
 | 4 | **Wild appears** | quick sprite slide-in + cry before the encounter | `_renderNarrativeOverlay` + SFX |
 | 5 | **Catch success** | ball-shake → burst → "caught!" flourish | existing catch flow + `sparkle`/`achv` |
 | 6 | **Victory / item get** | brief banner polish (consistency pass) | existing banners on `--sn-z-*` |

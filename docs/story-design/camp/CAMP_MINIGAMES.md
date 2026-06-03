@@ -1,166 +1,207 @@
-# Camp Minigames — the Tamagotchi interaction layer
+# Camp Micro-games — 6 actions × 3 random games (18, WarioWare-style) (FINALIZED)
 
-> Part of the [Camp System spec](./README.md). These minigames are how the six
-> [relationship paths](./BONDING_RELATIONSHIPS.md) gain points. Anchors
-> symbol-first. Grounded in the minigame/scene research sweep.
+> Part of the [Camp System spec](./README.md). **Locked:** six bonding
+> [actions](./BONDING_RELATIONSHIPS.md), and **each action rolls one of 3 random
+> micro-games (18 total)** in the fast WarioWare *microgame* format, so the ~10
+> reps to master a stat stay fresh. Usable on any party Pokémon, **unlimited per
+> camp**; each success = **+1**. Tone is **edgier — maintainer signs off on copy.**
+> Anchors symbol-first.
 
 ---
 
 ## 1. Concept
 
-In camp you can **spend time with each party Pokémon**. Each interaction is a
-tiny, fast minigame whose score grants points to **one** relationship path. The
-vibe is a "very simplified Tamagotchi" — feed, train, tease, dote — *some kind,
-some cruel, some weird, some romantic*. Keep each interaction **≤ ~10 seconds**
-and fully skippable; this is texture, not a wall.
+At camp you pick a party Pokémon and a **bonding action** (six of them, one per
+relationship path). Performing an action launches a **random micro-game** from
+that action's **pool of 3** — a quick (≈ 2–4 s), one-verb WarioWare-style game.
+Win it → **+1** to that path's counter on that Pokémon; mastery (the +5% buff)
+lands at the per-Pokémon threshold (`BONDING §3`).
 
-- **Budget:** up to **D5 (default 3)** interactions per camp visit (see
-  `BONDING_RELATIONSHIPS.md` §4).
-- **Determinism:** all variance uses `storyRngNext` (≈`37609`) — never bare
-  `Math.random` for anything that must replay (it's already routed during story
-  runs, but call `storyRngNext` explicitly).
-
----
-
-## 2. Four reusable templates (not six bespoke games)
-
-Six paths map onto **four interaction templates** × content/tone. This keeps the
-build to a few well-tested mechanics instead of six one-offs.
-
-| Template | Mechanic | Feeds paths |
-|----------|----------|-------------|
-| **A · Timing Tap** | a marker sweeps a bar; tap in the sweet zone × N rounds; score = clean hits | **Praise** (hype them up), **Mimicry** (tickle on the beat) |
-| **B · Sequence Repeat** | watch a short icon/sound pattern, repeat it (Simon-says); score = length matched | **Mimicry** (copy-cat) — and an alt for Praise |
-| **C · Pick the Preference** | present 3–4 options; the Pokémon has a *stable hidden favourite*; right pick = big gain, wrong = small | **Nurture** (which food/treat?) |
-| **D · Restraint Meter** | hold to fill a meter; release in the green; **overfilling backfires** (resentment → reduced/zero gain) | **Discipline** (push, don't break), **Intimidate** (hold the cold stare), **Devotion** (hold them close) |
-
-> Template D's "backfire" is what makes the **cruel** paths feel cruel and risky
-> (push too hard and they resent you) and the **romance** path feel intense
-> (hold too long and it gets… weird). One mechanic, three tones via copy + tuning.
-
-**Score → points:** `points = base + round(bonus × score01)` where `score01 ∈
-[0,1]` from the minigame and `base`/`bonus` are per-template tuning (defaults
-e.g. `base 8, bonus 7` → +8…+15). All in `data/camp/interactions.json`.
+- **3 micro-games per action × 6 actions = 18 micro-games.** The reps to master a
+  stat (~10) draw a *varied* sequence instead of the same game ten times.
+- **Random pick is seeded** (`storyRngNext`, ≈`37609`) → deterministic replays,
+  fresh-feeling sessions.
+- **Unlimited per camp**, any party member. Temperament changes the *threshold*
+  (how many wins to master), never the per-win gain.
 
 ---
 
-## 3. The interaction catalog (default copy)
+## 2. The 18 micro-games
 
-Each entry: path · template · one-line fantasy. Final copy lives in data and is
-the maintainer's to flavour.
+Grouped by action (path → stat). Each is a single clear verb shown big on screen,
+WarioWare-style. They're built from a small shared **input toolkit** (§5), so 18
+games is *content*, not 18 engines.
 
-- **Praise → Cheer Drill** (A): tap as they pull off tricks; nail the rhythm and
-  they puff up with pride. → `atk`
-- **Nurture → Feed & Groom** (C): offer berries/treats; learn what *this* one
-  loves; brush its coat. → `spa`
-- **Discipline → Hard Drill** (D): run them through strict reps — push to the
-  edge of the green, not past it. → `def`
-- **Intimidate → Cold Stare** (D): withhold the treat, hold the unblinking stare;
-  don't crack (or overdo it). → `spd`
-- **Mimicry → Copy-Cat** (B) / **Tickle** (A): mirror each other's moves until
-  you're in sync (or tickle on-beat). → `spe`
-- **Devotion → Stargaze / Whisper** (D): hold them close under the stars and
-  whisper just a little too long. → `hp`
+| Action (path → stat) | Micro-game | Verb | Input primitive |
+|---|---|---|---|
+| **Cheer** (Praise → `atk`) | Clap! | tap on the beat | `tapTiming` |
+| | Pump! | mash to fill the hype bar | `mash` |
+| | Pose! | match the victory pose shown | `pickMatch` |
+| **Feed & Groom** (Nurture → `spa`) | Feed! | drag their *favourite* treat to its mouth | `dragAim` |
+| | Brush! | swipe to groom every spot | `swipeCover` |
+| | Catch! | catch the berry it tosses back | `tapTiming` |
+| **Drill** (Discipline → `def`) | Hold! | hold the stance, release in the green | `holdRelease` |
+| | Block! | tap to block hits in rhythm | `tapTiming` |
+| | March! | alternate-tap to keep the pace | `mash` (alternating) |
+| **Cold Stare** (Intimidate → `spd`) | Don't Blink! | hold the stare; release before it curdles | `holdRelease` |
+| | Loom! | creep closer, stop in the zone | `track` |
+| | Withhold! | resist the puppy-eyes — **don't** tap the treat | `restraint` |
+| **Mirror** (Mimicry → `spe`) | Copy! | repeat the gesture sequence | `sequence` |
+| | Tickle! | tap the wiggling spots | `tapTiming` |
+| | Sync! | match its movement in real time | `track` |
+| **Stargaze** (Devotion → `hp`) | Hold Close! | a slow hold — linger, maybe a beat too long | `holdRelease` |
+| | Whisper! | trace the heart/word shape | `dragAim` (trace) |
+| | Gaze! | keep eye contact as it drifts | `track` |
+
+Copy/art/difficulty are data; the verbs above are placeholders for the
+maintainer's tone pass (§9).
 
 ---
 
-## 4. Per-Pokémon preference (flavour + Template C)
+## 3. WarioWare design ethos (genre, not IP)
 
-Template C (and small flavour elsewhere) needs a **stable** favourite per
-Pokémon. Derive it deterministically from a **stable hash of `slot.id`** (not the
-advancing `storyRngNext` stream, which would shift between visits):
+- **Short & loud:** ≈ 2–4 s, one big instruction word, instant fail/clear. No
+  tutorials — the verb *is* the tutorial.
+- **Surprising:** the random pick from the 3-pool means you don't know which
+  you'll get; optional **speed-up** as a Pokémon's bond climbs adds escalation.
+- **Original content, genre inspiration only.** We emulate the *microgame format*
+  (fast, quirky one-verb games) — we do **not** copy Nintendo's specific games,
+  names, characters, or art. Keep all assets/copy original. *(Light legal hygiene
+  — flag anything that drifts toward a recognizable lift for maintainer review.)*
+
+---
+
+## 4. Selection & scoring
 
 ```js
-function campPreference(slot, optionCount) {
-  // FNV-ish hash of the immutable slot.id → stable index
+function campPickMicrogame(actionId) {
+  const pool = CAMP_ACTIONS[actionId].games;        // 3 ids
+  const r = (sm && sm.active) ? window.storyRngNext() : Math.random();
+  return pool[Math.floor(r * pool.length)];          // seeded → deterministic
+}
+```
+
+- **Win** the micro-game → **+1** to the action's path counter → `save()`.
+- **Miss / botch** (e.g. overfilling `holdRelease`, tapping on `restraint`) →
+  **+0** and a **reaction beat** (sulk / recoil — the edgy payoff). Never
+  decrements by default (no losing progress); a small setback is a knob.
+- Win/lose is **pass/fail**, not a graded score — keeps "~10 wins to master"
+  legible. Temperament is applied to the **threshold**, not here.
+
+---
+
+## 5. The shared input toolkit (≈9 primitives → all 18)
+
+`tapTiming` (tap in a sweet zone / on beat) · `mash` (rapid/alternating taps to
+fill) · `holdRelease` (hold, release in green; overdo backfires) · `sequence`
+(Simon-says repeat) · `dragAim` (drag/trace to a target) · `swipeCover` (swipe to
+cover areas) · `track` (keep on a moving target) · `pickMatch` (choose the
+matching option) · `restraint` (do **not** act when tempted).
+
+Each primitive is one small, individually-tested function returning a
+**Promise<boolean>** (won?). A micro-game = `{primitive, config, copy, art}`.
+This is the casino-minigame pattern (`casinoSpin` ≈`29945` returns a Promise);
+reuse it.
+
+---
+
+## 6. Anatomy (build on the casino pattern)
+
+- **Mount:** `_storyTryBeginInteraction()` → init ephemeral `_campUI` (like
+  `_casinoUI`, not persisted) → render into the camp screen → `… finally
+  _storyEndInteraction()` (`enterCasino` ≈`53255`).
+- **Run:** `campPickMicrogame(action)` → `await primitive(config)` (Promise) →
+  award +1 on win. SFX via `window.StoryFx.playSfx` (`sparkle`, `pbBounce1`,
+  `achv`, `danger`).
+- **Persist:** `slot.bonds[path]++; save();`.
+- **Mastery reveal:** crossing a threshold fires the spotlight reveal (+ a title
+  reveal if a rule trips) — see [`EVENT_CINEMATICS.md`](./EVENT_CINEMATICS.md).
+- **Return:** `showScreen('screen-story-camp')`.
+
+---
+
+## 7. Per-Pokémon favourite (the Feed! micro-game)
+
+`Feed!` rewards offering the Pokémon's **stable favourite** treat — derive from a
+hash of the immutable `slot.id` (not the advancing RNG stream), so it's
+consistent across visits and replay-safe:
+
+```js
+function campFavourite(slot, n) {
   let h = 2166136261;
   for (const c of String(slot.id)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  return (h >>> 0) % optionCount;
+  return (h >>> 0) % n;
 }
 ```
 
-So a given Pokémon *always* prefers the same berry — discoverable, consistent,
-and replay-safe — while the *minigame outcome* variance still uses `storyRngNext`.
-
 ---
 
-## 5. Anatomy of a camp minigame (build on the casino pattern)
+## 8. Data model
 
-Mirror the self-contained minigame pattern the research mapped:
-
-- **Mount:** `_storyTryBeginInteraction()` → init ephemeral state → render into the
-  camp screen → `… finally _storyEndInteraction()` (see `enterCasino` ≈`53255`).
-- **Ephemeral state:** a single `_campUI` object (like `_casinoUI`) — *not*
-  persisted; only the resulting bond points are written to `slot.bonds` + `save()`.
-- **Animation:** model on `casinoSpin` (≈`29945`) — a function returning a
-  **Promise** that resolves when the interaction's animation settles; `await` it,
-  then award points. Use `window.StoryFx.playSfx(name, vol)` for feedback (the
-  research lists a vocabulary: `sparkle`, `pbBounce1`, `achv`, `danger`, …).
-- **Reward reveal:** on a path hitting **max**, show the celebratory card via the
-  spotlight-tier reveal lane (the casino "victory card" / `_storyScene`) — see
-  [`EVENT_CINEMATICS.md`](./EVENT_CINEMATICS.md).
-- **Dismiss:** return to the camp menu (`showScreen('screen-story-camp')`),
-  decrement the visit budget.
-
----
-
-## 6. Data model
-
-`data/camp/interactions.json` (loaded via the early-`let` + `Object.assign`
-pattern per `CLAUDE.md`):
+Two data files (loaded via early-`let` + `Object.assign`, per `CLAUDE.md`):
 
 ```jsonc
+// data/camp/actions.json — the 6 actions, each pointing at its 3-game pool
 {
-  "cheer_drill":  { "path": "praise",     "template": "timingTap",      "rounds": 4, "base": 8, "bonus": 7, "name": "Cheer Drill" },
-  "feed_groom":   { "path": "nurture",    "template": "pickPreference", "options": ["Oran","Sitrus","Pecha","Leppa"], "base": 6, "bonus": 9, "name": "Feed & Groom" },
-  "hard_drill":   { "path": "discipline", "template": "restraintMeter", "backfireAt": 0.92, "base": 8, "bonus": 7, "name": "Hard Drill" },
-  "cold_stare":   { "path": "intimidate", "template": "restraintMeter", "backfireAt": 0.9,  "base": 8, "bonus": 7, "name": "Cold Stare" },
-  "copy_cat":     { "path": "mimicry",    "template": "sequenceRepeat", "len": 4, "base": 8, "bonus": 7, "name": "Copy-Cat" },
-  "stargaze":     { "path": "devotion",   "template": "restraintMeter", "backfireAt": 0.95, "base": 8, "bonus": 7, "name": "Stargaze" }
+  "cheer":    { "path": "praise",     "games": ["clap","pump","pose"] },
+  "feed":     { "path": "nurture",    "games": ["feed","brush","catch"] },
+  "drill":    { "path": "discipline", "games": ["hold","block","march"] },
+  "stare":    { "path": "intimidate", "games": ["dontblink","loom","withhold"] },
+  "mirror":   { "path": "mimicry",    "games": ["copy","tickle","sync"] },
+  "stargaze": { "path": "devotion",   "games": ["holdclose","whisper","gaze"] }
+}
+// data/camp/microgames.json — the 18 games, each a primitive + config + copy
+{
+  "clap":  { "primitive": "tapTiming", "rounds": 4, "name": "Clap!" },
+  "pump":  { "primitive": "mash", "target": 20, "ms": 3000, "name": "Pump!" },
+  "hold":  { "primitive": "holdRelease", "overdoAt": 0.92, "name": "Hold!" },
+  "withhold": { "primitive": "restraint", "tempts": 3, "name": "Withhold!" }
+  // …14 more…
 }
 ```
 
-Templates are code (four functions); content/tuning is data.
+Primitives are code (~9 functions); the 18 games + their tuning + copy are data —
+so adding/retuning micro-games never touches the engine.
 
 ---
 
-## 7. Tone & content boundaries — **[MAINTAINER] D10 (new)**
+## 9. Tone — edgier, maintainer reviews copy (D10 = edgier)
 
-The "cruel" and "creepy romance" framings are the maintainer's idea and give the
-system its personality — but they need a **declared ceiling**. Recommendation:
-play them as **cartoonish dark-comedy / Tamagotchi-weird**, never as genuine
-distress or anything that reads as real animal cruelty or anything inappropriate.
-Concretely:
-
-- Cruel = *strictness / withholding / spookiness*, with the Pokémon reacting
-  comically and the **backfire** modelling "you went too far, it sulks." Not
-  injury, not fear-as-suffering.
-- Romance/creepy = *obsessive affection played for laughs* ("you whispered for
-  rather too long; it gives you a look"). Keep it about the trainer being a
-  weirdo, not about the Pokémon.
-
-The implementing agent should keep copy within this ceiling and surface anything
-borderline for sign-off. **This is a content decision — flag it; don't guess.**
+Cruel (Drill, Cold Stare) and romance (Stargaze) lean weird/dark, *played with
+intent*; the **overdo/botch** beat is the Pokémon recoiling or sulking —
+unsettling, not graphic; the trainer is the weirdo. The **maintainer signs off on
+the actual micro-game copy** before it ships; surface borderline lines rather than
+shipping them.
 
 ---
 
-## 8. Test plan (leave-behind)
+## 10. Phasing note (so 18 isn't a wall)
 
-- **Pure scoring:** `score01 → points` is deterministic and clamped to
-  `[base, base+bonus]`.
-- **Backfire:** Template D past `backfireAt` yields ≤ 0 gain.
-- **Preference stability:** `campPreference(slot)` is identical across calls for
-  the same `slot.id`, varies across ids.
-- **Determinism:** a full interaction with fixed `runSeed` reproduces points.
-- **Budget:** the 4th interaction in a visit (default budget 3) is unavailable.
-- **No bare RNG:** grep guard — camp code paths don't call `Math.random` directly
-  for scored outcomes (use `storyRngNext`).
+Ship **1 micro-game per action first** (6 games — proves the loop, the toolkit,
+the camp panel), then **expand each pool to 3** (the other 12) as content PRs.
+The data shape (`actions.games[]`) already supports a pool of any size, so
+expansion is data + a primitive or two, never a refactor. (Reflected in the
+roadmap's PR D.)
 
 ---
 
-## 9. Decisions for the maintainer (this doc)
+## 11. Test plan (leave-behind)
 
-- **D5** (shared) interactions per camp visit — default 3.
-- **D10** content-tone ceiling for the cruel / romance paths (recommend
-  cartoonish dark-comedy; never genuine cruelty/inappropriate).
-- Template tuning (rounds, base/bonus, backfire thresholds) — all data, your call.
+- **Seeded pick:** `campPickMicrogame` with a fixed `runSeed` returns a
+  reproducible game from the 3-pool; distribution covers all 3 over many seeds.
+- **+1 on win, +0 on botch;** never negative (default knob).
+- **`restraint` inverts:** acting = fail, waiting = win.
+- **`holdRelease` overdo** past `overdoAt` → fail.
+- **Favourite stability:** `campFavourite(slot)` stable per `slot.id`.
+- **No bare RNG:** grep guard — scored camp paths use `storyRngNext`.
+- **Unlimited:** no per-visit cap blocks repeated play.
+
+---
+
+## 12. Decisions
+
+**Locked:** 6 actions × 3 random micro-games (**18**), WarioWare-style;
+seeded pick; +1 per win; unlimited per camp; edgier tone with maintainer copy
+sign-off; original content (genre inspiration, no Nintendo IP lift).
+**Knobs [MAINTAINER]:** per-game difficulty/config · pool contents · optional
+bond-climb speed-up · whether a botch can decrement (default no) · the copy.
