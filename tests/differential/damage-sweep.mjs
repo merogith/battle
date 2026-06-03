@@ -131,6 +131,24 @@ const DAMAGE_SCENARIOS = [
   // ── recoil (measure the ATTACKER's self-inflicted HP loss) ──
   { id: 'recoil-brave-bird', desc: 'Brave Bird recoil = 33% of damage dealt (attacker)', measure: 'attacker', attacker: { species: 'Staraptor', ability: 'Keen Eye', nature: 'Adamant', evs: { atk: 252 } }, move: 'Brave Bird', defender: WALL_SPEC },
   { id: 'recoil-life-orb', desc: 'Life Orb recoil = 10% max HP (attacker)', measure: 'attacker', attacker: { species: 'Alakazam', ability: 'Synchronize', item: 'Life Orb', nature: 'Modest', evs: { spa: 252 } }, move: 'Psychic', defender: WALL_SPEC },
+
+  // ── contact-punish on the ATTACKER (measure attacker HP loss; isolate from other recoil) ──
+  { id: 'contact-rough-skin', desc: 'Rough Skin chips the attacker 1/8 on contact (attacker)', measure: 'attacker', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: { species: 'Garchomp', ability: 'Rough Skin', nature: 'Impish', evs: { hp: 252, def: 252 } } },
+  { id: 'contact-rocky-helmet', desc: 'Rocky Helmet chips the attacker 1/6 on contact (attacker)', measure: 'attacker', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: { species: 'Skarmory', ability: 'Keen Eye', item: 'Rocky Helmet', nature: 'Impish', evs: { hp: 252, def: 252 } } },
+
+  // ── status-driven multipliers (status applied on turn 1, attack on turn 2) ──
+  { id: 'ability-guts-burn', desc: 'Guts ×1.5 Atk when burned, ignoring the burn drop (Flame Orb)', attacker: { species: 'Snorlax', ability: 'Guts', item: 'Flame Orb', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Strength', 'Splash'], choices1: setupAtk, defender: WALL_PHYS_HP },
+  { id: 'burn-halves-physical', desc: 'Burn halves physical damage (Flame Orb, no Guts) — expect overlap', attacker: { species: 'Snorlax', ability: 'Limber', item: 'Flame Orb', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Strength', 'Splash'], choices1: setupAtk, defender: WALL_SPEC },
+  { id: 'def-marvel-scale', desc: 'Marvel Scale ×1.5 Def when statused (paralysed first)', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Strength', 'Thunder Wave'], choices1: setupAtk, defender: { species: 'Milotic', ability: 'Marvel Scale', nature: 'Bold', evs: { hp: 252, def: 252 } } },
+
+  // ── Knock Off ×1.5 vs a removable-item holder ──
+  { id: 'knockoff-item-boost', desc: 'Knock Off ×1.5 when the target holds a removable item', attacker: { species: 'Weavile', ability: 'Pressure', nature: 'Adamant', evs: { atk: 252 } }, move: 'Knock Off', defender: { species: 'Blissey', ability: 'Natural Cure', item: 'Choice Scarf', nature: 'Calm', evs: { hp: 252, def: 252 } } },
+
+  // ── sandstorm: Rock-types get ×1.5 SpD (Sandstorm → special hit on a Rock wall) ──
+  { id: 'sand-spd-rock', desc: 'Sandstorm grants Rock-types ×1.5 SpD', attacker: { species: 'Alakazam', ability: 'Synchronize', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Psychic', 'Sandstorm'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: { species: 'Regirock', ability: 'Clear Body', nature: 'Sassy', evs: { hp: 252, spd: 252 } } },
+
+  // ── multi-hit: Skill Link forces the max 5 hits (deterministic) ──
+  { id: 'multihit-skill-link', desc: 'Skill Link → 5-hit multi-hit move (always max hits)', attacker: { species: 'Cloyster', ability: 'Skill Link', nature: 'Adamant', evs: { atk: 252 } }, move: 'Icicle Spear', defender: WALL_PHYS_HP },
 ];
 
 async function main() {

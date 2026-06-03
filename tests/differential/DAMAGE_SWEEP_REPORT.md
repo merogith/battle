@@ -6,7 +6,7 @@
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
 > (roll variance removed). Reference: @pkmn/sim (MIT).
 
-**Divergences found: 0/37**
+**Divergences found: 0/45**
 
 | Probe | What it checks | In-house [min–max] | Showdown [min–max] | Verdict |
 |---|---|---|---|---|
@@ -47,6 +47,14 @@
 | `item-occa-berry-se` | Occa Berry halves a super-effective Fire hit (defender) | 51–60 (μ55) | 51–85 (μ58) | ✅ overlap |
 | `recoil-brave-bird` | Brave Bird recoil = 33% of damage dealt (attacker) | 119–119 (μ119) | 119–119 (μ119) | ✅ overlap |
 | `recoil-life-orb` | Life Orb recoil = 10% max HP (attacker) | 13–13 (μ13) | 13–13 (μ13) | ✅ overlap |
+| `contact-rough-skin` | Rough Skin chips the attacker 1/8 on contact (attacker) | 29–29 (μ29) | 29–29 (μ29) | ✅ overlap |
+| `contact-rocky-helmet` | Rocky Helmet chips the attacker 1/6 on contact (attacker) | 39–39 (μ39) | 39–39 (μ39) | ✅ overlap |
+| `ability-guts-burn` | Guts ×1.5 Atk when burned, ignoring the burn drop (Flame Orb) | 95–168 (μ110) | 94–142 (μ105) | ✅ overlap |
+| `burn-halves-physical` | Burn halves physical damage (Flame Orb, no Guts) — expect overlap | 133–226 (μ149) | 135–224 (μ152) | ✅ overlap |
+| `def-marvel-scale` | Marvel Scale ×1.5 Def when statused (paralysed first) | 38–64 (μ45) | 39–66 (μ46) | ✅ overlap |
+| `knockoff-item-boost` | Knock Off ×1.5 when the target holds a removable item | 170–198 (μ186) | 169–282 (μ191) | ✅ overlap |
+| `sand-spd-rock` | Sandstorm grants Rock-types ×1.5 SpD | 43–51 (μ47) | 43–72 (μ49) | ✅ overlap |
+| `multihit-skill-link` | Skill Link → 5-hit multi-hit move (always max hits) | 95–105 (μ100) | 96–117 (μ103) | ✅ overlap |
 
 Ranges are HP damage to the defender. A correct multiplier yields overlapping
 bands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in

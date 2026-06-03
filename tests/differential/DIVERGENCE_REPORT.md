@@ -10,7 +10,7 @@
 - **Known bugs confirmed by the oracle:** 5/5
 - **Sanity scenarios in agreement:** 14/14
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 1/35
+- **Probes flagging a divergence to investigate:** 1/38
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
@@ -73,6 +73,9 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `psychic-terrain-blocks-priority` | terrain / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `gravity-grounds-flying` | field / immunity | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `weakness-policy-se` | item / boost | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `flame-orb-self-burn` | item / status | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `toxic-orb-self-poison` | item / status | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `sand-chip` | weather / residual | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
@@ -406,6 +409,24 @@ Gravity grounds a Flying-type so Earthquake hits it (damage, not 0). Foe uses De
 Weakness Policy raises the holder Atk & SpA by 2 after a super-effective hit.
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `flame-orb-self-burn` — 🔍 no divergence
+Flame Orb burns its holder at the end of the turn.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `toxic-orb-self-poison` — 🔍 no divergence
+Toxic Orb badly-poisons its holder at the end of the turn.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `sand-chip` — 🔍 no divergence
+Sandstorm chips non-Rock/Ground/Steel types 1/16 per turn.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 3
 - No divergences.
 
 ### `sanity-swords-dance-normal` — ✅ agrees

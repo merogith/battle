@@ -268,6 +268,35 @@ export const SCENARIOS = [
     choices1: ['move 1'], choices2: ['move 1'],
   },
 
+  // ══ Self-status items / weather residual — PROBE ══
+  {
+    id: 'flame-orb-self-burn',
+    category: 'item / status',
+    desc: 'Flame Orb burns its holder at the end of the turn.',
+    expect: 'probe',
+    team1: [{ species: 'Snorlax', ability: 'Thick Fat', item: 'Flame Orb', moves: ['Splash', 'Splash'], nature: 'Hardy' }],
+    team2: [SLOW_WALL(['Splash', 'Splash'])],
+    choices1: ['move 1', 'move 1'], choices2: ['move 1', 'move 1'],
+  },
+  {
+    id: 'toxic-orb-self-poison',
+    category: 'item / status',
+    desc: 'Toxic Orb badly-poisons its holder at the end of the turn.',
+    expect: 'probe',
+    team1: [{ species: 'Snorlax', ability: 'Thick Fat', item: 'Toxic Orb', moves: ['Splash', 'Splash'], nature: 'Hardy' }],
+    team2: [SLOW_WALL(['Splash', 'Splash'])],
+    choices1: ['move 1', 'move 1'], choices2: ['move 1', 'move 1'],
+  },
+  {
+    id: 'sand-chip',
+    category: 'weather / residual',
+    desc: 'Sandstorm chips non-Rock/Ground/Steel types 1/16 per turn.',
+    expect: 'probe',
+    team1: [{ species: 'Alakazam', ability: 'Synchronize', moves: ['Sandstorm', 'Splash'], nature: 'Modest', evs: { spa: 252 } }],
+    team2: [passive('Snorlax', 'Thick Fat')],
+    choices1: ['move 1', 'move 2', 'move 2'], choices2: threeTurns,
+  },
+
   // ══ Sanity / regression (must MATCH) ══
   {
     id: 'sanity-swords-dance-normal',

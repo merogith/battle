@@ -6,14 +6,16 @@
 > `DAMAGE_SWEEP_REPORT.md`). **No engine code has been changed yet.**
 
 ## Coverage
-**~91 probes** — 54 categorical scenarios (`scenarios.mjs`) + 37 damage-modifier
+**~102 probes** — 57 categorical scenarios (`scenarios.mjs`) + 45 damage-modifier
 sweeps (`damage-sweep.mjs`) — across: two-turn/semi-invulnerable, type/ability/item
 immunities & absorbs, ability-ignoring (Mold Breaker, Scrappy), status application
-& immunities, stat-change moves, fixed-damage, Protect/Substitute, survival
-(Sturdy/Focus Sash), Speed Boost, switch-in hooks (Intimidate, Stealth Rock),
-priority/field interactions (Prankster-vs-Dark, Psychic Terrain priority-block,
-Gravity grounding, Weakness Policy), recoil, and the full multiplier layer
-(Choice/Life-Orb/type/Expert-Belt/Tinted-Lens/Muscle-Band/Wise-Glasses items;
+& immunities, self-status items (Flame/Toxic Orb), stat-change moves, fixed-damage,
+Protect/Substitute, survival (Sturdy/Focus Sash), Speed Boost, switch-in hooks
+(Intimidate, Stealth Rock), priority/field interactions (Prankster-vs-Dark, Psychic
+Terrain priority-block, Gravity grounding, Weakness Policy), recoil, contact-punish
+(Rough Skin, Rocky Helmet), Knock Off, multi-hit (Skill Link), Sandstorm chip & Rock
+SpD, status-driven multipliers (Guts, Marvel Scale, burn), and the full multiplier
+layer (Choice/Life-Orb/type/Expert-Belt/Tinted-Lens/Muscle-Band/Wise-Glasses items;
 Huge Power, Adaptability, Technician, Sheer Force, Tough Claws, Iron Fist, Strong
 Jaw, Mega Launcher, Reckless, Neuroforce, Thick Fat, Multiscale, Filter, Fur Coat,
 Ice Scales, Heatproof, Fluffy, Dry Skin, Mold Breaker; weather, screens, terrain).
@@ -40,14 +42,18 @@ Toxic ramp · multi-hit · **Protect** & **Substitute** · **Sturdy** & **Focus 
 **Intimidate** & **Stealth Rock** on switch-in · **Prankster-vs-Dark** immunity ·
 **Psychic Terrain** priority-block · **Gravity grounding** (Flying loses Ground
 immunity) · **Weakness Policy** (+2 on super-effective) · **recoil** (Brave Bird
-33%, Life Orb 10% — exact) · the full multiplier layer (Choice Band/Specs, Life Orb,
-type items, Expert Belt, Tinted Lens, Muscle Band, Wise Glasses; Huge Power,
-Adaptability, Technician, Sheer Force, Tough Claws, Iron Fist, Strong Jaw, Mega
-Launcher, Reckless, Neuroforce, Thick Fat, Multiscale, Filter, Fur Coat, Ice
-Scales, Heatproof, Fluffy, Dry Skin; weather ×1.5/×0.5, Reflect/Light Screen,
-Electric/Grassy Terrain).
+33%, Life Orb 10% — exact) · **contact-punish** (Rough Skin 1/8, Rocky Helmet 1/6 —
+exact) · **Knock Off** ×1.5 vs item-holder · **Skill Link** 5-hit · **Flame/Toxic
+Orb** self-status · **Sandstorm** chip + Rock ×1.5 SpD · **Guts** ×1.5 (ignores
+burn drop) · **Marvel Scale** ×1.5 Def · **burn** halves physical (catalogue #4
+confirmed within roll tolerance — the ±1 HP stage-order quirk does not shift the
+range) · the full multiplier layer (Choice Band/Specs, Life Orb, type items, Expert
+Belt, Tinted Lens, Muscle Band, Wise Glasses; Huge Power, Adaptability, Technician,
+Sheer Force, Tough Claws, Iron Fist, Strong Jaw, Mega Launcher, Reckless,
+Neuroforce, Thick Fat, Multiscale, Filter, Fur Coat, Ice Scales, Heatproof, Fluffy,
+Dry Skin; weather ×1.5/×0.5, Reflect/Light Screen, Electric/Grassy Terrain).
 
-**Bottom line:** across ~90 probes the engine matches Showdown *everywhere* except
+**Bottom line:** across ~100 probes the engine matches Showdown *everywhere* except
 the three findings above. The correctness floor is high — the gap was coverage and
 proof, not pervasive wrongness — which supports converging the in-house engine
 against the oracle rather than replacing it.
