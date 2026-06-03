@@ -55,13 +55,13 @@ const statusMove = (id, move, status, desc, target = SLOW_WALL(['Splash', 'Splas
 });
 
 export const SCENARIOS = [
-  // ══ Known bug class #1: self-target move "misses" while foe is semi-invuln ══
+  // ══ FIXED (was bug class #1): self-target move now applies vs a semi-invuln foe ══
   ...['Fly', 'Dig', 'Dive', 'Bounce', 'Phantom Force'].map((mv) => ({
     id: `seminvuln-selfboost-${mv.toLowerCase().replace(/\s+/g, '')}`,
     category: 'two-turn / semi-invulnerable',
     desc: `Booster uses Swords Dance while foe is mid-${mv}; the self-boost must still apply.`,
-    bug: 'catalogue #1 (battle.html:23087-23110, missing self-target guard)',
-    expect: 'diverge',
+    note: 'FIXED finding #1: the invuln check now skips self/field status moves (battle.html, mirrors the Protect guard).',
+    expect: 'match',
     team1: [FAST_BOOSTER(['Swords Dance', 'Quick Attack'])],
     team2: [SLOW_WALL([mv, 'Body Slam'])],
     choices1: threeTurns,
@@ -405,14 +405,13 @@ export const SCENARIOS = [
   {
     id: 'gravity-blocks-fly',
     category: 'two-turn / precondition',
-    desc: 'Under Gravity, Fly cannot be used; the in-house engine charges it anyway.',
-    bug: 'catalogue #2 (battle.html:22611-22667, no Gravity gate)',
+    desc: 'Under Gravity, Fly cannot be used — both engines now refuse it.',
     expect: 'probe',
     team1: [{ species: 'Sableye', ability: 'Prankster', moves: ['Gravity', 'Quick Attack'], nature: 'Jolly', evs: { spe: 252 } }],
     team2: [SLOW_WALL(['Fly', 'Body Slam'])],
     choices1: ['move 1', 'move 2', 'move 2'],
     choices2: ['move 1', 'move 1', 'move 1'],
-    note: 'Cross-engine choice handling differs (Showdown rejects Fly under Gravity → picks default); a legality bug like this needs a direct assertion test, not differential play.',
+    note: 'FIXED finding #3: in-house now refuses Gravity-banned moves (battle.html gravity gate). Differential play can\'t cleanly assert it (Showdown rejects the illegal choice and substitutes a default), so the engine-level block is covered by a direct test in engine-fixes.test.js.',
   },
   {
     id: 'probe-freeze-dry-vs-water',

@@ -35,12 +35,11 @@ for (const scn of SCENARIOS.filter(s => s.expect === 'match')) {
   });
 }
 
-// 2) Known-bug marker — the Fly self-target bug (catalogue #1).
-// PRE-FIX: the oracle must flag it. After the Stage 1 fix (add the
-// SELF_TARGETING_STATUS guard at battle.html:23087), change this to
-// `assert.equal(d.counts.high, 0, ...)` and set the scenario's expect to 'match'.
-test('oracle detects the Fly self-target bug (catalogue #1, pre-fix)', async () => {
+// 2) Fix proof — finding #1 (self-target move "misses" vs a semi-invuln foe).
+// Stage 1 added the SELF_TARGETING_STATUS guard to the invuln check (battle.html),
+// so Swords Dance now applies through the foe's Fly: the oracle sees no divergence.
+test('finding #1 fixed: self-target move applies through a semi-invuln foe', async () => {
   const scn = SCENARIOS.find(s => s.id === 'seminvuln-selfboost-fly');
   const d = await runScenario(scn);
-  assert.ok(d.counts.high > 0, 'expected the oracle to flag the Fly self-target divergence (it is unfixed)');
+  assert.equal(d.counts.high, 0, 'self-boost should apply through the foe\'s invulnerability (finding #1 fixed)');
 });

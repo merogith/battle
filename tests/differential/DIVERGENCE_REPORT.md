@@ -7,8 +7,8 @@
 > code changed — the harness only *observes* both engines and diffs them.
 
 ## Headline
-- **Known bugs confirmed by the oracle:** 5/5
-- **Sanity scenarios in agreement:** 14/14
+- **Known bugs confirmed by the oracle:** 0/0
+- **Sanity scenarios in agreement:** 19/19
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
 - **Probes flagging a divergence to investigate:** 1/45
 
@@ -26,11 +26,11 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 ## Summary
 | Scenario | Category | Expect | HIGH | med | low | Verdict |
 |---|---|---|---:|---:|---:|---|
-| `seminvuln-selfboost-fly` | two-turn / semi-invulnerable | diverge | 2 | 0 | 0 | ✅ bug caught |
-| `seminvuln-selfboost-dig` | two-turn / semi-invulnerable | diverge | 2 | 0 | 0 | ✅ bug caught |
-| `seminvuln-selfboost-dive` | two-turn / semi-invulnerable | diverge | 2 | 0 | 0 | ✅ bug caught |
-| `seminvuln-selfboost-bounce` | two-turn / semi-invulnerable | diverge | 2 | 0 | 2 | ✅ bug caught |
-| `seminvuln-selfboost-phantomforce` | two-turn / semi-invulnerable | diverge | 2 | 0 | 0 | ✅ bug caught |
+| `seminvuln-selfboost-fly` | two-turn / semi-invulnerable | match | 0 | 0 | 0 | ✅ agrees |
+| `seminvuln-selfboost-dig` | two-turn / semi-invulnerable | match | 0 | 0 | 0 | ✅ agrees |
+| `seminvuln-selfboost-dive` | two-turn / semi-invulnerable | match | 0 | 0 | 0 | ✅ agrees |
+| `seminvuln-selfboost-bounce` | two-turn / semi-invulnerable | match | 0 | 0 | 2 | ✅ agrees |
+| `seminvuln-selfboost-phantomforce` | two-turn / semi-invulnerable | match | 0 | 0 | 0 | ✅ agrees |
 | `seminvuln-gust-hits-fly` | two-turn / allow-list | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `seminvuln-twave-misses-fly` | two-turn / opponent-status | match | 0 | 0 | 0 | ✅ agrees |
 | `stat-growl-atk` | stat change | match | 0 | 0 | 0 | ✅ agrees |
@@ -86,69 +86,51 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
-| `gravity-blocks-fly` | two-turn / precondition | probe | 0 | 0 | 4 | 🔍 no divergence |
+| `gravity-blocks-fly` | two-turn / precondition | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `probe-freeze-dry-vs-water` | type-chart | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `probe-toxic-residual-ramp` | status / residual | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `probe-multi-hit-bullet-seed` | multi-hit | probe | 0 | 0 | 0 | 🔍 no divergence |
 
 ## Details
 
-### `seminvuln-selfboost-fly` — ✅ bug caught
+### `seminvuln-selfboost-fly` — ✅ agrees
 Booster uses Swords Dance while foe is mid-Fly; the self-boost must still apply.
 
-- **Maps to:** catalogue #1 (battle.html:23087-23110, missing self-target guard)
+- **Note:** FIXED finding #1: the invuln check now skips self/field status moves (battle.html, mirrors the Protect guard).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
 
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 2 | p1a | boost.atk | `4` | `2` | high |
-| 3 | p1a | boost.atk | `6` | `4` | high |
-
-### `seminvuln-selfboost-dig` — ✅ bug caught
+### `seminvuln-selfboost-dig` — ✅ agrees
 Booster uses Swords Dance while foe is mid-Dig; the self-boost must still apply.
 
-- **Maps to:** catalogue #1 (battle.html:23087-23110, missing self-target guard)
+- **Note:** FIXED finding #1: the invuln check now skips self/field status moves (battle.html, mirrors the Protect guard).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
 
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 2 | p1a | boost.atk | `4` | `2` | high |
-| 3 | p1a | boost.atk | `6` | `4` | high |
-
-### `seminvuln-selfboost-dive` — ✅ bug caught
+### `seminvuln-selfboost-dive` — ✅ agrees
 Booster uses Swords Dance while foe is mid-Dive; the self-boost must still apply.
 
-- **Maps to:** catalogue #1 (battle.html:23087-23110, missing self-target guard)
+- **Note:** FIXED finding #1: the invuln check now skips self/field status moves (battle.html, mirrors the Protect guard).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
+- No divergences.
 
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 2 | p1a | boost.atk | `4` | `2` | high |
-| 3 | p1a | boost.atk | `6` | `4` | high |
-
-### `seminvuln-selfboost-bounce` — ✅ bug caught
+### `seminvuln-selfboost-bounce` — ✅ agrees
 Booster uses Swords Dance while foe is mid-Bounce; the self-boost must still apply.
 
-- **Maps to:** catalogue #1 (battle.html:23087-23110, missing self-target guard)
+- **Note:** FIXED finding #1: the invuln check now skips self/field status moves (battle.html, mirrors the Protect guard).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
 
 | Turn | Mon | Field | Showdown | In-house | Conf |
 |---|---|---|---|---|---|
-| 2 | p1a | boost.atk | `4` | `2` | high |
 | 2 | p1a | hp/damage | `140/140 (dmg~0)` | `111/140 (dmg~29)` | low |
-| 3 | p1a | boost.atk | `6` | `4` | high |
 | 3 | p1a | hp/damage | `140/140 (dmg~0)` | `111/140 (dmg~29)` | low |
 
-### `seminvuln-selfboost-phantomforce` — ✅ bug caught
+### `seminvuln-selfboost-phantomforce` — ✅ agrees
 Booster uses Swords Dance while foe is mid-Phantom Force; the self-boost must still apply.
 
-- **Maps to:** catalogue #1 (battle.html:23087-23110, missing self-target guard)
+- **Note:** FIXED finding #1: the invuln check now skips self/field status moves (battle.html, mirrors the Protect guard).
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
-
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 2 | p1a | boost.atk | `4` | `2` | high |
-| 3 | p1a | boost.atk | `6` | `4` | high |
+- No divergences.
 
 ### `seminvuln-gust-hits-fly` — 🔍 no divergence
 Gust (in the allow-list) must hit — and double on — a foe mid-Fly.
@@ -497,18 +479,11 @@ A clearly super-effective hit must register comparable damage (and same faint ou
 - No divergences.
 
 ### `gravity-blocks-fly` — 🔍 no divergence
-Under Gravity, Fly cannot be used; the in-house engine charges it anyway.
+Under Gravity, Fly cannot be used — both engines now refuse it.
 
-- **Maps to:** catalogue #2 (battle.html:22611-22667, no Gravity gate)
-- **Note:** Cross-engine choice handling differs (Showdown rejects Fly under Gravity → picks default); a legality bug like this needs a direct assertion test, not differential play.
+- **Note:** FIXED finding #3: in-house now refuses Gravity-banned moves (battle.html gravity gate). Differential play can't cleanly assert it (Showdown rejects the illegal choice and substitutes a default), so the engine-level block is covered by a direct test in engine-fixes.test.js.
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 3
-
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 2 | p1a | hp/damage | `125/125 (dmg~0)` | `72/125 (dmg~53)` | low |
-| 2 | p2a | hp/damage | `249/267 (dmg~18)` | `267/267 (dmg~0)` | low |
-| 3 | p1a | hp/damage | `125/125 (dmg~0)` | `72/125 (dmg~53)` | low |
-| 3 | p2a | hp/damage | `230/267 (dmg~37)` | `248/267 (dmg~19)` | low |
+- No divergences.
 
 ### `probe-freeze-dry-vs-water` — 🔍 no divergence
 Freeze-Dry is Ice that hits Water super-effectively (×2). A normal Ice calc would resist it (×0.5).

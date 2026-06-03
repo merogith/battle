@@ -22608,6 +22608,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); await sleep(1000); return;
             }
 
+            // === GRAVITY: ground-defying moves cannot be used ===
+            // Under Gravity these moves fail outright (Fly/Bounce/Sky Drop can't even start
+            // their charge; Splash/Magnet Rise/Telekinesis/(Hi)Jump Kick/Flying Press fizzle).
+            const _gravityBanned = new Set(["Fly","Bounce","Sky Drop","Jump Kick","High Jump Kick","Splash","Magnet Rise","Telekinesis","Flying Press"]);
+            if (state.gravity > 0 && _gravityBanned.has(move.name)) {
+                logMsg(`${attacker.name} can't use ${move.name} because of gravity!`, 'info');
+                attacker.volatile.charging = null;
+                attacker.volatile.invulnerable = false;
+                updateUI(); await sleep(1000); return;
+            }
+
             // === TWO-TURN CHARGE MOVES ===
             const _forcedTwoTurn = new Set(["Solar Beam","Solar Blade","Fly","Bounce","Dig","Dive","Phantom Force","Shadow Force","Sky Drop","Skull Bash","Sky Attack","Meteor Beam","Geomancy","Razor Wind","Electro Shot","Freeze Shock","Ice Burn"]);
             if ((move.mathEff || '').includes('two_turn_charge') || _forcedTwoTurn.has(move.name)) {
@@ -23085,7 +23096,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === INVULNERABILITY CHECK (defender is hiding mid-charge) ===
-            if (defender.volatile.invulnerable) {
+            // Self-targeting status & field moves (Swords Dance, Trick Room, Stealth Rock…)
+            // don't target the hidden foe, so they ignore its invulnerability — same guard
+            // the Protect check uses below.
+            if (defender.volatile.invulnerable && (move.cat !== "Status" || !SELF_TARGETING_STATUS.has(move.name))) {
                 let chargingMove = defender.volatile.charging;
                 let canHitInvulnerable = false;
                 let _doubleVsInvuln = false;
@@ -24172,7 +24186,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Rivalry" && attacker.gender !== null && defender.gender !== null) {
                     modifier *= attacker.gender === defender.gender ? 1.25 : 0.75;
                 }
-                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts") modifier *= 0.5;
+                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts" && move.name !== "Facade") modifier *= 0.5;
                 if (attacker.ability === "Tinted Lens" && typeEff < 1 && typeEff > 0) modifier *= 2;
                 // Neuroforce: x1.25 when move is super effective
                 if (attacker.ability === "Neuroforce" && typeEff > 1) modifier *= 1.25;

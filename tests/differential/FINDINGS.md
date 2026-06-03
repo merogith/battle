@@ -23,18 +23,27 @@ Ice Scales, Heatproof, Fluffy, Dry Skin, Mold Breaker; weather, screens, terrain
 
 ## Real divergences from Showdown (candidate fixes)
 
-| # | Finding | Root cause | Location | Catchable by | Severity |
+Stage 1 status: **3 of 4 fixed** (oracle-verified, 0 regressions). #2 is open pending a
+design call (it touches the AI's Dynamax window).
+
+| # | Status | Finding | Root cause | Location | Severity |
 |---|---|---|---|---|---|
-| 1 | **Self-target / field moves "miss" vs a semi-invulnerable foe** (Fly/Dig/Dive/Bounce/Phantom Force/Shadow Force/Sky Drop) — the reported Fly bug | invuln check lacks the `move.cat !== "Status" \|\| !SELF_TARGETING_STATUS.has(name)` guard | `battle.html:23087-23110` | differential (boosts) | High |
-| 2 | **`turnCount` lags Showdown's `activeTurns` by one on turn 1** — `turnCount++` runs at END of turn (`battle.html:21682`) while Showdown increments at turn START. Two symptoms: (a) **Speed Boost** skips its end-of-T1 boost (in-house 0/1/2 vs Showdown 1/2/3); (b) **Stakeout** wrongly ×2 vs a turn-1 lead (in-house 2× Showdown on T1, equal on T2) | end-of-turn `turnCount++` timing vs the `turnCount===0` / `> 0` gates | `battle.html:28706` (Speed Boost), `:24149` (Stakeout) | differential (boosts + damage sweep) | Low–Med |
-| 3 | **Gravity does not restrict Gravity-incompatible moves** — Fly/Bounce/Splash/Jump Kick/Magnet Rise still work under Gravity (Fly charges & goes airborne; Splash executes) | two-turn / move-lock block has no `state.gravity` precondition | `battle.html:22611-22667` | differential (corroborated: a Gravity-locked Splash made Showdown Struggle; in-house Splashed) | Med |
-| 4 | **Facade does not bypass the burn Attack-drop** — a burned Facade nets ×2 (Facade) × ½ (burn) = ×1, i.e. **half** its real power (in-house burned≈unburned ratio ~1.0 vs Showdown ~2.0) | BP is doubled but the move isn't exempted from burn halving | `battle.html:23764` | differential (damage sweep) | Low–Med |
+| 1 | ✅ **FIXED** | **Self-target / field moves "miss" vs a semi-invulnerable foe** (Fly/Dig/Dive/Bounce/Phantom Force/Shadow Force/Sky Drop) — the reported Fly bug | invuln check lacked the `move.cat !== "Status" \|\| !SELF_TARGETING_STATUS.has(name)` guard — **added**, mirroring the Protect guard | `battle.html` invuln check (~23099) | High |
+| 2 | ⏳ **OPEN** | **`turnCount` lags Showdown's `activeTurns` by one on turn 1** — `turnCount++` runs at END of turn (`battle.html:21682`) while Showdown increments at turn START. Two symptoms: (a) **Speed Boost** skips its end-of-T1 boost (in-house 0/1/2 vs Showdown 1/2/3); (b) **Stakeout** wrongly ×2 vs a turn-1 lead (in-house 2× Showdown on T1, equal on T2) | end-of-turn `turnCount++` timing vs the `turnCount===0` / `> 0` gates | `battle.html:28706` (Speed Boost), `:24149` (Stakeout) | Low–Med |
+| 3 | ✅ **FIXED** | **Gravity did not restrict Gravity-incompatible moves** — Fly/Bounce/Splash/Jump Kick/Magnet Rise worked under Gravity | move-resolution had no `state.gravity` precondition — **added** a Gravity-banned set that fails the move before charge | `battle.html` (Gravity gate before the two-turn block) | Med |
+| 4 | ✅ **FIXED** | **Facade did not bypass the burn Attack-drop** — a burned Facade netted ×2 (Facade) × ½ (burn) = ×1, half its real power | burn-halving wasn't exempted for Facade — **added** `&& move.name !== "Facade"` | `battle.html` burn-halving line (~24186) | Low–Med |
 
 Findings #1 and #3 are the original hand-audit catalogue (#1, #2). **Finding #2
 (the `turnCount` timing) is new — surfaced by the oracle, not the hand audit; the
 Stakeout symptom was found in the order/timing round and confirms the root cause.**
-Finding #3 was thought to need a bespoke legality test; the oracle corroborates it
-directly.
+Finding #3 was thought to need a bespoke legality test; the oracle corroborated it
+and a direct test (`engine-fixes.test.js`) now locks the fix in.
+
+**Fix verification:** #1 — the 5 `seminvuln-selfboost-*` scenarios flipped `diverge→match`
+and the fix-proof marker in `oracle.test.js` asserts 0 divergence. #3 & #4 — direct
+in-house assertions in `engine-fixes.test.js` (differential play can't cleanly assert a
+move-legality fix, since Showdown substitutes a default for the illegal choice). All with
+**sanity 14/14, 0 false positives** unchanged.
 
 ## Confirmed CORRECT (broad agreement with Showdown — do not re-investigate)
 Damage formula & flooring · STAB · type chart incl. **Freeze-Dry vs Water** ·
@@ -90,16 +99,27 @@ of findings — verify the harness before blaming the engine.)
    **min-skew** check: over many seeds each engine's *minimum* is a no-crit low roll,
    so a >1.2× min-skew now flags a real multiplier gap regardless of crits
    (`damage-sweep.mjs`).
-5. **Input-layer move-locks not exercisable.** The harness drives turns with an
-   explicit move slot (`playTurn(slot)`), which bypasses the input layer that
-   auto-submits a forced action when a mon is locked. So **recharge** (Hyper Beam),
-   **Outrage/Thrash** lock, **Encore**, **Disable**, **Choice-lock** and **Sky Drop**
-   can't be tested here — the engine DOES set the lock (verified `volatile.recharge=true`
-   after Hyper Beam; enforcement at `battle.html:19430-19441`); only the forced-move
-   harness path skips it. Those scenarios were not added / were withdrawn.
+5. **Move-order probe counts the announce line, not the resolution (recharge
+   re-checked).** A `checkOrder` probe flagged Hyper Beam's recharge turn as a
+   divergence. On investigation this was **neither a bug nor an input-layer artifact**:
+   recharge *is* enforced in the engine move path (`battle.html:22605`), and it fires
+   headlessly — the T2 trace is `"Tauros used Hyper Beam! | Tauros must recharge!"` with
+   **no damage dealt**. The probe was fooled because `"X used <move>!"` is logged *before*
+   the recharge guard, so the order parser counted a mover that then fizzled. Takeaway:
+   the `order` field counts move *announcements*; for moves that can fizzle after the
+   announce (recharge, full-paralysis, flinch) it over-counts. The kept order scenarios
+   (priority / Trick Room / Gale Wings / Triage) all resolve normally, so they're
+   unaffected; the recharge scenario was withdrawn.
 
-## Next step (not yet done — awaiting direction)
-Stage 1 fixes, each oracle-verified before commit: the self-target guard (#1), the
-`turnCount` timing (#2 — fixes Speed Boost AND Stakeout), the Gravity move-restriction
-(#3), and the Facade burn-exemption (#4). When a fix lands, flip the corresponding
-scenario's `expect`/`expectDiverge` to agrees and update `oracle.test.js`.
+## Next step
+**#1, #3, #4 are fixed and committed** (oracle-verified, CI-guarded). Remaining: **#2**
+(the `turnCount` timing — Speed Boost + Stakeout). It's the only AI-adjacent one (its
+sole other reader, `isFreshMatchup`, gates the AI's Dynamax decision), so it needs a
+design call rather than a quiet edit. Options:
+- **Targeted flag (recommended):** an "active-at-turn-start" marker used *only* by
+  Speed Boost + Stakeout, leaving `turnCount`/`isFreshMatchup` untouched. Fixes both
+  symptoms with no AI side effect; needs careful plumbing across lead/switch/faint
+  entry paths + a switch-aware differential test to lock it down.
+- **Global increment move:** shift `turnCount++` to turn start. Simplest, but also
+  shifts the AI's Dynamax "fresh matchup" window 2→1 turn (a balance change).
+- **Defer:** leave Stakeout marked as a known divergence for now.

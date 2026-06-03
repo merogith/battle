@@ -151,10 +151,9 @@ const DAMAGE_SCENARIOS = [
   { id: 'multihit-skill-link', desc: 'Skill Link → 5-hit multi-hit move (always max hits)', attacker: { species: 'Cloyster', ability: 'Skill Link', nature: 'Adamant', evs: { atk: 252 } }, move: 'Icicle Spear', defender: WALL_PHYS_HP },
 
   // ── variable base-power moves ──
-  // KNOWN DIVERGENCE (finding #4): Facade doubles BP (battle.html:23764) but the burn
-  // Attack-drop is NOT exempted, so a burned Facade nets ×2×0.5 = ×1 — half its real
-  // power. Verified: in-house burned≈unburned (ratio ~1.0) vs Showdown ~2.0.
-  { id: 'facade-status', desc: 'Facade burned deals HALF (burn drop not exempted) — finding #4', expectDiverge: true, attacker: { species: 'Snorlax', ability: 'Limber', item: 'Flame Orb', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Facade', 'Splash'], choices1: setupAtk, defender: WALL_PHYS_HP },
+  // FIXED (finding #4): Facade is now exempt from the burn Attack-drop (battle.html
+  // burn-halving line), so a burned Facade keeps its ×2 — ranges now overlap Showdown.
+  { id: 'facade-status', desc: 'Facade burned keeps ×2 (burn drop exempted) — finding #4 FIXED', attacker: { species: 'Snorlax', ability: 'Limber', item: 'Flame Orb', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Facade', 'Splash'], choices1: setupAtk, defender: WALL_PHYS_HP },
   { id: 'hex-status', desc: 'Hex ×2 vs a statused target (paralysed first)', attacker: { species: 'Gengar', ability: 'Levitate', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Hex', 'Thunder Wave'], choices1: setupAtk, defender: { species: 'Milotic', ability: 'Marvel Scale', nature: 'Calm', evs: { hp: 252, spd: 252 } }, defenderMoves: ['Splash', 'Splash'], choices2: ['move 1', 'move 1'] },
   { id: 'acrobatics-no-item', desc: 'Acrobatics ×2 when the user holds no item', attacker: { species: 'Staraptor', ability: 'Keen Eye', nature: 'Adamant', evs: { atk: 252 } }, move: 'Acrobatics', defender: WALL_PHYS_HP },
   { id: 'gyro-ball-slow', desc: 'Gyro Ball BP scales with the speed ratio (slow user)', attacker: { species: 'Ferrothorn', ability: 'Iron Barbs', nature: 'Brave', evs: { atk: 252 }, ivs: { spe: 0 } }, move: 'Gyro Ball', defender: WALL_PHYS_HP },
