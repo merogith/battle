@@ -21441,6 +21441,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Reset per-turn move tracking (used by Zoom Lens / Analytic)
                 if (state.pActive) state.pActive.volatile.movedThisTurn = false;
                 if (state.fActive) state.fActive.volatile.movedThisTurn = false;
+                // Snapshot who is on the field at the START of this turn, before any
+                // switch resolves. Speed Boost (end-of-turn) and Stakeout (vs a target
+                // that just entered) key off this so a LEAD counts on turn 1 but a
+                // mid-turn switch-in does not — matching Showdown's activeTurns. Replaces
+                // the off-by-one turnCount===0 / >0 gates (finding #2); turnCount itself
+                // is untouched (still drives the AI's isFreshMatchup / Dynamax window).
+                state._turnStartActives = [state.pActive, state.fActive].filter(Boolean);
                 // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
                 if (state.turnNumber > 200) {
                     logMsg(`Turn limit reached! The battle ends in a draw.`, 'info');
@@ -22675,6 +22682,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); await sleep(1000); return;
             }
 
+            // === GRAVITY: ground-defying moves cannot be used ===
+            // Under Gravity these moves fail outright (Fly/Bounce/Sky Drop can't even start
+            // their charge; Splash/Magnet Rise/Telekinesis/(Hi)Jump Kick/Flying Press fizzle).
+            const _gravityBanned = new Set(["Fly","Bounce","Sky Drop","Jump Kick","High Jump Kick","Splash","Magnet Rise","Telekinesis","Flying Press"]);
+            if (state.gravity > 0 && _gravityBanned.has(move.name)) {
+                logMsg(`${attacker.name} can't use ${move.name} because of gravity!`, 'info');
+                attacker.volatile.charging = null;
+                attacker.volatile.invulnerable = false;
+                updateUI(); await sleep(1000); return;
+            }
+
             // === TWO-TURN CHARGE MOVES ===
             const _forcedTwoTurn = new Set(["Solar Beam","Solar Blade","Fly","Bounce","Dig","Dive","Phantom Force","Shadow Force","Sky Drop","Skull Bash","Sky Attack","Meteor Beam","Geomancy","Razor Wind","Electro Shot","Freeze Shock","Ice Burn"]);
             if ((move.mathEff || '').includes('two_turn_charge') || _forcedTwoTurn.has(move.name)) {
@@ -23152,7 +23170,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === INVULNERABILITY CHECK (defender is hiding mid-charge) ===
-            if (defender.volatile.invulnerable) {
+            // Self-targeting status & field moves (Swords Dance, Trick Room, Stealth Rock…)
+            // don't target the hidden foe, so they ignore its invulnerability — same guard
+            // the Protect check uses below.
+            if (defender.volatile.invulnerable && (move.cat !== "Status" || !SELF_TARGETING_STATUS.has(move.name))) {
                 let chargingMove = defender.volatile.charging;
                 let canHitInvulnerable = false;
                 let _doubleVsInvuln = false;
@@ -24213,7 +24234,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Dry Skin: Fire moves deal 25% more to Dry Skin users
                 if (defender.ability === "Dry Skin" && move.type === "Fire") basePower = Math.floor(basePower * 1.25);
                 // Stakeout: 2x power vs freshly switched-in target
-                if (attacker.ability === "Stakeout" && defender.turnCount === 0) basePower = Math.floor(basePower * 2);
+                if (attacker.ability === "Stakeout" && !(Array.isArray(state._turnStartActives) && state._turnStartActives.includes(defender))) basePower = Math.floor(basePower * 2);
                 // Minimize: double damage from certain moves
                 const _minimizeMoves = new Set(["Stomp","Body Slam","Heavy Slam","Heat Crash","Dragon Rush","Steamroller","Phantom Force","Shadow Force","Flying Press"]);
                 if (defender.volatile.minimized && _minimizeMoves.has(move.name)) basePower = Math.floor(basePower * 2);
@@ -24239,7 +24260,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Rivalry" && attacker.gender !== null && defender.gender !== null) {
                     modifier *= attacker.gender === defender.gender ? 1.25 : 0.75;
                 }
-                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts") modifier *= 0.5;
+                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts" && move.name !== "Facade") modifier *= 0.5;
                 if (attacker.ability === "Tinted Lens" && typeEff < 1 && typeEff > 0) modifier *= 2;
                 // Neuroforce: x1.25 when move is super effective
                 if (attacker.ability === "Neuroforce" && typeEff > 1) modifier *= 1.25;
@@ -28769,8 +28790,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.obstruct = false;
             mon.volatile.burningBulwark = false;
 
-            // Speed Boost: +1 Speed stage per turn (after first turn)
-            if (mon.ability === "Speed Boost" && mon.turnCount > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
+            // Speed Boost: +1 Speed stage at the end of each turn the mon was on the
+            // field at turn start (a lead counts on turn 1; a mid-turn switch-in doesn't).
+            if (mon.ability === "Speed Boost" && Array.isArray(state._turnStartActives) && state._turnStartActives.includes(mon) && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                 changeStage(mon, 'spe', 1);
             }
             // Slow Start: decrement counter; clear when it reaches 0
