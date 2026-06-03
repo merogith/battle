@@ -1,12 +1,12 @@
 # Damage-Modifier Sweep Report
 
-> Generated 2026-06-02 by `tests/differential/damage-sweep.mjs` (12 seeds/engine).
+> Generated 2026-06-03 by `tests/differential/damage-sweep.mjs` (12 seeds/engine).
 > Each row runs one attacker+move into a passive wall in BOTH engines across many
 > seeds, then compares the damage **ranges**. Overlapping ranges = the multiplier
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
 > (roll variance removed). Reference: @pkmn/sim (MIT).
 
-**Divergences found: 0/19**
+**Divergences found: 0/37**
 
 | Probe | What it checks | In-house [min–max] | Showdown [min–max] | Verdict |
 |---|---|---|---|---|
@@ -29,6 +29,24 @@
 | `ability-moldbreaker-vs-thickfat` | Mold Breaker ignores Thick Fat (full Fire damage) | 24–57 (μ31) | 24–39 (μ27) | ✅ overlap |
 | `terrain-electric` | Electric Terrain ×1.3 on Electric | 52–59 (μ56) | 52–85 (μ59) | ✅ overlap |
 | `terrain-grassy` | Grassy Terrain ×1.3 on Grass | 41–53 (μ47) | 42–84 (μ50) | ✅ overlap |
+| `ability-sheer-force` | Sheer Force ×1.3 (move with a secondary) | 50–56 (μ53) | 49–82 (μ56) | ✅ overlap |
+| `ability-tough-claws` | Tough Claws ×1.3 (contact) | 59–69 (μ64) | 59–97 (μ66) | ✅ overlap |
+| `ability-iron-fist` | Iron Fist ×1.2 (punch) | 199–326 (μ237) | 196–325 (μ221) | ✅ overlap |
+| `ability-strong-jaw` | Strong Jaw ×1.5 (bite) | 101–118 (μ111) | 100–168 (μ114) | ✅ overlap |
+| `ability-mega-launcher` | Mega Launcher ×1.5 (pulse) | 43–50 (μ47) | 43–71 (μ48) | ✅ overlap |
+| `ability-reckless` | Reckless ×1.2 (recoil move) | 121–142 (μ132) | 121–201 (μ137) | ✅ overlap |
+| `ability-neuroforce` | Neuroforce ×1.25 (super-effective) | 74–111 (μ82) | 72–87 (μ79) | ✅ overlap |
+| `def-filter-se` | Filter ×0.75 on super-effective (defender) | 76–90 (μ83) | 76–127 (μ86) | ✅ overlap |
+| `def-fur-coat` | Fur Coat halves physical (defender) | 31–36 (μ34) | 33–54 (μ37) | ✅ overlap |
+| `def-ice-scales` | Ice Scales halves special (defender) | 30–35 (μ33) | 30–49 (μ34) | ✅ overlap |
+| `def-heatproof` | Heatproof halves Fire (defender) | 27–53 (μ32) | 27–43 (μ30) | ✅ overlap |
+| `def-fluffy-contact` | Fluffy halves contact (defender) | 31–36 (μ34) | 32–51 (μ36) | ✅ overlap |
+| `def-dry-skin-fire` | Dry Skin ×1.25 Fire taken (defender) | 67–129 (μ80) | 64–108 (μ73) | ✅ overlap |
+| `item-muscle-band` | Muscle Band ×1.1 (physical) | 70–80 (μ74) | 70–114 (μ79) | ✅ overlap |
+| `item-wise-glasses` | Wise Glasses ×1.1 (special) | 58–67 (μ63) | 57–94 (μ64) | ✅ overlap |
+| `item-occa-berry-se` | Occa Berry halves a super-effective Fire hit (defender) | 51–60 (μ55) | 51–85 (μ58) | ✅ overlap |
+| `recoil-brave-bird` | Brave Bird recoil = 33% of damage dealt (attacker) | 119–119 (μ119) | 119–119 (μ119) | ✅ overlap |
+| `recoil-life-orb` | Life Orb recoil = 10% max HP (attacker) | 13–13 (μ13) | 13–13 (μ13) | ✅ overlap |
 
 Ranges are HP damage to the defender. A correct multiplier yields overlapping
 bands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in

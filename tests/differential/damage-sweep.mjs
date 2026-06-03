@@ -25,42 +25,52 @@ const SEEDS_SD = Array.from({ length: N }, (_, i) => [i + 1, (i * 7 + 3) & 255, 
 const WALL_SPEC = { species: 'Blissey', ability: 'Natural Cure', nature: 'Calm', evs: { hp: 252, spd: 252 } };
 const WALL_PHYS = { species: 'Aggron', ability: 'Heavy Metal', nature: 'Impish', evs: { hp: 252, def: 252 } };
 const WALL_BULKY = { species: 'Slowbro', ability: 'Regenerator', nature: 'Bold', evs: { hp: 252, def: 252 } };
+// Big-HP + real-Def sponge for STRONG physical attackers (Blissey's paper Def gets OHKO'd).
+const WALL_PHYS_HP = { species: 'Snorlax', ability: 'Immunity', nature: 'Impish', evs: { hp: 252, def: 252 } };
 // attacker uses test move on turn 2, after a setup move on turn 1
 const setupAtk = ['move 2', 'move 1'];
 const setupDef = ['move 1', 'move 2'];
 
 // Run `move` into a passive `defender` (optionally after a setup turn) and return
-// total damage to the defender over the seed sweep. Setup moves (weather/screens)
-// don't damage the defender, so total HP lost = the test move's damage.
+// the HP-change RANGE over the seed sweep. Default measures damage to the defender;
+// `measure:'attacker'` measures net HP the attacker LOST (recoil / Life-Orb chip)
+// for probing recoil and drain. Setup moves don't damage the defender.
 async function sweep(scn) {
   const aMoves = scn.attackerMoves || [scn.move, 'Splash'];
   const dMoves = scn.defenderMoves || ['Splash', 'Splash'];
   const c1 = scn.choices1 || ['move 1'];
   const c2 = scn.choices2 || ['move 1'];
+  const who = scn.measure === 'attacker' ? 'p1a' : 'p2a';
   const ih = { min: Infinity, max: 0, sum: 0, ko: false };
   const sd = { min: Infinity, max: 0, sum: 0, ko: false };
+  const tally = (acc, last) => {
+    const d = (last?.maxhp || 0) - (last?.hp || 0);
+    if ((last?.hp | 0) <= 0) acc.ko = true;
+    acc.min = Math.min(acc.min, d); acc.max = Math.max(acc.max, d); acc.sum += d;
+  };
   for (const seed of SEEDS_IH) {
     const r = await runInhouseBattle({ team1: [{ ...scn.attacker, moves: aMoves }], team2: [{ ...scn.defender, moves: dMoves }], choices1: c1, choices2: c2, seed });
-    const last = r.turns[r.turns.length - 1]?.end?.p2a;
-    const d = (last?.maxhp || 0) - (last?.hp || 0);
-    if ((last?.hp | 0) <= 0) ih.ko = true;
-    ih.min = Math.min(ih.min, d); ih.max = Math.max(ih.max, d); ih.sum += d;
+    tally(ih, r.turns[r.turns.length - 1]?.end?.[who]);
   }
   for (const seed of SEEDS_SD) {
     const r = await runShowdownBattle({ team1: [{ ...scn.attacker, moves: aMoves }], team2: [{ ...scn.defender, moves: dMoves }], choices1: c1, choices2: c2, seed });
-    // Measure damage the SAME way as in-house — net end-of-turn HP drop — so that
-    // end-of-turn field effects on the defender (e.g. Grassy Terrain healing it)
-    // are accounted for identically in both engines and don't masquerade as a
-    // damage divergence. Setup moves don't damage the defender.
-    const last = r.turns[r.turns.length - 1]?.end?.p2a;
-    const d = (last?.maxhp || 0) - (last?.hp || 0);
-    if ((last?.hp | 0) <= 0) sd.ko = true;
-    sd.min = Math.min(sd.min, d); sd.max = Math.max(sd.max, d); sd.sum += d;
+    // Measure the SAME way as in-house — net end-of-turn HP drop — so end-of-turn
+    // field effects (e.g. Grassy Terrain healing the defender) are accounted for
+    // identically in both engines and don't masquerade as a damage divergence.
+    tally(sd, r.turns[r.turns.length - 1]?.end?.[who]);
   }
   ih.mean = ih.sum / N; sd.mean = sd.sum / N;
   const overlap = ih.min <= sd.max && sd.min <= ih.max;
-  const invalid = ih.ko || sd.ko; // a faint caps measured damage → range invalid
-  return { ih, sd, overlap, invalid, flag: !overlap && !invalid };
+  // Crit-proof cross-check. Over many seeds each engine's MINIMUM is a no-crit low
+  // roll, so two correct engines have near-equal minima. A large min-skew flags a
+  // real multiplier gap even when an occasional crit inflates one engine's MAX
+  // enough to overlap — which otherwise masked a missing ×1.5 (e.g. the Eviolite
+  // probe: ih.min 63 vs sd.min 42 "overlapped" only via Showdown's crit max).
+  const loMin = Math.min(ih.min, sd.min), hiMin = Math.max(ih.min, sd.min);
+  const minSkew = loMin > 0 ? hiMin / loMin : 1;
+  const minDiverge = (hiMin - loMin) > 4 && minSkew > 1.20;
+  const invalid = ih.ko || sd.ko; // a faint of the measured mon caps its range → invalid
+  return { ih, sd, overlap, minSkew, minDiverge, invalid, flag: !invalid && (!overlap || minDiverge) };
 }
 
 const DAMAGE_SCENARIOS = [
@@ -91,6 +101,36 @@ const DAMAGE_SCENARIOS = [
   // ── terrain (grounded attacker sets it turn 1, attacks turn 2) ──
   { id: 'terrain-electric', desc: 'Electric Terrain ×1.3 on Electric', attacker: { species: 'Raichu', ability: 'Static', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Thunderbolt', 'Electric Terrain'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
   { id: 'terrain-grassy', desc: 'Grassy Terrain ×1.3 on Grass', attacker: { species: 'Roserade', ability: 'Natural Cure', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Energy Ball', 'Grassy Terrain'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
+
+  // ── offensive ability multipliers (attacker has the ability; moves neutral vs Blissey) ──
+  { id: 'ability-sheer-force', desc: 'Sheer Force ×1.3 (move with a secondary)', attacker: { species: 'Nidoking', ability: 'Sheer Force', nature: 'Modest', evs: { spa: 252 } }, move: 'Earth Power', defender: WALL_SPEC },
+  { id: 'ability-tough-claws', desc: 'Tough Claws ×1.3 (contact)', attacker: { species: 'Crawdaunt', ability: 'Tough Claws', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: WALL_PHYS_HP },
+  { id: 'ability-iron-fist', desc: 'Iron Fist ×1.2 (punch)', attacker: { species: 'Hitmonchan', ability: 'Iron Fist', nature: 'Adamant', evs: { atk: 252 } }, move: 'Thunder Punch', defender: WALL_SPEC },
+  { id: 'ability-strong-jaw', desc: 'Strong Jaw ×1.5 (bite)', attacker: { species: 'Sharpedo', ability: 'Strong Jaw', nature: 'Adamant', evs: { atk: 252 } }, move: 'Crunch', defender: WALL_PHYS_HP },
+  { id: 'ability-mega-launcher', desc: 'Mega Launcher ×1.5 (pulse)', attacker: { species: 'Clawitzer', ability: 'Mega Launcher', nature: 'Modest', evs: { spa: 252 } }, move: 'Dark Pulse', defender: WALL_SPEC },
+  { id: 'ability-reckless', desc: 'Reckless ×1.2 (recoil move)', attacker: { species: 'Staraptor', ability: 'Reckless', nature: 'Adamant', evs: { atk: 252 } }, move: 'Brave Bird', defender: WALL_PHYS_HP },
+  { id: 'ability-neuroforce', desc: 'Neuroforce ×1.25 (super-effective)', attacker: { species: 'Necrozma', ability: 'Neuroforce', nature: 'Modest', evs: { spa: 252 } }, move: 'Aura Sphere', defender: WALL_SPEC },
+
+  // ── defensive ability multipliers (defender has the ability; moves neutral vs Snorlax) ──
+  { id: 'def-filter-se', desc: 'Filter ×0.75 on super-effective (defender)', attacker: { species: 'Charizard', ability: 'Blaze', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Bronzong', ability: 'Filter', nature: 'Sassy', evs: { hp: 252, spd: 252 } } },
+  { id: 'def-fur-coat', desc: 'Fur Coat halves physical (defender)', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: { species: 'Snorlax', ability: 'Fur Coat', nature: 'Impish', evs: { hp: 252, def: 252 } } },
+  { id: 'def-ice-scales', desc: 'Ice Scales halves special (defender)', attacker: { species: 'Alakazam', ability: 'Synchronize', nature: 'Modest', evs: { spa: 252 } }, move: 'Psychic', defender: { species: 'Snorlax', ability: 'Ice Scales', nature: 'Calm', evs: { hp: 252, spd: 252 } } },
+  { id: 'def-heatproof', desc: 'Heatproof halves Fire (defender)', attacker: { species: 'Charizard', ability: 'Blaze', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Snorlax', ability: 'Heatproof', nature: 'Calm', evs: { hp: 252, spd: 252 } } },
+  { id: 'def-fluffy-contact', desc: 'Fluffy halves contact (defender)', attacker: { species: 'Snorlax', ability: 'Thick Fat', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: { species: 'Snorlax', ability: 'Fluffy', nature: 'Impish', evs: { hp: 252, def: 252 } } },
+  { id: 'def-dry-skin-fire', desc: 'Dry Skin ×1.25 Fire taken (defender)', attacker: { species: 'Charizard', ability: 'Blaze', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Snorlax', ability: 'Dry Skin', nature: 'Calm', evs: { hp: 252, spd: 252 } } },
+
+  // ── item multipliers ──
+  { id: 'item-muscle-band', desc: 'Muscle Band ×1.1 (physical)', attacker: { species: 'Snorlax', ability: 'Thick Fat', item: 'Muscle Band', nature: 'Adamant', evs: { atk: 252 } }, move: 'Strength', defender: WALL_PHYS_HP },
+  { id: 'item-wise-glasses', desc: 'Wise Glasses ×1.1 (special)', attacker: { species: 'Alakazam', ability: 'Synchronize', item: 'Wise Glasses', nature: 'Modest', evs: { spa: 252 } }, move: 'Psychic', defender: WALL_SPEC },
+  // NOTE: Eviolite (×1.5 def/spd on NFE) is NOT testable headlessly — the engine's
+  // NFE check (battle.html:23592) reads getPssDex().species.get(name).evos, and the
+  // jsdom harness stubs @pkmn/dex (load-engine.js:167-185, CDN blocked), so evos is
+  // always empty → Eviolite no-ops in the harness only (works in the real browser).
+  { id: 'item-occa-berry-se', desc: 'Occa Berry halves a super-effective Fire hit (defender)', attacker: { species: 'Charizard', ability: 'Blaze', nature: 'Modest', evs: { spa: 252 } }, move: 'Flamethrower', defender: { species: 'Bronzong', ability: 'Levitate', item: 'Occa Berry', nature: 'Sassy', evs: { hp: 252, spd: 252 } } },
+
+  // ── recoil (measure the ATTACKER's self-inflicted HP loss) ──
+  { id: 'recoil-brave-bird', desc: 'Brave Bird recoil = 33% of damage dealt (attacker)', measure: 'attacker', attacker: { species: 'Staraptor', ability: 'Keen Eye', nature: 'Adamant', evs: { atk: 252 } }, move: 'Brave Bird', defender: WALL_SPEC },
+  { id: 'recoil-life-orb', desc: 'Life Orb recoil = 10% max HP (attacker)', measure: 'attacker', attacker: { species: 'Alakazam', ability: 'Synchronize', item: 'Life Orb', nature: 'Modest', evs: { spa: 252 } }, move: 'Psychic', defender: WALL_SPEC },
 ];
 
 async function main() {

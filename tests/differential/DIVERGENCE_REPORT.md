@@ -1,6 +1,6 @@
 # Differential Divergence Report
 
-> Generated 2026-06-02 by `tests/differential/run-report.mjs`.
+> Generated 2026-06-03 by `tests/differential/run-report.mjs`.
 > Reference: **@pkmn/sim** (MIT, the auto-synced Pokémon Showdown simulator) ·
 > Subject: the in-house engine in `battle.html` (driven headless via the jsdom harness).
 > This is **Stage 0** of the oracle-led plan (`docs/BATTLE_ENGINE_INVESTIGATION.md`): no game
@@ -10,7 +10,7 @@
 - **Known bugs confirmed by the oracle:** 5/5
 - **Sanity scenarios in agreement:** 14/14
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 1/31
+- **Probes flagging a divergence to investigate:** 1/35
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
@@ -69,6 +69,10 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `speed-boost-ramp` | ability / end-of-turn | probe | 3 | 0 | 0 | 🔍 divergence (investigate) |
 | `switchin-intimidate` | switch-in ability | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `hazard-stealth-rock-entry` | entry hazard | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `prankster-vs-dark` | ability / priority | probe | 0 | 1 | 0 | 🔍 no divergence |
+| `psychic-terrain-blocks-priority` | terrain / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `gravity-grounds-flying` | field / immunity | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `weakness-policy-se` | item / boost | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
@@ -374,6 +378,34 @@ Switching in an Intimidate Pokémon lowers the foe Attack by 1.
 A Pokémon switched into Stealth Rock takes 1/8 max HP × type effectiveness (×4 vs Fire/Flying = 50%).
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `prankster-vs-dark` — 🔍 no divergence
+A Prankster-boosted status move fails against a Dark-type (no paralysis).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+
+| Turn | Mon | Field | Showdown | In-house | Conf |
+|---|---|---|---|---|---|
+| 1 | p2a | status | `(none)` | `par` | medium |
+
+### `psychic-terrain-blocks-priority` — 🔍 no divergence
+Psychic Terrain blocks a priority move aimed at a grounded target (0 damage).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `gravity-grounds-flying` — 🔍 no divergence
+Gravity grounds a Flying-type so Earthquake hits it (damage, not 0). Foe uses Defense Curl, not Splash, because Gravity disables Splash in Showdown (see note below).
+
+- **Note:** Gravity GROUNDING works in both engines (EQ hits Pidgeot). Separately, the trace showed in-house does NOT disable Gravity-incompatible moves (Splash/Fly/Bounce/Jump Kick/Magnet Rise) — Showdown made the foe Struggle when its only move (Splash) was Gravity-locked. That corroborates catalogue finding #3 (Gravity does not restrict Fly).
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `weakness-policy-se` — 🔍 no divergence
+Weakness Policy raises the holder Atk & SpA by 2 after a super-effective hit.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
 - No divergences.
 
 ### `sanity-swords-dance-normal` — ✅ agrees

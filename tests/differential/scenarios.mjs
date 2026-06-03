@@ -229,6 +229,45 @@ export const SCENARIOS = [
     choices2: ['move 1', 'move 1'],
   },
 
+  // ══ Priority / terrain / field interactions — PROBE ══
+  {
+    id: 'prankster-vs-dark',
+    category: 'ability / priority',
+    desc: 'A Prankster-boosted status move fails against a Dark-type (no paralysis).',
+    expect: 'probe',
+    team1: [{ species: 'Sableye', ability: 'Prankster', moves: ['Thunder Wave', 'Splash'], nature: 'Calm', evs: { hp: 252 } }],
+    team2: [passive('Umbreon', 'Inner Focus')],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'psychic-terrain-blocks-priority',
+    category: 'terrain / priority',
+    desc: 'Psychic Terrain blocks a priority move aimed at a grounded target (0 damage).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Lucario', ability: 'Inner Focus', moves: ['Quick Attack', 'Psychic Terrain'], nature: 'Jolly', evs: { atk: 252, spe: 252 } }],
+    team2: [passive('Snorlax', 'Immunity')],
+    choices1: ['move 2', 'move 1'], choices2: ['move 1', 'move 1'],
+  },
+  {
+    id: 'gravity-grounds-flying',
+    category: 'field / immunity',
+    desc: 'Gravity grounds a Flying-type so Earthquake hits it (damage, not 0). Foe uses Defense Curl, not Splash, because Gravity disables Splash in Showdown (see note below).',
+    note: 'Gravity GROUNDING works in both engines (EQ hits Pidgeot). Separately, the trace showed in-house does NOT disable Gravity-incompatible moves (Splash/Fly/Bounce/Jump Kick/Magnet Rise) — Showdown made the foe Struggle when its only move (Splash) was Gravity-locked. That corroborates catalogue finding #3 (Gravity does not restrict Fly).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Rhyperior', ability: 'Solid Rock', moves: ['Earthquake', 'Gravity'], nature: 'Adamant', evs: { atk: 252 } }],
+    team2: [{ species: 'Pidgeot', ability: 'Keen Eye', moves: ['Defense Curl', 'Defense Curl'], nature: 'Hardy' }],
+    choices1: ['move 2', 'move 1'], choices2: ['move 1', 'move 1'],
+  },
+  {
+    id: 'weakness-policy-se',
+    category: 'item / boost',
+    desc: 'Weakness Policy raises the holder Atk & SpA by 2 after a super-effective hit.',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Charizard', ability: 'Blaze', moves: ['Flamethrower', 'Splash'], nature: 'Modest', evs: { spa: 252 } }],
+    team2: [{ species: 'Bronzong', ability: 'Levitate', item: 'Weakness Policy', moves: ['Splash', 'Splash'], nature: 'Sassy', evs: { hp: 252, spd: 252 } }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+
   // ══ Sanity / regression (must MATCH) ══
   {
     id: 'sanity-swords-dance-normal',
