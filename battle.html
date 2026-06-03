@@ -10585,6 +10585,10 @@
                     if (s.changesFrom) bsRow.changesFrom = s.changesFrom;
                     if (s.prevo) bsRow.prevo = s.prevo;
                     if (s.evos && s.evos.length) bsRow.evos = [...s.evos];
+                    // Dex-independent legendary/mythical/UB/paradox flag (from species.json
+                    // tags) so getMonGrade keeps the G1 tier legendary-only even before
+                    // @pkmn/dex loads or when it is stubbed (tests). See _computeMonGrade.
+                    if (speciesDexIsLegendaryTier(s)) bsRow.legendary = true;
                     baseStats[s.name] = bsRow;
                 }
 
@@ -10663,6 +10667,7 @@
                             if (s.changesFrom) dexRow.changesFrom = s.changesFrom;
                             if (s.prevo) dexRow.prevo = s.prevo;
                             if (s.evos && s.evos.length) dexRow.evos = [...s.evos];
+                            if (speciesDexIsLegendaryTier(s)) dexRow.legendary = true;
                             baseStats[s.name] = dexRow;
                             if (s.name !== name) baseStats[name] = baseStats[s.name];
                         }
@@ -15061,22 +15066,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Grade system: G1 (best) → G4 (weakest)
-        // G4 = basic cuties, G3 = stage-1 / mid-evo, G2 = fully-evolved strong, G1 = pseudo + legendary
+        // G4 = basic cuties · G3 = stage-1 / mid-evo · G2 = fully-evolved strong · G1 = pseudo + legendary
         const PSEUDO_LEGEND = new Set(["Dragonite","Tyranitar","Salamence","Metagross","Garchomp","Hydreigon","Goodra","Kommo-o","Dragapult","Baxcalibur"]);
         // Grade is deterministic per species (stable once the dex has loaded), so memoize
         // by name. The override sets are hoisted to module scope — they were previously
         // rebuilt on every call, and getMonGrade is hit dozens of times per team roll and
         // per draft-card render.
-        const _GRADE1_OVERRIDE = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
-        // G2: crippled-ability Pokémon with high BST, strong Eviolite users, and others that would
-        // otherwise appear in wrong story stages based purely on BST/stage detection
+        //
+        // G1 is the LEGENDARY / pseudo-legendary tier ONLY. It doubles as the "is this a
+        // legendary?" signal across the roll, Safari, and Mystery-Figure code, and the wild
+        // route curve sets g1:0 (G1 is the Safari / endgame-enemy bucket). Non-legendary
+        // species therefore cap at G2 no matter how strong — there is no non-legendary G1
+        // override. (Previously {Azumarill, Amoonguss, Chansey, Wishiwashi} rode in the
+        // legendary bucket, which made them wild-uncatchable and parked passive support
+        // walls in the climactic G1 ace slots.)
+        const _GRADE1_OVERRIDE = new Set();
+        // G2 overrides — kept deliberately small, on two rules:
+        //   1. 3-stage lines ladder naturally G4→G3→G2. A 3-stage MIDDLE (Dusclops,
+        //      Clefairy, Porygon2, Cosmoem, Chansey, …) stays G3; its final (Dusknoir,
+        //      Clefable, Porygon-Z, Blissey, …) is the line's G2. Never override the middle up.
+        //   2. The only things pinned to G2 are ITEM-INDEPENDENT threats: an always-on
+        //      ability that changes the matchup, plus a few maintainer-curated "just strong"
+        //      exceptions. (Naturally-G2 mons need no entry: Muk, Lapras, Snorlax, Heracross,
+        //      and — now that non-legendaries cap at G2 — high-BST finals like Slaking too.)
+        // Retired (earlier design schedules — did not fit the current item/build economy):
+        // Eviolite walls, weather setters, legendary-line pre-evos, and movepool gimmicks.
         const _GRADE2_OVERRIDE = new Set([
-            "Slaking","Archeops",                              // high BST, crippling ability (Truant/Defeatist)
-            "Avalugg","Avalugg-Hisui",                         // stage1-final ≥500 BST, naturally G2
-            "Porygon2","Dusclops","Rhydon",                    // strong Eviolite users, naturally G3 as stage1-mid
-            "Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal",
-            "Murkrow","Pachirisu","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione",
-            "Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"
+            "Medicham", "Diggersby",   // Pure Power / Huge Power — always-on ×2 Attack
+            "Shedinja",                // Wonder Guard — only super-effective hits connect
+            "Ditto",                   // Imposter — transforms into the active foe
+            "Rhydon",                  // curated: strong mid-evo (stays G2 by maintainer call)
+            "Azumarill",               // curated: Huge Power priority sweeper
+            "Amoonguss",               // curated: top-tier support pivot (Regenerator / Spore)
+            "Wishiwashi"               // School Form is a ~620-BST threat once it triggers
         ]);
         const _gradeMemo = new Map();
         function getMonGrade(name, bst) {
@@ -15094,6 +15116,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_GRADE2_OVERRIDE.has(name)) return 2;
 
             if (PSEUDO_LEGEND.has(name)) return 1;
+            // Legendary / mythical / UB / paradox FINALS ⇒ G1, read from the baseStats tag
+            // flag (stamped at load from species.json) so the tier is correct even when
+            // @pkmn/dex is mid-load or stubbed (tests). A legendary PRE-EVO (Cosmog, Cosmoem,
+            // Type: Null, Kubfu, …) is a deliberately-weak blob: it grades by stage/BST and
+            // caps at G2 like any non-final, so it never lands in the legendary slot.
+            const _bs = baseStats[name];
+            const _hasEvos = !!(_bs && _bs.evos && _bs.evos.length);
+            if (_bs && _bs.legendary && !_hasEvos) return 1;
 
             let stage = null;
             let isLegendary = false;
@@ -15116,18 +15146,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } catch(e) {}
             }
-            if (isLegendary) return 1;
+            if (isLegendary && !_hasEvos) return 1;
+            // From here every species is NON-legendary (or a legendary pre-evo), so the
+            // ceiling is G2 — G1 is the legendary / pseudo tier only (see _GRADE1_OVERRIDE).
+            // Evolution still lifts the grade: a 3-stage line ladders G4 (base) → G3 (mid) →
+            // G2 (final), and a high-BST final (Slaking, Lapras, …) lands at G2, not G1.
             if (stage === 'stage0')       return bst >= 350 ? 3 : 4;
             if (stage === 'stage1-mid')   return 3;
             if (stage === 'stage1-final') return bst >= 500 ? 2 : 3;
-            if (stage === 'stage2-final') return bst >= 570 ? 1 : 2;
-            if (stage === 'basic-final') {
-                if (bst >= 570) return 1;
-                if (bst >= 480) return 2;
-                if (bst >= 380) return 3;
-                return 4;
-            }
-            return bst >= 530 ? 1 : bst >= 480 ? 2 : bst >= 350 ? 3 : 4;
+            if (stage === 'stage2-final') return 2;
+            if (stage === 'basic-final')  return bst >= 480 ? 2 : bst >= 380 ? 3 : 4;
+            // Dex unavailable (load race / harness): BST-only band, capped at G2.
+            return bst >= 480 ? 2 : bst >= 350 ? 3 : 4;
         }
 
         // Recalculate tiers as quartile split within a pool of 6 Pokémon (for draft cards)
@@ -35557,7 +35587,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const D = getPssDex();
             const genSet = new Set(normalizeEnabledGens(enabledGens && enabledGens.length ? enabledGens : storySettingsGens()));
             const pool = [];
-            const MYST_LEG_G1_NONLEGEND = new Set(['Azumarill','Amoonguss','Chansey','Wishiwashi']);
+            // Vestigial: these four were the non-legendary G1 overrides that had to be
+            // carved out of the dex-missing "treat G1 as legendary" fallback below. They
+            // are now G2 (see _GRADE1_OVERRIDE), so the set is empty — retained as a guard
+            // hook should a future non-legendary ever be pinned to G1.
+            const MYST_LEG_G1_NONLEGEND = new Set();
             // Iterate baseStats keys (CamelCase names like "Mewtwo") to avoid the key-format
             // mismatch that occurs when using D.species.forEach, which provides lowercase IDs.
             for (const n of Object.keys(baseStats)) {
@@ -38049,7 +38083,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── GRADE POOL HELPERS ────────────────────────────────────────────
-        // Existing getMonGrade: 1=best(BST≥530), 4=worst(<350). CSV G4=weakest ↔ grade 4.
+        // getMonGrade: G1 (best — legendary/pseudo tier) → G4 (weakest). Legendaries/pseudos
+        // are G1; every other species caps at G2. Dex-loaded path grades by evo-stage × BST;
+        // the dex-absent fallback is a BST band capped at G2 (≥480→2 … <350→4). CSV G4 ↔ grade 4.
         const MEGA_EXCLUDE = new Set(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []);
 
         // Alt formes split into two buckets:
