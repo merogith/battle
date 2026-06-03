@@ -150,6 +150,17 @@ const DAMAGE_SCENARIOS = [
   // ── multi-hit: Skill Link forces the max 5 hits (deterministic) ──
   { id: 'multihit-skill-link', desc: 'Skill Link → 5-hit multi-hit move (always max hits)', attacker: { species: 'Cloyster', ability: 'Skill Link', nature: 'Adamant', evs: { atk: 252 } }, move: 'Icicle Spear', defender: WALL_PHYS_HP },
 
+  // ── variable base-power moves ──
+  // KNOWN DIVERGENCE (finding #4): Facade doubles BP (battle.html:23764) but the burn
+  // Attack-drop is NOT exempted, so a burned Facade nets ×2×0.5 = ×1 — half its real
+  // power. Verified: in-house burned≈unburned (ratio ~1.0) vs Showdown ~2.0.
+  { id: 'facade-status', desc: 'Facade burned deals HALF (burn drop not exempted) — finding #4', expectDiverge: true, attacker: { species: 'Snorlax', ability: 'Limber', item: 'Flame Orb', nature: 'Adamant', evs: { atk: 252 } }, attackerMoves: ['Facade', 'Splash'], choices1: setupAtk, defender: WALL_PHYS_HP },
+  { id: 'hex-status', desc: 'Hex ×2 vs a statused target (paralysed first)', attacker: { species: 'Gengar', ability: 'Levitate', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Hex', 'Thunder Wave'], choices1: setupAtk, defender: { species: 'Milotic', ability: 'Marvel Scale', nature: 'Calm', evs: { hp: 252, spd: 252 } }, defenderMoves: ['Splash', 'Splash'], choices2: ['move 1', 'move 1'] },
+  { id: 'acrobatics-no-item', desc: 'Acrobatics ×2 when the user holds no item', attacker: { species: 'Staraptor', ability: 'Keen Eye', nature: 'Adamant', evs: { atk: 252 } }, move: 'Acrobatics', defender: WALL_PHYS_HP },
+  { id: 'gyro-ball-slow', desc: 'Gyro Ball BP scales with the speed ratio (slow user)', attacker: { species: 'Ferrothorn', ability: 'Iron Barbs', nature: 'Brave', evs: { atk: 252 }, ivs: { spe: 0 } }, move: 'Gyro Ball', defender: WALL_PHYS_HP },
+  { id: 'weather-ball-rain', desc: 'Weather Ball → Water + 100 BP in rain (Rain Dance → Weather Ball)', attacker: { species: 'Pelipper', ability: 'Keen Eye', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Weather Ball', 'Rain Dance'], choices1: setupAtk, choices2: ['move 1', 'move 1'], defender: WALL_SPEC },
+  { id: 'stored-power-boosts', desc: 'Stored Power BP = 20 + 20×boosts (Calm Mind first)', attacker: { species: 'Alakazam', ability: 'Synchronize', nature: 'Modest', evs: { spa: 252 } }, attackerMoves: ['Stored Power', 'Calm Mind'], choices1: setupAtk, defender: WALL_SPEC },
+
   // ── timing-dependent abilities ──
   // Analytic: ×1.3 when the user moves LAST — attacker is made slower than the
   // (faster) passive Blissey, so Blissey's Splash resolves first.
@@ -193,7 +204,7 @@ documented engine findings, not surprises.
 |---|---|---|---|---|
 `;
   for (const r of rows) {
-    const verdict = r.invalid ? '⚠️ KO (invalid)' : r.flag ? (r.scn.expectDiverge ? '🟡 known (finding #2)' : '❌ **diverges**') : '✅ overlap';
+    const verdict = r.invalid ? '⚠️ KO (invalid)' : r.flag ? (r.scn.expectDiverge ? '🟡 known divergence' : '❌ **diverges**') : '✅ overlap';
     md += `| \`${r.scn.id}\` | ${r.scn.desc} | ${r.ih.min}–${r.ih.max} (μ${r.ih.mean.toFixed(0)}) | ${r.sd.min}–${r.sd.max} (μ${r.sd.mean.toFixed(0)}) | ${verdict} |\n`;
   }
   md += `\nRanges are HP damage to the defender. A correct multiplier yields overlapping\nbands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in\nsome run, capping measured damage — pick a bulkier wall to re-measure.\n`;

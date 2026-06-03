@@ -6,7 +6,7 @@
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
 > (roll variance removed). Reference: @pkmn/sim (MIT).
 
-**Unexpected divergences: 0/47** ✅ · known/expected divergences: 1 (see notes)
+**Unexpected divergences: 0/53** ✅ · known/expected divergences: 2 (see notes)
 
 A row "diverges" only when ranges are disjoint AND the crit-proof min-skew confirms
 it (so a stray crit can't mask a real multiplier gap). Rows tagged **known** are
@@ -59,8 +59,14 @@ documented engine findings, not surprises.
 | `knockoff-item-boost` | Knock Off ×1.5 when the target holds a removable item | 170–198 (μ186) | 169–282 (μ191) | ✅ overlap |
 | `sand-spd-rock` | Sandstorm grants Rock-types ×1.5 SpD | 43–51 (μ47) | 43–72 (μ49) | ✅ overlap |
 | `multihit-skill-link` | Skill Link → 5-hit multi-hit move (always max hits) | 95–105 (μ100) | 96–117 (μ103) | ✅ overlap |
+| `facade-status` | Facade burned deals HALF (burn drop not exempted) — finding #4 | 55–97 (μ64) | 109–165 (μ122) | 🟡 known divergence |
+| `hex-status` | Hex ×2 vs a statused target (paralysed first) | 41–87 (μ78) | 42–90 (μ79) | ✅ overlap |
+| `acrobatics-no-item` | Acrobatics ×2 when the user holds no item | 93–109 (μ101) | 93–154 (μ105) | ✅ overlap |
+| `gyro-ball-slow` | Gyro Ball BP scales with the speed ratio (slow user) | 40–61 (μ46) | 42–69 (μ47) | ✅ overlap |
+| `weather-ball-rain` | Weather Ball → Water + 100 BP in rain (Rain Dance → Weather Ball) | 69–79 (μ74) | 69–114 (μ78) | ✅ overlap |
+| `stored-power-boosts` | Stored Power BP = 20 + 20×boosts (Calm Mind first) | 52–59 (μ56) | 52–85 (μ59) | ✅ overlap |
 | `ability-analytic` | Analytic ×1.3 when the user moves last | 59–102 (μ65) | 58–97 (μ66) | ✅ overlap |
-| `ability-stakeout-lead` | Stakeout wrongly ×2 vs a turn-1 lead (in-house turnCount lags) — symptom of finding #2 | 92–108 (μ101) | 47–77 (μ53) | 🟡 known (finding #2) |
+| `ability-stakeout-lead` | Stakeout wrongly ×2 vs a turn-1 lead (in-house turnCount lags) — symptom of finding #2 | 92–108 (μ101) | 47–77 (μ53) | 🟡 known divergence |
 
 Ranges are HP damage to the defender. A correct multiplier yields overlapping
 bands (both sample the 85-100% roll). "KO (invalid)" means the wall fainted in

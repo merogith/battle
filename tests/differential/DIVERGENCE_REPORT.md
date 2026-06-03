@@ -10,7 +10,7 @@
 - **Known bugs confirmed by the oracle:** 5/5
 - **Sanity scenarios in agreement:** 14/14
 - **False positives (high-confidence divergence on a should-match case):** 0 ✅
-- **Probes flagging a divergence to investigate:** 1/41
+- **Probes flagging a divergence to investigate:** 1/45
 
 Confidence: **high** = boosts / faint / winner (RNG-independent — real divergences) ·
 **medium** = status presence (may be a chance-secondary) · **low** = raw HP beyond the roll band.
@@ -79,6 +79,10 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `speed-order-baseline` | turn order | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `priority-quick-attack` | turn order / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `trick-room-order` | turn order / field | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `self-ko-explosion` | move / self-KO | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `super-fang-fraction` | move / fixed-fraction | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `gale-wings-priority` | ability / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
+| `triage-priority` | ability / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `sanity-swords-dance-normal` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-tackle-neutral-damage` | sanity | match | 0 | 0 | 0 | ✅ agrees |
 | `sanity-super-effective-faint` | sanity / type-chart | match | 0 | 0 | 0 | ✅ agrees |
@@ -448,6 +452,30 @@ A +1 priority move (Quick Attack) lets the SLOWER Pokémon act first.
 Under Trick Room the SLOWER Pokémon acts first (turn 2 reverses).
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 2
+- No divergences.
+
+### `self-ko-explosion` — 🔍 no divergence
+Explosion makes the user faint.
+
+- Winner: Showdown=`P2` · in-house=`P2` · turns compared: 1
+- No divergences.
+
+### `super-fang-fraction` — 🔍 no divergence
+Super Fang deals 50% of the target current HP (from full → ~half).
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `gale-wings-priority` — 🔍 no divergence
+Gale Wings gives Flying moves +1 priority (at full HP) — the slower user acts first.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
+- No divergences.
+
+### `triage-priority` — 🔍 no divergence
+Triage gives draining/healing moves +3 priority — the slower user acts first.
+
+- Winner: Showdown=`null` · in-house=`null` · turns compared: 1
 - No divergences.
 
 ### `sanity-swords-dance-normal` — ✅ agrees

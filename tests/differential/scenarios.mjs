@@ -326,6 +326,49 @@ export const SCENARIOS = [
     choices1: ['move 1', 'move 2'], choices2: ['move 1', 'move 2'],
   },
 
+  // ══ Self-KO / fixed-fraction / priority-abilities — PROBE ══
+  // NOTE: recharge (Hyper Beam), Outrage/Thrash lock, Encore, Disable, Choice-lock
+  // and Sky Drop are NOT testable here — their enforcement lives in the input layer
+  // (battle.html:19430-19441 auto-submits the lock), which the forced-move harness
+  // path (playTurn with an explicit slot) bypasses. The engine DOES set the lock
+  // (e.g. volatile.recharge=true after Hyper Beam); only the harness can't exercise it.
+  {
+    id: 'self-ko-explosion',
+    category: 'move / self-KO',
+    desc: 'Explosion makes the user faint.',
+    expect: 'probe',
+    team1: [{ species: 'Electrode', ability: 'Static', moves: ['Explosion', 'Splash'], nature: 'Jolly', evs: { atk: 252, spe: 252 } }],
+    team2: [passive('Snorlax', 'Thick Fat')],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'super-fang-fraction',
+    category: 'move / fixed-fraction',
+    desc: 'Super Fang deals 50% of the target current HP (from full → ~half).',
+    expect: 'probe', noMiss: true,
+    team1: [{ species: 'Raticate', ability: 'Guts', moves: ['Super Fang', 'Splash'], nature: 'Jolly', evs: { atk: 252, spe: 252 } }],
+    team2: [passive('Snorlax', 'Thick Fat')],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'gale-wings-priority',
+    category: 'ability / priority',
+    desc: 'Gale Wings gives Flying moves +1 priority (at full HP) — the slower user acts first.',
+    expect: 'probe', checkOrder: true,
+    team1: [{ species: 'Talonflame', ability: 'Gale Wings', moves: ['Acrobatics', 'Splash'], nature: 'Brave', evs: { atk: 252 }, ivs: { spe: 0 } }],
+    team2: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Strength', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+  {
+    id: 'triage-priority',
+    category: 'ability / priority',
+    desc: 'Triage gives draining/healing moves +3 priority — the slower user acts first.',
+    expect: 'probe', checkOrder: true,
+    team1: [{ species: 'Roserade', ability: 'Triage', moves: ['Giga Drain', 'Splash'], nature: 'Brave', evs: { spa: 252 }, ivs: { spe: 0 } }],
+    team2: [{ species: 'Jolteon', ability: 'Volt Absorb', moves: ['Strength', 'Splash'], nature: 'Jolly', evs: { spe: 252 } }],
+    choices1: ['move 1'], choices2: ['move 1'],
+  },
+
   // ══ Sanity / regression (must MATCH) ══
   {
     id: 'sanity-swords-dance-normal',

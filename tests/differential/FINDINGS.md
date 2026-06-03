@@ -6,7 +6,7 @@
 > `DAMAGE_SWEEP_REPORT.md`). **No engine code has been changed yet.**
 
 ## Coverage
-**~107 probes** — 60 categorical scenarios (`scenarios.mjs`) + 47 damage-modifier
+**~117 probes** — 64 categorical scenarios (`scenarios.mjs`) + 53 damage-modifier
 sweeps (`damage-sweep.mjs`) — including an opt-in **move-order check** (priority,
 speed, Trick Room) — across: two-turn/semi-invulnerable, type/ability/item
 immunities & absorbs, ability-ignoring (Mold Breaker, Scrappy), status application
@@ -28,6 +28,7 @@ Ice Scales, Heatproof, Fluffy, Dry Skin, Mold Breaker; weather, screens, terrain
 | 1 | **Self-target / field moves "miss" vs a semi-invulnerable foe** (Fly/Dig/Dive/Bounce/Phantom Force/Shadow Force/Sky Drop) — the reported Fly bug | invuln check lacks the `move.cat !== "Status" \|\| !SELF_TARGETING_STATUS.has(name)` guard | `battle.html:23087-23110` | differential (boosts) | High |
 | 2 | **`turnCount` lags Showdown's `activeTurns` by one on turn 1** — `turnCount++` runs at END of turn (`battle.html:21682`) while Showdown increments at turn START. Two symptoms: (a) **Speed Boost** skips its end-of-T1 boost (in-house 0/1/2 vs Showdown 1/2/3); (b) **Stakeout** wrongly ×2 vs a turn-1 lead (in-house 2× Showdown on T1, equal on T2) | end-of-turn `turnCount++` timing vs the `turnCount===0` / `> 0` gates | `battle.html:28706` (Speed Boost), `:24149` (Stakeout) | differential (boosts + damage sweep) | Low–Med |
 | 3 | **Gravity does not restrict Gravity-incompatible moves** — Fly/Bounce/Splash/Jump Kick/Magnet Rise still work under Gravity (Fly charges & goes airborne; Splash executes) | two-turn / move-lock block has no `state.gravity` precondition | `battle.html:22611-22667` | differential (corroborated: a Gravity-locked Splash made Showdown Struggle; in-house Splashed) | Med |
+| 4 | **Facade does not bypass the burn Attack-drop** — a burned Facade nets ×2 (Facade) × ½ (burn) = ×1, i.e. **half** its real power (in-house burned≈unburned ratio ~1.0 vs Showdown ~2.0) | BP is doubled but the move isn't exempted from burn halving | `battle.html:23764` | differential (damage sweep) | Low–Med |
 
 Findings #1 and #3 are the original hand-audit catalogue (#1, #2). **Finding #2
 (the `turnCount` timing) is new — surfaced by the oracle, not the hand audit; the
@@ -48,18 +49,19 @@ immunity) · **Weakness Policy** (+2 on super-effective) · **recoil** (Brave Bi
 33%, Life Orb 10% — exact) · **contact-punish** (Rough Skin 1/8, Rocky Helmet 1/6 —
 exact) · **Knock Off** ×1.5 vs item-holder · **Skill Link** 5-hit · **Flame/Toxic
 Orb** self-status · **Sandstorm** chip + Rock ×1.5 SpD · **turn order** (faster-first), **priority** (Quick Attack lets the slower move
-first), **Trick Room** (slower-first reversal) · **Analytic** ×1.3 (moving last) ·
-**Guts** ×1.5 (ignores
-burn drop) · **Marvel Scale** ×1.5 Def · **burn** halves physical (catalogue #4
-confirmed within roll tolerance — the ±1 HP stage-order quirk does not shift the
-range) · the full multiplier layer (Choice Band/Specs, Life Orb, type items, Expert
+first), **Trick Room** (slower-first reversal), **Gale Wings** & **Triage** priority ·
+**Analytic** ×1.3 (moving last) · **self-KO** (Explosion) · **Super Fang** (½ current
+HP) · variable BP: **Hex**, **Acrobatics**, **Gyro Ball**, **Weather Ball**, **Stored
+Power** · **Guts** ×1.5 (ignores burn drop) · **Marvel Scale** ×1.5 Def · **burn**
+halves physical (the ±1 HP stage-order quirk does not shift the range) · the full
+multiplier layer (Choice Band/Specs, Life Orb, type items, Expert
 Belt, Tinted Lens, Muscle Band, Wise Glasses; Huge Power, Adaptability, Technician,
 Sheer Force, Tough Claws, Iron Fist, Strong Jaw, Mega Launcher, Reckless,
 Neuroforce, Thick Fat, Multiscale, Filter, Fur Coat, Ice Scales, Heatproof, Fluffy,
 Dry Skin; weather ×1.5/×0.5, Reflect/Light Screen, Electric/Grassy Terrain).
 
-**Bottom line:** across ~107 probes the engine matches Showdown *everywhere* except
-the three findings above (and Stakeout, a second face of #2). The correctness floor
+**Bottom line:** across ~117 probes the engine matches Showdown *everywhere* except
+the four findings above (Stakeout being a second face of #2). The correctness floor
 is high — the gap was coverage and proof, not pervasive wrongness — which supports
 converging the in-house engine against the oracle rather than replacing it.
 
@@ -84,13 +86,20 @@ of findings — verify the harness before blaming the engine.)
    feature (evolution data) cannot be probed headlessly.**
 4. **Crit-masked multiplier gaps (methodology hardening).** Range-overlap alone let
    an occasional Showdown crit inflate its max enough to overlap a genuinely shifted
-   in-house range (this is what initially hid #3-above as a maybe-real Eviolite gap).
-   Added a crit-proof **min-skew** check: over many seeds each engine's *minimum* is
-   a no-crit low roll, so a >1.2× min-skew now flags a real multiplier gap regardless
-   of crits (`damage-sweep.mjs`).
+   in-house range (this is what initially hid the Eviolite gap). Added a crit-proof
+   **min-skew** check: over many seeds each engine's *minimum* is a no-crit low roll,
+   so a >1.2× min-skew now flags a real multiplier gap regardless of crits
+   (`damage-sweep.mjs`).
+5. **Input-layer move-locks not exercisable.** The harness drives turns with an
+   explicit move slot (`playTurn(slot)`), which bypasses the input layer that
+   auto-submits a forced action when a mon is locked. So **recharge** (Hyper Beam),
+   **Outrage/Thrash** lock, **Encore**, **Disable**, **Choice-lock** and **Sky Drop**
+   can't be tested here — the engine DOES set the lock (verified `volatile.recharge=true`
+   after Hyper Beam; enforcement at `battle.html:19430-19441`); only the forced-move
+   harness path skips it. Those scenarios were not added / were withdrawn.
 
 ## Next step (not yet done — awaiting direction)
 Stage 1 fixes, each oracle-verified before commit: the self-target guard (#1), the
-Gravity move-restriction (#3), and the Speed Boost ordering (#2). When a fix lands,
-flip the corresponding scenario's `expect` to `match`/`agrees` and update
-`oracle.test.js`.
+`turnCount` timing (#2 — fixes Speed Boost AND Stakeout), the Gravity move-restriction
+(#3), and the Facade burn-exemption (#4). When a fix lands, flip the corresponding
+scenario's `expect`/`expectDiverge` to agrees and update `oracle.test.js`.
