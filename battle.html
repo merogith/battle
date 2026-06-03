@@ -2152,6 +2152,35 @@
             background: linear-gradient(180deg, rgba(20, 22, 34, 0.88) 0%, rgba(12, 14, 22, 0.9) 100%) !important;
             box-shadow: inset -2px -2px 0 0 #161922, inset 2px 2px 0 0 #2d3342;
         }
+        /* ── Story narration design tokens (single source of truth) ──────────
+           The unified "visual language" for all story narration: one palette,
+           one z-index scale. New narration code (the structured-scene
+           sequencer + the overlay queue) references these; the older scattered
+           overlays are migrated onto them incrementally. Values mirror the
+           shipped gold-nameplate look, so introducing the tokens is
+           behavior-neutral. z-ordering (low → high): scrim < battle-banner <
+           overlay < spotlight < toast. */
+        :root {
+            --sn-gold:       #ffd54f;   /* nameplate / accent (high) */
+            --sn-gold-deep:  #ffb300;   /* nameplate gradient (low) */
+            --sn-frame:      #555;      /* 2px dialog frame */
+            --sn-box-hi:     #1e2030;   /* dialog box gradient (top) */
+            --sn-box-lo:     #12141e;   /* dialog box gradient (bottom) */
+            --sn-muted:      #8b9bb4;   /* progress dots / sub-labels */
+            --sn-z-scrim:         1200; /* modal alert / confirm scrim */
+            --sn-z-battle-banner: 9000; /* in-battle gimmick banner */
+            --sn-z-overlay:       9998; /* story narrative overlay (canonical) */
+            --sn-z-spotlight:     9999; /* victory card / boss banner */
+            --sn-z-toast:        10001; /* toasts ride above overlays */
+        }
+        /* Subtle arc-progress row shown in a structured scene's banner slot —
+           communicates "consequential multi-beat event, N of M" without a
+           mechanical INTRO/CLIMAX caption. */
+        .story-narr-progress {
+            color: var(--sn-muted);
+            font-size: 11px;
+            letter-spacing: 0.5em;
+        }
         .story-dialog-nameplate {
             display: inline-block;
             font-size: 11px;
@@ -2163,16 +2192,16 @@
             position: relative;
             z-index: 2;
             color: #111 !important;
-            background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%) !important;
-            border: 2px solid #555 !important;
+            background: linear-gradient(180deg, var(--sn-gold) 0%, var(--sn-gold-deep) 100%) !important;
+            border: 2px solid var(--sn-frame) !important;
             border-bottom: none !important;
             border-radius: 0 !important;
             box-shadow: inset -1px -1px 0 0 #c48a00, inset 1px 1px 0 0 #ffe082;
         }
         .story-dialog-box {
-            border: 2px solid #555 !important;
+            border: 2px solid var(--sn-frame) !important;
             border-radius: 0 !important;
-            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%) !important;
+            background: linear-gradient(180deg, var(--sn-box-hi) 0%, var(--sn-box-lo) 100%) !important;
             box-shadow: inset -2px -2px 0 0 #212529, inset 2px 2px 0 0 #495057 !important;
             padding: 12px 14px;
             min-height: 48px;
@@ -31979,8 +32008,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "body": "First step beyond C1 with the badge still warm. An old man on the path nods at you and says 'Off again. Tell me how it ends this time.' He says it like a joke. He doesn't smile."
                   },
                   "villain.rocket.event1": {
-                            "title": "Villain Story Event 1",
-                            "body": "A Rocket grunt is buying a Slowpoke tail off a kid at the route stop, openly. The kid is laughing. The grunt is not. He sees your badge and waves you off - 'Stay in your lane, junior.'"
+                            "title": "Stay In Your Lane",
+                            "body": "A Rocket grunt is buying a Slowpoke tail off a kid at the route stop, openly. The kid is laughing. The grunt is not. He sees your badge and waves you off - 'Stay in your lane, junior.'",
+                            "acts": [
+                                { "phase": "intro", "lines": [
+                                    "A Rocket grunt is buying a Slowpoke tail off a kid at the route stop. Openly. In daylight. Nobody at the stop looks up.",
+                                    "The tail is fresh. The kid counts the money twice." ] },
+                                { "phase": "development", "lines": [
+                                    "The kid is laughing - the loose, delighted laugh of someone who's just been told they're clever.",
+                                    "The grunt is not laughing. He does this every week. He's stopped finding it funny, and somehow that's worse." ] },
+                                { "phase": "climax", "lines": [
+                                    "He clocks the badge on your jacket. Weighs it. Decides it doesn't weigh much.",
+                                    "'Stay in your lane, junior,' he says, and turns his back on you like a door closing." ] },
+                                { "phase": "outro", "lines": [
+                                    "You could make it your business. You haven't earned the right to yet - not here, not at this badge count.",
+                                    "So you log the truck's plate in your head and keep walking. The lane he means is the one they drew for you." ] }
+                            ]
                   },
                   "villain.magma.event1": {
                             "title": "Villain Story Event 1",
@@ -32055,8 +32098,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "body": "Mid-game scene. The world starts to feel small. A Pokémart radio at the Road 3 rest stop is playing a song you have absolutely heard before. The clerk doesn't react. Your map has a 'Welcome Back' sticker on it that wasn't there yesterday."
                   },
                   "villain.rocket.event2": {
-                            "title": "Villain Story Event 2",
-                            "body": "At the rest stop, three trainer-aged Rattata are caged in a Rocket truck with their tails clipped. The trucker, hands shaking, says he just drives."
+                            "title": "He Just Drives",
+                            "body": "At the rest stop, three trainer-aged Rattata are caged in a Rocket truck with their tails clipped. The trucker, hands shaking, says he just drives.",
+                            "acts": [
+                                { "phase": "intro", "lines": [
+                                    "Three Rattata, trainer-aged, stacked in a wire crate in the back of a Rocket box-truck. Their tails are clipped to stumps.",
+                                    "Tail money. Somebody downstream pays by the centimetre." ] },
+                                { "phase": "development", "lines": [
+                                    "The driver is a man in his fifties with a bad knee and a thermos. His hands shake when he sees you reading the crate.",
+                                    "'I just drive,' he says. 'I don't load it. I don't clip them. I drive the road they give me.'",
+                                    "He isn't lying. That's the problem with him." ] },
+                                { "phase": "climax",
+                                    "lines": [ "The engine is still running. He's waiting to see what kind of trainer you are." ],
+                                    "choice": {
+                                        "persistKey": "villain.rocket.driver",
+                                        "options": [
+                                            { "label": "Lean on him - the name, the route, who pays.", "value": "leaned", "reply": [
+                                                "You don't raise your voice. You just don't move, and you let the silence cost him.",
+                                                "He gives you a name and a drop-point before the thermos is empty, then drives off too fast - like distance could unhear it.",
+                                                "You have a thread now. Threads pull." ] },
+                                            { "label": "Let him drive. Take the crate.", "value": "freed", "reply": [
+                                                "You unclip the crate and tip the three of them into the long grass. They don't thank you. They don't know how.",
+                                                "The driver watches, says nothing, and pulls away the second your hands are clear.",
+                                                "Three saved. The road that made them is still open behind him." ] }
+                                        ]
+                                    }
+                                },
+                                { "phase": "outro", "lines": [
+                                    "Either way the truck is gone and the road keeps its shape.",
+                                    "Rocket was never the man who drives. It's the road that needs the driving done." ] }
+                            ]
                   },
                   "villain.magma.event2": {
                             "title": "Villain Story Event 2",
@@ -32131,8 +32202,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "body": "You feel the road getting long. A traveling stranger gives you a beat-up Lucky Egg and remembers your starter's name without being told. He waves you on without explanation. You don't ask."
                   },
                   "villain.rocket.event3": {
-                            "title": "Villain Story Event 3",
-                            "body": "A retired night-shift worker hands you a flier from Silph Co. - a list of 'donated test subjects' with dates. Two of them are your age."
+                            "title": "Donated",
+                            "body": "A retired night-shift worker hands you a flier from Silph Co. - a list of 'donated test subjects' with dates. Two of them are your age.",
+                            "acts": [
+                                { "phase": "intro", "lines": [
+                                    "A retired night-shift worker stops you on the road. Silph pension, bad lungs, steady hands.",
+                                    "He gives you a flier he was never meant to keep: a list headed DONATED TEST SUBJECTS. Names. Dates. A column for OUTCOME that's mostly blank." ] },
+                                { "phase": "development", "branches": [
+                                    { "when": { "key": "villain.rocket.driver", "eq": "leaned" }, "lines": [
+                                        "The drop-point the driver gave you is printed on this letterhead. The thread pulled. It pulled all the way back to a building with a name on it.",
+                                        "Two of the names on the list are your age. You'd have been the right age, once, for a list like this." ] },
+                                    { "when": { "key": "villain.rocket.driver", "eq": "freed" }, "lines": [
+                                        "You let the driver go, so there's no thread to pull - just this old man, his paper, and his bad lungs.",
+                                        "It's slower this way. Two of the names on the list are your age, and slow is a thing they count on." ] },
+                                    { "lines": [
+                                        "Two of the names on the list are your age.",
+                                        "You'd have been the right age, once, for a list like this." ] }
+                                ] },
+                                { "phase": "climax", "lines": [
+                                    "'They called it donation,' the old man says. 'On the forms. I typed the forms.'",
+                                    "He isn't asking forgiveness. He's making sure one other person has read it before his lungs finish the job." ] },
+                                { "phase": "outro", "lines": [
+                                    "You fold the flier into the pack where the badges are. They sit badly together. Good.",
+                                    "The list points up the chain. The chain has an office at the top of it, in City 7." ] }
+                            ]
                   },
                   "villain.magma.event3": {
                             "title": "Villain Story Event 3",
@@ -32587,8 +32680,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "body": "After E4, pre-Champion. A staffer in the long hallway whispers without looking up - 'He's tired.' You're not sure who he's referring to."
                   },
                   "villain.rocket.event6": {
-                            "title": "Villain Story Event 6",
-                            "body": "Giovanni's office in the Silph wing of City 7. He's not in. The desk drawer is empty except for a child's belt. The label has been scratched off."
+                            "title": "The Scratched Label",
+                            "body": "Giovanni's office in the Silph wing of City 7. He's not in. The desk drawer is empty except for a child's belt. The label has been scratched off.",
+                            "acts": [
+                                { "phase": "intro", "lines": [
+                                    "Giovanni's office. The Silph wing, top floor of City 7. The door isn't locked - that's its own kind of message.",
+                                    "He isn't in. Everything in the room sits exactly where a man leaves things when he's coming back." ] },
+                                { "phase": "development", "lines": [
+                                    "One drawer. Empty except for a child's belt - small, worn soft, the kind you grow out of in a season.",
+                                    "The name label has been scratched off. Not torn. Scratched, slowly, by a thumbnail, over a long time." ] },
+                                { "phase": "climax", "lines": [
+                                    "A man who keeps nothing kept this - then spent years rubbing out the one word that made it mean anything.",
+                                    "You don't know whose belt it is. You're fairly sure he doesn't let himself know either, anymore." ] },
+                                { "phase": "outro", "lines": [
+                                    "You put it back exactly as it was. Let him think the room is still his.",
+                                    "Next time you see him he'll be standing between you and the door. Good. You've read the room." ] }
+                            ]
                   },
                   "villain.magma.event6": {
                             "title": "Villain Story Event 6",
@@ -32663,8 +32770,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "body": "After Champion, pre-Rival final. The Champion congratulates you, then pauses and says - 'The crown isn't the last fight.' Your rival is waiting outside. They look smaller."
                   },
                   "villain.rocket.boss": {
-                            "title": "Villain Story Boss Battle",
-                            "body": "Giovanni. Pre-fight - 'I built this. I will not apologize for it. Show me what you built.' Phase 3 at 25% - 'CALLED IN' - Dark and Ground STAB +25% for 3 turns. Post-fight - he wires you 1,000,000G - 'Cleanup money. Don't pretend you don't need it.'"
+                            "title": "Giovanni",
+                            "body": "Giovanni. Pre-fight - 'I built this. I will not apologize for it. Show me what you built.' Phase 3 at 25% - 'CALLED IN' - Dark and Ground STAB +25% for 3 turns. Post-fight - he wires you 1,000,000G - 'Cleanup money. Don't pretend you don't need it.'",
+                            "acts": [
+                                { "phase": "intro", "lines": [
+                                    "He's behind the desk when you finally get up here. Of course he is. He let you climb the whole building to make a point about who built the stairs." ] },
+                                { "phase": "development", "lines": [
+                                    "Up close he's smaller than the rumour and twice as still. He reads your badges the way an auditor reads receipts.",
+                                    "'You pulled a thread,' he says. 'A child's worth of thread. And here you are in my office, certain that makes you the answer to something.'" ] },
+                                { "phase": "climax", "lines": [
+                                    "He stands. Buttons one button. The room arranges itself around the gesture.",
+                                    "'I built this. Every clipped tail, every scratched-out name, every road that needed driving. I will not apologize for it.'",
+                                    "'Show me what you built.'" ] }
+                            ],
+                            "outro": {
+                                "win": [
+                                    "He goes down without theatre - no speech, no breakdown. Just a man recalculating, the way he's recalculated every loss in a long career of them.",
+                                    "Before security thinks to move, your trainer wallet pings. One million. Clean, traceable, his.",
+                                    "'Cleanup money,' he says, straightening a cuff. 'Don't pretend you don't need it. And don't pretend this ends anything.'",
+                                    "It doesn't. But it's a start - and his money buys the start its first tank of gas." ]
+                            }
                   },
                   "villain.magma.boss": {
                             "title": "Villain Story Boss Battle",
@@ -32739,8 +32864,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "body": "Hall of Fame closes. The lights in the museum hallway flicker. A figure in your trainer outfit stands by the empty portrait at the end of the wall. Their cap is pulled low. They turn around. The brass nameplate reads YOUR PROFILE NAME, with an extra digit you don't remember entering."
                   },
                   "villain.rocket.ending": {
-                            "title": "Villain Story Ending",
-                            "body": "Rocket dissolves on paper. The night-shift fliers keep going up. The Marowak is still on the hill. Some things stop. This one didn't."
+                            "title": "Some Things Stop",
+                            "body": "Rocket dissolves on paper. The night-shift fliers keep going up. The Marowak is still on the hill. Some things stop. This one didn't.",
+                            "acts": [
+                                { "phase": "intro", "lines": [
+                                    "Rocket dissolves on paper within the week. Shell companies fold into other shell companies. The logo comes off the trucks.",
+                                    "Paper is good at dissolving. It's the one thing paper is truly good at." ] },
+                                { "phase": "development", "branches": [
+                                    { "when": { "key": "villain.rocket.driver", "eq": "freed" }, "lines": [
+                                        "Three Rattata you turned loose two cities back are presumably still out there - tail-stumped, alive. You'll never know. That's the shape of the good you got to do.",
+                                        "The night-shift fliers keep going up at the route stops. Different paper now. Same names missing." ] },
+                                    { "lines": [
+                                        "The night-shift fliers keep going up at the route stops. Different paper now. Same names missing.",
+                                        "Somebody's still driving the roads. The roads were always the point." ] }
+                                ] },
+                                { "phase": "climax", "lines": [
+                                    "On the hill above City 7 the Marowak is still there, the way it's been there in every account you've ever heard - grieving a thing paper can't dissolve.",
+                                    "You broke the company. You did not break the hill." ] },
+                                { "phase": "outro", "lines": [
+                                    "Some things stop. You made one of them stop. That's not nothing, and it's not enough, and both are true at once.",
+                                    "You shoulder the pack. The badges and the flier still sit badly together. You leave it that way on purpose." ] }
+                            ]
                   },
                   "villain.magma.ending": {
                             "title": "Villain Story Ending",
@@ -36854,6 +36998,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 get sm() { return sm; },
                 set sm(v) { sm = v; },
                 get baseStats() { return baseStats; },
+            };
+            // Narration-system test surface (structured scenes, overlay queue,
+            // preview/dispatch parity) — exposed in the same inner scope as the
+            // story symbols so the wrappers resolve. Inert in normal play.
+            window.__narrationTest = {
+                get STORY_SCENES() { return STORY_SCENES; },
+                get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
+                get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
+                get MAIN_STORY_BEATS() { return MAIN_STORY_BEATS; },
+                get VILLAIN_STORY_BEATS() { return VILLAIN_STORY_BEATS; },
+                get sm() { return sm; },
+                set sm(v) { sm = v; },
+                resolveActLines: (...a) => _resolveActLines(...a),
+                resolveActChoices: (...a) => _resolveActChoices(...a),
+                sceneProgressDots: (...a) => _sceneProgressDots(...a),
+                storyChoiceValue: (...a) => _storyChoiceValue(...a),
+                renderNarrativeOverlay: (...a) => _renderNarrativeOverlay(...a),
+                playStoryBeatScene: (...a) => _playStoryBeatScene(...a),
+                playPostBattleScene: (...a) => _playPostBattleScene(...a),
+                canonTrainerForUpcomingBattle: (...a) => _canonTrainerForUpcomingBattle(...a),
+                activeBattleBeatForCurrentRow: (...a) => _activeBattleBeatForCurrentRow(...a),
+                storyEventRowToUpNext: (...a) => _storyEventRowToUpNext(...a),
+                roadForArrayIdx: (...a) => _roadForArrayIdx(...a),
+                narrationQueueDepth: () => _narrationQueue.length,
+                isNarrationLive: () => _narrationLive,
             };
         }
         function _rivalSpeciesHasType(name, t) {
@@ -42352,6 +42521,89 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Splits a long body into pages (1-2 sentences each) for the overlay's
         // line-by-line continue prompt. Empty / short bodies become one page.
+        // ── Structured story scenes (event arc + interaction) ──────────────
+        // A STORY_SCENES entry MAY carry an `acts` array describing the event
+        // as a fixed arc — intro → development → climax → outro. Each act is one
+        // page, rendered through the single canonical narrative overlay, so the
+        // visual language is identical to every other story beat. An act may:
+        //   • declare static `lines: [..]`;
+        //   • `branches: [{ when:{key,eq}, lines:[..] }, .., { lines:[..] }]` —
+        //     first matching prior-choice wins (last, when-less, is the default)
+        //     → this is how a later beat reacts to an earlier decision;
+        //   • declare ONE `choice` — self-contained: the pick swaps in a `reply`
+        //     and is remembered in sm.storyChoices for later callbacks. It NEVER
+        //     forks which beat/battle fires next (per the design brief).
+        // A battle scene MAY carry `outro: { win:[..] }` — an explicit post-fight
+        // aftermath that supersedes the fragile regex-scraped STORY_POST_SCENES.
+        // Scenes with no `acts` fall back to the legacy flat `body` render, so
+        // every unconverted scene behaves exactly as before. This is the schema
+        // every arc converts onto; see docs/story-design/STORY_NARRATION_SYSTEM.md.
+        function _storyChoiceValue(key) {
+            try { return (key && sm && sm.storyChoices) ? sm.storyChoices[key] : undefined; }
+            catch (e) { return undefined; }
+        }
+        // Resolve an act's display lines: a branch set (first matching `when`,
+        // else the when-less default) or static `lines`/`line`.
+        function _resolveActLines(act) {
+            if (!act) return [];
+            if (Array.isArray(act.branches)) {
+                for (const br of act.branches) {
+                    if (!br) continue;
+                    if (!br.when) return Array.isArray(br.lines) ? br.lines : (br.line ? [br.line] : []);
+                    if (_storyChoiceValue(br.when.key) === br.when.eq) {
+                        return Array.isArray(br.lines) ? br.lines : (br.line ? [br.line] : []);
+                    }
+                }
+                return [];
+            }
+            return Array.isArray(act.lines) ? act.lines : (act.line ? [act.line] : []);
+        }
+        // Map an act's declarative `choice` onto the overlay's choice contract
+        // ({ label, reply, persistKey, value }). Returns [] when absent.
+        function _resolveActChoices(act) {
+            if (!act || !act.choice || !Array.isArray(act.choice.options)) return [];
+            const pk = act.choice.persistKey || null;
+            return act.choice.options.filter(o => o && o.label).map(o => ({
+                label: o.label,
+                reply: Array.isArray(o.reply) ? o.reply : (o.reply ? [o.reply] : []),
+                persistKey: pk,
+                value: (o.value != null ? o.value : o.label),
+            }));
+        }
+        // Subtle filled/empty dot row signalling arc position (act i of total)
+        // without a mechanical phase caption. Empty for single-act scenes.
+        function _sceneProgressDots(i, total) {
+            if (!(total > 1)) return '';
+            let s = '';
+            for (let k = 0; k < total; k++) s += (k === i ? '●' : '◦');
+            return s;
+        }
+        // Play a structured scene's acts in order through the unified overlay.
+        // Each act = one overlay page; a choice act swaps to its reply then
+        // advances. `title` is the steady chapter nameplate across all acts so
+        // the run reads as one event; the progress dots ride the banner slot.
+        function _playSceneActs(scene, baseMeta, onDone) {
+            const acts = (scene && Array.isArray(scene.acts)) ? scene.acts.filter(Boolean) : [];
+            if (!acts.length) { try { onDone && onDone(); } catch (e) {} return; }
+            const total = acts.length;
+            const step = (i) => {
+                if (i >= total) { try { onDone && onDone(); } catch (e) {} return; }
+                const act = acts[i];
+                _renderNarrativeOverlay({
+                    metaKey: baseMeta ? (baseMeta + '-' + i) : null,
+                    sprite: scene.sprite || null,
+                    name: '',
+                    nameplate: scene.title || '',
+                    banner: _sceneProgressDots(i, total),
+                    bannerClass: 'story-narr-progress',
+                    lines: _resolveActLines(act),
+                    choices: _resolveActChoices(act),
+                    continueLabel: (i === total - 1) ? 'Continue →' : 'Next →',
+                    onDone: () => step(i + 1),
+                });
+            };
+            step(0);
+        }
         function _splitBeatBodyIntoPages(body) {
             const s = String(body || '').trim();
             if (!s) return [''];
@@ -42390,6 +42642,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         })();
         function _playPostBattleScene(sceneKey, onDone) {
+            // Prefer an explicit structured outro (scene.outro.win, or a bare
+            // scene.outro array) over the legacy regex-scraped fragment — the
+            // aftermath is authored, not pattern-matched out of the body.
+            const _scene = STORY_SCENES && STORY_SCENES[sceneKey];
+            const _outro = _scene && _scene.outro;
+            const _outroWin = _outro && (Array.isArray(_outro.win) ? _outro.win
+                            : (Array.isArray(_outro) ? _outro : null));
+            if (_outroWin && _outroWin.length) {
+                try {
+                    _renderNarrativeOverlay({
+                        metaKey: 'beat-post-' + sceneKey,
+                        sprite: null, name: '', nameplate: (_scene.title || '') + ' — Aftermath',
+                        lines: _outroWin,
+                        continueLabel: 'Continue →',
+                        onDone: () => { try { onDone && onDone(); } catch (e) {} }
+                    });
+                    return true;
+                } catch (e) {
+                    console.warn('[Story] structured outro failed for', sceneKey, e);
+                    try { onDone && onDone(); } catch (e2) {}
+                    return false;
+                }
+            }
             const post = STORY_POST_SCENES && STORY_POST_SCENES[sceneKey];
             if (!post) { try { onDone && onDone(); } catch (e) {} return false; }
             try {
@@ -42414,6 +42689,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _playStoryBeatScene(sceneKey, onDone) {
             const scene = STORY_SCENES && STORY_SCENES[sceneKey];
             if (!scene) { try { onDone && onDone(); } catch (e) {} return; }
+            // Structured scenes (event arc + interaction) run through the act
+            // sequencer; legacy flat { title, body } scenes keep the original
+            // single-overlay paginated render. Same overlay either way — one
+            // visual language.
+            if (Array.isArray(scene.acts) && scene.acts.length) {
+                try {
+                    _playSceneActs(scene, 'beat-' + sceneKey, () => { try { onDone && onDone(); } catch (e) {} });
+                } catch (e) {
+                    console.warn('[Story] structured beat failed for', sceneKey, e);
+                    try { onDone && onDone(); } catch (e2) {}
+                }
+                return;
+            }
             try {
                 _renderNarrativeOverlay({
                     metaKey: 'beat-' + sceneKey,
@@ -47224,6 +47512,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  `metaKey` is the per-run dedupe stamp (`sm.scenesShown`) — only set
          *  this on cold-opens that must fire once per run (left blank for
          *  repeatable broker / sighting overlays). */
+        // ── Unified narration overlay queue ────────────────────────────────
+        // Exactly one story narrative overlay is visible at a time. If a second
+        // is requested while one is live, it queues and mounts when the current
+        // dismisses — structurally killing the historical "two overlays stacked
+        // / talking over each other" class of bug the audit flagged (no shared
+        // registry across the ~19 presentation paths). The element is still
+        // built + wired synchronously and returned to the caller; only the DOM
+        // mount defers. Sequential flows (the act sequencer, cold-open chains)
+        // are unaffected: each overlay has already dismissed — _narrationLive is
+        // false — when the next is requested, so it mounts immediately. The
+        // queue only engages when overlays genuinely overlap, i.e. the bug case.
+        let _narrationLive = false;
+        const _narrationQueue = [];
+        function _narrationMountNext() {
+            if (_narrationLive) return;
+            const ov = _narrationQueue.shift();
+            if (!ov) return;
+            _narrationLive = true;
+            try { document.body.appendChild(ov); } catch (e) {}
+        }
         function _renderNarrativeOverlay(opts) {
             const o = opts || {};
             const lines = Array.isArray(o.lines) ? o.lines : [];
@@ -47235,13 +47543,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const accent = o.accent || '#ffd54f';
             const continueLabel = o.continueLabel || 'Continue →';
             const ov = document.createElement('div');
-            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
             if (toneClass) ov.classList.add(toneClass);
             const spriteHtml = sprite
                 ? `<img src="${getTrainerSprite({ spriteFile: sprite })}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
                 : '';
+            const bannerClass = o.bannerClass || '';
             const bannerHtml = banner
-                ? `<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">${_esc(banner)}</div>`
+                ? (bannerClass
+                    ? `<div class="${_esc(bannerClass)}">${_esc(banner)}</div>`
+                    : `<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">${_esc(banner)}</div>`)
                 : '';
             const nameHtml = name
                 ? `<div style="color:${accent};font-size:18px;font-weight:bold;">${_esc(name)}</div>`
@@ -47297,8 +47608,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } catch (e) {}
                 try { ov.remove(); } catch (e) {}
+                // Release the queue lock BEFORE onDone so a sequential
+                // follow-up overlay (next act, chained cold-open) mounts
+                // immediately; then flush any genuinely-queued overlay that
+                // overlapped this one.
+                _narrationLive = false;
                 try { o.onDone && o.onDone(); }
                 catch (e) { console.error('[Story] narrative overlay callback', e); }
+                _narrationMountNext();
             };
             // Wire the choice flow when choices are present.
             if (choices.length) {
@@ -47347,7 +47664,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (choices.length && ov.querySelector('[data-narr-choices="1"]')) return;
                 dismiss();
             };
-            document.body.appendChild(ov);
+            // Mount now if the stage is clear; otherwise queue behind the live
+            // overlay (flushed on its dismiss). Either way the caller gets its
+            // element reference back.
+            if (_narrationLive) {
+                _narrationQueue.push(ov);
+            } else {
+                _narrationLive = true;
+                document.body.appendChild(ov);
+            }
             return ov;
         }
 
@@ -50179,6 +50504,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return _storyEventRowToUpNext(row);
             } catch (e) { return null; }
         }
+        // Preview/dispatch parity (FLOW): the "up next" pill must name the SAME
+        // trainer the player will actually face. For boss/miniBoss/raid beats,
+        // enterBattleEvent swaps in a canon character (Giovanni, Proton, …) via
+        // BEAT_CANON_TRAINER *after* the natural roll — so a preview that reads
+        // sm.trainerAssignments alone shows the pre-override generic name, then
+        // the battle screen shows Giovanni. This resolves the canon name from
+        // the exact source the dispatcher uses (the active battle beat for the
+        // current road), keeping label == reality. Returns null when no canon
+        // swap applies, so the caller falls back to the rolled assignment.
+        function _canonTrainerForUpcomingBattle() {
+            try {
+                if (typeof _activeBattleBeatForCurrentRow !== 'function') return null;
+                const beat = _activeBattleBeatForCurrentRow();
+                if (!beat) return null;
+                const isInsert = beat.kind === 'boss' || beat.kind === 'miniBoss'
+                              || beat.kind === 'raid' || beat.kind === 'mysteryBoss';
+                if (!isInsert) return null;
+                return (typeof BEAT_CANON_TRAINER === 'object' && BEAT_CANON_TRAINER
+                        && BEAT_CANON_TRAINER[beat.sceneKey]) || null;
+            } catch (e) { return null; }
+        }
         function _storyEventRowToUpNext(row) {
             if (!row) return null;
             if (row[1] === 'Hall of Fame') return { icon: '🏛', text: 'Hall of Fame' };
@@ -50191,7 +50537,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (row[1] === 'Battle') {
                 const event = String(row[2] || '');
                 const role = (typeof storyDisplayRoleLabel === 'function') ? storyDisplayRoleLabel(event) : event;
-                const trainerName = sm.trainerAssignments && sm.trainerAssignments[row[0] | 0];
+                let trainerName = sm.trainerAssignments && sm.trainerAssignments[row[0] | 0];
+                // If this is the imminent battle and a canon-character beat will
+                // swap the trainer on entry, preview THAT name (label == reality).
+                try {
+                    if (STORY_EVENTS_RAW[sm.eventIndex] === row) {
+                        const canon = _canonTrainerForUpcomingBattle();
+                        if (canon) trainerName = canon;
+                    }
+                } catch (e) {}
                 const isFinale = /^(E[1-4]|Champion|Mystery Figure|Victory Road)$/.test(event);
                 const isGymLeader = /^Gym Leader/i.test(event);
                 const icon = isFinale ? '🏆' : (isGymLeader ? '🏟' : '⚔');
