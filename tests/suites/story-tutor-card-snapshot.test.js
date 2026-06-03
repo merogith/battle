@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BEFORE = JSON.parse(readFileSync(join(__dirname, '..', 'fixtures', 'tx-cards-before.json'), 'utf8'));
@@ -49,6 +49,7 @@ function assertSnapshotEqual(actual, expected, kind) {
 test('item cards: merged renderer is byte-identical to pre-refactor output', async () => {
   prime(7);
   await w.StoryMode.enterTutor('loadout');
+  await openTutorMon(w); // screen starts all-closed — open the first mon
   await settle('tx-grid');
   await showAll();
   assertSnapshotEqual(grab('item'), BEFORE.items, 'item');
@@ -57,6 +58,7 @@ test('item cards: merged renderer is byte-identical to pre-refactor output', asy
 test('ability cards: merged renderer is byte-identical to pre-refactor output', async () => {
   prime(7);
   await w.StoryMode.enterTutor('loadout');
+  await openTutorMon(w); // screen starts all-closed — open the first mon
   await settle('tx-grid');
   host().querySelector('button.tx-tab[data-tab="ability"]').click();
   await sleep(220);

@@ -5,7 +5,7 @@
 // flipped to recommend the very move/item you just gave up.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -22,6 +22,7 @@ async function moveRecRows(city, monName, build) {
   ST.sm.eventIndex = idx;
   ST.sm.team = [{ name: monName, build }];
   await w.StoryMode.enterTutor('moves');
+  await openTutorMon(doc); // screen starts all-closed — open the first mon
   for (let i = 0; i < 30; i++) { await wait(40); if (doc.querySelector('.tx-grid')) break; }
   return [...doc.getElementById('story-tutor-team').querySelectorAll('.tx-rec-row[data-card-value]')]
     .map((r) => ({ move: r.getAttribute('data-card-value'), equipped: !!r.querySelector('.tx-rec-equipped'), inert: r.getAttribute('data-disabled') === '1' }));

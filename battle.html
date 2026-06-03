@@ -729,6 +729,27 @@
         .story-tutor-mon-name { font-size:14px; font-weight:bold; color:var(--accent); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .story-tutor-mon-meta { font-size:10px; color:#9fa7b7; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50vw; }
         .story-tutor-mon-chev { color:#9aa0aa; font-size:14px; line-height:1; }
+        /* Right-side controls cluster in a mon header (info ℹ + chevron, plus any
+           cost/tier badge) — keeps them grouped at the end of the space-between row. */
+        .story-tutor-mon-aside { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+        /* Standard per-Pokémon "Full summary" (ℹ) button — ONE icon + size for every
+           story facility header (Move Tutor / Dojo / Nature / EV Trainer / Colress /
+           Link / Evo Lab / Fan Club). Sized up on touch screens for a safe tap target. */
+        .story-mon-info-btn {
+            flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
+            width:28px; height:28px; min-width:28px; min-height:28px;
+            padding:0; border-radius:50%;
+            border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.12);
+            color:#fff; font-size:14px; line-height:1;
+            cursor:pointer; touch-action:manipulation; font-family:inherit;
+            transition:border-color 0.15s, color 0.15s, background 0.15s, transform 0.08s ease;
+        }
+        .story-mon-info-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(255,213,79,0.12); }
+        .story-mon-info-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .story-mon-info-btn:active { transform:scale(0.92); }
+        @media (max-width: 600px) {
+            .story-mon-info-btn { width:34px; height:34px; min-width:34px; min-height:34px; font-size:15px; }
+        }
         .story-tutor-mon-body { border-top:1px solid #303646; padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; }
         .story-tutor-section { margin-top:6px; }
         .story-tutor-section-title { font-size:10px; color:#8b92a4; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.06em; }
@@ -51374,8 +51395,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 _markFacilitySeen('link');
                 updateHUD();
-                // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
-                _storyLinkOpenIdx = 0;
+                // Start all-closed; player taps a mon header / switcher pill to open one.
+                _storyLinkOpenIdx = -1;
                 renderLinkTeam();
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
@@ -52538,6 +52559,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
                         <span class="tier-badge bg-tier-${g}">G${g}</span>
+                        ${_storyMonInfoBtnHtml(i)}
                         <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
                     </span>
                 </button>`;
@@ -52584,11 +52606,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`
                     : `<div class="story-link-build" style="font-size:11px;color:#777;">Could not load set details.</div>`;
-                const infoBtnRow = `<div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button></div>`;
                 return `<div class="story-link-mon tier-${g}" id="link-mon-${i}">
                     ${header}
                     <div class="story-tutor-mon-body">
-                        ${infoBtnRow}
                         ${buildBlock}
                         <div class="story-link-btns">
                             <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled' } title="Trade for a random different Grade ${g} Pokémon — Competent-tier build, still wants Tutor/Dojo/EV polish. Random typing — may clash with your team.">&#8634; Same Tier Swap (${storyGoldHtml(rCost, false)})</button>
@@ -52940,8 +52960,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateHUD();
                 // Header reflects the current staged title (Evolution Teacher → Evolution Master).
                 try { const _h = document.getElementById('story-evolab-head-text'); if (_h) _h.textContent = _npcStageName('evolab'); } catch (e) {}
-                // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
-                _storyEvoLabOpenIdx = 0;
+                // Start all-closed; player taps a mon header / switcher pill to open one.
+                _storyEvoLabOpenIdx = -1;
                 _storyEvoLabPcOpenId = null;
                 renderEvoLabTeam();
                 syncStoryEvoLabBackground();
@@ -53185,7 +53205,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                     </div>
                     <span style="display:flex;align-items:center;gap:8px;">
-                        <span class="draft-card-info-btn" role="button" tabindex="0" style="width:28px;height:28px;min-width:28px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="event.stopPropagation();window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</span>
+                        ${_storyMonInfoBtnHtml(i)}
                         <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
                     </span>
                 </button>`;
@@ -58570,6 +58590,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Render: collapsed mon header (same look as before, lightly polished)
+        // Standard per-Pokémon "Full summary" (ℹ) control for a facility mon header.
+        // A <span role="button"> (NOT a <button>) so it can sit inside the header toggle
+        // button without nesting two buttons; stopPropagation stops the tap from toggling
+        // the accordion row. `idx` is the sm.team index — openSummary() reads sm.team[idx].
+        function _storyMonInfoBtnHtml(idx) {
+            return `<span class="story-mon-info-btn" role="button" tabindex="0" aria-label="Full summary" title="Full summary" onclick="event.stopPropagation();window.StoryMode.openSummary(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();window.StoryMode.openSummary(${idx});}">&#8505;</span>`;
+        }
         function _txRenderCollapsedMonHtml(t, idx, mode) {
             const b = t.build || {};
             let mon = null;
@@ -58596,7 +58623,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             <div class="story-tutor-mon-meta">${summary}</div>
                         </div>
                     </div>
-                    <span class="story-tutor-mon-chev" aria-hidden="true">▾</span>
+                    <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▾</span></span>
                 </button>
             </div>`;
         }
@@ -58858,7 +58885,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${headerSummary}
                         </div>
                     </div>
-                    <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                    <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
@@ -59003,7 +59030,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${headerSummary}
                         </div>
                     </div>
-                    <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                    <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
                     <div class="tx-tabs" role="tablist" aria-label="Battle Dojo">
@@ -59124,7 +59151,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${headerSummary}
                         </div>
                     </div>
-                    <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                    <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
                     ${sparseBanner}
@@ -59145,10 +59172,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Staged-NPC level-up beat (Move Tutor / Battle Dojo). Nature doesn't stage.
             if (m !== 'nature') _npcStageUpCheck(m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
-            // Lead with the first mon expanded so the rec panel is visible
-            // immediately. Use the Close chip (or tap the active pill /
-            // header chevron) to collapse to the all-closed picker.
-            _storyTutorOpenIdx = 0;
+            // Start with every mon collapsed (all-closed) so the player chooses
+            // which one to edit instead of being dropped straight into mon #1,
+            // slot 1. Tap a collapsed header or a switcher pill to open one.
+            _storyTutorOpenIdx = -1;
             // Reset transient picker state on entry — fresh filters & no pending swap
             _txState.moveSlot = 0;
             _txState.dojoTab = 'item';
@@ -59716,8 +59743,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-colress');
             // Power-grid hum on entry — matches the lab's "battle forms" theme.
             try { window.StoryFx && window.StoryFx.playSfx('beam', 0.4); } catch (e) {}
-            // Lead with the first mon expanded; players collapse via Close chip / header chev / active pill.
-            _storyColressOpenIdx = 0;
+            // Start all-closed; player taps a mon header / switcher pill to open one.
+            _storyColressOpenIdx = -1;
             renderColressTeam();
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
             // Story-embedded tutorial — Colress cameo (Scientist sprite).
@@ -59820,6 +59847,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <span style="display:flex;align-items:center;gap:8px;">
                     ${headerCostChip}
+                    ${_storyMonInfoBtnHtml(idx)}
                     <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
                 </span>
             </button>`;
@@ -60395,10 +60423,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-evtrainer');
             // Whistle blast — Buck's "drop and give me twenty" vibe.
             try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.4); } catch (e) {}
-            // Lead with the first mon's preset picks visible — collapse via
-            // the Close chip / active pill / header chevron when the player
-            // wants to scan the rest of the team.
-            _storyEVTrainerOpenIdx = 0;
+            // Start all-closed so the player picks which mon to train; tap a
+            // collapsed header or a switcher pill to reveal its preset picks.
+            _storyEVTrainerOpenIdx = -1;
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
             // Story-embedded tutorial — Buck cameo (Battle_Girl sprite).
@@ -60459,7 +60486,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="story-tutor-mon-meta">${summary}</div>
                     </div>
                 </div>
-                <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+                <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span></span>
             </button>`;
 
             if (!expanded) {
@@ -60543,8 +60570,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function enterFanClub() {
             _markFacilitySeen('fanclub');
             showScreen('screen-story-fanclub');
-            // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
-            _storyFanClubOpenIdx = 0;
+            // Start all-closed; player taps a mon header / switcher pill to open one.
+            _storyFanClubOpenIdx = -1;
             // First-visit welcome gift: FANCLUB_WELCOME_VITAMINS_PER_STAT of each
             // vitamin (HP Up / Protein / Iron / Calcium / Zinc / Carbos) to front-load
             // early IV training. Set a save flag so re-entering doesn't double-tip.
@@ -60913,6 +60940,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <span style="display:flex;align-items:center;gap:8px;">
                     ${headerCostChip}
+                    ${_storyMonInfoBtnHtml(idx)}
                     <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
                 </span>
             </button>`;

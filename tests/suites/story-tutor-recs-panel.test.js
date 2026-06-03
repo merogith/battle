@@ -5,7 +5,7 @@
 // items/abilities keep their panel-led layout (the two HARD pickers).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -27,6 +27,7 @@ function primeCityTeam(city) {
 function primeC7Team() { primeCityTeam(7); }
 async function renderTutorAndGetHtml() {
   await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w); // screen starts all-closed — open the first mon
   for (let i = 0; i < 20; i++) {
     await new Promise(r => setTimeout(r, 50));
     const host = w.document.getElementById('story-tutor-team');
@@ -99,6 +100,7 @@ test('the "Suggest a balanced set" helper hides while searching, then is restore
 // ── Phase 5b — the same curated panel for the two HARD pickers: items + abilities ──
 async function renderLoadoutAndGetHtml() {
   await w.StoryMode.enterTutor('loadout');
+  await openTutorMon(w); // screen starts all-closed — open the first mon
   for (let i = 0; i < 20; i++) {
     await new Promise(r => setTimeout(r, 50));
     const host = w.document.getElementById('story-tutor-team');

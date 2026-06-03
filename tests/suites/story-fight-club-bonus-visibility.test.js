@@ -46,8 +46,10 @@ test('Pokémon Fan Club shows the +bonus tag on every stat row when bonus > 0', 
   setup({ hp:5, atk:7, def:0, spa:10, spd:3, spe:0 });
   SM.enterFanClub();
   SM.renderFanClubRoster();
+  // The roster now starts all-closed — tap the first mon to expand its stat rows.
+  doc.querySelector('.story-tutor-mon-toggle[data-team="0"]').click();
   const card = doc.getElementById('fanclub-mon-0');
-  assert.ok(card, 'first mon card rendered (expanded by default)');
+  assert.ok(card, 'first mon card rendered (expanded after tap)');
   const html = card.innerHTML;
   // Per-stat tags for the stats that have bonus (hp, atk, spa, spd).
   assert.ok(/>\+5</.test(html), 'HP +5 tag present');
@@ -65,6 +67,8 @@ test('Pokémon Fan Club shows no bonus tags on an unboosted mon', () => {
   setup(null); // zero bonus everywhere
   SM.enterFanClub();
   SM.renderFanClubRoster();
+  // The roster now starts all-closed — open the first mon so we assert on the expanded body.
+  doc.querySelector('.story-tutor-mon-toggle[data-team="0"]').click();
   const card = doc.getElementById('fanclub-mon-0');
   const html = card.innerHTML;
   assert.ok(!/Fight Club bonus/.test(html), 'no FC bonus tooltips when bonus is zero');

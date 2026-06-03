@@ -338,6 +338,26 @@ export async function loadEngine() {
   return _cachedEngine;
 }
 
+// Story facility pickers (Move Tutor / Battle Dojo / Nature Rater / EV Trainer /
+// Colress / Link / Fan Club) now START all-closed: no Pokémon card is expanded on
+// entry, so the player chooses which mon to edit. Tests that exercise the open
+// picker must first tap a mon to expand it — this mirrors the real player action
+// (clicking the collapsed `.story-tutor-mon-toggle` header). Poll for the header
+// (the team list renders async after the move-pool fetch), click it, and return.
+// Callers keep their existing "wait for .tx-grid" loop afterward, which now
+// resolves because a mon is open. Pass a window or a document.
+export async function openTutorMon(winOrDoc, idx = 0, { tries = 60, step = 25 } = {}) {
+  const doc = (winOrDoc && winOrDoc.document) ? winOrDoc.document : winOrDoc;
+  if (!doc || !doc.querySelector) throw new Error('openTutorMon: pass a window or document');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < tries; i++) {
+    const tg = doc.querySelector(`.story-tutor-mon-toggle[data-team="${idx}"]`);
+    if (tg) { tg.click(); return true; }
+    await sleep(step);
+  }
+  return false;
+}
+
 // Global cleanup hook so node:test can exit when all tests in a file finish.
 // Tests do not need to call this manually unless they spin up multiple engines.
 import { after } from 'node:test';
