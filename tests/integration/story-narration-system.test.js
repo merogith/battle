@@ -344,7 +344,7 @@ test('the ending offers the loop choice (remember vs forget)', () => {
 });
 
 // ── Extra (horror) arcs ─────────────────────────────────────────────────────
-const CONVERTED_EXTRA = ['cubone', 'mewtwo'];
+const CONVERTED_EXTRA = ['cubone', 'mewtwo', 'yamask', 'hypno', 'phantump'];
 
 test('converted extra arcs have structured events + a raid with outro.win', () => {
   const S = nt.STORY_SCENES;
@@ -364,8 +364,11 @@ test('converted extra arcs have structured events + a raid with outro.win', () =
 test('extra-arc choices are unique and pay off in the ending', () => {
   const S = nt.STORY_SCENES;
   const cases = [
-    { key: 'extra.cubone.burial',  a: 'accepted', b: 'declined' },
-    { key: 'extra.mewtwo.drawing', a: 'took',     b: 'left' },
+    { key: 'extra.cubone.burial',   a: 'accepted', b: 'declined' },
+    { key: 'extra.mewtwo.drawing',  a: 'took',     b: 'left' },
+    { key: 'extra.yamask.mirror',   a: 'looked',   b: 'away' },
+    { key: 'extra.hypno.pendulum',  a: 'kept',     b: 'left' },
+    { key: 'extra.phantump.song',   a: 'stopped',  b: 'sang' },
   ];
   for (const c of cases) {
     const track = c.key.split('.')[1];
