@@ -37,6 +37,13 @@
             --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8;
             --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f;
             --surface: #161616; --surface2: #1e1e1e;
+            /* Story facility accent palette — category-coded (see docs/story-design/UI_VISUAL_SYSTEM_AUDIT.md).
+               Facility titles are recolored by function so hue signals the facility type. */
+            --fac-quest: #ffab40;      /* quest & battle flow (professor/gym/league/VR/crucible) */
+            --fac-recover: #81c784;    /* heal / catch / store living mons (center/daycare/catch/safari) */
+            --fac-shop: var(--accent); /* shops — gold (mart/dept/stone/relics) */
+            --fac-train: #ce93d8;      /* train & evolve (tutor/nature/dojo/EV/evo/colress) */
+            --fac-utility: #29b6f6;    /* connect & misc (link/fan club) */
             --battle-font: 'Press Start 2P', 'Courier New', Courier, monospace;
             --battle-chrome-bg: #050505;
             --battle-panel-bg: var(--surface);
@@ -2388,6 +2395,14 @@
             gap: 8px;
             margin: 0;
         }
+        /* Category-coded facility title colors (the --fac-* palette). A title opts in
+           with a fac-* class instead of an ad-hoc inline color, so every facility of a
+           kind reads the same hue. */
+        .story-screen-head-title.fac-quest   { color: var(--fac-quest); }
+        .story-screen-head-title.fac-recover { color: var(--fac-recover); }
+        .story-screen-head-title.fac-shop    { color: var(--fac-shop); }
+        .story-screen-head-title.fac-train   { color: var(--fac-train); }
+        .story-screen-head-title.fac-utility { color: var(--fac-utility); }
         .story-screen-head-ico {
             width: 24px;
             height: 24px;
@@ -9121,7 +9136,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-prof-screen-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;margin:0;flex:1;min-width:0;">Professor's Lab</h3>
+            <h3 id="story-prof-screen-title" class="story-screen-head-title fac-quest" style="font-size:14px;margin:0;flex:1;min-width:0;">Professor's Lab</h3>
         </div>
         <div id="story-prof-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px;min-height:0;">
             <!-- Prof header row: sprite + name + quote -->
@@ -9147,7 +9162,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-shop-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
+            <h3 id="story-shop-title" class="story-screen-head-title fac-shop" style="font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
             <span id="story-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div id="story-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
@@ -9162,7 +9177,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title fac-shop" style="font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
@@ -9178,7 +9193,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stones and Beyond</span></h3>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title fac-shop" style="font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stones and Beyond</span></h3>
             <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Evolution Tutor next door. <strong style="color:#b39ddb;">500G each</strong>. The Tutor consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem it for one free pick — any item here, stone or trade item.</p>
@@ -9194,7 +9209,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-tutor-head-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
+            <h3 id="story-tutor-head-title" class="story-screen-head-title fac-train" style="font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
             <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
@@ -9215,7 +9230,7 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-colress-portrait" src="sprites/trainers/Colress.png" alt="Colress" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Battle Forms <span style="font-size:10px;color:#888;font-weight:normal;">(Mega · Z · Dynamax · Tera)</span></span></h3>
+                    <h3 class="story-screen-head-title fac-train" style="font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Battle Forms <span style="font-size:10px;color:#888;font-weight:normal;">(Mega · Z · Dynamax · Tera)</span></span></h3>
                     <div style="font-size:10px;color:#888;margin-top:2px;">"Set your Pokémon's battle form: Mega, Z-Move, Dynamax, or Tera."</div>
                 </div>
             </div>
@@ -9239,7 +9254,7 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-evtrainer-portrait" src="sprites/trainers/Buck.png" alt="Buck" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#9ccc65;font-size:14px;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/protein.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">EV Trainer</span></h3>
+                    <h3 class="story-screen-head-title fac-train" style="font-size:14px;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/protein.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">EV Trainer</span></h3>
                 </div>
             </div>
             <span id="story-evtrainer-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
@@ -9261,7 +9276,7 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-fanclub-portrait" src="sprites/trainers/Gentleman.png" alt="Chairman" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#f8bbd0;font-size:14px;"><svg class="story-screen-head-ico" width="22" height="22" viewBox="0 0 24 24" role="img" aria-label="Fan Club" style="display:inline-block;vertical-align:middle;flex-shrink:0;overflow:visible;"><path d="M12 20.6C12 20.6 2.8 14.8 2.8 8.5C2.8 5.6 5 3.6 7.7 3.6C9.5 3.6 11 4.5 12 6C13 4.5 14.5 3.6 16.3 3.6C19 3.6 21.2 5.6 21.2 8.5C21.2 14.8 12 20.6 12 20.6Z" fill="#f48fb1" stroke="#ad1457" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.3 7.1C7.1 7.1 6.3 8 6.3 9.1" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/></svg><span class="story-screen-head-text">Pokémon Fan Club</span></h3>
+                    <h3 class="story-screen-head-title fac-utility" style="font-size:14px;"><svg class="story-screen-head-ico" width="22" height="22" viewBox="0 0 24 24" role="img" aria-label="Fan Club" style="display:inline-block;vertical-align:middle;flex-shrink:0;overflow:visible;"><path d="M12 20.6C12 20.6 2.8 14.8 2.8 8.5C2.8 5.6 5 3.6 7.7 3.6C9.5 3.6 11 4.5 12 6C13 4.5 14.5 3.6 16.3 3.6C19 3.6 21.2 5.6 21.2 8.5C21.2 14.8 12 20.6 12 20.6Z" fill="#f48fb1" stroke="#ad1457" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.3 7.1C7.1 7.1 6.3 8 6.3 9.1" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/></svg><span class="story-screen-head-text">Pokémon Fan Club</span></h3>
                 </div>
             </div>
             <span id="story-fanclub-stash" style="color:#f8bbd0;font-size:11px;flex-shrink:0;"></span>
@@ -9280,7 +9295,7 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_center.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémon Center</span></h3>
+                <h3 class="story-screen-head-title fac-recover" style="font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_center.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémon Center</span></h3>
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div id="story-pc-pokedex-strip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
@@ -9303,7 +9318,7 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
-                <h3 class="story-screen-head-title" style="color:#ffab40;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_vr.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">The Crucible</span></h3>
+                <h3 class="story-screen-head-title fac-quest" style="font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_vr.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">The Crucible</span></h3>
                 <span id="story-crucible-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div style="padding:10px 14px;border-bottom:1px solid #2a2a2a;background:rgba(8,10,16,0.92);font-size:11px;color:#888;line-height:1.5;">
@@ -9336,7 +9351,7 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
-                <h3 class="story-screen-head-title" style="color:#aed581;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
+                <h3 class="story-screen-head-title fac-recover" style="font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
                 <span style="width:32px;"></span>
             </div>
             <div id="story-catch-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
@@ -9351,7 +9366,7 @@
         <div class="story-link-stack">
         <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 class="story-screen-head-title" style="color:#00e5ff;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span class="story-screen-head-text">Cable Link Station</span></h3>
+            <h3 class="story-screen-head-title fac-utility" style="font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span class="story-screen-head-text">Cable Link Station</span></h3>
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
@@ -9372,7 +9387,7 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-evolab-portrait" src="sprites/trainers/Sage.png" alt="Evolution Tutor" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#a5d6a7;font-size:14px;"><img class="story-screen-head-ico" src="sprites/items/moon-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text" id="story-evolab-head-text">Evolution Tutor</span></h3>
+                    <h3 class="story-screen-head-title fac-train" style="font-size:14px;"><img class="story-screen-head-ico" src="sprites/items/moon-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text" id="story-evolab-head-text">Evolution Tutor</span></h3>
                 </div>
             </div>
             <span id="story-evolab-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
@@ -9555,7 +9570,7 @@
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
+                <h3 class="story-screen-head-title fac-shop" style="font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             </div>
             <p style="font-size:11px;color:#888;margin:6px 0 0;">Relics rewrite battle rules for both sides. Toggle the ones you own on or off.</p>
         </div>
@@ -9591,7 +9606,7 @@
 
     <div id="modal-story-artifact" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width:550px;">
-            <h3 class="story-screen-head-title" style="color:#9c27b0;margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
+            <h3 class="story-screen-head-title fac-shop" style="margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
             <p style="font-size:12px;color:#aaa;">Most artifacts affect BOTH you and the enemy for your entire run. The Cursed Amulet Coin is the one exception — its bonus and its curse only touch your team.</p>
             <div id="story-artifact-list" style="display:flex;flex-direction:column;gap:10px;max-height:350px;overflow-y:auto;margin-bottom:12px;"></div>
             <button onclick="window.closeModal('modal-story-artifact')" style="width:100%;">Close</button>
