@@ -224,20 +224,49 @@ relayout (C11). These are 1:1 cleanups enabled by the new single-switch model.)*
 
 ---
 
-# PHASE 2 — Implementation outline (only after approval)
+# PHASE 2 — As built
 
-1. Introduce the Grid shell + two `grid-template-areas` on `#screen-battle`, keyed off
-   `data-battle-layout` collapsed to `arena` / `stack`.
-2. Migrate each element (gear, foe/player HUD, sprites, field pills, log, action grid, hints)
-   to the chosen consistent rule; delete the raw `@media` battle rules, the `is-mobile` battle
-   forks, `ultrawide`, `layout-tablet-preset`, and the duplicated landscape blocks as each is
-   superseded (grep-verified 1:1 where applicable).
-3. Keep the desktop transform-scale (#6) only as far as Q5/Q1 decide (fixed-frame crispness vs
-   fluid cap).
-4. **Verification** across the brief's matrix — phone portrait/landscape (390×844 / 844×390),
-   iPad portrait/landscape (incl. 12.9" 1024×1366), XL desktop (4000px) — by screenshot, plus a
-   small deterministic jsdom test asserting `applyBattleLayoutMode()` resolves the right
-   template attribute at representative `innerWidth/innerHeight/orientation` inputs (so the next
-   session can't silently regress the switch).
-5. Stay consistent with the separate **facility/UI icon design-system brief** (special/physical/
-   status icons, arrows, gear) — this brief owns layout; that one owns the visual language.
+Approved decisions (questionnaire): **Q1** two fluid templates / single source of truth / CSS
+Grid shell · **Q2** side-matched HP bars (foe their side, player your side) · **Q3** log always
+in the bottom command bar · **Q4** gear top-right everywhere · **Q5** keyboard hints by input
+capability · **Q6** fold in the cleanups · **desktop scaling** keep the crisp transform-scaled
+1280×720 frame.
+
+## What shipped
+
+- **One source of truth.** `applyBattleLayoutMode()` now resolves a single attribute to exactly
+  two values: `arena` (non-mobile, or mobile-landscape) and `stack` (mobile-portrait). The
+  desktop fixed frame is always 16:9, so non-mobile is always `arena`. All battle CSS keys off
+  this attribute; the raw `@media` battle rules, `is-mobile` battle forks, `ultrawide`,
+  `layout-tablet-preset`, and the two duplicated landscape overlay blocks are gone.
+- **Container-query sizing unifies both coordinate spaces.** `#screen-battle` is a
+  `container-type: size` container, so every battle dimension is `cqw`/`cqh`/`cqmin` — which
+  resolve against the 1280×720 box inside the scaled desktop frame *and* against the live
+  viewport on touch. That is what lets **one** rule set serve the crisp desktop frame and fluid
+  phone/tablet without a per-device fork (prototype-verified: container units ignore the
+  `transform: scale()`). No `is-mobile` token fork was needed.
+- **CSS Grid shell.** `#screen-battle` is a grid: `arena` = `[arena 1fr] [command --battle-ui-h]`
+  with the HUD cards + sprites + pills overlaid in the arena; `stack` =
+  `[foehead auto] [arena 1fr] [command auto]` with the foe head a real top-strip row.
+- **Consistent relationships everywhere.** Foe card = top of its side (right), player card =
+  bottom of its side (left); log + actions always together in the bottom command bar (beside in
+  `arena`, stacked in `stack`); gear fixed top-right (foe card inset right to clear it); keyboard
+  hints via `@media (hover:hover) and (pointer:fine)`.
+- **Desktop scaling preserved.** `applyDesktopGameScale()` is unchanged — the 1280×720 frame
+  still scales crisply; only the battle screen's internal composition was unified.
+- **Redundant relayout fixed** (C11): `applyBattleLayoutMode` runs once per resize/orientation
+  (via `applyDisplayMode`, after `is-mobile` is refreshed) instead of twice.
+
+Net **−297 lines** (282 added, 579 removed). `battle.html` is the only changed source file.
+
+## Verification
+
+- `tests/suites/battle-layout-template.test.js` (new) locks the switch: `arena`/`stack` by
+  is-mobile + orientation, never a retired name, plus the bg-art mapping. Full suite: 533/533.
+- Screenshot matrix via `scripts/debug/battle-layout-shots.mjs` (new harness) at desktop
+  1280/1920, phone portrait/landscape (390×844 / 844×390), iPad portrait/landscape
+  (1024×1366 / 1366×1024): composition is consistent across every viewport; the iPad-landscape
+  gap (C6) and tablet-portrait gap (C5) are resolved.
+
+Stays consistent with the separate **facility/UI icon design-system brief** (icons, arrows,
+gear glyph) — this brief owns layout; that one owns the visual language.
