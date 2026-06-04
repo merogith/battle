@@ -23,13 +23,20 @@
             src: url('fonts/press-start-2p.woff2') format('woff2');
         }
         /*
-         * === DISPLAY MODES ===
-         * 1. DESKTOP (1920×1080 / 16:9) — 1280×720 design frame, scaled via transform to fill viewport.
-         *    Selector: body:not(.is-mobile), data-battle-layout="desktop"
-         * 2. PHONE PORTRAIT — full-viewport, stacked vertical layout.
-         *    Selector: body.is-mobile + portrait orientation, data-battle-layout="portrait"
-         * 3. PHONE LANDSCAPE (rotated) — full-viewport, side-by-side compact layout.
-         *    Selector: body.is-mobile + landscape orientation, data-battle-layout="landscape-touch"
+         * === BATTLE LAYOUT: one responsive system, two reflow templates ===
+         * `data-battle-layout` (set by applyBattleLayoutMode) is the SINGLE source of truth
+         * for battle structure. Sizing inside each template is fluid via CSS container-query
+         * units (cqw/cqh on the #screen-battle size container) — NOT width-stepped @media —
+         * so one template scales smoothly phone → iPad → 4K with no per-device breakpoint.
+         *   • "arena"  — landscape composition: HP cards overlaid in the arena corners
+         *     (foe top-right / player bottom-left), log + actions in a bottom command bar.
+         *     Used both on the desktop 1280×720 design frame (scaled via transform — the
+         *     container units resolve against the 1280px frame, keeping pixel art crisp) and
+         *     on fluid touch landscape (phone / tablet). Replaces old desktop + landscape-touch.
+         *   • "stack"  — portrait composition: foe strip → arena → player strip + command bar.
+         *     Used on fluid touch portrait (phone / tablet). Replaces old portrait.
+         * The desktop frame is always 16:9, so non-mobile is always "arena"; only the fluid
+         * touch layout switches to "stack" when the viewport is portrait.
          */
 
         /* Battle UI tokens — single theme for stat boxes, log, commands (overrides use these, not parallel palettes). */
@@ -233,18 +240,18 @@
             background: linear-gradient(180deg, rgba(12,18,28,0.5) 0%, rgba(8,11,18,0.9) 100%) !important;
         }
         /* Portrait: solid opaque background so battle UI does not bleed into the arena */
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack {
+        body.is-mobile #screen-battle[data-battle-layout="stack"] .battle-bottom-stack {
             background: #0a0e14 !important;
         }
         /* Portrait crop, vignette pan, and overlay pan removed — bg/vignette/overlays now anchor to --battle-ui-h directly */
         /* Portrait: overlap chrome like GBA; z-index 5 < .battle-bottom-stack (6) so HP row paints on top.
            Small Y nudge ties feet into the stat-bar; X nudge avoided so wider portrait viewports (tablets) don't overflow. */
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
+        body.is-mobile #screen-battle[data-battle-layout="stack"] #player-sprite-container {
             z-index: 5;
             bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 4px - 0.45cm);
             transform: translateY(0.45cm);
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
+        body.is-mobile #screen-battle[data-battle-layout="stack"] #foe-sprite-container {
             transform: none;
         }
         /* Landscape: avoid a tall “film” over the arena — tint only the chrome rows, not the whole stack */
@@ -279,38 +286,29 @@
             body.is-mobile #screen-battle .ui-bottom {
                 overflow: hidden;
             }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #move-menu.white-outline,
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #command-menu.white-outline {
+            #screen-battle[data-battle-layout="arena"] #move-menu.white-outline,
+            #screen-battle[data-battle-layout="arena"] #command-menu.white-outline {
                 background: #0c0e14;
                 border-color: rgba(255, 255, 255, 0.18);
             }
-            /* Only the player stat card is real UI here — a full-width row background looked like an empty “filter” over the arena */
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] .battle-player-hud-row {
-                align-self: flex-start;
-                width: auto;
-                max-width: 100%;
-                background: transparent !important;
-                border-top: none !important;
-                box-sizing: border-box;
-            }
             /* 6v6: six party balls + narrow landscape cards — wrap balls to a second row, compact orbs */
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] .stat-box-header {
+            #screen-battle[data-battle-layout="arena"][data-party-size="6"] .stat-box-header {
                 flex-wrap: wrap;
                 align-items: center;
                 column-gap: 4px;
                 row-gap: 2px;
             }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-party-bar,
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #player-party-bar {
+            #screen-battle[data-battle-layout="arena"][data-party-size="6"] #foe-party-bar,
+            #screen-battle[data-battle-layout="arena"][data-party-size="6"] #player-party-bar {
                 flex-basis: 100%;
                 width: 100%;
                 gap: 2px !important;
                 margin-top: 1px;
             }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-party-bar {
+            #screen-battle[data-battle-layout="arena"][data-party-size="6"] #foe-party-bar {
                 justify-content: flex-end;
             }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] .party-bar-ball {
+            #screen-battle[data-battle-layout="arena"][data-party-size="6"] .party-bar-ball {
                 width: 10px !important;
                 height: 10px !important;
                 box-sizing: border-box;
@@ -3182,15 +3180,29 @@
 
         /* ── Variables (phone portrait base) ─────────────────────────────── */
         #screen-battle {
-            --battle-ui-h: clamp(210px, 44dvh, 295px);
-            --battle-player-hud-est: clamp(56px, 9dvh, 76px);
-            --sprite-foe-w: min(38vw, 156px);
-            --sprite-player-w: min(58vw, 246px);
+            /* ── Size container = the whole battle screen ──────────────────────
+               cqw/cqh resolve against THIS element's box: 1280×720 inside the
+               scaled desktop frame (transform doesn't change layout size), and the
+               live viewport on touch. So one fluid rule set is correct in BOTH
+               coordinate spaces — the reason a single source of truth is possible
+               while keeping the crisp transform-scaled desktop frame. */
+            container: battle / size;
+            display: grid;
+            /* Base tokens = the "stack" template (portrait). "arena" overrides them below.
+               --battle-ui-h is the command-bar (log + actions) height AND the arena's bottom
+               inset (bg anchor, vignette, sprite baselines), so it stays the one knob. In
+               stack the log sits ABOVE the actions, so this band is tall (≈ old portrait). */
+            --battle-ui-h: clamp(300px, 46cqh, 430px);
+            --battle-player-hud-est: clamp(48px, 8cqh, 74px);
+            /* cqw drives phones; the px caps only bind on big tablets — sized so an iPad
+               portrait doesn't get tiny Pokémon in a roomy field (player ≈ 1.6× foe). */
+            --sprite-foe-w: min(34cqw, 26cqh, 214px);
+            --sprite-player-w: min(56cqw, 40cqh, 352px);
             /* Nudge arena art downward (−Y in Y-up framing): smaller bottom inset ≈ field sits lower behind sprites */
             --arena-bg-shift-y: 5cm;
             font-family: var(--battle-font);
             position: relative;
-            background-image: url('sprites/backgrounds/battle/desktop/bg_neutral.png');
+            background-image: url('sprites/backgrounds/battle/landscape/bg_neutral.png');
             background-color: #0a1a0a;
             background-size: cover;
             /* Anchor the image's bottom edge to the top of the HUD on every layout — sprite ground line stays put */
@@ -3198,39 +3210,45 @@
             background-repeat: no-repeat;
             transition: background-image 0.8s ease-in-out;
         }
+        /* ── Grid shell: two templates, selected by data-battle-layout ─────────
+           arena: [arena 1fr] / [command --battle-ui-h]  (HUD + sprites overlaid in arena)
+           stack: [foe auto] [arena 1fr] [command auto]   (foe strip is a real row) */
+        #screen-battle[data-battle-layout="arena"] {
+            grid-template-rows: 1fr var(--battle-ui-h);
+            grid-template-areas: "arena" "command";
+        }
+        #screen-battle[data-battle-layout="stack"] {
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas: "foehead" "arena" "command";
+        }
+        /* #battle-bottom-stack is the command region in both templates — a normal grid
+           item, so the base rule's absolute bottom:0 is replaced by grid placement. */
+        #screen-battle .battle-bottom-stack { grid-area: command; position: relative; inset: auto; }
+        /* Foe head: overlaid in arena (children position independently); a real top
+           strip row in stack. */
+        #screen-battle[data-battle-layout="arena"] .battle-foe-head { display: contents; }
+        #screen-battle[data-battle-layout="stack"] .battle-foe-head { grid-area: foehead; }
 
-        /* ── Per-layout independent tokens ───────────────────────────────── */
-        /* Each layout owns its own sizing — no cross-layout bleed. Player ≈ 1.55–1.7× foe for VGC depth. */
-        #screen-battle[data-battle-layout="desktop"] {
-            --battle-ui-h: 280px;
+        /* ── Per-template sizing tokens ────────────────────────────────────
+           Fluid via container units → one rule scales phone-landscape → the desktop
+           frame → 4K with no breakpoint. "stack" uses the #screen-battle base tokens
+           above; only "arena" overrides them here. Player ≈ 1.6× foe for VGC depth. */
+        #screen-battle[data-battle-layout="arena"] {
+            /* Command bar ≈ a constant comfortable height: cqmin tracks the smaller axis,
+               clamped so it never eats a tall arena (iPad landscape) nor starves a short one. */
+            --battle-ui-h: clamp(150px, 40cqmin, 290px);
             --battle-player-hud-est: 0px;
-            /* Player stat row stacked above .ui-bottom — include in sprite baseline + tuck under chrome */
-            --battle-player-hud-strip-h: clamp(92px, 13.5vh, 112px);
-            /* VGC depth: foe small (back of arena), player ~1.65× (foreground). */
-            --sprite-foe-w: 188px;
-            --sprite-player-w: 310px;
+            /* Pull the stadium art UP so the PITCH (bottom band of the image) fills the lower
+               arena instead of hiding behind the command bar — otherwise the only visible
+               "field" is the barrier wall and the foe lands on it. See BATTLE_ARENA_PERSPECTIVE.md. */
+            --arena-bg-shift-y: 0.8cm;
+            /* foe "far" (small, back of arena), player ≈ 1.6× (foreground). cqw drives the
+               size; cqh caps it on short landscape so a sprite never clips the arena band. */
+            --sprite-foe-w: min(15cqw, 30cqh);
+            --sprite-player-w: min(24.5cqw, 44cqh);
         }
-        #screen-battle[data-battle-layout="ultrawide"] {
-            --battle-ui-h: 300px;
-            --battle-player-hud-est: 0px;
-            --battle-player-hud-strip-h: clamp(96px, 12vh, 116px);
-            --sprite-foe-w: 200px;
-            --sprite-player-w: 332px;
-        }
-        #screen-battle[data-battle-layout="portrait"] {
-            --battle-ui-h: clamp(330px, 48dvh, 410px);
-            --battle-player-hud-est: clamp(52px, 9dvh, 68px);
-            --sprite-foe-w: min(34vw, 138px);
-            --sprite-player-w: min(56vw, 224px);
-        }
-        #screen-battle[data-battle-layout="landscape-touch"] {
-            --battle-ui-h: clamp(180px, 42dvh, 230px);
-            --battle-player-hud-est: 0px;
-        }
-
-        #screen-battle.battle-log-dock { --battle-ui-h: clamp(165px, 24dvh, 220px); }
-        #screen-battle[data-battle-layout="desktop"].battle-log-dock { --battle-ui-h: 288px; }
-        #screen-battle[data-battle-layout="ultrawide"].battle-log-dock { --battle-ui-h: 308px; }
+        /* Side-docked log (wide windows only) trades a little command height for arena. */
+        #screen-battle.battle-log-dock { --battle-ui-h: clamp(140px, 34cqmin, 250px); }
 
         /* ── Vignette ─────────────────────────────────────────────────────── */
         /* Top dim (stadium shadow), bottom dim (frame the action), centre breathes */
@@ -3245,9 +3263,8 @@
             pointer-events: none;
             z-index: 0;
         }
-        /* Desktop: extra foreground shade to push the floor edge toward the player */
-        #screen-battle[data-battle-layout="desktop"]::before,
-        #screen-battle[data-battle-layout="ultrawide"]::before {
+        /* Arena: extra foreground shade to push the floor edge toward the player */
+        #screen-battle[data-battle-layout="arena"]::before {
             background:
                 radial-gradient(ellipse 95% 60% at 50% 110%, rgba(0,0,0,0.0) 28%, rgba(0,0,0,0.60) 100%),
                 radial-gradient(ellipse 135% 55% at 50% -8%, rgba(0,0,0,0.45) 0%, transparent 72%),
@@ -3255,12 +3272,6 @@
         }
 
         /* ── Battle field ─────────────────────────────────────────────────── */
-        .battle-field {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            bottom: var(--battle-ui-h, 190px);
-            overflow: hidden;
-        }
         /* Floor shadows scale with container so larger Pokémon get larger shadows */
         .foe-platform {
             position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
@@ -3274,24 +3285,16 @@
             background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 60%, transparent 100%);
             border-radius: 50%; filter: blur(4px); pointer-events: none; z-index: 0;
         }
-        /* Portrait: shared horizon seam instead of separate platforms */
-        #screen-battle[data-battle-layout="portrait"] .foe-platform,
-        #screen-battle[data-battle-layout="portrait"] .player-platform { display: none; }
-        #screen-battle[data-battle-layout="portrait"] .battle-field::after {
-            content: "";
-            position: absolute;
-            left: 8%; right: 8%; top: 56%; height: 26px;
-            background: radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 70%);
-            pointer-events: none; z-index: 0;
-        }
+        /* Stack: hide the per-sprite platforms (the old portrait arena stayed clean). */
+        #screen-battle[data-battle-layout="stack"] .foe-platform,
+        #screen-battle[data-battle-layout="stack"] .player-platform { display: none; }
 
         /* ── Stat box (shared) ────────────────────────────────────────────── */
         .stat-box { width: 260px; position: relative; background: var(--battle-panel-bg); border-radius: var(--battle-radius); padding: 10px 12px; border: 1px solid var(--border-color); font-size: 14px; }
         .stat-box-header { display: flex; align-items: center; gap: 5px; }
         .stat-box .stat-hp-text { font-size: 11px; color: #aaa; flex-shrink: 0; line-height: 1.2; font-variant-numeric: tabular-nums; }
         .stat-box-header .stat-box-name { flex: 1 1 auto; min-width: 0; max-width: 100%; cursor: pointer; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; word-break: break-word; line-height: 1.25; }
-        #screen-battle[data-battle-layout="desktop"] .stat-box-header .stat-box-name,
-        #screen-battle[data-battle-layout="ultrawide"] .stat-box-header .stat-box-name { display: block; white-space: nowrap; text-overflow: ellipsis; }
+        #screen-battle[data-battle-layout="arena"] .stat-box-header .stat-box-name { display: block; white-space: nowrap; text-overflow: ellipsis; }
         .stat-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 4px; min-height: 0; }
         .stat-volatile-row {
             display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px;
@@ -3354,19 +3357,20 @@
         #foe-stat-box .hp-bar-container { height: 10px; }
         /* Desktop / ultrawide / narrow “desktop” window: foe UI on the right (enemy side), player UI on the left.
            landscape-touch on non-mobile = width ≤900px or short landscape — same side-matching as desktop. */
-        #screen-battle[data-battle-layout="desktop"] #foe-stat-box,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box,
-        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #foe-stat-box {
-            top: 12px; left: auto; right: max(12px, env(safe-area-inset-right, 0px)); bottom: auto;
-            width: 300px; max-width: min(300px, 42vw); border-radius: 6px;
+        /* Arena: foe card floats top-right (foe's side), inset on the right so it never
+           collides with the top-right settings gear. Container-unit sizing → identical
+           composition on the desktop frame and fluid touch landscape. */
+        #screen-battle[data-battle-layout="arena"] #foe-stat-box {
+            top: calc(10px + var(--safe-top, 0px));
+            left: auto; right: calc(50px + var(--safe-right, 0px)); bottom: auto;
+            width: clamp(170px, 25cqw, 300px); max-width: 46cqw; border-radius: 6px;
             border: 1px solid rgba(255,255,255,0.12);
-            padding: 8px 12px; font-size: 13px;
+            padding: clamp(5px, 0.9cqw, 8px) clamp(7px, 1.1cqw, 12px);
+            font-size: clamp(9px, 2.4cqh, 13px);
             background: linear-gradient(180deg, rgba(22,22,30,0.94) 0%, rgba(14,14,20,0.96) 100%);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 16px rgba(0,0,0,0.5);
         }
-        #screen-battle[data-battle-layout="desktop"] #foe-stat-box .stat-info-row,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box .stat-info-row,
-        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #foe-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
+        #screen-battle[data-battle-layout="arena"] #foe-stat-box .stat-info-row { margin-top: 3px; font-size: clamp(8px, 2cqh, 10px); gap: 4px; }
 
         /* ── FOE SPRITE ───────────────────────────────────────────────────── */
         #foe-sprite-container {
@@ -3382,24 +3386,23 @@
             width: 100%; height: 92%; max-width: 100%; max-height: 92%;
             object-fit: contain; object-position: bottom center; z-index: 2;
         }
-        #screen-battle[data-battle-layout="desktop"] #foe-sprite-container,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container {
-            /* VGC: foe sits on the arena's back horizon — right-of-center, smaller (perspective) */
-            top: 138px;
-            right: clamp(64px, 11%, 168px);
-            width: var(--sprite-foe-w); aspect-ratio: auto;
-            height: 184px;
+        /* Arena: foe stands on the BACK of the field (right-of-centre, smaller — perspective).
+           Anchored from the BOTTOM (the command bar) like the player — NOT from the top — so its
+           feet stay on the pitch instead of drifting up into the crowd when the arena aspect
+           changes (the bg is bottom-anchored `cover`, so the pitch lives in the lower band). It
+           sits a fixed band above the player for near/far depth. */
+        #screen-battle[data-battle-layout="arena"] #foe-sprite-container {
+            /* Feet on the BACK of the pitch (a band above the player). Tuned together with
+               --arena-bg-shift-y so the foe stands on the tiles, not the barrier wall. */
+            bottom: calc(var(--battle-ui-h) + clamp(40px, 21cqh, 240px));
+            top: auto;
+            right: clamp(44px, 11cqw, 180px); left: auto;
+            width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) * 1.04);
+            aspect-ratio: auto; transform: none;
         }
-        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container {
-            top: 144px;
-            right: clamp(96px, 14%, 220px);
-            height: 196px;
-        }
-        #screen-battle[data-battle-layout="desktop"] #foe-sprite,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite { width: 100%; height: 100%; bottom: 8px; object-position: bottom center; }
-        #screen-battle[data-battle-layout="desktop"] #foe-sprite-container > .foe-platform,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container > .foe-platform {
-            width: 78% !important; height: 22px !important; bottom: 0 !important;
+        #screen-battle[data-battle-layout="arena"] #foe-sprite { width: 100%; height: 100%; bottom: 8px; object-position: bottom center; }
+        #screen-battle[data-battle-layout="arena"] #foe-sprite-container > .foe-platform {
+            width: 78% !important; height: clamp(10px, 2.2cqh, 22px) !important; bottom: 0 !important;
             background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 60%, transparent 100%) !important;
             filter: blur(3px) !important;
         }
@@ -3418,67 +3421,56 @@
             width: 100%; height: 92%; max-width: 100%; max-height: 96%;
             object-fit: contain; object-position: bottom center; z-index: 2;
         }
-        #screen-battle[data-battle-layout="desktop"] #player-sprite-container,
-        #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container {
-            /* VGC: player fills foreground — slightly left of center, feet tuck behind player HUD */
-            left: clamp(24px, 5%, 72px); right: auto;
-            bottom: calc(var(--battle-ui-h) + var(--battle-player-hud-strip-h) - 132px);
-            width: var(--sprite-player-w); aspect-ratio: auto;
-            height: 296px;
+        /* Arena: player fills the foreground — slightly left of centre, feet tucked just
+           above the command bar (the player card floats over that gap, bottom-left). */
+        #screen-battle[data-battle-layout="arena"] #player-sprite-container {
+            left: clamp(16px, 5cqw, 84px); right: auto; top: auto;
+            bottom: calc(var(--battle-ui-h) + clamp(34px, 7cqh, 94px));
+            width: var(--sprite-player-w); height: calc(var(--sprite-player-w) * 0.96);
+            aspect-ratio: auto; transform: none;
         }
-        #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container {
-            left: clamp(36px, 7%, 96px);
-            bottom: calc(var(--battle-ui-h) + var(--battle-player-hud-strip-h) - 138px);
-            height: 312px;
-        }
-        #screen-battle[data-battle-layout="desktop"] #player-sprite,
-        #screen-battle[data-battle-layout="ultrawide"] #player-sprite {
-            width: 100%; height: 100%; bottom: 8px; object-position: bottom center;
-        }
-        #screen-battle[data-battle-layout="desktop"] #player-sprite-container > .player-platform,
-        #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container > .player-platform {
-            width: 82% !important; height: 36px !important; bottom: 0 !important;
+        #screen-battle[data-battle-layout="arena"] #player-sprite { width: 100%; height: 100%; bottom: 8px; object-position: bottom center; }
+        #screen-battle[data-battle-layout="arena"] #player-sprite-container > .player-platform {
+            width: 82% !important; height: clamp(16px, 4cqh, 36px) !important; bottom: 0 !important;
             background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 60%, transparent 100%) !important;
             filter: blur(4px) !important;
         }
-        /* Portrait: DS-style depth — foe upper-right (smaller), player front lower-left (larger).
+        /* Stack: DS-style depth — foe upper-right (smaller), player front lower-left (larger).
            Player ≈ 1.6× foe for clear "near/far" depth. */
-        #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
-            top: clamp(96px, 15dvh, 132px);
-            right: calc(clamp(20px, 7vw, 48px) + env(safe-area-inset-right, 0px)); left: auto; bottom: auto;
+        #screen-battle[data-battle-layout="stack"] #foe-sprite-container {
+            /* Bottom-anchored to the back of the field (like arena), so on tall portrait
+               (iPad) the foe doesn't float up by the jumbotron. A band above the player. */
+            bottom: calc(var(--battle-ui-h) + clamp(56px, 20cqh, 300px)); top: auto;
+            right: calc(clamp(20px, 7cqw, 56px) + var(--safe-right, 0px)); left: auto;
             width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) + 6px);
         }
-        #screen-battle[data-battle-layout="portrait"] #foe-sprite {
+        #screen-battle[data-battle-layout="stack"] #foe-sprite {
             width: 100%; height: 92%;
             max-width: 100%; max-height: 92%; object-fit: contain;
             object-position: bottom center;
         }
-        #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
+        #screen-battle[data-battle-layout="stack"] #player-sprite-container {
             width: var(--sprite-player-w); height: calc(var(--sprite-player-w) + 8px);
             bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 6px);
-            left: clamp(4px, 2vw, 16px);
+            left: clamp(4px, 2cqw, 20px);
         }
-        #screen-battle[data-battle-layout="portrait"] #player-sprite {
+        #screen-battle[data-battle-layout="stack"] #player-sprite {
             width: 100%; height: 92%;
             max-width: 100%; max-height: 96%; object-fit: contain;
             object-position: bottom center;
         }
 
-        /* Foe bar + field pills: one column in portrait; layout-neutral wrapper elsewhere */
+        /* Foe bar + field pills. arena: display:contents — the foe card and field pills
+           position independently as overlays (their own rules below). stack: a real top
+           strip row (grid-area:foehead set in the grid shell) — in-flow, pushes the arena
+           down, so no absolute overlay and no pointer-events juggling. */
         .battle-foe-head { display: contents; }
-        #screen-battle[data-battle-layout="portrait"] .battle-foe-head {
+        #screen-battle[data-battle-layout="stack"] .battle-foe-head {
             display: flex;
             flex-direction: column;
             align-items: stretch;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            min-width: 0;
             z-index: 6;
-            pointer-events: none;
-        }
-        #screen-battle[data-battle-layout="portrait"] .battle-foe-head > * {
-            pointer-events: auto;
         }
 
         /* ── Field conditions ─────────────────────────────────────────────── */
@@ -3489,7 +3481,7 @@
             justify-content: flex-start; flex-wrap: wrap;
             gap: 3px; z-index: 5; max-width: 180px;
         }
-        #screen-battle[data-battle-layout="portrait"] #field-conditions:empty {
+        #screen-battle[data-battle-layout="stack"] #field-conditions:empty {
             display: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -3497,7 +3489,7 @@
             min-height: 0 !important;
             border: none !important;
         }
-        #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) {
+        #screen-battle[data-battle-layout="stack"] #field-conditions:not(:empty) {
             position: relative;
             top: auto;
             left: auto;
@@ -3526,7 +3518,7 @@
             overscroll-behavior: contain;
             pointer-events: auto;
         }
-        #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) .field-pill {
+        #screen-battle[data-battle-layout="stack"] #field-conditions:not(:empty) .field-pill {
             pointer-events: auto;
             flex: 0 1 auto;
             min-width: 0;
@@ -3538,10 +3530,9 @@
             overflow-wrap: anywhere;
             word-break: break-word;
         }
-        #screen-battle[data-battle-layout="desktop"] #field-conditions,
-        #screen-battle[data-battle-layout="ultrawide"] #field-conditions {
-            top: 6px; left: 50%; transform: translateX(-50%);
-            flex-direction: row; justify-content: center; max-width: 400px;
+        #screen-battle[data-battle-layout="arena"] #field-conditions {
+            top: calc(6px + var(--safe-top, 0px)); left: 50%; right: auto; transform: translateX(-50%);
+            flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: min(400px, 56cqw);
         }
         .field-pill { cursor: pointer; touch-action: manipulation; min-height: 36px; display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 4px; -webkit-tap-highlight-color: transparent; user-select: none; }
         @media (min-width: 769px) {
@@ -3559,8 +3550,7 @@
             padding: 2px 10px; border-radius: 10px;
             white-space: nowrap; text-shadow: 0 1px 3px #000;
         }
-        #screen-battle[data-battle-layout="desktop"] #gauntlet-score,
-        #screen-battle[data-battle-layout="ultrawide"] #gauntlet-score { bottom: calc(var(--battle-ui-h) + 84px); }
+        #screen-battle[data-battle-layout="arena"] #gauntlet-score { bottom: calc(var(--battle-ui-h) + clamp(48px, 11cqh, 88px)); }
         /* Persistent story-difficulty badge — top-center (online score is hidden in story). */
         #story-diff-badge {
             position: absolute; top: calc(6px + var(--safe-top, 0px)); left: 50%; transform: translateX(-50%);
@@ -3580,10 +3570,9 @@
             border-radius: 4px; padding: 10px;
             box-shadow: 0 8px 28px rgba(0,0,0,0.65);
         }
-        #screen-battle[data-battle-layout="desktop"] #move-tooltip,
-        #screen-battle[data-battle-layout="ultrawide"] #move-tooltip {
-            bottom: calc(var(--battle-ui-h) + 72px);
-            right: 0; left: auto; width: 280px;
+        #screen-battle[data-battle-layout="arena"] #move-tooltip {
+            bottom: calc(var(--battle-ui-h) + clamp(40px, 9cqh, 76px));
+            right: 0; left: auto; width: min(280px, 40cqw);
         }
         #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
         #move-tooltip .move-tip-close { float: right; margin: -4px -4px 4px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
@@ -3623,36 +3612,29 @@
             padding: 6px 10px; font-size: clamp(11px, 2.8vw, 13px);
         }
         #battle-bottom-stack #player-stat-box .hp-bar-container { height: 10px; }
-        #screen-battle[data-battle-layout="desktop"] .battle-player-hud-row,
-        #screen-battle[data-battle-layout="ultrawide"] .battle-player-hud-row,
-        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-player-hud-row {
-            border-top: 1px solid transparent;
-            /* Subtle bottom shade so HP card reads without a hard horizontal seam */
-            background: linear-gradient(180deg,
-                transparent 0%,
-                rgba(6,8,14,0.18) 60%,
-                rgba(6,8,14,0.42) 100%);
-            padding: 6px 12px 8px;
-            justify-content: flex-start;
-            align-items: flex-end;
+        /* Arena: the player card floats over the arena, bottom-left (player's side), just
+           above the command bar — the sprite's feet tuck behind it. It is pulled OUT of the
+           command-bar flow (absolute), mirroring the foe card top-right. */
+        #screen-battle[data-battle-layout="arena"] #battle-player-hud-row {
+            position: absolute; z-index: 6;
+            left: calc(8px + var(--safe-left, 0px)); right: auto;
+            bottom: calc(var(--battle-ui-h) + clamp(2px, 0.8cqh, 9px));
+            width: auto; max-width: 46cqw; padding: 0;
+            background: transparent; border-top: 1px solid transparent;
+            justify-content: flex-start; align-items: flex-end;
         }
-        #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box,
-        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box,
-        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #battle-bottom-stack #player-stat-box {
-            width: 300px;
-            max-width: min(300px, 42vw);
+        #screen-battle[data-battle-layout="arena"] #battle-bottom-stack #player-stat-box {
+            width: clamp(170px, 25cqw, 300px); max-width: 46cqw;
             align-self: flex-end;
             border-radius: 6px;
             border: 1px solid rgba(255,255,255,0.12);
             background: linear-gradient(180deg, rgba(22,22,30,0.94) 0%, rgba(14,14,20,0.96) 100%);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 16px rgba(0,0,0,0.5);
             margin: 0;
-            padding: 8px 12px;
-            font-size: 13px;
+            padding: clamp(5px, 0.9cqw, 8px) clamp(7px, 1.1cqw, 12px);
+            font-size: clamp(9px, 2.4cqh, 13px);
         }
-        #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box .stat-info-row,
-        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box .stat-info-row,
-        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #battle-bottom-stack #player-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
+        #screen-battle[data-battle-layout="arena"] #battle-bottom-stack #player-stat-box .stat-info-row { margin-top: 3px; font-size: clamp(8px, 2cqh, 10px); gap: 4px; }
 
         /* ── UI Bottom ────────────────────────────────────────────────────── */
         .battle-bottom-stack .ui-bottom {
@@ -3668,17 +3650,15 @@
             border-top: 1px solid rgba(255,255,255,0.1);
             padding: 6px; z-index: 2; align-items: stretch;
         }
-        /* Desktop/ultrawide: subtler chrome — let arena bleed in along the top edge */
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom {
+        /* Arena: subtler chrome — let the arena bleed in along the top edge. */
+        #screen-battle[data-battle-layout="arena"] .ui-bottom {
             background: linear-gradient(180deg,
                 rgba(8,10,16,0.55) 0%,
                 rgba(8,10,16,0.88) 24%,
                 var(--battle-chrome-bg) 100%);
             border-top: 1px solid rgba(255,255,255,0.08);
-            padding: 8px 12px;
+            padding: clamp(5px, 1cqw, 10px) clamp(6px, 1.4cqw, 14px);
         }
-        body.is-mobile .ui-bottom { flex-direction: column; padding: 4px 5px; gap: 4px; }
 
         /* Command + move panels: always one flex child of .ui-bottom so the battle log
            stays on the right on desktop when both menus are display:none (message phase). */
@@ -3768,22 +3748,20 @@
             border-bottom-color: #555; border-right-color: #555;
         }
 
-        /* ── Desktop / ultrawide: row chrome, 2-col moves ───────────────────── */
-        /* Scoped to data-battle-layout so portrait is completely unaffected */
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom { flex-direction: row; align-items: stretch; }
+        /* ── Arena: row command bar — log on one side, actions on the other ──
+           (Q3: the log always lives in the command bar; here it sits beside the actions.) */
+        #screen-battle[data-battle-layout="arena"] .ui-bottom { flex-direction: row; align-items: stretch; }
 
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom #battle-log,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log {
+        #screen-battle[data-battle-layout="arena"] .ui-bottom #battle-log {
             order: 2;
             align-self: stretch;
-            flex: 0 0 clamp(260px, 24vw, 340px);
-            width: clamp(260px, 24vw, 340px);
-            max-width: clamp(260px, 24vw, 340px);
+            flex: 0 0 clamp(220px, 24cqw, 340px);
+            width: clamp(220px, 24cqw, 340px);
+            max-width: clamp(220px, 24cqw, 340px);
             max-height: none;
-            font-size: 12px;
+            font-size: clamp(10px, 2.4cqh, 13px);
             line-height: 1.5;
-            padding: 8px 12px;
+            padding: clamp(5px, 1cqw, 10px) clamp(7px, 1.2cqw, 12px);
             /* Semi-transparent so the arena breathes through; subtle gradient + soft outline */
             background: linear-gradient(180deg, rgba(10,12,18,0.78) 0%, rgba(6,8,14,0.92) 100%);
             border: 1px solid rgba(255,255,255,0.10);
@@ -3794,61 +3772,50 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.18) transparent;
         }
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom #battle-log::-webkit-scrollbar,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log::-webkit-scrollbar { width: 6px; }
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom #battle-log::-webkit-scrollbar-thumb,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom .ui-bottom-menus,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom .ui-bottom-menus {
+        #screen-battle[data-battle-layout="arena"] .ui-bottom #battle-log::-webkit-scrollbar { width: 6px; }
+        #screen-battle[data-battle-layout="arena"] .ui-bottom #battle-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        #screen-battle[data-battle-layout="arena"] .ui-bottom .ui-bottom-menus {
             order: 1;
             flex: 1 1 auto;
             min-width: 0;
             min-height: 0;
         }
 
-        #screen-battle[data-battle-layout="desktop"] #move-menu.move-menu-layout,
-        #screen-battle[data-battle-layout="ultrawide"] #move-menu.move-menu-layout {
+        #screen-battle[data-battle-layout="arena"] #move-menu.move-menu-layout {
             display: flex; flex-direction: column; justify-content: stretch;
         }
 
-        #screen-battle[data-battle-layout="desktop"] #move-menu .move-menu-scroll,
-        #screen-battle[data-battle-layout="ultrawide"] #move-menu .move-menu-scroll {
+        #screen-battle[data-battle-layout="arena"] #move-menu .move-menu-scroll {
             grid-template-columns: 1fr 1fr; gap: 6px;
             flex: 1 1 0%; min-height: 0; overflow: visible;
             align-content: stretch; grid-auto-rows: 1fr;
         }
 
-        #screen-battle[data-battle-layout="desktop"] #move-menu .move-menu-scroll button.battle-btn-move,
-        #screen-battle[data-battle-layout="ultrawide"] #move-menu .move-menu-scroll button.battle-btn-move {
-            min-height: 52px; padding: 8px 10px; justify-content: center; cursor: pointer;
+        #screen-battle[data-battle-layout="arena"] #move-menu .move-menu-scroll button.battle-btn-move {
+            min-height: clamp(40px, 8cqh, 56px); padding: 8px 10px; justify-content: center; cursor: pointer;
         }
 
-        #screen-battle[data-battle-layout="desktop"] #command-menu.command-grid,
-        #screen-battle[data-battle-layout="ultrawide"] #command-menu.command-grid { gap: 6px; }
+        #screen-battle[data-battle-layout="arena"] #command-menu.command-grid { gap: 6px; }
 
-        #screen-battle[data-battle-layout="desktop"] #command-menu button,
-        #screen-battle[data-battle-layout="ultrawide"] #command-menu button {
-            min-height: 48px; font-size: 14px; padding: 8px 12px; cursor: pointer;
+        #screen-battle[data-battle-layout="arena"] #command-menu button {
+            min-height: clamp(40px, 7cqh, 52px); font-size: clamp(11px, 2.6cqh, 14px); padding: 8px 12px; cursor: pointer;
         }
 
-        #screen-battle[data-battle-layout="desktop"] #move-menu .move-menu-back,
-        #screen-battle[data-battle-layout="ultrawide"] #move-menu .move-menu-back {
+        #screen-battle[data-battle-layout="arena"] #move-menu .move-menu-back {
             min-height: 36px; font-size: 13px; cursor: pointer;
         }
 
-        /* Desktop move phase: log right, moves left */
-        #screen-battle[data-battle-layout="desktop"].battle-phase-moves .ui-bottom,
-        #screen-battle[data-battle-layout="ultrawide"].battle-phase-moves .ui-bottom {
+        /* Arena move phase: log right, moves left — slightly wider log. */
+        #screen-battle[data-battle-layout="arena"].battle-phase-moves .ui-bottom {
             flex-direction: row; align-items: stretch; gap: 8px;
         }
-        #screen-battle[data-battle-layout="desktop"].battle-phase-moves .ui-bottom #battle-log,
-        #screen-battle[data-battle-layout="ultrawide"].battle-phase-moves .ui-bottom #battle-log {
+        #screen-battle[data-battle-layout="arena"].battle-phase-moves .ui-bottom #battle-log {
             order: 2;
-            flex: 0 0 clamp(280px, 26vw, 380px);
-            width: clamp(280px, 26vw, 380px);
-            max-width: clamp(250px, 29vw, 340px);
+            flex: 0 0 clamp(240px, 26cqw, 380px);
+            width: clamp(240px, 26cqw, 380px);
+            max-width: clamp(230px, 29cqw, 360px);
             max-height: none;
-            font-size: 12px;
+            font-size: clamp(10px, 2.4cqh, 13px);
         }
         /* Mobile flex fixes */
         body.is-mobile #move-menu.move-menu-layout { flex: 1 1 0%; min-height: 0; }
@@ -3897,18 +3864,20 @@
         #command-menu.command-grid .battle-cmd-btn[onclick*="openBag"]:hover:not(:disabled) { background: #202838; }
         #command-menu.command-grid .battle-cmd-btn[onclick*="runAway"]   { background: #2a1818; border-top-color: #7a3a3a; border-left-color: #7a3a3a; border-bottom-color: #1a0808; border-right-color: #1a0808; }
         #command-menu.command-grid .battle-cmd-btn[onclick*="runAway"]:hover:not(:disabled) { background: #382020; }
-        #command-menu.command-grid .battle-cmd-ico { font-size: 26px; line-height: 1; opacity: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7)); }
-        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-ico { font-size: 30px; }
+        #command-menu.command-grid .battle-cmd-ico { font-size: clamp(20px, 5cqh, 30px); line-height: 1; opacity: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7)); }
         #command-menu.command-grid .battle-cmd-label { font-size: 13px; font-weight: bold; letter-spacing: 0.12em; color: #e8e0d0; text-shadow: 0 1px 2px rgba(0,0,0,0.7); text-transform: uppercase; }
-        #screen-battle[data-battle-layout="desktop"] #command-menu.command-grid .battle-cmd-btn,
-        #screen-battle[data-battle-layout="ultrawide"] #command-menu.command-grid .battle-cmd-btn { min-height: 60px; }
-        #screen-battle[data-battle-layout="desktop"] #command-menu.command-grid .battle-cmd-btn::after,
-        #screen-battle[data-battle-layout="ultrawide"] #command-menu.command-grid .battle-cmd-btn::after {
-            content: attr(data-shortcut);
-            position: absolute; right: 6px; bottom: 4px;
-            font-size: 9px; letter-spacing: 0.08em;
-            color: rgba(255,255,255,0.3); font-weight: bold;
-            text-shadow: none;
+        #screen-battle[data-battle-layout="arena"] #command-menu.command-grid .battle-cmd-btn { min-height: clamp(46px, 9cqh, 64px); }
+        /* Keyboard hints (F/P/B/R) by INPUT CAPABILITY, not viewport: a device with a fine
+           pointer + hover (mouse / trackpad / keyboard) gets them in either template; a pure
+           touch screen — phone or 4K kiosk — does not. (Q5) */
+        @media (hover: hover) and (pointer: fine) {
+            #screen-battle #command-menu.command-grid .battle-cmd-btn::after {
+                content: attr(data-shortcut);
+                position: absolute; right: 6px; bottom: 4px;
+                font-size: 9px; letter-spacing: 0.08em;
+                color: rgba(255,255,255,0.3); font-weight: bold;
+                text-shadow: none;
+            }
         }
 
         /* ── Move tiles (Game Boy raised-tile style) ─────────────────────── */
@@ -4014,8 +3983,7 @@
             -webkit-font-smoothing: antialiased; letter-spacing: 0.03em;
             color: #e8e0d0; text-shadow: 0 1px 2px rgba(0,0,0,0.6);
         }
-        #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-tile-name,
-        #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-tile-name { font-size: 13px; }
+        #screen-battle[data-battle-layout="arena"] .battle-btn-move .move-tile-name { font-size: clamp(11px, 2.6cqh, 13px); }
         .battle-btn-move .move-tile-cat { flex-shrink: 0; font-size: 12px; line-height: 1; width: 1.1em; text-align: center; }
         /* Category swirl badge sizes with its container's font so it scales per layout (portrait/landscape/iPad)
            and stays proportional to the adjacent type pill — instead of being hard-locked at a fixed px. */
@@ -4026,80 +3994,52 @@
         .battle-btn-move .move-tile-sep { color: #555; margin: 0 4px; user-select: none; }
         .battle-btn-move .move-info-hit { align-self: center; margin: 0; width: 28px; height: 28px; font-size: 12px; opacity: 0.55; }
         .battle-btn-move .move-info-hit:hover { opacity: 1; }
-        #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-info-hit,
-        #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-info-hit { display: none; }
-        /* Landscape-touch / non-portrait mobile: compact tiles */
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move { padding: 3px 5px; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-name { font-size: 10px; line-height: 1.2; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-meta { margin-top: 1px; font-size: 9px; gap: 1px 4px; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .move-info-hit { width: 28px; height: 28px; min-width: 28px; min-height: 28px; font-size: 12px; opacity: 0.55; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-back { min-height: 44px; padding: 5px 8px; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-scroll button.battle-btn-move { min-height: 44px; }
+        #screen-battle[data-battle-layout="arena"] .battle-btn-move .move-info-hit { display: none; }
+        /* (Mobile-landscape compact move tiles removed — arena's container-unit sizing
+           already shrinks the tiles fluidly on short landscape.) */
 
         /* Portrait: DS-style 2×2 move grid — big tappable tiles */
-        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll,
-        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll.command-grid {
+        #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-scroll,
+        #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-scroll.command-grid {
             grid-template-columns: 1fr 1fr; gap: 6px;
             align-content: stretch; grid-auto-rows: 1fr;
         }
-        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll .battle-btn-move {
+        #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-scroll .battle-btn-move {
             min-height: 64px; padding: 8px 10px;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .battle-btn-move-inner {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .battle-btn-move-inner {
             flex-direction: row; align-items: stretch; gap: 0;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-core {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-core {
             flex: 1; min-width: 0;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-head {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-head {
             align-items: center; gap: 5px; flex-wrap: nowrap;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-name {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-name {
             font-size: 11px; line-height: 1.2; -webkit-line-clamp: 2; line-clamp: 2;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-meta {
             margin-top: 4px; font-size: 9px; gap: 2px 5px; opacity: 1; color: #bbb;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta strong {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-meta strong {
             color: #eee;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .type-badge {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .type-badge {
             font-size: 9px; padding: 2px 5px; flex-shrink: 0;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-cat {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-cat {
             font-size: 12px; flex-shrink: 0;
         }
         /* Hide the per-move ℹ button in portrait — info is in the stat box */
-        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-info-hit {
+        #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-info-hit {
             display: none !important;
         }
-        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back {
+        #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-back {
             min-height: 36px; padding: 4px 8px; font-size: 13px;
         }
-        /* ── Tablet preset (700–1100px viewport) ──────────────────────────────
-           Bridges between phone-mobile and desktop. Applied additively on top
-           of whichever data-battle-layout JS picked (typically "portrait" for
-           iPad portrait, "desktop" for iPad landscape). Maintains the VGC
-           depth ratio (~1.6× player vs foe) at this in-between size. */
-        body.layout-tablet-preset #screen-battle {
-            --battle-ui-h: clamp(220px, 32dvh, 280px);
-            --sprite-foe-w: min(22vw, 178px);
-            --sprite-player-w: min(36vw, 292px);
-        }
-        body.layout-tablet-preset #screen-battle[data-battle-layout="portrait"] {
-            --battle-ui-h: clamp(280px, 38dvh, 360px);
-            --sprite-foe-w: min(24vw, 188px);
-            --sprite-player-w: min(40vw, 300px);
-        }
-        body.layout-tablet-preset #screen-battle[data-battle-layout="landscape-touch"] {
-            --battle-ui-h: clamp(200px, 36dvh, 250px);
-            --sprite-foe-w: min(20vw, 168px);
-            --sprite-player-w: min(34vw, 282px);
-        }
-        body.layout-tablet-preset #screen-battle #command-menu.command-grid .battle-cmd-btn { min-height: 52px; font-size: 12px; }
-        body.layout-tablet-preset #screen-battle #move-menu .move-menu-back { min-height: 44px; padding: 5px 10px; font-size: 12px; }
-        body.layout-tablet-preset #screen-battle #battle-log { font-size: 12px; line-height: 1.5; }
-        body.layout-tablet-preset #move-menu .move-menu-scroll button.battle-btn-move { min-height: 48px; font-size: 11px; }
+        /* (Tablet preset removed — tablets now just pick arena/stack by orientation and
+           size fluidly via container units, so there is no separate tablet tier to drift.) */
 
         /* ── Icon buttons ─────────────────────────────────────────────────── */
         .icon-btn {
@@ -4154,17 +4094,12 @@
             border-color: rgba(255, 255, 255, 0.58);
         }
         .battle-settings-btn:active { transform: scale(0.96); }
-        /* Default: top-right (portrait strip + mobile landscape strip beside foe card) */
+        /* Settings gear: top-right in EVERY template (Q4) — matches the story screens.
+           The foe card is inset on the right (see the arena #foe-stat-box rule) so the
+           gear and the foe card never collide. */
         #screen-battle .battle-settings-btn {
             right: calc(6px + var(--safe-right, 0px));
             left: auto;
-        }
-        /* Desktop / ultrawide / narrow-window desktop: foe card sits top-right — keep gear top-left */
-        #screen-battle[data-battle-layout="desktop"] .battle-settings-btn,
-        #screen-battle[data-battle-layout="ultrawide"] .battle-settings-btn,
-        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-settings-btn {
-            left: calc(8px + var(--safe-left, 0px));
-            right: auto;
         }
         .move-info-hit {
             flex-shrink: 0; width: 36px; height: 36px; min-width: 36px; min-height: 36px;
@@ -4226,140 +4161,14 @@
             box-sizing: border-box !important;
         }
 
-        /* ── Phone landscape ──────────────────────────────────────────────── */
+        /* ── Phone landscape: app-fill + draft/menu only ─────────────────────
+           The battle overlay that used to live here is gone — battle sizing is now the
+           fluid "arena" template (container units), which covers phone landscape with the
+           same rules as the desktop frame. Only non-battle screen rules remain (C9). */
         @media screen and (max-height: 500px) and (max-width: 900px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
-            /* Short landscape: keep more room for the arena; 52dvh was eating ~half the viewport.
-               Lifted from 138/190 to 180/230 so cmd-grid (2×46) + 2-row move grid (2×44+gap) + 44px back fit without overflow.
-               Foe small + player ≈ 1.5× foe for VGC depth. */
-            #screen-battle { --battle-ui-h: clamp(180px, 42dvh, 230px); --sprite-foe-w: min(22vw, 132px); --sprite-player-w: min(32vw, 200px); }
-            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(180px, 42dvh, 230px); }
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; font-size: 11px; }
-            #foe-stat-box {
-                top: calc(4px + var(--safe-top, 0px)); left: auto;
-                right: calc(48px + var(--safe-right, 0px));
-                width: min(210px, 42vw); padding: 5px 7px; font-size: 9px;
-                background: var(--battle-panel-bg); border-radius: var(--battle-radius); border: 1px solid var(--border-color);
-            }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-stat-box {
-                width: min(230px, 50vw);
-            }
-            body.is-mobile .battle-player-hud-row {
-                justify-content: flex-start;
-                padding: 4px max(6px, env(safe-area-inset-left, 0px)) 2px max(6px, env(safe-area-inset-right, 0px));
-            }
-            /* Phone landscape: float player HP card to top-left so it mirrors the foe card top-right.
-               Fixed positioning is needed because the hud-row's parent #battle-bottom-stack is
-               position: absolute; bottom: 0 — an absolute top:0 would land near the screen bottom.
-               Safe on mobile: #app-root has no transform (cleared by applyDesktopGameScale on is-mobile). */
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #battle-player-hud-row {
-                position: fixed;
-                top: calc(4px + var(--safe-top, 0px));
-                left: calc(8px + var(--safe-left, 0px));
-                right: auto; bottom: auto;
-                width: auto; max-width: min(210px, 50vw);
-                padding: 0;
-                background: transparent !important;
-                z-index: 6;
-            }
-            body.is-mobile #battle-bottom-stack #player-stat-box {
-                width: min(210px, 42vw);
-                max-width: min(210px, 42vw);
-                margin: 0; padding: 5px 7px; font-size: 9px;
-                border-radius: var(--battle-radius); border: 1px solid var(--border-color);
-                background: var(--battle-panel-bg);
-            }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #battle-bottom-stack #player-stat-box {
-                width: min(230px, 50vw);
-                max-width: min(230px, 50vw);
-            }
-            .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
-            #player-hp-text, #foe-hp-text { font-size: 7px; }
-            #foe-types, #player-types { font-size: 7px; }
-            .type-badge { font-size: 7px; padding: 1px 3px; }
-            #foe-stages, #player-stages { max-height: none; overflow: visible; }
-            .hp-bar-container { height: 5px; margin-top: 2px; border-radius: 0; }
-            #foe-sprite-container {
-                /* Phone landscape: small foe in back-right (~22vw) so player feels close */
-                width: var(--sprite-foe-w);
-                height: min(118px, 22vw, calc(100dvh - var(--battle-ui-h) - 60px));
-                top: calc(46px + var(--safe-top, 0px)); bottom: auto;
-                left: auto; right: calc(32px + min(8vw, 70px) + var(--safe-right, 0px));
-                transform: none; z-index: 2;
-            }
-            #foe-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
-            /* Player sprite: bottom-left, feet tucked ~16px behind the bottom UI for GBA-style depth.
-               Cap height against arena so head never clips top edge. */
-            #player-sprite-container {
-                /* Player ≈ 1.55× foe — fills foreground */
-                width: var(--sprite-player-w);
-                height: min(168px, 32vw, calc(100dvh - var(--battle-ui-h) - 28px));
-                bottom: calc(var(--battle-ui-h) - 22px);
-                left: calc(10px + min(4vw, 36px) + var(--safe-left, 0px)); right: auto; top: auto;
-                transform: none; z-index: 3;
-            }
-            #player-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
-            .icon-btn { width: 34px; height: 34px; right: calc(8px + var(--safe-right, 0px)); font-size: 14px; }
             .settings-btn { top: calc(6px + var(--safe-top, 0px)); }
-            .battle-settings-btn {
-                width: 34px; height: 34px; min-width: 34px; min-height: 34px; font-size: 15px;
-                top: calc(6px + var(--safe-top, 0px));
-                left: auto;
-                right: calc(6px + var(--safe-right, 0px));
-            }
-            #screen-battle[data-battle-layout="desktop"] .battle-settings-btn,
-            #screen-battle[data-battle-layout="ultrawide"] .battle-settings-btn,
-            body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-settings-btn {
-                left: calc(6px + var(--safe-left, 0px));
-                right: auto;
-            }
-            #field-conditions {
-                top: calc(52px + var(--safe-top, 0px)); left: calc(4px + var(--safe-left, 0px));
-                transform: none; flex-direction: column; align-items: flex-start;
-                justify-content: flex-start; max-width: min(200px, 42vw); right: auto; gap: 2px;
-            }
-            .field-pill { min-height: 21px; font-size: 8px; padding: 2px 4px; border-radius: 0; }
-            #gauntlet-score {
-                top: auto; bottom: calc(var(--battle-ui-h) + clamp(56px, 14dvh, 72px));
-                left: auto; right: calc(8px + var(--safe-right, 0px));
-                font-size: 8px; background: var(--battle-panel-bg);
-                border: 1px solid var(--border-color); padding: 3px 6px; border-radius: var(--battle-radius);
-            }
-            .ui-bottom {
-                height: var(--battle-ui-h);
-                padding: 5px max(5px, env(safe-area-inset-left, 0px)) 5px max(5px, env(safe-area-inset-right, 0px));
-                gap: 5px; align-items: stretch;
-                box-sizing: border-box;
-                background: #050505;
-            }
-            body.is-mobile .ui-bottom { flex-direction: row; }
-            body.is-mobile #battle-log {
-                align-self: stretch;
-                flex: 0 0 min(210px, 32vw);
-                width: min(210px, 32vw);
-                max-width: min(240px, 34vw);
-                max-height: none;
-                min-height: 0;
-                padding: 5px 7px; font-size: 9px; line-height: 1.4;
-                overflow-x: hidden; overflow-y: auto;
-                background: var(--surface);
-            }
-            body.is-mobile #screen-battle.battle-phase-moves .ui-bottom #battle-log {
-                flex: 0 0 min(210px, 32vw);
-                max-width: min(240px, 34vw);
-                max-height: none;
-            }
-            #command-menu { flex: 1 1 auto; min-width: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-            #move-menu.move-menu-layout { flex: 1 1 0%; min-width: 0; min-height: 0; overflow: hidden; gap: 2px; }
-            #move-menu .move-menu-scroll { flex: 1 1 0%; min-height: 0; -webkit-overflow-scrolling: touch; grid-template-columns: 1fr 1fr; gap: 4px; }
-            #screen-battle #move-menu.white-outline { padding: 4px 5px; }
-            .command-grid { gap: 3px; }
-            button { font-size: 10px; padding: 2px 4px; min-height: 32px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-            #command-menu button { min-height: 40px; font-size: 10px; }
-            #move-menu button.battle-btn-move { min-height: 48px; padding: 5px 6px; font-size: 9px; }
-            #move-menu .move-menu-back { min-height: 36px; padding: 5px 8px; font-size: 10px; }
-            #move-menu button:not(.battle-btn-move) { min-height: 34px; }
-            #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px); right: auto; left: 8px; width: min(220px, 48vw); font-size: 10px; }
             #screen-draft:not(.hidden) { display: flex; flex-direction: column; padding: 0; overflow: hidden; height: 100dvh; max-height: 100dvh; box-sizing: border-box; }
             #draft-header { padding: 5px 80px 5px 8px; margin-bottom: 0; flex-shrink: 0; border-bottom: 1px solid #222; }
             #draft-header h2 { font-size: 13px; margin: 0; }
@@ -4379,178 +4188,86 @@
             #screen-menu:not(.hidden) { overflow-y: auto; -webkit-overflow-scrolling: touch; }
         }
 
-        /* ── Tablet landscape ─────────────────────────────────────────────── */
+        /* ── Tablet landscape: app-fill only ─────────────────────────────────
+           Battle is the fluid "arena" template (container units) here too, so the old
+           GBA-mirror overlay is gone (C9 — it was a near-duplicate of the phone-landscape
+           block). Only the viewport-fill remains. */
         @media screen and (min-width: 600px) and (max-width: 1366px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) and (min-height: 501px) and (max-height: 900px) {
-            /* Same as portrait mobile: fill the viewport — avoids letterboxing + “floating” chrome on wide tablets */
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; box-sizing: border-box; }
-            #screen-battle {
-                --battle-ui-h: clamp(140px, 20svh, 200px);
-                --sprite-foe-w: min(20vw, 158px);
-                --sprite-player-w: min(32vw, 256px);
-            }
-            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(140px, 20svh, 200px); }
-            #foe-stat-box {
-                width: min(228px, 40vw); top: 6px; left: auto; right: 52px;
-                padding: 6px 9px; font-size: 11px;
-                background: var(--battle-panel-bg); border-radius: var(--battle-radius); border: 1px solid var(--border-color);
-            }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-stat-box {
-                width: min(248px, 44vw);
-            }
-            body.is-mobile .battle-player-hud-row {
-                justify-content: flex-start;
-                padding: 5px max(8px, env(safe-area-inset-left, 0px)) 3px max(8px, env(safe-area-inset-right, 0px));
-            }
-            /* Tablet landscape: same GBA-mirror — player HP card floated top-left, sprite bottom-left with feet tucked.
-               Fixed to escape #battle-bottom-stack's absolute bottom: 0 containing block. */
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #battle-player-hud-row {
-                position: fixed;
-                top: calc(6px + var(--safe-top, 0px));
-                left: calc(10px + var(--safe-left, 0px));
-                right: auto; bottom: auto;
-                width: auto; max-width: min(248px, 48vw);
-                padding: 0;
-                background: transparent !important;
-                z-index: 6;
-            }
-            body.is-mobile #battle-bottom-stack #player-stat-box {
-                width: min(228px, 40vw);
-                max-width: min(228px, 40vw);
-                padding: 6px 9px; font-size: 11px;
-                border-radius: var(--battle-radius);
-                border: 1px solid var(--border-color);
-                background: var(--battle-panel-bg);
-            }
-            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #battle-bottom-stack #player-stat-box {
-                width: min(248px, 44vw);
-                max-width: min(248px, 44vw);
-            }
-            .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
-            .ui-bottom {
-                height: var(--battle-ui-h);
-                padding: 6px max(6px, env(safe-area-inset-left, 0px)) 6px max(6px, env(safe-area-inset-right, 0px));
-                gap: 6px; align-items: stretch;
-                box-sizing: border-box;
-                background: linear-gradient(180deg, rgba(10,12,18,0.92) 0%, var(--battle-chrome-bg) 100%);
-            }
-            #player-hp-text, #foe-hp-text { font-size: 10px; }
-            .hp-bar-container { height: 6px; margin-top: 2px; }
-            #foe-sprite-container {
-                width: var(--sprite-foe-w);
-                height: min(166px, 22vw, calc(100dvh - var(--battle-ui-h) - 76px));
-                top: calc(64px + var(--safe-top, 0px)); bottom: auto;
-                left: auto; right: calc(28px + min(8vw, 72px) + var(--safe-right, 0px)); transform: none;
-            }
-            #foe-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
-            #player-sprite-container {
-                width: var(--sprite-player-w);
-                height: min(270px, 34vw, calc(100dvh - var(--battle-ui-h) - 60px));
-                bottom: calc(var(--battle-ui-h) - 18px);
-                left: calc(12px + min(3vw, 40px) + var(--safe-left, 0px)); right: auto; top: auto; transform: none;
-            }
-            #player-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
-            #field-conditions {
-                top: calc(58px + var(--safe-top, 0px)); left: calc(6px + var(--safe-left, 0px));
-                transform: none; flex-direction: column; align-items: flex-start;
-                justify-content: flex-start; max-width: 220px; right: auto; gap: 3px;
-            }
-            #gauntlet-score { top: auto; bottom: calc(var(--battle-ui-h) + clamp(52px, 11dvh, 72px)); left: auto; right: 10px; font-size: 11px; }
-            body.is-mobile .ui-bottom { flex-direction: row; align-items: stretch; }
-            body.is-mobile #battle-log {
-                align-self: stretch;
-                flex: 1 1 40%;
-                min-width: min(240px, 40vw);
-                max-width: min(380px, 48vw);
-                max-height: none;
-                overflow-x: hidden; overflow-y: auto; font-size: 11px; line-height: 1.45;
-                padding: 6px 8px; width: auto; height: auto; min-height: 0;
-            }
-            #command-menu { flex: 1 1 auto; min-width: 0; }
-            #move-menu.move-menu-layout { flex: 1 1 0%; min-width: 0; min-height: 0; gap: 3px; }
-            #move-menu .move-menu-scroll { flex: 1 1 0%; min-height: 0; grid-template-columns: 1fr 1fr; gap: 5px; }
-            #move-menu .move-menu-back { min-height: 44px; padding: 5px 10px; }
-            #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px); left: 8px; right: auto; width: min(280px, 42vw); }
-            #command-menu button { min-height: 46px; }
-            #screen-battle.battle-phase-moves .ui-bottom #battle-log {
-                min-width: min(240px, 40vw);
-                max-width: min(380px, 48vw);
-                max-height: none;
-            }
-            #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 50px; padding: 5px 7px; font-size: 10px; }
         }
 
-        /* ── Portrait layout: sizing via data-battle-layout="portrait" ── */
-        #screen-battle[data-battle-layout="portrait"] #foe-stat-box {
+        /* ── Stack layout: sizing via data-battle-layout="stack" ── */
+        #screen-battle[data-battle-layout="stack"] #foe-stat-box {
             position: relative;
             top: auto; left: auto; right: auto;
             width: 100%; box-sizing: border-box;
             border-radius: 0; border-left: none; border-right: none; border-top: none;
             padding: 5px calc(46px + var(--safe-right, 0px)) 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
         }
-        #screen-battle[data-battle-layout="portrait"] #battle-bottom-stack #player-stat-box {
+        #screen-battle[data-battle-layout="stack"] #battle-bottom-stack #player-stat-box {
             bottom: auto; left: auto; right: auto; width: 100%; box-sizing: border-box;
             border-radius: 0; border-left: none; border-right: none;
             border-bottom: 1px solid #222; border-top: 1px solid #222;
             padding: 5px 10px; font-size: clamp(11px, 3vw, 13px);
             z-index: 6; background: var(--battle-chrome-bg);
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack { z-index: 6; background: #0a0e14 !important; }
-        #screen-battle[data-battle-layout="portrait"] .hp-bar-container { height: 7px; margin-top: 3px; }
-        #screen-battle[data-battle-layout="portrait"] #player-hp-text,
-        #screen-battle[data-battle-layout="portrait"] #foe-hp-text { font-size: 10px; color: #bbb; }
-        #screen-battle[data-battle-layout="portrait"] #foe-types,
-        #screen-battle[data-battle-layout="portrait"] #player-types { font-size: 9px; }
-        #screen-battle[data-battle-layout="portrait"] .type-badge { padding: 1px 4px; font-size: 9px; }
-        #screen-battle[data-battle-layout="portrait"] #gauntlet-score {
+        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack { z-index: 6; background: #0a0e14 !important; }
+        #screen-battle[data-battle-layout="stack"] .hp-bar-container { height: 7px; margin-top: 3px; }
+        #screen-battle[data-battle-layout="stack"] #player-hp-text,
+        #screen-battle[data-battle-layout="stack"] #foe-hp-text { font-size: 10px; color: #bbb; }
+        #screen-battle[data-battle-layout="stack"] #foe-types,
+        #screen-battle[data-battle-layout="stack"] #player-types { font-size: 9px; }
+        #screen-battle[data-battle-layout="stack"] .type-badge { padding: 1px 4px; font-size: 9px; }
+        #screen-battle[data-battle-layout="stack"] #gauntlet-score {
             top: auto; left: auto; right: 6px; font-size: 10px;
             background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 3px;
         }
-        #screen-battle[data-battle-layout="portrait"] .ui-bottom {
+        #screen-battle[data-battle-layout="stack"] .ui-bottom {
             height: var(--battle-ui-h); flex-direction: column; padding: 4px 5px; gap: 4px;
             background: #0a0e14;
         }
-        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack .ui-bottom {
+        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack .ui-bottom {
             flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h);
         }
-        #screen-battle[data-battle-layout="portrait"] #battle-log {
+        #screen-battle[data-battle-layout="stack"] #battle-log {
             align-self: stretch; width: 100%; max-width: 100%;
             flex: 0 0 auto; min-height: 0; max-height: calc(1.5em * 5 + 28px);
             font-size: 11px; line-height: 1.45; padding: 4px 6px;
             overflow-x: hidden; overflow-y: auto;
         }
-        #screen-battle[data-battle-layout="portrait"].battle-phase-moves .ui-bottom #battle-log {
+        #screen-battle[data-battle-layout="stack"].battle-phase-moves .ui-bottom #battle-log {
             max-height: calc(1.5em * 5 + 28px); max-width: 100%;
         }
-        #screen-battle[data-battle-layout="portrait"] .ui-bottom-menus {
+        #screen-battle[data-battle-layout="stack"] .ui-bottom-menus {
             flex: 1 1 0;
             min-height: 0;
             width: 100%;
             box-sizing: border-box;
         }
-        #screen-battle[data-battle-layout="portrait"] #command-menu {
+        #screen-battle[data-battle-layout="stack"] #command-menu {
             flex: 1 1 0; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto;
         }
-        #screen-battle[data-battle-layout="portrait"] #move-menu.move-menu-layout {
+        #screen-battle[data-battle-layout="stack"] #move-menu.move-menu-layout {
             flex: 1 1 0%; width: 100%; box-sizing: border-box; min-height: 0; overflow: hidden; gap: 3px;
         }
-        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll {
+        #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-scroll {
             flex: 1 1 0%; min-height: 0; -webkit-overflow-scrolling: touch;
             grid-template-columns: 1fr 1fr; gap: 5px;
             align-content: stretch; grid-auto-rows: 1fr;
         }
-        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back { min-height: 36px; padding: 4px 8px; }
-        #screen-battle[data-battle-layout="portrait"] .command-grid { gap: 5px; }
-        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack button {
+        #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-back { min-height: 36px; padding: 4px 8px; }
+        #screen-battle[data-battle-layout="stack"] .command-grid { gap: 5px; }
+        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack button {
             font-size: 12px; min-height: 44px; padding: 4px 6px;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        #screen-battle[data-battle-layout="portrait"] #command-menu.command-grid .battle-cmd-btn { min-height: 68px; }
-        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack button.battle-btn-move {
+        #screen-battle[data-battle-layout="stack"] #command-menu.command-grid .battle-cmd-btn { min-height: 68px; }
+        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack button.battle-btn-move {
             background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.3) 100%);
             border: 1px solid rgba(255,255,255,0.12);
         }
-        #screen-battle[data-battle-layout="portrait"] #move-tooltip {
+        #screen-battle[data-battle-layout="stack"] #move-tooltip {
             bottom: calc(var(--battle-ui-h) + 8px); right: auto; left: 5px;
             width: min(92vw, 260px); font-size: 10px;
         }
@@ -4637,7 +4354,7 @@
             .draft-card-info-btn { width: 24px; height: 24px; min-width: 24px; font-size: 12px; }
             .modal-content { width: 98%; padding: 12px; }
             button { min-height: 44px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-            /* Portrait move tiles sized by data-battle-layout="portrait" rules above */
+            /* Stack move tiles sized by data-battle-layout="stack" rules above */
             .party-slot { min-height: 44px; }
             .grade-filter-row { gap: 6px; }
             #gauntlet-reorder-section button { min-width: 44px; min-height: 44px; }
@@ -7393,10 +7110,10 @@
             cursor: pointer;
             flex: 0 0 auto !important;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"].battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
+        body.is-mobile #screen-battle[data-battle-layout="stack"].battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
             max-height: calc(1.5em * 5 + 28px) !important;
         }
-        body.is-mobile #screen-battle:not([data-battle-layout="portrait"]).battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
+        body.is-mobile #screen-battle:not([data-battle-layout="stack"]).battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
             max-height: calc(1.5em * 2 + 24px) !important;
         }
         @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
@@ -9917,23 +9634,16 @@
             : _computeAutoIsMobile();
 
         if (isMobile) document.body.classList.add('is-mobile');
-        function applyLayoutPresetClasses() {
-            try {
-                const tab = window.matchMedia('(min-width:700px) and (max-width:1100px)').matches;
-                document.body.classList.toggle('layout-tablet-preset', tab);
-            } catch (e) {}
-        }
         function applyBattleLayoutMode() {
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
-            /* Phone/tablet layout must follow viewport, not only UA-based .is-mobile — otherwise
-               DevTools, “desktop site”, and some tablets stay on `desktop` while portrait,
-               which keeps a 2×2 move grid and squishes text. */
+            /* Single source of truth → two reflow templates (see DISPLAY MODES header).
+               The desktop fixed frame is always 16:9, so non-mobile is always "arena";
+               the fluid touch layout switches to "stack" only when portrait. Container-query
+               units handle every width inside each template, so no breakpoint forks here. */
+            const isMobile = document.body.classList.contains('is-mobile');
             const portrait = window.matchMedia('(orientation: portrait)').matches;
-            const narrow = typeof window.innerWidth === 'number' && window.innerWidth <= 900;
-            const shortLandscape = !portrait && typeof window.innerHeight === 'number' && window.innerHeight <= 500;
-            const usePhoneBattleLayout = document.body.classList.contains('is-mobile') || narrow || shortLandscape;
-            const mode = !usePhoneBattleLayout ? 'desktop' : (portrait ? 'portrait' : 'landscape-touch');
+            const mode = (isMobile && portrait) ? 'stack' : 'arena';
             sb.setAttribute('data-battle-layout', mode);
             try {
                 const sel = document.getElementById('party-size-select');
@@ -9946,22 +9656,25 @@
         window.applyBattleLayoutMode = applyBattleLayoutMode;
 
         const BATTLE_BG_TERRAINS = ['neutral', 'grassy', 'electric', 'psychic', 'misty'];
-        const BATTLE_BG_LAYOUTS  = ['desktop', 'portrait', 'landscape'];
+        const BATTLE_BG_LAYOUTS  = ['portrait', 'landscape'];
 
-        function getBattleBgUrl(terrain, layoutMode) {
+        function getBattleBgUrl(terrain, folder) {
             const t = (terrain || 'neutral').toLowerCase();
-            let folder;
-            if (layoutMode === 'portrait') folder = 'portrait';
-            else if (layoutMode === 'landscape-touch') folder = 'landscape';
-            else folder = 'desktop';
-            return "url('sprites/backgrounds/battle/" + folder + "/bg_" + t + ".png')";
+            /* Two background sets remain: "portrait" (stack) and the wide "landscape" stadium
+               (arena — desktop frame AND touch). The old crowd-ringed "desktop" set is retired,
+               so anything that isn't portrait maps to landscape. */
+            const f = (folder === 'stack' || folder === 'portrait') ? 'portrait' : 'landscape';
+            return "url('sprites/backgrounds/battle/" + f + "/bg_" + t + ".png')";
         }
         window.getBattleBgUrl = getBattleBgUrl;
 
         function refreshBattleBg() {
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
-            const layout = sb.getAttribute('data-battle-layout') || 'desktop';
+            const layout = sb.getAttribute('data-battle-layout') || 'arena';
+            /* arena → the wide "landscape" stadium (deep flat field) on every screen — desktop
+               frame and touch alike; stack → the "portrait" stadium. */
+            const folder = layout === 'stack' ? 'portrait' : 'landscape';
             let terrain = 'neutral';
             try {
                 if (settings && settings.terrainBackground && state && state.terrain) {
@@ -9972,7 +9685,7 @@
                     else if (t === 'Misty') terrain = 'misty';
                 }
             } catch (e) {}
-            sb.style.backgroundImage = getBattleBgUrl(terrain, layout);
+            sb.style.backgroundImage = getBattleBgUrl(terrain, folder);
         }
         window.refreshBattleBg = refreshBattleBg;
 
@@ -10045,15 +9758,15 @@
                 setTimeout(function() { try { el.remove(); } catch (e) {} }, 240);
             }, dur);
         };
-        applyLayoutPresetClasses();
         applyBattleLayoutMode();
-        window.addEventListener('resize', applyLayoutPresetClasses);
-        window.addEventListener('resize', applyBattleLayoutMode);
-        window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         // Re-toggle .is-mobile on viewport change so DevTools device toolbar and window
-        // resizes flip the body class without a page reload. applyDisplayMode is defined
-        // later in the script, so guard the call.
+        // resizes flip the body class without a page reload. applyDisplayMode (defined later,
+        // hence the guard) re-toggles .is-mobile and THEN re-runs applyBattleLayoutMode +
+        // applyDesktopGameScale + applyBattleLogDockClass — so it is the single relayout entry
+        // point on resize. Binding applyBattleLayoutMode directly here too would relayout twice
+        // per resize (once with a stale .is-mobile); let applyDisplayMode own the sequence.
         window.addEventListener('resize', function() { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} });
+        window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         window.addEventListener('orientationchange', () => setTimeout(() => { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} }, 150));
         window.isMobile = isMobile;
 
@@ -10069,7 +9782,8 @@
         }
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 150));
-        window.addEventListener('orientationchange', () => setTimeout(applyBattleLayoutMode, 150));
+        // applyDisplayMode (bound to orientationchange above) re-runs applyBattleLayoutMode with
+        // a fresh .is-mobile, so no separate applyBattleLayoutMode binding here (avoids a double relayout).
         window.addEventListener('orientationchange', () => setTimeout(() => { try { applyDesktopGameScale(); } catch(e) {} }, 150));
         document.addEventListener('DOMContentLoaded', function() {
             checkOrientation();
