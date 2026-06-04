@@ -177,7 +177,7 @@ but lets the journey voice survive the first ten seconds of the game.
    a faithful RBY in-joke, but it collides with earnest cold-open prose: the intro
    (`_STORY_INTRO_SCENES.classic`) reads *"someone's blocking the route gate. {rival}."* → renders
    as *"…the route gate. Mer Sucks."*, then *"They picked up their starter the same morning you
-   did"* — sincere lines describing an entity named "Mer Sucks." **Options in §10.**
+   did"* — sincere lines describing an entity named "Mer Sucks." **Decision in §11.1.**
 2. **Orphaned content:** `_shouldFireFirstSightingLore` gates on `tier === 'mature' / 'soft_pasta'
    / 'pasta'`, but the tone layer was cut and every run is `tier: 'classic'`, so the
    `_FIRST_SIGHTING_LORE` overlay **never fires.** This is a spec-drift / dead-content issue more
@@ -424,12 +424,11 @@ voice that should carry it. Where the shipped line is already strong, it's marke
 | 11 | The ending / Run #1 | `STORY_SCENES['main.ending']` | The First + the loop choice | **keep — the bar** |
 | 12 | Post-HoF epilogue | `_POSTHOF_EPILOGUE_BY_VARIANT.classic` | Oak (final bookend) | keep |
 
-### 5.1 The intro (beat 1) — keep, with the rival-name caveat
+### 5.1 The intro (beat 1) — keep, with the rival-name fix (DECIDED, §11.1)
 
-`_STORY_INTRO_SCENES.classic` is good and should stay verbatim — **conditional on resolving the
-"{Player} Sucks" rival-name collision (§10).** If the taunt name stays, the intro should not weave
-it into sincere prose; render the rival as "your rival" in narration and reserve the taunt name for
-the battle HUD only. Proposed narration-safe variant:
+`_STORY_INTRO_SCENES.classic` is good and stays close to verbatim, with the locked rival-name
+treatment applied: the "{Player} Sucks" taunt name lives **only on the battle HUD / nameplate**,
+and all narration renders the rival as "your rival." The narration-safe intro: 
 
 > "Hold up — someone's blocking the route gate. Your rival got their starter the same morning you
 > got yours."
@@ -620,7 +619,7 @@ moves, in priority order:
    load-time validation (a bark key attached to a state event should fail the smoke test in
    `tests/smoke-dialogue-load.mjs`).
 4. **Keep the choice contract byte-identical** — `persistKey` / `value` / `reply` / `branches.when`
-   must not change shape; §11's choice taxonomy depends on it.
+   must not change shape; §10's choice taxonomy depends on it.
 
 **Boundary:** Stream 2 owns the *words* and the *voice rules*; Stream 4 owns the *container and the
 load path*. This doc supplies copy ready to drop into whatever container Stream 4 lands.
@@ -702,31 +701,57 @@ for a final beat.
 
 ---
 
-## 11. Borderline lines — needs your sign-off
+## 11. Borderline lines — DECIDED (maintainer sign-off 2026-06-04)
 
-| # | Line / system | Anchor | The tension | Options |
-|---|---|---|---|---|
-| 1 | Rival name "{Player} Sucks" | `_storyRivalTauntName` | Faithful RBY gag vs. collides with sincere cold-open prose | (a) keep gag, but render rival as "your rival" in *narration*, taunt-name only on battle HUD (§5.1); (b) drop the gag; (c) make it an opt-in toggle in setup |
-| 2 | How edgy is "edgier"? | `STORY_SCENES` villain/extra arcs | Skull kid crying, the loop's despair — where's the ceiling? | Confirm the shipped villain/extra arcs ARE the ceiling and new copy may match but not exceed; or set a tighter bar |
-| 3 | "The numbered part" seed (§5.2) | proposed `classic_champion` edit | Plants post-game existence pre-Champion | Approve the seed, or keep the Champion beat spoiler-free |
-| 4 | Orphaned first-sighting lore | `_shouldFireFirstSightingLore` | Never fires post-tone-cut (tier gate) | Route to Stream 1 / spec-drift — not a copy fix |
+> Maintainer ruling: "go with your recommendations based on best practices." The recommended
+> option for each item is locked below as the decision of record. These now govern the
+> implementation change when it lands.
+
+| # | Line / system | Anchor | Decision (locked) |
+|---|---|---|---|
+| 1 | Rival name "{Player} Sucks" | `_storyRivalTauntName` | **Keep the gag, but render the rival as "your rival" in all *narration* (cold-opens, story beats); the taunt name appears only on the battle HUD / nameplate.** No sincere prose ever weaves the "{Player} Sucks" string. (Implemented as the §5.1 narration variant.) |
+| 2 | Edge ceiling | `STORY_SCENES` villain/extra arcs | **The shipped villain/extra arcs ARE the ceiling.** New copy may match that intensity (subtext + specificity) but never exceed it; nothing more explicit/shock-driven than the crying-Skull-grunt / the-loop's-despair register ships. |
+| 3 | "The numbered part" seed (§5.2) | proposed `classic_champion` edit | **Approved.** The Champion's-Hall beat plants the post-game with "the numbered part" — quiet seed, no spoiler. |
+| 4 | Orphaned first-sighting lore | `_shouldFireFirstSightingLore` | **Routed to Stream 1 / spec-drift** — not a copy fix; out of this stream's scope. |
 
 ---
 
-## 12. Sign-off checklist (what "done" means for this stream)
+## 12. Sign-off checklist — APPROVED (2026-06-04)
 
-- [ ] **Voice guide (§3) approved** — the three-word definition + the per-speaker register table.
-- [ ] **Casting map (§6) approved** — Oak from ~9 spine beats → ~6; new recurring Veteran for the
+Maintainer approved the recommendations wholesale ("go with your recommendations based on best
+practices"). The spec direction is locked; line-level copy below is the approved proposal and may
+be refined during the implementation change.
+
+- [x] **Voice guide (§3) approved** — three-word definition + per-speaker register table.
+- [x] **Casting map (§6) approved** — Oak from ~9 spine beats → ~6; new recurring Veteran for the
       three mid-route benches; The First owns the climax.
-- [ ] **Rewrites (§4, §5) approved line-by-line** — especially the Mystery intro (§4.1), since it
-      changes what the climax *withholds*.
-- [ ] **Setup copy (§7) approved** — confirm the form stays scannable with the voiced subs.
-- [ ] **Bark layer (§8) scoped** — confirm the "non-state, additive-only" boundary before Stream 4
-      wires anything.
-- [ ] **Schema asks (§9.2) handed to Stream 4** — `speaker` block first; it turns §6 into a data edit.
-- [ ] **Borderline lines (§11) ruled on** — the rival-name gag especially.
+- [x] **Rewrites (§4, §5) approved** — including the Mystery intro (§4.1), which changes what the
+      climax *withholds*. (`main.mfReveal` / `main.ending` stay untouched — they are the bar.)
+- [x] **Setup copy (§7) approved** — voiced section subs + the opening narration card; form stays scannable.
+- [x] **Bark layer (§8) approved** — "non-state, additive-only" boundary is the locked rule.
+- [x] **Schema asks (§9.2) handed to Stream 4** — `speaker` block first; it turns §6 into a data edit.
+- [x] **Borderline lines (§11) ruled** — see the locked decisions table above.
 
-> Reminder: this is a **design pass**. Nothing here is in `battle.html`. On sign-off, the copy
-> changes are JSON/const edits + (optionally) the §9 schema work — each of which is a separate,
-> reviewable change with its own approval, per `CLAUDE.md`'s "no game-behavior change without
-> sign-off" rule. Tone and copy are the maintainer's to approve; this stream surfaces and proposes.
+### 12.1 Implementation hand-off (the next, separate change)
+
+This stream is a **design pass**; the approved copy is **not yet in `battle.html`**. With sign-off
+in hand, the implementation is a distinct, reviewable change. Recommended order (each independently
+testable against the jsdom harness, smallest blast radius first):
+
+1. **Pools (lowest risk — pure data):** Elite Four + generic-rival rewrites in
+   `data/dialogue/trainer-quotes.json` (§4.2). No code path changes.
+2. **Setup copy (§7):** the `#story-create-*` headers/labels + the opening narration card. UI strings only.
+3. **Cold-open recasting (§6):** reassign speakers in `STORY_COLD_OPENS` + add the recurring
+   Veteran's three beats (§6.2). Touches the story cold-open table — verify dedupe `metaKey`s and
+   the `_renderNarrativeOverlay` path still fire once per run.
+4. **Mystery intro + the_first barks (§4.1):** `_MYSTERY67_BY_VARIANT.classic` +
+   `MYSTERY_FIGURE_IDENTITIES.the_first.intros`. **Sensitive** — sits next to the post-HoF climax;
+   leave `STORY_SCENES['main.mfReveal']`/`['main.ending']` untouched.
+5. **Tutorial re-voicing (§4.3):** `STORY_TUTORIAL_SCENES.firstColress` (+ `firstCasino`,
+   `firstFanClub`). Mechanics-intact check required per scene.
+6. **Rival-name narration fix (§11.1):** route narration through "your rival"; keep the HUD gag.
+7. **Schema + bark layer (§8, §9):** coordinate with Stream 4 — the `speaker` block and
+   `barks.json` are the engine-adjacent pieces and want their own approval + tests.
+
+Per `CLAUDE.md`, story-flow-adjacent edits (3, 4) change carefully and ship behind a deterministic
+test; steps 1–2 are safe data/UI changes. Each step is its own diff for review.
