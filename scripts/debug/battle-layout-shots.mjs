@@ -33,7 +33,7 @@ const VIEWPORTS = [
   { label: 'phone-landscape', w: 844, h: 390, mode: 'phone' },
   { label: 'ipad-portrait', w: 1024, h: 1366, mode: 'phone' },
   { label: 'ipad-landscape', w: 1366, h: 1024, mode: 'phone' },
-];
+].filter(v => !process.env.VP || process.env.VP.split(',').includes(v.label));
 
 const SEED = `(() => {
   const $ = id => document.getElementById(id);
@@ -80,6 +80,10 @@ for (const v of VIEWPORTS) {
   await wait(2200);
   let info = '';
   try { info = await page.evaluate(SEED); } catch (e) { info = 'SEED ERR ' + e.message; }
+  // Optional experiment CSS (sweep arena framing without editing battle.html).
+  if (process.env.EXP_CSS) {
+    try { await page.evaluate(css => { const s = document.createElement('style'); s.id = 'exp'; s.textContent = css; document.head.appendChild(s); }, process.env.EXP_CSS); } catch (e) {}
+  }
   // Wait for the (large) stadium background to actually decode, else the shot can be black.
   try {
     await page.evaluate(async () => {

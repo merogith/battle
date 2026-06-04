@@ -3220,6 +3220,10 @@
                clamped so it never eats a tall arena (iPad landscape) nor starves a short one. */
             --battle-ui-h: clamp(150px, 40cqmin, 290px);
             --battle-player-hud-est: 0px;
+            /* Pull the stadium art UP so the PITCH (bottom band of the image) fills the lower
+               arena instead of hiding behind the command bar — otherwise the only visible
+               "field" is the barrier wall and the foe lands on it. See BATTLE_ARENA_PERSPECTIVE.md. */
+            --arena-bg-shift-y: 0.8cm;
             /* foe "far" (small, back of arena), player ≈ 1.6× (foreground). cqw drives the
                size; cqh caps it on short landscape so a sprite never clips the arena band. */
             --sprite-foe-w: min(15cqw, 30cqh);
@@ -3370,7 +3374,9 @@
            changes (the bg is bottom-anchored `cover`, so the pitch lives in the lower band). It
            sits a fixed band above the player for near/far depth. */
         #screen-battle[data-battle-layout="arena"] #foe-sprite-container {
-            bottom: calc(var(--battle-ui-h) + clamp(60px, 28cqh, 300px));
+            /* Feet on the BACK of the pitch (a band above the player). Tuned together with
+               --arena-bg-shift-y so the foe stands on the tiles, not the barrier wall. */
+            bottom: calc(var(--battle-ui-h) + clamp(40px, 21cqh, 240px));
             top: auto;
             right: clamp(44px, 11cqw, 180px); left: auto;
             width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) * 1.04);
@@ -3414,8 +3420,10 @@
         /* Stack: DS-style depth — foe upper-right (smaller), player front lower-left (larger).
            Player ≈ 1.6× foe for clear "near/far" depth. */
         #screen-battle[data-battle-layout="stack"] #foe-sprite-container {
-            top: clamp(94px, 15cqh, 150px);
-            right: calc(clamp(20px, 7cqw, 56px) + var(--safe-right, 0px)); left: auto; bottom: auto;
+            /* Bottom-anchored to the back of the field (like arena), so on tall portrait
+               (iPad) the foe doesn't float up by the jumbotron. A band above the player. */
+            bottom: calc(var(--battle-ui-h) + clamp(56px, 20cqh, 300px)); top: auto;
+            right: calc(clamp(20px, 7cqw, 56px) + var(--safe-right, 0px)); left: auto;
             width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) + 6px);
         }
         #screen-battle[data-battle-layout="stack"] #foe-sprite {
