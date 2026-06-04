@@ -51395,6 +51395,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // boss / tutorial, which have their own framing). Tells the player
             // what they walk into next: another wild on the same route, or
             // the trainer waiting at the end of it.
+            // Wild-mon types — cheap baseStats lookup; the catch screen previously
+            // showed the encounter's name with no type badges at all.
+            const _encBase = (typeof baseStats !== 'undefined' && baseStats[enc.name]) || {};
+            const _encTypeRow = _encBase.t1 ? `<div style="margin:0 0 6px;">${getTypeHTML(_encBase.t1, _encBase.t2 || '')}</div>` : '';
             const _showUpNext = !_catchState.safariMode && !_catchState.tutorialMode;
             const upNextHtml = _showUpNext
                 ? `<div style="text-align:center;margin:-2px 0 6px;">${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
@@ -51407,6 +51411,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
                     <div id="story-catch-stage-host" style="margin:0 auto 4px;"></div>
                     <h2 style="margin:6px 0 4px;color:${_encShiny ? '#ffd54f' : '#fff'};font-size:18px;${_encShiny ? 'text-shadow:0 0 8px rgba(255,215,0,0.45);' : ''}">${_encShiny ? '&#10024; ' : ''}${_esc(enc.name)}${_encShiny ? ' &#10024;' : ''}</h2>
+                    ${_encTypeRow}
                     <div style="display:inline-block;font-size:10px;font-weight:bold;color:#111;background:${gradeBg};padding:2px 8px;letter-spacing:0.04em;">Grade ${grade}${_encShiny ? ' · ✨ SHINY' : ''}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
@@ -53529,7 +53534,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="link" aria-expanded="${expanded?'true':'false'}">
                     <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:48px;height:48px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
                         <div style="min-width:0;flex:1;">
                             <div class="story-tutor-mon-name">${_slotShinyPre}${_esc(t.name)}${gimmickTag}</div>
                             <div class="story-tutor-mon-meta">${compactMeta}</div>
@@ -54176,7 +54181,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="evolab" aria-expanded="${expanded?'true':'false'}">
                     <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
                         <div style="min-width:0;flex:1;">
                             <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
                             <div class="story-tutor-mon-meta">G${g} · BST ${getBST(t.name)} · ${_esc(summary)}</div>
@@ -61465,6 +61470,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _fanClubMonCard(mon, idx) {
             if (!mon) return '';
             const build = mon.build || {};
+            // Base species types — cheap (baseStats lookup, no buildPokemon), so the Fan
+            // Club roster shows types like every other facility card.
+            const _fcBase = (typeof baseStats !== 'undefined' && baseStats[mon.name]) || {};
+            const fcTypeHtml = _fcBase.t1 ? getTypeHTML(_fcBase.t1, _fcBase.t2 || '') : '';
             const ivs = build.ivs || { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
             const sprite = (typeof getSprite === 'function')
                 ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), build._isShiny)
@@ -61485,7 +61494,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-main">
                     ${sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : ''}
                     <div style="min-width:0;">
-                        <div class="story-tutor-mon-name">${_esc(mon.name)}${build._isShiny ? ' ✦' : ''}</div>
+                        <div class="story-tutor-mon-name">${_esc(mon.name)}${build._isShiny ? ' ✦' : ''} ${fcTypeHtml}</div>
                         <div class="story-tutor-mon-meta">${summary}</div>
                     </div>
                 </div>
