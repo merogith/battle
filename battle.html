@@ -44763,7 +44763,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const src = storyFacilityIconSrc(key);
             if (!src) return '';
             const clsAttr = cls ? ` class="${cls}"` : '';
-            return `<img${clsAttr} src="${src}" alt="" width="${size}" height="${size}" decoding="async">`;
+            // When no sizing class is applied (e.g. the Crucible hub buttons), pin the
+            // icon size inline. Bare width/height *attributes* get overridden inside the
+            // flex button layout and the icon balloons (was rendering ~166px); the story
+            // PNGs avoid this by inline-styling their size, so mirror that here.
+            const sizeStyle = cls ? '' : ` style="width:${size}px;height:${size}px;object-fit:contain;flex-shrink:0;"`;
+            return `<img${clsAttr} src="${src}" alt="" width="${size}" height="${size}" decoding="async"${sizeStyle}>`;
         }
         /** Resolved sprite URL for a facility key — for swapping an existing <img>
          *  src in place. Returns '' for `fanclub` (SVG-only) and unknown keys. */
