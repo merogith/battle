@@ -1,101 +1,116 @@
 # Camp Micro-games — Resonant Palette (mechanic-adaptation backlog)
 
 > Companion to [`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md). Adapts best-practice micro-game
-> *mechanics* to the Pokémon camp, organized so each game's **feel echoes the stat it builds**
-> and its **theme echoes the attachment style.** This is a **palette / idea backlog** — the
-> locked v1 set is the 18 in `CAMP_MINIGAMES §2`; the maintainer picks which of these ship and
-> tunes the vibe + copy. **Content/config only — no item economy; the reward is always the
-> bonding +1.** Seeded (`storyRngNext`), data-driven, edgier tone with copy sign-off. Original
-> content, genre inspiration only (no IP lift — `CAMP_MINIGAMES §3`).
+> *mechanics* to the Pokémon camp so each game's **feel matches the stat it builds** and its
+> **theme matches the attachment style.** Palette / idea backlog — the locked v1 set is the 18 in
+> `CAMP_MINIGAMES §2`; the maintainer picks which of these ship and tunes the vibe + copy.
+> **Content/config only — no item economy; the reward is always the bonding +1.** Seeded
+> (`storyRngNext`), data-driven, edgier tone with copy sign-off. Original content, genre
+> inspiration only (no IP lift — `CAMP_MINIGAMES §3`).
 
 ---
 
-## 1. The vibe principle — *double resonance*
-Every micro-game should answer **both** coherence axes at once. That's the "vibe":
+## 1. The vibe principle — *two axes* (the deep version)
+The first cut mis-mapped feel. The fix: a game's *feel* is derived from the **stat**, on two
+sub-dimensions; its *theme* is derived from the **path**. Get all three right and it's on-vibe.
 
-- **Stat resonance (how it plays).** The *mechanic family* mirrors the stat it masters — Attack
-  = land the decisive hit, Defense = hold the line, Speed = be quick, etc. (ludonarrative
-  resonance — the verb *is* the stat).
-- **Attachment resonance (how it feels).** The *theme + tone* mirror the relationship path —
-  Praise is triumphant, Intimidate is cold, Devotion is intimate-and-edgy.
+**Axis A — Stat TEMPO (how fast it plays).** The defensive stats should feel slow, the offensive
+stats bursty, Speed fastest:
+- **Speed = FAST** (reflex, real-time, react-now)
+- **Attack / Sp.Atk = BURST / in-between** (a charged, decisive moment — not frantic, not slow)
+- **Defense / Sp.Def / HP = SLOW & SUSTAINED** (hold, withstand, endure)
 
-Choose mechanics that satisfy **both**. A timing-strike themed as a tender caress would be
-*off-vibe*; a timing-strike themed as a hype-up high-five is *on-vibe* for Praise→Attack.
+**Axis B — Stat LENS (physical vs special vs vital — the Pokémon-native split).** This is the
+payoff: the mapping isn't arbitrary, it mirrors Pokémon's own combat language.
+- **Attack / Defense = PHYSICAL (body):** strike with contact · brace the body.
+- **Sp.Atk / Sp.Def = SPECIAL (mind/energy):** channel/aim at range · withstand with will.
+- **HP = VITAL:** sustain, endure, keep the rhythm of life going.
 
-## 2. Path × mechanic-family map
-| Path | → Stat | Mechanic family (stat resonance) | Vibe (attachment resonance) |
+**Axis C — Path THEME/tone (how it feels):** Praise triumphant · Nurture tender · Discipline
+grueling · Intimidate cold · Mimicry mischievous · Devotion intimate-edgy.
+
+So each stat lands on a *distinct* feel: melee-burst (atk) vs ranged-aim (spa); body-hold (def)
+vs mind-resist (spd); fast-agility (spe); sustained-vitality (hp).
+
+## 2. The map (stat feel → path)
+| Path | Stat | Tempo | Lens | Mechanic family | Vibe | Signature game |
+|---|---|---|---|---|---|---|
+| **Mimicry** | `spe` | **FAST** | agility | Reflex / Evasion + quick-copy | mischievous, darting | **Keep Up!** (track/dodge at speed) |
+| **Praise** | `atk` | burst | physical — strike | Timing & Precision | triumphant, percussive | **High Five!** (strike on the beat) |
+| **Nurture** | `spa` | controlled | special — ranged/aim | Aim / Trajectory + Catching | tender, warm | **Feed!** (arc the treat in) |
+| **Discipline** | `def` | **SLOW** | physical — brace | Block / Hold / Endure | grueling, strict | **Brace!** (hold the guard) |
+| **Intimidate** | `spd` | **SLOW** | special — mind | Restraint / "Do Nothing" / Withstand | cold, tense | **Don't Blink!** (any input = fail) |
+| **Devotion** | `hp` | **SLOW-sustained** | vital — endure | Steady / Balance / sustained rhythm | intimate, edgy | **Linger…** (hold a beat too long) |
+
+*Read it as a shape:* the two **offensive** paths are quick bursts (melee vs ranged), the three
+**defensive/bulk** paths are slow holds (body vs mind vs vitality), and **Speed** is the one pure
+fast lane. The physical/special split keeps each pair from feeling the same.
+
+## 3. Per-path palette (retuned to tempo)
+Primitives marked **†** are *new* (see §4); the rest exist in `CAMP_MINIGAMES §5`.
+
+**Mimicry → `spe` · FAST · agility** — *mischievous, darting*
+| Game | Adapted mechanic | Pokémon theme | Primitive |
 |---|---|---|---|
-| **Praise** | `atk` | **Timing & Precision** — one-shot strikes | triumphant, percussive |
-| **Discipline** | `def` | **Rapid Input + Block** — endurance / guard | grueling, strict |
-| **Mimicry** | `spe` | **Observation & Memory** — quick read / mirror | playful, mischievous |
-| **Intimidate** | `spd` | **Reflex & Evasion + "Do Nothing"** — willpower | cold, tense, unsettling |
-| **Nurture** | `spa` | **Physics / Finesse + Catching** — gentle skill | warm, careful, tender |
-| **Devotion** | `hp` | **Finesse / Balance + Stamina** — linger / endure | intimate, slow, edgy-romance |
+| **Keep Up!** | Sync / real-time track | match its darting movement live | `track` |
+| **Quick Dodge!** | The Quick Dodge | it feints — evade only the real lunge | `dodge` **†** |
+| **Copy!** | Flash Memory | reproduce the 1-second gesture, fast | `sequence` |
 
-## 3. Per-path palette (themed adaptations of the 30)
-Primitives marked **†** are *new* (see §4); the rest already exist in `CAMP_MINIGAMES §5`.
-
-**Praise → `atk` · Timing & Precision** — *triumphant, percussive*
+**Praise → `atk` · BURST · physical strike** — *triumphant, percussive*
 | Game | Adapted mechanic | Pokémon theme | Primitive |
 |---|---|---|---|
 | **High Five!** | Single-Beat Strike | slap its paw as it swings up | `tapTiming` |
-| **Hype Chant!** | Sequence Tap | match the 3–4-beat victory chant | `sequence` |
-| **Charge Up!** | The Release | hold the cheer, let it rip at peak roar | `holdRelease` |
+| **Combo!** | Sequence Tap | land 2–4 hits in rhythm | `sequence` |
+| **Charge Up!** | The Release | hold the charge, unleash at peak roar | `holdRelease` |
 
-**Discipline → `def` · Rapid Input + Block** — *grueling, strict*
+**Nurture → `spa` · CONTROLLED · special / ranged** — *tender, warm*
 | Game | Adapted mechanic | Pokémon theme | Primitive |
 |---|---|---|---|
-| **Laps!** | Button Masher | outpace the decaying stamina bar | `mash` |
-| **March!** | Pumping Action | alternate L-R to hold the drill cadence | `mash` (alt) |
-| **Brace!** | Shield Block | raise the guard onto the incoming pad | `block` **†** |
+| **Feed!** | Trajectory Toss | arc its favourite treat into its mouth (angle+power) | `lobAim` **†** |
+| **Berry Toss!** | Catching Basket | catch the berries it lobs back | `catch` **†** |
+| **Groom!** | The Steady Hand | clean the delicate spot, no slips | `steady` **†** |
 
-**Mimicry → `spe` · Observation & Memory** — *playful, mischievous*
+**Discipline → `def` · SLOW · physical / brace** — *grueling, strict*
 | Game | Adapted mechanic | Pokémon theme | Primitive |
 |---|---|---|---|
-| **Copy!** | Flash Memory | reproduce the gesture flashed for 1 s | `sequence` |
-| **Pose!** | Pattern Matcher | pick the silhouette that matches its pose | `pickMatch` |
-| **Keep Up!** | Shell Game | track it as it darts between cover | `track` |
+| **Brace!** | The Shield Block | raise and **hold** the guard onto the hit | `block` **†** |
+| **Hold!** | Balancing / isometric | hold the stance; release in the green (overdo backfires) | `holdRelease` |
+| **Plant!** | The Steady Hand (under load) | keep position against the push — don't break stance | `steady` **†** |
 
-**Intimidate → `spd` · Reflex/Evasion + Do Nothing** — *cold, tense, unsettling*
+**Intimidate → `spd` · SLOW · special / mind** — *cold, tense, unsettling*
 | Game | Adapted mechanic | Pokémon theme | Primitive |
 |---|---|---|---|
 | **Don't Blink!** | The "Do Nothing" | a staring contest — *any* input = flinch = fail | `restraint` |
-| **Flinch Test!** | Quick Dodge | it feints; react only on the real lunge | `dodge` **†** |
-| **Cold Read!** | Anomaly Hunt | spot the one tell in the crowd before it bolts | `pickMatch` (find-odd) |
+| **Withhold!** | The "Do Nothing" (tempted) | resist the puppy-eyes; don't give in | `restraint` |
+| **Unmoved** | The Release (hold) | weather the tantrum — hold your ground, release when it yields | `holdRelease` |
 
-**Nurture → `spa` · Finesse + Catching** — *warm, careful, tender*
+**Devotion → `hp` · SLOW-SUSTAINED · vital / endure** — *intimate, edgy-romance*
 | Game | Adapted mechanic | Pokémon theme | Primitive |
 |---|---|---|---|
-| **Berry Toss!** | Catching Basket | catch the berries it lobs back to you | `catch` **†** |
-| **Feed!** | Trajectory Toss | arc its favourite treat into its mouth (angle+power) | `lobAim` **†** |
-| **Groom!** | The Steady Hand | clean the delicate spot without slipping | `steady` **†** |
-
-**Devotion → `hp` · Balance + linger** — *intimate, slow, edgy-romance*
-| Game | Adapted mechanic | Pokémon theme | Primitive |
-|---|---|---|---|
-| **Hold Close!** | Balancing Act | counter the tip as it leans its weight into you | `balance` **†** |
-| **Caress…** | The Steady Hand | a slow trace; touch a boundary and the moment breaks | `steady` **†** |
-| **Linger…** | The Release | hold the gaze, release — maybe a beat too long *(the edgy note)* | `holdRelease` |
+| **Linger…** | The Release | hold the gaze / embrace, let go a beat too long *(the edgy note)* | `holdRelease` |
+| **Hold Close!** | The Balancing Act | counter its lean, **sustain** the embrace upright | `balance` **†** |
+| **Pulse** | sustained rhythm | keep a slow breath / heartbeat rhythm going without dropping it | `tapTiming` (slow, sustained) |
 
 ## 4. Toolkit expansion (the new primitives implied)
 Each is "one small, individually-tested function returning a **Promise<boolean>**"
 (`CAMP_MINIGAMES §5`) — expansion is a few functions + data, **never a refactor**:
 
-`block` **†** (move a defensive hitbox onto an incoming direction) · `dodge` **†** (single
-directional evade on the real tell) · `catch` **†** (slide a catch-zone to collect good / avoid
-bad) · `lobAim` **†** (set an angle + power for a parabolic toss) · `steady` **†** (micro-moves;
-touching the boundary fails) · `balance` **†** (continuous correction to hold an angle upright).
+`dodge` **†** (single directional evade on the real tell) · `catch` **†** (slide a catch-zone to
+collect good / avoid bad) · `lobAim` **†** (set angle + power for a parabolic toss) · `steady`
+**†** (micro-moves; touching the boundary fails) · `block` **†** (move/hold a defensive hitbox
+onto an incoming direction) · `balance` **†** (continuous correction to hold an angle upright).
 
-That takes the toolkit from **9 → ~15** primitives, each reused across multiple games/paths. The
-remaining categories in the source list (navigation/maze, platformer, crank/spin, intercept,
-gauge-stopper, quick-math) are a **further backlog** if more variety is ever wanted.
+That takes the toolkit **9 → ~15** primitives, each reused across multiple games/paths. Remaining
+source categories (maze/navigation, platformer, crank/spin, intercept, gauge-stopper, quick-math)
+are a **further backlog** if more variety is ever wanted.
 
 ## 5. Staged ("Party") format
-A path's *signature* game can chain **2–3 of these as quick stages** (Mario-Party-style), each
-stage one primitive, clear all → the normal **+1**:
+A path's *signature* game can chain **2–3 quick stages** (Mario-Party-style), each stage one
+primitive, clear all → the normal **+1**. Keep stages on-vibe for the stat (e.g. a Speed staged
+game stays fast across all stages):
 
 ```jsonc
-// e.g. a Nurture signature game, themed gather→cook→feed (FLAVOR, not an economy):
+// a Nurture (spa, controlled/ranged) signature — themed gather→cook→serve (FLAVOR, not an economy):
 { "name":"Picnic!", "stages":[
     {"primitive":"tapTiming","theme":"forage the right berries"},
     {"primitive":"sequence","theme":"stir the cook-pot in order"},
@@ -103,11 +118,18 @@ stage one primitive, clear all → the normal **+1**:
   "copy":"…", "art":"…" }
 ```
 
-Keep each stage WarioWare-short so the whole thing stays **≈ 4–6 s and skippable-fast**. No new
-engine — a staged game is just `{ stages:[{primitive,config}], copy, art }` over the existing
-toolkit.
+≈ 4–6 s total, skippable-fast. No new engine — a staged game is just
+`{ stages:[{primitive,config}], copy, art }` over the toolkit.
 
-## 6. Guardrails (same as the core doc)
+## 6. Reconciliation with the locked v1 set
+The **path → action** assignments in `CAMP_MINIGAMES §2` are **unchanged** by this palette. A few
+of the locked v1 games lean *against* the new tempo — most notably **Discipline's "March!"**
+(`mash`, which reads *fast/frantic* for a stat that should feel **slow/defensive**). The maintainer
+can swap those toward the slow-hold flavor (e.g. lead Discipline with **Brace! / Hold! / Plant!**)
+— a **data choice** (pick a different primitive in the pool), **no engine impact**. Flagging it as
+a tuning note rather than silently editing the finalized core.
+
+## 7. Guardrails (same as the core doc)
 Seeded · data-driven · **pass/fail → +1** · **no item economy / no crafting** (gather & cook are
 *flavor themes*, not a resource loop — [`CAMP_BAG.md`](./CAMP_BAG.md) §7) · edgier tone with
 **maintainer copy sign-off** · original content (no IP lift). The maintainer picks the shipping

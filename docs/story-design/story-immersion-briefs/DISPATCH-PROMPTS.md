@@ -3,8 +3,11 @@
 **How to use**
 - Run each stream in its **own fresh Claude Code session on the repo** (`merogith/battle`) — they
   audit `battle.html`, so they need repo access (web or CLI), **not** a plain chat.
-- **Recommended: split** — four sessions, one per stream. **Dispatch Stream 4 first** (the others
-  reference its API), or run all four in parallel and reconcile Stream 4's API at review.
+- **Recommended: split** — four sessions, one per stream, in order **1 → 2 → 3 → 4** (or any order;
+  they're parallel design specs).
+- **Tip:** Stream 4 (Systems) is the *foundation* the other three reference. If you run sessions
+  **sequentially**, doing 4 early helps the rest cite a real API; if you run them **in parallel**,
+  just reconcile Stream 4's API at review. Order doesn't block.
 - Optional: give each session its own branch (e.g. `claude/immersion-stream-1`). Deliverables are
   separate files, so they merge cleanly.
 - The briefs are already in the repo, so attaching your downloaded copy is optional — paste the
@@ -12,31 +15,7 @@
 
 ---
 
-## ✅ RECOMMENDED — split: one prompt per chat
-
-### Stream 4 — Storytelling Systems & Tools  *(dispatch FIRST)*
-```
-You're running Stream 4 — Storytelling Systems & Tools — of the "Story Immersion" design
-initiative for the Pokemon battle game (repo: merogith/battle). You are the FOUNDATION: the
-other three streams build on the APIs you spec.
-
-Read these two files in full first (they're in the repo; attached too):
-- docs/story-design/story-immersion-briefs/04-storytelling-systems.md  (your brief, self-contained)
-- docs/story-design/story-immersion-briefs/NARRATIVE-CRAFT.md          (the shared craft playbook)
-
-Then execute the brief:
-1. READ-ONLY audit of your lane in battle.html. Resolve every symbol with the find-anchor / anchor
-   skill — never hardcode line numbers. Open the spec with a "current state" + tool-gap analysis.
-2. Produce docs/story-design/story-immersion/storytelling-systems.md — a design spec with REAL,
-   tiny usage examples for each tool (setup-beat hook, choice/consequence + story-state = flags +
-   one rival-affinity number, cinematic trigger, content schema), the save-migration sketch, the
-   test plan, and a handshake table of which API each other stream consumes.
-3. DESIGN PASS ONLY — do not change game code. Propose; the maintainer signs off before anything
-   ships. Saves are sacred (one migration, never renumber). Flag any flow-ordering/behavior issue.
-   Ground every point in the actual code — no generic advice.
-
-Start with the audit and a short plan, then write the spec.
-```
+## ✅ RECOMMENDED — split: one prompt per chat (in order)
 
 ### Stream 1 — Narrative Coherence & Causality
 ```
@@ -107,6 +86,30 @@ Then execute the brief:
    heavy art (respect the 4 MB file).
 3. DESIGN PASS ONLY — flag the raid-framing change for sign-off (it alters presentation). Seeded RNG
    for any variance. Ground every point in the actual code.
+
+Start with the audit and a short plan, then write the spec.
+```
+
+### Stream 4 — Storytelling Systems & Tools  *(the foundation — the other three build on its APIs)*
+```
+You're running Stream 4 — Storytelling Systems & Tools — of the "Story Immersion" design
+initiative for the Pokemon battle game (repo: merogith/battle). You are the FOUNDATION: the
+other three streams build on the APIs you spec.
+
+Read these two files in full first (they're in the repo; attached too):
+- docs/story-design/story-immersion-briefs/04-storytelling-systems.md  (your brief, self-contained)
+- docs/story-design/story-immersion-briefs/NARRATIVE-CRAFT.md          (the shared craft playbook)
+
+Then execute the brief:
+1. READ-ONLY audit of your lane in battle.html. Resolve every symbol with the find-anchor / anchor
+   skill — never hardcode line numbers. Open the spec with a "current state" + tool-gap analysis.
+2. Produce docs/story-design/story-immersion/storytelling-systems.md — a design spec with REAL,
+   tiny usage examples for each tool (setup-beat hook, choice/consequence + story-state = flags +
+   one rival-affinity number, cinematic trigger, content schema), the save-migration sketch, the
+   test plan, and a handshake table of which API each other stream consumes.
+3. DESIGN PASS ONLY — do not change game code. Propose; the maintainer signs off before anything
+   ships. Saves are sacred (one migration, never renumber). Flag any flow-ordering/behavior issue.
+   Ground every point in the actual code — no generic advice.
 
 Start with the audit and a short plan, then write the spec.
 ```
