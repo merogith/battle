@@ -27,12 +27,27 @@ process.on('exit', () => { try { server.kill(); } catch {} });
 await wait(1400);
 
 const VIEWPORTS = [
+  // phones — portrait + landscape
+  { label: 'phone-sm-portrait',  w: 360, h: 640,  mode: 'phone' },   // iPhone SE / small Android
+  { label: 'phone-sm-landscape', w: 640, h: 360,  mode: 'phone' },
+  { label: 'phone-portrait',     w: 390, h: 844,  mode: 'phone' },   // iPhone 14/15
+  { label: 'phone-landscape',    w: 844, h: 390,  mode: 'phone' },
+  { label: 'phone-lg-portrait',  w: 430, h: 932,  mode: 'phone' },   // iPhone Pro Max
+  { label: 'phone-lg-landscape', w: 932, h: 430,  mode: 'phone' },
+  // tablets — portrait + landscape
+  { label: 'ipadmini-portrait',  w: 768,  h: 1024, mode: 'phone' },
+  { label: 'ipadmini-landscape', w: 1024, h: 768,  mode: 'phone' },
+  { label: 'ipadair-portrait',   w: 820,  h: 1180, mode: 'phone' },
+  { label: 'ipadair-landscape',  w: 1180, h: 820,  mode: 'phone' },
+  { label: 'ipadpro-portrait',   w: 1024, h: 1366, mode: 'phone' },
+  { label: 'ipadpro-landscape',  w: 1366, h: 1024, mode: 'phone' },
+  // desktop / laptop / big screens (always the 16:9 scaled frame)
+  { label: 'laptop-1366',  w: 1366, h: 768,  mode: 'desktop' },
   { label: 'desktop-1280', w: 1280, h: 720,  mode: 'desktop' },
   { label: 'desktop-1920', w: 1920, h: 1080, mode: 'desktop' },
-  { label: 'phone-portrait', w: 390, h: 844, mode: 'phone' },
-  { label: 'phone-landscape', w: 844, h: 390, mode: 'phone' },
-  { label: 'ipad-portrait', w: 1024, h: 1366, mode: 'phone' },
-  { label: 'ipad-landscape', w: 1366, h: 1024, mode: 'phone' },
+  { label: 'desktop-2560', w: 2560, h: 1440, mode: 'desktop' },
+  { label: 'desktop-4k',   w: 3840, h: 2160, mode: 'desktop' },
+  { label: 'ultrawide',    w: 3440, h: 1440, mode: 'desktop' },
 ].filter(v => !process.env.VP || process.env.VP.split(',').includes(v.label));
 
 const SEED = `(() => {
