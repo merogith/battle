@@ -80,6 +80,15 @@ for (const v of VIEWPORTS) {
   await wait(2200);
   let info = '';
   try { info = await page.evaluate(SEED); } catch (e) { info = 'SEED ERR ' + e.message; }
+  // Wait for the (large) stadium background to actually decode, else the shot can be black.
+  try {
+    await page.evaluate(async () => {
+      const sb = document.getElementById('screen-battle');
+      const bi = sb && getComputedStyle(sb).backgroundImage;
+      const u = bi && (bi.match(/url\(["']?([^"')]+)["']?\)/) || [])[1];
+      if (u) { const img = new Image(); img.src = u; try { await img.decode(); } catch (e) {} }
+    });
+  } catch (e) {}
   await wait(500);
   await page.screenshot({ path: `${OUT}/${TAG}-${v.label}.png`, fullPage: false });
   console.log(`${v.label.padEnd(16)} -> ${info}${errs.length ? '  [errs:' + errs.slice(0, 2).join(';') + ']' : ''}`);
