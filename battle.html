@@ -54169,14 +54169,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Cheap path: collapsed mons skip the (expensive) buildPokemon +
                 // per-evo card generation entirely.
+                // Base species types — cheap (baseStats, no buildPokemon), shown on
+                // collapsed cards too so the Evolution list matches the Tutor / Fan Club
+                // (which show types while collapsed). Previously expanded-only.
                 let typeHtml = '';
-                if (expanded) {
-                    try {
-                        if (t.build) {
-                            const tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
-                            if (tempMon) typeHtml = getTypeHTML(tempMon.type1, tempMon.type2);
-                        }
-                    } catch (e) { /* ignore render-time build errors */ }
+                {
+                    const _evBase = (typeof baseStats !== 'undefined' && baseStats[t.name]) || {};
+                    if (_evBase.t1) typeHtml = getTypeHTML(_evBase.t1, _evBase.t2 || '');
                 }
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="evolab" aria-expanded="${expanded?'true':'false'}">
