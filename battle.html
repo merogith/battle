@@ -37,6 +37,13 @@
             --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8;
             --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f;
             --surface: #161616; --surface2: #1e1e1e;
+            /* Story facility accent palette — category-coded (see docs/story-design/UI_VISUAL_SYSTEM_AUDIT.md).
+               Facility titles are recolored by function so hue signals the facility type. */
+            --fac-quest: #ffab40;      /* quest & battle flow (professor/gym/league/VR/crucible) */
+            --fac-recover: #81c784;    /* heal / catch / store living mons (center/daycare/catch/safari) */
+            --fac-shop: var(--accent); /* shops — gold (mart/dept/stone/relics) */
+            --fac-train: #ce93d8;      /* train & evolve (tutor/nature/dojo/EV/evo/colress) */
+            --fac-utility: #29b6f6;    /* connect & misc (link/fan club) */
             --battle-font: 'Press Start 2P', 'Courier New', Courier, monospace;
             --battle-chrome-bg: #050505;
             --battle-panel-bg: var(--surface);
@@ -2387,7 +2394,16 @@
             align-items: center;
             gap: 8px;
             margin: 0;
+            font-size: 14px; /* title-role size; was inline on all 16 <h3> */
         }
+        /* Category-coded facility title colors (the --fac-* palette). A title opts in
+           with a fac-* class instead of an ad-hoc inline color, so every facility of a
+           kind reads the same hue. */
+        .story-screen-head-title.fac-quest   { color: var(--fac-quest); }
+        .story-screen-head-title.fac-recover { color: var(--fac-recover); }
+        .story-screen-head-title.fac-shop    { color: var(--fac-shop); }
+        .story-screen-head-title.fac-train   { color: var(--fac-train); }
+        .story-screen-head-title.fac-utility { color: var(--fac-utility); }
         .story-screen-head-ico {
             width: 24px;
             height: 24px;
@@ -9119,9 +9135,9 @@
     <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="story professor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-professor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-prof-screen-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;margin:0;flex:1;min-width:0;">Professor's Lab</h3>
+            <h3 id="story-prof-screen-title" class="story-screen-head-title fac-quest" style="margin:0;flex:1;min-width:0;">Professor's Lab</h3>
         </div>
         <div id="story-prof-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px;min-height:0;">
             <!-- Prof header row: sprite + name + quote -->
@@ -9145,13 +9161,13 @@
     <div id="screen-story-shop" class="screen hidden story-screen-root" role="region" aria-label="story shop" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-shop-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
+            <h3 id="story-shop-title" class="story-screen-head-title fac-shop" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
             <span id="story-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div id="story-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9160,14 +9176,14 @@
     <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" role="region" aria-label="story artifact shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-artifact-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title fac-shop" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
         <div id="story-artifact-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr;gap:12px;min-height:0;"></div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9176,14 +9192,14 @@
     <div id="screen-story-stone-shop" class="screen hidden story-screen-root" role="region" aria-label="story stone shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-stone-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stones and Beyond</span></h3>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title fac-shop" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stones and Beyond</span></h3>
             <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Evolution Tutor next door. <strong style="color:#b39ddb;">500G each</strong>. The Tutor consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem it for one free pick — any item here, stone or trade item.</p>
         <div id="story-stone-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;min-height:0;"></div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9192,16 +9208,16 @@
     <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="story tutor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-tutor-head-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
+            <h3 id="story-tutor-head-title" class="story-screen-head-title fac-train" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
             <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <p id="story-tutor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Tap a move slot to swap it. Available moves come from each Pokémon's learnset.</p>
             <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9210,12 +9226,12 @@
     <div id="screen-story-colress" class="screen hidden story-screen-root" role="region" aria-label="story colress" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-colress-portrait" src="sprites/trainers/Colress.png" alt="Colress" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Battle Forms <span style="font-size:10px;color:#888;font-weight:normal;">(Mega · Z · Dynamax · Tera)</span></span></h3>
+                    <h3 class="story-screen-head-title fac-train" style=""><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Battle Forms <span style="font-size:10px;color:#888;font-weight:normal;">(Mega · Z · Dynamax · Tera)</span></span></h3>
                     <div style="font-size:10px;color:#888;margin-top:2px;">"Set your Pokémon's battle form: Mega, Z-Move, Dynamax, or Tera."</div>
                 </div>
             </div>
@@ -9225,7 +9241,7 @@
             <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Set a battle form for each Pokémon. Each activation costs <strong style="color:#ffd700;">5,000G</strong>. Mega Stones and Z-Crystals will replace the current held item.</p>
             <div id="story-colress-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9234,12 +9250,12 @@
     <div id="screen-story-evtrainer" class="screen hidden story-screen-root" role="region" aria-label="story evtrainer" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-evtrainer-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-evtrainer-portrait" src="sprites/trainers/Buck.png" alt="Buck" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#9ccc65;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_dojo.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">EV Trainer</span></h3>
+                    <h3 class="story-screen-head-title fac-train" style=""><img class="story-screen-head-ico" src="sprites/pokesprite/items/protein.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">EV Trainer</span></h3>
                 </div>
             </div>
             <span id="story-evtrainer-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
@@ -9248,7 +9264,7 @@
             <p id="story-evtrainer-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Apply EV spreads. Each preset is a 510-point stat distribution — Universal (one-size-fits-most), Role (defensive wall, sweeper, support…) or Meta (species-specific competitive sets).</p>
             <div id="story-evtrainer-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9256,12 +9272,12 @@
 
     <div id="screen-story-fanclub" class="screen hidden story-screen-root" role="region" aria-label="story fanclub" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-fanclub-portrait" src="sprites/trainers/Gentleman.png" alt="Chairman" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#f8bbd0;font-size:14px;"><span class="story-screen-head-text">💖 Pokémon Fan Club</span></h3>
+                    <h3 class="story-screen-head-title fac-utility" style=""><svg class="story-screen-head-ico" width="22" height="22" viewBox="0 0 24 24" role="img" aria-label="Fan Club" style="display:inline-block;vertical-align:middle;flex-shrink:0;overflow:visible;"><path d="M12 20.6C12 20.6 2.8 14.8 2.8 8.5C2.8 5.6 5 3.6 7.7 3.6C9.5 3.6 11 4.5 12 6C13 4.5 14.5 3.6 16.3 3.6C19 3.6 21.2 5.6 21.2 8.5C21.2 14.8 12 20.6 12 20.6Z" fill="#f48fb1" stroke="#ad1457" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.3 7.1C7.1 7.1 6.3 8 6.3 9.1" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/></svg><span class="story-screen-head-text">Pokémon Fan Club</span></h3>
                 </div>
             </div>
             <span id="story-fanclub-stash" style="color:#f8bbd0;font-size:11px;flex-shrink:0;"></span>
@@ -9269,7 +9285,7 @@
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <div id="story-fanclub-roster" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9278,9 +9294,9 @@
     <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" role="region" aria-label="story pokemoncenter" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-pokemoncenter-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_center.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémon Center</span></h3>
+                <h3 class="story-screen-head-title fac-recover" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_center.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémon Center</span></h3>
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div id="story-pc-pokedex-strip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
@@ -9292,7 +9308,7 @@
                 <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
-            <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <div style="padding:10px;flex-shrink:0;">
                 <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
             </div>
         </div>
@@ -9301,16 +9317,16 @@
     <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="story crucible" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-crucible-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
                 <span style="width:32px;"></span>
-                <h3 class="story-screen-head-title" style="color:#ffab40;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_vr.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">The Crucible</span></h3>
+                <h3 class="story-screen-head-title fac-quest" style="flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_vr.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">The Crucible</span></h3>
                 <span id="story-crucible-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div style="padding:10px 14px;border-bottom:1px solid #2a2a2a;background:rgba(8,10,16,0.92);font-size:11px;color:#888;line-height:1.5;">
                 Post-game hub. All facilities, all rematches, plus the Battle Frontier.
             </div>
             <div id="story-crucible-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,10,18,0.2);"></div>
-            <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <div style="padding:10px;flex-shrink:0;">
                 <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.leaveCrucible()">&#8592; Back to City</button>
             </div>
         </div>
@@ -9319,13 +9335,13 @@
     <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="story frontier" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-frontier-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCrucible()" title="Back to The Crucible" aria-label="Back to The Crucible">&#8592;</button>
                 <h3 class="story-screen-head-title" style="color:#ff5722;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_league.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Battle Frontier</span></h3>
                 <span style="width:32px;"></span>
             </div>
             <div id="story-frontier-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(20,8,4,0.35);"></div>
-            <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <div style="padding:10px;flex-shrink:0;">
                 <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCrucible()">&#8592; Back to The Crucible</button>
             </div>
         </div>
@@ -9334,13 +9350,13 @@
     <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="story catch" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-catch-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
                 <span style="width:32px;"></span>
-                <h3 class="story-screen-head-title" style="color:#aed581;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
+                <h3 class="story-screen-head-title fac-recover" style="flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
                 <span style="width:32px;"></span>
             </div>
             <div id="story-catch-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
-            <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);display:flex;gap:8px;">
+            <div style="padding:10px;flex-shrink:0;display:flex;gap:8px;">
                 <button type="button" id="story-catch-run-btn" onclick="window.StoryMode.catchRun()" style="flex:1;color:#ef9a9a;border-color:#ef9a9a;" title="Run from this Pokémon">&#8617; Run</button>
             </div>
         </div>
@@ -9349,16 +9365,16 @@
     <div id="screen-story-link" class="screen hidden story-screen-root" role="region" aria-label="story link" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
-        <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+        <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 class="story-screen-head-title" style="color:#00e5ff;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span class="story-screen-head-text">Cable Link Station</span></h3>
+            <h3 class="story-screen-head-title fac-utility" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span class="story-screen-head-text">Cable Link Station</span></h3>
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Random trades from anonymous partners — random species, random typing. Three options per Pokémon:<br><strong style="color:#aed581;">Reroll</strong> same grade, T3 build (6,000–14,000G) · <strong style="color:#ffd54f;">Upgrade</strong> to a stronger grade, T4 build (9,000–22,000G) · <strong style="color:#90caf9;">Rebuild</strong> same species, new T3 build (5,000G). Flat prices — no city-spam ramp. Priced as a premium over the Tutor + Dojo + EV-Trainer ladder. <span style="color:#9ccc65;">To evolve, visit the Evolution Tutor.</span></p>
             <div id="story-link-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9367,12 +9383,12 @@
     <div id="screen-story-evolab" class="screen hidden story-screen-root" role="region" aria-label="story evolab" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-evolab-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-evolab-portrait" src="sprites/trainers/Sage.png" alt="Evolution Tutor" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#a5d6a7;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text" id="story-evolab-head-text">Evolution Tutor</span></h3>
+                    <h3 class="story-screen-head-title fac-train" style=""><img class="story-screen-head-ico" src="sprites/items/moon-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text" id="story-evolab-head-text">Evolution Tutor</span></h3>
                 </div>
             </div>
             <span id="story-evolab-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
@@ -9381,7 +9397,7 @@
             <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Choose an evolution path. Disabled branches are greyed out. <span style="color:#9ccc65;">Nature, ability, item, EVs, legal moves, and battle gimmick all carry over.</span></p>
             <div id="story-evolab-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+        <div style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -9392,7 +9408,7 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row casino-header-row">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title casino-header-title"><span class="casino-header-mascot" aria-hidden="true">🎰</span><span class="story-screen-head-text">Poké Game Corner</span></h3>
+                <h3 class="story-screen-head-title casino-header-title"><span class="casino-header-mascot" aria-hidden="true"><img src="sprites/items/amulet-coin.png" alt="" width="22" height="22" decoding="async" style="display:block;width:22px;height:22px;image-rendering:auto;"></span><span class="story-screen-head-text">Poké Game Corner</span></h3>
                 <div class="casino-header-right">
                     <span id="story-casino-gold-pill" class="casino-coin-pill gold" title="Gold balance">
                         <img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="14" height="11" decoding="async">
@@ -9530,7 +9546,7 @@
                 </div>
             </div>
 
-            <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <div style="padding:10px;flex-shrink:0;">
                 <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
             </div>
         </div>
@@ -9555,7 +9571,7 @@
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
+                <h3 class="story-screen-head-title fac-shop" style="margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relics</span></h3>
             </div>
             <p style="font-size:11px;color:#888;margin:6px 0 0;">Relics rewrite battle rules for both sides. Toggle the ones you own on or off.</p>
         </div>
@@ -9591,7 +9607,7 @@
 
     <div id="modal-story-artifact" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width:550px;">
-            <h3 class="story-screen-head-title" style="color:#9c27b0;margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
+            <h3 class="story-screen-head-title fac-shop" style="margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
             <p style="font-size:12px;color:#aaa;">Most artifacts affect BOTH you and the enemy for your entire run. The Cursed Amulet Coin is the one exception — its bonus and its curse only touch your team.</p>
             <div id="story-artifact-list" style="display:flex;flex-direction:column;gap:10px;max-height:350px;overflow-y:auto;margin-bottom:12px;"></div>
             <button onclick="window.closeModal('modal-story-artifact')" style="width:100%;">Close</button>
@@ -10295,6 +10311,17 @@
            so check/decline markers render identically across screens and devices. */
         window.uiSvgCheck = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 16 16" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.12em;flex-shrink:0;"><path d="M3 8.6l3.4 3.4L13 4.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';};
         window.uiSvgX = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 16 16" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.12em;flex-shrink:0;"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';};
+        /* Pokémon Fan Club facility icon — an inline-SVG heart (no item sprite fits the
+           "affection / friendship" theme). Same single-source-of-truth, device-independent
+           approach as moveCatBadgeHtml; consumed via storyFacilityIconHtml('fanclub'). */
+        window.storyHeartIconHtml = function storyHeartIconHtml(px, cls){
+            var s = px || 22;
+            var k = cls || 'story-screen-head-ico';
+            return '<svg class="' + k + '" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" role="img" aria-label="Fan Club" style="display:inline-block;vertical-align:middle;flex-shrink:0;overflow:visible;">' +
+                '<path d="M12 20.6C12 20.6 2.8 14.8 2.8 8.5C2.8 5.6 5 3.6 7.7 3.6C9.5 3.6 11 4.5 12 6C13 4.5 14.5 3.6 16.3 3.6C19 3.6 21.2 5.6 21.2 8.5C21.2 14.8 12 20.6 12 20.6Z" fill="#f48fb1" stroke="#ad1457" stroke-width="1.4" stroke-linejoin="round"/>' +
+                '<path d="M8.3 7.1C7.1 7.1 6.3 8 6.3 9.1" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/>' +
+                '</svg>';
+        };
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
@@ -44209,11 +44236,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hasTeam) {
                 if (actions.includes('Battle Dojo')) {
                     const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
-                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: 'icons/story/story_bag.png?v=20260516', label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
+                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
                 }
                 if (actions.includes('Move Tutor')) {
                     const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
-                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: 'icons/story/story_tutor.png?v=20260516', label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
+                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
                 }
                 if (actions.includes('EV Trainer')) {
                     const n = sm.team.filter(s => {
@@ -44221,7 +44248,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const e = s.build.evs || {};
                         return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
                     }).length;
-                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: 'icons/story/story_dojo.png?v=20260516', label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
+                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
                 }
             }
             const relicAvailableHere = [0, 3, 6, 9].includes(cityIdx);
@@ -44667,34 +44694,89 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
+        // ── CANONICAL FACILITY ICON REGISTRY ──────────────────────────────
+        // Single source of truth (see docs/story-design/UI_VISUAL_SYSTEM_AUDIT.md).
+        // One icon per facility, rendered identically across the city menu
+        // (makeActionBtn), the Crucible hub, every facility interior title, and
+        // the tip rail — via storyFacilityIconHtml(). Values are clean sprite
+        // paths (the helper appends a cache-bust version to icons/story/ paths);
+        // `fanclub` has no fitting sprite and renders an inline heart SVG instead.
+        //
+        // Collisions resolved by reusing thematic item sprites (the "icon = the
+        // item the facility consumes" rule): Move Tutor→Heart Scale, Nature
+        // Rater→Mint, Battle Dojo→Muscle Band, EV Trainer→Protein, Evolution
+        // Tutor→Moon Stone, Casino→Amulet Coin, Safari→Safari Ball, Fight
+        // Club→Black Belt, Daycare→egg PNG. Battle-flow keys (gym/league/route/
+        // vr/tr/crucible) keep the story_* set; `tr`↔gym and `crucible`↔vr remain
+        // intentional shares (navigation, not facilities — and the Frontier is
+        // out of scope per CLAUDE.md).
         const STORY_ACTION_ICON_URLS = {
-            professor: 'icons/story/story_professor.png?v=20260429b',
-            mystery: 'icons/story/story_mystery.png?v=20260429b',
-            gym: 'icons/story/story_gym.png?v=20260429b',
-            league: 'icons/story/story_league.png?v=20260429b',
-            route: 'icons/story/story_route.png?v=20260429b',
-            vr: 'icons/story/story_vr.png?v=20260429b',
-            tr: 'icons/story/story_gym.png?v=20260429b',
-            mart: 'icons/story/story_mart.png?v=20260429b',
-            link: 'icons/story/story_link.png?v=20260429b',
-            dept: 'icons/story/story_dept.png?v=20260429b',
-            tutor: 'icons/story/story_tutor.png?v=20260429b',
-            nature: 'icons/story/story_nature.png?v=20260429b',
-            dojo: 'icons/story/story_dojo.png?v=20260429b',
-            evtrainer: 'icons/story/story_dojo.png?v=20260429b',
-            evolab: 'icons/story/story_tutor.png?v=20260429b',
-            colress: 'icons/story/story_colress.png?v=20260429b',
-            artifacts: 'icons/story/story_artifacts.png?v=20260429b',
-            center: 'icons/story/story_center.png?v=20260429b',
-            party: 'icons/story/story_party.png?v=20260429b',
-            bag: 'icons/story/story_bag.png?v=20260429b',
-            casino: 'icons/story/story_dept.png?v=20260429b',
-            relic: 'icons/story/story_artifacts.png?v=20260429b',
-            safari: 'icons/story/story_route.png?v=20260429b',
-            crucible: 'icons/story/story_vr.png?v=20260429b',
-            daycare: 'icons/story/story_center.png?v=20260429b',
-            pits: 'icons/story/story_gym.png?v=20260429b'
+            // Quest / battle-flow
+            professor: 'icons/story/story_professor.png',
+            mystery:   'icons/story/story_mystery.png',
+            gym:       'icons/story/story_gym.png',
+            league:    'icons/story/story_league.png',
+            route:     'icons/story/story_route.png',
+            vr:        'icons/story/story_vr.png',
+            tr:        'icons/story/story_gym.png',
+            crucible:  'icons/story/story_vr.png',
+            // Heal / store & utility
+            center:    'icons/story/story_center.png',
+            daycare:   'icons/story/story_daycare.png',
+            mart:      'icons/story/story_mart.png',
+            dept:      'icons/story/story_dept.png',
+            stoneShop: 'sprites/pokesprite/items/hard-stone.png',
+            relic:     'icons/story/story_artifacts.png',
+            artifacts: 'icons/story/story_artifacts.png',
+            casino:    'sprites/items/amulet-coin.png',
+            // Train & evolve
+            tutor:     'sprites/pokesprite/items/heart-scale.png',
+            nature:    'sprites/pokesprite/items/mint.png',
+            dojo:      'sprites/items/muscle-band.png',
+            evtrainer: 'sprites/pokesprite/items/protein.png',
+            evolab:    'sprites/items/moon-stone.png',
+            colress:   'icons/story/story_colress.png',
+            // Catch, store & trade
+            link:      'icons/story/story_link.png',
+            safari:    'sprites/pokesprite/balls/safari.png',
+            pits:      'sprites/items/black-belt.png',
+            // Bag / party (and fanclub via heart SVG — no path)
+            party:     'icons/story/story_party.png',
+            bag:       'icons/story/story_bag.png'
         };
+        // Cache-bust tag bumped when the icon set changes (only applied to the
+        // mutable icons/story/*.png set; item/ball sprites are content-stable).
+        const STORY_FACILITY_ICON_VER = '20260604';
+        /**
+         * Canonical facility-icon HTML. Returns an <img> for sprite-backed
+         * facilities or the inline heart SVG for the Fan Club. Used by the city
+         * menu, the Crucible hub, and interior titles so a facility's icon never
+         * differs by surface.
+         * @param {string} key  facility key (see STORY_ACTION_ICON_URLS)
+         * @param {{size?:number, cls?:string}} [opts]
+         */
+        function storyFacilityIconHtml(key, opts) {
+            opts = opts || {};
+            const size = opts.size || 22;
+            const cls = (opts.cls != null) ? opts.cls : 'story-screen-head-ico';
+            if (key === 'fanclub') return window.storyHeartIconHtml(size, cls);
+            const src = storyFacilityIconSrc(key);
+            if (!src) return '';
+            const clsAttr = cls ? ` class="${cls}"` : '';
+            // When no sizing class is applied (e.g. the Crucible hub buttons), pin the
+            // icon size inline. Bare width/height *attributes* get overridden inside the
+            // flex button layout and the icon balloons (was rendering ~166px); the story
+            // PNGs avoid this by inline-styling their size, so mirror that here.
+            const sizeStyle = cls ? '' : ` style="width:${size}px;height:${size}px;object-fit:contain;flex-shrink:0;"`;
+            return `<img${clsAttr} src="${src}" alt="" width="${size}" height="${size}" decoding="async"${sizeStyle}>`;
+        }
+        /** Resolved sprite URL for a facility key — for swapping an existing <img>
+         *  src in place. Returns '' for `fanclub` (SVG-only) and unknown keys. */
+        function storyFacilityIconSrc(key) {
+            let src = STORY_ACTION_ICON_URLS[key] || '';
+            if (src && src.indexOf('icons/story/') === 0) src += '?v=' + STORY_FACILITY_ICON_VER;
+            return src;
+        }
         function storyActionStripLeadingDecor(label) {
             if (!label || typeof label !== 'string') return '';
             let s = label.trim();
@@ -44710,11 +44792,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const soft = opts.soft ? ' story-action-btn--soft' : '';
             const visitedCls = opts.visited ? ' story-action-btn--visited' : '';
             const suggestedCls = opts.suggested ? ' story-action-btn--suggested' : '';
-            const src = STORY_ACTION_ICON_URLS[key] || '';
             const text = storyActionStripLeadingDecor(label);
-            const iconHtml = src
-                ? `<img class="story-action-ico" src="${src}" alt="" width="24" height="24" decoding="async">`
-                : '';
+            const iconHtml = storyFacilityIconHtml(key, { size: 24, cls: 'story-action-ico' });
             const meta = Array.isArray(opts.meta) ? opts.meta : [];
             const metaHtml = meta.length
                 ? `<span class="story-action-btn-meta">${meta.map(b => {
@@ -49897,6 +49976,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Icon helper: passes through emoji as a text glyph; png() wraps a path
             // in an <img> sized to match the existing icons/story/*.png set (22×22).
             const png = (path) => `<img src="${path}?v=20260516" alt="" width="24" height="24" decoding="async" style="width:24px;height:24px;image-rendering:auto;flex-shrink:0;display:block;">`;
+            // Facility buttons pull from the canonical registry so the hub matches
+            // the city menu and each facility's interior title exactly.
+            const fico = (key) => storyFacilityIconHtml(key, { size: 24, cls: '' });
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
@@ -49914,25 +49996,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <h4 style="color:#90caf9;margin:0 0 10px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
                 <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Train &amp; Evolve</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                    ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
-                    ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
-                    ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
-                    ${btn(png('icons/story/story_dojo.png'),       'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
-                    ${btn(png('icons/story/story_colress.png'),    'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
-                    ${btn(png('icons/story/story_professor.png'),  'Evolution Tutor (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
+                    ${btn(fico('tutor'),     'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
+                    ${btn(fico('nature'),    'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
+                    ${btn(fico('dojo'),      'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
+                    ${btn(fico('evtrainer'), 'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
+                    ${btn(fico('colress'),   'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
+                    ${btn(fico('evolab'),    'Evolution Tutor (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
                 </div>
                 <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Shop</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
-                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
-                    ${btn(png('icons/story/story_artifacts.png'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
-                    ${btn('🎰',                                     'Poké Game Corner', 'window.StoryMode.enterCasino()', null, 'Coin Flip · Slots · Roulette. Big wins drop Vitamins + Vouchers.')}
+                    ${btn(fico('mart'),   'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(fico('dept'),   'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
+                    ${btn(fico('relic'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
+                    ${btn(fico('casino'), 'Poké Game Corner', 'window.StoryMode.enterCasino()', null, 'Coin Flip · Slots · Roulette. Big wins drop Vitamins + Vouchers.')}
                 </div>
                 <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Catch, Store &amp; Trade</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
-                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
-                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
+                    ${btn(fico('center'), 'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
+                    ${btn(fico('safari'), 'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
+                    ${btn(fico('link'),   'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
                 </div>
             `;
         }
@@ -51052,10 +51134,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const headerEl = document.querySelector('#screen-story-catch .story-screen-head-text');
                 if (headerEl) {
-                    if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
-                    else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
-                    else headerEl.textContent = '🌿 Wild Encounter';
+                    if (_catchState.safariMode) headerEl.textContent = 'Safari Zone';
+                    else if (_catchState.tutorialMode) headerEl.textContent = 'Catch Tutorial';
+                    else headerEl.textContent = 'Wild Encounter';
                 }
+                // Swap the header icon to match the mode: the Safari Ball in a Safari
+                // run, the route icon otherwise (was a static route PNG beside an
+                // unrelated 🦒/🎓/🌿 emoji prepended to the text).
+                const headIco = document.querySelector('#screen-story-catch .story-screen-head-ico');
+                if (headIco) headIco.setAttribute('src', storyFacilityIconSrc(_catchState.safariMode ? 'safari' : 'route'));
             } catch (e) {}
             // Scene backdrop matches the encounter mode (gen3 pixel art): Safari
             // gets its zone, wild routes the forest.
@@ -51308,6 +51395,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // boss / tutorial, which have their own framing). Tells the player
             // what they walk into next: another wild on the same route, or
             // the trainer waiting at the end of it.
+            // Wild-mon types — cheap baseStats lookup; the catch screen previously
+            // showed the encounter's name with no type badges at all.
+            const _encBase = (typeof baseStats !== 'undefined' && baseStats[enc.name]) || {};
+            const _encTypeRow = _encBase.t1 ? `<div style="margin:0 0 6px;">${getTypeHTML(_encBase.t1, _encBase.t2 || '')}</div>` : '';
             const _showUpNext = !_catchState.safariMode && !_catchState.tutorialMode;
             const upNextHtml = _showUpNext
                 ? `<div style="text-align:center;margin:-2px 0 6px;">${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
@@ -51320,6 +51411,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
                     <div id="story-catch-stage-host" style="margin:0 auto 4px;"></div>
                     <h2 style="margin:6px 0 4px;color:${_encShiny ? '#ffd54f' : '#fff'};font-size:18px;${_encShiny ? 'text-shadow:0 0 8px rgba(255,215,0,0.45);' : ''}">${_encShiny ? '&#10024; ' : ''}${_esc(enc.name)}${_encShiny ? ' &#10024;' : ''}</h2>
+                    ${_encTypeRow}
                     <div style="display:inline-block;font-size:10px;font-weight:bold;color:#111;background:${gradeBg};padding:2px 8px;letter-spacing:0.04em;">Grade ${grade}${_encShiny ? ' · ✨ SHINY' : ''}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
@@ -53442,7 +53534,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="link" aria-expanded="${expanded?'true':'false'}">
                     <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:48px;height:48px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
                         <div style="min-width:0;flex:1;">
                             <div class="story-tutor-mon-name">${_slotShinyPre}${_esc(t.name)}${gimmickTag}</div>
                             <div class="story-tutor-mon-meta">${compactMeta}</div>
@@ -54077,19 +54169,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Cheap path: collapsed mons skip the (expensive) buildPokemon +
                 // per-evo card generation entirely.
+                // Base species types — cheap (baseStats, no buildPokemon), shown on
+                // collapsed cards too so the Evolution list matches the Tutor / Fan Club
+                // (which show types while collapsed). Previously expanded-only.
                 let typeHtml = '';
-                if (expanded) {
-                    try {
-                        if (t.build) {
-                            const tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
-                            if (tempMon) typeHtml = getTypeHTML(tempMon.type1, tempMon.type2);
-                        }
-                    } catch (e) { /* ignore render-time build errors */ }
+                {
+                    const _evBase = (typeof baseStats !== 'undefined' && baseStats[t.name]) || {};
+                    if (_evBase.t1) typeHtml = getTypeHTML(_evBase.t1, _evBase.t2 || '');
                 }
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="evolab" aria-expanded="${expanded?'true':'false'}">
                     <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
                         <div style="min-width:0;flex:1;">
                             <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
                             <div class="story-tutor-mon-meta">G${g} · BST ${getBST(t.name)} · ${_esc(summary)}</div>
@@ -56199,23 +56290,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const titleEl = document.getElementById('story-tutor-head-title');
             const descEl = document.getElementById('story-tutor-head-desc');
             let quoteKey = 'moveTutor';
-            let iconSrc = 'icons/story/story_tutor.png?v=20260516';
+            let facKey = 'tutor';
             let label = 'Move Tutor';
             let desc = 'Teach or replace a move — drawn from what each partner can reach at the tutor\'s current tier.';
             if (mode === 'nature') {
-                iconSrc = 'icons/story/story_nature.png?v=20260516';
+                facKey = 'nature';
                 label = 'Nature Rater';
                 desc = 'Change a Pokémon\'s nature. Each nature applies a +10% / −10% stat pair (or neutral). All 25 natures are available.';
                 quoteKey = 'natureRater';
             } else if (mode === 'loadout') {
-                iconSrc = 'icons/story/story_dojo.png?v=20260516';
+                facKey = 'dojo';
                 label = 'Battle Dojo';
                 desc = 'Equip held items and abilities. Options are species-legal and drawn from competitive sets.';
                 quoteKey = 'battleDojo';
             } else {
                 desc = 'Tap a move slot to swap it. The pool is whatever your partner can reach at this tutor\'s tier — and it widens as the tutor does.';
             }
-            if (titleEl) titleEl.innerHTML = `<img class="story-screen-head-ico" src="${iconSrc}" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">${label}</span>`;
+            if (titleEl) titleEl.innerHTML = `${storyFacilityIconHtml(facKey, { size: 22, cls: 'story-screen-head-ico' })}<span class="story-screen-head-text">${label}</span>`;
             if (descEl) descEl.textContent = desc;
             try { _storyShowFacilityQuote('screen-story-tutor', quoteKey); } catch (e) {}
         }
@@ -61378,6 +61469,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _fanClubMonCard(mon, idx) {
             if (!mon) return '';
             const build = mon.build || {};
+            // Base species types — cheap (baseStats lookup, no buildPokemon), so the Fan
+            // Club roster shows types like every other facility card.
+            const _fcBase = (typeof baseStats !== 'undefined' && baseStats[mon.name]) || {};
+            const fcTypeHtml = _fcBase.t1 ? getTypeHTML(_fcBase.t1, _fcBase.t2 || '') : '';
             const ivs = build.ivs || { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
             const sprite = (typeof getSprite === 'function')
                 ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), build._isShiny)
@@ -61398,7 +61493,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-main">
                     ${sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : ''}
                     <div style="min-width:0;">
-                        <div class="story-tutor-mon-name">${_esc(mon.name)}${build._isShiny ? ' ✦' : ''}</div>
+                        <div class="story-tutor-mon-name">${_esc(mon.name)}${build._isShiny ? ' ✦' : ''} ${fcTypeHtml}</div>
                         <div class="story-tutor-mon-meta">${summary}</div>
                     </div>
                 </div>
