@@ -6,24 +6,33 @@
 
 ## The scene is 2.5D: a photographic backdrop + two sprites that must stand on the pitch
 
-The battle backgrounds (`sprites/backgrounds/battle/{desktop,landscape,portrait}/bg_*.png`,
-1536×1024) are painted stadiums. Reading an image top → bottom:
+Two background sets remain (`sprites/backgrounds/battle/{landscape,portrait}/bg_*.png`,
+1536×1024), each a painted stadium:
+
+- **`landscape/`** — used by the **arena** template on *every* landscape screen (desktop frame,
+  laptop, phone/tablet landscape). Low player's-eye angle: the **pitch fills the bottom ~50%**
+  as a flat plane, crowd + jumbotron behind it. Sprites stand on it naturally.
+- **`portrait/`** — used by the **stack** template.
+
+> A third set, `desktop/`, was **retired** (2026-06). It was a high/wide angle where the pitch
+> was a shallow oval *ringed by crowd on all sides* — there was no good place to stand a sprite,
+> which is what made the foe read as "in the crowd" on desktop. Desktop/laptop now use the same
+> deep-field `landscape/` stadium as phone-landscape. Revive via git history if ever needed.
+
+Reading a `landscape/` image top → bottom:
 
 ```
 ┌───────────────────────────┐  roof / lights
-│        jumbotron          │  ~10–20%
-│      upper stands         │
-│         crowd             │  ~30–55%
-│■■■■■ barrier wall ■■■■■■■■■│  ~55–62%   ← lit ledge between stands and pitch
-│                           │
-│      PITCH (tiles)        │  ~62–100%  ← the playable field, pokéball logo near the bottom
+│        jumbotron          │  ~5–18%
+│      stands / crowd       │  ~18–45%
+│■■■ barrier + tunnel ■■■■■■■│  ~45–52%
+│      PITCH (tiles)        │  ~52–100%  ← deep flat field, pokéball logo lower-centre
 └───────────────────────────┘
 ```
 
-**The pitch is only the bottom ~35–40% of the image.** Everything above the barrier is
-spectators. So a sprite only reads as "battling" if its **feet land in that bottom band**.
+So a sprite reads as "battling" when its **feet land in that bottom field band**.
 
-## The bug we hit
+## The bug we originally hit (historical — kept for the model)
 
 Two independent systems decide where things sit, and they disagreed:
 

@@ -58,7 +58,8 @@ test('getBattleBgUrl maps templates (and legacy names) to the right art set', as
   assert.match(url('neutral', 'portrait'), /battle\/portrait\/bg_neutral\.png/);
   assert.match(url('neutral', 'stack'), /battle\/portrait\/bg_neutral\.png/, 'stack → portrait art');
   assert.match(url('grassy', 'landscape'), /battle\/landscape\/bg_grassy\.png/);
-  assert.match(url('electric', 'desktop'), /battle\/desktop\/bg_electric\.png/);
-  // Unknown / arena fall back to the wide desktop art.
-  assert.match(url('neutral', 'arena'), /battle\/desktop\/bg_neutral\.png/, 'arena → desktop art by default');
+  // arena (and the retired "desktop" name, and anything non-portrait) → the landscape stadium.
+  assert.match(url('electric', 'arena'), /battle\/landscape\/bg_electric\.png/, 'arena → landscape art');
+  assert.match(url('neutral', 'desktop'), /battle\/landscape\/bg_neutral\.png/, 'retired "desktop" → landscape');
+  assert.doesNotMatch(url('neutral', 'arena'), /battle\/desktop\//, 'desktop bg set is retired');
 });

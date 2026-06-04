@@ -3186,7 +3186,7 @@
             --arena-bg-shift-y: 5cm;
             font-family: var(--battle-font);
             position: relative;
-            background-image: url('sprites/backgrounds/battle/desktop/bg_neutral.png');
+            background-image: url('sprites/backgrounds/battle/landscape/bg_neutral.png');
             background-color: #0a1a0a;
             background-size: cover;
             /* Anchor the image's bottom edge to the top of the HUD on every layout — sprite ground line stays put */
@@ -9640,16 +9640,14 @@
         window.applyBattleLayoutMode = applyBattleLayoutMode;
 
         const BATTLE_BG_TERRAINS = ['neutral', 'grassy', 'electric', 'psychic', 'misty'];
-        const BATTLE_BG_LAYOUTS  = ['desktop', 'portrait', 'landscape'];
+        const BATTLE_BG_LAYOUTS  = ['portrait', 'landscape'];
 
         function getBattleBgUrl(terrain, folder) {
             const t = (terrain || 'neutral').toLowerCase();
-            /* `folder` is the resolved background art set. Legacy layout names are mapped too,
-               so older/external callers keep working. */
-            let f = folder;
-            if (f === 'stack' || f === 'portrait') f = 'portrait';
-            else if (f === 'landscape-touch' || f === 'landscape') f = 'landscape';
-            else f = 'desktop';
+            /* Two background sets remain: "portrait" (stack) and the wide "landscape" stadium
+               (arena — desktop frame AND touch). The old crowd-ringed "desktop" set is retired,
+               so anything that isn't portrait maps to landscape. */
+            const f = (folder === 'stack' || folder === 'portrait') ? 'portrait' : 'landscape';
             return "url('sprites/backgrounds/battle/" + f + "/bg_" + t + ".png')";
         }
         window.getBattleBgUrl = getBattleBgUrl;
@@ -9658,10 +9656,9 @@
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
             const layout = sb.getAttribute('data-battle-layout') || 'arena';
-            /* arena → wide "desktop" art on the scaled frame, fluid "landscape" art on touch;
-               stack → "portrait" art. (Three distinct background sets under sprites/.) */
-            const folder = layout === 'stack' ? 'portrait'
-                : (document.body.classList.contains('is-mobile') ? 'landscape' : 'desktop');
+            /* arena → the wide "landscape" stadium (deep flat field) on every screen — desktop
+               frame and touch alike; stack → the "portrait" stadium. */
+            const folder = layout === 'stack' ? 'portrait' : 'landscape';
             let terrain = 'neutral';
             try {
                 if (settings && settings.terrainBackground && state && state.terrain) {
