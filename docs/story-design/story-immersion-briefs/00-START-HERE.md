@@ -29,6 +29,10 @@ e.g. just `04` first if you want the systems foundation specced before the rest.
   code ships**.
 - **Reframe + connect, not a premise overhaul**; **grounded episodic** (strong local motivation
   per event, no overarching-mystery retrofit). These are locked — agents won't relitigate them.
+- **Design to the shared Narrative Craft Playbook** (`NARRATIVE-CRAFT.md`) — foldback / C&C /
+  flags+callbacks / chunking ("no dead nodes") / barks / resonance, with **events = bottlenecks,
+  camp = the diamond**. Every payload points to it; it's the contract that keeps the four specs
+  coherent. *(Agents read it from the repo; dispatching a brief outside this repo? Attach it too.)*
 - Start with a **read-only audit** of their lane and open the spec with a "current state"
   section + a prioritized, anchored problem list. No generic advice.
 - Respect the `CLAUDE.md` guardrails (out-of-scope areas, saves sacred, sign-off on behavior,

@@ -185,6 +185,18 @@ roadmap's PR D.)
 
 ---
 
+## 10b. Micro-game palette & formats (maintainer)
+
+The 18 locked games (§2) are v1; the **format extends without new engines** (a primitive + data).
+The richer **resonant palette** — best-practice micro-game mechanics adapted so each game's *feel*
+echoes its **stat** and its *theme* echoes the **attachment style**, plus the themed (gather/cook)
+and **staged** (Mario-Party-style multi-beat) formats — lives in
+[`CAMP_MINIGAMES_PALETTE.md`](./CAMP_MINIGAMES_PALETTE.md). All of it stays **content/config, not
+mechanics:** seeded, data-driven, **pass/fail → +1, no item economy** (gather/cook are *flavor*,
+not a bag loop — [`CAMP_BAG.md`](./CAMP_BAG.md) §7). The maintainer picks the shipping set + tunes the vibe.
+
+---
+
 ## 11. Test plan (leave-behind)
 
 - **Seeded pick:** `campPickMicrogame` with a fixed `runSeed` returns a

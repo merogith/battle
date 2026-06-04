@@ -56,6 +56,9 @@ vivid, and immersive.**
   duplication. Leave a deterministic jsdom test (`tests/helpers/load-engine.js`).
 - **Align with the parallel Camp System spec** under `docs/story-design/camp/` (esp.
   `EVENT_CINEMATICS.md`) — don't duplicate it.
+- **Design to the Craft Playbook** in `docs/story-design/story-immersion-briefs/NARRATIVE-CRAFT.md`
+  (foldback · C&C · flags/callbacks · chunking / "no dead nodes" · barks · resonance; **events =
+  bottlenecks, camp = the diamond**) — the shared contract all four streams build on. Read it first.
 
 **First task (before any design):** do a **read-only audit** of your lane in the current code
 (use `find-anchor`). Open your spec with a short **"current state"** section + a prioritized
