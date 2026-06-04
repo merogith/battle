@@ -1,6 +1,6 @@
 # Story Mode — Unified UI/UX Visual Design System
 
-**Status:** Phase 0 (audit) + Phase 1 (proposal). No code changed yet — implementation is Phase 2, post-approval.
+**Status:** Phase 2 implementation in progress — Stages 2a (icons), 2b (color), 2c (chrome + title token) shipped. See **Phase 2 — Implementation status** at the bottom.
 **Scope:** Story-mode facilities, city screens, facility interiors, shops, Pokémon cards, text styles. Battle-screen icons cross-referenced. (Quick Play / Online PvP / Frontier internals are out of scope per `CLAUDE.md`; touched only where they share story code.)
 
 ---
@@ -179,3 +179,21 @@ Define roles as classes/tokens: **Title / Blurb / Body / Hint / Label / Price / 
 ## Decision points (questionnaire)
 
 See the chat message accompanying this doc — six decisions, each with a recommendation, plus the two missing-icon (Fan Club, Daycare) choices.
+
+**Resolved (maintainer, 2026-06):** Icons = mix (item-sprite-first, new art where needed; no license constraint). Color = category palette (5 `--fac-*` hues). Fan Club = engine-style heart SVG. Daycare = new egg PNG. Scope = ship 2a/2b/2c now; card consolidation (2d) is a separate pass.
+
+---
+
+## Phase 2 — Implementation status
+
+| Stage | Scope | Status | Commit |
+|---|---|---|---|
+| **2a** | Icon registry — one `STORY_ACTION_ICON_URLS` + `storyFacilityIconHtml()`/`storyFacilityIconSrc()` feeding city menu / Crucible / interior titles / catch header / tips; all collisions resolved with item sprites; new egg PNG (`scripts/gen-daycare-egg.mjs`) + heart SVG (`storyHeartIconHtml`); `stoneShop`/`fanclub` blank-icon defect fixed. | ✅ shipped | `d786a9d` |
+| **2b** | Category color palette — 5 `--fac-*` tokens in `:root`; `.story-screen-head-title.fac-*` classes; 15 titles recolored by function. Casino keeps themed brass (`!important`); Frontier (out of scope) untouched. | ✅ shipped | `05b5663` |
+| **2c** | Chrome + text token — stripped 28 dead inline header/footer backgrounds (class `!important` already wins; grep-verified); title `font-size` moved onto `.story-screen-head-title`. | ✅ shipped | `2f20059` |
+| **2c-deferred** | Daycare overlay→real screen (touches one-time egg-event flow — *sensitive* per CLAUDE.md), universal entry SFX (behavior change), settings-gear `⚙`→SVG (uncertain button sizing), 4th/5th button-family consolidation. | ⏸ flagged | — |
+| **2d** | Pokémon-card consolidation (§1.5 / §0.7): one type chip (`getTypeHTML`), all six facility headers via `_txRenderCollapsedMonHtml` (40px + types on Fan Club), one tile + one row shape, bring the catch screen into the system, one stat-bar renderer, reconcile the double `.type-badge` rule. **Largest / most regression-prone — its own pass.** | ⏳ next | — |
+
+**Verification:** each stage booted in the jsdom harness and was screenshotted in real headless Chromium (Crucible icon grid, Fan Club heart, category title colors, intact header/footer chrome) — no page errors, no visual regression.
+
+**Residual icon notes:** intentional battle-flow shares remain (`gym`=`tr`, `vr`=`crucible`); the egg PNG is a generated placeholder (swap for licensed art anytime — registry points at one file); the Casino interior swapped 🎰→Amulet Coin for cross-surface consistency (revertible). Relic *cards* stay purple-themed though the title is now gold — recoloring card internals belongs to 2d.
