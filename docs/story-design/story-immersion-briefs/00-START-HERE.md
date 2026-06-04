@@ -1,71 +1,50 @@
-# Story Immersion Initiative — Agent Brief Set (START HERE)
+# Story Immersion Initiative — Dispatch Guide (START HERE)
 
-Shared context for **4 parallel agents**. Each agent: read this file first, then your
-assigned brief. Each brief is self-contained — you can hand them out independently.
+This folder is a **ready-to-dispatch agent brief set** for making Story Mode coherent, vivid,
+and immersive. Every payload file below is **fully self-contained** — it carries its own shared
+context (the game, the problem, the locked design decisions, the guardrails), so it runs in a
+**clean chat** with no prior conversation. Pick one of the two dispatch modes:
 
-## The game
-A single-page Pokémon-style battle sim (`battle.html`, ~61k-line monolith —
-HTML + CSS + JS in one file). **Active scope: Story Mode (normal difficulty) only.**
-Design canon lives in `STORY_MODE_FLOW.md`; project rules in `CLAUDE.md` (read it).
+## Mode A — one agent, one chat (everything at once)
+Send **`ALL-IN-ONE.md`**. It has the shared context once, then all four streams, and tells the
+agent to produce all four deliverable specs (it'll work through them, foundation first). Best
+when you want a single coherent pass and don't mind one long session.
 
-## The problem we're solving
-Maintainer's words: *"the stories feel so out of nowhere… each story event [needs] to
-feel more relevant… stronger reasoning to the player — what / why / when / how / who.
-Story feels confusing and much of the dialogue doesn't make sense."* Plus: presentation
-is flat, and some encounters are **mis-framed** (e.g. raids show a **trainer** intro even
-though raids are wild Pokémon, not trainer battles).
+## Mode B — split across clean chats (one stream each)
+Send each of these to its **own** fresh chat — they don't depend on each other or on this file:
 
-**Goal:** make story events, battles, and sequencing **coherent, vivid, and immersive** —
-every event clearly motivated (who / why / now / stakes), dialogue clear and voiced,
-presentation strong, framing correct.
+| Send this file | To an agent that owns | Produces |
+|---|---|---|
+| `01-narrative-coherence.md` | Narrative Coherence & Causality | `…/story-immersion/narrative-coherence.md` |
+| `02-dialogue-and-writing.md` | Dialogue & Writing | `…/story-immersion/dialogue-and-writing.md` |
+| `03-visual-and-cinematic.md` | Visual & Cinematic | `…/story-immersion/visual-and-cinematic.md` |
+| `04-storytelling-systems.md` | Storytelling Systems & Tools | `…/story-immersion/storytelling-systems.md` |
 
-## Locked design decisions (maintainer, 2026-06-03)
-1. **Scope = Reframe + connect** (NOT a premise overhaul). Keep the event lineup; add the
-   missing connective tissue, fix mismatched framing, polish dialogue + visuals. Do **not**
-   restructure the timeline or rewrite the premise.
-2. **Spine = Grounded episodic.** Events stay fairly standalone; the fix is **strong LOCAL
-   motivation per event** (clear who / why / now). **No single overarching-mystery retrofit.**
-   Light recurring-character glue is welcome; a grand arc is not.
-3. **Output = Spec + real samples.** Each agent delivers a **design/plan Markdown with
-   concrete examples baked in** (before/after rewrites, mockups, API usage, fix lists) for
-   maintainer review **before any code ships**.
-4. **4 parallel streams** (below).
+(Deliverables land under `docs/story-design/story-immersion/`.) You can also send any subset —
+e.g. just `04` first if you want the systems foundation specced before the rest.
 
-## The 4 briefs
-| # | Stream | File | Owns |
-|---|--------|------|------|
-| 1 | Narrative Coherence & Causality | `01-narrative-coherence.md` | Why each event happens; per-event motivation; encounter-framing matrix; kills "out of nowhere" |
-| 2 | Dialogue & Writing | `02-dialogue-and-writing.md` | Clear, voiced, high-impact copy; rewrite confusing lines; voice guide |
-| 3 | Visual & Cinematic | `03-visual-and-cinematic.md` | Scenes, sprites, animation, pre-boss cinematics; fix the raid intro; per-event visual beats |
-| 4 | Storytelling Systems & Tools | `04-storytelling-systems.md` | Engine tools the others need: setup-beat hook, choice/consequence, cinematic hook, content schema |
+## What every agent is told to do
+- Treat this as a **design pass**: deliver a Markdown spec **with real samples baked in**
+  (before/after rewrites, mocked frames, API + usage, fix lists) for **your review before any
+  code ships**.
+- **Reframe + connect, not a premise overhaul**; **grounded episodic** (strong local motivation
+  per event, no overarching-mystery retrofit). These are locked — agents won't relitigate them.
+- Start with a **read-only audit** of their lane and open the spec with a "current state"
+  section + a prioritized, anchored problem list. No generic advice.
+- Respect the `CLAUDE.md` guardrails (out-of-scope areas, saves sacred, sign-off on behavior,
+  seeded RNG, align with the Camp System spec).
 
-**How they relate:** Stream 4 (Systems) is the foundation — it provides the hooks. Stream 1
-(Coherence) defines *what* each event needs. Streams 2 (Writing) and 3 (Visual) supply *the
-words* and *the visuals*. All four are written **in parallel as design specs**; the
-dependency only bites at implementation time (Systems' APIs land first).
+## The four streams at a glance
+1. **Narrative Coherence & Causality** — why each event happens; per-event motivation;
+   encounter-framing matrix; kills "out of nowhere".
+2. **Dialogue & Writing** — clear, voiced, high-impact copy; rewrite confusing lines; voice guide.
+3. **Visual & Cinematic** — scenes, sprites, animation, pre-boss cinematics; fix the raid intro.
+4. **Storytelling Systems & Tools** — the engine hooks the others stand on (setup-beat hook,
+   choice/consequence, cinematic trigger, content schema). **Foundation — spec first.**
 
-## Shared guardrails (all 4 — from `CLAUDE.md`)
-- **Out of scope — do not touch:** Online PvP (`online-pvp.js`), Quick Play, Battle Frontier /
-  Gauntlet. Don't revive cut systems (Black Market, the Caged God boss arc, the 8 tone-variants
-  — **classic storyline only**).
-- **No game-behavior change ships without maintainer sign-off** (damage, status, AI, balance,
-  RNG semantics, any mechanic). Behavior-preserving refactors need direction approval only.
-  **Flow-ordering bugs MUST be flagged** even if the maintainer "owns" the flow.
-- **Saves are sacred:** never renumber `STORY_EVENTS_RAW`; schema changes go through one
-  `SAVE_VER` bump + a `migrateStoryPreV*` (idempotent). Read `STORY_MODE_FLOW.md` before
-  touching flow.
-- **Engineering:** seeded RNG (`storyRngNext`) for anything user-visible — never bare
-  `Math.random`. Data-driven content under `data/*.json`, loaded via the early-`let` +
-  `Object.assign` pattern (mind the sloppy-mode hazard — `battle.html` has no `'use strict'`).
-  Helpers over duplication. Leave a deterministic jsdom test (`tests/helpers/load-engine.js`).
-- **Anchors:** resolve symbols → `file:line` with the **`find-anchor` / `anchor` skill**
-  (drift-tolerant). Do **not** hardcode line numbers in your spec.
-- **There is a parallel Camp System spec** under `docs/story-design/camp/` (esp.
-  `EVENT_CINEMATICS.md`) — align with it, don't duplicate it.
-- **Deliverable for every stream:** a Markdown spec at
-  `docs/story-design/story-immersion/<your-stream>.md`, with **real samples**, ready for review.
+*How they relate:* Stream 4 provides the hooks; Stream 1 defines what each event needs; Streams
+2 & 3 supply the words and the visuals. They're written in parallel as specs; the dependency
+only bites at implementation time, when Stream 4's APIs land first.
 
-## First task for every agent
-Before designing, do a **read-only audit** of your lane in the current code (use
-`find-anchor`). Open your spec with a short **"current state"** section + a prioritized
-problem list with anchors. Ground everything in what's actually there — no generic advice.
+> Note: this START-HERE file is the **human dispatch guide** — you don't need to send it to an
+> agent. The agent payloads are `ALL-IN-ONE.md` (Mode A) or `01`–`04` (Mode B).
