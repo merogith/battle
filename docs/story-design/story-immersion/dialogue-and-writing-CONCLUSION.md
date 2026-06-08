@@ -110,12 +110,15 @@ with a `byPriorArc` map (arc id → line), appended under the existing `CITY_ARR
 
 ---
 
-## D. Three items that need a maintainer narrative call
+## D. Three items — RESOLVED (maintainer chose all three recommendations)
 
-These are Stream-2 prose, but each turns on a story-canon decision only you own. Each has a
-recommendation; none ships until you pick.
+> **Decided 2026-06-08:** "go with all 3 recs." All three are now **implemented** on
+> `claude/stream2-impl`, each guarded by `tests/suites/story-loop-prose.test.js`.
 
-### D1 — H2-1: Does Oak know about the loop?
+### D1 — H2-1: Does Oak know about the loop? — ✓ *loop invisible to him*
+**Implemented** in `STORY_SCENES["main.event1"]` (climax): a narrator contrast — the professor
+saw you off "like it was the first time. For him, it was," set against the loop-aware bench old
+man. No new Oak speech.
 The bridge between Oak (the warm mentor) and the deterministic loop The First reveals. Pick one:
 - **Oak knows, and won't say** — a quiet, chosen complicity; his warmth carries a hidden grief.
   Seed (e.g. in `classic_twist`): *"I went home once, at this gym. …Some roads you walk more than once. Don't think about that too hard."*
@@ -126,22 +129,20 @@ The bridge between Oak (the warm mentor) and the deterministic loop The First re
 *Recommendation:* invisible-to-Oak — keeps the mentor uncomplicated and makes The First's burden
 unique. But "Oak knows" is the more poignant option if you want the weight on him.
 
-### D2 — H2-2: Add a breadcrumb call-back to `main.mfReveal`?
-Stream 1 (H2-2) asks the reveal to name the four `ANOMALY_SEEDS` payoffs (the handwriting, the
-sticker, "Tell The First we said hi", …). My step-4 guard currently treats `mfReveal` as
-*untouched* ("the bar"). A call-back is **additive** — it keeps the signature line and adds a
-short stanza that collects the breadcrumbs.
-- *Recommendation:* **yes, add it** — it makes the reveal land harder and pays off seeds the
-  player half-noticed. Needs your OK because it edits `mfReveal`; the guard would be updated to
-  assert the signature line *and* the new call-back both present.
+### D2 — H2-2: Breadcrumb call-back in `main.mfReveal` — ✓ *added (additive)*
+**Implemented** in `STORY_SCENES["main.mfReveal"]` (climax act): The First names the four
+`ANOMALY_SEEDS` payoffs — the Welcome-Back sticker (row 7), the handwriting in your Pokédex
+(rows 14/49), and the trainer who said to tell him hi (row 30) — *"so you'll remember to leave
+them."* The reveal's signature line ("The face under it is yours. Older.") is untouched; the
+call-back is appended, so the act count stays 4 and the bar still holds.
 
-### D3 — H2-4: Resolve the `main.battle1/2` "mirror" promise
-The prose promises a "mirror" self-test; the card currently delivers a generic G8 trainer.
-- **(a) Soften the prose** *(recommended, Stream 2, cheap)* — stop promising a literal mirror;
-  reframe as "a trainer the road picked to test you," removing the broken promise now.
-- **(b) Build a canon mirror foe** (engine, Stream 3/4) — a near-self team; bigger, deferred.
-
-*Recommendation:* do (a) now to close the gap; log (b) as a Stream-3/4 enhancement.
+### D3 — H2-4: The `main.battle1/2` "mirror" promise — ✓ *prose softened*
+`main.battle1` was already a clean loop-aware veteran beat ("You Always Lose This One"). The
+over-promise was in `main.battle2` ("matched, slot for slot… the same blueprint as your own"),
+which the engine can't deliver (no canon mirror team — `BEAT_CANON_TRAINER` has no
+`main.battle2`). **Implemented (a):** softened to "built the way yours is built, reaching for the
+same answers a step ahead of you" — keeps the near-self dread, drops the unkept literal claim.
+Building an actual canon mirror foe **(b)** remains a Stream-3/4 enhancement.
 
 ---
 
@@ -163,7 +164,10 @@ The prose promises a "mirror" self-test; the card currently delivers a generic G
   self-contained, **implemented** (PR #241).
 - **Step 7:** `7a` (barks data+schema) and `7d` (choice guard) **shipped**; `7b`/`7c` handed to
   Stream 4 (§E).
-- **Stream-1 prose handoffs:** `H2-3` and `H2-5` **authored** (§B/§C, ready copy, wiring handed
-  off); `H2-1`/`H2-2`/`H2-4` **await a maintainer call** (§D).
-- **Net:** Stream 2's authored-copy obligations are complete. What remains is (1) three narrative
-  decisions, and (2) engine wiring owned by Streams 3/4 — both tracked above.
+- **Stream-1 prose handoffs:** `H2-1`/`H2-2`/`H2-4` **implemented** (§D — maintainer chose all
+  three recs); `H2-3` and `H2-5` **authored** (§B/§C, ready copy, render-wiring handed to
+  Streams 3/4).
+- **Net:** Stream 2 is **done** — every authored-copy and narrative-decision obligation is
+  shipped. What remains is purely engine wiring owned by Streams 3/4 (§E): the `speaker` block,
+  pool externalization, bark wiring, and the H2-3/H2-5 render hooks (+ the optional canon
+  mirror-foe for D3).
