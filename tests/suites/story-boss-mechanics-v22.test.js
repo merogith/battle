@@ -247,9 +247,12 @@ test('miniRaid2 beats resolve to ONE evolved-form boss, not a trainer team', () 
     // yamask is the one arc whose evolved form differs from its base/climax species.
     assert.equal(ST.rollExtraRaidBossTeam('extra.yamask.miniRaid2')[0].name, 'Cofagrigus', 'yamask → Cofagrigus (not Yamask)');
 
-    // Regression: the existing road-4 miniRaid + road-6 raid still resolve unchanged.
-    assert.equal(ST.rollExtraRaidBossTeam('extra.cubone.miniRaid')[0].name, 'Marowak', 'road-4 miniRaid unchanged');
-    assert.equal(ST.rollExtraRaidBossTeam('extra.cubone.raid')[0].name, 'Marowak', 'road-6 raid unchanged');
+    // Per-tier escalation: Road-4 base form → Road-5 evolved → Road-6 climax.
+    assert.equal(ST.rollExtraRaidBossTeam('extra.cubone.miniRaid')[0].name, 'Cubone', 'road-4 = base Cubone');
+    assert.equal(ST.rollExtraRaidBossTeam('extra.phantump.miniRaid')[0].name, 'Phantump', 'road-4 = base Phantump');
+    assert.equal(ST.rollExtraRaidBossTeam('extra.drifloon.miniRaid')[0].name, 'Drifloon', 'road-4 = base Drifloon');
+    assert.equal(ST.rollExtraRaidBossTeam('extra.parasect.miniRaid')[0].name, 'Paras', 'road-4 = base Paras');
+    assert.equal(ST.rollExtraRaidBossTeam('extra.cubone.raid')[0].name, 'Marowak', 'road-6 climax = Marowak');
     // A non-combat extra beat must NOT resolve to a solo boss.
     assert.equal(ST.rollExtraRaidBossTeam('extra.cubone.event5'), null, 'event beats are not raids');
 });

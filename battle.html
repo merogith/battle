@@ -34028,7 +34028,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.cubone.miniRaid2": {
                             "title": "The Same One, Evolved",
-                            "body": "A Marowak - the same Cubone, evolved. At 50% HP it gains +1 priority on Bone Club. At 25% the skull breaks and the Marowak does not flinch from any move for 3 turns.",
+                            "body": "A Marowak - the same Cubone, evolved. At 50% HP it gains +1 priority on Bone Club. At 25% the skull breaks - an immunity round, for one turn nothing you do lands.",
                             "acts": [
                                 { "phase": "intro", "lines": [
                                     "A Marowak now - the same one, you know it the way you know a face, the skull finally found and worn." ] },
@@ -34061,7 +34061,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.phantump.miniRaid2": {
                             "title": "The Forest",
-                            "body": "A Trevenant. At 50% priority-locked field (Phantom Force +1 priority). At 25% field becomes 'the forest' - Grass moves empowered and the player is locked into their active Pokémon for 3 turns.",
+                            "body": "A Trevenant. At 50% priority-locked field (Phantom Force +1 priority). At 25% field becomes 'the forest' - an immunity round, the grove closing over it so for one turn nothing you do reaches it.",
                             "acts": [
                                 { "phase": "intro", "lines": [
                                     "A Trevenant now - grown, rooted, the grove's grief gone load-bearing." ] },
@@ -34083,7 +34083,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.drifloon.miniRaid2": {
                             "title": "Fed",
-                            "body": "A Drifblim - the Drifloon, fed. At 50% priority-locked field (Drifblim moves +1 priority for 3 turns, wind-rising telegraph). At 25% field becomes 'high winds' - Flying moves empowered, the player team's Speed drops one stage per turn for 3 turns.",
+                            "body": "A Drifblim - the Drifloon, fed. At 50% priority-locked field (Drifblim moves +1 priority for 3 turns, wind-rising telegraph). At 25% field becomes 'high winds' - an immunity round, the wind carrying everything you throw wide for one turn.",
                             "acts": [
                                 { "phase": "intro", "lines": [
                                     "A Drifblim now - the Drifloon, but swollen, sated, grown on whatever it is balloons grow on." ] },
@@ -34094,7 +34094,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.parasect.miniRaid2": {
                             "title": "The Cap",
-                            "body": "A Parasect - the mushroom in full. At 50% priority-locked field (Grass moves go first for 3 turns, spore-cloud telegraph). At 25% field becomes 'the cap' - Grass and Bug empowered, the player team is confused at end of each turn for 3 turns.",
+                            "body": "A Parasect - the mushroom in full. At 50% priority-locked field (Grass moves go first for 3 turns, spore-cloud telegraph). At 25% field becomes 'the cap' - an immunity round, the spore-thick air swallowing your attacks whole for one turn.",
                             "acts": [
                                 { "phase": "intro", "lines": [
                                     "A Parasect, the mushroom in full now, the bug a footnote beneath the cap - a chassis." ] },
@@ -34105,7 +34105,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.mewtwo.miniRaid2": {
                             "title": "The Body Doesn't Match",
-                            "body": "A second prototype - stronger, with a body that does not match its mind. At 50% priority-locked (Psychic moves +1 priority for 3 turns, static-noise telegraph). At 25% field becomes 'the dream of being loved' - Psychic empowered, the player's mons take Sp.Atk drops at end of each turn for 3 turns.",
+                            "body": "A second prototype - stronger, with a body that does not match its mind. At 50% priority-locked (Psychic moves +1 priority for 3 turns, static-noise telegraph). At 25% field becomes 'the dream of being loved' - an immunity round, for one turn nothing you do reaches it.",
                             "acts": [
                                 { "phase": "intro", "lines": [
                                     "A second prototype, stronger - a body built bigger than the last, housing a mind that rattles around inside it, ill-fitting, a passenger in a vehicle two sizes wrong." ] },
@@ -43262,20 +43262,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 1; // bosses + battles use single-target scaling
         }
 
-        // Solo-Pokémon raid bosses (extra track): scene-key stem → the legendary-tier
-        // species the prose names. These fights are ONE scaled Pokémon, not a trainer team.
-        const _EXTRA_RAID_SPECIES = {
-            cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
-            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
-        };
-        // Road-5 miniRaid2 = the arc signature in its EVOLVED form — the mid-arc
-        // escalation the prose names ("the same one, evolved"). Per-tier so each beat
-        // spawns the creature its scene describes; only yamask (Yamask→Cofagrigus)
-        // differs from the base/climax species above, but all 8 are listed explicitly
-        // so the map stays self-documenting if a climax species is ever retuned.
-        const _EXTRA_RAID2_SPECIES = {
-            cubone: 'Marowak', yamask: 'Cofagrigus', hypno: 'Hypno', phantump: 'Trevenant',
-            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
+        // Solo-Pokémon raid bosses (extra track): each arc's signature line across THREE
+        // tiers — Road-4 miniRaid (base), Road-5 miniRaid2 (evolved), Road-6 raid (climax) —
+        // each spawning the species its scene prose names. These fights are ONE scaled
+        // Pokémon, not a trainer team. hypno/mimikyu/mewtwo stay one species across all three
+        // (escalation is stats + narrative, not evolution); yamask's climax is the base
+        // Yamask "ancestor," not the Road-5 Cofagrigus.
+        const _EXTRA_RAID_SPECIES_BY_TIER = {
+            cubone:   { miniRaid: 'Cubone',   miniRaid2: 'Marowak',    raid: 'Marowak'   },
+            yamask:   { miniRaid: 'Yamask',   miniRaid2: 'Cofagrigus', raid: 'Yamask'    },
+            hypno:    { miniRaid: 'Hypno',    miniRaid2: 'Hypno',      raid: 'Hypno'     },
+            phantump: { miniRaid: 'Phantump', miniRaid2: 'Trevenant',  raid: 'Trevenant' },
+            mimikyu:  { miniRaid: 'Mimikyu',  miniRaid2: 'Mimikyu',    raid: 'Mimikyu'   },
+            drifloon: { miniRaid: 'Drifloon', miniRaid2: 'Drifblim',   raid: 'Drifblim'  },
+            parasect: { miniRaid: 'Paras',    miniRaid2: 'Parasect',   raid: 'Parasect'  },
+            mewtwo:   { miniRaid: 'Mewtwo',   miniRaid2: 'Mewtwo',     raid: 'Mewtwo'    },
         };
         // Build the single-mon foe team for an extra raid/miniRaid beat. Returns the
         // standard [{name, build}] draft shape (one element), or null to fall back to the
@@ -43286,9 +43287,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid2?)$/.exec(String(sceneKey || ''));
                 if (!m) return null;
                 const arc = m[1], tier = m[2];
-                // Road-5 miniRaid2 spawns the EVOLVED form; road-4 miniRaid + road-6 raid
-                // keep the per-arc base/climax species.
-                const species = (tier === 'miniRaid2' && _EXTRA_RAID2_SPECIES[arc]) || _EXTRA_RAID_SPECIES[arc];
+                // Per-tier species: Road-4 base form → Road-5 evolved → Road-6 climax,
+                // each as the scene prose names it.
+                const byTier = _EXTRA_RAID_SPECIES_BY_TIER[arc];
+                const species = byTier && byTier[tier];
                 if (!species || typeof makeBuild !== 'function') return null;
                 const build = _withStoryPlayerGimmickGate(() => makeBuild(species));
                 if (!build) return null;
