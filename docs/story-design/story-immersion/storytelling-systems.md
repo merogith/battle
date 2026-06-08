@@ -394,8 +394,9 @@ function _storyNudgeRivalFriendship(d) {
   sm.rivalFriendship = Math.max(-RIVAL_FRIENDSHIP_RANGE, Math.min(RIVAL_FRIENDSHIP_RANGE, (sm.rivalFriendship|0) + d));
 }
 ```
-**Two writers, one number:** (1) battles — one line inside `setRivalStanding` (`37615`, the
-existing single choke point) on `w==='player'|'rival'`; (2) dialogue — a choice's `friendship:`
+**Two writers, one number:** (1) battles — `+1` on a player win, `-2` on a loss (a loss stings
+more), one line inside `setRivalStanding` (`37615`, the existing single choke point) on
+`w==='player'|'rival'`; (2) dialogue — a choice's `friendship:`
 via `_storyApplyConsequence`. One clamp, no scattered `+=`. **Naming ✅ DECIDED (§9):
 `rivalFriendship`** — the canon Pokémon *Friendship* stat; its Return ↔ Frustration move duality
 maps the camaraderie ↔ rivalry swing exactly (the negative end is the "Frustration" side).
@@ -542,15 +543,16 @@ sustainability mandate).
 
 1. ~~**§5 — the v25 decision.**~~ ✅ **RESOLVED: Option A** (one unified `migrateStoryPreV25`,
    Stream 4 owns the store; Camp contributes its field block).
-2. **`RIVAL_FRIENDSHIP_RANGE`** (sketch `12`) and **per-battle deltas** (`+1`/`-1`; should a loss
-   sting more than a win warms?).
-3. **Per-choice `friendship` budget** (recommend `±1`; `±2` only at pivotal beats).
-4. **v25 derivation** — net wins−losses over `rivalEncounterLog`, clamped (sketch), or start
-   veterans at neutral `0`?
+2. ~~**`RIVAL_FRIENDSHIP_RANGE` + per-battle deltas.**~~ ✅ **RESOLVED: Standard profile** —
+   range `±12`; a win `+1`, a loss `-2` (a loss stings more than a win warms).
+3. ~~**Per-choice `friendship` budget.**~~ ✅ **RESOLVED: `±1`**, with `±2` reserved for pivotal beats.
+4. ~~**v25 derivation.**~~ ✅ **RESOLVED: derive from history** — net wins−losses over
+   `rivalEncounterLog`, clamped (the §5 sketch). *(Saves not a priority → keep the better default.)*
 5. ~~**Naming.**~~ ✅ **RESOLVED: `rivalFriendship`** — the canon *Friendship* stat (poles read
    as Return ↔ Frustration); lexically distinct from Camp's team `slot.bonds`.
-6. **Behavior sign-offs** — barks (§3.5) and any timed/"resonance" choice and the raid-framing
-   visual change (§6.4) all need explicit approval before code ships.
+6. **Behavior sign-offs** — ✅ **approved to develop:** barks (§3.5), raid + pre-boss cinematics
+   (§3.3/§6.4), and the impact layer (hit-stop / screen-shake / portrait-emotion). ❌ **CUT:** the
+   timed/"resonance" choice. Each approved item still gets a diff before code ships.
 
 ---
 

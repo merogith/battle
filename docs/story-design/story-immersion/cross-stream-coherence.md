@@ -185,7 +185,9 @@ both insist `persistKey`/`value`/`reply`/`branches.when` stay byte-identical. Th
 
 > **✅ Resolved 2026-06-04:** **D1** = unified v25, Stream 4 owns (Option A) · **D2** = Overhaul
 > Phase E owns the dispatcher; flow bugs G3/G4 ship ahead · **D3** = Promise facade over Stream 3's
-> cinematic bodies · **D4** = `rivalFriendship`. **D5–D7 remain open** (balance / sign-off, user-owned).
+> cinematic bodies · **D4** = `rivalFriendship` · **D6** = Standard tuning (±12; win +1 / loss −2;
+> choice ±1) + derive-from-history saves · **D7** = barks + cinematics + impact approved, timed
+> "resonance" choice CUT. **D5 remains open** (raid scope — awaiting maintainer).
 >
 > Tagged `[BLOCKER]` (gates implementation), `[scope]`, `[api]`, `[balance]`, `[naming]`,
 > `[sign-off]`. My recommendation in **bold**.
@@ -202,11 +204,13 @@ both insist `persistKey`/`value`/`reply`/`branches.when` stay byte-identical. Th
 4. **D4 `[naming]` — rival scalar name:** `sm.rivalAffinity` vs `rivalRespect`.
 5. **D5 `[balance]` — `miniRaid2` scope:** (A) fix the roller → 24 raids + 8 evolved bosses w/
    HP-threshold mechanics (**S3-recommended**), or (B) visual-only for 16, log the data bug.
-6. **D6 `[balance]` — rival-affinity tuning:** range (sketch ±12), per-battle deltas, per-choice
-   budget, and the v25 derivation (net wins−losses, clamped, vs start-at-0). *(S4 §9.)*
-7. **D7 `[sign-off]` — behavior/presentation changes** (collated across streams): barks (S2/S4) ·
-   any timed/"resonance" choice (Craft §6) · raid-framing + pre-boss cinematic (S3 §4–5) ·
-   hit-stop / screen-shake / portrait-emotion (S3 §6) · the affinity write in `setRivalStanding`.
+6. ~~**D6 `[balance]` — rival-friendship tuning.**~~ ✅ **RESOLVED: Standard** — range ±12, win +1 /
+   loss −2, per-choice ±1 (±2 at pivots); existing saves **derive from history** (net wins−losses,
+   clamped). *(S4 §9.)*
+7. **D7 `[sign-off]` — behavior/presentation changes** (collated across streams): ✅ **approved to
+   develop** — barks (S2/S4) · raid-framing + pre-boss cinematic (S3 §4–5) · hit-stop / screen-shake /
+   portrait-emotion (S3 §6) · the friendship write in `setRivalStanding`. ❌ **CUT** — the
+   timed/"resonance" choice (Craft §6). Each approved item still gets a diff before shipping.
 8. **D8 `[note]` — Stream 2 is already signed off (2026-06-04).** Its copy decisions (incl. the
    §11.1 rival-name fix) are locked; only its **engine hand-off** (speaker/`barkPool`/pool
    externalization) is pending, and lands as part of Stream 4 §3.4/§3.5.
