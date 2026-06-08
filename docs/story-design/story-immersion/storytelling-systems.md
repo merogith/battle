@@ -117,7 +117,7 @@ Players: `_playStoryBeatScene(sceneKey,onDone)` (`42904`) → `_playSceneActs(sc
 | `sm.flags` | init `37594` | `{}` — declared, **barely used.** A free persisted store for setups / side-state. |
 | `sm.scenesShown` / `_storyRunSceneMark` | `37578` / `47810` | **per-run** dedupe (resets each run). |
 | `sm.storyEventsFired` | init `37599` | **persistent** `{sceneKey→true}` (once per save). |
-| rival track: `rivalLastWinner`/`rivalStanding`/`rivalChampionClaimed`/`rivalConsecutiveWins`/`Losses`/`rivalEncounterLog` | `37583–37597` | written by **one** choke point `setRivalStanding(winner, storyRowIdx, rivalTeamNames)` (`37615`); normalized at `37603`. **No scalar affinity** (`grep rivalAffinity` → 0). |
+| rival track: `rivalLastWinner`/`rivalStanding`/`rivalChampionClaimed`/`rivalConsecutiveWins`/`Losses`/`rivalEncounterLog` | `37583–37597` | written by **one** choke point `setRivalStanding(winner, storyRowIdx, rivalTeamNames)` (`37615`); normalized at `37603`. **No scalar affinity** (`grep rivalFriendship` → 0). |
 | `slot.bonds` (per-Pokémon affinity) | **NOT IN CODE** | Camp `BONDING_RELATIONSHIPS.md` defines it (6 paths→6 stats); **only Destiny/Parental Bond exist today** — `slot.bonds` is Camp-owned future state, referenced not defined here (§4). |
 
 ### 2.4 Cinematic / encounter-framing surfaces (today: bespoke)
@@ -207,30 +207,30 @@ function _storyApplyConsequence(pick) {
   if (!pick || !sm) return;
   if (pick.set && typeof pick.set === 'object')                       // → sm.flags (§4)
     for (const k in pick.set) _storySetFlag(k, pick.set[k]);
-  if (typeof pick.affinity === 'number') _storyNudgeRivalAffinity(pick.affinity); // §4
+  if (typeof pick.friendship === 'number') _storyNudgeRivalFriendship(pick.friendship); // §4
   if (pick.cinematic) _pendingCinematicAfterReply = pick.cinematic;   // → §3.3
 }
 ```
-`_resolveActChoices` (`42778`) widens by three lines to carry `set`/`affinity`/`cinematic`
+`_resolveActChoices` (`42778`) widens by three lines to carry `set`/`friendship`/`cinematic`
 (already flowing through `o`); `persistKey`/`value`/`reply`/`branches.when` **do not change**.
 
-**Usage example — Stream 2's "spare vs humiliate the rival" (one flag, one affinity, a callback):**
+**Usage example — Stream 2's "spare vs humiliate the rival" (one flag, one friendship nudge, a callback):**
 ```js
 "rival.road5.standing": { title: "After the Bridge", sprite: "rival",
   acts: [{ phase: "climax", lines: ["They're down. They won't look up."],
     choice: { persistKey: "rival.road5", options: [
       { label: "Offer a hand.",   value: "spared",
         reply: ["They take it. Neither of you says anything."],
-        affinity: +1, set: { rivalSpared: true } },
+        friendship: +1, set: { rivalSpared: true } },
       { label: "Walk off.",       value: "humiliated",
         reply: ["You leave them in the dirt. The road gets quieter after that."],
-        affinity: -1, set: { rivalHumiliated: true } } ] } }] }
+        friendship: -1, set: { rivalHumiliated: true } } ] } }] }
 ```
 The mandatory callback (no orphan flag), a later diamond beat:
 ```js
 "rival.league.preface": { /* … */ acts: [{ phase: "intro", branches: [
   { when: { flag: "rivalHumiliated", eq: true }, lines: ["“After you walked off on me,” they say, “I trained like the road was ending.”"] },
-  { when: { affinityAtLeast: 1 },                 lines: ["“Whatever happens in there,” they say, “thanks for the hand back there.”"] },
+  { when: { friendshipAtLeast: 1 },                 lines: ["“Whatever happens in there,” they say, “thanks for the hand back there.”"] },
   { lines: ["They nod once. All business."] } ] }] }
 ```
 
@@ -241,22 +241,33 @@ The mandatory callback (no orphan flag), a later diamond beat:
 Camp's `EVENT_CINEMATICS.md` add beats without N more bespoke overlays. **This tool is the
 *trigger/registry*; `EVENT_CINEMATICS.md` owns the per-event *catalogue* — no duplication.**
 
-**API (Promise-based, modeled on `evolutionScene`).**
+**✅ CONVERGED with Stream 3 (D3 — locked 2026-06-04).** Stream 3 independently specced the
+concrete cinematic *bodies*; both designs were still unbuilt (0 hits each), so we keep the best
+of each: **Stream 3's functions are the bodies, `_playCinematic` is the thin Promise facade over
+them, and there is ONE registry.** Specifically — Stream 3's `_showWildEncounterCinematic` (its
+generalization of `_showRoamingLegendarySighting`, S3 §4.3) backs both `sighting` and `raid`;
+its `_playPreBossCinematic` + `PRE_BOSS_CINEMATICS` table back `preboss` (that table folds into
+`STORY_CINEMATICS` as the `kind:"preboss"` rows). Raid framing keys off Stream 3's
+`_raidBossSpeciesForBeatKey`, so the intro and the rolled foe team read the **same** source and
+can never disagree about who walks onto the field (label == reality).
+
+**API (Promise facade over the callback bodies — wrap, don't reinvent).**
 ```js
 const STORY_CINEMATICS = {
-  "sighting.lugia":   { kind: "sighting", species: "Lugia" },              // → _showRoamingLegendarySighting
-  "raid.cubone":      { kind: "raid", species: "Marowak", framing: "wild" },// fixes the trainer-intro bug (§6.4)
-  "preboss.giovanni": { kind: "preboss", sprite: "giovanni", lines: ["You again."], accent: "var(--sn-gold)" },
+  "sighting.lugia":   { kind: "sighting", species: "Lugia" },
+  "raid.cubone":      { kind: "raid", beatKey: "extra.cubone.raid" },        // species via _raidBossSpeciesForBeatKey (§6.4)
+  "preboss.giovanni": { kind: "preboss", sceneKey: "villain.rocket.boss" },  // defaults from PRE_BOSS_CINEMATICS + BEAT_CANON_TRAINER
 };
 
-// DESIGN SKETCH — awaitable, skippable, on the shared substrate.
+// _playCinematic = the awaitable facade; the bodies are Stream 3's callback fns,
+// each wrapped once via `new Promise(res => fn(..., res))`. No new overlay engine.
 async function _playCinematic(key) {
   const c = STORY_CINEMATICS[key]; if (!c) return;
   if (_prefersReducedMotion()) return _playCinematicReduced(c);   // cross-fade fallback
   switch (c.kind) {
-    case "sighting": return new Promise(res => _showRoamingLegendarySighting(c.species, res));
-    case "raid":     return _playRaidIntro(c);     // wild framing, NOT showBattleIntro (§6.4)
-    case "preboss":  return _playSpotlight(c);     // _renderNarrativeOverlay @ --sn-z-spotlight
+    case "sighting": return new Promise(res => _showWildEncounterCinematic(_sightingOpts(c), res));
+    case "raid":     return new Promise(res => _showWildEncounterCinematic(_raidOpts(c), res));  // wild, NOT showBattleIntro
+    case "preboss":  return new Promise(res => _playPreBossCinematic(c.sceneKey, _bossTrainer(c), res));
   }
 }
 ```
@@ -290,7 +301,7 @@ STORY_SCENES["key"] = {
            branches: [{ when:<Cond>, lines }, { lines:/*default last*/ }],
            choice: { persistKey,                       // ALWAYS explicit (§6.5)
                      options: [{ label, value, reply,
-                                 set?, affinity?, cinematic? /* §3.2 */ }] } }],
+                                 set?, friendship?, cinematic? /* §3.2 */ }] } }],
   outro: { win: [...] },
   // ── NEW, all optional ──
   setup:    "road3.broker",      // §3.1 — registers/links a setup beat
@@ -302,7 +313,7 @@ STORY_SCENES["key"] = {
 ```js
 { key:"rival.road5", eq:"spared" }   // sm.storyChoices  (EXISTING)
 { flag:"rivalHumiliated", eq:true }  // sm.flags         (NEW)
-{ affinityAtLeast:1 } | { affinityAtMost:-2 }            // sm.rivalAffinity (NEW)
+{ friendshipAtLeast:1 } | { friendshipAtMost:-2 }            // sm.rivalFriendship (NEW)
 { all:[...] } | { any:[...] }                            // composition (NEW)
 ```
 
@@ -368,29 +379,30 @@ if (bark) logLine(bark);          // additive second line, never replacing the f
 | **Decisions** | `sm.storyChoices` (`37590`) | Stream 4 | "what I picked." Existing; contract frozen. |
 | **Side-state / setups** | `sm.flags` (`37594`) | Stream 4 | `setup.*`, `seen.*`, `rivalHumiliated`, world bits. Helpers below. |
 | **Per-Pokémon affinity** | `slot.bonds` | **Camp** (`BONDING_RELATIONSHIPS.md`) | 6 paths→6 stats; **not in code yet**. Stream 4 **references**, does not define. |
-| **Rival affinity** | `sm.rivalAffinity` (**NEW**) | Stream 4 | the one number. Signed int, clamped (range = maintainer-owned, §9). |
+| **Rival friendship** | `sm.rivalFriendship` (**NEW**) | Stream 4 | the one number. Signed int, clamped (range = maintainer-owned, §9). |
 
 ```js
 // DESIGN SKETCH — the sanctioned accessors (stop poking sm.* directly).
 function _storySetFlag(k, v) { if (!sm) return; if (!sm.flags || typeof sm.flags!=='object') sm.flags={}; sm.flags[k] = (v===undefined?true:v); }
 function _storyHasFlag(k)    { try { return !!(sm && sm.flags && sm.flags[k]); } catch(e){ return false; } }
-// gating helpers: hard gate = exact flag/item; soft gate = threshold (affinityAtLeast).
-function _condHolds(cond)    { /* evaluates the <Cond> grammar over storyChoices/flags/rivalAffinity */ }
+// gating helpers: hard gate = exact flag/item; soft gate = threshold (friendshipAtLeast).
+function _condHolds(cond)    { /* evaluates the <Cond> grammar over storyChoices/flags/rivalFriendship */ }
 
-const RIVAL_AFFINITY_RANGE = 12;        // ← maintainer-owned (§9)
-function _storyNudgeRivalAffinity(d) {
+const RIVAL_FRIENDSHIP_RANGE = 12;        // ← maintainer-owned (§9)
+function _storyNudgeRivalFriendship(d) {
   if (!sm || typeof d!=='number') return;
-  sm.rivalAffinity = Math.max(-RIVAL_AFFINITY_RANGE, Math.min(RIVAL_AFFINITY_RANGE, (sm.rivalAffinity|0) + d));
+  sm.rivalFriendship = Math.max(-RIVAL_FRIENDSHIP_RANGE, Math.min(RIVAL_FRIENDSHIP_RANGE, (sm.rivalFriendship|0) + d));
 }
 ```
 **Two writers, one number:** (1) battles — one line inside `setRivalStanding` (`37615`, the
-existing single choke point) on `w==='player'|'rival'`; (2) dialogue — a choice's `affinity:`
-via `_storyApplyConsequence`. One clamp, no scattered `+=`. Naming knob (`rivalAffinity` vs the
-craft's `rivalRespect`) is §9.
+existing single choke point) on `w==='player'|'rival'`; (2) dialogue — a choice's `friendship:`
+via `_storyApplyConsequence`. One clamp, no scattered `+=`. **Naming ✅ DECIDED (§9):
+`rivalFriendship`** — the canon Pokémon *Friendship* stat; its Return ↔ Frustration move duality
+maps the camaraderie ↔ rivalry swing exactly (the negative end is the "Frustration" side).
 
 ---
 
-## 5. Save-migration — ⚠️ **v25 CONFLICT WITH CAMP (needs a maintainer decision)**
+## 5. Save-migration — ✅ **RESOLVED: one unified v25 (Option A)**
 
 **The collision.** Two parallel initiatives both target **`SAVE_VER 24 → 25` /
 `migrateStoryPreV25`**:
@@ -399,28 +411,31 @@ craft's `rivalRespect`) is §9.
   the whole [camp] feature… do not ship pillars on separate version bumps."* Its v25 adds
   `slot.bonds` defaults (team + box, skip eggs) + camp-flow fields (`sm.campByEventIdx`,
   `sm.campReturnPoint`).
-- **Story Immersion / me:** my only new persistent field is `sm.rivalAffinity`, which also
+- **Story Immersion / me:** my only new persistent field is `sm.rivalFriendship`, which also
   wants v25.
 
-**Two independent v25s = save corruption.** This must be resolved before either ships. Options:
+**Two independent v25s = save corruption.** **✅ DECISION (2026-06-04): Option A** — one unified
+`migrateStoryPreV25`; **Stream 4 owns the story-state store**, Camp contributes its field block,
+and Phase-E's dedup change folds in (or takes **v26** if it lands later). *(Maintainer: saves
+aren't a fuss-point → take the no-regret default.)* The options, for the record:
 
 | Option | Shape | When it fits |
 |---|---|---|
-| **A — Unify (recommended)** | **ONE `migrateStoryPreV25`** adds `slot.bonds` + camp-flow **and** `sm.rivalAffinity`. Stream 4 "owns the store + API" (craft §9), so Stream 4 owns the unified story-state migration; Camp contributes its field block. | If Immersion + Camp land together (they share the diamond + the affinity model anyway). |
+| **A — Unify ✅ LOCKED** | **ONE `migrateStoryPreV25`** adds `slot.bonds` + camp-flow **and** `sm.rivalFriendship`. Stream 4 "owns the store + API" (craft §9), so Stream 4 owns the unified story-state migration; Camp contributes its field block. | If Immersion + Camp land together (they share the diamond + the affinity model anyway). |
 | **B — Sequence** | First to ship = v25; the other = **v26**. Mirror `migrateStoryPreV21`'s idempotent shape; never renumber. | If they ship on different timelines. |
 
 Either way **never two unilateral v25s.** My field's migration body (whichever version):
 ```js
 // idempotent; derives a sensible opening value from existing rival history (not a flat 0).
-function _migrateRivalAffinity() {            // folded into the unified v25 (A) or its own vN (B)
-  if (typeof sm.rivalAffinity === 'number') return;
+function _migrateRivalFriendship() {            // folded into the unified v25 (A) or its own vN (B)
+  if (typeof sm.rivalFriendship === 'number') return;
   let net = Array.isArray(sm.rivalEncounterLog)
     ? sm.rivalEncounterLog.reduce((a,e)=>a+(e&&e.won?1:-1),0)
     : (sm.rivalConsecutiveWins|0) - (sm.rivalConsecutiveLosses|0);
-  const R = 12; sm.rivalAffinity = Math.max(-R, Math.min(R, net));   // R == RIVAL_AFFINITY_RANGE
+  const R = 12; sm.rivalFriendship = Math.max(-R, Math.min(R, net));   // R == RIVAL_FRIENDSHIP_RANGE
 }
 ```
-Plus the `sm = {…}` default (`rivalAffinity: 0`, near `37571`), a load() presence back-fill
+Plus the `sm = {…}` default (`rivalFriendship: 0`, near `37571`), a load() presence back-fill
 (beside `rivalStanding` @`37885`), and a clamp in `normalizeRivalStandingState` (`37603`).
 **Safety invariants intact:** `version > current` rejected; corrupt JSON swallowed; pure
 back-fill (no destructive delete); `STORY_EVENTS_RAW` never renumbered.
@@ -468,15 +483,15 @@ Under the jsdom harness (`tests/helpers/load-engine.js`), seeded RNG, driving
 | Suite (proposed) | Asserts |
 |---|---|
 | `story-setup-beats.test.js` | `_resolveSetupBeats(road, "diamond")` returns the road's unfired beats in `anchorRow` order; a `requires` gate filters; `once` dedupes via `storyEventsFired`; a mounted beat plays **before** its `anchorRow` bottleneck. |
-| `story-consequence.test.js` | resolve a `choice` with `set`+`affinity`; simulate the click; assert `sm.flags[k]`, `sm.rivalAffinity` moved by the delta & **clamped**, `storyChoices[key]` still written (contract intact). |
-| `story-cond-grammar.test.js` | `_resolveActLines`/`_condHolds` over `<Cond>`: `{key,eq}` back-compat, `{flag,eq}`, `{affinityAtLeast/AtMost}`, `{all}`/`{any}`; when-less default last-wins. |
+| `story-consequence.test.js` | resolve a `choice` with `set`+`friendship`; simulate the click; assert `sm.flags[k]`, `sm.rivalFriendship` moved by the delta & **clamped**, `storyChoices[key]` still written (contract intact). |
+| `story-cond-grammar.test.js` | `_resolveActLines`/`_condHolds` over `<Cond>`: `{key,eq}` back-compat, `{flag,eq}`, `{friendshipAtLeast/AtMost}`, `{all}`/`{any}`; when-less default last-wins. |
 | `story-cinematic-trigger.test.js` | `_playCinematic` returns a Promise that resolves on dismiss **and** on skip; routes by `kind`; **raid→wild framing, never `showBattleIntro`**; reduced-motion takes the fallback branch; unknown key is a safe no-op; seeded flourish reproduces. |
 | `smoke-dialogue-load.mjs` (extend) | `barkPool` validation: a bark key on a **state** event **fails**; bark lines are additive; pools load via `Object.assign` (no stray window globals). |
 | `story-cc-contract.test.js` | **lint:** every consequence `choice` (one that sets a flag) has ≥1 later `branches.when`/`requires` reader — **no orphan flags**; every `choice.options[]` has an explicit `persistKey`. |
-| `save-migration-v25.test.js` | load a v24 fixture (win-heavy & loss-heavy `rivalEncounterLog`); assert `rivalAffinity` derived + clamped, idempotent, `flags`/`storyChoices` preserved; **co-loads Camp's `slot.bonds` block** in the unified-v25 case (Option A); `version>current` rejected; corrupt JSON swallowed. |
+| `save-migration-v25.test.js` | load a v24 fixture (win-heavy & loss-heavy `rivalEncounterLog`); assert `rivalFriendship` derived + clamped, idempotent, `flags`/`storyChoices` preserved; **co-loads Camp's `slot.bonds` block** in the unified-v25 case (Option A); `version>current` rejected; corrupt JSON swallowed. |
 | `story-narration-system.test.js` (extend) | completion invariant unchanged; add: `speaker` block tolerated where present; every `cinematic`/`setup`/`when:{flag}` reference resolves. |
 
-Fixtures: `tests/fixtures/story-save-v24.json`. Determinism: affinity = integer deltas;
+Fixtures: `tests/fixtures/story-save-v24.json`. Determinism: friendship = integer deltas;
 cinematic dedupe & barks seeded. Every new behavior gets a guard test (the `CLAUDE.md`
 sustainability mandate).
 
@@ -489,7 +504,7 @@ sustainability mandate).
 | Stream | Charter | Consumes from Stream 4 |
 |---|---|---|
 | **1 — Narrative Coherence & Causality** | why each event happens; per-event setup map; encounter-framing matrix | **Setup-beat hook** (§3.1, its connective tissue) · **content schema** (`acts`/`branches`/`requires`) · reads **flags**. *(Stream 1 inferred Stream 4 as "Reactivity & Player Agency" — same APIs, different label.)* |
-| **2 — Dialogue & Writing** | clear voiced copy; barks; voice guide; before/after | **Choice/consequence + story-state** (`set`/`affinity`, branch on `flag`/`affinity`) · **Bark hook** · **content schema** + the **four data-layer asks** below |
+| **2 — Dialogue & Writing** | clear voiced copy; barks; voice guide; before/after | **Choice/consequence + story-state** (`set`/`friendship`, branch on `flag`/`friendship`) · **Bark hook** · **content schema** + the **four data-layer asks** below |
 | **3 — Visual & Cinematic** | scenes, animation, pre-boss cinematics; **fix the raid intro** | **Cinematic trigger** (Promise, skippable) · **encounter-framing** (`beat.kind → framing`, the raid fix) |
 | **Camp System** *(parallel initiative)* | the diamond; bonding; event cinematics | shares the **diamond mount** (§6.3), the **`slot.bonds`** affinity model (§4), `EVENT_CINEMATICS` builds on the **cinematic trigger**, and the **unified v25 migration** (§5) |
 
@@ -509,9 +524,9 @@ sustainability mandate).
 | API | Symbol / shape | Consumed by |
 |---|---|---|
 | Setup-beat hook | `SETUP_BEATS` + `_resolveSetupBeats` (§3.1) | 1 |
-| Choice consequences | `choice.options[].{set,affinity,cinematic}` + `_storyApplyConsequence` (§3.2) | 2 |
+| Choice consequences | `choice.options[].{set,friendship,cinematic}` + `_storyApplyConsequence` (§3.2) | 2 |
 | Flags + helpers | `_storySetFlag`/`_storyHasFlag`/`_condHolds` over `sm.flags`; `sm.storyChoices` (§4) | 1, 2 |
-| Rival-affinity number | `sm.rivalAffinity` + `_storyNudgeRivalAffinity` (§4) | 2 |
+| Rival-friendship number | `sm.rivalFriendship` + `_storyNudgeRivalFriendship` (§4) | 2 |
 | Cinematic trigger | `STORY_CINEMATICS` + `_playCinematic`→Promise (§3.3) | 3, Camp |
 | Bark hook | `BARK_POOLS` + `_storyBark` (§3.5) | 2 |
 | Content schema + pipeline | `STORY_SCENES` v2 + `<Cond>` + `data/dialogue/`+`data/story/` (§3.4) | 1, 2, 3 |
@@ -520,15 +535,20 @@ sustainability mandate).
 
 ## 9. Open decisions for the maintainer (balance & coordination are user-owned)
 
-1. **§5 — the v25 decision:** Option A (one unified `migrateStoryPreV25` with Camp) or
-   Option B (sequence: Immersion v25 / Camp v26, or the reverse). **Blocks both initiatives.**
-2. **`RIVAL_AFFINITY_RANGE`** (sketch `12`) and **per-battle deltas** (`+1`/`-1`; should a loss
+> **✅ Locked 2026-06-04 (this pass):** cinematic API = **Promise facade over Stream 3's bodies**
+> (D3, §3.3) · dispatcher/sequencing = **Overhaul Phase E owns; flow bugs G3/G4 ship ahead** (D2)
+> · v25 = **Option A, one unified migration** (D1, §5) · rival scalar = **`rivalFriendship`** (D4, §4).
+> The items below are the genuinely user-owned balance / sign-off knobs that remain.
+
+1. ~~**§5 — the v25 decision.**~~ ✅ **RESOLVED: Option A** (one unified `migrateStoryPreV25`,
+   Stream 4 owns the store; Camp contributes its field block).
+2. **`RIVAL_FRIENDSHIP_RANGE`** (sketch `12`) and **per-battle deltas** (`+1`/`-1`; should a loss
    sting more than a win warms?).
-3. **Per-choice `affinity` budget** (recommend `±1`; `±2` only at pivotal beats).
+3. **Per-choice `friendship` budget** (recommend `±1`; `±2` only at pivotal beats).
 4. **v25 derivation** — net wins−losses over `rivalEncounterLog`, clamped (sketch), or start
    veterans at neutral `0`?
-5. **Naming** — `sm.rivalAffinity` vs the craft's **`rivalRespect`** (affects Collection →
-   Rivalry copy).
+5. ~~**Naming.**~~ ✅ **RESOLVED: `rivalFriendship`** — the canon *Friendship* stat (poles read
+   as Return ↔ Frustration); lexically distinct from Camp's team `slot.bonds`.
 6. **Behavior sign-offs** — barks (§3.5) and any timed/"resonance" choice and the raid-framing
    visual change (§6.4) all need explicit approval before code ships.
 

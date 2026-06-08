@@ -183,6 +183,10 @@ both insist `persistKey`/`value`/`reply`/`branches.when` stay byte-identical. Th
 
 ## 8. CONSOLIDATED DECISION LIST (the single maintainer ask)
 
+> **✅ Resolved 2026-06-04:** **D1** = unified v25, Stream 4 owns (Option A) · **D2** = Overhaul
+> Phase E owns the dispatcher; flow bugs G3/G4 ship ahead · **D3** = Promise facade over Stream 3's
+> cinematic bodies · **D4** = `rivalFriendship`. **D5–D7 remain open** (balance / sign-off, user-owned).
+>
 > Tagged `[BLOCKER]` (gates implementation), `[scope]`, `[api]`, `[balance]`, `[naming]`,
 > `[sign-off]`. My recommendation in **bold**.
 
