@@ -53247,13 +53247,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const compactMeta  = `G${g}${cheapAbility ? ' · ' + cheapAbility : ''}${cheapItem ? ' · ' + cheapItem : ''}`;
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="link" aria-expanded="${expanded?'true':'false'}">
-                    <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
-                        <div style="min-width:0;flex:1;">
-                            <div class="story-tutor-mon-name">${_slotShinyPre}${_esc(t.name)}${gimmickTag}</div>
-                            <div class="story-tutor-mon-meta">${compactMeta}</div>
-                        </div>
-                    </div>
+                    ${storyMonTileMain({
+                        imgHtml: `<img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">`,
+                        nameHtml: `${_slotShinyPre}${_esc(t.name)}${gimmickTag}`,
+                        metaHtml: compactMeta,
+                        colStyle: 'flex:1;',
+                    })}
                     <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
                         <span class="tier-badge bg-tier-${g}">G${g}</span>
                         ${_storyMonInfoBtnHtml(i)}
@@ -53893,13 +53892,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="evolab" aria-expanded="${expanded?'true':'false'}">
-                    <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
-                        <div style="min-width:0;flex:1;">
-                            <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
-                            <div class="story-tutor-mon-meta">G${g} · BST ${getBST(t.name)} · ${_esc(summary)}</div>
-                        </div>
-                    </div>
+                    ${storyMonTileMain({
+                        imgHtml: `<img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">`,
+                        nameHtml: `${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}`,
+                        metaHtml: `G${g} · BST ${getBST(t.name)} · ${_esc(summary)}`,
+                        colStyle: 'flex:1;',
+                    })}
                     <span style="display:flex;align-items:center;gap:8px;">
                         ${_storyMonInfoBtnHtml(i)}
                         <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
@@ -59318,6 +59316,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyMonInfoBtnHtml(idx) {
             return `<span class="story-mon-info-btn" role="button" tabindex="0" aria-label="Full summary" title="Full summary" onclick="event.stopPropagation();window.StoryMode.openSummary(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();window.StoryMode.openSummary(${idx});}">&#8505;</span>`;
         }
+        // Shared "mon tile" inner block — the sprite + name/meta column that the three
+        // story-mode accordion rows (Move Tutor, Fan Club, Cable Link) each re-inlined
+        // identically. Callers pass their own fully-built `imgHtml` (the <img> attrs
+        // legitimately differ per facility — alt / data-shiny / shiny filter), the
+        // name/meta HTML, and an optional column `colStyle` (Link adds flex:1). The
+        // facility-specific outer button + aside (tier badge, chevron state, data-facility)
+        // stay at each call site. Whitespace here is cosmetic (innerHTML) — the
+        // story-card-tile snapshot test normalizes it and locks the produced markup 1:1.
+        function storyMonTileMain(opts) {
+            opts = opts || {};
+            const colStyle = opts.colStyle || '';
+            return `<div class="story-tutor-mon-main">
+                        ${opts.imgHtml || ''}
+                        <div style="min-width:0;${colStyle}">
+                            <div class="story-tutor-mon-name">${opts.nameHtml || ''}</div>
+                            <div class="story-tutor-mon-meta">${opts.metaHtml || ''}</div>
+                        </div>
+                    </div>`;
+        }
         function _txRenderCollapsedMonHtml(t, idx, mode) {
             const b = t.build || {};
             let mon = null;
@@ -59337,13 +59354,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return `<div class="story-tutor-mon">
                 <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="false">
-                    <div class="story-tutor-mon-main">
-                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                        <div style="min-width:0;">
-                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
-                            <div class="story-tutor-mon-meta">${summary}</div>
-                        </div>
-                    </div>
+                    ${storyMonTileMain({
+                        imgHtml: `<img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">`,
+                        nameHtml: `${_esc(t.name)} ${typeHtml}`,
+                        metaHtml: summary,
+                    })}
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▾</span></span>
                 </button>
             </div>`;
@@ -60559,13 +60574,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(COLRESS_COST - sm.gold).toLocaleString()}G more"` : ''}>${COLRESS_COST.toLocaleString()}G / change</span>`;
             const summaryLine = _colressSummaryLine(b);
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="colress" aria-expanded="${expanded?'true':'false'}">
-                <div class="story-tutor-mon-main">
-                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                    <div style="min-width:0;">
-                        <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml} ${badge}</div>
-                        <div class="story-tutor-mon-meta">${summaryLine}</div>
-                    </div>
-                </div>
+                ${storyMonTileMain({
+                    imgHtml: `<img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">`,
+                    nameHtml: `${_esc(t.name)} ${typeHtml} ${badge}`,
+                    metaHtml: summaryLine,
+                })}
                 <span style="display:flex;align-items:center;gap:8px;">
                     ${headerCostChip}
                     ${_storyMonInfoBtnHtml(idx)}
@@ -61204,13 +61217,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const bonusTag = bonusTotal > 0 ? ` · <span style="color:#ff5252;font-weight:bold;" title="Fight Club permanent stat boost (total across all six stats)">FC +${bonusTotal}</span>` : '';
             const summary = `Nature ${_esc(build.n || 'Hardy')} · EVs ${evTotal}/510 · IV avg ${ivAvg}/31${bonusTag}`;
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="fanclub" aria-expanded="${expanded?'true':'false'}">
-                <div class="story-tutor-mon-main">
-                    ${sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : ''}
-                    <div style="min-width:0;">
-                        <div class="story-tutor-mon-name">${_esc(mon.name)}${build._isShiny ? ' ✦' : ''} ${fcTypeHtml}</div>
-                        <div class="story-tutor-mon-meta">${summary}</div>
-                    </div>
-                </div>
+                ${storyMonTileMain({
+                    imgHtml: sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : '',
+                    nameHtml: `${_esc(mon.name)}${build._isShiny ? ' ✦' : ''} ${fcTypeHtml}`,
+                    metaHtml: summary,
+                })}
                 <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span></span>
             </button>`;
 
@@ -61656,13 +61667,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
-                <div class="story-tutor-mon-main">
-                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                    <div style="min-width:0;">
-                        <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
-                        <div class="story-tutor-mon-meta">EVs: ${_esc(_evSpreadCompact(cur))} · ${_evTrainerStatsCompactHtml(cur)}</div>
-                    </div>
-                </div>
+                ${storyMonTileMain({
+                    imgHtml: `<img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">`,
+                    nameHtml: `${_esc(t.name)} ${typeHtml}`,
+                    metaHtml: `EVs: ${_esc(_evSpreadCompact(cur))} · ${_evTrainerStatsCompactHtml(cur)}`,
+                })}
                 <span style="display:flex;align-items:center;gap:8px;">
                     ${headerCostChip}
                     ${_storyMonInfoBtnHtml(idx)}
