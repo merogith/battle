@@ -73,11 +73,14 @@ right moment*, not building new engines.
 3. **No pre-boss cinematic.** Villain bosses (Giovanni…Penny) and the Mystery Figure get
    the same VS-splash as a route Bug Catcher — only the accent color and an extra line
    differ. There's no "the doors open" beat (§5).
-4. **The impact layer is one-note.** In-battle, *every* hit plays the same 0.4 s
-   `anim-hit-flash` regardless of effectiveness, crit, or boss phase. A screen-shake
-   keyframe **exists but is never wired** (`.anim-shake` / `shakeScreen`,
-   `battle.html:4650/4656`). There's no hit-stop and no portrait reaction for recurring
-   cast (§6).
+4. **The impact layer is inconsistent.** The **single-hit** damage path already has good
+   feel — anime.js hit-flash + recoil, `playHitSound(typeEff)`, and a crit/super-effective
+   **screen-shake** (`battle.html:24923/24927`). But the **multi-hit** path only does the
+   bare `anim-hit-flash` + popups — no shake, no hit sound — so multi-hit moves land flat.
+   (The CSS `.anim-shake`/`shakeScreen` keyframe at `4650/4656` is a separate, genuinely
+   *unused* artifact — the engine shakes via anime.js, not that class, so it's a red
+   herring, not the wiring target.) No hit-stop; no portrait reaction for recurring cast
+   (§6). ✅ **The multi-hit parity gap is now fixed** (see §6).
 5. **`_storyScene` is still off-canon.** The Daycare/Fight-Club overlay
    (`battle.html:45100`) is a bespoke box, not folded onto `_renderNarrativeOverlay`
    (open item §6.2 of `STORY_NARRATION_SYSTEM.md`). Out of this stream's critical path,
@@ -469,9 +472,21 @@ Wired in `enterBattleEvent` beside the raid shim (§4.3): when
 
 ## 6. The impact layer
 
-In-battle "game feel." Today there is exactly one impact: `anim-hit-flash` on every hit.
-The plan adds **three graded tiers + a hit-stop + cast portraits**, all from existing
-primitives, all gated by `settings.animations` and `StoryFx.isReducedMotion()`.
+In-battle "game feel." All gated by `settings.animations` and `StoryFx.isReducedMotion()`.
+
+> ✅ **SHIPPED — multi-hit parity (2026-06).** Closer reading corrected the §1 audit: the
+> single-hit path *already* shakes the screen on crit / super-effective hits via anime.js
+> (`24923/24927`) and plays `playHitSound`; the **multi-hit** path did neither, so multi-hit
+> moves felt flat. The two inline single-hit shakes + the new multi-hit shake now route
+> through one shared helper, **`_battleHitShake('crit'|'super')`** (defined beside
+> `showBattlePopup`), which is gated by `settings.animations` **and now honors reduced
+> motion** (the inline versions didn't); multi-hit also gained `playHitSound(typeEff)`.
+> Purely visual — no state/RNG/damage effect. Guarded by `tests/suites/battle-hit-impact.test.js`.
+> The dormant CSS `.anim-shake` was left untouched (it's unused dead weight, not the wiring
+> target). **Still design-only below:** hit grading tiers (§6.1), hit-stop (§6.2), and
+> portrait-emotion (§6.4) — 6.4 ships alongside the pre-boss cinematic (§5).
+
+The original design (§6.1–§6.4) is kept below as the as-designed record.
 
 ### 6.1 Hit grading — make effectiveness *visible*
 

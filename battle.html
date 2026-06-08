@@ -12918,6 +12918,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             setTimeout(() => popup.remove(), 1300);
         }
 
+        // Battle "impact" — graded screen shake on a critical / super-effective hit. Single
+        // source for BOTH the single-hit and multi-hit damage paths: previously only the
+        // single-hit path shook (via two inline anime.js calls), so multi-hit moves landed
+        // flat. anime.js-driven, gated by settings.animations, and now honors reduced motion.
+        // Purely visual — never touches state / RNG / damage. See
+        // docs/story-design/story-immersion/visual-and-cinematic.md §6.
+        function _battleHitShake(kind) {
+            try {
+                if (!settings.animations) return;
+                if (window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion()) return;
+                if (typeof anime !== 'function') return;
+                const screenEl = document.querySelector('.screen') || document.getElementById('screen-battle');
+                if (!screenEl) return;
+                if (kind === 'crit') {
+                    anime({ targets: screenEl, translateX: [0,-5,5,-4,3,-2,0], translateY: [0,3,-3,2,-1,0], duration: 350, easing: 'easeInOutQuad' });
+                } else if (kind === 'super') {
+                    anime({ targets: screenEl, translateX: [0,-6,6,-4,3,0], translateY: [0,4,-4,2,0], duration: 400, easing: 'easeInOutQuad' });
+                }
+            } catch (e) {}
+        }
+
         // ─── Enhanced Move Animation Engine (anime.js) ───────────────────
         const MoveAnimEngine = (() => {
             // Base stop (index 0) = canonical type palette from the CSS .type-* rules (single source of truth);
@@ -24713,9 +24734,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (move.cat === "Physical") defender.volatile.lastPhysicalDmg = actualDamage;
                     if (move.cat === "Special") defender.volatile.lastSpecialDmg = actualDamage;
                     if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
+                    try { AudioSystem.playHitSound(typeEff); } catch (e) {}   // parity with single-hit path (was missing on multi-hit)
                     await sleep(200);
-                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); }
-                    if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); }
+                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); _battleHitShake('crit'); }
+                    if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); _battleHitShake('super'); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
@@ -24920,11 +24942,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Step 4: Show effectiveness/crit text + anime.js screen shake
                     if (crit > 1) {
                         logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer);
-                        if(settings.animations && screenEl) anime({ targets: screenEl, translateX: [0,-5,5,-4,3,-2,0], translateY: [0,3,-3,2,-1,0], duration: 350, easing:'easeInOutQuad' });
+                        _battleHitShake('crit');
                     }
                     if (typeEff > 1) {
                         logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer);
-                        if(settings.animations && screenEl) anime({ targets: screenEl, translateX: [0,-6,6,-4,3,0], translateY: [0,4,-4,2,0], duration: 400, easing:'easeInOutQuad' });
+                        _battleHitShake('super');
                     }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
                     await sleep(200);
