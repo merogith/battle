@@ -134,7 +134,13 @@ most pervasive day-to-day cause of the flat feeling.
 > - **G3 + G4 ✅ shipped** (this work; see §7) — dispatch-ordering only, no timeline edit,
 >   no `SAVE_VER` bump. Guards: `tests/suites/story-flow-order-g3g4.test.js` and the
 >   updated golden in `tests/suites/story-flow-order-v23.test.js`.
-> - **Open:** G2, G5–G9 remain design proposals.
+> - **G2 ✅ shipped** (this work) — `_tryFireRoadStoryBeats` now paces **one setup beat per
+>   row** (was: the whole road queue dumped onto the first battle) and continues straight to
+>   the battle via the extracted `_dispatchCurrentRow`. Capacity-checked: every road has more
+>   non-City rows than active event beats, so nothing strands. This is the surgical
+>   de-clump; the fuller "diamond" model (setups move *into* city arrival, §2) is still open
+>   as the larger direction (overlaps G5). Guard: `tests/suites/story-flow-pacing-g2.test.js`.
+> - **Open:** G5–G9 remain design proposals.
 
 ---
 
@@ -607,10 +613,10 @@ flow."* Two confirmed, one corrected-as-stale, one watch-item:
 2. ~~**Fix the two ordering bugs** (G3/G4)~~ — **✅ shipped (this work):**
    aftermath-before-climax and boss-on-rival; both were sort/reservation, not timeline
    edits, so they were cheap and save-safe.
-3. **Invert the diamond/bottleneck load** (G2/G5/§2) — spread setups into the hub
-   (the diamond), keep one payoff per fight (the bottleneck), and make arrival
-   acknowledge-and-plant. This is *placement of existing content*, gated on the
-   Phase E slot dispatcher.
+3. **Invert the diamond/bottleneck load** (G2/G5/§2) — **G2 ✅ shipped:** the road dump
+   now paces one setup beat per fight instead of clumping the whole queue. Still open:
+   spread setups *into* the hub (the diamond) and make arrival acknowledge-and-plant
+   (G5) — *placement of existing content*.
 4. **Re-home the loop breadcrumbs** (G6) and **bridge the two main voices** (G7) —
    small prose adds that turn parallel layers into one connected story.
 
