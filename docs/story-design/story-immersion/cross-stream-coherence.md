@@ -19,7 +19,7 @@
 | **S2** | **Two competing cinematic APIs** — both *new* (0 hits) | 🟠 HIGH | **S3 ↔ S4** | One registry + one trigger; Promise-facade vs callback. |
 | **S3** | **Stream 1 routed dispatcher/sequencing work to "Stream 4"** — outside my brief | 🟠 MED-HIGH | S1 → S4/Overhaul | Who owns H4-1/2/3 (flow order, reserved slots, slot dispatcher)? It gates my setup-beat hook. |
 | **S4** | **Two confirmed flow-ordering bugs** (G3 aftermath-before-boss, G4 boss-on-rival) | 🟡 MED (save-safe) | S1 (+S2/S3 copy/frame) | Approve the sort/reservation fixes. |
-| **S5** | **`miniRaid2` silently fights a human team** (data bug surfaced by S3) | 🟡 MED (balance) | S3 | Fix the roller now (24 raids, 8 new bosses) or visual-only (16)? |
+| **S5** | **`miniRaid2` fired a human team** (data bug surfaced by S3) | ✅ DONE | S3 | Fixed: per-tier species + 50/25 phases (`cca54ba`+`65872ab`). |
 | **S6** | **Naming drift** — `rivalAffinity`/`rivalRespect`; cinematic table/fn names; stream labels | 🟢 LOW | all | Lock canonical names now (cheap). |
 
 The full **consolidated decision list is §8.** Everything else (§7) already cohered — the
@@ -136,11 +136,11 @@ cheaply (§5). → **Decision D2.**
   eligible road battle, which on `road6` is the **Rival row (eventIndex 39)** → the rival
   silently becomes a mini-boss/Proton. Fix = reserved slots + a bridge line (S1 H4-2 + **S2
   H2-3** copy + **S3** framing). Cross-stream, but save-safe.
-- **S5 — `miniRaid2` silently fights a human team** (S3 §4.4): the live roller regex
-  `(raid|miniRaid)$` rejects the `2`, so all 8 authored "evolved solo boss" `miniRaid2` beats
-  fall back to `rollTrainerTeam`. `BOSS_CONFIGS`/`_populateExtraRaidConfigs`/`_EXTRA_RAID_SPECIES`
-  all confirmed live. **Fixing it fields 8 new solo bosses w/ HP-threshold mechanics — a
-  balance change.** → **Decision D5** (fix roller: 24 raids, or visual-only: 16).
+- **✅ S5 — `miniRaid2` fired a human team → FIXED** (S3 §4.4): the live roller regex
+  `(raid|miniRaid)$` rejected the `2`, so all 8 authored "evolved solo boss" `miniRaid2` beats
+  fell back to `rollTrainerTeam`. Fixed in `cca54ba`+`65872ab`: regex accepts `miniRaid2`, reuse the
+  50/25 mini-raid phases, per-tier species table (base→evolved→climax). → **Decision D5** resolved
+  (Option A, reuse-mechanics).
 - **✅ STALE — do NOT re-open "league finale spoils before E1."** `STORY_OVERHAUL_PLAN.md §3`
   reported this P0; S1 §7 verifies it's fixed (`fireAtEvent`/`firePostHoF` gating — **both
   confirmed live, 5 hits each**). My reconciled spec already drops it. Recorded so it isn't
@@ -185,9 +185,10 @@ both insist `persistKey`/`value`/`reply`/`branches.when` stay byte-identical. Th
 
 > **✅ Resolved 2026-06-04:** **D1** = unified v25, Stream 4 owns (Option A) · **D2** = Overhaul
 > Phase E owns the dispatcher; flow bugs G3/G4 ship ahead · **D3** = Promise facade over Stream 3's
-> cinematic bodies · **D4** = `rivalFriendship` · **D6** = Standard tuning (±12; win +1 / loss −2;
-> choice ±1) + derive-from-history saves · **D7** = barks + cinematics + impact approved, timed
-> "resonance" choice CUT. **D5 remains open** (raid scope — awaiting maintainer).
+> cinematic bodies · **D4** = `rivalFriendship` · **D5** = fix the roller — 24 raids via a per-tier
+> species table (base→evolved→climax), reuse existing phases, light body-text reconcile (**shipped**,
+> `cca54ba`+`65872ab`) · **D6** = Standard tuning (±12; win +1 / loss −2; choice ±1) +
+> derive-from-history saves · **D7** = barks + cinematics + impact approved, timed "resonance" choice CUT.
 >
 > Tagged `[BLOCKER]` (gates implementation), `[scope]`, `[api]`, `[balance]`, `[naming]`,
 > `[sign-off]`. My recommendation in **bold**.
@@ -202,8 +203,13 @@ both insist `persistKey`/`value`/`reply`/`branches.when` stay byte-identical. Th
    `_showWildEncounterCinematic`/`_playPreBossCinematic` as bodies; make `_playCinematic` the
    Promise facade; one registry (`STORY_CINEMATICS`).** I'll refold S4 §3.3 on your nod.
 4. **D4 `[naming]` — rival scalar name:** `sm.rivalAffinity` vs `rivalRespect`.
-5. **D5 `[balance]` — `miniRaid2` scope:** (A) fix the roller → 24 raids + 8 evolved bosses w/
-   HP-threshold mechanics (**S3-recommended**), or (B) visual-only for 16, log the data bug.
+5. ~~**D5 `[balance]` — `miniRaid2` scope.**~~ ✅ **RESOLVED + SHIPPED (Option A, reuse-mechanics):**
+   fixed the roller regex so all 8 Road-5 `miniRaid2` beats fire as the lone *evolved* boss (24
+   working extra-raids), reusing the existing 50/25 mini-raid phases (no new engine mechanics) and one
+   per-tier species table (Road-4 base → Road-5 evolved → Road-6 climax) that also corrected 4 Road-4
+   miniRaids spawning the evolved species. Body text reconciled (light) on the 5 clauses over-promising
+   a player-side debuff. Commits `cca54ba`+`65872ab`; guard tests in `story-boss-mechanics-v22`.
+   *(Road-4 difficulty drops on 4 arcs — accepted; yamask climax = Yamask.)*
 6. ~~**D6 `[balance]` — rival-friendship tuning.**~~ ✅ **RESOLVED: Standard** — range ±12, win +1 /
    loss −2, per-choice ±1 (±2 at pivots); existing saves **derive from history** (net wins−losses,
    clamped). *(S4 §9.)*
