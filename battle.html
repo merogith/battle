@@ -40313,6 +40313,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
                     get BOSS_CONFIGS() { return BOSS_CONFIGS; },
                     bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
+                    // Extra-track solo raids (visual-and-cinematic.md §4) — framing + roster.
+                    raidBossInfoForBeatKey: (k) => _raidBossInfoForBeatKey(k),
+                    rollExtraRaidBossTeam: (k) => _rollExtraRaidBossTeam(k),
+                    raidNarratorLines: (k) => _raidNarratorLines(k),
+                    showRaidEncounterIntro: (s, k, cb) => _showRaidEncounterIntro(s, k, cb),
+                    get EXTRA_RAID_SPECIES() { return _EXTRA_RAID_SPECIES; },
+                    get RAID_LORE() { return _RAID_LORE; },
                     // Battle-beat injection (PR-4c).
                     findBeatBySceneKey: (k) => _findBeatBySceneKey(k),
                     activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
@@ -43219,7 +43226,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         // Populate the 8 extra-track raids (solo Pokémon bosses): escalating HP-threshold
-        // phases — real raid 75/50/25 (surge → heal → immunity), mini raid 50/25
+        // phases — real raid 75/50/25 (surge → heal → immunity), both mini-raids 50/25
         // (surge → immunity). One mechanic active at a time; banner is the boss's signature.
         (function _populateExtraRaidConfigs() {
             const banners = {
@@ -43233,10 +43240,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', banner: b },
                     { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
                 ] };
-                BOSS_CONFIGS['extra.' + k + '.miniRaid'] = { mechanics: [
+                // Both mini-raids (miniRaid + the "evolved" miniRaid2) share the kind,
+                // scaling, and phase shape — miniRaid2 was previously fielding a rolled
+                // trainer team because the foe-roller regex rejected the `2` suffix; now
+                // it fights its authored solo boss, so it needs a config too. Per-arc
+                // bespoke mechanics from the scene bodies aren't engine-wired yet (the
+                // mechanics are data-only no-ops today), so mirroring miniRaid is the
+                // balance-neutral choice. See visual-and-cinematic.md §4.4 / §10.
+                const _miniMechanics = [
                     { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: b },
                     { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
-                ] };
+                ];
+                BOSS_CONFIGS['extra.' + k + '.miniRaid']  = { mechanics: _miniMechanics };
+                BOSS_CONFIGS['extra.' + k + '.miniRaid2'] = { mechanics: _miniMechanics.map(m => ({ ...m })) };
             }
         })();
 
@@ -43258,22 +43274,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
             mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
         };
-        // Build the single-mon foe team for an extra raid/miniRaid beat. Returns the
-        // standard [{name, build}] draft shape (one element), or null to fall back to the
-        // normal trainer roll. Legendary-tier stats (_bossStatMult) + party-scaled HP
+        // Single source of truth for "which species (if any) does this beat field as a
+        // solo raid boss, and at what scale-kind." Matches raid · miniRaid · miniRaid2 —
+        // the second mini-raid shares the `miniRaid` beat kind; only its sceneKey carries
+        // the trailing digit, so the capture group grabs `miniRaid` and the outer `\d*`
+        // eats the suffix (m[2] is normalized to `raid`|`miniRaid` for HP scaling). BOTH
+        // the foe-team roll (below) and the encounter-intro framing (enterBattleEvent)
+        // resolve through this, so the intro can never disagree with who actually walks
+        // onto the field. See docs/story-design/story-immersion/visual-and-cinematic.md §4.
+        function _raidBossInfoForBeatKey(sceneKey) {
+            const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)\d*$/.exec(String(sceneKey || ''));
+            if (!m) return null;
+            const species = _EXTRA_RAID_SPECIES[m[1]];
+            return species ? { species: species, arc: m[1], scaleKind: m[2] } : null;
+        }
+        // Build the single-mon foe team for an extra raid/miniRaid/miniRaid2 beat. Returns
+        // the standard [{name, build}] draft shape (one element), or null to fall back to
+        // the normal trainer roll. Legendary-tier stats (_bossStatMult) + party-scaled HP
         // (_bossHpScale) are applied by buildPokemon at fight start.
         function _rollExtraRaidBossTeam(sceneKey) {
             try {
-                const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)$/.exec(String(sceneKey || ''));
-                if (!m) return null;
-                const species = _EXTRA_RAID_SPECIES[m[1]];
-                if (!species || typeof makeBuild !== 'function') return null;
-                const build = _withStoryPlayerGimmickGate(() => makeBuild(species));
+                const info = _raidBossInfoForBeatKey(sceneKey);
+                if (!info || typeof makeBuild !== 'function') return null;
+                const build = _withStoryPlayerGimmickGate(() => makeBuild(info.species));
                 if (!build) return null;
                 const maxParty = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
-                build._bossStatMult = 1.3;                                 // legendary-tier stats
-                build._bossHpScale = _bossHpScaleForKind(m[2], maxParty);  // party-scaled bulk
-                return [{ name: species, build: build }];
+                build._bossStatMult = 1.3;                                          // legendary-tier stats
+                build._bossHpScale = _bossHpScaleForKind(info.scaleKind, maxParty);  // party-scaled bulk
+                return [{ name: info.species, build: build }];
             } catch (e) { console.warn('[Story] extra raid boss roll failed:', e); return null; }
         }
 
@@ -47957,60 +47985,137 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             classic:           { banner: 'A LEGENDARY HAS BEEN SIGHTED', narrator: ['Sightings stations across the route have lit up.','Whatever is up there will not stay long. Bring your strongest ball.'] }
         };
 
-        /** Cinematic overlay that fires *before* the catch screen when a
-         *  roaming legendary is consumed. Uses the route-themed type-elemental
-         *  battle BG so the moment feels distinct from a regular wild.
-         *  Asset budget: only existing trainer/pokesprite art and existing CSS. */
-        function _showRoamingLegendarySighting(speciesName, onDone) {
-            const variant = _storyActiveVariant();
-            const frame = _LEGENDARY_SIGHTING_FRAMES[variant.id] || _LEGENDARY_SIGHTING_FRAMES.classic;
-            // Type-driven background — picks the first type's existing
-            // `bg_<type>.png` if it exists, otherwise falls back to the
-            // neutral battle backdrop.
+        /** Shared full-screen "a wild thing blocks the road" cinematic. Powers BOTH the
+         *  roaming-legendary sighting and the extra-track raid intro — one shell, one
+         *  z-tier (`.story-legend-sighting` / `--sn-z-overlay`), parameterized copy + SFX.
+         *  Type-driven background (`menu_bg_<type>.png` of the species' first type, else
+         *  the neutral backdrop) + animated pokesprite. Asset budget: existing pokesprite,
+         *  existing menu BGs, existing CSS only — nothing new inlined.
+         *    opts = { species, bannerText, loreText, narratorLines:[..], nameplate,
+         *             buttonLabel, toneClass, cry:bool, mountSfx:[[key,vol]..],
+         *             dismissSfx:[[key,vol]..], onDone } */
+        function _showWildEncounterCinematic(opts) {
+            const o = opts || {};
+            const speciesName = o.species || '';
             let bgImg = 'sprites/bg_psychic.png';
             try {
                 const base = baseStats[speciesName] || {};
                 const t = ((base.types && base.types[0]) || '').toString().toLowerCase();
                 if (t) bgImg = 'sprites/backgrounds/menu/menu_bg_' + t + '.png';
             } catch (e) {}
-            // Species sprite — front, animated if available.
             let spriteUrl = '';
             try {
                 if (typeof getSprite === 'function') {
                     spriteUrl = getSprite(spriteDisplayName({ name: speciesName }), false) || '';
                 }
             } catch (e) {}
-            const lore = _LEGENDARY_LORE[speciesName] || '"A legend walks the route. The road will not forget what happened next."';
-            const tone = variant.toneClass || '';
+            const lore = o.loreText || '';
+            const lines = (Array.isArray(o.narratorLines) ? o.narratorLines : []).filter(Boolean);
+            const tone = o.toneClass || '';
             const ov = document.createElement('div');
             ov.className = 'story-legend-sighting' + (tone ? (' ' + tone) : '');
             ov.style.backgroundImage = `linear-gradient(180deg, rgba(2,4,10,0.85) 0%, rgba(2,4,10,0.96) 100%), url("${bgImg}")`;
             ov.innerHTML = `
-                <div class="story-legend-sighting-banner">${_esc(frame.banner)}</div>
+                <div class="story-legend-sighting-banner">${_esc(o.bannerText || '')}</div>
                 ${spriteUrl ? `<img class="story-legend-sighting-sprite" src="${spriteUrl}" alt="${_esc(speciesName)}" onerror="this.style.display='none'">` : ''}
                 <div class="story-legend-sighting-name">${_esc(speciesName)}</div>
                 <div class="story-legend-sighting-lore">${lore}</div>
                 <div class="story-dialog-host" style="max-width:560px;">
-                    <div class="story-dialog-nameplate">${_esc(variant.label || 'The Road')}</div>
+                    <div class="story-dialog-nameplate">${_esc(o.nameplate || 'The Road')}</div>
                     <div class="story-dialog-box">
-                        <p class="story-dialog-text">${_esc(frame.narrator[0])}</p>
-                        <p class="story-dialog-text" style="margin-top:8px;">${_esc(frame.narrator[1])}</p>
+                        ${lines.map((l, i) => `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${_esc(l)}</p>`).join('')}
                     </div>
                 </div>
-                <button type="button" style="margin-top:6px;padding:9px 24px;background:#1a2a4a;color:#fff;border:1px solid #ffd54f;border-radius:4px;cursor:pointer;font-weight:bold;letter-spacing:0.06em;">Approach the legend →</button>`;
+                <button type="button" style="margin-top:6px;padding:9px 24px;background:#1a2a4a;color:#fff;border:1px solid #ffd54f;border-radius:4px;cursor:pointer;font-weight:bold;letter-spacing:0.06em;">${_esc(o.buttonLabel || 'Continue →')}</button>`;
+            const _playFx = function (list) {
+                if (!window.StoryFx || typeof window.StoryFx.playSfx !== 'function') return;
+                (Array.isArray(list) ? list : []).forEach(s => { try { window.StoryFx.playSfx(s[0], s[1]); } catch (e) {} });
+            };
             let dismissed = false;
             const dismiss = function () {
                 if (dismissed) return;
                 dismissed = true;
-                try { if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') window.StoryFx.playSfx('shine', 0.75); } catch (e) {}
+                _playFx(o.dismissSfx);
                 try { ov.remove(); } catch (e) {}
-                try { onDone && onDone(); } catch (e) { console.error('[Story] roaming sighting callback', e); }
+                try { o.onDone && o.onDone(); } catch (e) { console.error('[Story] wild encounter cinematic callback', e); }
             };
             ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
             ov.onclick = function (e) { if (e.target === ov) dismiss(); };
-            try { if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') window.StoryFx.playSfx('sparkle', 0.6); } catch (e) {}
-            try { if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') window.StoryFx.playSfx('danger', 0.5); } catch (e) {}
+            _playFx(o.mountSfx);
+            // Optional species cry on mount — raids announce the boss by voice.
+            if (o.cry) { try { if (typeof AudioSystem !== 'undefined' && AudioSystem && AudioSystem.playCry) AudioSystem.playCry(speciesName, 0.5); } catch (e) {} }
             document.body.appendChild(ov);
+            return ov;
+        }
+
+        /** Cinematic overlay that fires *before* the catch screen when a roaming legendary
+         *  is consumed. Now a thin caller of the shared cinematic — behavior preserved 1:1
+         *  (sparkle+danger on mount, shine on dismiss, per-variant tone + label). */
+        function _showRoamingLegendarySighting(speciesName, onDone) {
+            const variant = _storyActiveVariant();
+            const frame = _LEGENDARY_SIGHTING_FRAMES[variant.id] || _LEGENDARY_SIGHTING_FRAMES.classic;
+            const lore = _LEGENDARY_LORE[speciesName] || '"A legend walks the route. The road will not forget what happened next."';
+            return _showWildEncounterCinematic({
+                species: speciesName,
+                bannerText: frame.banner,
+                loreText: lore,
+                narratorLines: frame.narrator,
+                nameplate: variant.label || 'The Road',
+                buttonLabel: 'Approach the legend →',
+                toneClass: variant.toneClass || '',
+                mountSfx: [['sparkle', 0.6], ['danger', 0.5]],
+                dismissSfx: [['shine', 0.75]],
+                onDone: onDone,
+            });
+        }
+
+        /** Per-arc raid lore — one italic caption per horror arc, condensed from the scene
+         *  prose that already ships (`extra.<arc>.raid` intro acts), so no new canon is
+         *  invented (same rule `_LEGENDARY_LORE` follows). Keyed by arc stem. */
+        const _RAID_LORE = {
+            cubone:   '"The mother every version of this story grieves — here in spirit, and she will not let you past until you have understood what you have been walking over."',
+            yamask:   '"The first of all the faceless to go looking for what it lost. To be remembered by it is to be added to the wake."',
+            hypno:    '"Not one Hypno, but one Hypno with the weight of all of them behind its eyes — the whole choir singing through a single throat."',
+            phantump: '"Not a guardian of the children\'s tree — the children\'s tree itself, grown up and around everything the forty stones remember."',
+            mimikyu:  '"Wearing every costume at once — a thing made entirely of attempts to be loved. More than it wants to win, it wants you to keep watching."',
+            drifloon: '"Not a Pokémon anymore so much as the wind itself given a purpose — the up-and-out made into a shape you can finally stand in front of."',
+            parasect: '"One Parasect, several bodies — a single intelligence wearing a half-dozen evacuated shells, moving them like fingers."',
+            mewtwo:   '"The finished one. So far past rage that rage looks like a thing it remembers having, once, when it was new."',
+        };
+        /** Short standoff couplet for the raid intro's narrator box — deliberately NOT the
+         *  scene prose (the player just read it); the "this is the moment, stand" call.
+         *  Differs for the full raid vs the mini-raids. Deterministic (no RNG). */
+        function _raidNarratorLines(sceneKey) {
+            return /\.raid$/.test(String(sceneKey || ''))
+                ? ['The road has narrowed to this.',
+                   'There is no ball for this one — only the standing, and the fight.']
+                : ['It has found you again, and it is not done being witnessed.',
+                   'Stand. It came a long way to be met.'];
+        }
+        /** Extra-track raid intro — frames the wild boss the player actually fights as an
+         *  encounter, NOT the trainer VS-splash. Reuses the shared cinematic shell; banner
+         *  from BOSS_CONFIGS (the boss's signature), lore from `_RAID_LORE`, species cry on
+         *  mount, battle theme forced to `boss`. Fixes the raid trainer-intro mismatch
+         *  (docs/story-design/story-immersion/visual-and-cinematic.md §4). */
+        function _showRaidEncounterIntro(species, sceneKey, onDone) {
+            const arc = (/^extra\.([a-z0-9]+)\./.exec(String(sceneKey || '')) || [])[1] || '';
+            const cfg = (typeof BOSS_CONFIGS === 'object' && BOSS_CONFIGS) ? BOSS_CONFIGS[sceneKey] : null;
+            const banner = (cfg && cfg.mechanics && cfg.mechanics[0] && cfg.mechanics[0].banner) || 'A RAID BEGINS';
+            const lore = _RAID_LORE[arc] || _LEGENDARY_LORE[species]
+                || '"It is not here to be caught. It is here to be answered."';
+            try { if (typeof AudioSystem !== 'undefined' && AudioSystem && AudioSystem.playBattleTheme) AudioSystem.playBattleTheme('boss'); } catch (e) {}
+            return _showWildEncounterCinematic({
+                species: species,
+                bannerText: banner,
+                loreText: lore,
+                narratorLines: _raidNarratorLines(sceneKey),
+                nameplate: 'The Road',
+                buttonLabel: 'Stand your ground →',
+                cry: true,
+                mountSfx: [['danger', 0.5]],
+                dismissSfx: [['shine', 0.6]],
+                onDone: onDone,
+            });
         }
 
         /** First-sighting Pokédex lore — fires once per species when caught
@@ -48417,9 +48522,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 launchBattle(enemyTeam);
             };
 
+            // Encounter framing (Story Immersion / Stream 3): a solo-Pokémon raid is
+            // introduced as the wild boss it actually fights, NOT with the trainer
+            // VS-splash. Gate on the SAME source as the foe-team substitution
+            // (_rollExtraRaidBossTeam reads sm._activeBeatBattleKey below), so the intro
+            // can never disagree with who actually walks onto the field. See
+            // docs/story-design/story-immersion/visual-and-cinematic.md §4.
+            const _raidIntro = _raidBossInfoForBeatKey(sm._activeBeatBattleKey);
+            const _runEncounterIntro = _raidIntro
+                ? (cb) => _showRaidEncounterIntro(_raidIntro.species, sm._activeBeatBattleKey, cb)
+                : (cb) => showBattleIntro(trainer, event, cb, idx);
+
             const lock = sm.currentEnemyLock;
             if (lock && lock.eventIdx === battleIdx && Array.isArray(lock.team) && lock.team.length) {
-                showBattleIntro(trainer, event, () => {
+                _runEncounterIntro(() => {
                     const team = storyFreezeFoeTeamForPersistence(deepClone(lock.team));
                     try {
                         sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(team) };
@@ -48427,11 +48543,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } catch (e) { console.warn('[Story] enemy lock refresh save', e); }
                     try { _storyRecordSignatureEncounter(trainer, team); } catch (e) {}
                     startFight(team);
-                }, idx);
+                });
                 return;
             }
 
-            showBattleIntro(trainer, event, async () => {
+            _runEncounterIntro(async () => {
                 const _rollEnemy = () => {
                     if (isMysteryFinal) return rollMysteryFigureFinalBossTeam(6, sg);
                     // Extra track: raid / miniRaid beats fight as ONE scaled legendary-tier
@@ -48467,7 +48583,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) { console.warn('[Story] enemy lock save', e); }
                 try { _storyRecordSignatureEncounter(trainer, frozenTeam); } catch (e) {}
                 startFight(frozenTeam);
-            }, idx);
+            });
         }
 
         // Maps a story battle event type to an AudioSystem battle-theme mood.

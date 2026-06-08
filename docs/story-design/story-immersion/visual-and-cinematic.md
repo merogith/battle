@@ -2,11 +2,13 @@
 
 > **Stream:** 3 of the Story Immersion design initiative — scenes, sprites, animation,
 > cinematics, and correct encounter framing (incl. the raid trainer-intro fix).
-> **Status:** DESIGN PASS ONLY. Nothing in here is implemented. Every presentation
-> change — above all the raid-framing change — is **flagged for maintainer sign-off**
-> (see §11). All variance uses seeded RNG (`storyRngNext`), never bare `Math.random()`.
+> **Status:** §4 (raid trainer-intro fix) + §4.4 **Option A** (miniRaid2) are
+> **IMPLEMENTED** — approved 2026-06, guarded by `tests/suites/story-raid-framing.test.js`
+> (8 tests). The remaining sections — the pre-boss cinematic (§5) and the impact layer
+> (§6) — are **DESIGN PASS ONLY**, pending their own sign-off (§11 Q3–Q6). All variance
+> uses seeded RNG (`storyRngNext`), never bare `Math.random()`.
 > **Asset budget:** reuse the shipped engine + existing art only. No new heavy assets,
-> no base64 inlined into the 4 MB `battle.html`.
+> no base64 inlined into the 4 MB `battle.html` — honored (the fix added zero art/CSS).
 
 ### ⚠ A note on inputs (read me first)
 
@@ -157,8 +159,13 @@ how trainer fights resolve.
 
 ## 4. Raid trainer-intro fix  ⚠ SIGN-OFF
 
-> **This alters presentation for the 8 horror arcs.** Read §4.1–§4.5, then sign off on
-> the framing change (§4.3) and the scope decision (§4.4) before any code is written.
+> ✅ **IMPLEMENTED (2026-06).** Both the framing change (§4.3) and **Option A** of the
+> scope decision (§4.4) shipped. Symbols as built: `_raidBossInfoForBeatKey` (shared
+> predicate), `_rollExtraRaidBossTeam` (now reads it), `_showWildEncounterCinematic`
+> (the generalized shell), `_showRaidEncounterIntro`, `_RAID_LORE`, `_raidNarratorLines`,
+> and the `_runEncounterIntro` shim in `enterBattleEvent`. Guarded by
+> `tests/suites/story-raid-framing.test.js`. The §4.1–§4.5 text below is the as-designed
+> record.
 
 ### 4.1 The bug, exactly
 
@@ -321,9 +328,14 @@ the moment.
 **Net code:** one helper extraction, one 6-line shim, two call-site swaps, and a
 generalization of an existing function (no new overlay, no new CSS, no new art).
 
-### 4.4 Scope decision — does this cover 16 raids or 24?  ⚠ DECIDE
+### 4.4 Scope decision — does this cover 16 raids or 24?  ✅ RESOLVED → Option A (24)
 
-There are **24** solo-raid beats (8 arcs × `miniRaid` + `miniRaid2` + `raid`). But today:
+> Shipped Option A: the roller predicate became `(raid|miniRaid)\d*$`, so all **24** beats
+> field their solo boss and get the cinematic. `_bossHpScaleForKind` reads the normalized
+> `scaleKind` (`miniRaid2` → `miniRaid`), and `_populateExtraRaidConfigs` now keys
+> `.miniRaid2`. The original analysis is kept below for the record.
+
+There are **24** solo-raid beats (8 arcs × `miniRaid` + `miniRaid2` + `raid`). But before the fix:
 
 ```
 extra.cubone.raid       → _rollExtraRaidBossTeam MATCH   → solo Marowak    ✓
@@ -698,11 +710,11 @@ matches all 24 keys"*, *"every new animation is suppressed under reduced motion.
 > Per CLAUDE.md: no game-behavior/presentation change ships without explicit sign-off,
 > and balance numbers are maintainer-owned. This stream proposes; you approve.
 
-- **Q1 — Raid framing (the headline).** Approve replacing the trainer VS-splash with the
-  Pokémon raid cinematic for solo-mon raids? (§4.3) — *presentation change, 8 arcs.*
-- **Q2 — `miniRaid2` scope.** Option **A** (fix the roller so `miniRaid2` fields its
-  authored evolved boss + gets the cinematic — *balance change*) or Option **B**
-  (visual-only; `miniRaid2` keeps the trainer splash; ledger the data bug)? (§4.4)
+- **Q1 — Raid framing (the headline).** ✅ APPROVED + IMPLEMENTED (2026-06). Trainer
+  VS-splash replaced with the Pokémon raid cinematic for solo-mon raids. (§4.3)
+- **Q2 — `miniRaid2` scope.** ✅ APPROVED — **Option A** IMPLEMENTED (2026-06). The roller
+  now fields `miniRaid2`'s authored evolved boss (scaled like a miniRaid) and it gets the
+  raid cinematic; `_populateExtraRaidConfigs` keys `.miniRaid2` too. (§4.4)
 - **Q3 — Pre-boss cinematic.** Approve the additive pre-boss beat for canon bosses?
   Which fights — all villain bosses, or Champion + Mystery Figure + GL8 only? (§5)
 - **Q4 — Impact layer.** Approve hit grading + hit-stop + wiring the dormant
@@ -747,14 +759,14 @@ Backgrounds — battle: sprites/backgrounds/battle/{desktop,portrait,landscape}/
 
 ```
 arc       species    banner (BOSS_CONFIGS)   miniRaid   miniRaid2 ("evolved")   raid
-cubone    Marowak    A REMEMBERED PLACE      ✓ solo     ⚠ trainer-team (bug)    ✓ solo
-yamask    Yamask     THE WAKE                ✓ solo     ⚠ trainer-team          ✓ solo
-hypno     Hypno      THE LULLABY             ✓ solo     ⚠ trainer-team          ✓ solo
-phantump  Trevenant  THE GROVE               ✓ solo     ⚠ trainer-team          ✓ solo
-mimikyu   Mimikyu    THE AUDIENCE            ✓ solo     ⚠ trainer-team          ✓ solo
-drifloon  Drifblim   THE CLIMB               ✓ solo     ⚠ trainer-team          ✓ solo
-parasect  Parasect   THE SOIL                ✓ solo     ⚠ trainer-team          ✓ solo
-mewtwo    Mewtwo     THE LAB REMEMBERED      ✓ solo     ⚠ trainer-team          ✓ solo
+cubone    Marowak    A REMEMBERED PLACE      ✓ solo     ✓ solo (was bug)        ✓ solo
+yamask    Yamask     THE WAKE                ✓ solo     ✓ solo (was bug)        ✓ solo
+hypno     Hypno      THE LULLABY             ✓ solo     ✓ solo (was bug)        ✓ solo
+phantump  Trevenant  THE GROVE               ✓ solo     ✓ solo (was bug)        ✓ solo
+mimikyu   Mimikyu    THE AUDIENCE            ✓ solo     ✓ solo (was bug)        ✓ solo
+drifloon  Drifblim   THE CLIMB               ✓ solo     ✓ solo (was bug)        ✓ solo
+parasect  Parasect   THE SOIL                ✓ solo     ✓ solo (was bug)        ✓ solo
+mewtwo    Mewtwo     THE LAB REMEMBERED      ✓ solo     ✓ solo (was bug)        ✓ solo
 ```
-`⚠` = §4.4: today fights a rolled trainer team despite being authored as a solo evolved
-boss; all wear the trainer VS-splash today (the §4 fix).
+All 24 now field their solo boss and use the raid cinematic. `miniRaid2` previously fought
+a rolled trainer team (the §4.4 regex bug) — fixed in the 2026-06 implementation.
