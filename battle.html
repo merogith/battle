@@ -47902,8 +47902,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hub = (typeof cityProfessorHubSlot === 'function') ? (cityProfessorHubSlot(0) || {}) : {};
             const profName = hub.label || 'Prof. Oak';
             const profSpriteFile = hub.spriteFile || 'OakProfessor';
-            const displayRival = _storyRivalTauntName((rivalName && String(rivalName).trim()) || '');
             const intro = _STORY_INTRO_SCENES[variant.id] || _STORY_INTRO_SCENES.classic;
+            // §11.1 (locked): the rival's "<Player> Sucks" taunt name lives ONLY on
+            // the battle HUD nameplate — never in narration. The opening cold-open
+            // names the rival as "your rival" in-prose, so there is no taunt
+            // interpolation here (no rival-name token is substituted into lines).
             // metaKey is left blank here — the outer dispatcher
             // (_runStoryColdOpen) already stamps a variant-keyed dedupe entry,
             // so a second stamp on the overlay would just duplicate writes.
@@ -47914,7 +47917,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 nameplate: intro.nameplate || profName,
                 accent: 'var(--accent)',
                 toneClass: variant.toneClass || '',
-                lines: (intro.lines || []).map(l => String(l).replace(/{rival}/g, _esc(displayRival))),
+                lines: (intro.lines || []).map(l => String(l)),
                 continueLabel: intro.continueLabel || 'Continue →',
                 onDone
             });
@@ -47929,9 +47932,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             classic: {
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
                 lines: [
-                    '"Hold up — someone\'s blocking the route gate. {rival}."',
-                    '"They picked up their starter the same morning you did. Same hunger, same chance. They won\'t let you out of Pallet Town without a fight."',
-                    '"Show them what your partner can do. From here, every road is a rival."'
+                    '"Hold up — someone\'s blocking the route gate. Your rival got their starter the same morning you got yours."',
+                    '"Same hunger, same chance, same starting line. They won\'t let you out of Pallet without a fight."',
+                    '"Show them what your partner can do. From here, every road has a rival on it."'
                 ]
             }
         };
