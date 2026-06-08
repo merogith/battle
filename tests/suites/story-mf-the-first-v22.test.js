@@ -36,9 +36,13 @@ test('the_first identity has the expected shape', () => {
 });
 
 test('the_first first intro line is the canonical hook', () => {
+    // Re-cut in Story Immersion Stream 2 §4.1 (maintainer-locked): the climax
+    // barks now imply the loop through behavior instead of stating it. The hook
+    // keeps its "you always win — that's the problem" spine. The full re-cut is
+    // guarded by tests/suites/story-mystery-intro.test.js.
     assert.equal(
         MFI.the_first.intros[0],
-        "You're going to win this one. The next one too. That's the problem."
+        "You're going to win this. You always do. That's the problem, not the prize."
     );
 });
 
