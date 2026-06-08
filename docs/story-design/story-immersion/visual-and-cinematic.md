@@ -2,11 +2,15 @@
 
 > **Stream:** 3 of the Story Immersion design initiative — scenes, sprites, animation,
 > cinematics, and correct encounter framing (incl. the raid trainer-intro fix).
-> **Status:** §4 (raid trainer-intro fix) + §4.4 **Option A** (miniRaid2) are
-> **IMPLEMENTED** — approved 2026-06, guarded by `tests/suites/story-raid-framing.test.js`
-> (8 tests). The remaining sections — the pre-boss cinematic (§5) and the impact layer
-> (§6) — are **DESIGN PASS ONLY**, pending their own sign-off (§11 Q3–Q6). All variance
-> uses seeded RNG (`storyRngNext`), never bare `Math.random()`.
+> **Status (2026-06): most of this is now SHIPPED.**
+> - §4 raid trainer-intro fix + §4.4 **Option A** (miniRaid2) — ✅ `story-raid-framing.test.js`
+> - §5 pre-boss cinematic (canon villain bosses/admins + Mystery apex) — ✅ `story-preboss-cinematic.test.js`
+> - §6.4 portrait-emotion (CSS treatments on cast sprites) — ✅ (same suite)
+> - §6 in-battle impact — ✅ multi-hit shake/hit-sound **parity** shipped (`battle-hit-impact.test.js`)
+>
+> **Still DESIGN-ONLY:** §6.1 graded hit tiers and §6.2 hit-stop (the existing per-hit
+> pacing already covers most of the feel; deferred as lower-value). All variance uses
+> seeded RNG (`storyRngNext`), never bare `Math.random()`.
 > **Asset budget:** reuse the shipped engine + existing art only. No new heavy assets,
 > no base64 inlined into the 4 MB `battle.html` — honored (the fix added zero art/CSS).
 
@@ -398,6 +402,17 @@ differs per `BOSS_CONFIGS` tier, which is enough to read "this is the bigger one
 
 ## 5. Reusable pre-boss cinematic template
 
+> ✅ **IMPLEMENTED (2026-06).** Shipped as a single escalation overlay (not the 3-beat
+> sketch below — one screen reads better and avoids click-fatigue after the existing
+> narrative scene). `_playPreBossCinematic(key, trainer, onDone)` reuses
+> `_renderNarrativeOverlay` (threshold banner + canon portrait w/ emotion + one framing
+> line) and chains `onDone → showBattleIntro`. Wired via `_preBossCinematicKeyFor` in the
+> `enterBattleEvent` shim for all 20 `BEAT_CANON_TRAINER` beats (boss + admin) + the
+> Mystery apex. Copy in `PRE_BOSS_CINEMATICS` (per-villain line + emotion; generic
+> fallback). Guarded by `tests/suites/story-preboss-cinematic.test.js`. **Champion (event
+> path) was left out** — it has no canon-override sprite; a clean follow-up. The 3-beat
+> design below is the original sketch.
+
 A new *additive* beat for **canon bosses** (villain bosses/admins via
 `BEAT_CANON_TRAINER`, and the Mystery Figure). It plays **between** the narrative scene
 and the existing trainer VS-splash — it does not replace the splash (trainer fights keep
@@ -567,6 +582,12 @@ The existing `@media (prefers-reduced-motion)` block already neutralizes motion;
 
 ### 6.4 Portrait-emotion swap for recurring cast — CSS, not new art
 
+> ✅ **IMPLEMENTED (2026-06).** The `.cast-*` CSS treatments + `_castEmotionClass(emotion)`
+> shipped; `_renderNarrativeOverlay` gained `spriteClass`/`spriteSrc` (backward-compatible)
+> so any overlay can tag its portrait. Currently driven by the pre-boss cinematic (§5);
+> the rival variant-sprite swap (table below) is authored but not yet wired into the
+> rival VS-splash — a clean follow-up. Reduced motion disables the shake animations.
+
 Recurring cast each ship a **single** sprite (`Giovanni.png`, `Blue.png`, `Oak.png`,
 `Cyrus.png`…). The 4 MB budget forbids per-emotion art. So emotion is a **CSS treatment
 on the one sprite**, applied in narration/cinematic overlays (and optionally the VS
@@ -730,12 +751,14 @@ matches all 24 keys"*, *"every new animation is suppressed under reduced motion.
 - **Q2 — `miniRaid2` scope.** ✅ APPROVED — **Option A** IMPLEMENTED (2026-06). The roller
   now fields `miniRaid2`'s authored evolved boss (scaled like a miniRaid) and it gets the
   raid cinematic; `_populateExtraRaidConfigs` keys `.miniRaid2` too. (§4.4)
-- **Q3 — Pre-boss cinematic.** Approve the additive pre-boss beat for canon bosses?
-  Which fights — all villain bosses, or Champion + Mystery Figure + GL8 only? (§5)
-- **Q4 — Impact layer.** Approve hit grading + hit-stop + wiring the dormant
-  screen-shake? Any hit-stop duration preference (proposed 90/120 ms)? (§6)
-- **Q5 — Portrait-emotion.** Approve CSS-driven emotion treatments + rival variant-sprite
-  swap on existing art? (§6.4)
+- **Q3 — Pre-boss cinematic.** ✅ APPROVED + IMPLEMENTED (2026-06) — all 20 canon
+  villain bosses/admins + the Mystery apex, as a single escalation overlay. Champion
+  deferred (follow-up). (§5)
+- **Q4 — Impact layer.** ✅ Partially shipped — multi-hit shake/hit-sound **parity**
+  (the concrete gap). Graded tiers (§6.1) + hit-stop (§6.2) deferred as lower-value;
+  the dormant CSS shake was a red herring (engine shakes via anime.js). (§6)
+- **Q5 — Portrait-emotion.** ✅ APPROVED + IMPLEMENTED (2026-06) — CSS treatments wired
+  into the pre-boss cinematic. Rival variant-sprite swap authored, not yet wired. (§6.4)
 - **Q6 — RNG variance.** Any beat where you want *per-view* variety (seeded) vs a fixed
   deterministic frame? Default: fixed/deterministic. (§8.1)
 

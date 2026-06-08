@@ -2783,6 +2783,25 @@
             .vs-fighter-player, .vs-fighter-foe, .vs-glyph, .vs-intro-dialog { animation: none !important; }
             .vs-flash { display: none !important; }
         }
+        /* Portrait-emotion (§6.4) — CSS treatments on a recurring-cast sprite. No new art:
+           the single shipped sprite is tinted / shaken / dimmed to read an emotional beat.
+           Applied to an overlay <img> via _renderNarrativeOverlay's spriteClass. */
+        .cast-emotion  { transition: filter 0.4s ease, transform 0.4s ease; }
+        .cast-angry    { filter: saturate(1.45) contrast(1.12) drop-shadow(0 0 10px rgba(255,70,45,0.5)); animation: castAngry 0.5s ease-in-out; }
+        .cast-smug     { transform: scale(1.05); filter: drop-shadow(0 0 12px rgba(255,213,79,0.42)); }
+        .cast-rattled  { filter: brightness(0.9) saturate(0.85); animation: castRattle 0.42s ease-in-out 2; }
+        .cast-defeated { filter: grayscale(0.6) brightness(0.78); transform: translateY(6px); }
+        .cast-obscured { filter: brightness(0.28) contrast(1.6); }
+        @keyframes castAngry  { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+        @keyframes castRattle { 0%,100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+        /* Pre-boss cinematic (§5) — the threshold banner that escalates into the VS-splash. */
+        .story-preboss-banner {
+            color: #ff7043; font-size: 13px; font-weight: bold; letter-spacing: 0.26em;
+            text-transform: uppercase; text-shadow: 0 0 12px rgba(255,112,67,0.5), 0 2px 4px rgba(0,0,0,0.85);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .cast-angry, .cast-rattled { animation: none !important; }
+        }
         .story-action-btn {
             display:flex; align-items:center; gap:10px; padding:11px 14px;
             border: 2px solid #4a4f5e; border-radius: 0 !important;
@@ -40083,6 +40102,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     showRaidEncounterIntro: (s, k, cb) => _showRaidEncounterIntro(s, k, cb),
                     get EXTRA_RAID_SPECIES() { return _EXTRA_RAID_SPECIES; },
                     get RAID_LORE() { return _RAID_LORE; },
+                    // Pre-boss cinematic + portrait-emotion (visual-and-cinematic.md §5/§6.4).
+                    preBossCinematicKeyFor: (k, ev, mf) => _preBossCinematicKeyFor(k, ev, mf),
+                    playPreBossCinematic: (k, t, cb) => _playPreBossCinematic(k, t, cb),
+                    castEmotionClass: (e) => _castEmotionClass(e),
+                    get PRE_BOSS_CINEMATICS() { return PRE_BOSS_CINEMATICS; },
                     // Battle-beat injection (PR-4c).
                     findBeatBySceneKey: (k) => _findBeatBySceneKey(k),
                     activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
@@ -47603,8 +47627,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
             if (toneClass) ov.classList.add(toneClass);
-            const spriteHtml = sprite
-                ? `<img src="${getTrainerSprite({ spriteFile: sprite })}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
+            // Sprite: `spriteSrc` (a pre-resolved URL — lets callers pass the SPRITE_MAP-
+            // resolved path, e.g. Piers→Roughneck, which {spriteFile} would miss) wins over
+            // `sprite` (a file stem). `spriteClass` tags the <img> for treatments like the
+            // cast-emotion filters (§6.4). Both default to the prior behavior.
+            const _spriteSrc = o.spriteSrc || (sprite ? getTrainerSprite({ spriteFile: sprite }) : '');
+            const _spriteClass = o.spriteClass || '';
+            const spriteHtml = _spriteSrc
+                ? `<img${_spriteClass ? ` class="${_esc(_spriteClass)}"` : ''} src="${_esc(_spriteSrc)}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
                 : '';
             const bannerClass = o.bannerClass || '';
             const bannerHtml = banner
@@ -47929,6 +47959,76 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 dismissSfx: [['shine', 0.6]],
                 onDone: onDone,
             });
+        }
+
+        // ── Pre-boss cinematic (§5) + portrait-emotion (§6.4) ─────────────────
+        /** Maps an emotion keyword to the CSS class(es) applied to a cast sprite. No new
+         *  art — the single shipped portrait is tinted/shaken/dimmed (see the .cast-* CSS).
+         *  Unknown/empty → no treatment; 'calm' → the transition base only. */
+        function _castEmotionClass(emotion) {
+            const e = String(emotion || '').toLowerCase();
+            if (!e) return '';
+            if (e === 'calm') return 'cast-emotion';
+            const known = { angry: 1, smug: 1, rattled: 1, defeated: 1, obscured: 1 };
+            return known[e] ? ('cast-emotion cast-' + e) : '';
+        }
+        /** Per-boss threshold copy for the pre-boss cinematic. One evocative line + an
+         *  emotion per canon boss (lines drawn from each villain's established canon —
+         *  no invented lore). Unlisted canon bosses fall back to _genericPreBossCinematic. */
+        const PRE_BOSS_CINEMATICS = {
+            'villain.rocket.boss':      { line: "The boss doesn't stand when you walk in. He's done this before — to better people than you.", emotion: 'calm' },
+            'villain.magma.boss':       { line: "He speaks about land the way other men speak about God. The air is already too warm.", emotion: 'calm' },
+            'villain.aqua.boss':        { line: "He's grinning. The rain hasn't started yet, but he's grinning like it already has.", emotion: 'smug' },
+            'villain.galactic.boss':    { line: "He looks at you the way you'd look at a clerical error. Spirit is the thing he came to delete.", emotion: 'calm' },
+            'villain.plasma.boss':      { line: "Two voices live in this man. Tonight only the one that gives orders is home.", emotion: 'angry' },
+            'villain.skull.boss':       { line: "Big bad Guzma. He came up the hard way, and he resents that you might not have to.", emotion: 'angry' },
+            'villain.yell.boss':        { line: "He never wanted the spotlight. He wants it even less now that it's yours to take.", emotion: 'rattled' },
+            'villain.flare.boss':       { line: "He believes he is saving the world. That belief is the most dangerous thing on this road.", emotion: 'calm' },
+            'villain.macroCosmos.boss': { line: "He'll apologize while he does it. The schedule, he'll explain. Always the schedule.", emotion: 'calm' },
+            'villain.star.boss':        { line: "The whole team was one person behind a screen. The screen is down now. So is the running.", emotion: 'rattled' },
+            'main.mfBattle':            { line: "You've stood like this before — in a mirror, maybe. The face still won't come.", emotion: 'obscured', banner: 'YOU KNOW THIS ONE', nameplate: '???' },
+        };
+        /** Fallback cinematic copy for any canon boss/admin without a bespoke entry. */
+        function _genericPreBossCinematic(key) {
+            const isMini = /\.miniBoss$/.test(String(key || ''));
+            return isMini
+                ? { line: 'Past the last of the grunts, someone is waiting who actually matters.', emotion: 'calm' }
+                : { line: 'The room goes quiet. Whatever you climbed all this way to end is sitting at the far side of it, unbothered.', emotion: 'calm' };
+        }
+        /** Pre-boss cinematic — a single escalation beat between the boss's narrative scene
+         *  and the VS-splash: threshold banner + the canon portrait (with an emotion
+         *  treatment) + one framing line. Reuses _renderNarrativeOverlay (no new overlay).
+         *  onDone chains to showBattleIntro. See visual-and-cinematic.md §5. */
+        function _playPreBossCinematic(key, trainer, onDone) {
+            const _finish = function () { try { onDone && onDone(); } catch (e) {} };
+            try {
+                const base = PRE_BOSS_CINEMATICS[key] || {};
+                const gen = _genericPreBossCinematic(key);
+                const banner = base.banner || (/\.miniBoss$/.test(String(key || '')) ? 'NO TURNING BACK' : 'THE DOORS OPEN');
+                const spriteSrc = (typeof getTrainerSprite === 'function' && trainer) ? getTrainerSprite(trainer) : '';
+                _renderNarrativeOverlay({
+                    banner: banner,
+                    bannerClass: 'story-preboss-banner',
+                    spriteSrc: spriteSrc,
+                    spriteClass: _castEmotionClass(base.emotion || gen.emotion),
+                    name: (trainer && (trainer.canonName || trainer.name)) || '',
+                    nameplate: base.nameplate || 'The Threshold',
+                    lines: [base.line || gen.line],
+                    continueLabel: 'Face them →',
+                    sfx: 'danger',
+                    onDone: _finish,
+                });
+            } catch (e) { console.warn('[Story] pre-boss cinematic failed:', e); _finish(); }
+        }
+        /** Which pre-boss cinematic (if any) precedes this battle's VS-splash. Canon villain
+         *  bosses/admins are keyed by the in-flight beat (the same key BEAT_CANON_TRAINER
+         *  overrode the trainer on); the Mystery Figure apex uses its own dispatch flag. */
+        function _preBossCinematicKeyFor(activeBeatKey, event, isMysteryFinal) {
+            if (isMysteryFinal) return 'main.mfBattle';
+            const k = String(activeBeatKey || '');
+            if (typeof BEAT_CANON_TRAINER === 'object' && BEAT_CANON_TRAINER &&
+                BEAT_CANON_TRAINER[k] && /\.(boss|miniBoss)$/.test(k)) return k;
+            return null;
         }
 
         /** First-sighting Pokédex lore — fires once per species when caught
@@ -48345,9 +48445,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // can never disagree with who actually walks onto the field. See
             // docs/story-design/story-immersion/visual-and-cinematic.md §4.
             const _raidIntro = _raidBossInfoForBeatKey(sm._activeBeatBattleKey);
+            // Canon bosses/admins (+ the Mystery Figure apex) get an additive pre-boss
+            // cinematic that escalates into the VS-splash. See visual-and-cinematic.md §5.
+            const _preBossKey = _raidIntro ? null : _preBossCinematicKeyFor(sm._activeBeatBattleKey, event, isMysteryFinal);
             const _runEncounterIntro = _raidIntro
                 ? (cb) => _showRaidEncounterIntro(_raidIntro.species, sm._activeBeatBattleKey, cb)
-                : (cb) => showBattleIntro(trainer, event, cb, idx);
+                : _preBossKey
+                    ? (cb) => _playPreBossCinematic(_preBossKey, trainer, () => showBattleIntro(trainer, event, cb, idx))
+                    : (cb) => showBattleIntro(trainer, event, cb, idx);
 
             const lock = sm.currentEnemyLock;
             if (lock && lock.eventIdx === battleIdx && Array.isArray(lock.team) && lock.team.length) {
