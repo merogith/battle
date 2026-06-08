@@ -42473,6 +42473,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (slot.firePostHoF) return false;
                     if (slot.fireAtEvent && slot.fireAtEvent !== curName) return false;
                 }
+                // A villain arc's `ending` resolves the arc and must not fire
+                // BEFORE the arc's boss. Both anchor road7, but the boss is
+                // injected at its battle row while event-beats are dumped at the
+                // road's first battle — so the un-gated ending spoils the climax
+                // (the aftermath plays before you fight Giovanni). Defer it until
+                // the boss is fired; it then dumps at the next road battle row,
+                // immediately after the climax. (Extra-arc endings need no gate —
+                // their raid climax is on a prior road, already fired.)
+                const _vEnd = /^villain\.([a-zA-Z0-9]+)\.ending$/.exec(slot.sceneKey);
+                if (_vEnd && !sm.storyEventsFired['villain.' + _vEnd[1] + '.boss']) return false;
                 return true;
             };
             for (const slot of Object.values(MAIN_STORY_BEATS)) if (eligible(slot)) out.push(slot);
@@ -42745,6 +42755,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.storyEventsFired) sm.storyEventsFired = {};
             const road = _roadForArrayIdx(sm.eventIndex);
             if (!road) return null;
+            // Reserved rows own their identity — NEVER overwrite a Rival, Gym
+            // Leader, Champion, Elite Four, Mystery Figure, or Victory Road row
+            // with an injected boss/raid. Without this the road6 Rival silently
+            // becomes the villain mini-boss (Proton), with no in-fiction reason
+            // the scheduled fight changed identity. The inject beat instead waits
+            // for the road's next GENERIC battle row (Basic / Gym / Elite Trainer),
+            // which always exists after the reserved row.
+            const _curRow = STORY_EVENTS_RAW[sm.eventIndex | 0];
+            const _curType = _curRow ? String(_curRow[2] || '') : '';
+            if (/^(Rival|Gym Leader [1-8]|Champion|E[1-4]|Mystery Figure|Victory Road)$/.test(_curType)) return null;
             const isInjectKind = (k) => k === 'battle' || k === 'miniBoss' || k === 'boss' || k === 'miniRaid' || k === 'raid';
             const buckets = [Object.values(MAIN_STORY_BEATS)];
             if (sm.tracks.villain) buckets.push(Object.values(VILLAIN_STORY_BEATS[sm.tracks.villain] || {}));

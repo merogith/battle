@@ -6,16 +6,18 @@
 //   • P4 is the intentional ordering FIX — update the EXPECTED block then, in the
 //     same commit, with a note on what changed and why.
 //
-// The snapshot intentionally encodes today's BUGS so the refactor is honest about
-// what it changes. Bugs captured here (see audit §3/§4):
-//   B3  villain.rocket.ending fires (idx48) BEFORE villain.rocket.boss (idx49)
-//   B4  extra.cubone.miniRaid2 injects on idx36 = a Gym-6 APPROACH row
-//   B2  multi-scene dumps (idx19 = 3 scenes; idx48 = 4)
-//   B10 league dump (idx59 = 6 scenes) — FIXED (this commit): event6/7/8 pace
-//       across E1/Champion/Rival via fireAtEvent sub-anchors; event9 + mfReveal
-//       + ending are firePostHoF and now fire from the post-Hall-of-Fame flow
-//       (continuePostGame + the Mystery-win path), so the finale no longer
-//       spoils at E1. B2/B3/B4 remain captured below (still pending).
+// The snapshot encodes the dispatch order. Bugs captured / fixed here (audit §3/§4):
+//   B3  villain.<arc>.ending fired BEFORE villain.<arc>.boss — FIXED (G3): the
+//       villain ending is now gated on the arc boss, so it drops out of the
+//       pre-boss dump (idx48) and fires at idx51, after the boss (idx49).
+//   G4  an injected boss/raid overwrote the road6 Rival (idx40 → Proton) — FIXED:
+//       reserved rows are never overwritten, so the mini-boss moved to idx41 (a
+//       generic row) and the raid to idx42; idx40 (Rival) keeps only its dump.
+//   B4  extra.cubone.miniRaid2 injects on idx36 = a Gym-6 APPROACH row — still
+//       pending (a placement-quality concern, not a reserved-row overwrite).
+//   B2  multi-scene dumps (idx19 = 3 scenes; idx48 = 3 now) — still pending.
+//   B10 league dump — FIXED earlier: event6/7/8 pace across E1/Champion/Rival via
+//       fireAtEvent; event9 + mfReveal + ending are firePostHoF (post-HoF flow).
 //
 // Run: node --test tests/suites/story-flow-order-v23.test.js
 
@@ -58,7 +60,7 @@ function traceFlow(villain, extra) {
     return lines;
 }
 
-// EXPECTED golden snapshot for rocket+cubone (current behavior, bugs and all).
+// EXPECTED golden snapshot for rocket+cubone — post G3/G4 ordering fixes.
 const EXPECTED_ROCKET_CUBONE = [
     '7|main.event1+extra.cubone.event1|',
     '13|villain.rocket.event1+extra.cubone.event2|',
@@ -68,15 +70,21 @@ const EXPECTED_ROCKET_CUBONE = [
     '33|main.event3+villain.rocket.event4+extra.cubone.event5|main.battle1(battle)',
     '34||villain.rocket.battle2(battle)',
     '36||extra.cubone.miniRaid2(miniRaid)',
-    '40|villain.rocket.event5+extra.cubone.event6|villain.rocket.miniBoss(miniBoss)',
-    '41||extra.cubone.raid(raid)',
-    '48|main.event4+villain.rocket.event6+villain.rocket.ending+extra.cubone.ending|main.battle2(battle)',
+    // G4: idx40 is the road6 Rival — reserved, so NOTHING injects here now (was
+    // villain.rocket.miniBoss → Proton). The mini-boss moves to the next generic
+    // row (idx41) and the raid follows (idx42).
+    '40|villain.rocket.event5+extra.cubone.event6|',
+    '41||villain.rocket.miniBoss(miniBoss)',
+    '42||extra.cubone.raid(raid)',
+    // G3: villain.rocket.ending is GONE from this pre-boss dump (was the 4th scene
+    // here, before the boss). extra.cubone.ending stays — its raid already fired.
+    '48|main.event4+villain.rocket.event6+extra.cubone.ending|main.battle2(battle)',
     '49||villain.rocket.boss(boss)',
+    // G3: the villain ending now fires AFTER the boss, on the next road7 row.
+    '51|villain.rocket.ending|',
     '55|main.event5|',
-    // B10 FIXED: the league road no longer drains every beat at E1. event6/7/8
-    // pace across E1 (idx59) / Champion (idx63) / Rival (idx64); event9 +
-    // mfReveal + ending are firePostHoF, so they no longer appear in the road
-    // dump at all — they fire from the post-HoF flow + the Mystery-win path.
+    // B10 FIXED (earlier): the league road paces event6/7/8 across E1 (idx59) /
+    // Champion (idx63) / Rival (idx64); event9 + mfReveal + ending are firePostHoF.
     '59|main.event6|',
     '63|main.event7|',
     '64|main.event8|',
@@ -127,22 +135,23 @@ test('league beat data carries the pacing sub-anchors', () => {
     assert.ok(!B.event9.fireAtEvent && !B.mfReveal.fireAtEvent && !B.ending.fireAtEvent);
 });
 
-test('BUG B3 (documented): villain ending fires before villain boss', () => {
+test('G3 FIXED: the villain boss fires before its ending', () => {
     const got = traceFlow('rocket', 'cubone');
     const endingIdx = got.findIndex(l => l.includes('villain.rocket.ending'));
     const bossIdx = got.findIndex(l => l.includes('villain.rocket.boss('));
     assert.ok(endingIdx >= 0 && bossIdx >= 0);
-    // TODO(P4): after the fix this must INVERT (boss before ending). Update then.
-    assert.ok(endingIdx < bossIdx, 'snapshot of the current ending-before-boss bug');
+    assert.ok(bossIdx < endingIdx, 'the climax (boss) precedes its aftermath (ending)');
 });
 
-test('the structural bugs reproduce across a different roll (galactic+mewtwo)', () => {
+test('G3/G4 fixes are structural — they hold across a different roll (galactic+mewtwo)', () => {
     const got = traceFlow('galactic', 'mewtwo');
-    // Same shape: an ending scene precedes its boss inject, and a story battle
-    // injects onto a gym-approach row — proving the bugs are structural, not
-    // content-specific.
+    // G3: the boss precedes its ending for this arc too.
     const endingIdx = got.findIndex(l => l.includes('villain.galactic.ending'));
     const bossIdx = got.findIndex(l => l.includes('villain.galactic.boss('));
-    assert.ok(endingIdx >= 0 && bossIdx >= 0 && endingIdx < bossIdx,
-        'galactic arc also shows ending-before-boss');
+    assert.ok(endingIdx >= 0 && bossIdx >= 0 && bossIdx < endingIdx,
+        'galactic boss fires before its ending');
+    // G4: the road6 Rival row (idx40) never carries an injected boss/raid.
+    const rivalLine = got.find(l => /^40\|/.test(l));
+    assert.ok(!rivalLine || rivalLine.split('|')[2] === '',
+        'the Rival row (idx40) carries no injected boss');
 });

@@ -123,6 +123,19 @@ defects in 61k lines).
 The **P0 (G1)** and the two **[FLOW-BUG]s (G3, G4)** are the priority; G2 is the
 most pervasive day-to-day cause of the flat feeling.
 
+> **Resolution status (2026-06-08):**
+> - **G1 ✅ shipped** (PR #242) — `enterBattleEvent` routes solo-raid beats to a
+>   wild-encounter cinematic (`_showRaidEncounterIntro` / `_showWildEncounterCinematic`),
+>   gated on `_raidBossInfoForBeatKey` (the same predicate as the foe substitution, so the
+>   card can never disagree with the foe). A latent sub-bug surfaced in review and was
+>   fixed in the same PR: each arc's **second** `miniRaid` (`extra.<arc>.miniRaid2`) was
+>   rolling a generic trainer team because the foe-roll regex rejected the `2` suffix —
+>   now `(raid|miniRaid)\d*`. Guard: `tests/suites/story-raid-framing.test.js`.
+> - **G3 + G4 ✅ shipped** (this work; see §7) — dispatch-ordering only, no timeline edit,
+>   no `SAVE_VER` bump. Guards: `tests/suites/story-flow-order-g3g4.test.js` and the
+>   updated golden in `tests/suites/story-flow-order-v23.test.js`.
+> - **Open:** G2, G5–G9 remain design proposals.
+
 ---
 
 ## 2. The setup-beat pattern — camp is the diamond, events are the bottlenecks
@@ -557,14 +570,19 @@ re-homed anomaly text) is this stream's; the input plumbing is the engine lane. 
 `CLAUDE.md`: *"Flow-ordering bugs MUST be flagged even though the user owns the
 flow."* Two confirmed, one corrected-as-stale, one watch-item:
 
-- **🔴 FLOW-BUG G3 — aftermath before climax.** `villain.*.ending` (event, dumped by
-  `_tryFireRoadStoryBeats`) fires before `villain.*.boss` (battle, injected by
-  `_activeBattleBeatForCurrentRow`) — both `roadAnchor:'road7'`. Confirmed by trace.
-  Fix is sort order, not a timeline edit. *(→ H4-1)*
-- **🔴 FLOW-BUG G4 — boss hijacks the Rival/arbitrary row.** `_activeBattleBeatForCurrentRow`
-  injects the canon boss onto the first eligible road battle, which on `road6` is the
-  **Rival row** (eventIndex 39) → rival silently becomes the mini-boss. Confirmed.
-  Fix is reserved slots + a frame line, not a timeline edit. *(→ H4-2, H2-3)*
+- **🟢 FIXED — FLOW-BUG G3 (aftermath before climax).** `villain.*.ending` (event, dumped
+  by `_tryFireRoadStoryBeats`) fired before `villain.*.boss` (battle, injected by
+  `_activeBattleBeatForCurrentRow`) — both `roadAnchor:'road7'`. `eligible()` in
+  `_resolveActiveRoadBeats` now defers a `villain.<arc>.ending` until `villain.<arc>.boss`
+  is in `sm.storyEventsFired`; the ending then dumps at the next road7 row (idx51, just
+  after the boss at idx49). Trace-verified; no timeline edit, no `SAVE_VER` bump.
+- **🟢 FIXED — FLOW-BUG G4 (boss hijacks the Rival/arbitrary row).** `_activeBattleBeatForCurrentRow`
+  injected the canon boss onto the first eligible road battle — on `road6` the **Rival**
+  (eventIndex 39), which silently became the mini-boss (Proton). It now returns `null` on
+  reserved rows (Rival / Gym Leader / Champion / E1-E4 / Mystery Figure / Victory Road), so
+  the inject waits for the next generic row (the mini-boss moved to idx41). Trace-verified
+  non-stranding across all 10×8 rolls. The in-fiction **substitution frame** — acknowledging
+  the swap *when* it lands on a generic row — remains a Stream-2 prose item *(→ H2-3)*.
 - **🟢 CORRECTED (was P0 in prior docs) — league finale no longer spoils before E1.**
   `STORY_FLOW_AUDIT.md §3 B10` and `STORY_OVERHAUL_PLAN.md §3` report the Mystery
   reveal + ending dumping at E1. **Stale.** `_resolveActiveRoadBeats` now gates league
@@ -584,11 +602,11 @@ flow."* Two confirmed, one corrected-as-stale, one watch-item:
 
 ## 8. Summary — what this stream is asking for
 
-1. **Give raids a raid frame** (G1/H3-1) — the single highest-impact fix; a flagship
-   encounter currently gets the cheapest intro in the game.
-2. **Fix the two ordering bugs** (G3/G4) — aftermath-before-climax and
-   boss-on-rival; both are sort/reservation, not timeline edits, so they're cheap and
-   save-safe.
+1. ~~**Give raids a raid frame** (G1/H3-1)~~ — **✅ shipped (PR #242):** the flagship raid
+   encounter now gets a wild-Pokémon cinematic instead of the cheapest trainer intro.
+2. ~~**Fix the two ordering bugs** (G3/G4)~~ — **✅ shipped (this work):**
+   aftermath-before-climax and boss-on-rival; both were sort/reservation, not timeline
+   edits, so they were cheap and save-safe.
 3. **Invert the diamond/bottleneck load** (G2/G5/§2) — spread setups into the hub
    (the diamond), keep one payoff per fight (the bottleneck), and make arrival
    acknowledge-and-plant. This is *placement of existing content*, gated on the
