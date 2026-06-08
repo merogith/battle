@@ -42877,7 +42877,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!road) return false;
             const queue = _resolveActiveRoadBeats(road);
             if (!queue.length) return false;
-            _playStoryBeatQueue(queue, 0, () => processNextEvent());
+            // G2 — pace ONE setup beat per row. A road's main/villain/extra event
+            // beats used to dump back-to-back (3-4 overlays) onto the road's first
+            // battle row; now only the highest-priority one fires here and the rest
+            // stay eligible for the road's next battle rows. On dismiss we go
+            // straight to this row's battle via _dispatchCurrentRow — NOT back
+            // through processNextEvent, which would re-enter here and drain the
+            // remainder onto the same row. Capacity-checked across all 80 rolls:
+            // every road has more non-City rows than active event beats, so the
+            // remaining beats always find a later row — nothing strands.
+            _playStoryBeatQueue([queue[0]], 0, () => _dispatchCurrentRow(ev));
             return true;
         }
 
@@ -43469,12 +43478,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // seed AND continues the row's normal flow on the same tick.
             try { _tryFireAnomalySeed(ev); } catch (e) {}
             if (_tryFireRoadStoryBeats(ev)) return;
+            _dispatchCurrentRow(ev);
+        }
+
+        // Dispatch the current row to its handler (city / Hall of Fame / battle).
+        // Extracted from processNextEvent so the paced road-beat dump (G2) can
+        // continue straight to the row's battle WITHOUT re-running the dump check
+        // — which would otherwise drain the rest of the road's beats onto this one
+        // row, recreating the clump we're removing. See _tryFireRoadStoryBeats.
+        function _dispatchCurrentRow(ev) {
+            const [idx, type, event] = ev;
             if (type === 'City') { enterCity(); return; }
             if (type === 'Hall of Fame') { showHallOfFame(); return; }
-            if (type === 'Battle') {
-                enterBattleEvent(ev);
-                return;
-            }
+            if (type === 'Battle') { enterBattleEvent(ev); return; }
         }
 
         // ── CITY SCREEN ───────────────────────────────────────────────────
