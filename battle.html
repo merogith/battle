@@ -40227,6 +40227,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
                     foeDifficultyMult: (...a) => _foeDifficultyMult(...a),
                     buildPokemon: (...a) => buildPokemon(...a),
+                    rollExtraRaidBossTeam: (...a) => _rollExtraRaidBossTeam(...a),
                     getStatTooltipHTML: (...a) => getStatTooltipHTML(...a),
                     findTrainerDataByName,
                     validateTrainerData: _validateTrainerData,
@@ -43237,6 +43238,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: b },
                     { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
                 ] };
+                // Road-5 miniRaid2 (evolved-form escalation): same 50/25 phase shape as
+                // the road-4 mini raid — "the same one, evolved," so the fight rhymes;
+                // the escalation is the evolved species, not a new phase.
+                BOSS_CONFIGS['extra.' + k + '.miniRaid2'] = { mechanics: [
+                    { type: 'hpThresholdPhase', at: 0.50, effect: 'surge', banner: b },
+                    { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: b },
+                ] };
             }
         })();
 
@@ -43247,7 +43255,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // extra-raid foe-substitution path in enterBattleEvent.
         function _bossHpScaleForKind(kind, partySize) {
             const p = Math.max(1, partySize | 0);
-            if (kind === 'miniRaid') return Math.max(1, p - 2);
+            // miniRaid2 (Road-5 evolved-form escalation) scales like the mini boss —
+            // the escalation is carried by the evolved species, not extra bulk.
+            if (kind === 'miniRaid' || kind === 'miniRaid2') return Math.max(1, p - 2);
             if (kind === 'raid') return Math.max(1, p - 1);
             return 1; // bosses + battles use single-target scaling
         }
@@ -43258,21 +43268,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
             mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
         };
+        // Road-5 miniRaid2 = the arc signature in its EVOLVED form — the mid-arc
+        // escalation the prose names ("the same one, evolved"). Per-tier so each beat
+        // spawns the creature its scene describes; only yamask (Yamask→Cofagrigus)
+        // differs from the base/climax species above, but all 8 are listed explicitly
+        // so the map stays self-documenting if a climax species is ever retuned.
+        const _EXTRA_RAID2_SPECIES = {
+            cubone: 'Marowak', yamask: 'Cofagrigus', hypno: 'Hypno', phantump: 'Trevenant',
+            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
+        };
         // Build the single-mon foe team for an extra raid/miniRaid beat. Returns the
         // standard [{name, build}] draft shape (one element), or null to fall back to the
         // normal trainer roll. Legendary-tier stats (_bossStatMult) + party-scaled HP
         // (_bossHpScale) are applied by buildPokemon at fight start.
         function _rollExtraRaidBossTeam(sceneKey) {
             try {
-                const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)$/.exec(String(sceneKey || ''));
+                const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid2?)$/.exec(String(sceneKey || ''));
                 if (!m) return null;
-                const species = _EXTRA_RAID_SPECIES[m[1]];
+                const arc = m[1], tier = m[2];
+                // Road-5 miniRaid2 spawns the EVOLVED form; road-4 miniRaid + road-6 raid
+                // keep the per-arc base/climax species.
+                const species = (tier === 'miniRaid2' && _EXTRA_RAID2_SPECIES[arc]) || _EXTRA_RAID_SPECIES[arc];
                 if (!species || typeof makeBuild !== 'function') return null;
                 const build = _withStoryPlayerGimmickGate(() => makeBuild(species));
                 if (!build) return null;
                 const maxParty = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
                 build._bossStatMult = 1.3;                                 // legendary-tier stats
-                build._bossHpScale = _bossHpScaleForKind(m[2], maxParty);  // party-scaled bulk
+                build._bossHpScale = _bossHpScaleForKind(tier, maxParty);  // party-scaled bulk
                 return [{ name: species, build: build }];
             } catch (e) { console.warn('[Story] extra raid boss roll failed:', e); return null; }
         }
