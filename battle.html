@@ -40107,6 +40107,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     playPreBossCinematic: (k, t, cb) => _playPreBossCinematic(k, t, cb),
                     castEmotionClass: (e) => _castEmotionClass(e),
                     get PRE_BOSS_CINEMATICS() { return PRE_BOSS_CINEMATICS; },
+                    rivalPhaseSpriteFile: (s, p) => _rivalPhaseSpriteFile(s, p),
+                    getRivalEncounterPhase: (i) => getRivalEncounterPhase(i),
+                    get RIVAL_SPRITE_VARIANTS() { return RIVAL_SPRITE_VARIANTS; },
                     // Battle-beat injection (PR-4c).
                     findBeatBySceneKey: (k) => _findBeatBySceneKey(k),
                     activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
@@ -40435,6 +40438,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             files.sort();
             const rng = (sm && sm.active && sm.runSeed != null && sm.runSeed !== undefined) ? storyRngNext : Math.random;
             return files[Math.floor(rng() * files.length)];
+        }
+
+        // Rival sprite progression (§6.4): rivals with multi-stage art visibly grow across
+        // the run — the kid you out-dueled in City 0 returns evolved, then in Champion garb
+        // for the title match. Only identities with shipped variant art appear here; every
+        // other rolled rival keeps its single sprite. Phase from getRivalEncounterPhase
+        // (0 intro · 2 early · 3 mid · 4 league). Existing art only — no new assets.
+        const RIVAL_SPRITE_VARIANTS = {
+            'Blue':    { 3: 'Blue-2', 4: 'Blue-Champion' },
+            'Silver':  { 3: 'Silver-2', 4: 'Silver-2' },
+            'Gladion': { 3: 'Gladion-2', 4: 'Gladion-2' },
+            'Hau':     { 3: 'Hau-2', 4: 'Hau-2' },
+        };
+        function _rivalPhaseSpriteFile(baseSprite, phase) {
+            const base = String(baseSprite || '');
+            const m = RIVAL_SPRITE_VARIANTS[base];
+            return (m && phase != null && m[phase]) ? m[phase] : base;
         }
 
         // Canonical named Elite Four candidates per slot. assignTrainers pins
@@ -47987,6 +48007,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.macroCosmos.boss': { line: "He'll apologize while he does it. The schedule, he'll explain. Always the schedule.", emotion: 'calm' },
             'villain.star.boss':        { line: "The whole team was one person behind a screen. The screen is down now. So is the running.", emotion: 'rattled' },
             'main.mfBattle':            { line: "You've stood like this before — in a mirror, maybe. The face still won't come.", emotion: 'obscured', banner: 'YOU KNOW THIS ONE', nameplate: '???' },
+            'main.champion':            { line: "The seat at the top of the mountain has someone in it. To sit there, you go through them — and they have been waiting all this time to find out if you can.", emotion: 'calm', banner: 'THE TITLE ON THE LINE', nameplate: 'The Champion' },
         };
         /** Fallback cinematic copy for any canon boss/admin without a bespoke entry. */
         function _genericPreBossCinematic(key) {
@@ -48025,6 +48046,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  overrode the trainer on); the Mystery Figure apex uses its own dispatch flag. */
         function _preBossCinematicKeyFor(activeBeatKey, event, isMysteryFinal) {
             if (isMysteryFinal) return 'main.mfBattle';
+            if (String(event) === 'Champion') return 'main.champion';   // apex of the main ladder
             const k = String(activeBeatKey || '');
             if (typeof BEAT_CANON_TRAINER === 'object' && BEAT_CANON_TRAINER &&
                 BEAT_CANON_TRAINER[k] && /\.(boss|miniBoss)$/.test(k)) return k;
@@ -48421,7 +48443,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ...trainer,
                     canonName: trainer.name,
                     name: _storyRivalTauntName(trainer.name),
-                    ...(sm.runRivalSpriteFile ? { spriteFile: sm.runRivalSpriteFile } : {}),
+                    // Phase-aware sprite: rivals with variant art grow across the run
+                    // (Blue → Blue-2 → Blue-Champion). Others keep runRivalSpriteFile.
+                    ...(sm.runRivalSpriteFile ? { spriteFile: _rivalPhaseSpriteFile(sm.runRivalSpriteFile, getRivalEncounterPhase(idx)) } : {}),
                 };
             }
             sm.currentTrainerData = trainer;
