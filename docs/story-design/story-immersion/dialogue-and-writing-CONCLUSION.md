@@ -1,33 +1,37 @@
 # Story Immersion — Stream 2: Conclusion & Handoff
 
 > Companion to `dialogue-and-writing.md` (the design spec). That doc is the **what/why**;
-> this is the **execution record + what remains**. Implementation lives on branch
-> `claude/stream2-impl` (PR #241).
+> this is the **execution record + what remains**. Steps 1–6 + the CI fix shipped via
+> **PR #241** (branch `claude/stream2-impl`, merged to `main`). The remainder — 7a, 7d, the
+> D1/D2/D3 prose, and this doc — ships via the **follow-up PR** on branch
+> `claude/gifted-galileo-wHy8a`.
 > **Scope of this doc:** maintainer chose *"spec step 7 + unblocked prose"* — so the
 > self-contained items are **shipped**, the Stream-3/4-wiring-dependent prose is **authored
 > here as ready copy**, and three items that need a narrative-canon call are **posed in §D**.
 
 ---
 
-## A. What shipped (PR #241, branch `claude/stream2-impl`)
+## A. What shipped
 
-All copy is maintainer-approved (spec §11/§12, "go with your recommendations").
+All copy is maintainer-approved (spec §11/§12, "go with your recommendations"). The
+**PR #241** rows are merged to `main`; the **follow-up PR** rows are this branch.
 
-| Step | Offender / ask | Change | Commit | Guard |
+| Step | Offender / ask | Change | Where | Guard |
 |---|---|---|---|---|
-| 1 | C | E4 + generic-rival pools re-voiced | `ba57077` | `smoke-dialogue-load` |
-| 2 | F | Trainer-create setup form re-voiced | `120e9b8` | harness DOM read-back |
-| 3 | A | Cold-opens recast → recurring **Veteran** + world-narrator Hall | `07fa6bf` | `story-coldopen-casting` (5) |
-| 4 | B | Mystery climax intro re-cut → dread, not exposition | `28e0815` | `story-mystery-intro` (3) |
-| 5 | D | Tutorial walls re-voiced (Colress/Casino/Fan Club), mechanics intact | `3d47f05` | `story-tutorial-revoice` (4) |
-| 6 | §11.1 | Rival-name → "your rival" in narration; gag stays on HUD | `34a8f96` | `story-rival-name` (3) |
-| — | CI | `the_first` canonical-hook assertion → §4.1 re-cut | `41feea6` | (fixed the lone failing test) |
-| 7d | §9.2 #4 | Choice-contract guard (persistKey/options/branches; no path-fork) | `a3fe6de` | `story-choice-contract` (4) |
-| 7a | §8 | Bark variance layer — `data/dialogue/barks.json` + schema rule | `0f3e226` | `story-barks-schema` (4) |
+| 1 | C | E4 + generic-rival pools re-voiced | PR #241 | `smoke-dialogue-load` |
+| 2 | F | Trainer-create setup form re-voiced | PR #241 | harness DOM read-back |
+| 3 | A | Cold-opens recast → recurring **Veteran** + world-narrator Hall | PR #241 | `story-coldopen-casting` (5) |
+| 4 | B | Mystery climax intro re-cut → dread, not exposition | PR #241 | `story-mystery-intro` (3) |
+| 5 | D | Tutorial walls re-voiced (Colress/Casino/Fan Club), mechanics intact | PR #241 | `story-tutorial-revoice` (4) |
+| 6 | §11.1 | Rival-name → "your rival" in narration; gag stays on HUD | PR #241 | `story-rival-name` (3) |
+| — | CI | `the_first` canonical-hook assertion → §4.1 re-cut | PR #241 | (fixed the lone failing test) |
+| 7d | §9.2 #4 | Choice-contract guard (persistKey/options/branches; no path-fork) | follow-up PR | `story-choice-contract` (4) |
+| 7a | §8 | Bark variance layer — `data/dialogue/barks.json` + schema rule | follow-up PR | `story-barks-schema` (4) |
+| D1–3 | §D | Loop prose: Oak loop-blind · mfReveal breadcrumb · battle2 mirror softened | follow-up PR | `story-loop-prose` (3) |
 
-**Test posture:** 23 new guard assertions across 6 suites + the fixed `story-mf-the-first-v22`;
-full local suite **1597 tests / 0 fail**. Each guard is drift-tolerant (content-matched,
-not line-numbered).
+**Test posture:** 8 guard suites (drift-tolerant, content-matched) + the fixed
+`story-mf-the-first-v22`. Full local suite green on the rebased branch (see PR body for the
+exact count).
 
 ---
 
