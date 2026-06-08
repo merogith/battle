@@ -17560,10 +17560,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // ── FOE ITEM-USE: incoming-threat estimate (drives every gate) ─────────────
+        // The item AI reads threats through the SAME estimator the move AI uses
+        // (aiThreatScore → aiEstimateDmg), so "will I survive this hit / can I KO" is
+        // judged consistently. That estimator omits the 0.85–1.0 damage roll, so we
+        // scale to the AVERAGE roll. These three knobs are the item-AI's tuning
+        // surface — the maintainer owns the numbers. [BALANCE]
+        const FOE_ITEM_AI = {
+            avgRoll: 0.925,      // mean of the 0.85–1.0 damage roll the estimator omits
+            regenChipMax: 0.20,  // heal-over-time used ONLY vs chip ≤20% maxHP/turn (kills the heal-stall loop)
+            boostSurvive: 0.50,  // setup/boost only when incoming ≤50% of current HP (the mon eats ≥2 hits)
+        };
+        // Fraction of foeMon's max HP the player's BEST move is expected to deal next hit.
+        // Throws degrade to 0 → the gates fall back to their old threat-blind behaviour.
+        function _foeIncomingFrac(foeMon) {
+            const p = state.pActive;
+            if (!foeMon || !p || p.currentHp <= 0 || foeMon.maxHp <= 0) return 0;
+            let raw = 0;
+            try { raw = aiThreatScore(p, foeMon) * FOE_ITEM_AI.avgRoll; } catch (e) { return 0; }
+            return raw / foeMon.maxHp;
+        }
+        // True when the foe could KO the active player THIS turn by attacking AND would move
+        // first — spending the turn on an item then would be wasted tempo (take the KO instead).
+        // Speed-only turn-order read (priority KO moves are rare); kept deliberately simple.
+        function _foeCanKOPlayerFirst(foeMon) {
+            const p = state.pActive;
+            if (!foeMon || !p || p.currentHp <= 0) return false;
+            let dmg = 0;
+            try { dmg = aiThreatScore(foeMon, p) * FOE_ITEM_AI.avgRoll; } catch (e) { return false; }
+            if (dmg < p.currentHp) return false;
+            const wx = (typeof getCurrentWeather === 'function') ? getCurrentWeather() : null;
+            try { return getEffectiveSpeed(foeMon, wx) > getEffectiveSpeed(p, wx); } catch (e) { return false; }
+        }
+
         // Foe item-use AI (Phase 2). Returns false (no item), true (item used — costs the
         // foe's whole turn → __FoeItemPass), or 'instant' (signature Mega heal — used AND
-        // the foe still attacks this turn). Simple + fair: HP-threshold + a probability roll
-        // + a HARD per-battle cap (the anti-spam guarantee). All rolls seeded for replays.
+        // the foe still attacks this turn). HP-threshold + probability roll + a HARD
+        // per-battle cap (anti-spam), now gated by an incoming-threat estimate so each
+        // item is only spent when it actually pays off. All rolls seeded for replays.
         // Named function (not just `window.x = ...`) so the jsdom test harness — which stubs
         // window.tryFoeStoryBattleItem to () => false for predictable foe turns — can still reach
         // the REAL logic via __storyTest.tryFoeStoryBattleItem.
@@ -17582,6 +17616,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const HEAL_HP = tier >= 3 ? 0.45 : (tier === 2 ? 0.40 : 0.35);
             const USE_ROLL = 0.70;    // even when a trigger fires, only acts ~70% of the time — never robotic [BALANCE]
             const SETUP_ROLL = 0.55;  // X-item / buff setup chance [BALANCE]
+            // Incoming-threat reads — every "will it pay off?" gate below keys off these.
+            const inc = _foeIncomingFrac(mon);                          // player's expected next-hit damage, as a frac of maxHp
+            const survives = inc < hpPct;                               // lives through the player's hit this turn (so a regen can tick)
+            const safeToSetUp = inc <= hpPct * FOE_ITEM_AI.boostSurvive; // eats ≥2 hits → a boost has time to pay off
+            const lethalAvailable = _foeCanKOPlayerFirst(mon);          // could just KO instead of spending the turn on an item
             const _consume = (instant) => {
                 state.foeStoryItemUsedThisTurn = true;
                 state.foeStoryItemUsesThisBattle = (state.foeStoryItemUsesThisBattle | 0) + 1;
@@ -17589,29 +17628,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return instant ? 'instant' : true;
             };
 
-            // 1) SIGNATURE — once-per-battle featured item (tier-3 only).
-            if (inv.signature) {
-                const sig = inv.signature;
-                if (sig.kind === 'heal' && hpPct <= 0.50 && _rng() < USE_ROLL) {
-                    // Mega Max Potion: instant full heal that does NOT cost the foe's turn.
-                    inv.signature = null;
-                    const h = mon.maxHp - mon.currentHp;
-                    mon.currentHp = mon.maxHp;
-                    logMsg(`The foe's ${mon.name} popped a Mega Max Potion — fully healed, and still ready to strike! (+${h} HP)`, 'heal');
-                    return _consume(true); // instant → foe still attacks this turn
-                }
-                if (sig.kind === 'buff' && (state.turnNumber | 0) <= 2 && hpPct >= 0.60 && _rng() < SETUP_ROLL) {
-                    // Ultra X-item: +4 to the mon's stronger offense.
-                    inv.signature = null;
-                    const physical = (mon.stats.atk || 0) >= (mon.stats.spa || 0);
-                    const k = physical ? 'atk' : 'spa';
-                    mon.stages[k] = Math.min(6, (mon.stages[k] | 0) + 4);
-                    logMsg(`The foe used an Ultra X ${physical ? 'Attack' : 'Sp. Atk'} on ${mon.name}! Its ${physical ? 'Attack' : 'Sp. Atk'} surged!`, 'info');
-                    return _consume(false);
-                }
+            // 1) SIGNATURE INSTANT HEAL — tier-3 marquee Mega Max Potion. It does NOT cost the
+            //    foe's turn (returns 'instant'), so it's always worth popping when low: a free
+            //    full heal AND the foe still attacks. Skip only the pointless case where the
+            //    player one-shots even from full HP (inc ≥ 1.0) — then it's empty churn.
+            if (inv.signature && inv.signature.kind === 'heal' && hpPct <= 0.50 && inc < 1.0 && _rng() < USE_ROLL) {
+                inv.signature = null;
+                const h = mon.maxHp - mon.currentHp;
+                mon.currentHp = mon.maxHp;
+                logMsg(`The foe's ${mon.name} popped a Mega Max Potion — fully healed, and still ready to strike! (+${h} HP)`, 'heal');
+                return _consume(true); // instant → foe still attacks this turn
             }
 
-            // 2) STATUS CURE — only when it MATTERS (severe status, or any status while hurt).
+            // LETHAL SHORT-CIRCUIT — every gate below COSTS the foe's whole turn. If the foe
+            //    could simply KO the active player this turn (and would move first), taking the
+            //    KO beats any setup/heal: don't trade a winning attack for an item. [anti-waste]
+            if (lethalAvailable) return false;
+
+            // 2) SIGNATURE BUFF — tier-3 Ultra X-item (+4 offense). Costs the turn, so only when
+            //    the mon is healthy, early, AND not being 2HKO'd (the boost needs turns to cash in).
+            if (inv.signature && inv.signature.kind === 'buff' && (state.turnNumber | 0) <= 2 && hpPct >= 0.60 && safeToSetUp && _rng() < SETUP_ROLL) {
+                inv.signature = null;
+                const physical = (mon.stats.atk || 0) >= (mon.stats.spa || 0);
+                const k = physical ? 'atk' : 'spa';
+                mon.stages[k] = Math.min(6, (mon.stages[k] | 0) + 4);
+                logMsg(`The foe used an Ultra X ${physical ? 'Attack' : 'Sp. Atk'} on ${mon.name}! Its ${physical ? 'Attack' : 'Sp. Atk'} surged!`, 'info');
+                return _consume(false);
+            }
+
+            // 3) STATUS CURE — only when it MATTERS (severe status, or any status while hurt).
             //    (The old code cured a burn at 95% HP and wasted the whole turn.)
             if (mon.status && (inv.fullHeal || 0) > 0) {
                 const severe = (mon.status === 'SLP' || mon.status === 'FRZ' || mon.status === 'PAR' || mon.status === 'TOX');
@@ -17623,17 +17668,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // 3) EMERGENCY HEAL — threshold + probability. Max Potion (instant) → regen
-            //    Potion (heals over time) → Full Restore.
+            // 4) EMERGENCY HEAL — threshold + probability, but each heal must actually pay off:
+            //    • Max Potion / Full Restore are INSTANT full heals → worth it whenever low (they
+            //      restore before the next hit); skip only the player-OHKOs-from-full churn.
+            //    • Regen Potions heal at END of turn → worth it ONLY vs CHIP damage the regen can
+            //      out-pace (inc ≤ regenChipMax) AND when the mon survives THIS turn to ever tick.
+            //      This is the fix for the "I attack → foe heals → I attack → foe heals…" stall:
+            //      against a real attacker the foe now spends the turn fighting, not stalling.
             if (hpPct <= HEAL_HP && _rng() < USE_ROLL) {
-                if ((inv.maxPotion || 0) > 0) {
+                if ((inv.maxPotion || 0) > 0 && inc < 1.0) {
                     inv.maxPotion--;
                     const h = mon.maxHp - mon.currentHp;
                     mon.currentHp = mon.maxHp;
                     logMsg(`The foe used a Max Potion on ${mon.name}! (+${h} HP)`, 'heal');
                     return _consume(false);
                 }
-                if ((inv.hyperPotion || 0) > 0 || (inv.superPotion || 0) > 0) {
+                if (((inv.hyperPotion || 0) > 0 || (inv.superPotion || 0) > 0) && survives && inc <= FOE_ITEM_AI.regenChipMax) {
                     const isHyper = (inv.hyperPotion || 0) > 0;
                     if (isHyper) inv.hyperPotion--; else inv.superPotion--;
                     mon.volatile = mon.volatile || {};
@@ -17641,7 +17691,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`The foe used a ${isHyper ? 'Hyper' : 'Super'} Potion on ${mon.name}! A healing mist forms.`, 'heal');
                     return _consume(false);
                 }
-                if ((inv.fullRestore || 0) > 0) {
+                if ((inv.fullRestore || 0) > 0 && inc < 1.0) {
                     inv.fullRestore--;
                     mon.currentHp = mon.maxHp;
                     mon.status = null;
@@ -17650,8 +17700,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // 4) SETUP X-ITEM — early turns, while healthy (a "powering up" beat). [BALANCE]
-            if ((inv.xItem || 0) > 0 && (state.turnNumber | 0) <= 2 && hpPct >= 0.60 && _rng() < SETUP_ROLL) {
+            // 5) SETUP X-ITEM — early turns, healthy, AND not being 2HKO'd (so the boost has time
+            //    to pay off — no more "X-Attack then faint before attacking again"). [BALANCE]
+            if ((inv.xItem || 0) > 0 && (state.turnNumber | 0) <= 2 && hpPct >= 0.60 && safeToSetUp && _rng() < SETUP_ROLL) {
                 inv.xItem--;
                 const useSpeed = _rng() < 0.35;
                 if (useSpeed) {
@@ -17666,7 +17717,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return _consume(false);
             }
 
-            // 5) BENCH REVIVE — bosses: wait until several teammates are down (up to 3), then
+            // 6) BENCH REVIVE — bosses: wait until several teammates are down (up to 3), then
             //    revive the strongest-BST fainted mon.
             const _foeParty = state.foeParty || [];
             const _maxBenchFainted = Math.max(0, _foeParty.length - 1);
@@ -40176,6 +40227,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     foeItemRole: (...a) => _foeItemRole(...a),
                     foeConsumableTier: (...a) => _foeConsumableTier(...a),
                     foeSignatureItem: (...a) => _foeSignatureItem(...a),
+                    foeIncomingFrac: (...a) => _foeIncomingFrac(...a),
+                    foeCanKOPlayerFirst: (...a) => _foeCanKOPlayerFirst(...a),
                     tryFoeStoryBattleItem: tryFoeStoryBattleItem, // captured by REFERENCE here (before the harness stubs the global) so tests reach the real logic
                 };
             } catch (e) {}
