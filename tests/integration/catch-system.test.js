@@ -69,3 +69,28 @@ test('catch-system: Master Ball is disabled only when the stack is empty (×0), 
   assert.equal(btn.disabled, true, 'a ×0 Master Ball is disabled for lack of stock');
   assert.doesNotMatch(btn.textContent, /boss/i, 'still no "boss" lock label at ×0');
 });
+
+// Regression: a FULL 6-mon party catching a new mon must list ALL SIX teammates
+// in the swap prompt (the 6th was previously clipped under a fixed max-height:200px;
+// the list is also the swap render path, so this locks all six rows being emitted).
+test('catch-system: party-swap prompt lists all 6 teammates when the bench is full', async () => {
+  const { window } = await loadEngine();
+  const ST = window.__storyTest;
+  const mk = (name, i) => ({ name, id: 'swap-' + i, nickname: null, isEgg: false, starter: false, unsellable: false,
+    build: { m: ['Tackle'], n: 'Hardy', ivs: { hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs: {}, _isShiny: false } });
+  ST.sm = Object.assign({}, ST.sm, {
+    badges: 6, // 6-slot party cap
+    team: ['Bulbasaur','Charmander','Squirtle','Pikachu','Eevee','Snorlax'].map(mk),
+  });
+  ST.catchState = {
+    encounter: { name: 'Mewtwo', build: {} },
+    onComplete: null, message: null, ended: false,
+    bossMode: false, safariMode: false, tutorialMode: false,
+    forcedCatchRate: null, forcedFleeRate: null, roamingLabel: null,
+    bossHp: null, bossMaxHp: null,
+  };
+  ST.catchRender(); // ensure #story-catch-body exists
+  ST.renderPartySwapPrompt({ name: 'Mewtwo', build: { _isShiny: false } });
+  const swapBtns = window.document.querySelectorAll('#story-catch-body [onclick*="catchResolveSwap"]');
+  assert.equal(swapBtns.length, 6, 'all six current teammates must be offered as swap targets');
+});

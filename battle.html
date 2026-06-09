@@ -3075,6 +3075,8 @@
         .pc-card.is-shiny .pc-card-name { color:#ffd54f; }
         .pc-card-shiny { color:#ffd54f; margin-right:2px; }
         .pc-card-species { font-size:9px; color:#888; line-height:1.1; }
+        .pc-card-stats { font-size:9px; color:#9aa3b8; line-height:1.2; }
+        .pc-card-stats strong { color:#cfd8e8; font-weight:bold; }
         .pc-card-sub { font-size:9px; color:#888; line-height:1.3; }
         .pc-card-mark { font-size:9px; margin-left:3px; }
         .pc-card-mark--star { color:#ffd54f; }
@@ -8228,6 +8230,10 @@
             max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .pdex-cell--unknown .pdex-cell-name { color: #555; }
+        .pdex-cell-bst {
+            font-family: var(--battle-font) !important;
+            font-size: 8px; color: #7e8aa0; letter-spacing: 0.3px;
+        }
 
         /* Achievements tab */
         .ach-empty { text-align: center; padding: 30px 20px; color: #666; font-size: 11px; }
@@ -14859,6 +14865,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function getBST(monName) {
             let b = baseStats[monName]; if (!b) return 0;
             return b.hp + b.atk + b.def + b.spa + b.spd + b.spe;
+        }
+
+        // Live Lv50 stat total for a stored/party slot (maxHp + atk + def + spa + spd + spe).
+        // READ-ONLY summary for roster cards: it re-expresses the exact Lv50 formula from
+        // buildPokemon (the HP / other-stat formulas, IV+Fight-Club-bonus cap of 41, EV
+        // 252-clamp + 510 rescale, nature mods, the EXP-Share _lv=50+min(3,…) path, and
+        // Shedinja's HP=1) WITHOUT mutating the build or constructing moves/ability — so it
+        // stays cheap enough to call per-card across a 30-mon PC box. Deliberately excludes
+        // the foe _storyStatMult / per-stat _relationshipStatMult battle-entry stamps (never
+        // present on a stored player build) so the readout is the mon's intrinsic strength.
+        // tests/suites/story-live-stat-total.test.js locks this 1:1 to buildPokemon's sum.
+        function _storyLiveStatTotal(slot) {
+            if (!slot || !slot.name || slot.isEgg) return 0;
+            const base = (typeof baseStats !== 'undefined') ? baseStats[slot.name] : null;
+            if (!base) return 0;
+            const b = (slot.build || slot.buildData || {});
+            // EVs: clamp 0..252 per stat, then rescale to 510 total (mirrors buildPokemon).
+            const rawEvs = b.evs || {};
+            const evs = {};
+            let evTotal = 0;
+            for (const s of ['hp','atk','def','spa','spd','spe']) {
+                evs[s] = Math.min(252, Math.max(0, rawEvs[s] | 0));
+                evTotal += evs[s];
+            }
+            if (evTotal > 510) { const sc = 510 / evTotal; for (const s of ['hp','atk','def','spa','spd','spe']) evs[s] = Math.floor(evs[s] * sc); }
+            const ivs = b.ivs || {};
+            const bonus = (b.bonus && typeof b.bonus === 'object') ? b.bonus : null;
+            const getIV = stat => {
+                const iv = (ivs[stat] !== undefined) ? ivs[stat] : 31;
+                const bn = bonus ? Math.max(0, Math.min(10, bonus[stat] | 0)) : 0;
+                return Math.min(41, iv + bn);
+            };
+            const _lv = 50 + Math.max(0, Math.min(3, (b.expShareLevels | 0) || 0));
+            const nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
+            const n = (typeof natureModifiers !== 'undefined') ? natureModifiers[b.n] : null;
+            if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
+            const maxHp = (slot.name === 'Shedinja') ? 1
+                : Math.floor((2 * base.hp + getIV('hp') + Math.floor(evs.hp / 4)) * _lv / 100) + _lv + 10;
+            let total = maxHp;
+            for (const k of ['atk','def','spa','spd','spe']) {
+                total += Math.floor((Math.floor((2 * base[k] + getIV(k) + Math.floor(evs[k] / 4)) * _lv / 100) + 5) * nMults[k]);
+            }
+            return total;
+        }
+
+        // Compact, consistent stat readout for roster cards: "BST 600 · Pwr 1234".
+        // BST = species base total (getBST); Pwr = this individual's live Lv50 total
+        // (_storyLiveStatTotal) — labelled "Pwr" so it reads as a strength score distinct
+        // from BST. opts.baseOnly emits just the BST half (Pokédex / evolution-preview
+        // cards, which describe a species rather than a trained individual). Eggs → ''.
+        function _storyStatChipHtml(slot, opts) {
+            if (!slot || !slot.name || slot.isEgg) return '';
+            const bst = getBST(slot.name);
+            if (!bst) return '';
+            if (opts && opts.baseOnly) return `BST <strong>${bst}</strong>`;
+            const pwr = _storyLiveStatTotal(slot);
+            return `BST <strong>${bst}</strong> · Pwr <strong>${pwr}</strong>`;
         }
 
         // Calculate tier for a single mon against an absolute BST scale (legacy, kept for compatibility)
@@ -40261,6 +40324,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 window.__storyTest = {
                     rollTrainerTeam,
+                    _getEvoChainForward: (...a) => _getEvoChainForward(...a),
                     relationshipStatMult: (...a) => relationshipStatMult(...a),
                     bondThreshold: (...a) => bondThreshold(...a),
                     migrateStoryPreV25: () => migrateStoryPreV25(),
@@ -40469,6 +40533,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     set catchState(v) { _catchState = v; },
                     catchRender: () => _catchRender(),
                     catchBallButton: (ballKey) => document.querySelector('#story-catch-body [data-ball-type="' + ballKey + '"]'),
+                    renderPartySwapPrompt: (caught) => _renderPartySwapPrompt(caught),
                     // Department-store featured Mega/Ultra catalog (price-multiplier regression).
                     getStoryFeaturedItems: () => getStoryFeaturedItems(),
                     getDeptFeaturedCatalogItems: () => _getDeptFeaturedCatalogItems(),
@@ -41538,10 +41603,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 const dexStr = '#' + String(s.dex).padStart(3, '0');
+                // Surface the species' base stat total once it's been caught (a known
+                // species) — hidden for seen/unknown cells where the name is still masked.
+                const _dexCaught = shinyView ? slot.shinyCaught : slot.caught;
+                const _dexBst = _dexCaught ? getBST(s.name) : 0;
+                const bstHtml = _dexBst ? `<span class="pdex-cell-bst">BST ${_dexBst}</span>` : '';
                 return `<div class="${cellCls}" title="${_esc(title)}">
                     ${imgHtml}
                     <span class="pdex-cell-dex">${dexStr}</span>
                     <span class="pdex-cell-name">${_esc(displayName)}</span>
+                    ${bstHtml}
                 </div>`;
             }).join('');
             return viewToggleHtml + summary + tabsHtml + '<div class="pdex-grid">' + cells + '</div>';
@@ -45593,7 +45664,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sh = !!(slot.build && slot.build._isShiny);
             const grade = getMonGrade(slot.name, getBST(slot.name));
             return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,32,0.6);border:1px solid #2c3a3a;">
-                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${sh ? '✦ ' : ''}${_esc(slot.nickname || slot.name)} ${slot.nickname ? `<span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : ''} <span style="font-size:9px;color:#888;">G${grade}</span></span>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${sh ? '✦ ' : ''}${_esc(slot.nickname || slot.name)} ${slot.nickname ? `<span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : ''} <span style="font-size:9px;color:#888;">G${grade} · BST ${getBST(slot.name)}</span></span>
                 <button type="button" data-daycare-drop="${_esc(slot.id)}" ${canDrop ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:4px 10px;background:transparent;color:${canDrop?'var(--fac-recover)':'#555'};border:1px solid ${canDrop?'var(--fac-recover)':'#444'};cursor:${canDrop?'pointer':'not-allowed'};">Drop Off</button>
             </div>`;
         }
@@ -46640,6 +46711,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="prr-body">
                             <div class="prr-line1">${_leadFlag(i)}<span class="prr-name">${_nameHtml}${_markers}</span> ${getTypeHTML(mon.type1, mon.type2)}</div>
                             <div class="prr-info">${details}</div>
+                            <div class="prr-info" style="color:#9aa3b8;">${_storyStatChipHtml(t)}</div>
                         </div>
                     </div>
                     ${_reorderCol(i, n)}
@@ -50571,6 +50643,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="pc-card-name">${shinyMark}${nameMain}${marks}</div>
                     ${speciesSub}
                     <div class="pc-card-types">${typesHtml}</div>
+                    <div class="pc-card-stats">${_storyStatChipHtml(slot)}</div>
                 </div>
                 <div class="pc-card-actions">${actions}</div>
             </div>`;
@@ -52601,8 +52674,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const disabled = slot.unsellable ? 'disabled' : '';
                 const reason = slot.unsellable ? ' title="Bonded — cannot be moved to PC"' : '';
                 return `<button type="button" onclick="window.StoryMode.catchResolveSwap(${i})" ${disabled} ${reason} style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;color:#fff;font-family:inherit;font-size:12px;${disabled ? 'opacity:0.4;cursor:not-allowed;' : 'cursor:pointer;'}">
-                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${nameHtml} ${_pcGradeChipHtml(g)}</span>
-                    <span style="color:#a5d6a7;font-size:10px;">→ PC</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:1px;text-align:left;">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nameHtml} ${_pcGradeChipHtml(g)}</span>
+                        <span style="color:#9aa3b8;font-size:9px;">${_storyStatChipHtml(slot)}</span>
+                    </span>
+                    <span style="color:#a5d6a7;font-size:10px;flex-shrink:0;">→ PC</span>
                 </button>`;
             }).join('');
             const _swapShiny = !!(caught && caught.build && caught.build._isShiny);
@@ -52616,7 +52692,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="width:16px;height:16px;image-rendering:pixelated;"> Send ${_swapNamePre}${_esc(caught.name)} to PC</button>
                 <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
-                <div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">${partyList}</div>
+                <div style="display:flex;flex-direction:column;gap:5px;max-height:min(58vh,360px);overflow-y:auto;">${partyList}</div>
             </div>`;
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) runBtn.style.display = 'none';
@@ -54926,6 +55002,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { return []; }
         }
 
+        // Forward evolution chain BEYOND the immediate next step — the depth-≥2
+        // descendants (e.g. Charmander → Charizard, Wurmple → Beautifly/Dustox). The
+        // Evolution Tutor renders these as info-only preview cards so the player can see
+        // the whole line's base stats before committing the first step (you still evolve
+        // one stage at a time, so these carry no Evolve button). Mirrors the cosmetic-forme
+        // baseSpecies fallback in _getAllEvosWithStatus, handles branching lines, and keeps
+        // a `visited` Set as a cycle guard. Immediate evos (depth 1) are intentionally
+        // omitted — _getAllEvosWithStatus already renders those as the actionable cards.
+        function _getEvoChainForward(monName, enabledGens) {
+            const out = [];
+            try {
+                const genSet = new Set(normalizeEnabledGens(enabledGens));
+                const D = typeof getPssDex === 'function' ? getPssDex() : null;
+                if (!D) return out;
+                const evosOf = (name) => {
+                    let sp = D.species.get(name);
+                    if (sp && (!sp.evos || !sp.evos.length) && sp.baseSpecies && sp.baseSpecies !== sp.name) {
+                        const base = D.species.get(sp.baseSpecies);
+                        if (base && base.evos && base.evos.length) sp = base;
+                    }
+                    return (sp && sp.evos) ? sp.evos : [];
+                };
+                const visited = new Set([monName]);
+                // Immediate evos are depth 1 (rendered elsewhere); seed the frontier with
+                // them but only EMIT their children (depth ≥ 2) below.
+                let frontier = evosOf(monName).map(n => ({ name: n, depth: 1 }));
+                frontier.forEach(f => visited.add(f.name));
+                while (frontier.length) {
+                    const next = [];
+                    for (const node of frontier) {
+                        for (const childName of evosOf(node.name)) {
+                            if (visited.has(childName)) continue; // cycle / dedup guard
+                            visited.add(childName);
+                            const b = baseStats[childName];
+                            const exists = !!b;
+                            out.push({
+                                name: childName,
+                                gen: exists ? b.gen : null,
+                                exists,
+                                inGen: exists && genSet.has(b.gen),
+                                stage: (typeof _storyEvoStageOf === 'function') ? _storyEvoStageOf(childName) : null,
+                                viaPrevo: node.name,
+                                depth: node.depth + 1,
+                            });
+                            next.push({ name: childName, depth: node.depth + 1 });
+                        }
+                    }
+                    frontier = next;
+                }
+            } catch (e) {}
+            return out;
+        }
+
         function enterEvolutionLab() {
             if (!sm || !sm.active) return;
             if (!_storyTryBeginInteraction()) return;
@@ -55042,6 +55171,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
                     : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
                 evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
+            }
+            // Preview the rest of the line (depth ≥ 2) as info-only cards so the player
+            // can compare upcoming base stats. No buttons — evolution is one step at a time.
+            if (evosAll.length) {
+                const _gensForChain = (typeof storySettingsGens === 'function') ? storySettingsGens() : null;
+                const _fwdChain = (typeof _getEvoChainForward === 'function') ? _getEvoChainForward(mon.name, _gensForChain) : [];
+                const _fwdCards = _fwdChain.filter(e => e.exists).map(e => {
+                    const eg = getMonGrade(e.name, getBST(e.name));
+                    const evoBase = baseStats[e.name] || {};
+                    const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
+                    const sprite = (typeof getSprite === 'function') ? getSprite(e.name, _evoSlotShiny) : '';
+                    return `<div class="tx-card" data-disabled="1" style="cursor:default;opacity:0.82;">
+                        <div class="tx-card-head">
+                            <img src="${sprite}" alt="" style="width:32px;height:32px;image-rendering:pixelated;opacity:0.7;" onerror="this.style.visibility='hidden'">
+                            <span class="tx-card-title" style="opacity:0.85;">${_esc(e.name)} ${evoTypes}</span>
+                        </div>
+                        <div class="tx-card-stats">
+                            <span>Grade <strong>${eg}</strong></span>
+                            <span>BST <strong>${getBST(e.name)}</strong></span>
+                            <span>Gen <strong>${e.gen}</strong></span>
+                        </div>
+                        <div class="tx-card-desc" style="color:#9aa3b8;">Evolves from ${_esc(e.viaPrevo)}${e.inGen ? '' : ' · Gen disabled in run settings'}</div>
+                    </div>`;
+                }).join('');
+                if (_fwdCards) {
+                    evoBlockHtml += `<div style="font-size:10px;color:#9aa3b8;margin-top:12px;text-transform:uppercase;letter-spacing:0.06em;">Further evolutions — preview only</div>`
+                        + `<div class="tx-grid" style="margin-top:6px;max-height:none;">${_fwdCards}</div>`;
+                }
             }
             return evoBlockHtml;
         }
@@ -60631,12 +60788,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 summary = `${_esc(b.i || '(no item)')} · ${_esc(b.a || (mon && mon.ability) || '(default ability)')}`;
             }
+            const _g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
             return `<div class="story-tutor-mon">
                 <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="false">
                     ${storyMonTileMain({
                         imgHtml: `<img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">`,
                         nameHtml: `${_esc(t.name)} ${typeHtml}`,
-                        metaHtml: summary,
+                        metaHtml: `G${_g} · BST ${getBST(t.name)} · ${summary}`,
                     })}
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▾</span></span>
                 </button>
@@ -61852,11 +62010,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? ''
                 : `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(COLRESS_COST - sm.gold).toLocaleString()}G more"` : ''}>${COLRESS_COST.toLocaleString()}G / change</span>`;
             const summaryLine = _colressSummaryLine(b);
+            const _cg = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="colress" aria-expanded="${expanded?'true':'false'}">
                 ${storyMonTileMain({
                     imgHtml: `<img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">`,
                     nameHtml: `${_esc(t.name)} ${typeHtml} ${badge}`,
-                    metaHtml: summaryLine,
+                    metaHtml: `G${_cg} · BST ${getBST(t.name)} · ${summaryLine}`,
                 })}
                 <span style="display:flex;align-items:center;gap:8px;">
                     ${headerCostChip}
@@ -63648,6 +63807,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
                     getMonGrade: typeof getMonGrade === 'function' ? getMonGrade : null,
                     getBST: typeof getBST === 'function' ? getBST : null,
+                    _storyLiveStatTotal: typeof _storyLiveStatTotal === 'function' ? _storyLiveStatTotal : null,
+                    _storyStatChipHtml: typeof _storyStatChipHtml === 'function' ? _storyStatChipHtml : null,
                     // AI internals — captured here at definition time so tests reach the REAL
                     // functions even after load-engine.js stubs the window globals for playTurn.
                     getBestMove: getBestMove,
