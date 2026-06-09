@@ -6818,10 +6818,22 @@
                bottom — two sticky bands instead of three, so the option grid owns the
                viewport. (Desktop keeps the sticky toolbar from the base .tx-toolbar rule.) */
             .tx-toolbar { position: static !important; top: auto !important; backdrop-filter: none !important; }
-            /* Nature Rater: bigger tap targets for the 5×5 grid + neutral row */
-            .tx-nature-cell { min-height: 44px !important; padding: 8px 4px !important; }
-            .tx-nature-cell-name { font-size: 12px !important; }
-            .tx-nature-grid { gap: 5px !important; }
+            /* Nature Rater 5×5 matrix — five nature names have to fit across a
+               phone. At 12px the names (Adamant / Naughty / Relaxed …) overflowed
+               their columns and collided with their neighbours. Shrink the label
+               column + text and add wrap/overflow safety so each name fits its cell
+               and can never spill sideways, while keeping a 44px tap target. */
+            .tx-nature-grid {
+                grid-template-columns: 32px repeat(5, minmax(0, 1fr)) !important;
+                gap: 4px !important;
+            }
+            .tx-nature-cell { min-height: 44px !important; padding: 5px 2px !important; }
+            .tx-nature-cell-name {
+                font-size: 9px !important; line-height: 1.15 !important; gap: 2px !important;
+                min-width: 0 !important; overflow-wrap: anywhere !important; word-break: break-word !important;
+            }
+            .tx-nature-axis-label { font-size: 8px !important; padding: 4px 1px !important; }
+            .tx-nature-pct { font-size: 8px !important; padding: 0 3px !important; }
             /* Tabs (Battle Dojo Item / Ability) — Material-spec 48px tap height */
             .tx-tab { min-height: 48px !important; padding: 12px 8px !important; font-size: 13px !important; }
             /* Chip tap targets — keep them tappable in horizontal scroll.
