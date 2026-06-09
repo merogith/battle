@@ -1829,6 +1829,39 @@
             .tx-chips-row { flex-direction: column; align-items: stretch; gap: 6px; }
             .tx-chip-strip-end { margin-left: 0; justify-content: flex-end; }
         }
+        /* Phone restructure — an always-visible controls row (Filters toggle on the
+           left, sort selector on the right) sits above the collapsible .tx-filter-sheet
+           that holds the chip rows. Keeps the search + sort + filter access reachable
+           in one compact band while the chips can fold away to give the option grid
+           the viewport. */
+        .tx-controls-row {
+            display: flex; align-items: center; gap: 8px; margin-top: 8px;
+        }
+        .tx-controls-row-end {
+            display: inline-flex; align-items: center; flex-shrink: 0; margin-left: auto;
+        }
+        .tx-filters-toggle {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; font-size: 11px; font-weight: 600;
+            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
+            color: #b4bbcc; border-radius: 8px; cursor: pointer;
+            font-family: inherit; white-space: nowrap; min-height: 32px;
+        }
+        .tx-filters-toggle:hover { border-color: var(--accent); color: #e0e4ee; }
+        .tx-filters-toggle[aria-expanded="true"] { color: #e0e4ee; border-color: #6b7184; }
+        .tx-filters-toggle[data-active="1"] { border-color: var(--accent); }
+        .tx-filters-toggle-count {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 16px; height: 16px; padding: 0 4px;
+            font-size: 10px; font-weight: 700; line-height: 1;
+            background: var(--accent); color: #1a1a1a; border-radius: 999px;
+        }
+        .tx-filters-toggle-count[hidden] { display: none; }
+        /* Block (not flex-column) so the chip-strip's `flex:1 1 0` keeps governing
+           WIDTH inside its own flex context, not the sheet's height. */
+        .tx-filter-sheet { margin-top: 8px; }
+        .tx-filter-sheet[hidden] { display: none; }
+        .tx-filter-sheet > .tx-chip-strip { margin-bottom: 4px; }
         /* Active-filter pills above the grid — each pill is a tappable
            remove button. Click to clear that single filter. Zero render
            when no filter is active. */
@@ -4910,6 +4943,24 @@
             background: #243756; border-color: #5d7eb0;
         }
         .story-tutorial-continue:active { transform: translateY(1px); }
+        /* Phone — a long (3-paragraph) tutorial scene with a 180px sprite can
+           overflow a short viewport when centred, pushing the Continue button or
+           the first lines off-screen. Top-align + scroll the overlay, shrink the
+           sprite, and clear the notch / home indicator so every line and the
+           Continue button stay reachable. Copy is unchanged. */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .story-tutorial-overlay {
+                justify-content: flex-start;
+                overflow-y: auto; -webkit-overflow-scrolling: touch;
+                gap: 10px;
+                padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+            }
+            .story-tutorial-sprite { width: 120px; height: 120px; flex-shrink: 0; }
+            .story-tutorial-name { font-size: 16px; }
+            .story-tutorial-dialog-host { max-width: 100%; }
+            .story-tutorial-dialog-host .story-dialog-text { font-size: 13px; line-height: 1.6; }
+            .story-tutorial-continue { min-height: 44px; padding: 10px 22px; font-size: 14px; flex-shrink: 0; }
+        }
 
         /* ───── Evolution scene — Gen3-style silhouette → flash → reveal ───── */
         .storyfx-evo-overlay {
@@ -6585,6 +6636,27 @@
                 overflow: visible;
                 -webkit-overflow-scrolling: touch;
             }
+            /* ── Shared facility phone utilities ──────────────────────────────
+               Opt-in classes so every facility list/grid gets the same phone
+               treatment without per-screen bespoke rules. Desktop is unchanged
+               (these live inside the portrait phone media query). */
+            /* Single-column grid — generalises the good #story-shop-grid rule below. */
+            .story-facility-grid--phone-1col {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+                padding: 10px !important;
+            }
+            /* Stack a cramped multi-button row into full-width 44px taps. */
+            .story-facility-btn-row--stack {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 8px !important;
+            }
+            .story-facility-btn-row--stack > button {
+                width: 100% !important;
+                min-height: 44px !important;
+                margin-left: 0 !important;
+            }
             /* Story shop: one column on narrow portrait, with larger touch targets.
                Buy button bumped to ~40px tap height (was ~24px) so accidental adjacent
                taps are no longer reported. */
@@ -6592,6 +6664,14 @@
                 grid-template-columns: 1fr !important;
                 gap: 10px !important;
                 padding: 10px !important;
+            }
+            /* Stone shop: single column + last-card clearance, mirroring the mart grid.
+               (Its inline grid uses minmax(220px,1fr) with no phone override.) */
+            #story-stone-shop-grid {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+                padding: 10px !important;
+                padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
             }
             .story-shop-item { padding: 12px 14px !important; }
             .story-shop-item h4 { font-size: 13px !important; }
@@ -6607,6 +6687,13 @@
             .story-artifact-card { padding: 12px 14px !important; }
             .story-artifact-card h4 { font-size: 14px !important; }
             .story-artifact-card .desc { font-size: 12px !important; line-height: 1.45 !important; }
+            /* Cable Link: the 3–6 trade-action buttons were a cramped 10px wrap.
+               Stack them full-width at a real 44px tap height with readable text. */
+            .story-link-btns { flex-direction: column !important; gap: 8px !important; }
+            .story-link-btn {
+                width: 100% !important; min-height: 44px !important;
+                font-size: 13px !important; padding: 10px 12px !important;
+            }
             /* Tutor: bigger tutor option buttons, sticky mon header when expanded so the
                player always knows which mon they are editing while scrolling moves. */
             .story-tutor-mon-toggle { padding: 12px 14px !important; min-height: 56px; }
@@ -6681,6 +6768,23 @@
             .tx-slot-meta { font-size: 9px !important; }
             .tx-card { padding: 9px 11px !important; gap: 5px !important; }
             .tx-card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; font-size: 10px !important; }
+            /* Move Tutor / Battle Dojo / Nature option cards — denser on phone so
+               several options fit on screen at once (a single card was nearly
+               filling the viewport). CSS-only; the card markup is frozen by the
+               snapshot test, so this only tightens spacing/sizes, never structure.
+               Scoped to #story-tutor-team so EV / Evolution cards keep their layout. */
+            #story-tutor-team .tx-card { padding: 6px 9px !important; gap: 3px !important; border-radius: 6px !important; }
+            #story-tutor-team .tx-card-head { font-size: 12px !important; gap: 5px !important; }
+            #story-tutor-team .tx-card-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                font-size: 9px !important; gap: 1px 8px !important;
+            }
+            #story-tutor-team .tx-card-stats > span { white-space: nowrap !important; }
+            /* One-line description keeps each card compact; the full text still
+               shows in the confirm preview / move tooltip. */
+            #story-tutor-team .tx-card-desc { -webkit-line-clamp: 1 !important; font-size: 9px !important; line-height: 1.35 !important; }
+            #story-tutor-team .tx-card-foot { padding-top: 2px !important; gap: 4px !important; }
+            #story-tutor-team .tx-grid { gap: 6px !important; }
             .tx-confirm-bar { padding: 8px 10px !important; gap: 8px !important; }
             .tx-confirm-bar-text { font-size: 11px !important; flex-basis: 100% !important; }
             .tx-confirm-bar-btn { min-height: 38px !important; padding: 8px 12px !important; font-size: 12px !important; flex: 1 1 0; }
@@ -6697,10 +6801,15 @@
             #story-evtrainer-team > div:first-child {
                 font-size: 11px !important; padding: 8px 10px !important; line-height: 1.45 !important;
             }
-            /* Stack the sticky toolbar below the sticky mon-switcher pill bar
-               so both stay visible as the player scrolls the option grid.
-               Switcher is ~50px tall on phone (38-40px pill + 5px padding × 2). */
-            .tx-toolbar { top: 52px !important; z-index: 3 !important; }
+            /* Phone restructure — un-stick the toolbar. With the chip rows folded
+               behind the "Filters" toggle, the toolbar is just a compact search +
+               sort + Filters band that does not need to stay pinned while scrolling
+               a 30+ card grid, and un-pinning reclaims the ~52px the grid used to lose
+               to the sticky offset. The mon-switcher pill bar (top:0) still pins so the
+               player knows which mon is open, and the confirm bar still pins at the
+               bottom — two sticky bands instead of three, so the option grid owns the
+               viewport. (Desktop keeps the sticky toolbar from the base .tx-toolbar rule.) */
+            .tx-toolbar { position: static !important; top: auto !important; backdrop-filter: none !important; }
             /* Nature Rater: bigger tap targets for the 5×5 grid + neutral row */
             .tx-nature-cell { min-height: 44px !important; padding: 8px 4px !important; }
             .tx-nature-cell-name { font-size: 12px !important; }
@@ -53350,7 +53459,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="desc" style="font-size:10px;color:#aaa;line-height:1.35;margin-bottom:6px;min-height:26px;">${it.desc}</div>
                     <div class="story-shop-item-bottom" style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
                         <div>${ownedBadge}</div>
-                        <div style="display:flex;align-items:center;">${buyBtn}${tokenBtn}</div>
+                        <div class="story-facility-btn-row--stack" style="display:flex;align-items:center;">${buyBtn}${tokenBtn}</div>
                     </div>
                 </div>`);
             }
@@ -56113,9 +56222,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
             try { updateHUD && updateHUD(); } catch (e) {}
             try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.7); } catch (e) {}
-            const statLabel = PERM_BOOST_STAT_LABEL[vit.stat] || vit.stat;
-            const atCapMsg = (newIV >= IV_MAX) ? ' (max)' : '';
-            try { window.showGameAlert && window.showGameAlert(`${mon.name}'s ${statLabel} IV rose by ${IV_VITAMIN_STEP}! (${curIV} → ${newIV}/${IV_MAX}${atCapMsg})`); } catch (e) {}
+            // No per-use confirmation box: players apply vitamins in bulk, so a
+            // blocking modal on every step was an annoyance to dismiss repeatedly.
+            // Feedback is non-blocking instead — the stat-up chime above plus the
+            // live IV-bar refresh (Fan Club roster) / picker re-render below.
             // Two entry points share this function: the bag's vitamin picker
             // (modal-story-bag open) and the Fan Club roster (screen, modal
             // closed). Only re-open the bag flow when we came from it —
@@ -58001,6 +58111,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dojoTab: 'item',
             // "Type ▾" type-filter expansion open/closed (moves picker)
             typeMenuOpen: false,
+            // Filter sheet (chips + type-menu + tier chips) collapsed/expanded.
+            // Default OPEN so desktop UX (and the jsdom suites, which read the DOM
+            // regardless of CSS visibility) are unchanged; the phone win comes from
+            // the un-stuck toolbar (the sheet just lets phone users hide the chip
+            // rows to give the option grid the viewport). Active filters always stay
+            // visible as removable pills above the grid via _txActiveFiltersHtml.
+            filtersOpen: true,
             // shared text search (kept per facility kind)
             search: { moves: '', items: '', abilities: '', natures: '' },
             // filter sets: types (Set of type names), cats (Set of categories), itemCat (string or 'all'), natureUp (stat or 'any')
@@ -59758,6 +59875,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
+                // "Filters" sheet toggle — collapse/expand the chip rows (quick /
+                // type / tier chips + the Type ▾ menu) so the option grid can own
+                // the viewport on phone. Active filters still show as pills above
+                // the grid, so a collapsed sheet never hides what's applied.
+                const filtersBtn = t.closest('[data-filters-toggle]');
+                if (filtersBtn) {
+                    _txState.filtersOpen = !_txState.filtersOpen;
+                    void renderTutorTeam(true);
+                    return;
+                }
+
                 // "Type ▾" menu toggle (moves picker) — collapse/expand the type-filter row.
                 const typeMenuBtn = t.closest('[data-typemenu-toggle]');
                 if (typeMenuBtn) {
@@ -59993,12 +60121,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const leadingChips = opts.leadingChipsHtml
                 ? `<span class="tx-search-row-rec">${opts.leadingChipsHtml}</span>`
                 : '';
-            const chipsRow = hasChips
-                ? `<div class="tx-chips-row">
-                        <div class="tx-chip-strip" role="tablist" aria-label="Filters">${opts.chipsHtml}</div>
-                        <div class="tx-chip-strip-end">${sortHtml}</div>
-                    </div>`
-                : (showSort ? `<div class="tx-chips-row tx-chips-row--sort-only">${sortHtml}</div>` : '');
+            // Phone restructure — the chip rows (quick / type / tier chips + the
+            // Type ▾ menu) live inside a collapsible ".tx-filter-sheet" so the option
+            // grid can own the viewport on phone. An always-visible controls row holds
+            // the "Filters (N)" toggle (left) and the sort selector (right). Active
+            // filters still surface as removable pills above the grid via
+            // _txActiveFiltersHtml, so a collapsed sheet never hides what's applied.
+            // The sheet stays a descendant of #story-tutor-team and keeps the
+            // .tx-chip-strip / .tx-typemenu-row class names the click handler, fast
+            // path (_txMoveGridFastUpdate), and jsdom suites look up.
+            const hasFilterSheet = hasChips || !!opts.belowChipsHtml;
+            const sheetOpen = _txState.filtersOpen !== false;
+            const filtersToggle = hasFilterSheet
+                ? `<button type="button" class="tx-filters-toggle" data-filters-toggle data-active="${activeN?1:0}" aria-expanded="${sheetOpen?'true':'false'}" title="Show or hide filters">Filters<span class="tx-filters-toggle-count"${activeN?'':' hidden'}>${activeN||''}</span></button>`
+                : '';
+            const controlsRow = (filtersToggle || showSort)
+                ? `<div class="tx-controls-row">${filtersToggle}<div class="tx-controls-row-end">${sortHtml}</div></div>`
+                : '';
+            const chipStrip = hasChips
+                ? `<div class="tx-chip-strip" role="tablist" aria-label="Filters">${opts.chipsHtml}</div>`
+                : '';
+            const filterSheet = hasFilterSheet
+                ? `<div class="tx-filter-sheet"${sheetOpen ? '' : ' hidden'}>${chipStrip}${opts.belowChipsHtml || ''}</div>`
+                : '';
             return `<div class="tx-toolbar">
                 <div class="tx-search-row">
                     <input type="search" class="tx-search-input" data-kind="${kind}" placeholder="${_esc(placeholder)}" value="${_esc(search)}" autocomplete="off" />
@@ -60006,8 +60151,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${countHtml}
                     ${clearBtn}
                 </div>
-                ${chipsRow}
-                ${opts.belowChipsHtml || ''}
+                ${controlsRow}
+                ${filterSheet}
             </div>`;
         }
 
@@ -60934,6 +61079,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     const html = _txMoveTypeMenuRowHtml(availTypes);
                     if (html) menuRow.outerHTML = html; else menuRow.remove();
+                }
+                // Keep the "Filters (N)" toggle's active-count badge in sync — a chip
+                // filter change runs the fast path (no full toolbar rebuild).
+                const ftBtn = body.querySelector('[data-filters-toggle]');
+                if (ftBtn) {
+                    const an = _txActiveFilterCount('moves');
+                    ftBtn.setAttribute('data-active', an ? '1' : '0');
+                    const cnt = ftBtn.querySelector('.tx-filters-toggle-count');
+                    if (cnt) { cnt.textContent = an || ''; cnt.hidden = !an; }
                 }
                 // Active-filter pills above the grid (insert before the recs panel / grid).
                 const af = body.querySelector('.tx-active-filters');
