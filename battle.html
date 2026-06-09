@@ -40270,6 +40270,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campMarkDone: (...a) => _campMarkDone(...a),
                     campSearchGrass: (...a) => _campSearchGrass(...a),
                     campGrassKey: (...a) => _campGrassKey(...a),
+                    campBattleTheme: (...a) => _campBattleTheme(...a),
+                    campHeadBack: (...a) => _campHeadBack(...a),
+                    campBackCityIndex: (...a) => _campBackCityIndex(...a),
+                    campBondHexSvg: (...a) => _campBondHexSvg(...a),
+                    proceedToNextBattle: () => proceedToNextBattle(),
                     campAwardBond: (...a) => campAwardBond(...a),
                     campPickMicrogame: (...a) => campPickMicrogame(...a),
                     campMasteredPaths: (...a) => campMasteredPaths(...a),
@@ -40278,7 +40283,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campFavourite: (...a) => campFavourite(...a),
                     campScoreTapTiming: (...a) => _campScoreTapTiming(...a),
                     campScoreHoldRelease: (...a) => _campScoreHoldRelease(...a),
+                    campScoreMash: (...a) => _campScoreMash(...a),
+                    campScorePickMatch: (...a) => _campScorePickMatch(...a),
+                    campScoreDragAim: (...a) => _campScoreDragAim(...a),
+                    campScoreSwipeCover: (...a) => _campScoreSwipeCover(...a),
+                    campScoreTrack: (...a) => _campScoreTrack(...a),
+                    campScoreRestraint: (...a) => _campScoreRestraint(...a),
+                    campScoreSequence: (...a) => _campScoreSequence(...a),
                     campRunMicrogame: (...a) => _campRunMicrogame(...a),
+                    get CAMP_PRIMITIVES() { return _CAMP_PRIMITIVES; },
                     get CAMP_ACTIONS() { return CAMP_ACTIONS; },
                     get CAMP_MICROGAMES() { return CAMP_MICROGAMES; },
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
@@ -44506,7 +44519,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const routeBlockedByIntros = _introsPending
                 && !routeBlockedByMysteryGate && !routeBlockedByProfessor && !gymRoutePending;
             if (actions.includes('Leave City')) {
-                if (gymRoutePending) {
+                if (sm.campReturnPoint) {
+                    // Revisiting a prior town via the camp round-trip — the only forward action
+                    // is to return to where we left (→ proceedToNextBattle restores the point).
+                    _push('quest', makeActionBtn('↩ Back to the road','route','window.StoryMode.proceedToNextBattle()','primary'));
+                } else if (gymRoutePending) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
                 } else if (routeBlockedByMysteryGate) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
@@ -47893,6 +47910,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
+            // Camp round-trip return (CAMP_FLOW §5): if the player went back to a prior city from
+            // camp, "↩ Back to the road" restores the saved point and resumes — camp re-fires at
+            // the top of enterBattleEvent (its gate wasn't stamped), dropping them back at the fire.
+            if (sm.campReturnPoint && typeof sm.campReturnPoint.eventIndex === 'number') {
+                const back = sm.campReturnPoint.eventIndex | 0;
+                sm.campReturnPoint = null;
+                sm.eventIndex = back;
+                try { save(); } catch (e) {}
+                const ev = STORY_EVENTS_RAW[back];
+                if (ev && ev[1] === 'Battle') { enterBattleEvent(ev); return; }
+                processNextEvent(); return;
+            }
             // Re-entry guard — see _storyBattleEntryBusy. Blocks a second entry while a cold-open /
             // interrupt from the first is still on screen (which would stack duplicate overlays).
             if (_storyBattleEntryBusy) { _storyWarnInteractionBusy(); return; }
@@ -48655,14 +48684,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // matches the maintainer's route-rhythm diagram; the predicate is the tuning
         // knob (D8). Minigames (PR D), party sort (PR D) and return-to-city (PR E)
         // plug into the camp menu as they land.
+        // Theme bucket for a battle row (null for non-battles). Drives the camp cadence:
+        // a camp marks a *thematic seam* between consecutive battles. 'route' = an ordinary
+        // Basic/Elite Trainer. (Story-beat-attached battles read as 'route' here; finer
+        // per-beat theming is a later refinement.)
+        function _campBattleTheme(idx) {
+            const ev = STORY_EVENTS_RAW[idx];
+            if (!ev || ev[1] !== 'Battle') return null;
+            const name = String(ev[2] || '');
+            if (/^Gym (Trainer|Leader)/i.test(name)) return 'gym';
+            if (name === 'Rival') return 'rival';
+            if (/^E[1-4]$/.test(name) || name === 'Champion') return 'league';
+            if (/Mystery/i.test(name)) return 'mystery';
+            return 'route';
+        }
+        // Camp interposes between two consecutive BATTLE events when it reads as a beat
+        // boundary: either an ordinary route→route stretch (the original cadence) OR a
+        // THEMATIC SEAM where the theme changes (e.g. rival→route). Never: into/after a city
+        // (the city's send-off / arrival own that boundary — a null theme), mid-gym or into a
+        // gym, into OR out of a climax (league/mystery — their cold-opens carry the moment),
+        // or during an off-timeline Crucible battle. (CAMP_FLOW §2 / D8 — thematic refinement.)
         function _campIsDueForTransition(destIdx) {
-            if (sm.crucibleBattleSource) return false;       // Crucible/Frontier/Mystery/Pit — off-timeline
-            const cur = STORY_EVENTS_RAW[destIdx];
-            const prev = STORY_EVENTS_RAW[destIdx - 1];
-            if (!cur || !prev) return false;
-            if (cur[1] !== 'Battle' || prev[1] !== 'Battle') return false;
-            if (_storyEventIsIconicFight(cur[2]) || _storyEventIsIconicFight(prev[2])) return false;
-            return true;
+            if (sm.crucibleBattleSource) return false;
+            const curT = _campBattleTheme(destIdx);
+            const prevT = _campBattleTheme(destIdx - 1);
+            if (!curT || !prevT) return false;                            // both endpoints must be battles
+            if (curT === 'gym' || prevT === 'gym') return false;          // never mid-gym / into a gym
+            if (curT === 'league' || curT === 'mystery') return false;    // preserve the climax cold-opens
+            if (prevT === 'league' || prevT === 'mystery') return false;  // …and don't camp right after one
+            return (curT !== prevT) || (curT === 'route');                // a thematic seam, or a route→route stretch
         }
         function _campDone(destIdx) {
             const e = sm.campByEventIdx && sm.campByEventIdx[String(destIdx)];
@@ -48684,12 +48734,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // deliberately mild; the edgier cruel/romance variants (D10) need the
         // maintainer's copy pass before shipping.
         const CAMP_ACTIONS = {
-            cheer:    { path: 'praise',     label: '😊 Cheer',         games: ['clap'] },
-            feed:     { path: 'nurture',    label: '😊 Feed & Groom',  games: ['catch'] },
-            drill:    { path: 'discipline', label: '😠 Drill',         games: ['hold'] },
-            stare:    { path: 'intimidate', label: '😠 Cold Stare',    games: ['dontblink'] },
-            mirror:   { path: 'mimicry',    label: '🤪 Mirror',        games: ['tickle'] },
-            stargaze: { path: 'devotion',   label: '💗 Stargaze',      games: ['holdclose'] },
+            cheer:    { path: 'praise',     label: '😊 Cheer',         games: ['clap', 'pump', 'pose'] },
+            feed:     { path: 'nurture',    label: '😊 Feed & Groom',  games: ['catch', 'feed', 'brush'] },
+            drill:    { path: 'discipline', label: '😠 Drill',         games: ['hold', 'block', 'march'] },
+            stare:    { path: 'intimidate', label: '😠 Cold Stare',    games: ['dontblink', 'loom', 'withhold'] },
+            mirror:   { path: 'mimicry',    label: '🤪 Mirror',        games: ['tickle', 'copy', 'sync'] },
+            stargaze: { path: 'devotion',   label: '💗 Stargaze',      games: ['holdclose', 'whisper', 'gaze'] },
         };
         const CAMP_MICROGAMES = {
             clap:      { primitive: 'tapTiming',   name: 'Clap!',        instr: 'Tap when the marker is in the green!',                rounds: 2, zoneHalf: 0.13 },
@@ -48698,6 +48748,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             hold:      { primitive: 'holdRelease', name: 'Hold!',        instr: 'Hold the stance — release in the green band.',         green: 0.60, overdoAt: 0.90 },
             dontblink: { primitive: 'holdRelease', name: "Don't Blink!", instr: 'Hold the stare — release before it curdles.',          green: 0.62, overdoAt: 0.92 },
             holdclose: { primitive: 'holdRelease', name: 'Hold Close!',  instr: 'Linger close… release in the green, not a beat too long.', green: 0.58, overdoAt: 0.88 },
+            // — pool expansion to 18 (the other 12). Mild copy pending the maintainer's tone pass (D10). —
+            pump:      { primitive: 'mash',       name: 'Pump!',      instr: 'Mash to fill the hype bar!',                  target: 18, ms: 3200 },
+            pose:      { primitive: 'pickMatch',  name: 'Pose!',      instr: 'Strike the matching victory pose!',           choices: ['💪','✌️','🙌','🤩'] },
+            feed:      { primitive: 'dragAim',    name: 'Feed!',      instr: 'Drag the treat to its mouth!',                radius: 46 },
+            brush:     { primitive: 'swipeCover', name: 'Brush!',     instr: 'Swipe to groom every spot!',                  spots: 5 },
+            block:     { primitive: 'tapTiming',  name: 'Block!',     instr: 'Tap to block each hit in the green!',         rounds: 3, zoneHalf: 0.12 },
+            march:     { primitive: 'mash',       name: 'March!',     instr: 'Keep the pace — tap to the beat!',            target: 14, ms: 3200 },
+            loom:      { primitive: 'track',      name: 'Loom!',      instr: 'Creep closer — keep the cursor on the mark.',  needFrac: 0.60, ms: 2600 },
+            withhold:  { primitive: 'restraint',  name: 'Withhold!',  instr: "Resist the puppy-eyes — DON'T tap the treat.", ms: 2600 },
+            copy:      { primitive: 'sequence',   name: 'Copy!',      instr: 'Watch, then repeat the sequence.',            len: 3 },
+            sync:      { primitive: 'track',      name: 'Sync!',      instr: 'Match its movement — stay on the mark.',       needFrac: 0.62, ms: 2600 },
+            whisper:   { primitive: 'dragAim',    name: 'Whisper!',   instr: 'Trace the heart — drag to the spot.',         radius: 44 },
+            gaze:      { primitive: 'track',      name: 'Gaze!',      instr: 'Hold eye contact as it drifts.',              needFrac: 0.58, ms: 2800 },
         };
         // Title rules — first match wins (most-specific first). Cosmetic, no mechanics.
         const CAMP_TITLES = [
@@ -48800,6 +48863,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let cidx = 0; try { cidx = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
             _showWanderScreen(key, cidx, () => _campDefer(() => _campOpenMenu(ctx)), false);
         }
+        // Camp round-trip (CAMP_FLOW §5, D7 = free): jump eventIndex back to the most recent
+        // city, stash the return point, and open that city's hub. The city was already arrived
+        // at (citiesArrived gates first-arrival cinematics/wander), so the revisit is quiet.
+        // "↩ Back to the road" in the city (→ proceedToNextBattle) restores campReturnPoint and
+        // drops the player back at this camp.
+        function _campBackCityIndex(ctx) {
+            let back = -1; try { back = lastStoryCityEventIndexAtOrBefore(ctx.destIdx); } catch (e) { back = -1; }
+            return (typeof back === 'number' && back >= 0 && back < (ctx.destIdx | 0)) ? back : -1;
+        }
+        function _campHeadBackName(ctx) {
+            const back = _campBackCityIndex(ctx);
+            if (back < 0) return null;
+            try { return getStoryDisplayTownNameForCityRow(STORY_EVENTS_RAW[back]) || 'town'; } catch (e) { return 'town'; }
+        }
+        function _campHeadBack(ctx) {
+            const back = _campBackCityIndex(ctx);
+            if (back < 0) { _campOpenMenu(ctx); return; }
+            sm.campReturnPoint = { eventIndex: ctx.destIdx | 0 };
+            sm.eventIndex = back;
+            try { save(); } catch (e) {}
+            try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            enterCity();
+        }
         function _campOpenMenu(ctx) {
             const lead = (sm.team || []).find(s => s && !s.isEgg);
             const leadName = (lead && lead.name) ? _esc(lead.name) : 'your team';
@@ -48812,6 +48898,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _grassDone = !!(sm.wanderByEventIdx && (sm.wanderByEventIdx[_campGrassKey(ctx)] || {}).done);
             if (sm && sm.active && !_grassDone) {
                 options.push({ label: '🌿  Search the tall grass', onPick: () => _campDefer(() => _campSearchGrass(ctx)) });
+            }
+            // 🏙 Head back to the previous town — free round-trip (CAMP_FLOW §5 / D7).
+            const _backName = _campHeadBackName(ctx);
+            if (sm && sm.active && _backName) {
+                options.push({ label: `🏙  Head back to ${_esc(_backName)}`, onPick: () => _campDefer(() => _campHeadBack(ctx)) });
             }
             options.push({ label: '▶▶  Break camp', onPick: () => _campBreak(ctx) });
             _storyScene([{
@@ -48856,6 +48947,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return rows;
         }
+        // SVG bond hexagon: a 6-spoke radar, each spoke = bonds[path] / threshold (a full spoke
+        // = mastered), tone-coloured per path. Pure (slot → markup). BONDING_RELATIONSHIPS §9.
+        function _campBondHexSvg(slot, size) {
+            size = size || 132;
+            const cx = size / 2, cy = size / 2, R = size / 2 - 16;
+            const order = ['praise', 'intimidate', 'devotion', 'nurture', 'mimicry', 'discipline'];
+            const TONE = { praise: '#aed581', nurture: '#aed581', discipline: '#ef9a9a', intimidate: '#ef9a9a', mimicry: '#ce93d8', devotion: '#f48fb1' };
+            const pt = (i, r) => { const a = -Math.PI / 2 + i * (Math.PI / 3); return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+            const guide = [], vals = []; let spokes = '', dots = '';
+            for (let i = 0; i < 6; i++) {
+                const pid = order[i];
+                const [gx, gy] = pt(i, R);
+                guide.push(`${gx.toFixed(1)},${gy.toFixed(1)}`);
+                spokes += `<line x1="${cx}" y1="${cy}" x2="${gx.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#2e4a52" stroke-width="1"/>`;
+                const v = Math.max(0, Math.min(1, (((slot.bonds && slot.bonds[pid]) | 0) || 0) / Math.max(1, bondThreshold(pid, slot))));
+                const [vx, vy] = pt(i, R * v);
+                vals.push(`${vx.toFixed(1)},${vy.toFixed(1)}`);
+                const mastered = v >= 1;
+                dots += `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="${mastered ? 3.2 : 2}" fill="${TONE[pid]}" opacity="${mastered ? 1 : 0.55}"/>`;
+            }
+            return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="display:block;">`
+                + `<polygon points="${guide.join(' ')}" fill="none" stroke="#2e4a52" stroke-width="1"/>` + spokes
+                + `<polygon points="${vals.join(' ')}" fill="rgba(255,213,79,0.18)" stroke="#ffd54f" stroke-width="1.5"/>` + dots + `</svg>`;
+        }
         function _campMon(ctx, slotIndex) {
             const slot = sm.team[slotIndex];
             if (!slot || slot.isEgg) { _campRoster(ctx); return; }
@@ -48869,8 +48984,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             options.push({ label: '← Back', onPick: () => _campDefer(() => _campRoster(ctx)) });
             _storyScene([{
                 id: 'camp-mon', title: `⛺  ${_esc(slot.name)}${title ? ' · ' + _esc(title) : ''}`, accent: _CAMP_ACCENT,
-                html: `<div style="margin-bottom:10px;">${_campBondMeterHtml(slot)}</div>
-                       <div style="font-size:11px;opacity:0.8;">Spend time together — each win deepens one bond (+5% to its stat once mastered).</div>`,
+                html: `<div style="display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;">
+                           <div>${_campBondHexSvg(slot, 132)}</div>
+                           <div style="flex:1;min-width:210px;">${_campBondMeterHtml(slot)}</div>
+                       </div>
+                       <div style="font-size:11px;opacity:0.8;margin-top:8px;">Spend time together — each win deepens one bond (+5% to its stat once mastered).</div>`,
                 options,
             }], null, _CAMP_SCENE_ID);
         }
@@ -48910,14 +49028,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 'loses the thread and shakes it off.';
         }
 
-        // ── Input toolkit (phase-1: 2 primitives → all 6 games) ───────────────
+        // ── Input toolkit (9 primitives → the 18 micro-games) ─────────────────
         // Each builds its own overlay, runs, then calls onResult(won). The win/lose
-        // decision is the pure _campScore* helper (tested); the DOM is the wrapper.
+        // decision is a pure _campScore* helper (tested); the DOM is the wrapper. The
+        // interactive FEEL (tap windows, hold bands, track tolerances) is data-tunable
+        // per game and wants a maintainer playtest pass.
+        const _CAMP_PRIMITIVES = {
+            tapTiming:  (g, d) => _campTapTiming(g, d),
+            holdRelease:(g, d) => _campHoldRelease(g, d),
+            mash:       (g, d) => _campMash(g, d),
+            pickMatch:  (g, d) => _campPickMatch(g, d),
+            dragAim:    (g, d) => _campDragAim(g, d),
+            swipeCover: (g, d) => _campSwipeCover(g, d),
+            track:      (g, d) => _campTrack(g, d),
+            restraint:  (g, d) => _campRestraint(g, d),
+            sequence:   (g, d) => _campSequence(g, d),
+        };
         function _campRunMicrogame(game, onResult) {
             const done = (won) => { try { onResult(!!won); } catch (e) { console.warn('[Camp] microgame result', e); } };
             try {
-                if (game.primitive === 'tapTiming') return _campTapTiming(game, done);
-                if (game.primitive === 'holdRelease') return _campHoldRelease(game, done);
+                const fn = game && _CAMP_PRIMITIVES[game.primitive];
+                if (fn) return fn(game, done);
             } catch (e) { console.warn('[Camp] microgame run', e); }
             done(true); // unknown primitive: never soft-lock the player — treat as a freebie
         }
@@ -49003,6 +49134,186 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             holdBtn.addEventListener('mouseup', release);
             holdBtn.addEventListener('touchend', release, { passive: false });
             holdBtn.addEventListener('mouseleave', release);
+        }
+
+        // — pure win/lose deciders for the expanded toolkit (unit-tested) —
+        function _campScoreMash(taps, target) { return (taps | 0) >= (target | 0); }
+        function _campScorePickMatch(picked, answer) { return picked === answer; }
+        function _campScoreDragAim(x, y, tx, ty, radius) { return Math.hypot(x - tx, y - ty) <= radius; }
+        function _campScoreSwipeCover(covered, total) { return (covered | 0) >= (total | 0); }
+        function _campScoreTrack(onMs, needMs) { return (onMs || 0) >= (needMs || 0); }
+        function _campScoreRestraint(tapped) { return !tapped; }
+        function _campScoreSequence(input, target) {
+            if (!Array.isArray(input) || !Array.isArray(target) || input.length !== target.length) return false;
+            for (let i = 0; i < target.length; i++) if (input[i] !== target[i]) return false;
+            return true;
+        }
+
+        // mash — tap `target` times before `ms` expires (pump, march).
+        function _campMash(game, done) {
+            const target = Math.max(1, (game.target | 0) || 15);
+            const ms = Math.max(800, (game.ms | 0) || 3000);
+            const ov = _campMicrogameShell(game, `
+                <div style="position:relative;width:min(360px,80vw);height:26px;background:#10242a;border:1px solid #2e6e7a;border-radius:13px;overflow:hidden;">
+                    <div id="camp-ms-fill" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:#ffd54f;"></div>
+                </div>
+                <button type="button" id="camp-ms-btn" style="padding:14px 40px;background:#ffd54f;color:#001b1e;border:none;font-weight:bold;font-size:16px;cursor:pointer;font-family:inherit;border-radius:8px;touch-action:manipulation;user-select:none;">MASH!</button>
+                <div id="camp-ms-time" style="font-size:11px;color:#9fb;opacity:0.8;"></div>`);
+            const fillEl = ov.querySelector('#camp-ms-fill'), timeEl = ov.querySelector('#camp-ms-time');
+            let taps = 0, raf = 0, finished = false; const start = _campNow();
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const loop = () => {
+                if (finished) return;
+                const left = ms - (_campNow() - start);
+                timeEl.textContent = Math.max(0, left / 1000).toFixed(1) + 's';
+                if (left <= 0) { settle(_campScoreMash(taps, target)); return; }
+                raf = _camp_raf(loop);
+            };
+            ov.querySelector('#camp-ms-btn').onclick = () => {
+                if (finished) return;
+                taps++; fillEl.style.width = Math.min(100, (taps / target) * 100) + '%';
+                if (taps >= target) settle(true);
+            };
+            loop();
+        }
+
+        // pickMatch — tap the choice matching the shown target (pose).
+        function _campPickMatch(game, done) {
+            const choices = (Array.isArray(game.choices) && game.choices.length) ? game.choices : ['💪', '✌️', '🙌', '🤩'];
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const answer = choices[Math.floor(rng() * choices.length)] || choices[0];
+            const btns = choices.map((c, i) => `<button type="button" data-camp-pm="${i}" style="font-size:30px;padding:10px 16px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;">${c}</button>`).join('');
+            const ov = _campMicrogameShell(game, `<div style="font-size:13px;color:#aed581;">Match this pose:</div><div style="font-size:46px;line-height:1;">${answer}</div><div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">${btns}</div>`);
+            let finished = false;
+            const settle = (won) => { if (finished) return; finished = true; if (ov.parentNode) ov.remove(); done(won); };
+            ov.querySelectorAll('[data-camp-pm]').forEach(b => { b.onclick = () => settle(_campScorePickMatch(choices[parseInt(b.getAttribute('data-camp-pm'), 10)], answer)); });
+        }
+
+        // dragAim — drag the token onto the target, release within radius (feed, whisper).
+        function _campDragAim(game, done) {
+            const radius = Math.max(20, (game.radius | 0) || 44);
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const tX = 22 + rng() * 56, tY = 12 + rng() * 26;
+            const ov = _campMicrogameShell(game, `
+                <div id="camp-da-field" style="position:relative;width:min(360px,84vw);height:240px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;">
+                    <div id="camp-da-target" style="position:absolute;width:${radius * 2}px;height:${radius * 2}px;border:2px dashed #aed581;border-radius:50%;left:calc(${tX}% - ${radius}px);top:calc(${tY}% - ${radius}px);"></div>
+                    <div id="camp-da-token" style="position:absolute;left:50%;top:78%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#ffd54f;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:grab;touch-action:none;">🍓</div>
+                </div>`);
+            const field = ov.querySelector('#camp-da-field'), targetEl = ov.querySelector('#camp-da-target'), token = ov.querySelector('#camp-da-token');
+            let finished = false, dragging = false;
+            const settle = (won) => { if (finished) return; finished = true; if (ov.parentNode) ov.remove(); done(won); };
+            const xy = (e) => { const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e; return { x: t.clientX, y: t.clientY }; };
+            const begin = (e) => { if (e && e.preventDefault) e.preventDefault(); dragging = true; };
+            const move = (e) => {
+                if (!dragging || finished) return;
+                const r = field.getBoundingClientRect(), p = xy(e);
+                token.style.left = ((p.x - r.left) / r.width * 100) + '%'; token.style.top = ((p.y - r.top) / r.height * 100) + '%';
+            };
+            const end = (e) => {
+                if (!dragging || finished) return; dragging = false;
+                const tr = targetEl.getBoundingClientRect(), p = xy(e);
+                settle(_campScoreDragAim(p.x, p.y, tr.left + tr.width / 2, tr.top + tr.height / 2, radius));
+            };
+            token.addEventListener('mousedown', begin); token.addEventListener('touchstart', begin, { passive: false });
+            field.addEventListener('mousemove', move); field.addEventListener('touchmove', move, { passive: false });
+            field.addEventListener('mouseup', end); field.addEventListener('touchend', end, { passive: false }); field.addEventListener('mouseleave', end);
+        }
+
+        // swipeCover — drag across every spot to cover them all (brush).
+        function _campSwipeCover(game, done) {
+            const total = Math.max(1, (game.spots | 0) || 5);
+            const ms = Math.max(1500, (game.ms | 0) || 4500);
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            let spots = '';
+            for (let i = 0; i < total; i++) spots += `<div data-camp-sc="${i}" style="position:absolute;width:34px;height:34px;border-radius:50%;background:#5d4037;border:1px solid #8d6e63;left:${(8 + rng() * 78).toFixed(1)}%;top:${(8 + rng() * 76).toFixed(1)}%;"></div>`;
+            const ov = _campMicrogameShell(game, `<div id="camp-sc-field" style="position:relative;width:min(360px,84vw);height:240px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;">${spots}</div><div id="camp-sc-n" style="font-size:11px;color:#9fb;opacity:0.8;">0 / ${total}</div>`);
+            const field = ov.querySelector('#camp-sc-field'), nEl = ov.querySelector('#camp-sc-n');
+            const covered = new Set(); let dragging = false, finished = false, raf = 0; const start = _campNow();
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const mark = (e) => {
+                if (!dragging || finished) return;
+                const t = (e.touches && e.touches[0]) || e;
+                const el = document.elementFromPoint(t.clientX, t.clientY);
+                const id = el && el.getAttribute && el.getAttribute('data-camp-sc');
+                if (id != null) { covered.add(id); el.style.background = '#aed581'; el.style.borderColor = '#cde8a8'; nEl.textContent = covered.size + ' / ' + total; if (covered.size >= total) settle(true); }
+            };
+            const begin = (e) => { if (e && e.preventDefault) e.preventDefault(); dragging = true; mark(e); };
+            const tick = () => { if (finished) return; if (_campNow() - start > ms) { settle(_campScoreSwipeCover(covered.size, total)); return; } raf = _camp_raf(tick); };
+            field.addEventListener('mousedown', begin); field.addEventListener('touchstart', begin, { passive: false });
+            field.addEventListener('mousemove', mark); field.addEventListener('touchmove', mark, { passive: false });
+            field.addEventListener('mouseup', () => { dragging = false; }); field.addEventListener('touchend', () => { dragging = false; }); field.addEventListener('mouseleave', () => { dragging = false; });
+            tick();
+        }
+
+        // track — keep the cursor on the drifting mark long enough (loom, sync, gaze).
+        function _campTrack(game, done) {
+            const ms = Math.max(1500, (game.ms | 0) || 2600);
+            const needMs = Math.max(400, Math.round(ms * (typeof game.needFrac === 'number' ? game.needFrac : 0.6)));
+            const ov = _campMicrogameShell(game, `<div id="camp-tk-field" style="position:relative;width:min(360px,84vw);height:240px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;"><div id="camp-tk-mark" style="position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,213,79,0.25);border:2px solid #ffd54f;"></div></div><div style="position:relative;width:min(360px,84vw);height:6px;background:#10242a;border-radius:3px;overflow:hidden;"><div id="camp-tk-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:#aed581;"></div></div>`);
+            const field = ov.querySelector('#camp-tk-field'), mk = ov.querySelector('#camp-tk-mark'), bar = ov.querySelector('#camp-tk-bar');
+            let onMs = 0, finished = false, raf = 0, last = _campNow(), px = -1, py = -1; const start = last;
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const move = (e) => { const t = (e.touches && e.touches[0]) || e; const r = field.getBoundingClientRect(); px = t.clientX - r.left; py = t.clientY - r.top; };
+            field.addEventListener('mousemove', move); field.addEventListener('touchmove', move, { passive: false });
+            const loop = () => {
+                if (finished) return;
+                const now = _campNow(), dt = now - last, el = now - start; last = now;
+                const r = field.getBoundingClientRect();
+                const mx = (0.5 + 0.38 * Math.sin(el / 620)) * r.width, my = (0.5 + 0.34 * Math.sin(el / 430 + 1)) * r.height;
+                mk.style.left = (mx - 23) + 'px'; mk.style.top = (my - 23) + 'px';
+                if (px >= 0 && Math.hypot(px - mx, py - my) <= 30) { onMs += dt; mk.style.background = 'rgba(174,213,129,0.42)'; } else mk.style.background = 'rgba(255,213,79,0.25)';
+                bar.style.width = Math.min(100, onMs / needMs * 100) + '%';
+                if (onMs >= needMs) { settle(true); return; }
+                if (el >= ms) { settle(_campScoreTrack(onMs, needMs)); return; }
+                raf = _camp_raf(loop);
+            };
+            loop();
+        }
+
+        // restraint — do NOT tap the treat; wait out the timer to win (withhold).
+        function _campRestraint(game, done) {
+            const ms = Math.max(1200, (game.ms | 0) || 2600);
+            const ov = _campMicrogameShell(game, `<div style="font-size:13px;color:#ef9a9a;">Do NOT tap the treat — just wait…</div><button type="button" id="camp-rs-treat" style="font-size:42px;background:none;border:none;cursor:pointer;">🍖</button><div id="camp-rs-time" style="font-size:11px;color:#9fb;opacity:0.8;"></div>`);
+            const treat = ov.querySelector('#camp-rs-treat'), timeEl = ov.querySelector('#camp-rs-time');
+            let finished = false, raf = 0; const start = _campNow();
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            treat.onclick = () => settle(_campScoreRestraint(true));   // gave in → fail
+            const loop = () => {
+                if (finished) return;
+                const left = ms - (_campNow() - start);
+                timeEl.textContent = Math.max(0, left / 1000).toFixed(1) + 's';
+                treat.style.transform = `translateX(${Math.round(Math.sin(_campNow() / 90) * 6)}px)`;
+                if (left <= 0) { settle(_campScoreRestraint(false)); return; }   // held out → win
+                raf = _camp_raf(loop);
+            };
+            loop();
+        }
+
+        // sequence — Simon-says: watch the flashes, repeat them in order (copy).
+        function _campSequence(game, done) {
+            const len = Math.max(2, (game.len | 0) || 3);
+            const pads = ['#ef9a9a', '#aed581', '#90caf9', '#ffd54f'];
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const target = []; for (let i = 0; i < len; i++) target.push(Math.floor(rng() * pads.length));
+            const padHtml = pads.map((c, i) => `<button type="button" data-camp-sq="${i}" style="width:64px;height:64px;border-radius:10px;background:${c};opacity:0.35;border:2px solid #0a1417;cursor:pointer;"></button>`).join('');
+            const ov = _campMicrogameShell(game, `<div id="camp-sq-msg" style="font-size:13px;color:#aed581;">Watch…</div><div style="display:grid;grid-template-columns:repeat(2,64px);gap:10px;">${padHtml}</div>`);
+            const padEls = Array.from(ov.querySelectorAll('[data-camp-sq]')), msg = ov.querySelector('#camp-sq-msg');
+            let finished = false, accepting = false, k = 0; const input = [];
+            const settle = (won) => { if (finished) return; finished = true; if (ov.parentNode) ov.remove(); done(won); };
+            const flash = (i, cb) => { const el = padEls[i]; if (!el) { cb(); return; } el.style.opacity = '1'; setTimeout(() => { el.style.opacity = '0.35'; setTimeout(cb, 170); }, 350); };
+            const playNext = () => { if (finished) return; if (k >= target.length) { accepting = true; msg.textContent = 'Repeat it!'; return; } flash(target[k], () => { k++; playNext(); }); };
+            padEls.forEach((el, i) => { el.onclick = () => {
+                if (!accepting || finished) return;
+                input.push(i); el.style.opacity = '1'; setTimeout(() => { el.style.opacity = '0.35'; }, 130);
+                const j = input.length - 1;
+                if (input[j] !== target[j]) { settle(false); return; }
+                if (input.length === target.length) settle(_campScoreSequence(input, target));
+            }; });
+            setTimeout(playNext, 420);
         }
 
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {
