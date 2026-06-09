@@ -103,9 +103,19 @@ test('G4: the mini-boss lands on the next GENERIC road6 row instead (Proton, not
         if (RAW[i][1] === 'Battle' && !RESERVED.test(String(RAW[i][2]))) { genIdx = i; break; }
     }
     assert.ok(genIdx > 0, 'road6 has a generic battle row after the Rival');
+    // Forward-spill: mark every inject anchored before road6 as fired (the state
+    // after the player has cleared roads 4–5), so the road6 mini-boss is the
+    // earliest unfired inject — it then lands on this generic row, not the Rival.
+    const firedBefore6 = {};
+    for (const tbl of [ST.MAIN_STORY_BEATS, ST.VILLAIN_STORY_BEATS.rocket, ST.EXTRA_STORY_BEATS.cubone]) {
+        for (const slot of Object.values(tbl)) {
+            if (!slot || !/^(battle|miniBoss|boss|miniRaid|raid)$/.test(slot.kind || '')) continue;
+            if (ST.roadOrdinal(slot.roadAnchor) < 6) firedBefore6[slot.sceneKey] = true;
+        }
+    }
     ST.sm = Object.assign({}, ST.sm, {
         tracks: { main: 'classic_v2', villain: 'rocket', extra: 'cubone' },
-        storyEventsFired: {},
+        storyEventsFired: firedBefore6,
         eventIndex: genIdx,
     });
     const beat = ST.activeBattleBeatForCurrentRow();

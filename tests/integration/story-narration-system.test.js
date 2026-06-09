@@ -175,11 +175,23 @@ test('up-next previews the canon boss the dispatcher will actually swap in', () 
   }
   assert.ok(road7Battle >= 0, 'found a road7 battle row');
 
-  // Stand on road 7 with the rocket arc active and the main road-7 battle beat
-  // already spent → the next active battle beat is the villain boss.
+  // Stand on road 7 with the rocket arc active. Forward-spill hosts the EARLIEST
+  // unfired inject, so to isolate the villain boss we mark every earlier inject
+  // (rocket battle1/battle2/miniBoss + main battle1/battle2) as already spent —
+  // the realistic state once the player has worked roads 4–6. The boss is then
+  // the only remaining inject at the road7 route row.
+  const ordOf = (anchor) => { const m = /^road([1-8])$/.exec(String(anchor || '')); return m ? +m[1] : (anchor === 'league' ? 9 : 0); };
+  const firedInjects = {};
+  for (const tbl of [nt.MAIN_STORY_BEATS, nt.VILLAIN_STORY_BEATS.rocket]) {
+    for (const slot of Object.values(tbl)) {
+      if (!slot || !/^(battle|miniBoss|boss|miniRaid|raid)$/.test(slot.kind || '')) continue;
+      if (slot.sceneKey === 'villain.rocket.boss') continue;
+      if (ordOf(slot.roadAnchor) <= 7) firedInjects[slot.sceneKey] = true;
+    }
+  }
   nt.sm = {
     tracks: { villain: 'rocket', extra: null },
-    storyEventsFired: { 'main.battle2': true },
+    storyEventsFired: firedInjects,
     eventIndex: road7Battle,
     trainerAssignments: {},
   };
