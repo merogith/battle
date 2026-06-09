@@ -41315,6 +41315,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Battle-beat injection (PR-4c).
                     findBeatBySceneKey: (k) => _findBeatBySceneKey(k),
                     activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
+                    injectedBattleBeatForRow: (i) => _injectedBattleBeatForRow(i),
+                    isRouteBattleRow: (i) => _isRouteBattleRow(i),
+                    isLastPreLeagueRouteRow: (i) => _isLastPreLeagueRouteRow(i),
+                    roadOrdinal: (r) => _roadOrdinal(r),
                     // BOSS_CONFIGS live wiring (PR-A).
                     bossMechanicsBattleInit: (s) => _storyBossMechanicsBattleInit(s),
                     bossMechanicsTurnTick: (s, m) => _storyBossMechanicsTurnTick(s, m),
@@ -43706,6 +43710,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (arrayIdx < 0 || arrayIdx >= _ROAD_BY_ARRAY_IDX.length) return null;
             return _ROAD_BY_ARRAY_IDX[arrayIdx];
         }
+        // Road ordering for forward-spill: null→0, road1..road8→1..8, league→9.
+        function _roadOrdinal(road) {
+            if (!road) return 0;
+            if (road === 'league') return 9;
+            const m = /^road([1-8])$/.exec(road);
+            return m ? (+m[1]) : 0;
+        }
+        // A battle row is "in a city" when the nearest City row behind it and the
+        // nearest City/HoF row ahead of it name the SAME city (the arrival→gym→
+        // post-gym sandwich): Gym Trainer / Gym Leader fights. It is "on a route"
+        // when those cities differ (or it precedes the first city, or it is a
+        // League row whose next stop is the Hall of Fame). Story beats — narrative
+        // events AND injected boss/raid fights — only belong on route rows; we have
+        // no design for events that interrupt a player inside a gym.
+        function _isRouteBattleRow(arrayIdx) {
+            const idx = arrayIdx | 0;
+            const cur = STORY_EVENTS_RAW[idx];
+            if (!cur || cur[1] !== 'Battle') return false;
+            let prevCity = null;
+            for (let j = idx - 1; j >= 0; j--) {
+                if (STORY_EVENTS_RAW[j] && STORY_EVENTS_RAW[j][1] === 'City') { prevCity = String(STORY_EVENTS_RAW[j][2] || ''); break; }
+            }
+            let nextCity = null;
+            for (let j = idx + 1; j < STORY_EVENTS_RAW.length; j++) {
+                const r = STORY_EVENTS_RAW[j];
+                if (!r) continue;
+                if (r[1] === 'City') { nextCity = String(r[2] || ''); break; }
+                if (r[1] === 'Hall of Fame') { nextCity = '__HOF__'; break; }
+            }
+            if (prevCity === null) return true;       // before the first city — open road
+            return prevCity !== nextCity;             // differ ⇒ route; same ⇒ inside a city
+        }
+        window._isRouteBattleRow = _isRouteBattleRow;
+        // True when `arrayIdx` is the LAST route battle row whose road is in the
+        // road1..road8 band before the League begins — the flush point where any
+        // beats that haven't found a route row yet are delivered, so nothing
+        // strands and nothing leaks into the League's reserved rows.
+        function _isLastPreLeagueRouteRow(arrayIdx) {
+            const idx = arrayIdx | 0;
+            const road = _roadForArrayIdx(idx);
+            if (_roadOrdinal(road) < 1 || _roadOrdinal(road) > 8) return false;
+            if (!_isRouteBattleRow(idx)) return false;
+            for (let j = idx + 1; j < STORY_EVENTS_RAW.length; j++) {
+                const r = STORY_EVENTS_RAW[j];
+                if (!r || r[1] !== 'Battle') continue;
+                const rd = _roadForArrayIdx(j);
+                if (_roadOrdinal(rd) >= 1 && _roadOrdinal(rd) <= 8 && _isRouteBattleRow(j)) return false;
+            }
+            return true;
+        }
         // Returns ordered unfired event-kind beats for the road, in priority
         // order: main → villain → extra. Battle / boss / raid kinds are filtered
         // out — those fire as pre-battle scenes from the battle-entry hook
@@ -43714,41 +43768,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!road || !sm || !sm.tracks) return [];
             if (!sm.storyEventsFired) sm.storyEventsFired = {};
             const out = [];
+            const roadOrd = _roadOrdinal(road);
             // Current row name — used to honor league beats' sub-anchors so the
             // single coarse 'league' road (E1→Mystery Figure, 8 rows) doesn't
             // drain every league beat at E1.
             const curRow = STORY_EVENTS_RAW[sm.eventIndex | 0];
             const curName = curRow ? String(curRow[2] || '') : '';
+            // Forward-spill: a road's event beats are hosted on that road's ROUTE
+            // battle rows only (never inside a gym). When a road has more beats than
+            // route rows, the overflow stays eligible on the NEXT road's route rows
+            // instead of clumping onto a gym fight or stranding. So a road1..road8
+            // row is eligible for any unfired road-beat whose anchor ordinal is at
+            // or behind the current road. The League band (ordinal 9) is isolated:
+            // its beats fire only at the League via their fireAtEvent sub-anchor,
+            // and earlier road beats never leak into a reserved Elite-Four row.
             const eligible = (slot) => {
                 if (!slot || slot.kind !== 'event') return false;
-                if (slot.roadAnchor !== road) return false;
                 if (sm.storyEventsFired[slot.sceneKey]) return false;
-                // League sub-positioning. firePostHoF beats (event9 lead-in,
-                // mfReveal, ending) are delivered by the post-Hall-of-Fame
-                // climax flow — never road-dispatched. fireAtEvent beats fire
-                // only on their named league row, in narrative order.
+                const slotOrd = _roadOrdinal(slot.roadAnchor);
                 if (road === 'league') {
+                    if (slotOrd !== 9) return false;          // no road1..8 leak into the League
                     if (slot.firePostHoF) return false;
                     if (slot.fireAtEvent && slot.fireAtEvent !== curName) return false;
+                } else {
+                    if (slotOrd < 1 || slotOrd > roadOrd) return false; // this road or an earlier unfired one
                 }
                 // A villain arc's `ending` resolves the arc and must not fire
                 // BEFORE the arc's boss. Both anchor road7, but the boss is
                 // injected at its battle row while event-beats are dumped at the
-                // road's first battle — so the un-gated ending spoils the climax
+                // road's route rows — so the un-gated ending spoils the climax
                 // (the aftermath plays before you fight Giovanni). Defer it until
-                // the boss is fired; it then dumps at the next road battle row,
+                // the boss is fired; it then dumps at the next route row,
                 // immediately after the climax. (Extra-arc endings need no gate —
                 // their raid climax is on a prior road, already fired.)
                 const _vEnd = /^villain\.([a-zA-Z0-9]+)\.ending$/.exec(slot.sceneKey);
                 if (_vEnd && !sm.storyEventsFired['villain.' + _vEnd[1] + '.boss']) return false;
                 return true;
             };
-            for (const slot of Object.values(MAIN_STORY_BEATS)) if (eligible(slot)) out.push(slot);
-            const v = sm.tracks.villain && VILLAIN_STORY_BEATS[sm.tracks.villain];
-            if (v) for (const slot of Object.values(v)) if (eligible(slot)) out.push(slot);
-            const x = sm.tracks.extra && EXTRA_STORY_BEATS[sm.tracks.extra];
-            if (x) for (const slot of Object.values(x)) if (eligible(slot)) out.push(slot);
-            return out;
+            // Collect with a stable track priority, then order by anchor ordinal so
+            // spilled beats drain in narrative order (earliest road first).
+            const TRACK_PRI = { main: 0, villain: 1, extra: 2 };
+            const collect = (beats, pri) => { for (const slot of Object.values(beats || {})) if (eligible(slot)) out.push({ slot, ord: _roadOrdinal(slot.roadAnchor), pri }); };
+            collect(MAIN_STORY_BEATS, TRACK_PRI.main);
+            if (sm.tracks.villain) collect(VILLAIN_STORY_BEATS[sm.tracks.villain], TRACK_PRI.villain);
+            if (sm.tracks.extra)   collect(EXTRA_STORY_BEATS[sm.tracks.extra], TRACK_PRI.extra);
+            out.sort((a, b) => (a.ord - b.ord) || (a.pri - b.pri));
+            return out.map(e => e.slot);
         }
         // Splits a long body into pages (1-2 sentences each) for the overlay's
         // line-by-line continue prompt. Empty / short bodies become one page.
@@ -44068,31 +44133,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _activeBattleBeatForCurrentRow() {
             if (!sm || !sm.tracks) return null;
             if (!sm.storyEventsFired) sm.storyEventsFired = {};
-            const road = _roadForArrayIdx(sm.eventIndex);
-            if (!road) return null;
-            // Reserved rows own their identity — NEVER overwrite a Rival, Gym
-            // Leader, Champion, Elite Four, Mystery Figure, or Victory Road row
-            // with an injected boss/raid. Without this the road6 Rival silently
-            // becomes the villain mini-boss (Proton), with no in-fiction reason
-            // the scheduled fight changed identity. The inject beat instead waits
-            // for the road's next GENERIC battle row (Basic / Gym / Elite Trainer),
-            // which always exists after the reserved row.
-            const _curRow = STORY_EVENTS_RAW[sm.eventIndex | 0];
+            return _injectedBattleBeatForRow(sm.eventIndex | 0);
+        }
+        // Resolve the boss/raid/battle beat that an injected route fight would use
+        // for `arrayIdx`, or null. Pure w.r.t. arrayIdx (reads only sm.tracks +
+        // storyEventsFired), so the city-hub "next step" label can preview it
+        // without firing it. An injected fight REPLACES the row's trainer, so it
+        // may only land on a GENERIC ROUTE battle row — never inside a gym (Gym
+        // Trainer/Leader), never on a reserved Rival/Champion/Elite-Four/Mystery
+        // row whose identity it would silently overwrite. Forward-spill: a beat
+        // whose road is at or behind the row's road is eligible, so a road that
+        // runs out of route rows drains its overflow onto the next road's route
+        // rows instead of onto a gym fight.
+        function _injectedBattleBeatForRow(arrayIdx) {
+            if (!sm || !sm.tracks) return null;
+            const idx = arrayIdx | 0;
+            const road = _roadForArrayIdx(idx);
+            const roadOrd = _roadOrdinal(road);
+            if (roadOrd < 1 || roadOrd > 8) return null;     // injected fights live on road1..road8 only
+            if (!_isRouteBattleRow(idx)) return null;         // never inside a gym
+            const _curRow = STORY_EVENTS_RAW[idx];
             const _curType = _curRow ? String(_curRow[2] || '') : '';
             if (/^(Rival|Gym Leader [1-8]|Champion|E[1-4]|Mystery Figure|Victory Road)$/.test(_curType)) return null;
+            const fired = sm.storyEventsFired || {};
             const isInjectKind = (k) => k === 'battle' || k === 'miniBoss' || k === 'boss' || k === 'miniRaid' || k === 'raid';
             const buckets = [Object.values(MAIN_STORY_BEATS)];
             if (sm.tracks.villain) buckets.push(Object.values(VILLAIN_STORY_BEATS[sm.tracks.villain] || {}));
             if (sm.tracks.extra)   buckets.push(Object.values(EXTRA_STORY_BEATS[sm.tracks.extra] || {}));
+            // Earliest-anchored unfired inject wins, so spilled beats keep order.
+            let best = null, bestOrd = Infinity;
             for (const bucket of buckets) {
                 for (const s of bucket) {
-                    if (s && isInjectKind(s.kind) && s.roadAnchor === road && !sm.storyEventsFired[s.sceneKey]) {
-                        return s;
-                    }
+                    if (!s || !isInjectKind(s.kind) || fired[s.sceneKey]) continue;
+                    const ord = _roadOrdinal(s.roadAnchor);
+                    if (ord < 1 || ord > roadOrd) continue;   // this road or an earlier unfired one
+                    if (ord < bestOrd) { best = s; bestOrd = ord; }
                 }
             }
-            return null;
+            return best;
         }
+        window._injectedBattleBeatForRow = _injectedBattleBeatForRow;
         // ── Anomaly seeds (PR-7) — subtle one-liners pinned to specific row
         // IDs on the main timeline. Cross-run-deduped (via meta.tipsShown) so
         // each player sees each seed exactly once in their career. The seeds
@@ -44144,20 +44224,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _tryFireRoadStoryBeats(ev) {
             if (!ev || ev[1] === 'City') return false;
             if (!sm || !sm.tracks) return false;
+            // Events only interrupt the player on ROUTE battles — never inside a gym
+            // (Gym Trainer / Gym Leader rows). The forward-spill in
+            // _resolveActiveRoadBeats keeps a road's overflow eligible on later route
+            // rows, so gating to route rows here costs no content.
+            if (!_isRouteBattleRow(sm.eventIndex)) return false;
             const road = _roadForArrayIdx(sm.eventIndex);
             if (!road) return false;
             const queue = _resolveActiveRoadBeats(road);
             if (!queue.length) return false;
-            // G2 — pace ONE setup beat per row. A road's main/villain/extra event
-            // beats used to dump back-to-back (3-4 overlays) onto the road's first
-            // battle row; now only the highest-priority one fires here and the rest
-            // stay eligible for the road's next battle rows. On dismiss we go
+            // G2 — pace ONE setup beat per route row; the rest spill forward to the
+            // next route rows. The one exception is the LAST route row before the
+            // League: anything still queued is flushed here so a road-beat can never
+            // strand or leak into a reserved Elite-Four row. On dismiss we go
             // straight to this row's battle via _dispatchCurrentRow — NOT back
-            // through processNextEvent, which would re-enter here and drain the
-            // remainder onto the same row. Capacity-checked across all 80 rolls:
-            // every road has more non-City rows than active event beats, so the
-            // remaining beats always find a later row — nothing strands.
-            _playStoryBeatQueue([queue[0]], 0, () => _dispatchCurrentRow(ev));
+            // through processNextEvent, which would re-enter here and re-drain.
+            const toFire = _isLastPreLeagueRouteRow(sm.eventIndex) ? queue : [queue[0]];
+            _playStoryBeatQueue(toFire, 0, () => _dispatchCurrentRow(ev));
             return true;
         }
 
@@ -45323,11 +45406,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
                 else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
                 else if (nxEvent === 'Elite Trainer') nextLabel = 'Elite Trainer';
-                else if (nxEvent === 'Gym Trainer 1' || nxEvent === 'Gym Trainer 2') nextLabel = 'Gym Trainer';
+                else if (/^Gym Trainer/.test(nxEvent)) nextLabel = 'Gym Trainer';
                 else if (nxEvent === 'Basic Trainer') nextLabel = 'Route Trainer';
-                const theme = _resolveThemeForBattleRow(nxId);
-                const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
-                if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
+                // When a story boss/raid is injected onto this route fight it
+                // REPLACES the trainer — so the label must not promise a plain
+                // "Route Trainer." Keep it opaque (no villain name spoiled), in the
+                // house voice. Lower-tier injects (battle / miniRaid) keep the
+                // route-trainer identity and only theme the prose, so they don't
+                // override the label. mysteryBoss has its own post-HoF path.
+                const _injBeat = (_storyNextBatIdx >= 0) ? _injectedBattleBeatForRow(_storyNextBatIdx) : null;
+                const _injLabel = _injBeat && ({
+                    boss:     '⚔ An ambush waits on the road',
+                    miniBoss: '⚔ Someone is blocking the road',
+                    raid:     '🌑 Something stirs on the road',
+                })[_injBeat.kind];
+                if (_injLabel) {
+                    nextLabel = _injLabel;
+                } else {
+                    const theme = _resolveThemeForBattleRow(nxId);
+                    const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
+                    if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
+                }
                 // When wilds fire first, surface the journey in order — the grass
                 // before the gate — so the one objective stays honest:
                 // "🌿 Wild → ⚔ Rival" reads in one glance.
