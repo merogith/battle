@@ -52872,6 +52872,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
             if (!sm.pokedex.caught.includes(caught.name)) sm.pokedex.caught.push(caught.name);
             try { _storyMarkDexCaught(caught.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
+            // Catch tutorial: this is the OTHER landing site for a successful catch
+            // (party-full → PC, or swap-into-party). The direct-push path in
+            // _catchHandleSuccess marks the tutorial done; this path must too, or a
+            // tutorial catch resolved into a full party would never stamp the
+            // once-per-save flag and the tutorial would re-fire. (The fire-gate keeps
+            // party room today, so this is a safety net — but it keeps the once-only
+            // guarantee true for both placement paths regardless of cap changes.)
+            if (_catchState && _catchState.tutorialMode) {
+                _markCatchTutorialDone();
+            }
             try { save(); } catch (e) {}
             _catchFinishWithMessage(message);
         }
