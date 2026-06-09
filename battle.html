@@ -3617,15 +3617,6 @@
             white-space: nowrap; text-shadow: 0 1px 3px #000;
         }
         #screen-battle[data-battle-layout="arena"] #gauntlet-score { bottom: calc(var(--battle-ui-h) + clamp(48px, 11cqh, 88px)); }
-        /* Persistent story-difficulty badge — top-center (online score is hidden in story). */
-        #story-diff-badge {
-            position: absolute; top: calc(6px + var(--safe-top, 0px)); left: 50%; transform: translateX(-50%);
-            z-index: 9; background: rgba(0, 0, 0, 0.62); border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 10px; padding: 2px 10px; font-size: 10px; font-weight: bold;
-            letter-spacing: 0.05em; color: #cfd6e0; white-space: nowrap;
-            pointer-events: none; text-shadow: 0 1px 3px #000;
-        }
-
         /* ── Move tooltip ─────────────────────────────────────────────────── */
         #move-tooltip {
             position: absolute;
@@ -8542,7 +8533,7 @@
     </script>
 </head>
 <body>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.4.0</div>
+    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.5.0</div>
     <!-- Rotate overlay (portrait phones only) -->
     <div id="rotate-overlay">
         <div class="rotate-icon">▒</div>
@@ -9693,7 +9684,6 @@
         <div id="terrain-overlay" class="terrain-overlay"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
         <div id="gauntlet-score" class="hidden">Score: 0</div>
-        <div id="story-diff-badge" class="hidden" aria-live="polite"></div>
         <div id="online-battle-score" class="hidden" style="position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:8;background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:12px;padding:3px 12px;font-size:11px;color:#ccc;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:8px;">
             <span id="obs-p1-name" style="color:var(--hp-green);font-weight:bold;">P1</span>
             <span id="obs-p1-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
@@ -17535,21 +17525,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
                 try { state.foeParty.forEach(window.applyFoeDifficultyScaling); } catch (e) { console.warn('[startBattle] applyFoeDifficultyScaling failed:', e); }
             }
-            // Persistent difficulty badge — a story run always shows its active
-            // difficulty so it can never silently masquerade as another.
-            try {
-                const _db = document.getElementById('story-diff-badge');
-                if (_db) {
-                    const _sm2 = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
-                    if (state.mode === 'story' && _sm2) {
-                        const _lbl = ({ veryeasy: 'Very Easy', easy: 'Easy', normal: 'Normal', hard: 'Hard', challenge: 'Very Hard' })[_sm2.storyDifficulty || 'normal'] || 'Normal';
-                        _db.textContent = 'Difficulty: ' + _lbl;
-                        _db.classList.remove('hidden');
-                    } else {
-                        _db.classList.add('hidden');
-                    }
-                }
-            } catch (e) {}
             state.pActive = state.playerParty[0];
             // Reset story battle-EV tracking. onBattleEnd reads this set from
             // window to credit the mons that actually battled. Always init —
