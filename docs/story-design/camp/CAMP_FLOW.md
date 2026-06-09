@@ -222,5 +222,12 @@ things." Keep it short (sub-2s, skippable) so the buffer never becomes a wall.
   **"Break camp ▶▶"** skip.
 - **D7 — LOCKED:** return-to-city is a **free round-trip**; still suppress the
   revisit arrival cinematics (engineering detail, §5).
-- **D8 — LOCKED:** a camp fires on **all non-city→city route transitions**.
+- **D8 — LOCKED (refined 2026-06-09, when PR C shipped):** a camp fires only
+  **between two ordinary route battles** (Basic/Elite Trainer) — never inside a
+  gym (gym trainer → gym leader), never before an iconic fight (gym leader /
+  rival / E1–4 / champion / Mystery), never the first battle after a city, and
+  never during an off-timeline Crucible battle. ~9 camps per run. The earlier
+  "all non-city→city transitions" wording would have camped *mid-gym*; the
+  maintainer confirmed this route-only refinement. Predicate:
+  `_campIsDueForTransition` (reuses `_storyEventIsIconicFight`).
 - Bonding actions per camp are **unlimited** (see `BONDING_RELATIONSHIPS.md` §3).
