@@ -48,7 +48,7 @@ const INERT = 'Honey Gather';
 // (Its Psychic STAB is applied identically by both engines, so it cancels in the diff.)
 const ATTACKER = (move, opts = {}) => ({
   species: 'Deoxys-Attack', ability: opts.ability || INERT, item: opts.item || null,
-  moves: opts.moves || [move, 'Recover'],
+  moves: opts.moves || [move, 'Splash'],
   nature: 'Quirky', evs: { atk: 252, spa: 252, spe: 4 }, ivs: { atk: 31, spa: 31 },
 });
 
@@ -61,8 +61,12 @@ function neutralDefenderFor(moveType) {
   const hit = DEFENDER_POOL.find((d) => typeEff(moveType, d.types) === 1);
   return (hit || DEFENDER_POOL[0]).species;
 }
+// Truly-passive defender: it must do NOTHING on its turn. (Earlier this used Recover,
+// which healed back the move's damage and left only the secondary's downstream effect
+// in the net-HP trace — so every flinch/burn/poison move produced a false RNG
+// "divergence". Splash keeps the base damage in the trace for a direct comparison.)
 const passiveDef = (species, extra = {}) => ({
-  species, ability: INERT, moves: ['Recover', 'Recover'],
+  species, ability: INERT, moves: ['Splash', 'Splash'],
   nature: 'Sassy', evs: { hp: 252, def: 128, spd: 128 }, ...extra,
 });
 
@@ -211,7 +215,7 @@ function abilityScenarios(a) {
     family: 'ability-switchin', route: 'probe', mode: 'trace', category: 'ability / switch-in',
     desc: `${name} holder leads vs a passive foe (switch-in + end-of-turn boost/status check).`,
     expect: 'probe', observability: 'boosts',
-    team1: [{ species: 'Snorlax', ability: name, moves: ['Recover', 'Recover'], nature: 'Sassy', evs: { hp: 252 } }],
+    team1: [{ species: 'Snorlax', ability: name, moves: ['Splash', 'Splash'], nature: 'Sassy', evs: { hp: 252 } }],
     team2: [passiveDef('Blissey')],
     choices1: ['move 1', 'move 1'], choices2: ['move 1', 'move 1'],
   });
@@ -254,7 +258,7 @@ function itemScenarios(it) {
     family: 'item-hold', route: 'probe', mode: 'trace', category: 'item / hold',
     desc: `${name} held through two turns vs a passive foe (Leftovers/orb/balloon via hp/status).`,
     expect: 'probe', observability: 'hp/status',
-    team1: [{ species: 'Snorlax', ability: INERT, item: name, moves: ['Recover', 'Recover'], nature: 'Sassy', evs: { hp: 252 } }],
+    team1: [{ species: 'Snorlax', ability: INERT, item: name, moves: ['Splash', 'Splash'], nature: 'Sassy', evs: { hp: 252 } }],
     team2: [passiveDef('Blissey')],
     choices1: ['move 1', 'move 1'], choices2: ['move 1', 'move 1'],
   });

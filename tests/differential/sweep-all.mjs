@@ -103,11 +103,25 @@ async function runOne(scn, n) {
   const sd = await runShowdownBattle(scn);
   const ih = await runInhouseBattle(scn);
   const d = diffTraces(sd, ih, scn);
+
+  // For a DAMAGING move, the RNG-independent signal is damage / effectiveness / faint /
+  // winner — NOT its CHANCE secondary. A move's 10-30% stat-drop or status (Crunch
+  // Def-1, Scald burn) fires independently in each engine's PRNG, so a single-seed
+  // boost/status mismatch is an RNG artifact, not an unimplemented secondary (verified:
+  // Crunch Def-drop fires ~20% in BOTH engines). Down-rank those to medium so they
+  // don't masquerade as high-confidence bugs; keep hp/faint/winner/order as high.
+  const divs = d.divergences.map((x) => {
+    if (scn.family === 'damaging' && x.confidence === 'high' && /^(boost\.|status)/.test(x.field)) {
+      return { ...x, confidence: 'medium', note: 'chance-secondary (RNG across engines)' };
+    }
+    return x;
+  });
+  const counts = { high: divs.filter((x) => x.confidence === 'high').length, medium: divs.filter((x) => x.confidence === 'medium').length, low: divs.filter((x) => x.confidence === 'low').length };
   let confidence = 'agree', detail = '';
-  if (d.counts.high > 0) { confidence = 'high'; detail = describe(d.divergences, 'high'); }
-  else if (d.counts.medium > 0) { confidence = 'medium'; detail = describe(d.divergences, 'medium'); }
-  else if (d.counts.low > 0) { confidence = 'low'; detail = describe(d.divergences, 'low'); }
-  return { confidence, detail, counts: d.counts, divergences: d.divergences, sdWinner: sd.winner, ihWinner: ih.winner };
+  if (counts.high > 0) { confidence = 'high'; detail = describe(divs, 'high'); }
+  else if (counts.medium > 0) { confidence = 'medium'; detail = describe(divs, 'medium'); }
+  else if (counts.low > 0) { confidence = 'low'; detail = describe(divs, 'low'); }
+  return { confidence, detail, counts, divergences: divs, sdWinner: sd.winner, ihWinner: ih.winner };
 }
 function describe(divs, conf) {
   return divs.filter((x) => x.confidence === conf).slice(0, 3)
