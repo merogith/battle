@@ -12,8 +12,8 @@ const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
 
-test('SAVE_VER bumped to 24 (v24 removes the post-HoF Caged God boss arc)', () => {
-    assert.equal(W.__STORY_SAVE_VER, 24);
+test('SAVE_VER bumped to 25 (v25 adds Camp System bonding + camp-flow fields)', () => {
+    assert.equal(W.__STORY_SAVE_VER, 25);
 });
 
 test('VILLAIN_TRACKS pool has the 10 canon teams', () => {

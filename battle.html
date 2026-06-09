@@ -15020,6 +15020,67 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.ensureShinyRolled = ensureShinyRolled;
 
+        // ── CAMP BONDING — relationship → stat buff (Camp System spec) ────────
+        // docs/story-design/camp/BONDING_RELATIONSHIPS.md (decisions D1/D2/D4/D5b,
+        // locked 2026-06-03; fishing→devotion added 2026-06-08). Six relationship
+        // paths, clean 6-stat bijection; a path MASTERS (its +5% turns on) when the
+        // per-Pokémon counter slot.bonds[path] reaches a Nature-shifted threshold
+        // (~BASE × temperament). The buff is a per-stat multiplier object stamped on
+        // PLAYER builds at battle entry (launchBattle) and applied in buildPokemon,
+        // symmetric to the foe _storyStatMult. DORMANT until bonds rise (PR D): with
+        // every counter 0, relationshipStatMult() is all-1.0 ⇒ built stats are
+        // byte-identical to pre-feature.
+        // BALANCE NUMBERS ARE [MAINTAINER]-OWNED (buff %, base reps, temperament
+        // mults). In-code for now; externalize to data/camp/relationship-paths.json
+        // in a later PR per CLAUDE.md's data-driven preference.
+        const CAMP_BOND_BUFF     = 0.05;   // +5% per mastered path             [MAINTAINER]
+        const CAMP_BASE_ACTIONS  = 10;     // base reps to master (neutral)     [MAINTAINER]
+        const CAMP_TEMP_LOVED    = 0.7;    // Nature-raised stat: faster        [MAINTAINER]
+        const CAMP_TEMP_RESISTED = 1.4;    // Nature-lowered stat: slower       [MAINTAINER]
+        const CAMP_TEMP_NEUTRAL  = 1.0;    //                                   [MAINTAINER]
+        // path id → { stat, buff, baseActions }. good→offense, cruel→defense,
+        // weird→speed, romance→tank. Repointable.
+        const RELATIONSHIP_PATHS = {
+            praise:     { stat:'atk', buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
+            nurture:    { stat:'spa', buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
+            discipline: { stat:'def', buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
+            intimidate: { stat:'spd', buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
+            mimicry:    { stat:'spe', buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
+            devotion:   { stat:'hp',  buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
+        };
+        // Temperament: the path whose stat the Pokémon's Nature RAISES is "loved"
+        // (fewer reps), the one it LOWERS is "resisted" (more). HP/Devotion is always
+        // neutral (no Nature touches HP); neutral natures → all neutral.
+        function _bondTempMult(pathId, slot) {
+            const def = RELATIONSHIP_PATHS[pathId];
+            if (!def || def.stat === 'hp') return CAMP_TEMP_NEUTRAL;
+            const name = slot && slot.build && (slot.build.n || slot.build.nature);
+            const nm = (name && typeof natureModifiers !== 'undefined' && natureModifiers[name]) || null;
+            if (nm) {
+                if (nm.up === def.stat)   return CAMP_TEMP_LOVED;
+                if (nm.down === def.stat) return CAMP_TEMP_RESISTED;
+            }
+            return CAMP_TEMP_NEUTRAL;
+        }
+        // Reps for `slot` to master `pathId` (≥1).
+        function bondThreshold(pathId, slot) {
+            const def = RELATIONSHIP_PATHS[pathId];
+            const base = (def && def.baseActions) || CAMP_BASE_ACTIONS;
+            return Math.max(1, Math.round(base * _bondTempMult(pathId, slot)));
+        }
+        // Pure: a player slot → per-stat multiplier object. A mastered path multiplies
+        // its stat by (1+buff); unmastered/absent counters contribute nothing → all-1.0.
+        function relationshipStatMult(slot) {
+            const m = { hp:1, atk:1, def:1, spa:1, spd:1, spe:1 };
+            const bonds = slot && slot.bonds;
+            if (!bonds || typeof bonds !== 'object') return m;
+            for (const pid in RELATIONSHIP_PATHS) {
+                const def = RELATIONSHIP_PATHS[pid];
+                if (def && (bonds[pid] | 0) >= bondThreshold(pid, slot)) m[def.stat] *= (1 + (def.buff || 0));
+            }
+            return m;
+        }
+
         function buildPokemon(monName, build) {
             monName = monName.trim();
             // Handle Farfetch'd name variants
@@ -15131,6 +15192,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     mon._storyStatMult = m; // exposed for the battle summary UI.
                 }
+            }
+            // Player relationship buff (camp bonding): a PER-STAT multiplier object,
+            // stamped only on PLAYER builds at battle entry (launchBattle). Symmetric to
+            // the foe _storyStatMult above but per-stat. DORMANT until bonds rise — an
+            // all-1.0 object leaves stats byte-identical. See docs/story-design/camp/.
+            if (build && build._relationshipStatMult && typeof build._relationshipStatMult === 'object') {
+                const rm = build._relationshipStatMult;
+                if (monName !== 'Shedinja' && (rm.hp || 1) !== 1) {
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * (rm.hp || 1)));
+                    mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * (rm.hp || 1))));
+                }
+                for (const k of ['atk','def','spa','spd','spe']) {
+                    if ((rm[k] || 1) !== 1) mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * (rm[k] || 1)));
+                }
+                mon._relationshipStatMult = rm; // exposed for the summary UI (later PR)
             }
             // Story solo-Pokémon raid boss (extra track): a legendary-tier all-stat boost
             // (_bossStatMult, applied to HP + stats) and a party-scaled HP multiplier
@@ -36649,7 +36725,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // fresh wander budget.
         // v24 removes the post-HoF "Caged God" boss arc — migrateStoryPreV24 strips
         // the vestigial sm.bossArc state. The chain's last versioned step is v24.
-        const SAVE_VER = 24;
+        const SAVE_VER = 25;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -37191,6 +37267,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // left in the bag (harmless). postHofMysteryClimaxDone (Mystery Figure) is kept.
             if (sm.bossArc) delete sm.bossArc;
         }
+        /** v25: Camp System — per-Pokémon bonding counters (slot.bonds) + camp-flow
+         *  gate fields (sm.campByEventIdx, sm.campReturnPoint). Additive; mirrors the
+         *  migrateStoryPreV21 egg-field loop. Eggs get no bonds until hatch. Old-save
+         *  bonds default to 0 ⇒ no buff yet (the feature ships dormant). */
+        function migrateStoryPreV25() {
+            const D = () => ({ praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0 });
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
+                    if (!slot || slot.isEgg) continue;
+                    if (!slot.bonds || typeof slot.bonds !== 'object') slot.bonds = D();
+                }
+            }
+            if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
+            if (sm.campReturnPoint === undefined) sm.campReturnPoint = null;
+        }
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -37410,6 +37502,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:true, zOn:true, dynaOn:true, teraOn:true, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null, citiesArrived:{}, wanderByEventIdx:{},
+                   campByEventIdx:{}, campReturnPoint:null,
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                    deptShopPurchasedByCity:{}, facilityIntros:{}, scenesShown:{},
                    storyDifficulty:'normal', runSeed:null,
@@ -37768,6 +37861,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 24) {
                     try { migrateStoryPreV24(); } catch (e) { console.warn('[Story] v24 Caged God arc removal migrate', e); }
+                }
+                if (_loadedVer < 25) {
+                    try { migrateStoryPreV25(); } catch (e) { console.warn('[Story] v25 camp/bonding migrate', e); }
                 }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
@@ -40049,6 +40145,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 window.__storyTest = {
                     rollTrainerTeam,
+                    relationshipStatMult: (...a) => relationshipStatMult(...a),
+                    bondThreshold: (...a) => bondThreshold(...a),
+                    migrateStoryPreV25: () => migrateStoryPreV25(),
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
                     storyFreezeFoeTeamForPersistence,
                     tutorFetchLearnsetMoveNames: (...a) => _tutorFetchLearnsetMoveNames(...a),
@@ -41540,6 +41639,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyCityVisit: null,
                 citiesArrived: {},
                 wanderByEventIdx: {},
+                campByEventIdx: {},
+                campReturnPoint: null,
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
@@ -48690,7 +48791,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             // Build player p1Draft and enemy p2Draft for state. Eggs occupy a party
             // slot but never fight — filter them out of the battle draft.
-            const p1Draft = sm.team.filter(t => t && !t.isEgg).map(t => ({ name: t.name, build: t.build }));
+            // Stamp the camp-bonding relationship buff onto a SHALLOW-CLONED build per
+            // player slot (never mutate the saved build → keeps it out of the save).
+            // Dormant while bonds are 0 (the stamped object is all-1.0).
+            const p1Draft = sm.team.filter(t => t && !t.isEgg).map(t => {
+                const _b = Object.assign({}, t.build || {});
+                try { _b._relationshipStatMult = relationshipStatMult(t); } catch (e) {}
+                return { name: t.name, build: _b };
+            });
             const p2Draft = enemyTeam;
             // Reset state to story mode
             state.mode = 'story';
