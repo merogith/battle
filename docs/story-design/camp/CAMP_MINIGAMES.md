@@ -183,6 +183,14 @@ The data shape (`actions.games[]`) already supports a pool of any size, so
 expansion is data + a primitive or two, never a refactor. (Reflected in the
 roadmap's PR D.)
 
+> **STATUS (shipped):** all **18** games + the full **9-primitive** toolkit
+> (`_CAMP_PRIMITIVES`: tapTiming, holdRelease, mash, pickMatch, dragAim, swipeCover,
+> track, restraint, sequence) are in `CAMP_MICROGAMES` / `CAMP_ACTIONS`. Win/lose
+> for each is a unit-tested pure `_campScore*` decider; the interactive *feel*
+> (tap windows, hold bands, track tolerances — all per-game data) wants a maintainer
+> playtest pass, and the cruel/romance **copy stays mild pending the D10 tone pass.**
+> The SVG **bond hexagon** (`_campBondHexSvg`, BONDING §9) renders on the mon card.
+
 ---
 
 ## 10b. Micro-game palette & formats (maintainer)
