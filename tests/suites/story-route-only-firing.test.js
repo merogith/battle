@@ -115,6 +115,33 @@ test('the villain boss and extra raid climaxes always fire (reward beats are nev
     }
 });
 
+test('climax-priority: boss + raid always fire on their OWN road, never spilled (all 80 rolls)', () => {
+    // Filler fights (battle/miniBoss/miniRaid) may spill forward when a road is
+    // over capacity, but the arc-ending boss and raid stay pinned to their
+    // designed road — the climax never lands a road late.
+    for (const v of VILLAINS) for (const x of EXTRAS) {
+        ST.sm = Object.assign({}, ST.sm, { tracks: { main: 'classic_v2', villain: v, extra: x }, storyEventsFired: {} });
+        const fired = ST.sm.storyEventsFired;
+        for (let i = 0; i < RAW.length; i++) {
+            if (!RAW[i] || RAW[i][1] !== 'Battle') continue;
+            ST.sm.eventIndex = i;
+            if (ST.isRouteBattleRow(i)) {
+                const road = ST.roadForArrayIdx(i);
+                const q = ST.resolveActiveRoadBeats(road);
+                if (q.length) { const f = ST.isLastPreLeagueRouteRow(i) ? q : [q[0]]; for (const b of f) fired[b.sceneKey] = true; }
+            }
+            const ib = ST.injectedBattleBeatForRow(i);
+            if (ib) {
+                fired[ib.sceneKey] = true;
+                if (ib.kind === 'boss' || ib.kind === 'raid') {
+                    assert.equal(ST.roadOrdinal(ST.roadForArrayIdx(i)), ST.roadOrdinal(ib.roadAnchor),
+                        `${v}+${x}: ${ib.sceneKey} (${ib.kind}) fired off its anchor road`);
+                }
+            }
+        }
+    }
+});
+
 test('injectedBattleBeatForRow previews null on reserved + in-city rows', () => {
     ST.sm = Object.assign({}, ST.sm, { tracks: { main: 'classic_v2', villain: 'rocket', extra: 'cubone' }, storyEventsFired: {} });
     for (let i = 0; i < RAW.length; i++) {

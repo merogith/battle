@@ -61,14 +61,14 @@ function traceFlow(villain, extra) {
     return lines;
 }
 
-// EXPECTED golden snapshot for rocket+cubone — post ROUTE-ONLY + FORWARD-SPILL fix.
-// Events fire ONE per ROUTE battle row (never inside a gym); injected boss/raid
-// fights likewise land only on generic route rows. When a road runs out of route
-// rows its overflow spills onto the NEXT road's route rows rather than onto a gym
-// fight (the old bug: an injected raid landed on idx36 = a Gym-6 trainer row) or
-// stranding. Notably villain.rocket.boss spills from road7 to idx55 (Victory
-// Road) because road7's two route rows (idx48/49) are already taken — it still
-// fires and still grants its reward, one road later.
+// EXPECTED golden snapshot for rocket+cubone — post ROUTE-ONLY + FORWARD-SPILL +
+// CLIMAX-PRIORITY fix. Events fire ONE per ROUTE battle row (never inside a gym);
+// injected fights land only on generic route rows. When a road is over capacity
+// its overflow spills onto the NEXT road's route rows — but arc CLIMAXES (boss /
+// raid) are hosted ahead of filler (battle / mini-boss / mini-raid), so the boss
+// stays on its own road (idx49) and the harmless filler (main.battle2) is what
+// spills to Victory Road (idx55) instead. Nothing lands in a city, nothing
+// strands (the old bug injected a raid on idx36 = a Gym-6 trainer row).
 const EXPECTED_ROCKET_CUBONE = [
     '7|main.event1|',
     '8|extra.cubone.event1|',
@@ -77,20 +77,20 @@ const EXPECTED_ROCKET_CUBONE = [
     '19|main.event2|',
     '20|villain.rocket.event2|',
     '21|extra.cubone.event3|',
-    '26|villain.rocket.event3|villain.rocket.battle1(battle)',
-    '27|extra.cubone.event4|extra.cubone.miniRaid(miniRaid)',
-    '33|main.event3|main.battle1(battle)',
-    '34|villain.rocket.event4|villain.rocket.battle2(battle)',
+    '26|villain.rocket.event3|extra.cubone.miniRaid(miniRaid)',
+    '27|extra.cubone.event4|villain.rocket.battle1(battle)',
+    '33|main.event3|extra.cubone.miniRaid2(miniRaid)',
+    '34|villain.rocket.event4|main.battle1(battle)',
     // idx40 is the road6 Rival — reserved: no inject, but an event scene may pace here.
     '40|extra.cubone.event5|',
-    '41|villain.rocket.event5|extra.cubone.miniRaid2(miniRaid)',
-    '42|extra.cubone.event6|villain.rocket.miniBoss(miniBoss)',
-    '48|main.event4|extra.cubone.raid(raid)',
-    '49|villain.rocket.event6|main.battle2(battle)',
-    // Forward-spill: road7's route rows are full, so villain.rocket.boss lands on
-    // the first Victory Road row (idx55); the villain ending follows it (idx56).
-    '55|extra.cubone.ending|villain.rocket.boss(boss)',
-    '56|villain.rocket.ending|',
+    '41|villain.rocket.event5|villain.rocket.battle2(battle)',
+    '42|extra.cubone.event6|extra.cubone.raid(raid)',
+    '48|main.event4|villain.rocket.miniBoss(miniBoss)',
+    '49|villain.rocket.event6|villain.rocket.boss(boss)',
+    // Climax-priority: the boss kept idx49; the filler main.battle2 is what spills
+    // onto the first Victory Road row (idx55). The villain ending follows the boss.
+    '55|villain.rocket.ending|main.battle2(battle)',
+    '56|extra.cubone.ending|',
     '57|main.event5|',
     // The league road paces event6/7/8 across E1 (idx59) / Champion (idx63) /
     // Rival (idx64); event9 + mfReveal + ending are firePostHoF (post-HoF flow).
