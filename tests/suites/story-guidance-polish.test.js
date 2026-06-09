@@ -36,22 +36,29 @@ test('Help BAG line reflects the Story-mode in-battle bag', () => {
     'BAG help should state items are usable in Story Mode');
 });
 
-test('the stale "🎯 Next:" chip reference is replaced by the objective bar', () => {
-  assert.ok(!/🎯 Next:<\/b> chip/.test(HTML),
+test('the stale "🎯 Next" chip guidance is replaced by the objective bar', () => {
+  // The old in-game guidance pointed players at a "🎯 Next:" chip that no longer
+  // exists (the city screen now shows a gold objective bar). Neither the Help
+  // modal nor the first-city welcome tip should reference the chip.
+  assert.ok(!HTML.includes('🎯 Next:</b> chip'),
     'Help must not reference the removed "🎯 Next:" chip');
+  assert.ok(!HTML.includes('🎯 Next chip'),
+    'the welcome tip must not reference the removed "🎯 Next chip"');
   assert.ok(/gold <b>objective bar<\/b>/.test(HTML),
     'Help should point at the gold objective bar');
+  assert.ok(HTML.includes('gold objective bar up top'),
+    'the welcome tip should point at the gold objective bar');
 });
 
-test('every tutorial scene carries an action cue', () => {
+test('tutorial scenes no longer carry the separate action-cue block', () => {
+  // The white-dialogue + gold-cue "two block" look read as cluttered; the cue
+  // was folded back into the dialogue. Guard the removal so it does not return.
   const start = HTML.indexOf('const STORY_TUTORIAL_SCENES = {');
   const end = HTML.indexOf('function _showStoryTutorialScene', start);
   assert.ok(start >= 0 && end > start, 'STORY_TUTORIAL_SCENES block must be locatable');
   const block = HTML.slice(start, end);
-  const scenes = (block.match(/metaKey: 'tutorial-/g) || []).length;
-  const cues = (block.match(/cue: '/g) || []).length;
-  assert.ok(scenes >= 18, `expected >= 18 tutorial scenes, found ${scenes}`);
-  assert.equal(cues, scenes, `every scene needs a cue (scenes=${scenes}, cues=${cues})`);
+  assert.equal((block.match(/\bcue: '/g) || []).length, 0,
+    'no scene should define a separate `cue` field');
 });
 
 test('Help modal documents Terrain effects', () => {
