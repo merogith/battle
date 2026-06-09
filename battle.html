@@ -44157,17 +44157,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (/^(Rival|Gym Leader [1-8]|Champion|E[1-4]|Mystery Figure|Victory Road)$/.test(_curType)) return null;
             const fired = sm.storyEventsFired || {};
             const isInjectKind = (k) => k === 'battle' || k === 'miniBoss' || k === 'boss' || k === 'miniRaid' || k === 'raid';
+            // Climax priority: when a road is over capacity, the arc-ending fights
+            // (boss / raid) stay pinned to their own road and the FILLER fight
+            // (battle / miniBoss / miniRaid) is what spills forward instead. So a
+            // contested route row hosts the most-important pending inject first.
+            const _climaxRank = (k) => (k === 'boss' || k === 'raid') ? 0 : (k === 'miniBoss' || k === 'miniRaid') ? 1 : 2;
             const buckets = [Object.values(MAIN_STORY_BEATS)];
             if (sm.tracks.villain) buckets.push(Object.values(VILLAIN_STORY_BEATS[sm.tracks.villain] || {}));
             if (sm.tracks.extra)   buckets.push(Object.values(EXTRA_STORY_BEATS[sm.tracks.extra] || {}));
-            // Earliest-anchored unfired inject wins, so spilled beats keep order.
-            let best = null, bestOrd = Infinity;
+            // Order eligible injects by (anchor ordinal, climax rank): earliest road
+            // first so spilled beats keep order, climaxes ahead of filler within a row.
+            let best = null, bestOrd = Infinity, bestRank = Infinity;
             for (const bucket of buckets) {
                 for (const s of bucket) {
                     if (!s || !isInjectKind(s.kind) || fired[s.sceneKey]) continue;
                     const ord = _roadOrdinal(s.roadAnchor);
                     if (ord < 1 || ord > roadOrd) continue;   // this road or an earlier unfired one
-                    if (ord < bestOrd) { best = s; bestOrd = ord; }
+                    const rank = _climaxRank(s.kind);
+                    if (ord < bestOrd || (ord === bestOrd && rank < bestRank)) { best = s; bestOrd = ord; bestRank = rank; }
                 }
             }
             return best;
