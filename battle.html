@@ -15566,6 +15566,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return mon;
         }
 
+        // Re-apply the player's earned camp-bonding per-stat buff (mon._relationshipStatMult)
+        // after an IN-BATTLE stat recompute (mega / primal / form change / Palafin / Transform-
+        // revert) rebuilt mon.stats (and maybe maxHp) from base+EV+IV+nature, dropping the buff.
+        // No-op for foes (never stamped) and for the dormant all-1.0 multiplier, so it's strictly
+        // 1:1 when no path is mastered. `opts.hp` also re-scales maxHp/currentHp while preserving
+        // the current-HP fraction — pass it only at sites that recompute maxHp (form change /
+        // Palafin); mega never touches maxHp. Mirrors buildPokemon's relationship block (the
+        // Shedinja guard + per-stat floor) so results match a from-scratch buffed build.
+        function _reapplyRelationshipBuff(mon, opts) {
+            const rm = mon && mon._relationshipStatMult;
+            if (!rm || typeof rm !== 'object') return;
+            if (mon.stats) {
+                for (const k of ['atk','def','spa','spd','spe'])
+                    if ((rm[k]||1) !== 1) mon.stats[k] = Math.max(1, Math.floor((mon.stats[k]||1) * (rm[k]||1)));
+            }
+            if (opts && opts.hp && mon.name !== 'Shedinja' && (rm.hp||1) !== 1
+                && Number.isFinite(mon.maxHp) && mon.maxHp > 0) {
+                const ratio = mon.currentHp / mon.maxHp;
+                mon.maxHp = Math.max(1, Math.floor(mon.maxHp * (rm.hp||1)));
+                mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.maxHp * ratio)));
+            }
+        }
+
         // === EXPOSE FUNCTIONS FOR TESTING ===
         window.rollGimmick = rollGimmick;
         window.rollTeraType = rollTeraType;
@@ -15760,6 +15783,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['atk','def','spa','spd','spe'].forEach(s => { mon.stats[s] = Math.floor(mon.stats[s] * 1.2); });
                 mon.name = megaFormName;
             }
+            // The stat recompute above rebuilds from base and drops the player's camp-bonding
+            // buff — restore it (no-op for foes / dormant). Mega never recomputes maxHp, so no hp.
+            _reapplyRelationshipBuff(mon);
             // Commit once-per-battle / per-mon flags only after successful application.
             mon.megaEvolved = true;
             // Primal Reversion (Red Orb / Blue Orb) does NOT consume the once-per-battle Mega slot.
@@ -19353,6 +19379,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? `<span style="color:#80deea;font-weight:bold;">Lv${50 + _esLv}</span>`
                     : '<span style="color:#888;">Lv50</span>';
 
+                // Camp bonds chip — the player's earned per-stat relationship buff, baked into
+                // s.stats by buildPokemon and exposed as s._relationshipStatMult. Lists each
+                // boosted stat (+5% Atk · …). Ungated (shows in-battle and out); foes never carry
+                // the field so it never appears for them. Mirrors the "Story stat %" chip styling.
+                let bondChipHtml = '';
+                const _rm = s._relationshipStatMult;
+                if (_rm && typeof _rm === 'object') {
+                    const parts = [];
+                    for (const k of ['hp','atk','def','spa','spd','spe'])
+                        if ((_rm[k] || 1) !== 1) parts.push(`+${Math.round((_rm[k] - 1) * 100)}% ${SUM_STAT_LABELS[k]}`);
+                    if (parts.length)
+                        bondChipHtml = `<div style="margin-top:6px;font-size:11px;"><b style="color:#ffb74d;">⛺ Camp bonds</b> <span style="color:#9aa0aa;">${parts.join(' · ')}</span></div>`;
+                }
+
                 document.getElementById('sum-page-1').innerHTML = `
                     <div class="sum-stats-grid">${statBars}</div>
                     <div class="sum-stat-total"><span>Stat total</span><b>${total}</b></div>
@@ -19362,6 +19402,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="sum-detail-cell"><span class="sum-detail-lbl">Nature</span><span class="sum-detail-val">${natureLine}</span></div>
                         <div class="sum-detail-cell sum-detail-cell--full"><span class="sum-detail-lbl">Profile</span><span class="sum-detail-val" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${metaBits}</span></div>
                     </div>
+                    ${bondChipHtml}
                     ${evIvHtml}`;
 
             } else if (page === 2) {
@@ -26317,6 +26358,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.type2 = newBase.t2 || '';
             }
             mon.name = newName;
+            // The recompute above rebuilds stats + maxHp from base, dropping the player's
+            // camp-bonding buff — restore it (stats + HP). No-op for foes / dormant.
+            _reapplyRelationshipBuff(mon, { hp: true });
             return true;
         }
 
@@ -27015,6 +27059,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.stats = { atk: Math.floor((Math.floor((2*heroBase.atk+getIV('atk')+Math.floor((evs.atk||0)/4))*50/100)+5)*nMults.atk), def: Math.floor((Math.floor((2*heroBase.def+getIV('def')+Math.floor((evs.def||0)/4))*50/100)+5)*nMults.def), spa: Math.floor((Math.floor((2*heroBase.spa+getIV('spa')+Math.floor((evs.spa||0)/4))*50/100)+5)*nMults.spa), spd: Math.floor((Math.floor((2*heroBase.spd+getIV('spd')+Math.floor((evs.spd||0)/4))*50/100)+5)*nMults.spd), spe: Math.floor((Math.floor((2*heroBase.spe+getIV('spe')+Math.floor((evs.spe||0)/4))*50/100)+5)*nMults.spe) };
                     mon.maxHp = Math.floor((2*(heroBase.hp||100)+getIV('hp')+Math.floor((evs.hp||0)/4))*50/100)+60;
                     mon.currentHp = Math.min(mon.currentHp, mon.maxHp);
+                    // Rebuilt stats + maxHp from base — restore the player's camp-bonding buff.
+                    _reapplyRelationshipBuff(mon, { hp: true });
                 }
                 logMsg(`Palafin transformed into Palafin-Hero!`, 'info');
             }
@@ -27034,6 +27080,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.type1 = base.t1; mon.type2 = base.t2;
                     mon.ability = mon.buildData.a || 'None';
                     mon.moves = mon.buildData.m.map(mName => buildMoveObject(mName));
+                    // Reverting to the mon's own stats — restore the player's camp-bonding buff
+                    // (stats only; Transform never changes maxHp). No-op for foes / dormant.
+                    _reapplyRelationshipBuff(mon);
                 }
             }
         }
@@ -41139,6 +41188,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollTrainerTeam,
                     _getEvoChainForward: (...a) => _getEvoChainForward(...a),
                     relationshipStatMult: (...a) => relationshipStatMult(...a),
+                    reapplyRelationshipBuff: (...a) => _reapplyRelationshipBuff(...a),
                     bondThreshold: (...a) => bondThreshold(...a),
                     migrateStoryPreV25: () => migrateStoryPreV25(),
                     enterCamp: (...a) => enterCamp(...a),
@@ -47898,12 +47948,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // buildPokemon(entry.name, entry.build) which throws on undefined name.
             const partyList = sm.team.map(function (x) {
                 const b = x && (x.build || x.buildData);
-                return { name: String((x && x.name) || '').trim(), build: (b && typeof b === 'object') ? safeCloneBuild(b) : {} };
+                const cb = (b && typeof b === 'object') ? safeCloneBuild(b) : {};
+                // Stamp the earned camp-bonding buff onto the throwaway preview clone so the
+                // summary's stat bars (and the Camp bonds chip) reflect what the mon fights with.
+                // The saved slot is untouched; launchBattle re-stamps from live bonds at battle time.
+                try { cb._relationshipStatMult = relationshipStatMult(x); } catch (e) {}
+                return { name: String((x && x.name) || '').trim(), build: cb };
             }).filter(e => e.name);
             requestAnimationFrame(function () {
                 try {
+                    const _topBuild = safeCloneBuild(rawBuild);
+                    try { _topBuild._relationshipStatMult = relationshipStatMult(t); } catch (e) {}
                     window.showDraftPokemonSummary(
-                        { name: String(t.name).trim(), build: safeCloneBuild(rawBuild) },
+                        { name: String(t.name).trim(), build: _topBuild },
                         { partyList: partyList, index: i, storyReorder: true, showEVs: true }
                     );
                 } catch (e) {
@@ -51978,8 +52035,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else slot = team.find(s => s && s.id === id) || box.find(s => s && s.id === id);
             if (!slot || !slot.name || !slot.build) return;
             try {
+                const _b = safeCloneBuild(slot.build);
+                // Reflect the earned camp-bonding buff in the read-only summary (team + PC slots
+                // both carry .bonds). Throwaway clone; the saved slot is untouched.
+                try { _b._relationshipStatMult = relationshipStatMult(slot); } catch (e) {}
                 window.showDraftPokemonSummary(
-                    { name: String(slot.name).trim(), build: safeCloneBuild(slot.build) },
+                    { name: String(slot.name).trim(), build: _b },
                     { partyList: null, index: 0, storyReorder: false, showEVs: true }
                 );
             } catch (e) { console.warn('[Story] PC row summary', e); }
