@@ -12,8 +12,10 @@ const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
 
-test('SAVE_VER bumped to 25 (v25 adds Camp System bonding + camp-flow fields)', () => {
-    assert.equal(W.__STORY_SAVE_VER, 25);
+test('SAVE_VER is at/above the camp-release floor (v25); later bumps raise it', () => {
+    // v25 added Camp bonding; v26 the narration overhaul. The 3-track tables
+    // asserted below are version-independent, so this guard just needs a floor.
+    assert.ok(W.__STORY_SAVE_VER >= 25);
 });
 
 test('VILLAIN_TRACKS pool has the 10 canon teams', () => {

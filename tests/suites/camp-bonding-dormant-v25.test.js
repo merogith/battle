@@ -24,8 +24,10 @@ const freshBuild = (n = 'Hardy') => ({
     evs: {},
 });
 
-test('SAVE_VER bumped to 25', () => {
-    assert.equal(W.__STORY_SAVE_VER, 25);
+test('SAVE_VER is current (>= 25, the camp release floor)', () => {
+    // Camp shipped at v25; later schema bumps (v26 narration overhaul, …) raise
+    // the current version. The camp migration is still exercised below.
+    assert.ok(W.__STORY_SAVE_VER >= 25);
 });
 
 test('relationshipStatMult: empty / no-bonds slot → all 1.0 (dormant)', () => {
