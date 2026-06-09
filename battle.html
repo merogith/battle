@@ -10341,7 +10341,7 @@
         let _CATCH_FLEE_BY_GRADE   = { 1: 0.40, 2: 0.28, 3: 0.20, 4: 0.12 };
         let _CATCH_DEFAULT_FLEE_RATE = 0.30;
         let SAFARI_BALL_MULT       = 1.35;
-        let SAFARI_BALLS_PER_SESSION = 15;
+        let SAFARI_BALLS_PER_SESSION = 10;
         let SAFARI_BAIT_CATCH_MULT = 0.70;
         let SAFARI_BAIT_FLEE_MULT  = 0.55;
         let SAFARI_ROCK_CATCH_MULT = 1.65;
@@ -51901,14 +51901,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   3. Bait and Rock actions let you trade flee risk for catch chance.
         //   4. Encounter pool tilts richer than wild routes (more G1/G2 representation).
         // Safari is a *catching trip*, not a gold farm or a grade-up shortcut.
-        // The previous tuning (1,200G entry, G1:8/G2:40/G3:38/G4:14, 8 encounters,
+        // The pre-v19 tuning (1,200G entry, G1:8/G2:40/G3:38/G4:14, 8 encounters,
         // 25 balls, 1.5× ball mult) made a Safari visit consistently cheaper than
         // a Link-Station upgrade for a G2 (~9,000G) — players just spammed it.
-        // Tightened: higher entry, leaner pool, fewer encounters, fewer balls,
-        // smaller ball multiplier. Safari is now a "spend money for a real
-        // chance at a G2/G3 you build yourself" trip, not a guaranteed haul.
+        // Tightened: higher entry, leaner pool, fewer balls, smaller ball
+        // multiplier. Safari is now a "spend money for a real chance at a G2/G3
+        // you build yourself" trip, not a guaranteed haul. Current session shape:
+        // 10 encounters / 10 Safari Balls.
         const SAFARI_ENTRY_COST = 10000;
-        const SAFARI_MAX_ENCOUNTERS = 6;
+        const SAFARI_MAX_ENCOUNTERS = 10;
         // v19 stage-gated Safari curve. Safari unlocks at City 4 (badges 3),
         // and the player shouldn't see G1 legendaries until they're deep in
         // Stage 3 (post-GL6). G2 only emerges meaningfully after the unlock
@@ -52508,7 +52509,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // multipliers all live in data/story/ball-math.json (loaded at boot via
         // the early `let` block near loadGameData). Defaults shipped here:
         //   SAFARI_BALL_MULT      = 1.35  (between Poké 1.0× and Great 1.5×)
-        //   SAFARI_BALLS_PER_SESSION = 15
+        //   SAFARI_BALLS_PER_SESSION = 10
         //   SAFARI_BAIT_CATCH_MULT = 0.70 · SAFARI_BAIT_FLEE_MULT = 0.55
         //   SAFARI_ROCK_CATCH_MULT = 1.65 · SAFARI_ROCK_FLEE_MULT = 1.70
         // ── Per-turn flee (canonical Safari Zone tension) ─────────────────
