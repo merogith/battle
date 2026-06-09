@@ -40268,6 +40268,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campIsDueForTransition: (...a) => _campIsDueForTransition(...a),
                     campDone: (...a) => _campDone(...a),
                     campMarkDone: (...a) => _campMarkDone(...a),
+                    campSearchGrass: (...a) => _campSearchGrass(...a),
+                    campGrassKey: (...a) => _campGrassKey(...a),
                     campAwardBond: (...a) => campAwardBond(...a),
                     campPickMicrogame: (...a) => campPickMicrogame(...a),
                     campMasteredPaths: (...a) => campMasteredPaths(...a),
@@ -48785,12 +48787,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
             ctx.resume();   // synchronous so it's observable; the scene's finish() clears the overlay right after
         }
+        function _campGrassKey(ctx) { return 100000 + ((ctx && ctx.destIdx) | 0); }
+        // 🌿 Camp tall-grass search — reuses the free 3-tap Wander engine (CAMP_FLOW §4 /
+        // WANDER_AROUND_SPEC), surfaced at camp. The numeric key 100000+destIdx namespaces it
+        // into the existing sm.wanderByEventIdx (no collision with route-exit keys <~67; keeps
+        // _showWanderScreen's `key|0` seed math intact) → no save-schema change, reload-safe via
+        // the done flag. The search is FREE; catching uses the player's own Poké Balls. Returns
+        // to the camp menu on Move On / exhaustion.
+        function _campSearchGrass(ctx) {
+            try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            const key = _campGrassKey(ctx);
+            let cidx = 0; try { cidx = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            _showWanderScreen(key, cidx, () => _campDefer(() => _campOpenMenu(ctx)), false);
+        }
         function _campOpenMenu(ctx) {
             const lead = (sm.team || []).find(s => s && !s.isEgg);
             const leadName = (lead && lead.name) ? _esc(lead.name) : 'your team';
             const hasTeam = (sm.team || []).some(s => s && !s.isEgg);
             const options = [];
             if (hasTeam) options.push({ label: '🔥  Spend time with your team', onPick: () => _campDefer(() => _campRoster(ctx)) });
+            // 🌿 Tall-grass search (reuses the free 3-tap Wander engine). Direct map read
+            // (not _wanderState, which would init an entry on render); omitted once this
+            // camp's search is exhausted so it never shows as a dead no-op.
+            const _grassDone = !!(sm.wanderByEventIdx && (sm.wanderByEventIdx[_campGrassKey(ctx)] || {}).done);
+            if (sm && sm.active && !_grassDone) {
+                options.push({ label: '🌿  Search the tall grass', onPick: () => _campDefer(() => _campSearchGrass(ctx)) });
+            }
             options.push({ label: '▶▶  Break camp', onPick: () => _campBreak(ctx) });
             _storyScene([{
                 id: 'camp-menu', title: '⛺  Camp', accent: _CAMP_ACCENT,
