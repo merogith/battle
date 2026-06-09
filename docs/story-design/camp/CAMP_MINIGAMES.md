@@ -18,11 +18,11 @@ Win it → **+1** to that path's counter on that Pokémon; mastery (the +5% buff
 lands at the per-Pokémon threshold (`BONDING §3`).
 
 - **3 micro-games per action × 6 actions = 18 micro-games.** The reps to master a
-  stat (~10) draw a *varied* sequence instead of the same game ten times.
+  stat (5) draw a *varied* sequence instead of the same game five times.
 - **Random pick is seeded** (`storyRngNext`, ≈`37609`) → deterministic replays,
   fresh-feeling sessions.
-- **Unlimited per camp**, any party member. Temperament changes the *threshold*
-  (how many wins to master), never the per-win gain.
+- **Unlimited per camp**, any party member. The threshold is a flat **5 wins**
+  per path for every nature (temperament currently neutralized — `BONDING §4`).
 
 ---
 
@@ -85,8 +85,8 @@ function campPickMicrogame(actionId) {
 - **Miss / botch** (e.g. overfilling `holdRelease`, tapping on `restraint`) →
   **+0** and a **reaction beat** (sulk / recoil — the edgy payoff). Never
   decrements by default (no losing progress); a small setback is a knob.
-- Win/lose is **pass/fail**, not a graded score — keeps "~10 wins to master"
-  legible. Temperament is applied to the **threshold**, not here.
+- Win/lose is **pass/fail**, not a graded score — keeps "5 wins to master"
+  legible. The threshold lives in `bondThreshold()`, not here.
 
 ---
 

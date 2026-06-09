@@ -38,29 +38,29 @@ test('campPickMicrogame: returns a game id from the action pool (seeded)', () =>
 });
 
 test('campAwardBond: +1 per call; mastery fires exactly at the threshold crossing', () => {
-    const slot = { name: 'Pikachu', build: freshBuild('Hardy'), bonds: zeroBonds() }; // neutral → threshold 10
+    const slot = { name: 'Pikachu', build: freshBuild('Hardy'), bonds: zeroBonds() }; // flat → threshold 5
     let mastered = 0, lastAward = null;
-    for (let i = 0; i < 9; i++) lastAward = ST.campAwardBond(slot, 'discipline');
-    assert.equal(slot.bonds.discipline, 9);
-    assert.equal(lastAward.justMastered, false, 'not yet at 9');
+    for (let i = 0; i < 4; i++) lastAward = ST.campAwardBond(slot, 'discipline');
+    assert.equal(slot.bonds.discipline, 4);
+    assert.equal(lastAward.justMastered, false, 'not yet at 4');
 
-    lastAward = ST.campAwardBond(slot, 'discipline'); // 10th → masters
-    assert.equal(slot.bonds.discipline, 10);
-    assert.equal(lastAward.justMastered, true, 'masters at the 10th win');
-    assert.equal(lastAward.threshold, 10);
+    lastAward = ST.campAwardBond(slot, 'discipline'); // 5th → masters
+    assert.equal(slot.bonds.discipline, 5);
+    assert.equal(lastAward.justMastered, true, 'masters at the 5th win');
+    assert.equal(lastAward.threshold, 5);
 
-    lastAward = ST.campAwardBond(slot, 'discipline'); // 11th → already mastered, no re-fire
+    lastAward = ST.campAwardBond(slot, 'discipline'); // 6th → already mastered, no re-fire
     assert.equal(lastAward.justMastered, false, 'mastery fires once');
 });
 
-test('campAwardBond: temperament shifts the threshold (Adamant loves Praise → 7)', () => {
+test('campAwardBond: threshold is flat 5 — a stat-shifting Nature no longer changes it', () => {
     const slot = { name: 'Gible', build: freshBuild('Adamant'), bonds: zeroBonds() }; // +atk -spa
     let a = null;
-    for (let i = 0; i < 6; i++) a = ST.campAwardBond(slot, 'praise');
-    assert.equal(a.justMastered, false, 'not at 6');
-    a = ST.campAwardBond(slot, 'praise'); // 7th
-    assert.equal(a.justMastered, true, 'Adamant masters Praise at 7');
-    assert.equal(a.threshold, 7);
+    for (let i = 0; i < 4; i++) a = ST.campAwardBond(slot, 'praise');
+    assert.equal(a.justMastered, false, 'not at 4');
+    a = ST.campAwardBond(slot, 'praise'); // 5th
+    assert.equal(a.justMastered, true, 'masters Praise at 5 regardless of Nature');
+    assert.equal(a.threshold, 5);
 });
 
 test('titles: bond shape → title (priority order)', () => {
@@ -78,12 +78,12 @@ test('titles: bond shape → title (priority order)', () => {
 
 test('campAwardBond: surfaces a title change on the win that earns it', () => {
     const slot = { name: 'Eevee', build: freshBuild('Hardy'), bonds: zeroBonds() };
-    // master praise (10) then nurture (10) → "the Beloved" on the nurture-mastering win.
-    for (let i = 0; i < 10; i++) ST.campAwardBond(slot, 'praise');
+    // master praise (5) then nurture (5) → "the Beloved" on the nurture-mastering win.
+    for (let i = 0; i < 5; i++) ST.campAwardBond(slot, 'praise');
     let a = null;
-    for (let i = 0; i < 9; i++) a = ST.campAwardBond(slot, 'nurture');
+    for (let i = 0; i < 4; i++) a = ST.campAwardBond(slot, 'nurture');
     assert.equal(a.titleChanged, false);
-    a = ST.campAwardBond(slot, 'nurture'); // 10th → masters nurture → Beloved
+    a = ST.campAwardBond(slot, 'nurture'); // 5th → masters nurture → Beloved
     assert.equal(a.titleChanged, true);
     assert.equal(a.title, 'the Beloved');
 });
@@ -113,8 +113,8 @@ test('INTEGRATION: mastering a path makes the PR-B buff LIVE in buildPokemon', (
     const slot = { name: 'Machop', build: freshBuild('Hardy'), bonds: zeroBonds() };
     // Baseline: dormant.
     assert.equal(ST.relationshipStatMult(slot).def, 1, 'no buff before mastery');
-    // Master discipline (→ def), neutral threshold 10.
-    for (let i = 0; i < 10; i++) ST.campAwardBond(slot, 'discipline');
+    // Master discipline (→ def), flat threshold 5.
+    for (let i = 0; i < 5; i++) ST.campAwardBond(slot, 'discipline');
     const m = ST.relationshipStatMult(slot);
     assert.equal(m.def, 1.05, 'discipline mastered → def ×1.05');
     assert.equal(m.atk, 1, 'other stats untouched');

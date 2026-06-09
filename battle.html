@@ -15233,9 +15233,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // mults). In-code for now; externalize to data/camp/relationship-paths.json
         // in a later PR per CLAUDE.md's data-driven preference.
         const CAMP_BOND_BUFF     = 0.05;   // +5% per mastered path             [MAINTAINER]
-        const CAMP_BASE_ACTIONS  = 10;     // base reps to master (neutral)     [MAINTAINER]
-        const CAMP_TEMP_LOVED    = 0.7;    // Nature-raised stat: faster        [MAINTAINER]
-        const CAMP_TEMP_RESISTED = 1.4;    // Nature-lowered stat: slower       [MAINTAINER]
+        const CAMP_BASE_ACTIONS  = 5;      // reps to master — FLAT, every path [MAINTAINER]
+        // Temperament is FLAT (all 1.0): every path masters at exactly CAMP_BASE_ACTIONS
+        // reps regardless of Nature, so maxing a full team is 6 stats × 6 mons × 5 = 180
+        // actions. The loved/resisted hook stays at 1.0 so a later tune can re-introduce
+        // Nature-driven variance without restructuring bondThreshold().
+        const CAMP_TEMP_LOVED    = 1.0;    // (was 0.7) Nature-raised stat      [MAINTAINER]
+        const CAMP_TEMP_RESISTED = 1.0;    // (was 1.4) Nature-lowered stat     [MAINTAINER]
         const CAMP_TEMP_NEUTRAL  = 1.0;    //                                   [MAINTAINER]
         // path id → { stat, buff, baseActions }. good→offense, cruel→defense,
         // weird→speed, romance→tank. Repointable.

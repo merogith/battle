@@ -47,22 +47,29 @@ that gives a stat ~10 times, ± the Pokémon's preferences."*
   starts 0). Each **successful** mini-game of that path = **+1**.
 - A path is **mastered** (its +5% turns on) when the counter reaches that
   Pokémon's **threshold** for the path:
-  `threshold = round(BASE_ACTIONS × tempMult)`, `BASE_ACTIONS = 10` **[MAINTAINER]**.
-- `tempMult` comes from **Temperament** (§4): **loved 0.7** (~7 reps),
-  **neutral 1.0** (~10), **resisted 1.4** (~14). All tunable.
+  `threshold = round(BASE_ACTIONS × tempMult)`, `BASE_ACTIONS = 5` **[MAINTAINER]**.
+- `tempMult` is currently **FLAT 1.0 for every path** (see §4), so every path
+  masters at exactly **5 reps** regardless of Nature. The loved/resisted hook is
+  retained (at 1.0) for a future re-tune.
 - **No per-camp cap** — do as many actions as you like, on any party member, any
   time you're camped. The "grind" is the *total rep count across the team*, not a
   daily limit.
 
-**Scale of the commitment** (defaults): one path on a neutral Pokémon ≈ 10
-mini-games; a Pokémon's full six paths ≈ 60 (more if it resists some); a full
-party of six ≈ **~360 mini-games** to 100% everything. Mastering a *favourite*
-path is quick; mastering *everything on everyone* is a long-haul, opt-in goal —
-the "some play" the maintainer asked for, paced by effort rather than by a timer.
+**Scale of the commitment** (defaults): one path on any Pokémon = **5**
+mini-games; a Pokémon's full six paths = 30; a full party of six =
+**6 stats × 6 mons × 5 = 180 mini-games** to 100% everything. Mastering a
+*favourite* path is quick; mastering *everything on everyone* is a long-haul,
+opt-in goal — the "some play" the maintainer asked for, paced by effort rather
+than by a timer.
 
 ---
 
-## 4. Temperament (creative layer 1 — LOCKED)
+## 4. Temperament (creative layer 1 — currently FLAT)
+
+> **Status [MAINTAINER]:** temperament is **disabled** as of the flat-5 tune —
+> all three multipliers are `1.0`, so every path masters at exactly 5 reps and
+> Nature no longer changes the count. The model below is retained as the design
+> for re-enabling Nature-driven variance (flip the constants back).
 
 Every Pokémon **bonds faster with some paths and resists others**, so full-mastery
 takes real work and each Pokémon feels like an individual.
@@ -137,7 +144,7 @@ slot.bonds = {            // action COUNTERS (0..threshold); absent on eggs
   praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0,
 };
 // derived at read time, not stored:
-//   threshold(path) = round(10 × tempMult(path, slot.build.n))
+//   threshold(path) = round(5 × tempMult(path, slot.build.n))  // tempMult flat 1.0 → 5
 //   mastered(path)  = slot.bonds[path] >= threshold(path)
 //   title(slot)     = first matching rule over the mastered set
 ```
@@ -229,8 +236,8 @@ stat behaviour change → explicit sign-off before the diff ships.**
 
 - **Pure:** `relationshipStatMult` — a mastered path → its stat ×1.05, others 1;
   empty → all 1; all mastered → all 1.05.
-- **Threshold/temperament:** Adamant nature → Praise threshold 7, Nurture 14,
-  others 10; neutral nature → all 10; HP always 10.
+- **Threshold/temperament:** every path masters at a flat **5** reps for every
+  nature (temperament multipliers all 1.0) — Adamant, neutral, HP alike.
 - **Integration (jsdom):** player mon with `discipline` at threshold → built
   `def === floor(base×1.05)`, others unchanged; foe unaffected; `devotion`
   mastered → `maxHp` scaled.
@@ -243,10 +250,10 @@ stat behaviour change → explicit sign-off before the diff ships.**
 ## 12. Decisions
 
 **Locked:** path→stat bijection (§2) · +5%/path, binary at-master (§6) ·
-unlimited actions per camp, ~10-rep base threshold (§3) · all three creative
-layers (§4, §5, §9) · edgier tone with copy sign-off (minigames doc).
+unlimited actions per camp, flat 5-rep threshold (§3; temperament neutralized,
+§4) · creative layers §5/§9 · edgier tone with copy sign-off (minigames doc).
 
-**Remaining knobs [MAINTAINER] (tuning, in data):** `BASE_ACTIONS` (10) ·
-loved/resisted multipliers (0.7 / 1.4) · temperament source (Nature default) ·
+**Remaining knobs [MAINTAINER] (tuning, in data):** `BASE_ACTIONS` (5) ·
+loved/resisted multipliers (currently flat 1.0; was 0.7 / 1.4) · temperament source (Nature default) ·
 whether Devotion/HP gets like-resist · whether backfire can decrement · title
 copy/rules · aggregate cap if +5%×6 proves too strong on the curve.

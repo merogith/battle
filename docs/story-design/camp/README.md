@@ -111,16 +111,17 @@ These are locked; what remains are data-side tuning knobs (bottom row).
 | D3 | Bond decay | **off** (reward, not chore) |
 | D4 | Buff timing | **binary at-master** |
 | D5 | Actions per camp | **unlimited** (the grind is total reps, not a per-visit cap) |
-| D5b | Reps to master a stat | **~10 actions** × temperament (loved 0.7 / resisted 1.4) |
+| D5b | Reps to master a stat | **flat 5 actions** per path, all natures (temperament neutralized to 1.0) |
 | D6 | Camp cadence | **forced + 1-tap "Break camp"** skip |
 | D7 | Return-to-city | **free round-trip** via a return-point stash |
 | D8 | Which transitions | **all non-city→city** route transitions |
 | D9 | Cinematics v1 | sighting fold (POC) + camp arrival + mastery/title reveals |
 | D10 | Cruel/romance tone | **edgier** — maintainer signs off on the actual copy |
 
-**Remaining tuning knobs (data, [MAINTAINER]):** `BASE_ACTIONS` (10) ·
-temperament multipliers + source (Nature default) · title copy/rules · per-game
-difficulty · an aggregate buff cap *if* +5%×6 proves too strong on the curve.
+**Remaining tuning knobs (data, [MAINTAINER]):** `BASE_ACTIONS` (5) ·
+temperament multipliers + source (currently flat 1.0; Nature-driven variance is
+re-enableable) · title copy/rules · per-game difficulty · an aggregate buff cap
+*if* +5%×6 proves too strong on the curve.
 See each doc's Decisions section.
 
 ---
@@ -133,8 +134,8 @@ See each doc's Decisions section.
 - **Bond counter** — a path's action count on a Pokémon (`slot.bonds[path]`);
   masters at its threshold.
 - **Master** — a path reaching its threshold; its +5% stat buff turns on.
-- **Temperament** — a Pokémon's Nature-driven like/resist that shifts a path's
-  threshold (~10 reps × 0.7 / 1.0 / 1.4).
+- **Temperament** — a Pokémon's Nature-driven like/resist that *would* shift a
+  path's threshold; **currently neutralized** (all 1.0 → flat 5 reps per path).
 - **Title** — a cosmetic name from your bond *shape* (e.g. "the Hardened").
 - **Transition** — the seam between event N and event N+1, keyed by `eventIndex`.
 - **Interpose** — inserting camp into the flow without adding a timeline row.
