@@ -99,20 +99,20 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 
 ## 4. Safari Zone
 
-The Safari Zone replicates the canonical gameplay loop (no battles, only Safari Balls work, Bait/Rock as asymmetric levers, every turn the wild may flee) and adapts the numbers to story mode's 6-encounter / 15-ball session shape.
+The Safari Zone replicates the canonical gameplay loop (no battles, only Safari Balls work, Bait/Rock as asymmetric levers, every turn the wild may flee) and adapts the numbers to story mode's 10-encounter / 10-ball session shape.
 
 | Aspect | Value |
 |---|---|
 | Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
 | Location | City 4 only in the main timeline. Post-HoF access is via the Crucible (which also exposes the same screen). |
 | Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (10,000G). |
-| Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (6 per session). Each encounter is a single mon. |
+| Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (10 per session). Each encounter is a single mon. |
 | Pool grade | `SAFARI_GRADE_WEIGHTS` g1:3 / g2:22 / g3:50 / g4:25 — tightened to make Safari a "spend money for a real chance" trip rather than a guaranteed haul. |
-| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 15). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.35× (between Poké and Great). |
+| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 10). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.35× (between Poké and Great). |
 | Bait/Rock | Bait `SAFARI_BAIT_CATCH_MULT` 0.70× catch / `SAFARI_BAIT_FLEE_MULT` 0.55× post-miss flee. Rock `SAFARI_ROCK_CATCH_MULT` 1.65× catch / `SAFARI_ROCK_FLEE_MULT` 1.70× post-miss flee. Stack up to 3× each; reset between encounters. |
 | Flee — on missed throw | Per-grade flee rate (G1 55% → G4 20%), modulated by bait/rock stacks. |
 | Flee — per turn (Bait/Rock) | Each Bait/Rock action also rolls a flee check at the end of the turn — canonical Safari tension. Per-turn flee = per-grade flee × rock stacks (`SAFARI_ROCK_FLEE_MULT`) × an action multiplier; the **bait stack is intentionally excluded** so feeding never lowers the per-turn flee shown on the Rock or Bait buttons (food calms only the post-miss flee + catch odds — the wild's persistent state). Bait turn flee = `SAFARI_BAIT_TURN_FLEE_MULT` 0.45× (moderate, ~5–18% per turn, mid-tier ≈9% — no longer a free stall). Rock turn flee = `SAFARI_ROCK_TURN_FLEE_MULT` 0.55× (scales fast with rock stacks). Hard-capped at `SAFARI_TURN_FLEE_CAP` = 45%. |
-| Exit | After 6 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. End-of-session messages are PA-style ("Ding-dong! Your Safari Zone game is over!"). |
+| Exit | After 10 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. End-of-session messages are PA-style ("Ding-dong! Your Safari Zone game is over!"). |
 
 ---
 
