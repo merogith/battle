@@ -94,6 +94,12 @@ layout — a short **arrival scene** then a **menu**:
   catches. {leadMon} settles in." Keeps the buffer feel even on a fast skip.
 - **Menu actions:**
   - **Spend time with your team** → the six bonding mini-games ([`CAMP_MINIGAMES.md`](./CAMP_MINIGAMES.md)); **unlimited per visit**, any party member.
+  - **🌿 Search the tall grass** → reuses the existing free **Wander Around** engine
+    (`_showWanderScreen`, `WANDER_AROUND_SPEC.md`) right at camp: the same **3-tap**
+    search with its decaying find-rate, **no fee** — the only spend is the Poké Balls
+    the player buys to catch what they find. Namespaced into `sm.wanderByEventIdx` via
+    a `100000 + destIdx` key (no save-schema change); the option hides once that camp's
+    3 searches are spent. *Shipped (`_campSearchGrass`).*
   - **Sort party** → camp party panel (§6).
   - **Head back to {previousCity}** → return-to-city (§5); hidden if none / at start.
   - **Break camp ▶▶** → sets the done flag, `save()`, resumes the route.
