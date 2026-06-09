@@ -10178,6 +10178,9 @@
         let TRAINER_QUOTES = {};
         let TRAINER_QUOTES_BY_NAME = {};
         let CITY_GUIDE_QUOTES = [];
+        // Bark variance layer (data/dialogue/barks.json) — non-state, additive-only
+        // flavor pools appended after canonical battle-log lines. See barks.json _meta.
+        let BARK_POOLS = {};
         let typeChart = {};
         // Precomputed per-species move-tag index — data/move-tags.json, generated
         // OFFLINE by scripts/build/gen-move-tag-index.mjs from the LOCAL @pkmn/dex.
@@ -10221,6 +10224,7 @@
             window.TRAINER_QUOTES = TRAINER_QUOTES;
             window.TRAINER_QUOTES_BY_NAME = TRAINER_QUOTES_BY_NAME;
             window.CITY_GUIDE_QUOTES = CITY_GUIDE_QUOTES;
+            window.BARK_POOLS = BARK_POOLS;
             window.MOVE_TAG_INDEX = MOVE_TAG_INDEX;
             // window.typeChart is also set later (line ~14730) for backwards compat.
             window._CATCH_BALL_MULT = _CATCH_BALL_MULT;
@@ -10257,7 +10261,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _tc, _bm, _sh, _mti] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10265,6 +10269,7 @@
                         fetch('data/dialogue/trainer-quotes.json').then(r => r.json()),
                         fetch('data/dialogue/trainer-quotes-by-name.json').then(r => r.json()),
                         fetch('data/dialogue/city-guide-quotes.json').then(r => r.json()),
+                        fetch('data/dialogue/barks.json').then(r => r.json()).catch(() => null),
                         fetch('data/type-chart.json').then(r => r.json()),
                         fetch('data/story/ball-math.json').then(r => r.json()),
                         fetch('data/story/shops.json').then(r => r.json()),
@@ -10285,6 +10290,7 @@
                     Object.assign(TRAINER_QUOTES,           _tq   || {});
                     Object.assign(TRAINER_QUOTES_BY_NAME,   _tqbn || {});
                     if (Array.isArray(_cgq)) CITY_GUIDE_QUOTES.push(..._cgq);
+                    Object.assign(BARK_POOLS,               _barks || {});
                     Object.assign(typeChart,                _tc   || {});
                     // Ball math: object-container fields mutated in place; primitives
                     // reassigned through the lexically-scoped lets. "guaranteed" →
@@ -14767,6 +14773,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             log.scrollTop = log.scrollHeight;
         }
+        // Bark variance layer — data/dialogue/barks.json. Appends ONE seeded flavor
+        // line to the battle log AFTER the canonical line, on terminal/emotional,
+        // NON-state moments (story battles only). It NEVER varies a state-information
+        // line (effectiveness / status / faint-as-state / "But it failed!"). The pick
+        // uses the seeded storyRngNext so replays stay deterministic. See barks.json _meta.
+        window._emitBark = function(eventKey) {
+            try {
+                if (typeof state === 'undefined' || !state || state.mode !== 'story') return;
+                const pool = (BARK_POOLS && typeof BARK_POOLS === 'object') ? BARK_POOLS[eventKey] : null;
+                if (!Array.isArray(pool) || !pool.length) return;
+                const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const line = pool[Math.floor(rng() * pool.length)];
+                if (line) logMsg(line, 'info');
+            } catch (e) {}
+        };
         window.trimBattleLogToCap = function() {
             if (!battleEls.battleLog) cacheBattleEls();
             const log = battleEls.battleLog;
@@ -18313,7 +18334,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             window.showGameAlert("Battle items are not available in this mode.");
         }
-        window.runAway = function() { if(!state.isLocked) { logMsg("You fled!", "dmg"); state.isOver = true; if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You walked away after clearing ${state.score} round${state.score !== 1 ? 's' : ''}.`); } else { showEndScreen("FORFEIT", "You walked off the field.", false); } } }
+        window.runAway = function() { if(!state.isLocked) { logMsg("You fled!", "dmg"); _emitBark('fledRoad'); state.isOver = true; if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You walked away after clearing ${state.score} round${state.score !== 1 ? 's' : ''}.`); } else { showEndScreen("FORFEIT", "You walked off the field.", false); } } }
 
         function showEndScreen(title, desc, storyPlayerWon) {
             document.getElementById('command-menu').classList.add('hidden'); document.getElementById('move-menu').classList.add('hidden');
@@ -24547,7 +24568,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
                     try { AudioSystem.playHitSound(typeEff); } catch (e) {}   // parity with single-hit path (was missing on multi-hit)
                     await sleep(200);
-                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); _battleHitShake('crit'); }
+                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); _battleHitShake('crit'); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
                     if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); _battleHitShake('super'); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
@@ -24753,6 +24774,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Step 4: Show effectiveness/crit text + anime.js screen shake
                     if (crit > 1) {
                         logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer);
+                        if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO');
                         _battleHitShake('crit');
                     }
                     if (typeEff > 1) {
@@ -25744,6 +25766,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return true;
                 }
                 if (!foeHasNext && playerHasNext) {
+                    _emitBark('foeLastFaint');
                     if (state.mode === 'gauntlet') window.showGauntletSwap();
                     else {
                         state.isOver = true;
@@ -25853,6 +25876,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         return true;
                     }
                 } else {
+                    _emitBark('foeLastFaint');
                     if (state.mode === 'gauntlet') window.showGauntletSwap();
                     else {
                         state.isOver = true;
@@ -25895,6 +25919,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.playerParty.some(m => m.currentHp > 0)) {
                     await sleep(500); state.currentPlayer = 1; window.openParty(true); return true;
                 } else {
+                    _emitBark('playerLastFaint');
                     state.isOver = true;
                     if (state.mode === 'gauntlet') {
                         showEndScreen("GAUNTLET OVER!", `${state.score} round${state.score !== 1 ? 's' : ''} cleared before your last Pokémon went down.`);
