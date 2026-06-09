@@ -270,7 +270,11 @@ export function buildSuite(opts = {}) {
   if (want.includes('move')) {
     for (const m of gen.moves.all()) {
       const cls = classifyMove(m);
-      if (cls.route === 'banned-oos' || cls.route === 'untestable') {
+      // banned/untestable AND needs-targeted are routed OUT of the auto-sweep: their
+      // effect needs a battle context the one-turn forced-choice probe can't fabricate
+      // (charge / OHKO / variable-power / counter / delayed). They go to the curated
+      // backlog (COVERAGE_MAP + FIDELITY), not a misleading auto probe.
+      if (cls.route === 'banned-oos' || cls.route === 'untestable' || cls.route === 'needs-targeted') {
         coverage.push({ kind: 'move', entity: m.name, route: cls.route, family: cls.family || '-', reason: cls.reason, nProbes: 0 });
         continue;
       }

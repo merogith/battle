@@ -159,6 +159,9 @@ async function main() {
 // Exported so the sharded orchestrator can merge per-shard results and report once.
 export function writeReports(outDir, reportDir, { results, coverage, stats }) {
   mkdirSync(outDir, { recursive: true });
+  // Persist the full merged results (the orchestrator calls writeReports directly, so
+  // this is where the complete per-scenario data is written — not just triage-shards).
+  writeFileSync(join(outDir, 'results.json'), JSON.stringify({ generatedAt: new Date().toISOString(), stats, results }, null, 0));
   const highs = results.filter((r) => r.confidence === 'high');
   const mediums = results.filter((r) => r.confidence === 'medium');
   const errors = results.filter((r) => r.confidence === 'error');
