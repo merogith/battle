@@ -66,6 +66,13 @@ test('branches are when:{key,eq} entries with a single trailing default', () => 
         if (b.when === undefined) {
           defaults++;
           assert.equal(i, act.branches.length - 1, `${k}: the when-less default branch must be last`);
+        } else if ('meta' in b.when) {
+          // Cross-run residue source (docs/story-research/08): reads pbs_story_meta
+          // (e.g. lastLoopChoice, completedRuns). Narrative-only and non-forking,
+          // exactly like a per-run when.key — it just survives the run boundary.
+          assert.equal(typeof b.when.meta, 'string', `${k}: branch.when.meta must be a string`);
+          assert.ok(('eq' in b.when) || ('gte' in b.when) || ('lte' in b.when),
+            `${k}: meta branch needs an eq/gte/lte comparator`);
         } else {
           assert.equal(typeof b.when.key, 'string', `${k}: branch.when.key must be a string`);
           assert.ok('eq' in b.when, `${k}: branch.when must carry an eq value`);
