@@ -11333,7 +11333,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Useful Habits</h3>
 • Tap any Pokémon name in battle, yours or the foe\'s, for the full build summary.<br>
-• The <b>🎯 Next:</b> chip in the city tip rail jumps you to your next required fight.<br>
+• The gold <b>objective bar</b> at the top of every city screen jumps you straight to your next required step.<br>
 • Vouchers — Rare Candy, EV Voucher — show in the bag and on tutor / evolve buttons. They waive the gold cost on one use.<br>
 • Difficulty also adjusts the coin reward: Very Easy 1.6× → Hard 1.0× (Hard floors the penalty). Pick the mode that fits the run you want, not the one that looks hardest on the menu.</div>`,
             menu: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Game Modes</h3>
@@ -11359,7 +11359,7 @@ Build a balanced team. Watch type coverage, speed tiers, and offensive vs. defen
             battle: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Commands</h3>
 <b style="color:var(--hp-yellow);">FIGHT</b> — Choose one of your 4 moves to attack or use a status move.<br>
 <b style="color:var(--hp-green);">POKÉMON</b> — Switch your active Pokémon. <span style="color:#f44336;">This costs your turn!</span><br>
-<b style="color:#add8e6;">BAG</b> — No items in competitive format.<br>
+<b style="color:#add8e6;">BAG</b> — Throw balls and use items mid-battle in Story Mode; disabled in competitive Quick Play / PvP.<br>
 <b style="color:var(--hp-red);">RUN</b> — Forfeit the match.<br>
 <span style="color:#81d4fa;">Desktop:</span> <b>F</b> / <b>P</b> / <b>B</b> / <b>R</b> trigger the same four commands. On the move grid, <b>1</b>–<b>4</b> picks the move in that slot; <b>Esc</b> goes back.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Effectiveness</h3>
@@ -11377,6 +11377,12 @@ Build a balanced team. Watch type coverage, speed tiers, and offensive vs. defen
 <b>Rain</b> — Water +50%, Fire -50%. Abilities: Swift Swim (2x Spe), Rain Dish (heal)<br>
 <b>Sand</b> — Damages non-Rock/Ground/Steel. Rock types get +SpD<br>
 <b>Hail</b> — Damages non-Ice types</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Terrain</h3>
+Only affects Pokémon on the ground (not Flying / Levitate). Lasts 5 turns.<br>
+<b>Electric</b> — Blocks sleep; Electric moves ×1.3<br>
+<b>Grassy</b> — Heals 1/16 HP per turn; Grass moves ×1.3<br>
+<b>Psychic</b> — Blocks priority moves; Psychic moves ×1.3<br>
+<b>Misty</b> — Blocks status conditions; Dragon damage halved</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Stat Stages</h3>
 Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplier, -1 = x0.67. Accuracy and evasion stages change whether moves hit. <b>Tap</b> a Pokémon name (or chips under the HP bar) for effects like Leech Seed, confusion, or trapping. Tap any field pill for weather, terrain, screens, Trick Room, and entry hazards — numbers are full turns (both Pokémon choose a move once). On the move grid, priority and accuracy are on each tile; tap <b>i</b> for detail. Switching out resets staged stats on the Pokémon that leaves!</div>`
         };
@@ -42097,47 +42103,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-trainer-battle',
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Your First Fight',
                 lines: [
-                    '"Two trainers, two teams, one road. That\'s a battle."',
-                    '"First, the rule of this region: every Pokémon battles at Level 50. No grinding — a partner\'s strength is how it\'s *built*: its nature, its trained stats, the moves you give it. I\'ll point each one out as we go."',
-                    '"Tap ⚔ FIGHT to pick a move. Each one has its own PP, so the strongest hit isn\'t always the right one. Physical, Special, and Status all read off different stats — type matters more than brute force. Super-effective doubles your damage; the wrong type can half it."',
-                    '"🔴 POKÉMON swaps your active partner — it costs your turn, so use it on a read. 🎒 BAG burns an item. 🏃 RUN forfeits the fight and a slice of gold. Keep that HP bar green."'
-                ]
+                    '"Two trainers, two teams, one road — that\'s a battle. Let me walk you through your first."',
+                    '"No grinding in this region — every Pokémon fights at its peak from the start. What wins is how a partner is *built*: its nature, its training, the moves you give it. I\'ll point those out as we go."',
+                    '"Tap ⚔ FIGHT to choose a move, and mind the type. Strike where a foe is weak and you hit hard; strike where it\'s strong and you barely scratch it."',
+                    '"🔴 POKÉMON swaps your partner — but it costs a turn, so do it on a read. 🎒 BAG uses an item. 🏃 RUN flees for a price. Keep that HP bar green."'
+                ],
+                cue: 'Tap ⚔ FIGHT and aim for the foe\'s weakness.'
             },
             firstWild: {
                 metaKey: 'tutorial-first-wild',
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Catching 101',
                 lines: [
-                    '"A wild one. They don\'t walk over of their own accord — you have to invite them."',
-                    '"This first throw is on the house — guaranteed catch, no flee. After this, the number on each ball is your honest chance: species × ball multiplier. Greats land 1.5×, Ultras 2.0×, a Master Ball never misses."',
-                    '"Caught Pokémon arrive at full HP, fresh PP, ready to walk. Take good care of them."'
-                ]
+                    '"A wild one! They won\'t just stroll over — you have to invite them."',
+                    '"This first throw\'s on me — a sure thing. After that, the number on each ball is your real chance at it. Bigger ball, better odds; a Master Ball never misses at all."',
+                    '"Anything you catch turns up rested and ready to walk. Treat them well."'
+                ],
+                cue: 'Tap a ball to make the catch.'
             },
             firstWildRoute: {
                 metaKey: 'tutorial-first-wild-route',
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The Road',
                 lines: [
-                    '"Between every two cities, the road has its own residents — wild Pokémon, hanging in the grass."',
-                    '"Tap a ball to throw it. The percentage is your real chance. Rarer mons (G1) take more throws and flee easier on a miss; common ones (G4) hang around. Either way, a missed throw might be the last you see of it."',
-                    '"You can always Run — the next wild on the route will still fire, then the trainer battle starts. The road won\'t wait for long."'
-                ]
+                    '"Between every two cities the road has its own residents — wild Pokémon, waiting in the grass."',
+                    '"Tap a ball to throw; the percentage on it is your real chance. The rarer ones spook easily and may bolt on a miss — that throw could be the last you see of them. Commoner ones tend to linger."',
+                    '"You can always Run. The road won\'t wait long, though — one more wild may appear, then a trainer\'s up ahead."'
+                ],
+                cue: 'Throw while the odds look good — or Run and move on.'
             },
             firstSafariCatch: {
                 metaKey: 'tutorial-first-safari-catch',
                 sprite: 'Hiker', name: 'Safari Warden', nameplate: 'Safari Rules',
                 lines: [
-                    '"Past the gate, only Safari Balls work — your own stash stays at the door."',
-                    '"🍓 Bait calms the wild: catch chance drops, but it sticks around longer. 🪨 Rock pushes the other way — sharper catch chance, much higher flee. They stack up to 3× each and reset between encounters."',
-                    '"Every turn — bait, rock, missed throw — the wild may bolt. A stacked rock is the best swing in the game, and the most dangerous. Pick your moment."'
-                ]
+                    '"Past the gate only Safari Balls work, friend — your own stash stays at the door."',
+                    '"🍓 Bait settles a wild down: harder to catch, but it sticks around. 🪨 Rock does the opposite — easier catch, far likelier to bolt. Pile on more of either to push it further; they reset each encounter."',
+                    '"And it can run at the end of any turn — bait, rock, or a missed throw. A good stack of rocks is your best swing and your biggest risk. Pick your moment."'
+                ],
+                cue: 'Soften it with Bait, sharpen it with Rock, then throw.'
             },
             firstMart: {
                 metaKey: 'tutorial-first-mart',
                 sprite: 'Clerk', name: 'Mart Clerk', nameplate: 'Pokémart',
                 lines: [
-                    '"Welcome to the Pokémart. The basics, always in stock."',
-                    '"Poké Balls (300G) for the road. Potions, Full Restore, Max Elixir for the long fights. X items push a stat two stages for one battle. Dire Hit for a crit edge. Guard Spec. locks your stats safe for five turns."',
-                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take five Poké Balls to start you off — on the house. And word is some shops out there stock revives and special battle items… but you didn\'t hear that from me."'
+                    '"Well howdy! Pull up a basket — Poké Balls, Potions, the lot. All stocked, all the time."',
+                    '"Towns patch your team up free between scraps, so don\'t fuss over the small stuff. Grab some balls for catchin\', a Potion or two for when a fight drags long — whatever feels right."',
+                    '"Here — five Poké Balls on the house, welcome gift. And hey… word is the fancier shops out there keep the real good stuff. You didn\'t hear it from me."'
                 ],
+                cue: 'Stock a few Poké Balls before you hit the road.',
                 onContinue: function () {
                     try { _storyGrantBundle({ pokeBall: 5 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 5 Poké Balls — welcome to the Pokémart!'); } catch (e) {}
@@ -42147,10 +42158,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-dept',
                 sprite: 'Clerk-2', name: 'Dept Store Clerk', nameplate: 'Department Store',
                 lines: [
-                    '"The big-city upgrade. Five floors, one elevator, and the goods aren\'t cheap."',
-                    '"Great Balls (1,000G) — 1.5× catch rate. Revives and Max Revives for partners who go down mid-battle. Weather and Terrain Orbs tilt the field the moment a fight begins. The Emergency Teleporter pulls you out of any trapping move, once per battle."',
-                    '"Stock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf. Here — a Great Ball and a Revive, on the house. First-visit gift, our usual policy."'
+                    '"Welcome to the Department Store — five floors, one elevator, and nothing on the shelf comes cheap."',
+                    '"Great Balls for a surer catch. Revives for partners who fall mid-battle. Weather and Terrain Orbs to tilt the field the moment the bell rings. And the Emergency Teleporter — one clean escape from any trap, once a battle."',
+                    '"Mind you, each item\'s a single sale per city — no restock when you pass through again. Buy while it\'s on the shelf. Here: a Great Ball and a Revive, with the store\'s compliments. First-visit policy."'
                 ],
+                cue: 'Grab the Revive — it saves runs when a partner falls.',
                 onContinue: function () {
                     try { _storyGrantBundle({ greatBall: 1, revive: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 Great Ball and 1 Revive — welcome to the Department Store!'); } catch (e) {}
@@ -42160,20 +42172,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-safari',
                 sprite: 'Hiker', name: 'Safari Warden', nameplate: 'Safari Zone',
                 lines: [
-                    '"Welcome to the Safari Zone! First trip is on the house."',
-                    '"Take this satchel — 15 Safari Balls, the only ball that works past this gate. Room for up to 6 encounters before the bell rings."',
-                    '"Two levers inside: 🍓 Bait calms the wild down. 🪨 Rock sharpens the catch but risks a flee. The wild may bolt at the end of any turn. Unused Safari Balls stay at the gate when you leave. Good hunting."'
-                ]
+                    '"Welcome to the Safari Zone! First trip\'s on the house."',
+                    '"Here — a satchel of Safari Balls, the only kind that works past this gate. You get a handful of encounters before the bell rings, so make them count."',
+                    '"Two tricks inside: 🍓 Bait calms a wild down, 🪨 Rock sharpens the catch but tempts it to bolt — and bolt it might, any turn. Leftover balls stay at the gate. Good hunting."'
+                ],
+                cue: 'Use Bait and Rock to land catches before the bell.'
             },
             firstCasino: {
                 metaKey: 'tutorial-first-casino',
                 sprite: 'Gambler', name: 'Game Corner Manager', nameplate: 'Poké Game Corner',
                 lines: [
-                    '"Welcome to the Game Corner. No coin swap, no cashier — your gold plays straight off the table. Drop a bet, pull the lever."',
-                    '"Here\'s the real draw: win big and the floor pays in *Vitamins* — HP Up, Protein, Iron, the lot. Each one lifts a partner\'s IV by three. Land a jackpot and I\'m handing over Rare Candies or Ability Capsules."',
-                    '"Three tables, three moods. Coin Flip — even money, and a streak of three bumps your prize tier. Slots — three reels, and 7-7-7 drops the rarest vouchers. Roulette — 11× on a single cell, for the math majors."',
-                    '"Tap STATS up top to watch the numbers climb. The house keeps an edge — that\'s honest. But the prizes don\'t care about luck the way coins do. Spin smart, walk out with vitamins. Here — a Lucky Chip, 500G credit on your first bet. House rule."'
+                    '"Welcome to the Game Corner. No coin swap, no cashier — your gold plays straight off the table. Place a bet, pull the lever."',
+                    '"The real draw? Win big and the floor pays in *Vitamins* — HP Up, Protein, Iron, the lot, each one nudging a partner\'s IV by three. Hit a jackpot and I\'m parting with Rare Candies and Ability Capsules."',
+                    '"Three tables, three moods. Coin Flip — even money, and a streak of three bumps your prize tier. Slots — three reels, 7-7-7 for the rarest vouchers. Roulette — 11× on a single cell, if you fancy the odds."',
+                    '"Watch the numbers climb under STATS up top. The house keeps its edge — honest enough — but the prizes don\'t ride on luck the way coins would. Spin smart, leave with vitamins. Here: a Lucky Chip, 500G on your first bet. House rule."'
                 ],
+                cue: 'Chase the big wins — they pay in IV vitamins and vouchers.',
                 onContinue: function () {
                     try { _storyGrantBundle({ casinoChip500: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received Lucky Chip — 500G credit on your first casino bet!'); } catch (e) {}
@@ -42183,10 +42197,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-pokemon-center',
                 sprite: 'Nurse', name: 'Nurse Joy', nameplate: 'Pokémon Center',
                 lines: [
-                    '"Welcome to the Pokémon Center! Your team\'s already healed — the road takes care of that for me."',
-                    '"Upstairs is the PC: thirty slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies."',
-                    '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The one mon off the table is your last party member — every center on the road draws that line. Take a Potion before you go — first-aid kit on the way out the door."'
+                    '"Welcome to the Pokémon Center! Your team\'s already healed — the road sees to that before you reach my counter."',
+                    '"Upstairs is the PC: cold storage for every partner you\'ve caught but can\'t carry today. Deposit, withdraw, or release — whenever you like."',
+                    '"And downstairs… the Underground. Quieter folk down there, happy to buy any Pokémon you\'ll never field — though they\'ll never take your last party member. Here, a Potion for the road. Do take care out there."'
                 ],
+                cue: 'Park spare catches in the PC upstairs anytime.',
                 onContinue: function () {
                     try {
                         _storyEnsureInventory();
@@ -42204,6 +42219,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"Tap a slot to see what it can reach today; tap Teach to make the change permanent. The price follows the move, not my mood — so sharpening a half-trained partner stays cheap."',
                     '"Choose for the gaps, not the spectacle. One Fairy answer for the Dragon that keeps ending your runs. A way to shake a sleeping status. Cover a fourfold weakness before the world finds it first. Come back as we both grow — the ceiling lifts, and later still I open the books no one should hand a child. Here: a Heart Scale. The first lesson is mine to give."'
                 ],
+                cue: 'Patch a coverage gap, not just add a flashy move.',
                 onContinue: function () {
                     try { _storyGrantBundle({ heartScale: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 Heart Scale — waives the gold on one move tutor lesson.'); } catch (e) {}
@@ -42213,10 +42229,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-nature-rater',
                 sprite: 'Aroma_Lady', name: 'Nature Rater', nameplate: 'Nature Rater',
                 lines: [
-                    '"A Pokémon\'s nature is +10% to one stat and -10% to another. Small numbers, big consequences."',
-                    '"Adamant and Modest sharpen power. Jolly and Timid sharpen speed. Bold, Calm, Impish, and Careful build bulk. The neutral natures — Hardy, Docile, Serious, Bashful, Quirky — leave the spread untouched."',
-                    '"Flat fee per change. Re-pick freely as you learn what the team actually needs. Take a Mint — first reading is free."'
+                    '"A Pokémon\'s nature lifts one stat +10% and trims another -10%. Small numbers — but oh, the difference they make."',
+                    '"Adamant and Modest sharpen power; Jolly and Timid, speed; Bold, Calm, Impish, and Careful build bulk. The neutral five — Hardy, Docile, Serious, Bashful, Quirky — leave the spread be."',
+                    '"A flat fee each time, so re-pick as the team teaches you what it wants. Here — a Mint. The first reading\'s on me."'
                 ],
+                cue: 'Match a nature to each partner\'s role — power, speed, or bulk.',
                 onContinue: function () {
                     try { _storyGrantBundle({ mint: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 Mint — waives the gold on one nature change.'); } catch (e) {}
@@ -42226,10 +42243,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-battle-dojo',
                 sprite: 'Blackbelt', name: 'Dojo Master', nameplate: 'Battle Dojo',
                 lines: [
-                    '"Items, abilities — the polish on the blade. Comes in here, walks out sharper."',
-                    '"Most species carry two or three abilities. The Dojo lets you pick which one is active, Hidden Abilities included where the species learns them."',
-                    '"Defensive items — Leftovers, Eviolite. Offensive — Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals are tied to Colress\'s battle forms; set the form there. Otherwise, swap freely and shape every mon for the role it\'ll actually play. Take this Emblem of Honor — first swap is on the house."'
+                    '"Items and abilities — the polish on the blade. A partner walks in here and walks out sharper."',
+                    '"Most species know two or three abilities; here you choose which one is active — Hidden Abilities among them, where the species earns one."',
+                    '"Defensive gear, Leftovers and Eviolite. Offensive, Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals belong to Colress\'s battle forms — set those at his lab. The rest, swap freely; arm each mon for the fight it\'ll truly face. Take this Emblem of Honor — your first swap is on the house."'
                 ],
+                cue: 'Give each partner an item and ability that fit its job.',
                 onContinue: function () {
                     try { _storyGrantBundle({ emblemHonor: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 Emblem of Honor — waives the gold on one Dojo item or ability swap.'); } catch (e) {}
@@ -42239,10 +42257,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-ev-trainer',
                 sprite: 'Battle_Girl', name: 'EV Trainer', nameplate: 'EV Training',
                 lines: [
-                    '"Effort Values — the invisible reps your Pokémon never got from grinding wilds."',
-                    '"252 in the two stats that matter, 4 in a third — that\'s the classic spread. I can lay it down in an afternoon for a fee. Defensive mons want HP plus a defense; sweepers want the offensive stat plus speed."',
-                    '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads. Take an EV Voucher — first preset is on me."'
+                    '"Effort Values — the invisible reps your Pokémon never got out grinding wilds. I drill them in."',
+                    '"The classic spread\'s 252 in two key stats, 4 in a third. Defensive mons want HP and a defense; sweepers want their attack stat and speed. One afternoon and a fee, done."',
+                    '"This is the line between a partner that eats a hit and one that drops to it. Start with your leads. Here — an EV Voucher, first preset\'s on me!"'
                 ],
+                cue: 'Lay a 252/252 spread on your leads first.',
                 onContinue: function () {
                     try { _storyGrantBundle({ vitamin: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 EV Voucher — waives the gold on one EV preset application.'); } catch (e) {}
@@ -42252,10 +42271,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-fan-club',
                 sprite: 'Gentleman', name: 'Fan Club Chairman', nameplate: 'Pokémon Fan Club',
                 lines: [
-                    '"Welcome, welcome! The Pokémon Fan Club studies every partner who comes through that door — and yours are worth studying."',
-                    '"Every Pokémon is born with hidden potential we call Individual Values — IVs. Zero to thirty-one in each stat. Roll high and you\'ve a champion in the making; roll low and they\'ll want a little help getting there."',
-                    '"Vitamins are that help — HP Up, Protein, Iron, Calcium, Zinc, Carbos. Each lifts one stat\'s IV by three points, up to a ceiling of thirty-one. Take five of each, with the Club\'s compliments. Any Fan Club will apply them, or check how your team\'s coming along."'
-                ]
+                    '"Welcome, welcome! The Pokémon Fan Club studies every partner through that door — and yours, I daresay, are worth the study."',
+                    '"Every Pokémon is born with hidden promise — Individual Values, we call them. Zero to thirty-one in each stat. Roll high and you\'ve a champion in the making; roll low and they\'ll want a little help along."',
+                    '"Vitamins are that help — HP Up, Protein, Iron, Calcium, Zinc, Carbos — each lifting one stat\'s IV by three, up to that ceiling of thirty-one. Take five of each, with the Club\'s compliments. Any Fan Club will apply them, or simply check how your team\'s shaping up."'
+                ],
+                cue: 'Feed vitamins to partners with low IVs to round them out.'
             },
             firstColress: {
                 metaKey: 'tutorial-first-colress',
@@ -42278,7 +42298,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"You unlock them like everything else here: one gym at a time. The fifth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."',
                     '"One form per partner — and a Mega Stone or Z-Crystal moves into the held-item slot to do it. Dynamax and Tera don\'t ask for the slot. Choose accordingly."',
                     '"Every form is the same bargain: a spectacular swing, a finite window. Spend it on a read, not a reflex. …I\'ll be watching which you choose."'
-                ]
+                ],
+                cue: 'Once unlocked, set one battle form on your strongest partner.'
             },
             // ── Per docs/EVOLUTION_FLOW_REBUILD.md §6, §7 ────────────────────
             // New onboarding scenes that fire on first arrival at City 2. Each
@@ -42288,10 +42309,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-cable-link',
                 sprite: 'Engineer', name: 'Bill', nameplate: 'Cable Link Station',
                 lines: [
-                    '"Hey hey! Name\'s Bill. I rigged up these Cable Link Stations between every gym town — punch in the line and you\'re trading mons with another trainer halfway across the region. Anonymous on both ends. Pure magic and copper wire."',
-                    '"Some Pokémon only evolve through a trade. Old quirk of the species — they need the moment of handover. Visit a Cable Link in any city and the Evolution Tutor can lean on that signal to push your trade-evo through."',
-                    '"Since you\'re new to the line, take this — it\'s a half-price coupon for any one Cable Link transaction. Reroll, Upgrade, Rebuild, your pick. Welcome to the network."',
+                    '"Hey hey! Bill\'s the name. I strung these Cable Link Stations between every gym town — punch in the line and you\'re trading mons with a trainer halfway across the region. Anonymous both ends. Pure magic and copper wire!"',
+                    '"See, some Pokémon only evolve through a trade — they need that moment of handover. Hit a Cable Link in any city and the Evolution Tutor can ride the signal to push your trade-evo through."',
+                    '"New to the line? Here — a coupon, half off any one Cable Link job: Reroll, Upgrade, Rebuild, your pick. Welcome to the network!"',
                 ],
+                cue: 'Use a Cable Link when a partner only evolves by trade.',
                 onContinue: function () {
                     try { _storyGrantBundle({ linkDiscount50: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received Bill\'s Discount Card — 50% off one Cable Link action!'); } catch (e) {}
@@ -42301,10 +42323,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-stone-sage',
                 sprite: 'Aroma_Lady', name: 'Stonewise Granny', nameplate: 'Evolution Tutor',
                 lines: [
-                    '"Easy there, child. Step into the warm. The old ones say every Pokémon carries a stone-memory in its bones — fire, water, leaf, the lot. My job\'s to remind them which one."',
-                    '"The shop next door sells the stones themselves — pebble of fire, drop of moon, that sort of thing. Bring me what your partner needs and we\'ll wake them up. For the shy ones who only evolve on a long road, you\'ll want a Cable Link first."',
-                    '"Here. A Stonewise Token. Take it to Stones and Beyond, point at anything on the shelf — stone or trinket — and hand them the token. Free of charge — a welcome gift from the hearth. Now go on, the road north is colder."',
+                    '"Easy now, child — step into the warm. The old ones say every Pokémon carries a stone-memory in its bones: fire, water, leaf, the lot. My work\'s but to remind them which."',
+                    '"The shop next door keeps the stones themselves — pebble of fire, drop of moon, and such. Bring me what your partner needs and we\'ll wake it up. For the shy ones that only turn on a long road, mind you\'ll want a Cable Link first."',
+                    '"Here — a Stonewise Token. Carry it to Stones and Beyond, point at anything on the shelf, and hand it over. Free, a gift from the hearth. Go on now; the road north runs colder."',
                 ],
+                cue: 'Bring a partner here with the right stone to evolve it.',
                 onContinue: function () {
                     try { _storyGrantBundle({ stoneToken: 1 }); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received Stonewise Token — redeem for 1 free item (stone or trade item) at Stones and Beyond!'); } catch (e) {}
@@ -42314,10 +42337,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-stone-shop',
                 sprite: 'Hex_Maniac', name: 'Emporium Keeper', nameplate: 'Stones and Beyond',
                 lines: [
-                    '"Welcome to Stones and Beyond. Stones for the soul, trinkets for the trade. Everything on the shelf is five hundred gold — pebble or pendant, the price stays honest."',
-                    '"The Evolution Tutor next door needs these to wake the old methods up. A Fire Stone for a Vulpix, a Metal Coat for an Onix on its way to becoming Steelix. Bring back whatever the partner asks for."',
-                    '"If the Granny gave you a token, slide it across the counter and pick anything — stone or trinket — for free. Otherwise — gold up front, no haggling."',
-                ]
+                    '"Welcome to Stones and Beyond… stones for the soul, trinkets for the trade. One flat price for anything on the shelf — pebble or pendant, the cost never wavers."',
+                    '"The Evolution Tutor next door needs these to wake the old methods. A Fire Stone for a Vulpix… a Metal Coat for an Onix that dreams of Steelix. Bring back whatever your partner whispers for."',
+                    '"If the Granny pressed a token on you, slide it across and take anything — free. Otherwise… gold up front. I never haggle."',
+                ],
+                cue: 'Buy the stone your partner needs, then see the Tutor.'
             }
         };
 
@@ -42351,12 +42375,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const style = i === 0 ? '' : ' style="margin-top:8px;"';
                 return `<p class="story-dialog-text"${style}>${_esc(line)}</p>`;
             }).join('');
+            // Optional one-line "what to do now" action cue — a calm, bold
+            // breadcrumb under the dialogue so the player always leaves a scene
+            // knowing their next move. HTML-escaped like the lines above.
+            const cueHtml = scene.cue
+                ? `<p class="story-dialog-cue" style="margin-top:12px;padding-top:10px;border-top:1px dashed rgba(255,213,79,0.4);color:#ffd54f;font-weight:bold;">→ ${_esc(scene.cue)}</p>`
+                : '';
             ov.innerHTML = `
                 <img class="story-tutorial-sprite" src="${getTrainerSprite({ spriteFile })}" alt="${_esc(npcName)}" onerror="this.style.display='none'">
                 <div class="story-tutorial-name">${_esc(npcName)}</div>
                 <div class="story-dialog-host story-tutorial-dialog-host">
                     <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
-                    <div class="story-dialog-box">${linesHtml}</div>
+                    <div class="story-dialog-box">${linesHtml}${cueHtml}</div>
                 </div>
                 <button type="button" class="story-tutorial-continue">Continue →</button>
             `;
@@ -45122,7 +45152,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Buck: "Effort Values are the work nobody sees. Two hundred fifty-two per stat, five-ten total. After that the body says no."',
                 'Buck: "Pick a preset and I\'ll spread it. Most players underspend here, then wonder why their sweeper wakes up dead."',
                 'Buck: "A trained Pokémon outlasts a strong one. I\'ve been saying it for twenty years and the math hasn\'t shifted."',
-                'Buck: "Five thousand gold a spread, free with an EV Voucher. Gyms and Pokédex milestones drop those — keep an eye out."',
+                'Buck: "Five thousand gold a spread, free with an EV Voucher. Gym Leaders hand those out, and the Casino pays them on a big win — keep an eye out."',
                 'Buck: "Training sticks for life. PC, party, evolutions — the work travels. Sell or release the mon and it walks out the door with them."',
             ],
             colress: [
@@ -47499,7 +47529,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         }
 
-        // ── VICTORY REWARDS, POKÉDEX MILESTONES, ROAMING LEGENDARIES ─────
+        // ── VICTORY REWARDS, ROAMING LEGENDARIES ────────────────────────
         // Bundles dropped on first victory for each Gym Leader + Elite Four +
         // Champion (vouchers are leader/elite/boss-only by design). Each bundle
         // holds: currency (balls, gold — unchanged from the prior economy),
@@ -55702,16 +55732,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 bagEl.appendChild(div);
             });
             // Voucher items — earned, not bought, and not sellable. Surface them at
-            // the top so players see the bundle they earned from gym victories and
-            // Pokédex milestones. Each voucher = one free use of its matching tutor
+            // the top so players see the bundle they earned from Gym Leaders and
+            // big Casino wins. Each voucher = one free use of its matching tutor
             // or facility action (same effect as paying the gold cost).
             const _voucherItems = [
-                { id:'rareCandy',      name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Evolution Tutor to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',        name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">EV Voucher', desc:'Waives the gold cost of one EV preset at the EV Trainer (+252 / +252 spread) — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Distinct from IV vitamins (Protein, Iron, …), which raise IVs at the Fan Club.' },
-                { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to teach any move to any Pokémon for free — same effect as paying 1,500G. Earned from gym leaders + Pokédex milestones. The classic move-tutor coin from real games.' },
-                { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. The new nature sticks through PC, evolution, the works.' },
-                { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from gym leaders + Pokédex milestones. Hidden Abilities included, just like the dojo\'s gold path.' },
-                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
+                { id:'rareCandy',      name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Evolution Tutor to evolve any party Pokémon for free. Earned from Gym Leaders and big Casino wins.' },
+                { id:'vitamin',        name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">EV Voucher', desc:'Waives the gold cost of one EV preset at the EV Trainer (+252 / +252 spread) — same effect as paying 5,000G. Earned from Gym Leaders and big Casino wins. Distinct from IV vitamins (Protein, Iron, …), which raise IVs at the Fan Club.' },
+                { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to teach any move to any Pokémon for free — same effect as paying 1,500G. Earned from Gym Leaders and big Casino wins. The classic move-tutor coin from real games.' },
+                { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from Gym Leaders and big Casino wins. The new nature sticks through PC, evolution, the works.' },
+                { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from Gym Leaders and big Casino wins. Hidden Abilities included, just like the dojo\'s gold path.' },
+                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from Gym Leaders and big Casino wins. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
                 { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 5,000G. The first one drops from Gym Leader 5; redeem at the next-city lab for your first awakening.' },
                 { id:'linkDiscount50', name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Bill\'s Discount Card', desc:'Take to the Cable Link Station for 50% off one transaction — Reroll, Upgrade, or Rebuild, your pick. Earned from Bill on your first visit to the Link Station.' },
                 { id:'stoneToken',     name:'<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Stonewise Token', desc:'Redeem at Stones and Beyond for one free item — any evolution stone or trade item on the shelf. Earned from the Stonewise Granny.' },
@@ -62615,7 +62645,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const vN = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaLine = vN > 0
                 ? `<span style="color:#f8bbd0;font-weight:bold;"><img src="sprites/pokesprite/items/protein.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${vN} EV Voucher${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
-                : `<span style="color:#9aa3b0;">No EV Vouchers yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; EV Vouchers (from gym victories &amp; Pokédex milestones) apply one for free.`;
+                : `<span style="color:#9aa3b0;">No EV Vouchers yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; EV Vouchers (from Gym Leaders &amp; big Casino wins) apply one for free.`;
             // Collapsed by default on every entry — the explainer eats the
             // whole first screen on phones and pushes the preset cards below
             // the fold. Players opt-in via the "How EVs work" toggle.
