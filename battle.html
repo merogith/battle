@@ -32172,7 +32172,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 { "phase": "climax", "lines": [
                                     "He says it like a joke. He doesn't smile.",
                                     "You walk on. The phrasing snags on something you can't name yet - this time, as if there were others.",
-                                    "The professor saw you off this morning like it was the first time. For him, it was. The old man on the bench knew better - and you're starting to notice the difference." ] }
+                                    "The professor saw you off this morning like it was the first time. For him, it was. The old man on the bench knew better - and you're starting to notice the difference." ] },
+                                { "phase": "outro", "branches": [
+                                    { "when": { "meta": "lastLoopChoice", "eq": "remember" }, "lines": [
+                                        "You glance back once. The old man is watching you go, and he is more worn than a stranger on a bench has any right to be - worn the way you get carrying a thing a long way on purpose.",
+                                        "Something is already sitting across your shoulders, settled there before the road has even started. You chose to carry it, somewhere you can't point to. You don't remember choosing. You only feel the weight, and the old man's joke landing like the back half of a sentence you began a long way back." ] },
+                                    { "when": { "meta": "lastLoopChoice", "eq": "forget" }, "lines": [
+                                        "You glance back once. The old man is watching you go, and the bench beside him is empty in a way that manages to feel colder than empty usually does.",
+                                        "You came onto this road scrubbed clean, light, certain it's the first time - and the certainty has a draft in it somewhere, a thinness, like a house someone left in a hurry. You don't know what you set down to walk this unburdened. You only know the lightness was bought, and that someone paid." ] },
+                                    { "lines": [
+                                        "You glance back once. The old man is still watching you go - patient, unsurprised, the way you'd watch someone you used to be.",
+                                        "You don't have a name for the look yet. You will." ] }
+                                ] }
                             ]
                   },
                   "villain.rocket.event1": {
@@ -35261,6 +35272,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "Each cycle, an older you finds the younger you and trains them the only way that's ever worked: by losing, on purpose, so you walk into the ending stronger than he did. The 'save the universe' part is real. He needs you to believe it's real.",
                                     "'The sticker that read Welcome Back. The sentence in your Pokédex in handwriting you didn't recognize. The trainer who told you to say hi.' He doesn't list them to convince you. He lists them so you'll remember to leave them.",
                                     "'You never remembered peeling that sticker because you haven't peeled it yet. Next loop, you will. You always do.'" ] },
+                                { "phase": "turn", "lines": [
+                                    "Then something in him lets go - the last knot of the speech he came here to give.",
+                                    "'I used to be certain of the reason,' he says. 'The world ends. We outrun it by getting stronger. The losing is the lesson. I told it to myself until it wore smooth as a stone carried in a pocket too long.'",
+                                    "He turns the cap over in his hands. 'I have never once seen the world end. I have never once seen it saved. In every loop I can still hold, I have only ever seen the road, and the bench, and this cap, and you.'",
+                                    "'Nobody built this. I went looking - that was an early loop, looking for the architect, the door, the last lap where it finally takes. There is no one. There is no door. It was never going toward anything. It just goes, and I leave the sticker because I always leave the sticker, not because it has ever once helped.'" ] },
+                                { "phase": "address", "lines": [
+                                    "'But you come back further than I can.' For the first time he looks at you and not at the trainer wearing your face - past all of it, at the part of you that keeps choosing to begin.",
+                                    "'You start it over from somewhere outside the road. Somewhere I have never been able to reach. And you walk it again like it is the first morning of the only life you have.'",
+                                    "'I don't know what you are,' your own older voice tells you, almost tender. 'I only know you are the single part of this that was ever here on purpose. That has to mean the choosing is yours. It is the one thing in here that was never mine to take.'" ] },
                                 { "phase": "outro", "lines": [
                                     "He says it like a man reciting something he used to be certain of, the certainty worn down a little more each loop.",
                                     "He doesn't tell you that part. He doesn't have to. You hear it in the gaps, in your own future voice - the small, terrible doubt that this is working at all." ] }
@@ -36832,6 +36852,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return {
                 completedRuns: 0,
                 lastClearSeed: '',
+                // The remember/forget pick from the player's PREVIOUS completed
+                // run's loop capstone (main.loop.remember). Surfaced cross-run in
+                // the next run's cold open as the only-you-could-author-it loop
+                // proof (narrative only — never a mechanical head start).
+                lastLoopChoice: '',
                 tipsShown: {},
                 // Cross-run Pokédex: { [speciesName]: { seen, caught, shinySeen, shinyCaught, firstSeenAt, firstCaughtAt, firstShinySeenAt } }
                 pokedex: {},
@@ -36864,6 +36889,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return {
                     completedRuns: Math.max(0, obj.completedRuns | 0),
                     lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : '',
+                    lastLoopChoice: typeof obj.lastLoopChoice === 'string' ? obj.lastLoopChoice : '',
                     tipsShown: (obj.tipsShown && typeof obj.tipsShown === 'object') ? obj.tipsShown : {},
                     pokedex: (obj.pokedex && typeof obj.pokedex === 'object') ? obj.pokedex : base.pokedex,
                     achievements: (obj.achievements && typeof obj.achievements === 'object') ? obj.achievements : base.achievements,
@@ -42966,6 +42992,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { return (key && sm && sm.storyChoices) ? sm.storyChoices[key] : undefined; }
             catch (e) { return undefined; }
         }
+        // Read a field off the CROSS-RUN meta (pbs_story_meta) for branch
+        // matching — the substrate for loop residue (e.g. lastLoopChoice from
+        // the previous run, completedRuns as the loop depth).
+        function _storyMetaValue(field) {
+            try { const m = readStoryMeta(); return m ? m[field] : undefined; }
+            catch (e) { return undefined; }
+        }
+        // A branch `when` matches when:
+        //   • absent           → the when-less default (always matches; place last)
+        //   • { key, eq }      → per-run sm.storyChoices[key] === eq
+        //   • { meta, eq }     → cross-run meta[meta] === eq
+        //   • { meta, gte/lte }→ cross-run numeric meta[meta] compared (loop depth)
+        // First matching branch wins, so order most-specific → default.
+        function _branchMatches(when) {
+            if (!when) return true;
+            if (when.meta != null) {
+                const v = _storyMetaValue(when.meta);
+                if (when.eq != null)  return v === when.eq;
+                if (when.gte != null) return (v | 0) >= when.gte;
+                if (when.lte != null) return (v | 0) <= when.lte;
+                return v != null && v !== '' && v !== 0;
+            }
+            if (when.key != null) return _storyChoiceValue(when.key) === when.eq;
+            return false;
+        }
         // Resolve an act's display lines: a branch set (first matching `when`,
         // else the when-less default) or static `lines`/`line`.
         function _resolveActLines(act) {
@@ -42973,8 +43024,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (Array.isArray(act.branches)) {
                 for (const br of act.branches) {
                     if (!br) continue;
-                    if (!br.when) return Array.isArray(br.lines) ? br.lines : (br.line ? [br.line] : []);
-                    if (_storyChoiceValue(br.when.key) === br.when.eq) {
+                    if (_branchMatches(br.when)) {
                         return Array.isArray(br.lines) ? br.lines : (br.line ? [br.line] : []);
                     }
                 }
@@ -48184,6 +48234,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 if (!sm.storyChoices || typeof sm.storyChoices !== 'object') sm.storyChoices = {};
                                 sm.storyChoices[key] = pick.value || pick.label;
                                 try { save(); } catch (e2) {}
+                                // The loop capstone is the one choice that must
+                                // outlive its run: mirror it into the cross-run
+                                // meta so the NEXT run's cold open can surface it
+                                // as the undeniable loop proof (narrative only).
+                                if (key === 'main.loop.remember') {
+                                    try {
+                                        const _m = readStoryMeta();
+                                        _m.lastLoopChoice = (pick.value || pick.label) || '';
+                                        writeStoryMeta(_m);
+                                    } catch (e3) {}
+                                }
                             }
                         } catch (e2) {}
                         // Swap body to reply text + replace choice buttons

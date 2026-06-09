@@ -4,10 +4,25 @@
 `main.*` time-loop spine, this file records the **decisions** taken with the maintainer and turns
 them into per-scene direction the next session can build from.*
 
-**Status: direction doc, not applied.** No `battle.html`, `STORY_SCENES`, dialogue JSON, or save
-code is changed here. Per `CLAUDE.md`, story changes ship only with explicit sign-off; this captures
-the *approved direction* so a later drafting pass can write prose against it. One small narrative-only
-schema add is named in §7 — it, too, needs the normal sign-off before it's built.
+**Status: APPLIED (drafting pass landed).** The maintainer signed off ("do all"), so this direction
+is now implemented in `battle.html` — surgically, preserving the shipped/guarded prose (the existing
+main loop already executed ~75% of this design). What landed:
+
+- **Cross-run residue system** (§3 Layer 2 / "the one build item"): `pbs_story_meta.lastLoopChoice`
+  persists the capstone; the scene branch engine now reads cross-run meta (`when.meta`) alongside
+  per-run `when.key`; `main.event1` gained a residue/cast-of-yous outro act (remember = heavier,
+  forget = colder, first run = "someone you used to be").
+- **Authorless tip + replaying gesture** (§1, §5): `main.mfReveal` keeps its signature reveal +
+  breadcrumb callbacks (guarded) and *adds* the authorless turn (nobody built this / no door / it just
+  goes) and the diegetic "you come back from outside the road" address — no menu-speak.
+- **Tests:** `tests/suites/story-loop-residue.test.js` (source guards) +
+  `tests/suites/story-loop-residue-engine.test.js` (functional, drives `_resolveActLines` off meta).
+  The prior `story-loop-prose.test.js` guards stay green — nothing it locks was moved.
+
+What was *deliberately not* done: no wholesale rewrite of the already-strong `event2`–`event9` prose
+(per the dossier's "polish, not replace" rule). The biggest semantic change to review is the `mfReveal`
+authorless turn — it recontextualizes the shipped "save the universe" line as a story the First told
+himself. Flagged for the maintainer to veto in PR review if the literal teleology should stay.
 
 ---
 
@@ -158,18 +173,22 @@ Resolve symbols fresh with the `anchor` skill — line numbers drift. Scene inve
 
 ---
 
-## The one build item (needs sign-off)
+## The one build item — DONE ✓
 
-The cross-run residue (§3 Layer 2) is the *only* part that doesn't ride existing systems:
+The cross-run residue (§3 Layer 2) was the *only* part that didn't ride existing systems. As implemented:
 
-- `sm.storyChoices` is **per-run only**; the `main.loop.remember` outcome does **not** currently
-  survive to the next run.
-- `pbs_story_meta` (`readStoryMeta` / `writeStoryMeta`) already persists `completedRuns`, `pokedex`,
-  `achievements`, `hofRecords`, etc. **A loop count already exists** (`completedRuns`) — we deliberately
-  do **not** surface it as a tally (§3 rationale).
-- **Add one additive, narrative-only field** to `_emptyStoryMeta()` — e.g. `lastLoopChoice: ''` —
-  written at `main.ending`, read at the next run's cold open to select Layer-1 residue flavor. Additive
-  meta fields are back-filled by `readStoryMeta`'s normalization, so **no `SAVE_VER` bump** is required.
+- `sm.storyChoices` is **per-run only**, so on commit of `main.loop.remember` the pick is **mirrored**
+  into the cross-run meta (the `_renderNarrativeOverlay` choice handler special-cases that key).
+- `pbs_story_meta` (`readStoryMeta` / `writeStoryMeta`) gained one **additive, narrative-only field** —
+  `lastLoopChoice: ''` — seeded in `_emptyStoryMeta()` and normalized in `readStoryMeta`. Additive, so
+  **no `SAVE_VER` bump** was required. `completedRuns` (the pre-existing loop count) drives the optional
+  degradation tier; it is deliberately **not** surfaced as a tally (§3 rationale).
+- The scene branch engine learned a second source: `_branchMatches(when)` resolves `when.meta`
+  (`eq` / `gte` / `lte`) against the meta, alongside the existing per-run `when.key`. `main.event1`'s new
+  outro act keys its residue off `when.meta: lastLoopChoice`; the when-less default carries the
+  first-ever-run cast-of-yous plant.
+- Guards: `tests/suites/story-loop-residue.test.js` (source) + `…-engine.test.js` (functional);
+  `story-choice-contract.test.js` was extended to recognize the non-forking `when.meta` branch.
 
 ---
 
