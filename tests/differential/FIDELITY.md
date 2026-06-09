@@ -6,11 +6,11 @@
 
 | Kind | In data | Auto-probed | Probed entities run | Entities w/ HIGH divergence |
 |---|--:|--:|--:|--:|
-| move | 954 | 762 | 762 | **68** |
+| move | 954 | 762 | 762 | **20** |
 | ability | 318 | 311 | 311 | **5** |
 | item | 583 | 532 | 532 | **1** |
 
-**Headline divergent entities: 74.** This is the number the methodology drives toward zero (after subtracting intentional deviations + harness limitations).
+**Headline divergent entities: 26.** This is the number the methodology drives toward zero (after subtracting intentional deviations + harness limitations).
 
 ## Unimplemented / not-yet-probed backlog
 
