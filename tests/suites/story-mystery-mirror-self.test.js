@@ -159,6 +159,22 @@ test('(c) the figure wears the player avatar — single .png, profile fallback',
   ST.sm.trainerProfile = { name: 'Meric', sprite: 'Red.png' };
 });
 
+test("(e) the mfReveal scene portrait is the player's own avatar (the unmask)", () => {
+  // The real reveal is the main.mfReveal scene (the victory-overlay branch is
+  // bypassed for the Mystery Figure via the crucibleBattleSource early-return).
+  // _fireMysteryRevealThenEnding stamps the scene's sprite with the player's
+  // avatar so "the face under the cap is yours" shows your actual face.
+  ST.sm.active = true;
+  ST.sm.mysteryIdentity = 'the_first';
+  ST.sm.storyEventsFired = {};                       // not yet revealed (avoid dedup early-return)
+  ST.sm.trainerProfile = { name: 'Meric', sprite: 'Hilda.png' };
+  assert.doesNotThrow(() => { ST.fireMysteryRevealThenEnding(() => {}); });
+  const stem = ST.STORY_SCENES['main.mfReveal'].sprite;
+  assert.equal(stem, 'Hilda', 'reveal scene sprite = player avatar stem (.png stripped)');
+  assert.equal(ST.getTrainerSprite({ spriteFile: stem }), 'sprites/trainers/Hilda.png',
+    'reveal portrait resolves to the player avatar with a single .png');
+});
+
 test('(d) old saves with no snapshot fall back to the legacy live-team mirror', () => {
   ST.sm.active = true;
   ST.sm.hofPartySnapshot = null; // simulate a pre-feature save that already reached HoF
