@@ -1884,7 +1884,7 @@
                   },
                   "main.mfReveal": {
                             "title": "Mystery Figure Reveal - It was you all along (The First)",
-                            "body": "The figure removes their cap. The face under the cap is yours - older, tired, scarred. He says - 'I am The First. You become me. I become the one who saves the universe by losing to you forever.' Plain words - in the future the world ends. The only way to outrun the end is to keep getting stronger across loops. Each loop, an older you trains the younger you by losing on purpose. The 'save the universe' framing is real. The older you sounds less certain about it each cycle."
+                            "body": "The figure removes their cap. The face under the cap is yours - older, tired, scarred. They say - 'I am The First. You become me. I become the one who saves the universe by losing to you forever.' Plain words - in the future the world ends. The only way to outrun the end is to keep getting stronger across loops. Each loop, an older you trains the younger you by losing on purpose. The 'save the universe' framing is real. The older you sounds less certain about it each cycle."
                   },
                   "main.ending": {
                             "title": "Main Story Ending",

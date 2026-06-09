@@ -199,7 +199,7 @@ The five surviving modes use these values (`battle.html:8999–9019` for stat mu
 | Hard | 1.15 | 1.00 (floored from 0.92) |
 | Challenge (Very Hard) | 1.30 | 1.10 |
 
-Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-HoF Mystery) is applied **before** `applyFoeDifficultyScaling`, so the two stack multiplicatively. Champion HP on Hard ≈ ×1.30 × ×1.15 = ×1.495.
+Note: `applyStoryLeagueFoeStatBoost` is the **Battle-Frontier-only** override (gated on `sm.frontier.active`) — an accelerated per-round ramp; it is a no-op outside a Frontier run. The main-story boss boosts (E1–E4 / Champion / league Rival) **and** the post-HoF Mystery Figure climax (+30%) instead come from `_storyEnemyStatMult`, stamped once as `build._storyStatMult` and applied a single time in `buildPokemon`, then multiplied by `_foeDifficultyMult` for the difficulty tier (e.g. Champion HP on Hard ≈ ×1.30 × ×1.15 = ×1.495). The post-HoF Mystery Figure (row 67) and the Crucible "Mystery" encore therefore receive **exactly one ×1.30** — they do *not* also get the Frontier override, so cloning the player's already-strong Hall-of-Fame team does not double-scale.
 
 **Early-game softening:** `_earlyGameFoeStatMult()` applies a tiered post-build stat multiplier through the first two gyms so RNG can't brick a fresh save:
 
