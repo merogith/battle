@@ -42,7 +42,7 @@ const present = (block, frag, label) =>
 test('firstColress keeps every battle-form mechanic', () => {
   const b = sceneBlock('firstColress');
   ['Mega, Z, Dynamax, Tera',        // the four forms
-   'fifth',                          // gym-gated; fifth gym opens the door
+   'sixth',                          // gym-gated; sixth gym opens the door
    'signature move',                 // pick form + signature move
    'held-item slot',                 // Mega/Z consume the item slot
    'Mega Stone or Z-Crystal',        // …specifically these

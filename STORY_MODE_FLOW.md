@@ -539,8 +539,8 @@ city is on the route*. The banners are content-only, sourced from
 | 3 — Gym 3 | Academy town — Move Tutor + Nature Rater. |
 | 4 — Gym 4 | **Wilderness town — Safari Zone gate.** |
 | 5 — Gym 5 | **Resort town — Poké Casino + tutors.** |
-| 6 — Gym 6 | Metropolis — first Department Store + first Colress. |
-| 7 — Gym 7 | Champion's road — every tutor and Pokémart still in stock. |
+| 6 — Gym 6 | Metropolis — first Department Store. |
+| 7 — Gym 7 | Champion's road — first Colress; every tutor and Pokémart still in stock. |
 | 8 — Gym 8 | Final-gym town — Pokémart + Department Store + Battle Dojo + EV Trainer for last polish. |
 | 9 — League | Pokémon League — every facility under one roof (Pokémart + Department Store), so a player who entered the league low on PokéBalls is never stranded. |
 
@@ -551,7 +551,7 @@ destination rather than a ubiquitous facility.
 
 City 8 gained Battle Dojo + EV Trainer in this pass — the player cannot
 backtrack, so without these the only late-game item/ability/EV polish was at
-City 6 or City 7 (or City 9 post-HoF). The League run between Gym 8 and the
+City 7 (or City 9 post-HoF). The League run between Gym 8 and the
 Elite Four was previously a dead-zone for team optimization.
 
 ---

@@ -64,7 +64,7 @@ Columns: **idx** = array index · **rowId** = internal id · **B** = badges *bef
 **Foe×** = early-soft / stage-gated stat mult (BEFORE difficulty mode & league boost) ·
 **Cap** = party cap (both sides; finales force 6) · **Gmk** = gimmick slots unlocked
 (⚠️ the per-row 1/2/3 values below are the **legacy per-gym drip**; the **current rule is all
-four at badge 5** — Colress/City 6, see §2e — so every row with B ≥ 5 is effectively 4) ·
+four at badge 6** — Colress/City 7, see §2e — so every row with B ≥ 6 is effectively 4) ·
 **Coins** = base payout (× difficulty × progress taper).
 
 | idx | rowId | Type / name | City | B | gradeWeights | Tier | Foe× | Cap | Gmk | Coins | Unlock triggers fired here · reward→mechanic notes |
@@ -100,19 +100,19 @@ four at badge 5** — Colress/City 6, see §2e — so every row with B ≥ 5 is 
 | 28 | 28 | **City5** Resort | C5 | 4 | — | — | — | 6 | 0 | — | Facility debut: **Poké Casino**. |
 | 29 | 29 | Battle · Gym Trainer 1 | C5 | 4 | 0/0/100/0 | T2 | 1.00 | 6 | 0 | 3050 | |
 | 30 | 30 | Battle · Gym Trainer 2 | C5 | 4 | 0/5/95/0 | T2 | 1.00 | 6 | 0 | 3050 | |
-| 31 | 31 | Battle · **Gym Leader 5** | C5 | 4 | 0/0/100/0 | **T2** | **1.00** | 6 | 0 | 4150 | **→ Badge 5 → ALL FOUR GIMMICKS UNLOCK** (equippable at Colress, next city). Bundle: **Wishing Piece**. |
+| 31 | 31 | Battle · **Gym Leader 5** | C5 | 4 | 0/0/100/0 | **T2** | **1.00** | 6 | 0 | 4150 | **→ Badge 5.** Bundle: Great Balls + gold. |
 | 32 | 32 | City5 (post-gym) | C5 | 5 | — | — | — | 6 | 1 | — | |
 | 33 | 33 | Battle · Basic Trainer | — | 5 | 0/0/100/0 | T2 | 1.05 | 6 | 1 | 2200 | THEMED: villain. **Stage 3 stat-mult begins (1.05).** |
 | 34 | 34 | Battle · Elite Trainer | — | 5 | 0/15/85/0 | T3 | 1.05 | 6 | 1 | 2700 | THEMED: cursed. **G2 first appears (filler).** |
-| 35 | 35 | **City6** Metropolis | C6 | 5 | — | — | — | 6 | 1 | — | Facilities debut: **Department Store** (Great Balls), **Colress** (equip gimmicks). |
+| 35 | 35 | **City6** Metropolis | C6 | 5 | — | — | — | 6 | 1 | — | Facility debut: **Department Store** (Great Balls). (Colress now debuts C7.) |
 | 36 | 36 | Battle · Gym Trainer 1 | C6 | 5 | 0/10/90/0 | T3 | 1.05 | 6 | 1 | 3300 | |
 | 37 | 37 | Battle · Gym Trainer 2 | C6 | 5 | 0/15/85/0 | T3 | 1.05 | 6 | 1 | 3300 | |
-| 38 | 38 | Battle · **Gym Leader 6** | C6 | 5 | 0/0/100/0¹ | T3 | 1.05 | 6 | 4 | 5550 | **→ Badge 6.** (All four unlocked since badge 5.) **Enemy gimmicks first appear (GL6)** — pool can roll any of the four. Gym6 snapshot→Fight Club. |
+| 38 | 38 | Battle · **Gym Leader 6** | C6 | 5 | 0/0/100/0¹ | T3 | 1.05 | 6 | 4 | 5550 | **→ Badge 6 → ALL FOUR GIMMICKS UNLOCK** (equippable at Colress, City 7). Bundle: **Wishing Piece**. Gym6 snapshot→Fight Club. |
 | 39 | 40 | City6 (post-gym) | C6 | 6 | — | — | — | 6 | 2 | — | |
 | 40 | 39 | Battle · **Rival** (phase 3) | — | 6 | 0/50/50/0 | T3 | ~1.05 | 6 | 2 | 5400 | "On the Way Up." |
 | 41 | 41 | Battle · Basic Trainer | — | 6 | 0/20/80/0 | T2 | ~1.05 | 6 | 2 | 2500 | THEMED: multitype. (Basic stays T2 — never T3.) |
 | 42 | 42 | Battle · Elite Trainer | — | 6 | 0/40/60/0 | T3 | ~1.05 | 6 | 2 | 2900 | THEMED: eldritch (sig-cap exempt). |
-| 43 | 43 | **City7** | C7 | 6 | — | — | — | 6 | 2 | — | |
+| 43 | 43 | **City7** | C7 | 6 | — | — | — | 6 | 2 | — | Facility debut: **Colress** (equip gimmicks). |
 | 44 | 44 | Battle · Gym Trainer 1 | C7 | 6 | 0/35/65/0 | T3 | ~1.08 | 6 | 2 | 3550 | |
 | 45 | 45 | Battle · Gym Trainer 2 | C7 | 6 | 0/45/55/0 | T3 | ~1.08 | 6 | 2 | 3550 | |
 | 46 | 46 | Battle · **Gym Leader 7** | C7 | 6 | 0/50/50/0 | T3 | ~1.08 | 6 | 2 | 5800 | **→ Badge 7** (3 gimmick slots). |
@@ -122,7 +122,7 @@ four at badge 5** — Colress/City 6, see §2e — so every row with B ≥ 5 is 
 | 50 | 50 | **City8** Final-gym | C8 | 7 | — | — | — | 6 | 3 | — | Dept Store, Dojo, EV Trainer (last polish before league). |
 | 51 | 51 | Battle · Gym Trainer 1 | C8 | 7 | 0/85/15/0 | T3 | 1.10 | 6 | 3 | 3650 | |
 | 52 | 52 | Battle · Gym Trainer 2 | C8 | 7 | 0/95/5/0 | T3 | 1.10 | 6 | 3 | 3650 | |
-| 53 | 53 | Battle · **Gym Leader 8** | C8 | 7 | 0/100/0/0² | **T4** | 1.10 | 6 | 4 | 5950 | **→ Badge 8.** GL8 tier spike (T4, G1 ace). **Mystery Figure legendary gate** (forced legendary swap-in @C8). Bundle: 3 Ultra Balls. |
+| 53 | 53 | Battle · **Gym Leader 8** | C8 | 7 | 0/100/0/0² | **T4** | 1.10 | 6 | 4 | 5950 | **→ Badge 8.** GL8 tier spike (T4, G1 ace). **Enemy gimmicks first appear (C8)** — pool can roll any of the four. **Mystery Figure legendary gate** (forced legendary swap-in @C8). Bundle: 3 Ultra Balls. |
 | 54 | 55 | City8 (post-gym) | C8 | 8 | — | — | — | 6 | 4 | — | Legendary swap forced here before Victory Road. |
 | 55 | 56 | Battle · Elite Trainer | — | 8 | 0/100/0/0 | T4 | ~1.12 | 6 | 4 | 4200 | THEMED: villain. **All trainers T4 from 8 badges.** |
 | 56 | 57 | Battle · Elite Trainer | — | 8 | 10/90/0/0 | T4 | ~1.12 | 6 | 4 | 4800 | **G1 first appears.** |
@@ -200,13 +200,13 @@ Mystery, eldritch) keep their authored aces (the low-grade-signature exception).
 | League boost | `applyStoryLeagueFoeStatBoost` | E1–4 ×1.22, Champ/Rival ×1.40, Mystery ×1.50 |
 
 ### 2e. Gimmick gate — single shared, badge-keyed (`onBattleEnd`, battle.html ~42749) ✅ verified live
-`slotsUnlocked = badges < 5 ? 0 : 4`; order **mega → dmax → tera → z**.
-- Badges 1–4 = 0 · **from badges ≥ 5 (Colress / City 6) all four enabled mechanics unlock together.** (Was a per-gym drip GL5→1 · GL6→2 · GL7→3 · GL8→4; changed so Tera/Z are no longer gated to the very end of the run.)
-- Re-derived from the badge gate on every `load()`, so saves made under the old drip (or any save at badges≥5) heal immediately rather than waiting for the next victory.
+`slotsUnlocked = badges < 6 ? 0 : 4`; order **mega → dmax → tera → z**.
+- Badges 1–5 = 0 · **from badges ≥ 6 (Colress / City 7) all four enabled mechanics unlock together.** (Was a per-gym drip GL5→1 · GL6→2 · GL7→3 · GL8→4; changed so Tera/Z are no longer gated to the very end of the run.)
+- Re-derived from the badge gate on every `load()`, so saves made under the old drip (or any save at badges≥6) heal immediately rather than waiting for the next victory.
 - **Shared** by player **and** enemy/wild/professor (all read `sm.unlockedGimmicks`); NOT player-only.
-- Enemy gimmicks first appear at **GL6** (the fight after the badges≥5 unlock); from then the enemy pool can roll **any** of the four (previously each entered the pool one gym at a time).
+- Enemy gimmicks first appear at **City 8 / GL8** — the foe city floor (`_applyEnemyGimmickDistribution`, `_mechCity < 8`) holds them one city behind the player (who equips at Colress, City 7); from then the enemy pool can roll **any** of the four (previously each entered the pool one gym at a time).
 - **Cable Link IS gated** (`_withStoryPlayerGimmickGate`, wraps the makeBuild). Trade-evolution (Stone Sage + Metal Coat etc.) is a **separate gold-gate**, not a battle gimmick.
-- Mystery Figure boss forces **all** on. Colress (where you *equip*) debuts C6 — the same gate as the unlock.
+- Mystery Figure boss forces **all** on. Colress (where you *equip*) debuts C7 — the same gate as the unlock.
 
 ### 2f. Party / foe size
 - Player cap `_storyMaxPartySize` (`41091`): `clamp(2+badges, 2, 6)`.
@@ -230,7 +230,7 @@ Mystery, eldritch) keep their authored aces (the low-grade-signature exception).
 | Reward | First drop | Redeemer / mechanic | Aligned? |
 |---|---|---|---|
 | Ability Capsule | GL4 (badge 3→4) | Battle Dojo debuts **C4** | ✅ |
-| Wishing Piece | GL5 (badge 4→5) | All four gimmicks unlock @badge5; Colress @**C6** | ✅ |
+| Wishing Piece | GL6 (badge 5→6) | All four gimmicks unlock @badge6; Colress @**C7** | ✅ |
 | Ultra Ball | GL4 | catching live since C1 | ✅ |
 | Master Ball | Villain story-track boss (Road 7, pre-HoF) | the roaming legendary | ✅ |
 | Vitamins (+3 IV) | drop-only, any time | applied anywhere | n/a |
@@ -240,7 +240,7 @@ Mystery, eldritch) keep their authored aces (the low-grade-signature exception).
 C0: Professor, Mart, Move Tutor, Nature Rater, Center, Artifact ·
 C2: Cable Link, Stone Sage, Stone Shop ·
 C4: Safari, Battle Dojo, EV Trainer ·
-C5: Casino · C6: Dept Store, Colress · (C8 repeats Dept/Dojo/EV) · Fan Club: every city.
+C5: Casino · C6: Dept Store · C7: Colress · (C8 repeats Dept/Dojo/EV) · Fan Club: every city.
 
 ### 2j. Wild & Safari grade curves (deliberately one step behind trainers)
 **Wild** `_WILD_GRADE_CURVE_BY_BADGES` (`43920`): b0 g4:100 → b5 g3:100 → b8 g3:92/g2:8. **Never G1.**
@@ -256,13 +256,13 @@ demanding late → real challenge at league/post-league; tools & money track pow
 
 ### 3.1 Flow & Onboarding Analyst
 - **F1 — Onboarding teaches *actions*, not *theory*.** 18 just-in-time scenes cover UI/catch/facility usage well, but the **EV/IV system, the type-effectiveness network, what difficulty actually changes, and Crucible-vs-Frontier** are never explained (`DESIGN 2.6`). The whole curve runs on EV/IV/grade, yet the player is never told that's the axis. **Biggest onboarding gap.**
-- **F2 — The single most important teaching beat is mistimed.** Gimmicks **unlock at GL5** but the lab that explains/equips them (**Colress**) debuts **C6**, a full city later. `firstColress` papers over it verbally ("the fifth gym opens the first door"), but the player holds an unusable unlock for one stage. Minor but real.
+- **F2 — The single most important teaching beat is mistimed.** Gimmicks **unlock at GL6** but the lab that explains/equips them (**Colress**) debuts **C7**, a full city later. `firstColress` papers over it verbally ("the sixth gym opens the first door"), but the player holds an unusable unlock for one stage. Minor but real.
 - **F3 — PC prose says "ten slots"; real cap is 30** (`battle.html:36581` vs `42532`). Stale tutorial copy.
 - **F4 — Onboarding ordering is otherwise clean:** intro-rival → catch tutorial → route wild → Gym 1 is a confident, well-paced first hour. No reordering needed.
 - **F5 — `sm.catchUnlocked` is dead** (written, never read; live gate is `catchTutorialDone`). Harmless, but a latent trap for anyone editing the catch gate.
 
 ### 3.2 Balance & Build Engineer
-- **B1 — Mid-game plateau GL4→GL6 (the headline finding, = BUG-012).** Across rows 24–38: foe mult is flat **1.00**, build tier is flat **T2** (GL4 & GL5), grade is flat **g3:100**. GL4, GL5 and GL5-area routes are mechanically near-identical — "same fight, different sprites." The first genuine step-up is GL6 (T3 + 1.05 + G2 ace + enemy gimmicks). **3–4 fights of dead air right where the player expects to feel the mid-game open up.**
+- **B1 — Mid-game plateau GL4→GL6 (the headline finding, = BUG-012).** Across rows 24–38: foe mult is flat **1.00**, build tier is flat **T2** (GL4 & GL5), grade is flat **g3:100**. GL4, GL5 and GL5-area routes are mechanically near-identical — "same fight, different sprites." The first genuine step-up is GL6 (T3 + 1.05 + G2 ace + player gimmick unlock). **3–4 fights of dead air right where the player expects to feel the mid-game open up.**
 - **B2 — Wild tier framing is now *inverted* from the old complaint.** `DESIGN 1.6` said wilds are too weak (T1). But post-v19, `makeWildBuild` adds **random 0–31 IVs + ~170 EVs** on top of T1 — so a fresh wild can out-stat a T1 *trainer* and rival the early Professor gift. The lever exists (`_WILD_GRADE_CURVE_BY_BADGES`) but the *grade* ceiling (G3 until badge 6) is what actually keeps wilds modest, not the tier. The system is sound; the **internal naming** ("Untrained") misleads.
 - **B3 — GL8 tier spike is abrupt.** GL8 jumps Gym Leaders straight from T3 (GL6/GL7) to **T4** in one step, while also being the badge that opens the 4th gimmick slot and the legendary gate. Lots of "new" stacked on one fight — could read as a wall rather than a ramp.
 - **B4 — Early softening makes the player *over-safe*, not "slightly behind."** The North-Star wants the player *slightly underpowered* early. Today enemies are **weakened** (0.82–0.97) through GL3 — anti-brick insurance that also removes the "I'm climbing from behind" feel the brief asks for. This is a genuine philosophy fork (see Decision 1).
@@ -270,12 +270,12 @@ demanding late → real challenge at league/post-league; tools & money track pow
 ### 3.3 Rewards & Economy Specialist
 - **R1 — Alignment is correct for the BIG items but LEAKS on vouchers.** Ability Capsule↔Dojo (both C4), Wishing Piece↔gimmick-unlock↔Colress, Master Ball↔Caged God are correctly co-scheduled. **But the Vitamin Pack (EV Trainer voucher) drops at GL1/GL2/GL3 — Cities 1–3 — while the EV Trainer doesn't debut until City 4** (`FACILITY_DEBUT_CITY.evtrainer=4`), and Emblem of Honor (Dojo voucher) drops at GL3 before the Dojo (C4). Vouchers in `GYM_VICTORY_REWARDS` are hand-placed with **no `FACILITY_DEBUT_CITY` check** — confirmed from a maintainer playtest. This is the core defect behind the reward-system overhaul.
 - **R2 — Late-game economy is too tight (= BUG-014).** GL6 nets ~7560G on Normal; one Max Revive (4000) + 2 Hyper Potions (2000) + Great Ball (1000) ≈ 7000G. Net ~560G/leader → the player can never build a war chest to *experiment* with Weather Orbs, Choice items, or the 5000G EV Trainer / 7500G Colress. Niche tools stay untested → "dominant strategy" feel.
-- **R3 — Power facilities are paywalled past the point of usefulness.** EV Trainer (5000G) and Colress (7500G) are the two biggest power levers, but they debut at C4/C6 when the player is cash-starved. The free vouchers (Vitamin Pack, Wishing Piece) cover *one* use each — fine for onboarding, thin for mastery.
+- **R3 — Power facilities are paywalled past the point of usefulness.** EV Trainer (5000G) and Colress (7500G) are the two biggest power levers, but they debut at C4/C7 when the player is cash-starved. The free vouchers (Vitamin Pack, Wishing Piece) cover *one* use each — fine for onboarding, thin for mastery.
 - **R4 — Frontier pays nothing.** Pure streak/score. Fine as designed, but combined with R2 it means post-HoF has no gold faucet except Mystery (12000, once) and Fight Club.
 
 ### 3.4 Progression & Pacing Designer
 - **P1 — Macro shape today: easy-early → flat-mid → hard-late.** Softened start (player ahead), dead plateau GL4→GL6, then a clean ramp GL6→Mystery. The North-Star shape is **slightly-behind-early → parity → demanding-late**. The late half already matches; the **early and mid thirds do not**.
-- **P2 — "Learn → enjoy the power → move on" is half-built.** Each facility/mechanic is introduced once (good), but there's rarely a *stage to enjoy it before the next thing*: gimmicks unlock at GL5 but can't be equipped till C6; the plateau (B1) is enjoy-time with nothing new to enjoy. The rhythm stalls exactly where it should crescendo.
+- **P2 — "Learn → enjoy the power → move on" is half-built.** Each facility/mechanic is introduced once (good), but there's rarely a *stage to enjoy it before the next thing*: gimmicks unlock at GL6 but can't be equipped till C7; the plateau (B1) is enjoy-time with nothing new to enjoy. The rhythm stalls exactly where it should crescendo.
 - **P3 — Difficulty spread is narrow (= BUG-013).** Challenge is only +30% over Normal; a player who bricks on Hard drops to Easy (0.85) and trivializes everything. No middle ground, and difficulty changes *only* stats (not AI), so "Hard" is opaque.
 - **P4 — Parity point is undefined/implicit.** Today the player crosses from "ahead" (softened) to "behind" (boosted) somewhere around GL4–GL6 by accident of two unrelated curves meeting. The brief wants this to be a **deliberate, named threshold** (Decision 1).
 
@@ -299,7 +299,7 @@ Mapping the target to the exposed levers (each is a **knob already in code** —
 | **Early (Pre-G1 → GL2)** | enemies softened 0.82–0.95 (player *ahead*) | `PRE_GYM1`/`EARLY_GL`/`EARLY_GAME` constants (§2d) | Decision 1: keep anti-brick vs lean "slightly behind." |
 | **Parity point** | implicit ~GL4 | the badge where softening ends + stage-gate stays 1.00 | Decision 1: name it (GL3 / GL4 / GL5). |
 | **Mid plateau (GL4→GL6)** | flat T2 / 1.00 / g3:100 | `_stageGatedFoeStatMult` + GL5 tier | Decision 3a: +1.025 @GL5, +1.05 @post-GL5 rival, and/or step GL5→T3. |
-| **Gimmick "enjoy" window** | unlock GL5, equip C6, enemy use GL6 | gate offset between player-unlock and enemy-use | Decision 2: keep 1-gym grace / widen / narrow. |
+| **Gimmick "enjoy" window** | unlock GL6, equip C7, enemy use C8 | gate offset between player-unlock and enemy-use | Decision 2: keep 1-gym grace / widen / narrow. |
 | **Late (GL6→GL8)** | clean ramp 1.05→1.10, T3, G2 | (working as intended) | hold; smooth the GL8 T3→T4 spike if desired. |
 | **League/post-league** | 1.15–1.20 × league boost, T4, illegal, all gimmicks | league-boost + difficulty spread | Decision 3b: widen Challenge to give endgame teeth. |
 | **Economy track** | tight late (net ~560G/leader) | base coins (E4/Champ) **or** C6–9 consumable prices | Decision 3c: bump purses vs cut prices. |
@@ -320,10 +320,10 @@ Each is brought as multiple-choice + recommendation. **No gameplay change happen
 - (b) **[REC]** *Lighten softening, parity at GL4* — raise the early constants partway (e.g. 0.82→0.88, 0.92→0.95) so the player feels a mild climb without bricking.
 - (c) *Remove softening, parity at GL5* — honest "behind early," highest brick risk for fresh saves.
 
-**D2 — Gimmick gate: enemy grace + Link Cable exemption.** Gate stays at GL5. After it:
-- (a) **[REC]** *Keep 1-gym player grace* (player GL5, enemies GL6) — current behavior; player enjoys the power one stage before facing it. Cable Link **stays gated**.
-- (b) *Widen grace* — enemies don't use gimmicks until GL7/E4; player-favored.
-- (c) *Make Link Cable the sole pre-gate exception* — let Cable Link surface gimmicks before GL5 (per your brief's wording), everything else gated. (Changes current code.)
+**D2 — Gimmick gate: enemy grace + Link Cable exemption.** Gate stays at GL6. After it:
+- (a) **[REC]** *Keep 1-city player grace* (player equips City 7, enemies City 8) — current behavior; player enjoys the power one city before facing it. Cable Link **stays gated**.
+- (b) *Widen grace* — enemies don't use gimmicks until E4; player-favored.
+- (c) *Make Link Cable the sole pre-gate exception* — let Cable Link surface gimmicks before GL6 (per your brief's wording), everything else gated. (Changes current code.)
 
 **D3a — Mid-game plateau (GL4→GL6).**
 - (a) **[REC]** *Stat nudge* — `1.025×` @GL5, `1.05×` @post-GL5 rival (BUG-012 proposal). Smallest, reversible.
@@ -384,10 +384,10 @@ Maintainer-approved direction for the enemy build curve (replaces the open quest
 
 - **Wilds never give G1** and only leak 3–8% G2 post-G6 — Safari (10,000G, debuts mid) is the deliberate G2/G1 *catch* path. The player's G1 comes from evolving a BST≥570 pseudo (Dragonite/Tyranitar/Salamence) at C6+, mirroring the enemy's GL8/boss G1 aces.
 - **Gold is the soft grade-cap on the player.** Stone Sage: G3 = 1,500 · G2 = 6,000 · G1 = 16,000. Early purses (~2.3–5k/leader) afford ~1 G2 evolution before C5 → at most one G2 powerhouse among G3s in the first-evo era. Healthy out-strategize headroom, not a curve break — and it is self-limiting without any extra gate.
-- **Tools ramp realization** (so the player can *build to* their grade, not just reach it): Stone Sage + Cable Link **C2** (evolve / trade-evo) → Move Tutor / Nature Rater → EV Trainer + Battle Dojo + Ability Capsule **C4** (EVs, ability, held item) → **Colress C6** (full EV optimization). Backed by the reward overhaul's per-trainer vitamin drops (~120–150/run) so EV access doesn't bottleneck on the 5,000G EV-Trainer alone.
+- **Tools ramp realization** (so the player can *build to* their grade, not just reach it): Stone Sage + Cable Link **C2** (evolve / trade-evo) → Move Tutor / Nature Rater → EV Trainer + Battle Dojo + Ability Capsule **C4** (EVs, ability, held item) → **Colress C7** (full EV optimization). Backed by the reward overhaul's per-trainer vitamin drops (~120–150/run) so EV access doesn't bottleneck on the 5,000G EV-Trainer alone.
 - **Caught-mon baseline** (`makeWildBuild`): ~170 EVs + curated nature + default ability + no item ≈ 70% built. The tool ladder above closes the last 30% — which is exactly the gap the enemy build-tier ramp (T1→T4) crosses on its side.
 
-**Implication for the pending EV ramp (Q2):** the enemy per-gym EV budget must **track the player's EV-tool acquisition**, not lead it — ~0–170 EV early (matches the wild head-start, pre-EV-Trainer), ramping to a full 510 by C6+ (Colress + accumulated vitamins). A hard 252/252 enemy spread before C4 would put the enemy ahead of what the player can EV; the smooth ramp must mirror C2/C4/C6 tool unlocks.
+**Implication for the pending EV ramp (Q2):** the enemy per-gym EV budget must **track the player's EV-tool acquisition**, not lead it — ~0–170 EV early (matches the wild head-start, pre-EV-Trainer), ramping to a full 510 by C7+ (Colress + accumulated vitamins). A hard 252/252 enemy spread before C4 would put the enemy ahead of what the player can EV; the smooth ramp must mirror C2/C4/C7 tool unlocks.
 
 **End-game consistency (verified):** at C6+ the evo cap is 2 → `_capGradePoolsByEvoStage` early-returns the pool unchanged, the S-cap and wild-cap are skipped, and the Stone Sage allows every evolution. Enemy/wild/player rolls from C6 onward are **bit-identical to pre-gate behavior** (the 113-test suite incl. `rollTrainerTeam` reproducibility stays green). E4/Champion/Mystery power is untouched by design.
 

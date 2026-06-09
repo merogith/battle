@@ -12498,7 +12498,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // acquisition path EXCEPT Cable Link, which is the sole pre-gate
         // exception (maintainer decision 2026-05-25): _makePlayerLinkBuild
         // calls makeBuild ungated so a paid Cable Link can surface a
-        // run-enabled gimmick before the Gym-5 badge gate. All other paths
+        // run-enabled gimmick before the Gym-6 badge gate. All other paths
         // (starter, professor, wild catch, evolution, pending builds) stay
         // gated so pre-unlock leaks remain impossible.
         function _withStoryPlayerGimmickGate(fn) {
@@ -31191,11 +31191,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [32,'City','City5',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Safari Zone','Poké Casino','Leave City']],
           [33,'Battle','Basic Trainer',{g1:0,g2:0, g3:100,g4:0},1850,null],
           [34,'Battle','Elite Trainer',{g1:0,g2:15,g3:85, g4:0},2200,null],
-          [35,'City','City6',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Power Up','Department Store','Gym Battle','Leave City']],
+          [35,'City','City6',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Department Store','Gym Battle','Leave City']],
           [36,'Battle','Gym Trainer 1',{g1:0,g2:10,g3:90,g4:0},2550,null],
           [37,'Battle','Gym Trainer 2',{g1:0,g2:15,g3:85,g4:0},2550,null],
           [38,'Battle','Gym Leader 6',{g1:0,g2:0, g3:100,g4:0},4000,null],
-          [40,'City','City6',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Power Up','Department Store','Leave City']],
+          [40,'City','City6',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Department Store','Leave City']],
           [39,'Battle','Rival',{g1:0,g2:50,g3:50,g4:0},3600,null],
           [41,'Battle','Basic Trainer',{g1:0,g2:20,g3:80,g4:0},1900,null],
           [42,'Battle','Elite Trainer',{g1:0,g2:40,g3:60,g4:0},2300,null],
@@ -31239,7 +31239,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
             link: 2, stoneShop: 3, evolab: 2,
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
-            colress: 6,
+            colress: 7,
             bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
@@ -38683,9 +38683,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.gymCleared) sm.gymCleared = {};
                 // Re-derive unlocked gimmicks from the badge gate on every load. The runtime
                 // unlock only fires on battle victory, so a save made under the old per-gym drip
-                // (or any save sitting at badges>=5) would otherwise keep a stale partial unlock
+                // (or any save sitting at badges>=6) would otherwise keep a stale partial unlock
                 // until the next milestone win. Mirrors the canonical rule in onBattleEnd:
-                // all four enabled mechanics unlock together at badges>=5 (Colress / City 6).
+                // all four enabled mechanics unlock together at badges>=6 (Colress / City 7).
                 {
                     const s = sm.settings || {};
                     const order = [];
@@ -38693,7 +38693,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (s.dynaOn) order.push('dmax');
                     if (s.teraOn) order.push('tera');
                     if (s.zOn) order.push('z');
-                    const slots = (sm.badges | 0) < 5 ? 0 : 4;
+                    const slots = (sm.badges | 0) < 6 ? 0 : 4;
                     sm.unlockedGimmicks = order.slice(0, Math.min(slots, order.length));
                 }
                 if (!sm.cityRerollsUsed) sm.cityRerollsUsed = {};
@@ -39529,8 +39529,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _storyEnemyMechKeys(ctx) {
             // Enemy trainers are gated to the player's story-mode mechanic unlocks:
-            // GL1-4 enemies are STANDARD only, GL5 boss (the unlock-reveal fight) is
-            // also STANDARD, and from GL6 onwards each newly unlocked mechanic enters
+            // GL1-5 enemies are STANDARD only, GL6 boss (the unlock-reveal fight) is
+            // also STANDARD, and from GL7 onwards each newly unlocked mechanic enters
             // the enemy candidate pool. Mirrors the player-side _withStoryPlayerGimmickGate
             // rule so no mechanic appears anywhere before it becomes globally available.
             // An optional ctx.settings override lets a caller force the gimmick flags on
@@ -39654,13 +39654,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _applyEnemyGimmickDistribution(team, eventType, ctx, storyRowIdx) {
             const keys = _storyEnemyMechKeys(ctx);
             if (!keys.length || !team || !team.length) return team;
-            // Spec 1f: enemy battle mechanics stay off until City 7 — the player unlocks
+            // Spec 1f: enemy battle mechanics stay off until City 8 — the player unlocks
             // and uses them first; foes pick them up a city later. Bosses that pass an
             // explicit mech ctx (Mystery Figure) and frontier/generator rolls bypass.
             if (storyRowIdx != null && sm && sm.active && !(ctx && ctx.settings)) {
                 let _mechCity = -1;
                 try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
-                if (_mechCity >= 0 && _mechCity < 7) return team;
+                if (_mechCity >= 0 && _mechCity < 8) return team;
             }
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const _S = (ctx && ctx.settings) || (sm && sm.settings);
@@ -43226,7 +43226,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const hasVoucher = (typeof sm !== 'undefined' && sm && sm.inventory && (sm.inventory.wishingPiece | 0) > 0);
                     const base = [
                         '"Battle forms. Mega, Z, Dynamax, Tera. Four ways to break the rules — each in a different direction. I find them *fascinating.*"',
-                        '"You unlock them like everything else here: one gym at a time. The fifth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."',
+                        '"You unlock them like everything else here: one gym at a time. The sixth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."',
                         '"One form per partner — and a Mega Stone or Z-Crystal moves into the held-item slot to do it. Dynamax and Tera don\'t ask for the slot. Choose accordingly."',
                         '"Every form is the same bargain: a spectacular swing, a finite window. Spend it on a read, not a reflex. …I\'ll be watching which you choose."'
                     ];
@@ -43237,7 +43237,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 },
                 lines: [
                     '"Battle forms. Mega, Z, Dynamax, Tera. Four ways to break the rules — each in a different direction. I find them *fascinating.*"',
-                    '"You unlock them like everything else here: one gym at a time. The fifth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."',
+                    '"You unlock them like everything else here: one gym at a time. The sixth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."',
                     '"One form per partner — and a Mega Stone or Z-Crystal moves into the held-item slot to do it. Dynamax and Tera don\'t ask for the slot. Choose accordingly."',
                     '"Every form is the same bargain: a spectacular swing, a finite window. Spend it on a read, not a reflex. …I\'ll be watching which you choose."'
                 ],
@@ -44964,7 +44964,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Open Mystery Figure — Legendary Grade 1 Swap.');
         }
 
-        /** Dev: `battle.html?testmega=1` (or `#testmega`) — City6 with Power Up / Colress, all run gimmicks on, 50k G, party with Mega-capable mons. */
+        /** Dev: `battle.html?testmega=1` (or `#testmega`) — City7 with Power Up / Colress, all run gimmicks on, 50k G, party with Mega-capable mons. */
         function seedTestMegaFromUrl() {
             if (!sm.profUsed) sm.profUsed = {};
             _pendingProfChoices = null;
@@ -44973,8 +44973,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.version = SAVE_VER;
             if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = 0x7E574D45;
             sm._strngState = null;
-            sm.eventIndex = STORY_EVENTS_RAW.findIndex(row => row && row[0] === 40);
-            if (sm.eventIndex < 0) sm.eventIndex = 41;
+            sm.eventIndex = STORY_EVENTS_RAW.findIndex(row => row && row[0] === 43);
+            if (sm.eventIndex < 0) sm.eventIndex = 44;
             sm.badges = 6;
             sm.gold = 50000;
             sm.storyDifficulty = sm.storyDifficulty || 'normal';
@@ -45023,7 +45023,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.gymCleared[6] = true;
             try { _storyBackfillCitiesArrived(); } catch (e) {}
             // Seed unlocked gimmicks to match the Colress unlock state — all
-            // four enabled mechanics unlock together at badges >= 5. Plus a
+            // four enabled mechanics unlock together at badges >= 6. Plus a
             // Wishing Piece for voucher-path testing.
             {
                 const order = [];
@@ -45031,14 +45031,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.settings.dynaOn) order.push('dmax');
                 if (sm.settings.teraOn) order.push('tera');
                 if (sm.settings.zOn) order.push('z');
-                const slotsUnlocked = (sm.badges | 0) < 5 ? 0 : 4;
+                const slotsUnlocked = (sm.badges | 0) < 6 ? 0 : 4;
                 sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
             }
             if (!sm.inventory) sm.inventory = {};
             sm.inventory.wishingPiece = Math.max(2, (sm.inventory.wishingPiece | 0));
             save();
             enterCity();
-            console.log('[testmega] Seeded City6 (badges=6, unlocked=' + (sm.unlockedGimmicks || []).join(',') + '). Wishing Piece ×' + (sm.inventory.wishingPiece|0) + ' in bag for voucher-path testing.');
+            console.log('[testmega] Seeded City7 (badges=6, unlocked=' + (sm.unlockedGimmicks || []).join(',') + '). Wishing Piece ×' + (sm.inventory.wishingPiece|0) + ' in bag for voucher-path testing.');
         }
 
         /** Dev: drops the player at the Hall of Fame transition with the climax flag unset, so pressing "Continue" routes through the post-HoF Mystery Figure climax (row 67). Localhost or `?debugPostHofClimax=1` only. */
@@ -48668,10 +48668,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 flavor:'"Three down. The road steepens from here."' },
             'Gym Leader 4': { ultraBall:1, rareCandy:1, voucherRolls:1,
                 flavor:'The Gym Leader nods. "Take these — they go far together."' },
-            'Gym Leader 5': { greatBall:2, gold:1000, wishingPiece:1, voucherRolls:1,
-                flavor:'Halfway to the League. Your battle forms awaken — carry this Wishing Piece to Colress in the next city for a free first awakening.' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, gold:1500, voucherRolls:1,
-                flavor:'The sixth badge, and a metropolitan stipend.' },
+            'Gym Leader 5': { greatBall:2, gold:1000, voucherRolls:1,
+                flavor:'Halfway to the League. "Five down — the hardest climbs are still ahead."' },
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, gold:1500, wishingPiece:1, voucherRolls:1,
+                flavor:'The sixth badge. Your battle forms awaken — carry this Wishing Piece to Colress in the next city for a free first awakening.' },
             'Gym Leader 7': { ultraBall:1, rareCandy:1, voucherRolls:1,
                 flavor:'"You\'ll need everything you\'ve got for the last gym."' },
             'Gym Leader 8': { ultraBall:3, voucherRolls:1,
@@ -48779,8 +48779,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Looser gate for guaranteed "static" gateway gifts (vs the strict random
         // draw above): a gift may be handed at the gym ONE city before its facility
         // so the player holds it on arrival and gets a free first use immediately
-        // (e.g. Wishing Piece at GL5 / City 5 → instant awakening on reaching Colress
-        // at City 6). Per maintainer rule 2026-05-25, this applies to every gateway
+        // (e.g. Wishing Piece at GL6 / City 6 → instant awakening on reaching Colress
+        // at City 7). Per maintainer rule 2026-05-25, this applies to every gateway
         // gift; it still blocks the old "3 cities early" leaks (EV voucher at City 1).
         function _storyVoucherGiftable(key) {
             const debut = VOUCHER_DEBUT_CITY[key];
@@ -48852,7 +48852,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const k of _IV_VITAMIN_KEYS) if (r[k]) vit.push('+' + r[k] + ' ' + _IV_VITAMIN_LABEL[k]);
             if (vit.length) parts.push(vit.join(', '));
             // Direct (gateway) vouchers explicitly listed in the bundle, e.g. the
-            // GL5 Wishing Piece. rareCandy is already shown above as an item.
+            // GL6 Wishing Piece. rareCandy is already shown above as an item.
             const directV = [];
             for (const vk of VOUCHER_KEYS) { if (vk === 'rareCandy') continue; if (r[vk]) directV.push('+' + r[vk] + ' ' + (VOUCHER_LABEL[vk] || vk) + ' voucher'); }
             if (directV.length) parts.push(directV.join(', '));
@@ -49776,13 +49776,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Pre-warm the egg/level-up learnset for the rolled foe species (reusing the Move
         // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
-        // full. From City 5 (Guru) on both sides have full move access → no-op. Deterministic.
-        // Enemy move pool mirrors the player's TUTOR STAGE at this city (tutor:[0,2,5]):
-        //   C0–C1 (Inner Strength): Natural only, BP ≤ 60 (foe ceiling — tighter than the
+        // full. From City 6 (Guru) on both sides have full move access → no-op. Deterministic.
+        // Enemy move pool mirrors the player's TUTOR STAGE at this city (tutor:[0,3,6]):
+        //   C0–C2 (Inner Strength): Natural only, BP ≤ 60 (foe ceiling — tighter than the
         //                           player's 75 to soften the very early game; see
         //                           STORY_FOE_MOVE_BP_CAP_BY_STAGE).
-        //   C2–C4 (Unleashed):      ALL Natural (cap lifts; no Learnt yet).
-        //   C5+   (Guru):           + Learnt + Awakened — i.e. unfiltered.
+        //   C3–C5 (Unleashed):      ALL Natural (cap lifts; no Learnt yet).
+        //   C6+   (Guru):           + Learnt + Awakened — i.e. unfiltered.
         // When a Smogon preset move sits above the allowed tag, drop it and refill from
         // the allowed pool (ordered by usage % so the replacement is meta-sensible, not
         // a random low-usage egg move).
@@ -49790,10 +49790,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The single move-pacing authority, shared by the foe gate and (Phase 3)
         // player-obtainable builds. Keyed on the TUTOR STAGE so both sides unlock in
         // lockstep with the player's Move Tutor:
-        //   stage 0 (Inner Strength, C0–C1): Natural-tag moves only, BP ≤ 75 (player).
+        //   stage 0 (Inner Strength, C0–C2): Natural-tag moves only, BP ≤ 75 (player).
         //                                     Foes use a tighter ≤ 60 cap — see below.
-        //   stage 1 (Unleashed,       C2–C4): ALL Natural — the BP cap lifts; still no Learnt.
-        //   stage 2 (Guru,            C5+):   no gate (full Smogon pool).
+        //   stage 1 (Unleashed,       C3–C5): ALL Natural — the BP cap lifts; still no Learnt.
+        //   stage 2 (Guru,            C6+):   no gate (full Smogon pool).
         // STORY_MOVE_BP_CAP_BY_STAGE is a user-owned balance number (0 = no cap). This is
         // the PLAYER-side authority (Move Tutor pool / stripe classification).
         const STORY_MOVE_BP_CAP_BY_STAGE = [75, 0, 0];
@@ -51145,9 +51145,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (en === 'Rival') setRivalStanding('player', idx, _rivalTeamSnapshotNames());
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
                 // Unlock all four player battle mechanics together the moment
-                // the player reaches Colress's lab — the city after Gym 5
-                // (badges >= 5, same gym that drops the Wishing Piece voucher).
-                // Badges 1–4 stay clean (no "unlocked but useless" indicator);
+                // the player reaches Colress's lab — the city after Gym 6
+                // (badges >= 6, same gym that drops the Wishing Piece voucher).
+                // Badges 1–5 stay clean (no "unlocked but useless" indicator);
                 // from Colress on, every enabled mechanic is immediately
                 // equippable. Previously these dripped one per gym (5→8), which
                 // left Tera/Z gated until the very end of the run.
@@ -51158,7 +51158,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (sm.settings.teraOn) order.push('tera');
                     if (sm.settings.zOn) order.push('z');
                     const badges = sm.badges | 0;
-                    const slotsUnlocked = badges < 5 ? 0 : 4;
+                    const slotsUnlocked = badges < 6 ? 0 : 4;
                     sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
                 }
                 sm.currentEnemyLock = null;
@@ -53288,7 +53288,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return report.length ? report : null;
         }
         function makeWildBuild(name) {
-            // Gate wild rolls to the player's unlocked mechanics: pre-Gym-5 the unlocked
+            // Gate wild rolls to the player's unlocked mechanics: pre-Gym-6 the unlocked
             // list is empty so wild catches stay STANDARD, matching the Professor's
             // gift rule. Cable Link is the only path that surfaces pre-unlock gimmicks.
             const b = _withStoryPlayerGimmickGate(() => makeBuild(name));
@@ -57125,7 +57125,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from Gym Leaders and big Casino wins. The new nature sticks through PC, evolution, the works.' },
                 { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from Gym Leaders and big Casino wins. Hidden Abilities included, just like the dojo\'s gold path.' },
                 { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from Gym Leaders and big Casino wins. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
-                { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 5,000G. The first one drops from Gym Leader 5; redeem at the next-city lab for your first awakening.' },
+                { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 5,000G. The first one drops from Gym Leader 6; redeem at the next-city lab for your first awakening.' },
                 { id:'linkDiscount50', name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Bill\'s Discount Card', desc:'Take to the Cable Link Station for 50% off one transaction — Reroll, Upgrade, or Rebuild, your pick. Earned from Bill on your first visit to the Link Station.' },
                 { id:'stoneToken',     name:'<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Stonewise Token', desc:'Redeem at Stones and Beyond for one free item — any evolution stone or trade item on the shelf. Earned from the Stonewise Granny.' },
                 { id:'casinoChip500',  name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Lucky Chip', desc:'A 500G casino credit — applied to your bankroll automatically on your first bet at the Poké Casino. Earned on your first Casino visit.' }
@@ -58479,11 +58479,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dojo:   [2, 5, 8],
             // Move Tutor (user model): three stages along TWO axes — what a move IS
             // (innate vs taught) AND how hard it hits (the Inner power cap):
-            //   Inner Strength (L1) — innate moves (level-up/egg/transfer/evo), BP ≤ 75.   C0-C1.
-            //   Unleashed      (L2) — the SAME innate pool, cap lifted; still no TMs/tutor. C2-C4.
-            //   Guru           (L3) — + Learnt (TM / HM / TR / Tutor / event) + Awakened.   C5+.
+            //   Inner Strength (L1) — innate moves (level-up/egg/transfer/evo), BP ≤ 75.   C0-C2.
+            //   Unleashed      (L2) — the SAME innate pool, cap lifted; still no TMs/tutor. C3-C5.
+            //   Guru           (L3) — + Learnt (TM / HM / TR / Tutor / event) + Awakened.   C6+.
             // Drives BOTH the player tutor and the foe move-gate (they pace together).
-            tutor:  [0, 2, 5],
+            tutor:  [0, 3, 6],
             // Evolution Tutor:  capability is enforced by the player evo-stage cap;
             //              these thresholds drive only the chip name + intro beat.
             //              Evolution Teacher (first evos) → Evolution Master (finals @ C4).

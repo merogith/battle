@@ -86,7 +86,7 @@ The live `FACILITY_DEBUT_CITY` (30653) differs from every design CSV and from
 | Department Store (`dept`) | C6 | **C4** | — |
 | Safari (`safari`) | C4 | **C5** | — |
 | **EV Trainer (`evtrainer`)** | C4 | **C7** | **vitamin (EV Voucher)** |
-| Colress (`colress`) | C6 | **C6** | wishingPiece |
+| Colress (`colress`) | C6 | **C7** | wishingPiece |
 
 The EV Trainer is now consistently **C7** in live code (FACILITY_DEBUT_CITY +
 `STORY_EVENTS_RAW` action lists 30620+ + the `firstEVTrainer` intro gate 44032). Only
