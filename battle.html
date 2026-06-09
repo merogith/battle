@@ -40179,7 +40179,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollExtraRaidBossTeam: (k) => _rollExtraRaidBossTeam(k),
                     raidNarratorLines: (k) => _raidNarratorLines(k),
                     showRaidEncounterIntro: (s, k, cb) => _showRaidEncounterIntro(s, k, cb),
-                    get EXTRA_RAID_SPECIES() { return _EXTRA_RAID_SPECIES; },
+                    get EXTRA_RAID_SPECIES_BY_TIER() { return _EXTRA_RAID_SPECIES_BY_TIER; },
                     get RAID_LORE() { return _RAID_LORE; },
                     // Pre-boss cinematic + portrait-emotion (visual-and-cinematic.md §5/§6.4).
                     preBossCinematicKeyFor: (k, ev, mf) => _preBossCinematicKeyFor(k, ev, mf),
@@ -43163,25 +43163,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 1; // bosses + battles use single-target scaling
         }
 
-        // Solo-Pokémon raid bosses (extra track): scene-key stem → the legendary-tier
-        // species the prose names. These fights are ONE scaled Pokémon, not a trainer team.
-        const _EXTRA_RAID_SPECIES = {
-            cubone: 'Marowak', yamask: 'Yamask', hypno: 'Hypno', phantump: 'Trevenant',
-            mimikyu: 'Mimikyu', drifloon: 'Drifblim', parasect: 'Parasect', mewtwo: 'Mewtwo'
+        // Solo-Pokémon raid bosses (extra track): each arc's signature line across THREE
+        // tiers — Road-4 miniRaid (base form) → Road-5 miniRaid2 (evolved) → Road-6 raid
+        // (climax) — each spawning the species its scene prose actually names, so the foe
+        // (and the intro cinematic) match the narration. hypno/mimikyu/mewtwo stay one
+        // species across all three (escalation is stats + narrative, not evolution); the
+        // yamask climax is the base Yamask "ancestor," not the Road-5 Cofagrigus.
+        const _EXTRA_RAID_SPECIES_BY_TIER = {
+            cubone:   { miniRaid: 'Cubone',   miniRaid2: 'Marowak',    raid: 'Marowak'   },
+            yamask:   { miniRaid: 'Yamask',   miniRaid2: 'Cofagrigus', raid: 'Yamask'    },
+            hypno:    { miniRaid: 'Hypno',    miniRaid2: 'Hypno',      raid: 'Hypno'     },
+            phantump: { miniRaid: 'Phantump', miniRaid2: 'Trevenant',  raid: 'Trevenant' },
+            mimikyu:  { miniRaid: 'Mimikyu',  miniRaid2: 'Mimikyu',    raid: 'Mimikyu'   },
+            drifloon: { miniRaid: 'Drifloon', miniRaid2: 'Drifblim',   raid: 'Drifblim'  },
+            parasect: { miniRaid: 'Paras',    miniRaid2: 'Parasect',   raid: 'Parasect'  },
+            mewtwo:   { miniRaid: 'Mewtwo',   miniRaid2: 'Mewtwo',     raid: 'Mewtwo'    },
         };
-        // Single source of truth for "which species (if any) does this beat field as a
-        // solo raid boss, and at what scale-kind." Matches raid · miniRaid · miniRaid2 —
-        // the second mini-raid shares the `miniRaid` beat kind; only its sceneKey carries
-        // the trailing digit, so the capture group grabs `miniRaid` and the outer `\d*`
-        // eats the suffix (m[2] is normalized to `raid`|`miniRaid` for HP scaling). BOTH
-        // the foe-team roll (below) and the encounter-intro framing (enterBattleEvent)
-        // resolve through this, so the intro can never disagree with who actually walks
-        // onto the field. See docs/story-design/story-immersion/visual-and-cinematic.md §4.
+        // Single source of truth for "which species does this beat field as a solo raid
+        // boss, and at what scale-kind." Matches raid · miniRaid · miniRaid2. The capture
+        // group grabs `raid`|`miniRaid` (scaleKind — normalized so miniRaid2 scales like the
+        // mini boss); the trailing-digit group is appended back to recover the full tier, so
+        // each beat fields the species its prose names (Road-4 base → Road-5 evolved → Road-6
+        // climax). BOTH the foe-team roll (below) and the encounter-intro framing
+        // (enterBattleEvent) resolve through this, so the intro can never disagree with who
+        // actually walks onto the field. See visual-and-cinematic.md §4.
         function _raidBossInfoForBeatKey(sceneKey) {
-            const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)\d*$/.exec(String(sceneKey || ''));
+            const m = /^extra\.([a-z0-9]+)\.(raid|miniRaid)(\d*)$/.exec(String(sceneKey || ''));
             if (!m) return null;
-            const species = _EXTRA_RAID_SPECIES[m[1]];
-            return species ? { species: species, arc: m[1], scaleKind: m[2] } : null;
+            const arc = m[1], scaleKind = m[2], tier = m[2] + m[3];
+            const byTier = _EXTRA_RAID_SPECIES_BY_TIER[arc];
+            const species = byTier && byTier[tier];
+            return species ? { species: species, arc: arc, scaleKind: scaleKind, tier: tier } : null;
         }
         // Build the single-mon foe team for an extra raid/miniRaid/miniRaid2 beat. Returns
         // the standard [{name, build}] draft shape (one element), or null to fall back to

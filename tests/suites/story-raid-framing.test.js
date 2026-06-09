@@ -24,18 +24,34 @@ const key = (arc, suffix) => `extra.${arc}.${suffix}`;
 
 // ── 1. The shared predicate matches all 24 keys with the right species + scale ──
 test('raidBossInfoForBeatKey resolves all 24 raid beats (raid · miniRaid · miniRaid2)', () => {
-    const SPECIES = ST.EXTRA_RAID_SPECIES;
+    const BY_TIER = ST.EXTRA_RAID_SPECIES_BY_TIER;
     for (const arc of ARCS) {
         for (const suffix of SUFFIXES) {
             const info = ST.raidBossInfoForBeatKey(key(arc, suffix));
             assert.ok(info, `${key(arc, suffix)} resolves to a solo raid boss`);
-            assert.equal(info.species, SPECIES[arc], `${key(arc, suffix)} → ${SPECIES[arc]}`);
+            assert.equal(info.species, BY_TIER[arc][suffix], `${key(arc, suffix)} → ${BY_TIER[arc][suffix]}`);
             assert.equal(info.arc, arc);
             // miniRaid2 shares the miniRaid beat kind — scaleKind must normalize, never
             // leak the "2" suffix (which would default HP scaling to 1×).
             const expectKind = suffix === 'raid' ? 'raid' : 'miniRaid';
             assert.equal(info.scaleKind, expectKind, `${key(arc, suffix)} scaleKind = ${expectKind}`);
         }
+    }
+});
+
+test('per-tier escalation: Road-4 base → Road-5 evolved → Road-6 climax', () => {
+    const r = (arc, suffix) => ST.rollExtraRaidBossTeam(key(arc, suffix))[0].name;
+    // cubone: the skull-less child → the evolved skull-bearer → the climax
+    assert.equal(r('cubone', 'miniRaid'),  'Cubone',  'Road-4 names the base Cubone');
+    assert.equal(r('cubone', 'miniRaid2'), 'Marowak', 'Road-5 names the evolved Marowak');
+    assert.equal(r('cubone', 'raid'),      'Marowak', 'Road-6 climax Marowak');
+    // yamask is the one arc whose Road-5 evolved form differs from its base + climax
+    assert.equal(r('yamask', 'miniRaid'),  'Yamask',     'Road-4 base Yamask');
+    assert.equal(r('yamask', 'miniRaid2'), 'Cofagrigus', 'Road-5 evolved Cofagrigus');
+    assert.equal(r('yamask', 'raid'),      'Yamask',     'Road-6 climax Yamask ancestor');
+    // single-species arcs stay one creature across all three tiers
+    for (const arc of ['hypno', 'mimikyu', 'mewtwo']) {
+        assert.equal(r(arc, 'miniRaid'), r(arc, 'raid'), `${arc} is one species across tiers`);
     }
 });
 
@@ -48,12 +64,12 @@ test('raidBossInfoForBeatKey rejects non-raid keys', () => {
 
 // ── 2. Every raid beat FIELDS its solo boss (the miniRaid2 bug fix) ─────────────
 test('rollExtraRaidBossTeam fields a 1-mon solo boss for all 24 beats', () => {
-    const SPECIES = ST.EXTRA_RAID_SPECIES;
+    const BY_TIER = ST.EXTRA_RAID_SPECIES_BY_TIER;
     for (const arc of ARCS) {
         for (const suffix of SUFFIXES) {
             const team = ST.rollExtraRaidBossTeam(key(arc, suffix));
             assert.ok(Array.isArray(team) && team.length === 1, `${key(arc, suffix)} → single foe`);
-            assert.equal(team[0].name, SPECIES[arc], `${key(arc, suffix)} foe is ${SPECIES[arc]}`);
+            assert.equal(team[0].name, BY_TIER[arc][suffix], `${key(arc, suffix)} foe is ${BY_TIER[arc][suffix]}`);
             assert.equal(team[0].build._bossStatMult, 1.3, 'legendary-tier stat mult applied');
             assert.ok(team[0].build._bossHpScale >= 1, 'party-scaled HP applied');
         }
