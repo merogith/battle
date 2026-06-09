@@ -44,50 +44,58 @@ Pokémon in your party, as many as you want. On average a Pokémon needs the act
 that gives a stat ~10 times, ± the Pokémon's preferences."*
 
 - Each path has a per-Pokémon **action counter**: `slot.bonds[path]` (integer,
-  starts 0). Each **successful** mini-game of that path = **+1**.
+  starts 0). Each **successful** mini-game of that path = **+1** (or **+2** on the
+  Pokémon's Nature-favourite path — see §4).
 - A path is **mastered** (its +5% turns on) when the counter reaches that
   Pokémon's **threshold** for the path:
-  `threshold = round(BASE_ACTIONS × tempMult)`, `BASE_ACTIONS = 10` **[MAINTAINER]**.
-- `tempMult` comes from **Temperament** (§4): **loved 0.7** (~7 reps),
-  **neutral 1.0** (~10), **resisted 1.4** (~14). All tunable.
+  `threshold = round(BASE_ACTIONS × tempMult)`, `BASE_ACTIONS = 5` **[MAINTAINER]**.
+- `tempMult` is **FLAT 1.0 for every path**, so the threshold is **5 reps** for all.
+  Nature variance lives in the **win value** instead (§4): the favourite path earns
+  **×2 per win**, so it masters in **3 wins** rather than 5. The variance only ever
+  *helps* — nothing is slower than 5.
 - **No per-camp cap** — do as many actions as you like, on any party member, any
   time you're camped. The "grind" is the *total rep count across the team*, not a
   daily limit.
 
-**Scale of the commitment** (defaults): one path on a neutral Pokémon ≈ 10
-mini-games; a Pokémon's full six paths ≈ 60 (more if it resists some); a full
-party of six ≈ **~360 mini-games** to 100% everything. Mastering a *favourite*
-path is quick; mastering *everything on everyone* is a long-haul, opt-in goal —
-the "some play" the maintainer asked for, paced by effort rather than by a timer.
+**Scale of the commitment** (defaults): one path on any Pokémon = **5**
+mini-games (**3** if it's that Pokémon's favourite); a full party of six ≈
+**6 stats × 6 mons × 5 = 180 mini-games** to 100% everything (a little less, since
+each Pokémon's favourite is faster). Mastering a *favourite* path is quick;
+mastering *everything on everyone* is a long-haul, opt-in goal — the "some play"
+the maintainer asked for, paced by effort rather than by a timer.
 
 ---
 
-## 4. Temperament (creative layer 1 — LOCKED)
+## 4. Temperament (creative layer 1 — favourite ×2)
 
-Every Pokémon **bonds faster with some paths and resists others**, so full-mastery
-takes real work and each Pokémon feels like an individual.
+> **Status [MAINTAINER]:** temperament is **one-directional** — it only ever makes
+> bonding *faster*, never slower. It is applied as a **×2 win value** on the single
+> favourite path (not as a threshold multiplier — those stay flat at 1.0). So the
+> favourite masters in 3 wins, everything else in 5; nothing exceeds 5.
+
+Every Pokémon **bonds faster with the path it's naturally inclined to**, so each
+Pokémon feels a little individual without making any path a slog.
 
 **Default source = the Pokémon's Nature** (reuses existing data — builds carry a
 nature `n` whose `nMults` raise one stat and lower another in `buildPokemon`):
 
-- The path whose stat the Nature **raises** (+10%) is **loved** → `tempMult 0.7`.
-- The path whose stat the Nature **lowers** (−10%) is **resisted** → `tempMult 1.4`.
-- Everything else (and the whole bar for **neutral natures**) is **neutral** → `1.0`.
-- **HP/Devotion is always neutral** — no Nature touches HP. (If you want Devotion
-  to also have like/resist, that needs a non-Nature source; flagged as a knob.)
+- The path whose stat the Nature **raises** (+10%) is the **favourite** →
+  **×2 per win** (`CAMP_FAVORED_GAIN = 2`). Implemented in `campBondGain()`.
+- Every other path (and **all** paths on a **neutral nature**) is plain **×1**.
+- The Nature-**lowered** stat is **not** penalised — there is no "resisted" path
+  any more; variance only ever helps (keeps the cap at a flat 5).
+- **HP/Devotion is never the favourite** — no Nature touches HP.
 
-*Example:* an **Adamant** Pokémon (+Atk, −SpA) **loves Praise** (Atk, ~7 reps)
-and **resists Nurture** (SpA, ~14 reps) — a fighter that eats up praise but
-bristles at being coddled. This is consistent with the path↔stat design and is
+*Example:* an **Adamant** Pokémon (+Atk) has **Praise as its favourite** — each
+Praise win counts double, so it masters Praise in 3 wins instead of 5. This is
 **data-free** (derived from the nature's existing stat bias).
 
-> **Knob [MAINTAINER]:** the temperament source — Nature (default), a per-species
-> table, or a dedicated per-Pokémon roll — and the loved/resisted multipliers
-> (0.7 / 1.4). Lives in `data/camp/relationship-paths.json`.
+> **Knob [MAINTAINER]:** the favourite source — Nature (default), a per-species
+> table, or a per-Pokémon roll — and `CAMP_FAVORED_GAIN` (the ×2). Externalize to
+> `data/camp/relationship-paths.json` later.
 
-The edgier tone (§ tone in minigames) keys off temperament: a Pokémon you push
-on a **resisted cruel** path reacts with visible distrust; one you bond with on a
-**loved** path lights up.
+The edgier tone (§ tone in minigames) can key off temperament: a Pokémon you bond
+with on its **favourite** path lights up extra.
 
 ---
 
@@ -137,7 +145,8 @@ slot.bonds = {            // action COUNTERS (0..threshold); absent on eggs
   praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0,
 };
 // derived at read time, not stored:
-//   threshold(path) = round(10 × tempMult(path, slot.build.n))
+//   threshold(path) = 5 (flat; tempMult vestigial at 1.0)
+//   gain(path)      = 2 on the Nature-favourite path (campBondGain), else 1
 //   mastered(path)  = slot.bonds[path] >= threshold(path)
 //   title(slot)     = first matching rule over the mastered set
 ```
@@ -229,8 +238,11 @@ stat behaviour change → explicit sign-off before the diff ships.**
 
 - **Pure:** `relationshipStatMult` — a mastered path → its stat ×1.05, others 1;
   empty → all 1; all mastered → all 1.05.
-- **Threshold/temperament:** Adamant nature → Praise threshold 7, Nurture 14,
-  others 10; neutral nature → all 10; HP always 10.
+- **Threshold:** a flat **5** reps for every path/nature (temperament multipliers
+  all 1.0).
+- **Temperament (favourite ×2):** the Nature-raised stat's path is the favourite
+  (`campBondFavoredPath`) and earns ×2 per win (`campBondGain`) → masters in 3
+  wins; neutral nature → no favourite; HP/Devotion is never the favourite.
 - **Integration (jsdom):** player mon with `discipline` at threshold → built
   `def === floor(base×1.05)`, others unchanged; foe unaffected; `devotion`
   mastered → `maxHp` scaled.
@@ -243,10 +255,11 @@ stat behaviour change → explicit sign-off before the diff ships.**
 ## 12. Decisions
 
 **Locked:** path→stat bijection (§2) · +5%/path, binary at-master (§6) ·
-unlimited actions per camp, ~10-rep base threshold (§3) · all three creative
-layers (§4, §5, §9) · edgier tone with copy sign-off (minigames doc).
+unlimited actions per camp, flat 5-rep threshold with a ×2 win value on each
+Pokémon's Nature-favourite path (§3/§4) · creative layers §5/§9 · edgier tone
+with copy sign-off (minigames doc).
 
-**Remaining knobs [MAINTAINER] (tuning, in data):** `BASE_ACTIONS` (10) ·
-loved/resisted multipliers (0.7 / 1.4) · temperament source (Nature default) ·
+**Remaining knobs [MAINTAINER] (tuning, in data):** `BASE_ACTIONS` (5) ·
+`CAMP_FAVORED_GAIN` (×2 on the favourite) · favourite source (Nature default) ·
 whether Devotion/HP gets like-resist · whether backfire can decrement · title
 copy/rules · aggregate cap if +5%×6 proves too strong on the curve.

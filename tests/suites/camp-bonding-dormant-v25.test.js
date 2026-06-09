@@ -39,14 +39,14 @@ test('relationshipStatMult: empty / no-bonds slot → all 1.0 (dormant)', () => 
 });
 
 test('relationshipStatMult: a mastered path → its stat ×1.05, others 1', () => {
-    // Hardy (neutral) → every threshold is 10. praise→atk.
-    const slot = { build: freshBuild('Hardy'), bonds: { praise: 10 } };
+    // Flat threshold 5 for every path/nature. praise→atk.
+    const slot = { build: freshBuild('Hardy'), bonds: { praise: 5 } };
     const m = ST.relationshipStatMult(slot);
     assert.equal(m.atk, 1.05);
     assert.equal(m.def, 1);
     assert.equal(m.hp, 1);
     // below threshold contributes nothing
-    assert.equal(ST.relationshipStatMult({ build: freshBuild('Hardy'), bonds: { praise: 9 } }).atk, 1);
+    assert.equal(ST.relationshipStatMult({ build: freshBuild('Hardy'), bonds: { praise: 4 } }).atk, 1);
 });
 
 test('relationshipStatMult: all six mastered → every stat ×1.05', () => {
@@ -55,18 +55,19 @@ test('relationshipStatMult: all six mastered → every stat ×1.05', () => {
     for (const k of ['hp','atk','def','spa','spd','spe']) assert.equal(m[k], 1.05, `${k} should be 1.05`);
 });
 
-test('bondThreshold: Adamant (+atk,-spa) loves praise (7), resists nurture (14), HP always 10', () => {
-    const slot = { build: freshBuild('Adamant') };
-    assert.equal(ST.bondThreshold('praise', slot), 7);   // atk raised → loved → round(10×0.7)
-    assert.equal(ST.bondThreshold('nurture', slot), 14);  // spa lowered → resisted → round(10×1.4)
-    assert.equal(ST.bondThreshold('discipline', slot), 10); // def untouched → neutral
-    assert.equal(ST.bondThreshold('devotion', slot), 10);   // hp always neutral
+test('bondThreshold: FLAT 5 reps for every path — Nature no longer shifts it', () => {
+    // Temperament multipliers are all 1.0, so even a stat-shifting Nature masters at 5.
+    const slot = { build: freshBuild('Adamant') }; // +atk,-spa — was loved/resisted, now flat
+    assert.equal(ST.bondThreshold('praise', slot), 5);     // atk raised → still 5
+    assert.equal(ST.bondThreshold('nurture', slot), 5);    // spa lowered → still 5
+    assert.equal(ST.bondThreshold('discipline', slot), 5); // def untouched
+    assert.equal(ST.bondThreshold('devotion', slot), 5);   // hp always neutral
 });
 
-test('bondThreshold: neutral nature → all paths 10', () => {
+test('bondThreshold: neutral nature → all paths 5', () => {
     const slot = { build: freshBuild('Hardy') };
     for (const p of ['praise','nurture','discipline','intimidate','mimicry','devotion'])
-        assert.equal(ST.bondThreshold(p, slot), 10, `${p} threshold`);
+        assert.equal(ST.bondThreshold(p, slot), 5, `${p} threshold`);
 });
 
 test('DORMANT GUARD: buildPokemon with an all-1.0 relationship mult == without it', () => {
