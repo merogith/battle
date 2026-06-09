@@ -1,11 +1,22 @@
-# Camp Micro-games — 6 actions × 3 random games (18, WarioWare-style) (FINALIZED)
+# Camp Micro-games — 6 actions × 5 random games (30, WarioWare-style) (FINALIZED)
 
 > Part of the [Camp System spec](./README.md). **Locked:** six bonding
-> [actions](./BONDING_RELATIONSHIPS.md), and **each action rolls one of 3 random
-> micro-games (18 total)** in the fast WarioWare *microgame* format, so the ~10
+> [actions](./BONDING_RELATIONSHIPS.md), and **each action rolls one of 5 random
+> micro-games (30 total)** in the fast WarioWare *microgame* format, so the ~10
 > reps to master a stat stay fresh. Usable on any party Pokémon, **unlimited per
 > camp**; each success = **+1**. Tone is **edgier — maintainer signs off on copy.**
 > Anchors symbol-first.
+
+> **UPDATE (2026-06):** the roster grew **18 → 30** (pools 3 → 5) on a **9 → 17**
+> primitive toolkit (the §10b palette's `dodge / catch / lobAim / steady / block /
+> balance` plus genre-staple `gaugeStop` + `quickMath`), and a **difficulty
+> system** landed: per-game tuning params are written as `[easyVal, hardVal]`
+> ranges that LERP on **bond progress** (the rep count toward mastery on that
+> path — `_campDifficultyFor` floored at `CAMP_DIFF_FLOOR`), resolved once in
+> `_campRunAction` via `_campEffectiveGame` so the primitives stay difficulty-blind.
+> The §2/§5 tables below describe the original 18-set; **`CAMP_MICROGAMES` /
+> `CAMP_ACTIONS` in `battle.html` are the source of truth for the current 30.**
+> Guard: `tests/suites/camp-microgames-30.test.js`.
 
 ---
 
@@ -185,12 +196,15 @@ The data shape (`actions.games[]`) already supports a pool of any size, so
 expansion is data + a primitive or two, never a refactor. (Reflected in the
 roadmap's PR D.)
 
-> **STATUS (shipped):** all **18** games + the full **9-primitive** toolkit
+> **STATUS (shipped):** all **30** games + the full **17-primitive** toolkit
 > (`_CAMP_PRIMITIVES`: tapTiming, holdRelease, mash, pickMatch, dragAim, swipeCover,
-> track, restraint, sequence) are in `CAMP_MICROGAMES` / `CAMP_ACTIONS`. Win/lose
-> for each is a unit-tested pure `_campScore*` decider; the interactive *feel*
-> (tap windows, hold bands, track tolerances — all per-game data) wants a maintainer
-> playtest pass, and the cruel/romance **copy stays mild pending the D10 tone pass.**
+> track, restraint, sequence, **dodge, catch, lobAim, steady, block, balance,
+> gaugeStop, quickMath**) are in `CAMP_MICROGAMES` / `CAMP_ACTIONS`. Win/lose for
+> each is a unit-tested pure `_campScore*` decider; difficulty ramps with bond
+> progress via `[easy,hard]` ranged params (`_campEffectiveGame` / `_campDifficultyFor`,
+> floored at `CAMP_DIFF_FLOOR=0.20`). The interactive *feel* (windows, bands,
+> tolerances, the ranged bounds) is per-game **[MAINTAINER]** data and wants a
+> playtest pass; the cruel/romance **copy stays mild pending the D10 tone pass.**
 > The SVG **bond hexagon** (`_campBondHexSvg`, BONDING §9) renders on the mon card.
 
 ---
