@@ -6,6 +6,13 @@
 > `battle.html:LINE`, cross-checked against `STORY_MODE_FLOW.md` (canonical spec)
 > and `agent-state/ISSUE_LEDGER.md`.
 > Line numbers drift; the symbol name is the durable anchor.
+>
+> **⚠️ 2026-06 balance pass (post-dates this synthesis):** two shipped changes —
+> (1) a **late-game grade FLOOR** on enemy filler (G2 from city 6; non-boss low sigs
+> evolve up, bosses keep aces — see §2c-floor), and (2) the **gold curve was flattened**
+> from Gym 4 on (endgame peaks cut hardest — see §1 / §2g). Also note: the §2d foe-stat
+> multiplier model below was **deleted** in the June refactor (unified into
+> `FOE_POWER_CURVE` + `_foeDifficultyMult`); treat §2d as historical until re-synthesized.
 
 Deliverables, in order:
 - **§1–§2** = Deliverable 1, the master design file (sequential timeline + every lever).
@@ -168,6 +175,18 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 2. **Progress** `applyStoryProgressToGradeWeights` (`32728`): bias `k` = 0.20 (post-GL2), 0.30 (GL4+), 0.40 (GL6+), +0.0048/row capped +0.14. Shifts mass toward G1.
 3. **G4 strip** `storyStripGrade4IfPartyMature` (`32708`): once party ever ≥2 mons, **all g4→g3** (monotonic).
 
+**§2c-floor — late-game grade FLOOR (2026-06, pool-level, not a weight transform).**
+`_storyFillerGradeFloorForRow` → **G2 floor from city 6** (else none). `_capGradePoolsByGradeFloor`
+empties the G3/G4 buckets of the local filler pool (fail-open if a type+gen has nothing
+at/above the floor, so narrow runs never break). The sig ceiling **and** `_fillerCeiling`
+are clamped no-weaker-than the floor (`Math.min(ceiling, floor)`), so a leader's ace can't
+end up weaker than its own filler (e.g. GL6, whose row weights are g3:100, now fields all
+G2). Signatures are exempt — but on **non-boss** trainers (gym trainer / basic / elite) a
+low sig is **evolved up its own line** to meet the floor (`_evolveSigToGradeFloor`:
+Caterpie→Butterfree, Dratini→Dragonite); **bosses** (gym leaders, E1-E4, Champion, rival,
+Mystery, eldritch) keep their authored aces (the low-grade-signature exception). Guard:
+`tests/suites/story-floor-parity.test.js`.
+
 ### 2d. Foe stat multipliers (post-build, multiplicative stack)
 | Layer | Constant / fn | Value |
 |---|---|---|
@@ -195,8 +214,15 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 
 ### 2g. Economy
 - **Start gold:** 2000 + diff bonus (VE +19000, E +4000, N +2500, H +1000, C +1500).
-- **Per-battle:** `floor(baseCoins × diffMult × cursedMult × progressMult)`. Coin mults: VE 1.60 / E 1.50 / N 1.30 / H 1.00 / C 1.10. Progress taper +15%→+0% across main path. **Wild routes & Frontier pay 0.**
-- **Base coins:** see §1 (GL1 2350 → GL8 5950; E1–4 5000 flat; Champion 7500; Mystery 12000).
+- **Per-battle:** `floor(baseCoins × diffMult × cursedMult × progressMult)`. Coin mults: VE 1.60 / E 1.50 / N 1.30 / H 1.00 / C 1.10. Progress taper +15%→+0% across main path. Basic-Trainer rows also ×`STORY_BASE_TRAINER_GOLD_MULT` (0.82). **Wild routes & Frontier pay 0.**
+- **Base coins (2026-06 flatten — pre-Gym-4 unchanged):** the late curve was too steep
+  and gold piled up post-game. From Gym 5 on, purses now climb in small monotonic steps
+  (later/harder = more, but gently): **GL5 3900 · GL6 4000 · GL7 4100 · GL8 4200**;
+  E1–E4 **3900→4200**; **Champion 4400**; post-HoF **Mystery 5000** (was 12000) — peaks
+  shaved hardest. Net main-path bank ≈ **235k → ~180k**. Beat-gold
+  (`_storyGymLeaderGoldBaselineForCity`, reads row[4]) and Fight Club (`0.5 × next gym
+  purse`) read these row values, so they **taper automatically**. (Older values for
+  reference: GL6 5550 / GL8 5950 / E1–4 5000 / Champion 7500 / Mystery 12000.)
 - **Underground sell:** G1 1800 / G2 450 / G3 250 / G4 60 (`42553`).
 - **Shop prices:** Poké Ball 300, Great Ball 1000 (dept, C6+), Ultra/Master gift-only. Move Tutor 1500, Nature Rater 2000, Dojo 2000, **EV Trainer 5000**, **Colress 7500**, Stone Sage G3 1500/G2 6000/G1 16000, Cable Link 6000–22000. Safari entry 10000 (1st free). Artifacts 5000 (1st free).
 
