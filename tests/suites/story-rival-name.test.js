@@ -1,11 +1,13 @@
-// Stream 2 §11.1 (maintainer-locked) — rival-name treatment guard.
+// Stream 2 §11.1 (maintainer-locked, REVISED 2026-06) — rival-name treatment guard.
 //
-// The rival's battle nameplate is the RBY in-joke "<Player> Sucks"
-// (_storyRivalTauntName). Locked decision §11.1: KEEP the gag on the battle HUD /
-// nameplate, but render the rival as "your rival" in all NARRATION (the opening
-// cold-open, story beats) — no sincere prose ever weaves the "<Player> Sucks"
-// string. Before this fix the opening cold-open interpolated {rival} →
-// "Mer Sucks" straight into Prof. Oak's earnest scene-setting.
+// The rival's sprite is a visual filler, not a fixed canonical character, so the
+// rival is presented GENERICALLY everywhere a name is shown:
+//   - battle HUD / nameplate / VS splash → "Rival"
+//   - narration (cold-open, story beats)  → "your rival"
+//   - rivalry journal / epilogue / pills  → "Rival"
+// The old RBY in-joke nameplate "<Player> Sucks" (_storyRivalTauntName) is GONE.
+// The rolled identity (Blue/Silver/…) survives ONLY as `canonName` for the
+// per-name dialogue/quote lookups — it is never surfaced to the player.
 //
 // Source-level guard. Run: node --test tests/suites/story-rival-name.test.js
 
@@ -28,22 +30,27 @@ function introBlock() {
   return HTML.slice(start, end);
 }
 
-test('the opening cold-open narration says "your rival", not the taunt token', () => {
+test('the opening cold-open narration says "your rival", not a name token', () => {
   const b = introBlock();
   assert.ok(b.includes('Your rival got their starter'), 'intro: narration names "your rival"');
-  assert.ok(!b.includes('{rival}'), 'intro: no {rival} taunt-name interpolation in the narration');
+  assert.ok(!b.includes('{rival}'), 'intro: no {rival} name interpolation in the narration');
 });
 
-test('no {rival} taunt token survives in any narration line', () => {
-  // The intro was the only narration that interpolated the taunt; lock it gone.
-  assert.ok(!HTML.includes('{rival}'), 'no narration line interpolates the taunt name');
+test('no {rival} name token survives in any narration line', () => {
+  assert.ok(!HTML.includes('{rival}'), 'no narration line interpolates a rival-name token');
 });
 
-test('the "<Player> Sucks" gag is preserved on the battle HUD', () => {
-  // the taunt formatter still builds the gag…
-  assert.ok(HTML.includes('`${pn} Sucks`'), '_storyRivalTauntName still builds the gag');
-  // …and the rival battle nameplate still applies it (canonName preserves the
-  // real identity for dialogue + quote lookups).
-  assert.ok(HTML.includes('name: _storyRivalTauntName(trainer.name)'),
-    'the rival battle nameplate still reads "<player> Sucks"');
+test('the "<Player> Sucks" gag is fully removed', () => {
+  // The taunt formatter is deleted…
+  assert.ok(!HTML.includes('_storyRivalTauntName'), '_storyRivalTauntName must be gone');
+  // …and the gag string is gone from the entire file (code AND comments).
+  assert.ok(!HTML.includes('Sucks'), 'no "<player> Sucks" gag string remains anywhere');
+});
+
+test('the rival battle nameplate is the generic "Rival" (canonName kept for dialogue)', () => {
+  // The rival event swap now displays "Rival" and preserves the rolled identity
+  // only as canonName for the per-name quote lookups.
+  assert.ok(HTML.includes("name: 'Rival',"), "the rival nameplate reads the generic 'Rival'");
+  assert.ok(HTML.includes('canonName: trainer.name,'),
+    'canonName still preserves the rolled identity for dialogue lookups');
 });
