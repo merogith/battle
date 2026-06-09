@@ -2,7 +2,7 @@
 
 > 2026-06-09 · `generate-scenarios.mjs` · reference data: @pkmn/dex gen 9 (MIT).
 
-**Entities enumerated:** 1855 · **scenarios emitted:** 3122 (trace 1657 · sweep 1465)
+**Entities enumerated:** 1855 · **scenarios emitted:** 3070 (trace 1605 · sweep 1465)
 
 ## Per-kind routing
 
