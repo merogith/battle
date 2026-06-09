@@ -173,11 +173,12 @@ but lets the journey voice survive the first ten seconds of the game.
 
 ### 1.8 Two borderline lines — needs your call (do not ship without sign-off)
 
-1. **The rival's display name is literally `"{PlayerName} Sucks"`** (`_storyRivalTauntName`). It's
-   a faithful RBY in-joke, but it collides with earnest cold-open prose: the intro
-   (`_STORY_INTRO_SCENES.classic`) reads *"someone's blocking the route gate. {rival}."* → renders
+1. **The rival's display name was literally `"{PlayerName} Sucks"`** (`_storyRivalTauntName`). It was
+   a faithful RBY in-joke, but it collided with earnest cold-open prose: the intro
+   (`_STORY_INTRO_SCENES.classic`) read *"someone's blocking the route gate. {rival}."* → rendering
    as *"…the route gate. Mer Sucks."*, then *"They picked up their starter the same morning you
-   did"* — sincere lines describing an entity named "Mer Sucks." **Decision in §11.1.**
+   did"* — sincere lines describing an entity named "Mer Sucks." **Decision in §11.1 (revised 2026-06:
+   the gag was removed entirely; the rival is now shown generically as "Rival" / "your rival").**
 2. **Orphaned content:** `_shouldFireFirstSightingLore` gates on `tier === 'mature' / 'soft_pasta'
    / 'pasta'`, but the tone layer was cut and every run is `tier: 'classic'`, so the
    `_FIRST_SIGHTING_LORE` overlay **never fires.** This is a spec-drift / dead-content issue more
@@ -709,7 +710,7 @@ for a final beat.
 
 | # | Line / system | Anchor | Decision (locked) |
 |---|---|---|---|
-| 1 | Rival name "{Player} Sucks" | `_storyRivalTauntName` | **Keep the gag, but render the rival as "your rival" in all *narration* (cold-opens, story beats); the taunt name appears only on the battle HUD / nameplate.** No sincere prose ever weaves the "{Player} Sucks" string. (Implemented as the §5.1 narration variant.) |
+| 1 | Rival name "{Player} Sucks" | ~~`_storyRivalTauntName`~~ (removed) | **REVISED 2026-06: the gag is removed entirely.** The rival's sprite is a visual filler, not a fixed canonical character, so the rival is shown generically — **"Rival"** on the battle HUD / nameplate / VS splash / journal / epilogue / up-next pill, and **"your rival"** in narration prose. The rolled identity (Blue/Silver/…) survives only as `canonName` for the per-name dialogue/quote lookups; it is never surfaced to the player. (Superseded the original "keep the gag on the HUD" ruling.) |
 | 2 | Edge ceiling | `STORY_SCENES` villain/extra arcs | **The shipped villain/extra arcs ARE the ceiling.** New copy may match that intensity (subtext + specificity) but never exceed it; nothing more explicit/shock-driven than the crying-Skull-grunt / the-loop's-despair register ships. |
 | 3 | "The numbered part" seed (§5.2) | proposed `classic_champion` edit | **Approved.** The Champion's-Hall beat plants the post-game with "the numbered part" — quiet seed, no spoiler. |
 | 4 | Orphaned first-sighting lore | `_shouldFireFirstSightingLore` | **Routed to Stream 1 / spec-drift** — not a copy fix; out of this stream's scope. |

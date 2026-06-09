@@ -207,20 +207,14 @@ test('pure counter: signatures are never injected (only coincidental at most)', 
   assert.ok(avgSigs < 0.5, `avg sig count ${avgSigs.toFixed(2)} should be < 0.5 (pure counter never injects signatures)`);
 });
 
-test('rival taunt name is "<player> Sucks", canonical fallback when unnamed', async () => {
+test('the rival taunt-name formatter is gone (generic "Rival" treatment)', async () => {
   const eng = await setup();
   const E = eng.window.__rivalTest;
-  const prevProfile = E.sm.trainerProfile;
-  E.sm.trainerProfile = { name: 'Red' };
-  assert.equal(E._storyRivalTauntName('Blue'), 'Red Sucks');
-  E.sm.trainerProfile = null;
-  assert.equal(E._storyRivalTauntName('Blue'), 'Blue', 'no player name -> keep canonical identity');
-  E.sm.trainerProfile = { name: '   ' };
-  assert.equal(E._storyRivalTauntName('Silver'), 'Silver', 'blank/whitespace name -> keep canonical');
-  E.sm.trainerProfile = prevProfile;
+  // The "<player> Sucks" gag was removed; the rival is shown generically as "Rival".
+  assert.equal(E._storyRivalTauntName, undefined, '_storyRivalTauntName must no longer be exposed');
 });
 
-test('rival taunt-name swap preserves the canonical dialogue pool', async () => {
+test('the generic-named rival preserves the canonical dialogue pool (via canonName)', async () => {
   const eng = await setup();
   const E = eng.window.__rivalTest;
   assert.equal(typeof E.getTrainerQuoteForBattle, 'function', 'getTrainerQuoteForBattle exposed');
@@ -234,12 +228,13 @@ test('rival taunt-name swap preserves the canonical dialogue pool', async () => 
     return out;
   };
   const canonical = collect({ name: 'Blue', role: 'Rival' }, 400);
-  const swapped = collect({ name: 'Red Sucks', canonName: 'Blue', role: 'Rival' }, 400);
-  // Swapping the displayed name to "<player> Sucks" must not change what the rival can say.
-  assert.deepEqual([...swapped].sort(), [...canonical].sort(), 'swapped rival draws the identical quote pool');
-  assert.ok(BLUE_LINES.some((l) => swapped.has(l)), 'Blue\'s canonical per-name lines survive the swap (via canonName)');
-  // Control: without canonName the lookup would key on "Red Sucks" and drop the per-name lines.
-  const broken = collect({ name: 'Red Sucks', role: 'Rival' }, 400);
+  // The battle nameplate now displays "Rival" while canonName carries the rolled identity.
+  const generic = collect({ name: 'Rival', canonName: 'Blue', role: 'Rival' }, 400);
+  // Generalising the displayed name to "Rival" must not change what the rival can say.
+  assert.deepEqual([...generic].sort(), [...canonical].sort(), 'generic-named rival draws the identical quote pool');
+  assert.ok(BLUE_LINES.some((l) => generic.has(l)), 'Blue\'s canonical per-name lines survive (via canonName)');
+  // Control: without canonName the lookup would key on "Rival" and drop the per-name lines.
+  const broken = collect({ name: 'Rival', role: 'Rival' }, 400);
   assert.ok(!BLUE_LINES.some((l) => broken.has(l)), 'without canonName the per-name lines are lost (proves canonName matters)');
 });
 

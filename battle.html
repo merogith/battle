@@ -36472,8 +36472,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            // canonName holds the real rival identity when the display name was taunt-swapped
-            // to "<player> Sucks"; per-name quote lookups must key on the canonical name.
+            // canonName holds the rolled rival identity (Blue/Silver/…) when the display
+            // name was generalised to "Rival"; per-name quote lookups must key on the
+            // canonical name so the rival keeps its flavored dialogue pool.
             const nm = trainer && (trainer.canonName || trainer.name) ? String(trainer.canonName || trainer.name) : '';
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
@@ -39824,7 +39825,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 get TRAINER_DATA() { return TRAINER_DATA; },
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
                 getTrainerQuoteForBattle: (...a) => getTrainerQuoteForBattle(...a),
-                _storyRivalTauntName: (...a) => _storyRivalTauntName(...a),
                 pickRivalSecondaryIntroLine: (...a) => pickRivalSecondaryIntroLine(...a),
                 getRivalAftermathLine: (...a) => getRivalAftermathLine(...a),
                 rivalPhaseTagline: (...a) => rivalPhaseTagline(...a),
@@ -49666,12 +49666,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
-        /** The rival's taunt display name — "<your name> Sucks". Falls back to the
-         *  canonical identity (Blue/Silver/…) when the player hasn't set a name. */
-        function _storyRivalTauntName(canonName) {
-            const pn = ((sm && sm.trainerProfile && sm.trainerProfile.name) || '').trim();
-            return pn ? `${pn} Sucks` : (canonName || 'your rival');
-        }
         function _showIntroRivalColdOpen(rivalName, onDone) {
             const variant = _storyActiveVariant();
             // Per-variant intro framing — the introRival cold-open is the
@@ -49683,11 +49677,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const profName = hub.label || 'Prof. Oak';
             const profSpriteFile = hub.spriteFile || 'OakProfessor';
             const intro = _STORY_INTRO_SCENES[variant.id] || _STORY_INTRO_SCENES.classic;
-            // §11.1 (locked): the rival's "<Player> Sucks" taunt name lives ONLY on
-            // the battle HUD nameplate — never in narration. The opening cold-open
-            // names the rival as "your rival" in-prose, so there is no taunt
-            // interpolation here (no rival-name token is substituted into lines).
-            // metaKey is left blank here — the outer dispatcher
+            // §11.1 (revised): the rival is generic — displayed as "Rival" on the
+            // battle HUD and named "your rival" in narration; the rolled identity
+            // (Blue/Silver/…) is never surfaced. The opening cold-open names the
+            // rival as "your rival" in-prose, so no rival-name token is substituted
+            // into lines. metaKey is left blank here — the outer dispatcher
             // (_runStoryColdOpen) already stamps a variant-keyed dedupe entry,
             // so a second stamp on the overlay would just duplicate writes.
             _renderNarrativeOverlay({
@@ -50704,13 +50698,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? _generateBasicTrainer(idx, /^Gym Trainer/.test(String(event)) ? prefType : null)
                     : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival') {
-                // The rival taunts you to your face: their nameplate reads "<your name>
-                // Sucks", keeping their assigned sprite. canonName preserves the real
-                // identity (Blue/Silver/…) for the per-name dialogue + quote lookups.
+                // The rival is shown simply as "Rival": the sprite is a visual filler,
+                // not a fixed canonical character, so no rolled name — and not the old
+                // taunt gag — is rendered on the nameplate. canonName preserves the
+                // rolled identity (Blue/Silver/…) ONLY for the per-name dialogue +
+                // quote lookups (never displayed). Keep the assigned sprite.
                 trainer = {
                     ...trainer,
                     canonName: trainer.name,
-                    name: _storyRivalTauntName(trainer.name),
+                    name: 'Rival',
                     ...(sm.runRivalSpriteFile ? { spriteFile: sm.runRivalSpriteFile } : {}),
                 };
             }
@@ -51628,17 +51624,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcCurrentTab = (tab === 'underground') ? tab : 'storage';
             _pcRefresh();
         }
-        /** Display name of the run's rival, from the locked trainer assignment. */
+        /** Display label for the run's rival. The rival is presented generically as
+         *  "Rival" — the sprite is a visual filler, not a fixed canonical character —
+         *  so the rolled identity (Blue/Silver/…) is never surfaced to the player.
+         *  The rolled name lives on in sm.trainerAssignments only for dialogue/quote
+         *  lookups (see canonName in getTrainerQuoteForBattle). */
         function _rivalDisplayName() {
-            try {
-                for (const ev of STORY_EVENTS_RAW) {
-                    if (ev[1] === 'Battle' && ev[2] === 'Rival') {
-                        const nm = sm.trainerAssignments && sm.trainerAssignments[ev[0]];
-                        if (nm) return nm;
-                    }
-                }
-            } catch (e) {}
-            return 'your rival';
+            return 'Rival';
         }
         // Read-only rivalry log: one card per past rival encounter, most recent first.
         // Each card shows the phase tagline, the player's badge count at the time, a
@@ -51651,7 +51643,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return `<div style="text-align:center;color:#888;padding:34px 16px;font-size:13px;line-height:1.7;">
                     <div style="font-size:34px;margin-bottom:10px;">🏁</div>
                     <strong style="color:#ffb74d;">No rivalry on record yet.</strong><br>
-                    Every time you face ${_esc(rivalName)} this page fills in — the team they brought, the stage of the journey, and who walked away on top.
+                    Every time you face your rival this page fills in — the team they brought, the stage of the journey, and who walked away on top.
                 </div>`;
             }
             const wins = log.filter((e) => e && e.won).length;
@@ -52993,7 +52985,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isFinale = /^(E[1-4]|Champion|Mystery Figure|Victory Road)$/.test(event);
                 const isGymLeader = /^Gym Leader/i.test(event);
                 const icon = isFinale ? '🏆' : (isGymLeader ? '🏟' : '⚔');
-                const text = trainerName ? (role + ' — ' + trainerName) : role;
+                // The rival is shown generically as "Rival" — never append the rolled
+                // canonical name (Blue/Silver/…) to the up-next pill.
+                const text = (event !== 'Rival' && trainerName) ? (role + ' — ' + trainerName) : role;
                 return { icon, text };
             }
             return null;
@@ -57683,10 +57677,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // depending on who took the league rematch) + a narrator beat.
             const _epiHub = (typeof cityProfessorHubSlot === 'function') ? (cityProfessorHubSlot(0) || {}) : {};
             const _epiProfName = _epiHub.label || 'Prof. Oak';
-            const _epiRivalName = (sm && sm.trainerAssignments)
-                ? (sm.trainerAssignments[STORY_RIVAL_ROW_INTRO] || sm.trainerAssignments[STORY_RIVAL_ROW_LEAGUE] || '')
-                : '';
-            const _epiRivalSpeaker = _epiRivalName ? String(_epiRivalName) : 'Rival';
+            // The rival speaks under the generic "Rival" label — the rolled identity
+            // (Blue/Silver/…) is never surfaced to the player (sprite is visual filler).
+            const _epiRivalSpeaker = 'Rival';
             const _epiRivalLine = sm.rivalChampionClaimed
                 ? '"Your name made the wall. The crown stayed with me. Come find me when you want it back."'
                 : '"You took the league. You took our last duel. I\'ll be back — train accordingly."';
