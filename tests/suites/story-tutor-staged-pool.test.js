@@ -1,5 +1,5 @@
-// 3-stage Move Tutor (user model, tutor:[0,2,5]) — Inner Strength (Natural ≤75) at
-// C0-C1, Unleashed (ALL Natural, no TMs) at C2-C4, Guru (+Learnt +Awakened) at C5+. Verifies:
+// 3-stage Move Tutor (user model, tutor:[0,3,6]) — Inner Strength (Natural ≤75) at
+// C0-C2, Unleashed (ALL Natural, no TMs) at C3-C5, Guru (+Learnt +Awakened) at C6+. Verifies:
 //   • the staged pool's contents grow as the tutor levels up,
 //   • _moveCostForStage by-tag returns 1000 / 2500 / 5000 per Natural / Learnt /
 //     Awakened (independent of tutor stage), and matches the no-arg legacy
@@ -37,12 +37,12 @@ test('Move Tutor: 3 stages — Inner Strength → Unleashed → Guru', () => {
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
   assert.equal(ST.npcStageName('tutor', 1), 'Unleashed');
   assert.equal(ST.npcStageName('tutor', 2), 'Guru');
-  // Thresholds tutor:[0,2,5] — Inner C0-1, Unleashed C2-4, Guru C5+.
+  // Thresholds tutor:[0,3,6] — Inner C0-2, Unleashed C3-5, Guru C6+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
-  assert.equal(ST.npcStageForCity('tutor', 1), 0);
-  assert.equal(ST.npcStageForCity('tutor', 2), 1);
-  assert.equal(ST.npcStageForCity('tutor', 4), 1);
-  assert.equal(ST.npcStageForCity('tutor', 5), 2);
+  assert.equal(ST.npcStageForCity('tutor', 2), 0);
+  assert.equal(ST.npcStageForCity('tutor', 3), 1);
+  assert.equal(ST.npcStageForCity('tutor', 5), 1);
+  assert.equal(ST.npcStageForCity('tutor', 6), 2);
 });
 
 test('_moveCostForStage by tag — Natural 1000 / Learnt 2500 / Awakened 5000', () => {

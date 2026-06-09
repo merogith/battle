@@ -363,17 +363,17 @@ the generic fallback should match that floor.
 
 **BEFORE** (4 dense lines)
 > "Battle forms — Mega Evolution, Z-Moves, Dynamax, Terastallize. Each one bends the rules in a different direction."
-> "You earn the right to use them gym by gym. The fifth gym opens the first door. I'll let you choose which form a given Pokémon carries into battle, and which signature move comes with it."
+> "You earn the right to use them gym by gym. The sixth gym opens the first door. I'll let you choose which form a given Pokémon carries into battle, and which signature move comes with it."
 > "One form per Pokémon — committing a mon means committing the held item slot too. A Mega Stone or Z-Crystal lives there. Dynamax and Tera leave the slot alone."
 > "The trade-off is always: spectacular swing, finite window. Read the fight before you spend the trick."
 
 **AFTER** (same four facts, Colress's clinical fascination, tighter)
 > "Battle forms. Mega, Z, Dynamax, Tera. Four ways to break the rules — each in a different direction. I find them *fascinating.*"
-> "You unlock them like everything else here: one gym at a time. The fifth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."
+> "You unlock them like everything else here: one gym at a time. The sixth opens the first door. After that, you tell me which form a Pokémon carries, and which signature move comes with it."
 > "One form per partner — and a Mega Stone or Z-Crystal moves into the held-item slot to do it. Dynamax and Tera don't ask for the slot. Choose accordingly."
 > "Every form is the same bargain: a spectacular swing, a finite window. Spend it on a read, not a reflex. …I'll be watching which you choose."
 
-*Mechanics audit (all four survive):* (1) the four forms exist; (2) gym-gated, fifth gym opens it,
+*Mechanics audit (all four survive):* (1) the four forms exist; (2) gym-gated, sixth gym opens it,
 player picks form + signature move; (3) one form per mon, Mega/Z eat the item slot, Dynamax/Tera
 don't; (4) spectacular-but-finite, use on a read. **Nothing dropped** — only voiced and trimmed.
 This is the template for re-voicing the rest of `STORY_TUTORIAL_SCENES`; apply the same

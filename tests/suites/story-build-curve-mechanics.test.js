@@ -1,6 +1,6 @@
 // Verifies the enemy-mechanics city floor (Phase 1f): battle gimmicks (Mega /
-// Z / Dynamax / Tera) stay off for enemies until City 7 — the player unlocks and
-// uses them a city earlier. Above C7 the existing per-mon/guaranteed distribution
+// Z / Dynamax / Tera) stay off for enemies until City 8 — the player unlocks and
+// uses them a city earlier. Above C8 the existing per-mon/guaranteed distribution
 // (parity-gated, difficulty-scaled) takes over unchanged.
 // Run: node --test tests/suites/story-build-curve-mechanics.test.js
 import { test } from 'node:test';
@@ -34,23 +34,23 @@ const countMechs = (eventType, row, trials = 8) => {
   return mech;
 };
 
-test('enemy mechanics are floored to zero before City 7', () => {
+test('enemy mechanics are floored to zero before City 8', () => {
   setSm();
-  for (const c of [0, 2, 4, 5, 6]) {
+  for (const c of [0, 2, 4, 5, 6, 7]) {
     const row = cityRowFor(c);
     assert.ok(row >= 0, `found a C${c} row`);
-    // Even a Gym Leader 8 event (max guaranteed) with Mega unlocked gets nothing pre-C7.
+    // Even a Gym Leader 8 event (max guaranteed) with Mega unlocked gets nothing pre-C8.
     assert.equal(countMechs('Gym Leader 8', row), 0, `C${c}: no enemy mechanics (floored)`);
   }
 });
 
-test('the floor lifts at City 7+ (distribution runs)', () => {
+test('the floor lifts at City 8+ (distribution runs)', () => {
   setSm({ badges: 8 });
-  const row7 = cityRowFor(7), row8 = cityRowFor(8);
+  const row8 = cityRowFor(8), row9 = cityRowFor(9);
   // Mega is unlocked + species are Mega-capable, so the guaranteed-mech path should
   // assign at least one across trials once the floor lifts.
-  const total = countMechs('Gym Leader 8', row7, 12) + countMechs('Gym Leader 8', row8, 12);
-  assert.ok(total > 0, `C7/C8 produced ${total} mechanics (floor lifted)`);
+  const total = countMechs('Gym Leader 8', row8, 12) + countMechs('Gym Leader 8', row9, 12);
+  assert.ok(total > 0, `C8/C9 produced ${total} mechanics (floor lifted)`);
 });
 
 test('Mystery Figure (no storyRowIdx) bypasses the floor entirely', () => {

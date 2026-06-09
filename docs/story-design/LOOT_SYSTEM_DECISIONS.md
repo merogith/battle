@@ -68,7 +68,7 @@ edge, or a tier weight), and the table stays coherent. This is the backbone of t
 | Mint | `mint` | Nature Rater | 2,000G nature change | C0 |
 | Ability Capsule | `abilityCapsule` | Battle Dojo | 2,500G ability swap | C4 |
 | Emblem of Honor | `emblemHonor` | Battle Dojo | 2,000G item swap | C4 |
-| Wishing Piece | `wishingPiece` | Colress (Power-Up) | 5,000G form awakening | C6 |
+| Wishing Piece | `wishingPiece` | Colress (Power-Up) | 5,000G form awakening | C7 |
 | Bill's Discount Card | `linkDiscount50` | Cable Link Station | 50% off one transaction | C2 |
 | Stonewise Token | `stoneToken` | Stone Shop | free stone / trade item | C2 |
 | Lucky Chip | `casinoChip500` | Poké Casino | 500G first-bet credit | C5 |
@@ -277,8 +277,8 @@ whack-a-mole. **Trade-off:** mailbox is a small new system + UI surface (a "held
 the bag). Given "saves not important," cost is low.
 
 ### D12. Gateway grace (gifts 1 city before the facility)
-- ★ **(a) Keep the 1-city grace** for hand-placed gateway gifts (e.g. Wishing Piece at GL5 →
-  Colress C6) so you're holding it when the door opens.
+- ★ **(a) Keep the 1-city grace** for hand-placed gateway gifts (e.g. Wishing Piece at GL6 →
+  Colress C7) so you're holding it when the door opens.
 - (b) Remove grace — strictly no item before its facility.
 
 **Why (a):** it's the intended "arrive ready" beat; the mailbox covers anything earlier.

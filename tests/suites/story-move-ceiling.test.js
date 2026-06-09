@@ -4,11 +4,11 @@
 //   data/move-tags.json index (offline-safe), so the gate no longer silently
 //   no-ops without a CDN.
 // Phase 1: the gate is the single move-pacing authority, keyed on tutor stage
-// (user model — TMs/tutor moves unlock only at Guru). Thresholds tutor:[0,2,5]:
-//   stage 0 (Inner,     C0–C1): Natural-tag only. Player BP ≤ 75; FOES ≤ 60 (a tighter
+// (user model — TMs/tutor moves unlock only at Guru). Thresholds tutor:[0,3,6]:
+//   stage 0 (Inner,     C0–C2): Natural-tag only. Player BP ≤ 75; FOES ≤ 60 (a tighter
 //                               early-game ceiling — STORY_FOE_MOVE_BP_CAP_BY_STAGE).
-//   stage 1 (Unleashed, C2–C4): ALL Natural (BP cap lifts; still NO Learnt/TM).
-//   stage 2 (Guru,      C5+):   no gate (Natural + Learnt + Awakened).
+//   stage 1 (Unleashed, C3–C5): ALL Natural (BP cap lifts; still NO Learnt/TM).
+//   stage 2 (Guru,      C6+):   no gate (Natural + Learnt + Awakened).
 // NB: tests resolve cities via cityAtTutorStage() so they survive threshold tuning.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,10 +19,14 @@ const w = eng.window;
 const ST = w.__storyTest;
 
 function cityRowIdx(targetCity) {
+  // Return the ROW ID (ev[0]) of the target city's hub row — that is what
+  // storyGateFoeMovesByCity expects (it resolves row id → city via
+  // _cityIndexForStoryRow). Returning the bare array index mis-resolves cities
+  // in the reordered mid-rival region (e.g. C3) to a lower stage.
   for (let ei = 0; ei <= 120; ei++) {
     let c = -1;
     try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {}
-    if (c === targetCity) return ei;
+    if (c === targetCity) { const row = ST.STORY_EVENTS_RAW && ST.STORY_EVENTS_RAW[ei]; return row ? (row[0] | 0) : ei; }
   }
   return 0;
 }

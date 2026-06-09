@@ -1,9 +1,9 @@
 // Enemy move pool is gated by the city's TUTOR STAGE (user model), mirroring what
-// the player can teach at that city. Thresholds tutor:[0,2,5]:
-//   C0–C1 (Inner Strength): Natural only; FOE BP ≤ 60 (tighter than the player's 75 to
+// the player can teach at that city. Thresholds tutor:[0,3,6]:
+//   C0–C2 (Inner Strength): Natural only; FOE BP ≤ 60 (tighter than the player's 75 to
 //                           soften the very early game — STORY_FOE_MOVE_BP_CAP_BY_STAGE).
-//   C2–C4 (Unleashed):      ALL Natural (cap lifts; still NO Learnt/TM).
-//   C5+   (Guru):           no gate — full pool (Natural + Learnt + Awakened).
+//   C3–C5 (Unleashed):      ALL Natural (cap lifts; still NO Learnt/TM).
+//   C6+   (Guru):           no gate — full pool (Natural + Learnt + Awakened).
 //
 // We test by warming the learnset cache for a real species (Garchomp), then
 // running a synthetic enemy team through _storyGateFoeMovesByCity at each stage
@@ -17,10 +17,14 @@ const eng = await loadEngine();
 const ST = eng.window.__storyTest;
 
 function cityRowIdx(targetCity) {
+  // Return the ROW ID (ev[0]) of the target city's hub row — that is what
+  // storyGateFoeMovesByCity expects (it resolves row id → city via
+  // _cityIndexForStoryRow). Returning the bare array index mis-resolves cities
+  // in the reordered mid-rival region (e.g. C3) to a lower stage.
   for (let ei = 0; ei <= 120; ei++) {
     let c = -1;
     try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {}
-    if (c === targetCity) return ei;
+    if (c === targetCity) { const row = ST.STORY_EVENTS_RAW && ST.STORY_EVENTS_RAW[ei]; return row ? (row[0] | 0) : ei; }
   }
   return 0;
 }

@@ -28,19 +28,19 @@ setSm();
 const cityRow = (c) => { for (let i = 0; i < SER.length; i++) { const r = SER[i]; if (Array.isArray(r) && r[1] === 'City' && r[2] === 'City' + c) return i; } return -1; };
 const renderCity = (c) => { setSm(); return W.__renderCityActionsForTest(cityRow(c)); };
 
-test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/2/5, evolab 2/4)', () => {
+test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/3/6, evolab 2/4)', () => {
   assert.equal(ST.npcStageForCity('dojo', 1), 0, 'pre-debut clamps to stage 0');
   assert.equal(ST.npcStageForCity('dojo', 2), 0);
   assert.equal(ST.npcStageForCity('dojo', 4), 0);
   assert.equal(ST.npcStageForCity('dojo', 5), 1);
   assert.equal(ST.npcStageForCity('dojo', 7), 1);
   assert.equal(ST.npcStageForCity('dojo', 8), 2);
-  // Move Tutor thresholds tutor:[0,2,5] — Inner C0-1, Unleashed C2-4, Guru C5+.
+  // Move Tutor thresholds tutor:[0,3,6] — Inner C0-2, Unleashed C3-5, Guru C6+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
-  assert.equal(ST.npcStageForCity('tutor', 1), 0);
-  assert.equal(ST.npcStageForCity('tutor', 2), 1);
-  assert.equal(ST.npcStageForCity('tutor', 4), 1);
-  assert.equal(ST.npcStageForCity('tutor', 5), 2);
+  assert.equal(ST.npcStageForCity('tutor', 2), 0);
+  assert.equal(ST.npcStageForCity('tutor', 3), 1);
+  assert.equal(ST.npcStageForCity('tutor', 5), 1);
+  assert.equal(ST.npcStageForCity('tutor', 6), 2);
   assert.equal(ST.npcStageForCity('evolab', 2), 0);
   assert.equal(ST.npcStageForCity('evolab', 3), 0);
   assert.equal(ST.npcStageForCity('evolab', 4), 1);
@@ -155,10 +155,10 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Evolution Tutor (Evolu
 });
 
 test('city-screen chip tags advance with the arrived city', () => {
-  // Move Tutor is 3-stage (tutor:[0,2,5]) — Inner Strength (C0-1) → Unleashed (C2-4) → Guru (C5+).
-  assert.ok(renderCity(0).includes('Move Tutor — Inner Strength'), 'C0 Move Tutor = Inner Strength');
-  assert.ok(renderCity(4).includes('Move Tutor — Unleashed'), 'C4 Move Tutor = Unleashed');
-  assert.ok(renderCity(7).includes('Move Tutor — Guru'), 'C7 Move Tutor = Guru');
+  // Move Tutor is 3-stage (tutor:[0,3,6]) — Inner Strength (C0-2) → Unleashed (C3-5) → Guru (C6+).
+  assert.ok(renderCity(2).includes('Move Tutor — Inner Strength'), 'C2 Move Tutor = Inner Strength');
+  assert.ok(renderCity(3).includes('Move Tutor — Unleashed'), 'C3 Move Tutor = Unleashed');
+  assert.ok(renderCity(6).includes('Move Tutor — Guru'), 'C6 Move Tutor = Guru');
   assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');
   assert.ok(renderCity(8).includes('Battle Dojo — Grandmaster'), 'C8 Dojo = Grandmaster');
