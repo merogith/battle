@@ -44,6 +44,7 @@ function parseArgs(argv) {
     else if (t === '--seeds') a.seeds = +argv[++i];
     else if (t === '--shard') { const [i0, n] = argv[++i].split('/'); a.shardIndex = +i0; a.shardTotal = +n; }
     else if (t === '--out') a.out = argv[++i];
+    else if (t === '--no-report') a.noReport = true;
   }
   return a;
 }
@@ -136,20 +137,35 @@ async function main() {
     if (done % 100 === 0 || done === scenarios.length) process.stderr.write(`  …${done}/${scenarios.length}\n`);
   }
 
-  // ── aggregate ──
-  const highs = results.filter((r) => r.confidence === 'high');
-  const mediums = results.filter((r) => r.confidence === 'medium');
-  const errors = results.filter((r) => r.confidence === 'error');
-  const inerts = results.filter((r) => r.confidence === 'inert');
-  // a "divergent entity" = any entity with ≥1 high-confidence scenario.
-  const divergentEntities = new Set(highs.map((r) => `${r.kind}:${r.entity}`));
-
-  // ── write machine-readable map (for the triage agent to shard) ──
+  // ── write machine-readable results to --out (always; this is what shards merge) ──
   const outDir = ARGS.out || join(__dirname, 'sweep-out');
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, 'results.json'), JSON.stringify({ generatedAt: new Date().toISOString(), args: ARGS, stats, results }, null, 0));
 
-  // ── shard the HIGH-confidence divergences by setup-shape (kind+family) for agents ──
+  // Shard workers stop here — the orchestrator (sweep-sharded.mjs) merges + reports.
+  if (ARGS.noReport) {
+    process.stderr.write(`shard ${ARGS.shardIndex}/${ARGS.shardTotal}: ${results.length} results → ${outDir}/results.json\n`);
+    process.exit(0);
+  }
+
+  writeReports(outDir, __dirname, { results, coverage, stats });
+  const highs = results.filter((r) => r.confidence === 'high');
+  process.stderr.write(`\nWrote SWEEP_REPORT.md, FIDELITY.md, and ${outDir}/{results,triage-shards}.json\n`);
+  process.stderr.write(`HIGH ${highs.length} · MED ${results.filter((r) => r.confidence === 'medium').length} · inert ${results.filter((r) => r.confidence === 'inert').length} · err ${results.filter((r) => r.confidence === 'error').length}\n`);
+  process.exit(0);
+}
+
+// Aggregate `results` and write triage-shards.json + SWEEP_REPORT.md + FIDELITY.md.
+// Exported so the sharded orchestrator can merge per-shard results and report once.
+export function writeReports(outDir, reportDir, { results, coverage, stats }) {
+  mkdirSync(outDir, { recursive: true });
+  const highs = results.filter((r) => r.confidence === 'high');
+  const mediums = results.filter((r) => r.confidence === 'medium');
+  const errors = results.filter((r) => r.confidence === 'error');
+  const inerts = results.filter((r) => r.confidence === 'inert');
+  const divergentEntities = new Set(highs.map((r) => `${r.kind}:${r.entity}`));
+
+  // shard the HIGH-confidence divergences by setup-shape (kind+family) for agents
   const shards = {};
   for (const r of highs) {
     const key = `${r.kind}.${r.family || 'misc'}`;
@@ -157,7 +173,6 @@ async function main() {
   }
   writeFileSync(join(outDir, 'triage-shards.json'), JSON.stringify(shards, null, 0));
 
-  // ── markdown divergence report ──
   const date = new Date().toISOString().slice(0, 10);
   let md = `# Comprehensive Differential Sweep\n\n> Generated ${date} by \`sweep-all.mjs\`. Reference: **@pkmn/sim** (MIT). ` +
     `Subject: \`battle.html\` (headless). No game code changed — observe & diff only.\n\n`;
@@ -181,14 +196,11 @@ async function main() {
     md += `\n## Harness errors (${errors.length})\n\n| Scenario | Error |\n|---|---|\n`;
     for (const r of errors.slice(0, 60)) md += `| \`${r.id}\` | ${(r.detail || '').replace(/\|/g, '\\|')} |\n`;
   }
-  writeFileSync(join(__dirname, 'SWEEP_REPORT.md'), md, 'utf8');
+  writeFileSync(join(reportDir, 'SWEEP_REPORT.md'), md, 'utf8');
 
   // ── FIDELITY scorecard ──
-  writeFidelity(join(__dirname, 'FIDELITY.md'), { date, results, coverage, stats, divergentEntities });
-
-  process.stderr.write(`\nWrote ${join(__dirname, 'SWEEP_REPORT.md')}, FIDELITY.md, and ${outDir}/{results,triage-shards}.json\n`);
-  process.stderr.write(`HIGH ${highs.length} · MED ${mediums.length} · inert ${inerts.length} · err ${errors.length}\n`);
-  process.exit(0);
+  writeFidelity(join(reportDir, 'FIDELITY.md'), { date, results, coverage, stats, divergentEntities });
+  return { highs: highs.length, mediums: mediums.length, inerts: inerts.length, errors: errors.length, divergentEntities: divergentEntities.size };
 }
 
 function writeFidelity(path, { date, results, coverage, stats, divergentEntities }) {
@@ -225,4 +237,4 @@ function writeFidelity(path, { date, results, coverage, stats, divergentEntities
   writeFileSync(path, md, 'utf8');
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) main();
