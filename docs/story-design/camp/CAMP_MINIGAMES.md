@@ -22,7 +22,8 @@ lands at the per-Pokémon threshold (`BONDING §3`).
 - **Random pick is seeded** (`storyRngNext`, ≈`37609`) → deterministic replays,
   fresh-feeling sessions.
 - **Unlimited per camp**, any party member. The threshold is a flat **5 wins**
-  per path for every nature (temperament currently neutralized — `BONDING §4`).
+  per path; a Pokémon's Nature-favourite path counts **×2 per win** (masters in 3
+  — `BONDING §4`), shown with a `×2` badge in the panel.
 
 ---
 
@@ -86,7 +87,8 @@ function campPickMicrogame(actionId) {
   **+0** and a **reaction beat** (sulk / recoil — the edgy payoff). Never
   decrements by default (no losing progress); a small setback is a knob.
 - Win/lose is **pass/fail**, not a graded score — keeps "5 wins to master"
-  legible. The threshold lives in `bondThreshold()`, not here.
+  legible. The win value lives in `campBondGain()` (×2 on the favourite), the
+  threshold in `bondThreshold()` — not here.
 
 ---
 

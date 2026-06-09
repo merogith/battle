@@ -15223,8 +15223,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // docs/story-design/camp/BONDING_RELATIONSHIPS.md (decisions D1/D2/D4/D5b,
         // locked 2026-06-03; fishing→devotion added 2026-06-08). Six relationship
         // paths, clean 6-stat bijection; a path MASTERS (its +5% turns on) when the
-        // per-Pokémon counter slot.bonds[path] reaches a Nature-shifted threshold
-        // (~BASE × temperament). The buff is a per-stat multiplier object stamped on
+        // per-Pokémon counter slot.bonds[path] reaches a flat threshold (5). Nature
+        // variance is in the win value: the favoured path earns ×2 (campBondGain).
+        // The buff is a per-stat multiplier object stamped on
         // PLAYER builds at battle entry (launchBattle) and applied in buildPokemon,
         // symmetric to the foe _storyStatMult. DORMANT until bonds rise (PR D): with
         // every counter 0, relationshipStatMult() is all-1.0 ⇒ built stats are
@@ -15234,12 +15235,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // in a later PR per CLAUDE.md's data-driven preference.
         const CAMP_BOND_BUFF     = 0.05;   // +5% per mastered path             [MAINTAINER]
         const CAMP_BASE_ACTIONS  = 5;      // reps to master — FLAT, every path [MAINTAINER]
-        // Temperament is FLAT (all 1.0): every path masters at exactly CAMP_BASE_ACTIONS
-        // reps regardless of Nature, so maxing a full team is 6 stats × 6 mons × 5 = 180
-        // actions. The loved/resisted hook stays at 1.0 so a later tune can re-introduce
-        // Nature-driven variance without restructuring bondThreshold().
-        const CAMP_TEMP_LOVED    = 1.0;    // (was 0.7) Nature-raised stat      [MAINTAINER]
-        const CAMP_TEMP_RESISTED = 1.0;    // (was 1.4) Nature-lowered stat     [MAINTAINER]
+        const CAMP_FAVORED_GAIN  = 2;      // ×N win value on the favoured path [MAINTAINER]
+        // Threshold is a FLAT 5 for every path/Nature (the loved/resisted multipliers
+        // below stay vestigial at 1.0 — a future threshold-based re-tune could revive them).
+        // Nature variance lives in the GAIN instead, and only ever HELPS: the one path
+        // whose stat the Pokémon's Nature RAISES is its "favourite" and earns CAMP_FAVORED_GAIN
+        // (×2) per win, so it masters in 3 wins (2·3=6 ≥ 5) instead of 5. Nothing is ever
+        // slower than 5; neutral natures have no favourite. Full team ≈ 6×6×5 = 180 actions.
+        const CAMP_TEMP_LOVED    = 1.0;    // (vestigial) Nature-raised stat    [MAINTAINER]
+        const CAMP_TEMP_RESISTED = 1.0;    // (vestigial) Nature-lowered stat   [MAINTAINER]
         const CAMP_TEMP_NEUTRAL  = 1.0;    //                                   [MAINTAINER]
         // path id → { stat, buff, baseActions }. good→offense, cruel→defense,
         // weird→speed, romance→tank. Repointable.
@@ -40459,6 +40463,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campBondHexSvg: (...a) => _campBondHexSvg(...a),
                     proceedToNextBattle: () => proceedToNextBattle(),
                     campAwardBond: (...a) => campAwardBond(...a),
+                    campBondFavoredPath: (...a) => campBondFavoredPath(...a),
+                    campBondGain: (...a) => campBondGain(...a),
                     campPickMicrogame: (...a) => campPickMicrogame(...a),
                     campMasteredPaths: (...a) => campMasteredPaths(...a),
                     campTitleFor: (...a) => campTitleFor(...a),
@@ -48992,20 +48998,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Award a successful bonding action: +1 counter, detect a just-crossed mastery
         // and any new title, then save(). Returns the reveal payload (or null).
+        // The Nature-FAVOURED relationship: the single path whose stat the Pokémon's
+        // Nature RAISES (HP/Devotion never qualifies — no Nature touches HP). Neutral
+        // natures have no stat bias → null. Pure (slot → path id | null).
+        function campBondFavoredPath(slot) {
+            const name = slot && slot.build && (slot.build.n || slot.build.nature);
+            const nm = (name && typeof natureModifiers !== 'undefined' && natureModifiers[name]) || null;
+            if (!nm || !nm.up) return null;
+            for (const pid in RELATIONSHIP_PATHS) {
+                const def = RELATIONSHIP_PATHS[pid];
+                if (def && def.stat !== 'hp' && def.stat === nm.up) return pid;
+            }
+            return null;
+        }
+        // Win value for a path on this slot: ×CAMP_FAVORED_GAIN on the favourite, else 1.
+        function campBondGain(slot, path) {
+            return (path && campBondFavoredPath(slot) === path) ? CAMP_FAVORED_GAIN : 1;
+        }
         function campAwardBond(slot, path) {
             if (!slot || !RELATIONSHIP_PATHS[path]) return null;
             if (!slot.bonds || typeof slot.bonds !== 'object') {
                 slot.bonds = { praise: 0, nurture: 0, discipline: 0, intimidate: 0, mimicry: 0, devotion: 0 };
             }
             const masteredBefore = campMasteredPaths(slot);
-            slot.bonds[path] = (slot.bonds[path] | 0) + 1;
+            const gain = campBondGain(slot, path);
+            slot.bonds[path] = (slot.bonds[path] | 0) + gain;
             const masteredAfter = campMasteredPaths(slot);
             const justMastered = !masteredBefore.includes(path) && masteredAfter.includes(path);
             const titleBefore = campTitleFromMastered(masteredBefore);
             const titleAfter = campTitleFromMastered(masteredAfter);
             try { save(); } catch (e) {}
             return {
-                path, count: slot.bonds[path], threshold: bondThreshold(path, slot),
+                path, count: slot.bonds[path], threshold: bondThreshold(path, slot), gain, favored: gain > 1,
                 justMastered, title: titleAfter, titleChanged: !!(titleAfter && titleAfter !== titleBefore),
             };
         }
@@ -49121,6 +49145,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Six tone-coloured bond meters (text bars). The SVG hexagon is a later UI PR.
         function _campBondMeterHtml(slot) {
             const TONE = { praise: '#aed581', nurture: '#aed581', discipline: '#ef9a9a', intimidate: '#ef9a9a', mimicry: '#ce93d8', devotion: '#f48fb1' };
+            const fav = campBondFavoredPath(slot);
             let rows = '';
             for (const aid in CAMP_ACTIONS) {
                 const pid = CAMP_ACTIONS[aid].path;
@@ -49129,8 +49154,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const done = cur >= thr;
                 const filled = Math.max(0, Math.min(10, Math.round((cur / Math.max(1, thr)) * 10)));
                 const bar = '▰'.repeat(filled) + '▱'.repeat(10 - filled);
+                const favTag = (pid === fav) ? ` <span style="color:#ffd54f;font-weight:bold;" title="Its nature's favourite — bonds twice as fast">×2</span>` : '';
                 rows += `<div style="display:flex;justify-content:space-between;gap:8px;margin:3px 0;color:${TONE[pid]};font-size:11px;">
-                    <span style="min-width:80px;">${_campCap(pid)}${done ? ' ✓' : ''}</span>
+                    <span style="min-width:80px;">${_campCap(pid)}${done ? ' ✓' : ''}${favTag}</span>
                     <span style="font-family:monospace;letter-spacing:-1px;">${bar}</span>
                     <span style="min-width:40px;text-align:right;">${Math.min(cur, thr)}/${thr}</span></div>`;
             }
@@ -49164,20 +49190,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const slot = sm.team[slotIndex];
             if (!slot || slot.isEgg) { _campRoster(ctx); return; }
             const title = campTitleFor(slot);
+            const fav = campBondFavoredPath(slot);
             const options = [];
             for (const aid in CAMP_ACTIONS) {
                 const pid = CAMP_ACTIONS[aid].path;
                 const done = (((slot.bonds && slot.bonds[pid]) | 0) || 0) >= bondThreshold(pid, slot);
-                options.push({ label: `${CAMP_ACTIONS[aid].label}${done ? '  ✓' : ''}`, onPick: () => _campDefer(() => _campRunAction(ctx, slotIndex, aid)) });
+                const favMark = (pid === fav) ? '  ·×2' : '';
+                options.push({ label: `${CAMP_ACTIONS[aid].label}${favMark}${done ? '  ✓' : ''}`, onPick: () => _campDefer(() => _campRunAction(ctx, slotIndex, aid)) });
             }
             options.push({ label: '← Back', onPick: () => _campDefer(() => _campRoster(ctx)) });
+            const favNote = fav ? ` <span style="color:#ffd54f;">Its nature favours <b>${_campCap(fav)}</b> — ×2 progress per win.</span>` : '';
             _storyScene([{
                 id: 'camp-mon', title: `⛺  ${_esc(slot.name)}${title ? ' · ' + _esc(title) : ''}`, accent: _CAMP_ACCENT,
                 html: `<div style="display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;">
                            <div>${_campBondHexSvg(slot, 132)}</div>
                            <div style="flex:1;min-width:210px;">${_campBondMeterHtml(slot)}</div>
                        </div>
-                       <div style="font-size:11px;opacity:0.8;margin-top:8px;">Spend time together — each win deepens one bond (+5% to its stat once mastered).</div>`,
+                       <div style="font-size:11px;opacity:0.8;margin-top:8px;">Spend time together — each win deepens one bond (+5% to its stat once mastered).${favNote}</div>`,
                 options,
             }], null, _CAMP_SCENE_ID);
         }
@@ -49197,7 +49226,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const slot = sm.team[slotIndex] || { name: 'Your Pokémon', bonds: {} };
             let html;
             if (won) {
-                const lines = [`<b>${_esc(slot.name)}</b> warms to you.  <span style="color:#aed581;font-weight:bold;">+1 ${_campCap(action.path)}</span>`];
+                const gain = (award && award.gain) || 1;
+                const favNote = (award && award.favored) ? ` <span style="color:#ffd54f;font-size:11px;">(its nature's favourite — bonds twice as fast)</span>` : '';
+                const lines = [`<b>${_esc(slot.name)}</b> warms to you.  <span style="color:#aed581;font-weight:bold;">+${gain} ${_campCap(action.path)}</span>${favNote}`];
                 if (award && award.justMastered) lines.push(`<div style="margin-top:10px;color:#ffd54f;font-weight:bold;">⭐  ${_campCap(action.path)} mastered — +5% ${_campStatLabel(RELATIONSHIP_PATHS[action.path].stat)}!</div>`);
                 if (award && award.titleChanged) lines.push(`<div style="margin-top:6px;color:#ce93d8;">🏷  ${_esc(slot.name)} is now <b>${_esc(award.title)}</b>.</div>`);
                 html = lines.join('');

@@ -111,7 +111,7 @@ These are locked; what remains are data-side tuning knobs (bottom row).
 | D3 | Bond decay | **off** (reward, not chore) |
 | D4 | Buff timing | **binary at-master** |
 | D5 | Actions per camp | **unlimited** (the grind is total reps, not a per-visit cap) |
-| D5b | Reps to master a stat | **flat 5 actions** per path, all natures (temperament neutralized to 1.0) |
+| D5b | Reps to master a stat | **flat 5** per path; the Nature-favourite path earns **×2/win** → masters in 3 |
 | D6 | Camp cadence | **forced + 1-tap "Break camp"** skip |
 | D7 | Return-to-city | **free round-trip** via a return-point stash |
 | D8 | Which transitions | **all non-city→city** route transitions |
@@ -119,9 +119,9 @@ These are locked; what remains are data-side tuning knobs (bottom row).
 | D10 | Cruel/romance tone | **edgier** — maintainer signs off on the actual copy |
 
 **Remaining tuning knobs (data, [MAINTAINER]):** `BASE_ACTIONS` (5) ·
-temperament multipliers + source (currently flat 1.0; Nature-driven variance is
-re-enableable) · title copy/rules · per-game difficulty · an aggregate buff cap
-*if* +5%×6 proves too strong on the curve.
+`CAMP_FAVORED_GAIN` (×2 on the Nature-favourite path) + favourite source (Nature
+default) · title copy/rules · per-game difficulty · an aggregate buff cap *if*
++5%×6 proves too strong on the curve.
 See each doc's Decisions section.
 
 ---
@@ -134,8 +134,9 @@ See each doc's Decisions section.
 - **Bond counter** — a path's action count on a Pokémon (`slot.bonds[path]`);
   masters at its threshold.
 - **Master** — a path reaching its threshold; its +5% stat buff turns on.
-- **Temperament** — a Pokémon's Nature-driven like/resist that *would* shift a
-  path's threshold; **currently neutralized** (all 1.0 → flat 5 reps per path).
+- **Temperament** — a Pokémon's Nature-driven **favourite** path (the Nature-raised
+  stat). One-directional: the favourite earns ×2 per win (masters in 3); no path is
+  ever penalised. Neutral natures have no favourite.
 - **Title** — a cosmetic name from your bond *shape* (e.g. "the Hardened").
 - **Transition** — the seam between event N and event N+1, keyed by `eventIndex`.
 - **Interpose** — inserting camp into the flow without adding a timeline row.

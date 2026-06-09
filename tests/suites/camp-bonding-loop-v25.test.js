@@ -53,14 +53,41 @@ test('campAwardBond: +1 per call; mastery fires exactly at the threshold crossin
     assert.equal(lastAward.justMastered, false, 'mastery fires once');
 });
 
-test('campAwardBond: threshold is flat 5 — a stat-shifting Nature no longer changes it', () => {
-    const slot = { name: 'Gible', build: freshBuild('Adamant'), bonds: zeroBonds() }; // +atk -spa
-    let a = null;
-    for (let i = 0; i < 4; i++) a = ST.campAwardBond(slot, 'praise');
+test('campBondFavoredPath / campBondGain: the Nature-raised stat is the ×2 favourite', () => {
+    // Adamant raises Atk → praise is favoured (×2); everything else is ×1.
+    const adamant = { build: freshBuild('Adamant') };
+    assert.equal(ST.campBondFavoredPath(adamant), 'praise');
+    assert.equal(ST.campBondGain(adamant, 'praise'), 2, 'favoured → ×2');
+    assert.equal(ST.campBondGain(adamant, 'nurture'), 1, 'others → ×1');
+    // Modest raises Sp.Atk → nurture is the favourite.
+    assert.equal(ST.campBondFavoredPath({ build: freshBuild('Modest') }), 'nurture');
+    // Timid raises Speed → mimicry.
+    assert.equal(ST.campBondFavoredPath({ build: freshBuild('Timid') }), 'mimicry');
+});
+
+test('campBondFavoredPath: neutral nature → no favourite, every path ×1', () => {
+    const slot = { build: freshBuild('Hardy') };
+    assert.equal(ST.campBondFavoredPath(slot), null);
+    for (const p of ['praise','nurture','discipline','intimidate','mimicry','devotion'])
+        assert.equal(ST.campBondGain(slot, p), 1, `${p} ×1`);
+});
+
+test('campBondFavoredPath: HP/Devotion is never the favourite (no Nature touches HP)', () => {
+    for (const n of ['Adamant','Modest','Timid','Bold','Calm','Hardy'])
+        assert.notEqual(ST.campBondFavoredPath({ build: freshBuild(n) }), 'devotion');
+});
+
+test('campAwardBond: the favourite earns +2 per win and masters in 3 wins (was 5)', () => {
+    const slot = { name: 'Gible', build: freshBuild('Adamant'), bonds: zeroBonds() }; // +atk → praise favoured
+    let a = ST.campAwardBond(slot, 'praise'); // +2 → 2
+    assert.equal(a.count, 2); assert.equal(a.gain, 2); assert.equal(a.favored, true);
+    assert.equal(a.justMastered, false, 'not at 2');
+    a = ST.campAwardBond(slot, 'praise'); // +2 → 4
     assert.equal(a.justMastered, false, 'not at 4');
-    a = ST.campAwardBond(slot, 'praise'); // 5th
-    assert.equal(a.justMastered, true, 'masters Praise at 5 regardless of Nature');
+    a = ST.campAwardBond(slot, 'praise'); // +2 → 6 ≥ 5 → masters on the 3rd win
+    assert.equal(a.count, 6);
     assert.equal(a.threshold, 5);
+    assert.equal(a.justMastered, true, 'favourite masters on the 3rd win');
 });
 
 test('titles: bond shape → title (priority order)', () => {
