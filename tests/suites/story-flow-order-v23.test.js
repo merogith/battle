@@ -28,9 +28,11 @@ import { loadEngine } from '../helpers/load-engine.js';
 const eng = await loadEngine();
 const W = eng.window, ST = W.__storyTest, EV = W.STORY_EVENTS_RAW;
 
-// Deterministically walk the timeline and record, per row, the scenes the road
-// dump fires and the battle-beat that injects — mirroring processNextEvent +
-// enterBattleEvent's 3-track paths (no RNG involved).
+// Deterministically walk the timeline and record, per row, the scene the road
+// dispatcher fires and the battle-beat that injects — mirroring the REAL paths:
+// _tryFireRoadStoryBeats (events fire on ROUTE battle rows only, ONE per row,
+// with all-remaining flushed on the last pre-League route row) + the route-only
+// _activeBattleBeatForCurrentRow inject. No RNG involved.
 function traceFlow(villain, extra) {
     const sm = ST.sm;
     sm.tracks = { main: 'classic', villain, extra };
@@ -39,20 +41,19 @@ function traceFlow(villain, extra) {
     const lines = [];
     for (let i = 0; i < EV.length; i++) {
         sm.eventIndex = i;
-        const row = EV[i], type = row[1];
+        if (EV[i][1] !== 'Battle') continue;
         const road = ST.roadForArrayIdx(i);
         const scenes = [];
-        if (type !== 'City' && road) {
-            for (const b of ST.resolveActiveRoadBeats(road)) {
-                scenes.push(b.sceneKey);
-                sm.storyEventsFired[b.sceneKey] = true;
+        if (road && ST.isRouteBattleRow(i)) {
+            const q = ST.resolveActiveRoadBeats(road);
+            if (q.length) {
+                const toFire = ST.isLastPreLeagueRouteRow(i) ? q : [q[0]];
+                for (const b of toFire) { scenes.push(b.sceneKey); sm.storyEventsFired[b.sceneKey] = true; }
             }
         }
         let inject = null;
-        if (type === 'Battle') {
-            const bb = ST.activeBattleBeatForCurrentRow();
-            if (bb) { inject = `${bb.sceneKey}(${bb.kind})`; sm.storyEventsFired[bb.sceneKey] = true; }
-        }
+        const bb = ST.activeBattleBeatForCurrentRow();
+        if (bb) { inject = `${bb.sceneKey}(${bb.kind})`; sm.storyEventsFired[bb.sceneKey] = true; }
         if (scenes.length || inject) {
             lines.push(`${i}|${scenes.join('+')}|${inject || ''}`);
         }
@@ -60,31 +61,39 @@ function traceFlow(villain, extra) {
     return lines;
 }
 
-// EXPECTED golden snapshot for rocket+cubone — post G3/G4 ordering fixes.
+// EXPECTED golden snapshot for rocket+cubone — post ROUTE-ONLY + FORWARD-SPILL +
+// CLIMAX-PRIORITY fix. Events fire ONE per ROUTE battle row (never inside a gym);
+// injected fights land only on generic route rows. When a road is over capacity
+// its overflow spills onto the NEXT road's route rows — but arc CLIMAXES (boss /
+// raid) are hosted ahead of filler (battle / mini-boss / mini-raid), so the boss
+// stays on its own road (idx49) and the harmless filler (main.battle2) is what
+// spills to Victory Road (idx55) instead. Nothing lands in a city, nothing
+// strands (the old bug injected a raid on idx36 = a Gym-6 trainer row).
 const EXPECTED_ROCKET_CUBONE = [
-    '7|main.event1+extra.cubone.event1|',
-    '13|villain.rocket.event1+extra.cubone.event2|',
-    '19|main.event2+villain.rocket.event2+extra.cubone.event3|',
-    '26|villain.rocket.event3+extra.cubone.event4|villain.rocket.battle1(battle)',
-    '27||extra.cubone.miniRaid(miniRaid)',
-    '33|main.event3+villain.rocket.event4+extra.cubone.event5|main.battle1(battle)',
-    '34||villain.rocket.battle2(battle)',
-    '36||extra.cubone.miniRaid2(miniRaid)',
-    // G4: idx40 is the road6 Rival — reserved, so NOTHING injects here now (was
-    // villain.rocket.miniBoss → Proton). The mini-boss moves to the next generic
-    // row (idx41) and the raid follows (idx42).
-    '40|villain.rocket.event5+extra.cubone.event6|',
-    '41||villain.rocket.miniBoss(miniBoss)',
-    '42||extra.cubone.raid(raid)',
-    // G3: villain.rocket.ending is GONE from this pre-boss dump (was the 4th scene
-    // here, before the boss). extra.cubone.ending stays — its raid already fired.
-    '48|main.event4+villain.rocket.event6+extra.cubone.ending|main.battle2(battle)',
-    '49||villain.rocket.boss(boss)',
-    // G3: the villain ending now fires AFTER the boss, on the next road7 row.
-    '51|villain.rocket.ending|',
-    '55|main.event5|',
-    // B10 FIXED (earlier): the league road paces event6/7/8 across E1 (idx59) /
-    // Champion (idx63) / Rival (idx64); event9 + mfReveal + ending are firePostHoF.
+    '7|main.event1|',
+    '8|extra.cubone.event1|',
+    '13|villain.rocket.event1|',
+    '14|extra.cubone.event2|',
+    '19|main.event2|',
+    '20|villain.rocket.event2|',
+    '21|extra.cubone.event3|',
+    '26|villain.rocket.event3|extra.cubone.miniRaid(miniRaid)',
+    '27|extra.cubone.event4|villain.rocket.battle1(battle)',
+    '33|main.event3|extra.cubone.miniRaid2(miniRaid)',
+    '34|villain.rocket.event4|main.battle1(battle)',
+    // idx40 is the road6 Rival — reserved: no inject, but an event scene may pace here.
+    '40|extra.cubone.event5|',
+    '41|villain.rocket.event5|villain.rocket.battle2(battle)',
+    '42|extra.cubone.event6|extra.cubone.raid(raid)',
+    '48|main.event4|villain.rocket.miniBoss(miniBoss)',
+    '49|villain.rocket.event6|villain.rocket.boss(boss)',
+    // Climax-priority: the boss kept idx49; the filler main.battle2 is what spills
+    // onto the first Victory Road row (idx55). The villain ending follows the boss.
+    '55|villain.rocket.ending|main.battle2(battle)',
+    '56|extra.cubone.ending|',
+    '57|main.event5|',
+    // The league road paces event6/7/8 across E1 (idx59) / Champion (idx63) /
+    // Rival (idx64); event9 + mfReveal + ending are firePostHoF (post-HoF flow).
     '59|main.event6|',
     '63|main.event7|',
     '64|main.event8|',

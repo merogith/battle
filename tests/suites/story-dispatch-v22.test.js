@@ -134,9 +134,19 @@ test('splitBeatBodyIntoPages — multi-sentence body splits on sentence boundari
 });
 
 test('main beat priority ordering: main → villain → extra', () => {
+    // Forward-spill orders the queue by road ordinal first, THEN by track
+    // (main→villain→extra) within a road. To exercise the track tiebreak in
+    // isolation, mark every event beat anchored before road5 as already fired, so
+    // resolveActiveRoadBeats('road5') returns only road5's beats.
+    const firedEarlier = {};
+    for (const tbl of [ST.MAIN_STORY_BEATS, ST.VILLAIN_STORY_BEATS.magma, ST.EXTRA_STORY_BEATS.mimikyu]) {
+        for (const slot of Object.values(tbl)) {
+            if (slot && slot.kind === 'event' && ST.roadOrdinal(slot.roadAnchor) < 5) firedEarlier[slot.sceneKey] = true;
+        }
+    }
     ST.sm = Object.assign({}, ST.sm, {
         tracks: { main: 'classic_v2', villain: 'magma', extra: 'mimikyu' },
-        storyEventsFired: {},
+        storyEventsFired: firedEarlier,
     });
     const beats = ST.resolveActiveRoadBeats('road5');
     // road5 has main.event3, main.battle1 (filtered out), extra.mimikyu.event5,

@@ -115,15 +115,21 @@ test('activeBattleBeatForCurrentRow finds villain.rocket.boss on Road 7 after ma
             break;
         }
     }
+    // Forward-spill (route-only fix): an injected fight is hosted on the EARLIEST
+    // unfired inject beat at or behind the current road, so to isolate the road7
+    // boss we mark every inject beat anchored before/at road7 (except the boss) as
+    // already fired — the realistic state once the player has worked roads 4–6.
+    const firedBefore = {};
+    for (const tbl of [ST.MAIN_STORY_BEATS, ST.VILLAIN_STORY_BEATS.rocket, ST.EXTRA_STORY_BEATS.cubone]) {
+        for (const slot of Object.values(tbl)) {
+            if (!slot || !/^(battle|miniBoss|boss|miniRaid|raid)$/.test(slot.kind || '')) continue;
+            if (slot.sceneKey === 'villain.rocket.boss') continue;
+            if (ST.roadOrdinal(slot.roadAnchor) <= 7) firedBefore[slot.sceneKey] = true;
+        }
+    }
     ST.sm = Object.assign({}, ST.sm, {
         tracks: { main: 'classic_v2', villain: 'rocket', extra: 'cubone' },
-        storyEventsFired: {
-            // Main beats on Road 7 outrank villain.rocket.boss by priority order
-            // (main → villain → extra). Mark them fired so the resolver
-            // continues to villain.rocket.boss.
-            'main.battle2': true,
-            'main.event4': true,
-        },
+        storyEventsFired: firedBefore,
         eventIndex: road7ArrayIdx,
     });
     const beat = ST.activeBattleBeatForCurrentRow();
