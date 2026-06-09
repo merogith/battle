@@ -24,7 +24,10 @@ test('the_first identity has the expected shape', () => {
     const tf = MFI.the_first;
     assert.ok(tf, 'the_first identity missing');
     assert.equal(typeof tf.sprite, 'string');
-    assert.equal(tf.reveal, 'The First');
+    // Mirror-self reveal: the figure wears the player's own avatar and the
+    // victory overlay reads "It was <reveal> all along." → "It was you all along."
+    // (sprite: 'Red' below is now only the no-profile fallback for the avatar.)
+    assert.equal(tf.reveal, 'you');
     assert.ok(Array.isArray(tf.intros), 'intros should be an array');
     assert.equal(tf.intros.length, 4, 'expected 4 intro lines');
     assert.equal(typeof tf.outro, 'string');
