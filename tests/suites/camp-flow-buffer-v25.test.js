@@ -49,14 +49,27 @@ test('predicate: NOT before a City row (arriving at town, not camping)', () => {
     assert.equal(ST.campIsDueForTransition(9), false);
 });
 
-test('predicate: NOT before/after an iconic fight (rival, champion, E4)', () => {
-    // idx1 = intro Rival (iconic) → no camp into the basic trainer that follows it.
+test('predicate (thematic): a rival→route seam DOES camp; climaxes do not', () => {
+    // rival→route is a thematic seam → camp fires (the cadence refinement).
     assert.equal(RAW[1][2], 'Rival');
     assert.equal(RAW[2][2], 'Basic Trainer');
-    assert.equal(ST.campIsDueForTransition(2), false, 'prev is an iconic Rival');
-    // Champion is iconic (idx63; prev idx62 is E4, also iconic).
+    assert.equal(ST.campBattleTheme(1), 'rival');
+    assert.equal(ST.campBattleTheme(2), 'route');
+    assert.equal(ST.campIsDueForTransition(2), true, 'rival→route is a thematic seam');
+    // Climaxes are still protected: into a league fight, and right after one.
     assert.equal(RAW[63][2], 'Champion');
-    assert.equal(ST.campIsDueForTransition(63), false);
+    assert.equal(ST.campBattleTheme(63), 'league');
+    assert.equal(ST.campIsDueForTransition(63), false, 'never camp into a league climax');
+    assert.equal(RAW[64][2], 'Rival');                       // the post-Champion endgame rival
+    assert.equal(ST.campIsDueForTransition(64), false, 'never camp right after a league climax');
+});
+
+test('campBattleTheme: classifies the canonical rows', () => {
+    assert.equal(ST.campBattleTheme(0), null, 'a City row has no battle theme');
+    assert.equal(ST.campBattleTheme(4), 'gym');      // Gym Trainer 1
+    assert.equal(ST.campBattleTheme(5), 'gym');      // Gym Leader 1
+    assert.equal(ST.campBattleTheme(7), 'route');    // Basic Trainer
+    assert.equal(ST.campBattleTheme(66), 'mystery'); // Mystery Figure
 });
 
 test('predicate: suppressed during an off-timeline Crucible battle', () => {

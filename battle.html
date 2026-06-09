@@ -40270,6 +40270,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campMarkDone: (...a) => _campMarkDone(...a),
                     campSearchGrass: (...a) => _campSearchGrass(...a),
                     campGrassKey: (...a) => _campGrassKey(...a),
+                    campBattleTheme: (...a) => _campBattleTheme(...a),
+                    campHeadBack: (...a) => _campHeadBack(...a),
+                    campBackCityIndex: (...a) => _campBackCityIndex(...a),
+                    proceedToNextBattle: () => proceedToNextBattle(),
                     campAwardBond: (...a) => campAwardBond(...a),
                     campPickMicrogame: (...a) => campPickMicrogame(...a),
                     campMasteredPaths: (...a) => campMasteredPaths(...a),
@@ -44506,7 +44510,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const routeBlockedByIntros = _introsPending
                 && !routeBlockedByMysteryGate && !routeBlockedByProfessor && !gymRoutePending;
             if (actions.includes('Leave City')) {
-                if (gymRoutePending) {
+                if (sm.campReturnPoint) {
+                    // Revisiting a prior town via the camp round-trip — the only forward action
+                    // is to return to where we left (→ proceedToNextBattle restores the point).
+                    _push('quest', makeActionBtn('↩ Back to the road','route','window.StoryMode.proceedToNextBattle()','primary'));
+                } else if (gymRoutePending) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
                 } else if (routeBlockedByMysteryGate) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
@@ -47893,6 +47901,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
+            // Camp round-trip return (CAMP_FLOW §5): if the player went back to a prior city from
+            // camp, "↩ Back to the road" restores the saved point and resumes — camp re-fires at
+            // the top of enterBattleEvent (its gate wasn't stamped), dropping them back at the fire.
+            if (sm.campReturnPoint && typeof sm.campReturnPoint.eventIndex === 'number') {
+                const back = sm.campReturnPoint.eventIndex | 0;
+                sm.campReturnPoint = null;
+                sm.eventIndex = back;
+                try { save(); } catch (e) {}
+                const ev = STORY_EVENTS_RAW[back];
+                if (ev && ev[1] === 'Battle') { enterBattleEvent(ev); return; }
+                processNextEvent(); return;
+            }
             // Re-entry guard — see _storyBattleEntryBusy. Blocks a second entry while a cold-open /
             // interrupt from the first is still on screen (which would stack duplicate overlays).
             if (_storyBattleEntryBusy) { _storyWarnInteractionBusy(); return; }
@@ -48655,14 +48675,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // matches the maintainer's route-rhythm diagram; the predicate is the tuning
         // knob (D8). Minigames (PR D), party sort (PR D) and return-to-city (PR E)
         // plug into the camp menu as they land.
+        // Theme bucket for a battle row (null for non-battles). Drives the camp cadence:
+        // a camp marks a *thematic seam* between consecutive battles. 'route' = an ordinary
+        // Basic/Elite Trainer. (Story-beat-attached battles read as 'route' here; finer
+        // per-beat theming is a later refinement.)
+        function _campBattleTheme(idx) {
+            const ev = STORY_EVENTS_RAW[idx];
+            if (!ev || ev[1] !== 'Battle') return null;
+            const name = String(ev[2] || '');
+            if (/^Gym (Trainer|Leader)/i.test(name)) return 'gym';
+            if (name === 'Rival') return 'rival';
+            if (/^E[1-4]$/.test(name) || name === 'Champion') return 'league';
+            if (/Mystery/i.test(name)) return 'mystery';
+            return 'route';
+        }
+        // Camp interposes between two consecutive BATTLE events when it reads as a beat
+        // boundary: either an ordinary route→route stretch (the original cadence) OR a
+        // THEMATIC SEAM where the theme changes (e.g. rival→route). Never: into/after a city
+        // (the city's send-off / arrival own that boundary — a null theme), mid-gym or into a
+        // gym, into OR out of a climax (league/mystery — their cold-opens carry the moment),
+        // or during an off-timeline Crucible battle. (CAMP_FLOW §2 / D8 — thematic refinement.)
         function _campIsDueForTransition(destIdx) {
-            if (sm.crucibleBattleSource) return false;       // Crucible/Frontier/Mystery/Pit — off-timeline
-            const cur = STORY_EVENTS_RAW[destIdx];
-            const prev = STORY_EVENTS_RAW[destIdx - 1];
-            if (!cur || !prev) return false;
-            if (cur[1] !== 'Battle' || prev[1] !== 'Battle') return false;
-            if (_storyEventIsIconicFight(cur[2]) || _storyEventIsIconicFight(prev[2])) return false;
-            return true;
+            if (sm.crucibleBattleSource) return false;
+            const curT = _campBattleTheme(destIdx);
+            const prevT = _campBattleTheme(destIdx - 1);
+            if (!curT || !prevT) return false;                            // both endpoints must be battles
+            if (curT === 'gym' || prevT === 'gym') return false;          // never mid-gym / into a gym
+            if (curT === 'league' || curT === 'mystery') return false;    // preserve the climax cold-opens
+            if (prevT === 'league' || prevT === 'mystery') return false;  // …and don't camp right after one
+            return (curT !== prevT) || (curT === 'route');                // a thematic seam, or a route→route stretch
         }
         function _campDone(destIdx) {
             const e = sm.campByEventIdx && sm.campByEventIdx[String(destIdx)];
@@ -48800,6 +48841,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let cidx = 0; try { cidx = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
             _showWanderScreen(key, cidx, () => _campDefer(() => _campOpenMenu(ctx)), false);
         }
+        // Camp round-trip (CAMP_FLOW §5, D7 = free): jump eventIndex back to the most recent
+        // city, stash the return point, and open that city's hub. The city was already arrived
+        // at (citiesArrived gates first-arrival cinematics/wander), so the revisit is quiet.
+        // "↩ Back to the road" in the city (→ proceedToNextBattle) restores campReturnPoint and
+        // drops the player back at this camp.
+        function _campBackCityIndex(ctx) {
+            let back = -1; try { back = lastStoryCityEventIndexAtOrBefore(ctx.destIdx); } catch (e) { back = -1; }
+            return (typeof back === 'number' && back >= 0 && back < (ctx.destIdx | 0)) ? back : -1;
+        }
+        function _campHeadBackName(ctx) {
+            const back = _campBackCityIndex(ctx);
+            if (back < 0) return null;
+            try { return getStoryDisplayTownNameForCityRow(STORY_EVENTS_RAW[back]) || 'town'; } catch (e) { return 'town'; }
+        }
+        function _campHeadBack(ctx) {
+            const back = _campBackCityIndex(ctx);
+            if (back < 0) { _campOpenMenu(ctx); return; }
+            sm.campReturnPoint = { eventIndex: ctx.destIdx | 0 };
+            sm.eventIndex = back;
+            try { save(); } catch (e) {}
+            try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            enterCity();
+        }
         function _campOpenMenu(ctx) {
             const lead = (sm.team || []).find(s => s && !s.isEgg);
             const leadName = (lead && lead.name) ? _esc(lead.name) : 'your team';
@@ -48812,6 +48876,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _grassDone = !!(sm.wanderByEventIdx && (sm.wanderByEventIdx[_campGrassKey(ctx)] || {}).done);
             if (sm && sm.active && !_grassDone) {
                 options.push({ label: '🌿  Search the tall grass', onPick: () => _campDefer(() => _campSearchGrass(ctx)) });
+            }
+            // 🏙 Head back to the previous town — free round-trip (CAMP_FLOW §5 / D7).
+            const _backName = _campHeadBackName(ctx);
+            if (sm && sm.active && _backName) {
+                options.push({ label: `🏙  Head back to ${_esc(_backName)}`, onPick: () => _campDefer(() => _campHeadBack(ctx)) });
             }
             options.push({ label: '▶▶  Break camp', onPick: () => _campBreak(ctx) });
             _storyScene([{
