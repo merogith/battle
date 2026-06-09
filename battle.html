@@ -4894,7 +4894,15 @@
             background: rgba(0,0,0,0.94);
             z-index: var(--sn-z-overlay);
             display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
+            align-items: center;
+            /* `safe center` centres the scene when it fits but falls back to
+               top-aligned the moment the content is taller than the viewport —
+               plain `center` would clip the top/bottom with no way to scroll to
+               it. Paired with overflow-y:auto so a long (3-paragraph + tip)
+               intro is always fully scrollable to the Continue button, at every
+               viewport size. */
+            justify-content: safe center;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
             gap: 14px; padding: 16px; box-sizing: border-box;
             cursor: pointer;
             animation: storyTutorialOverlayIn 0.32s ease-out both;
