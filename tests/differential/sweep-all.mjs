@@ -114,6 +114,11 @@ async function runOne(scn, n) {
     if (scn.family === 'damaging' && x.confidence === 'high' && /^(boost\.|status)/.test(x.field)) {
       return { ...x, confidence: 'medium', note: 'chance-secondary (RNG across engines)' };
     }
+    // Multi-hit moves roll their hit count (2-5) per engine, so a single-seed damage
+    // gap is RNG, not a multiplier/formula bug. Down-rank the hp/damage diff to low.
+    if (scn.multihit && x.confidence === 'high' && x.field === 'hp/damage') {
+      return { ...x, confidence: 'low', note: 'multi-hit count (RNG across engines)' };
+    }
     return x;
   });
   const counts = { high: divs.filter((x) => x.confidence === 'high').length, medium: divs.filter((x) => x.confidence === 'medium').length, low: divs.filter((x) => x.confidence === 'low').length };

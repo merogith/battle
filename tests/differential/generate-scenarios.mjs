@@ -137,6 +137,9 @@ function moveScenario(m, cls) {
       ...base, mode: 'trace', expect: 'probe', observability: 'damage',
       // accuracy === true means it can't miss → a 0 means immunity/absorb, not RNG.
       noMiss: m.accuracy === true || m.accuracy >= 100,
+      // multi-hit moves roll their hit count (2-5) independently per engine, so a
+      // single-seed damage gap is RNG, not a multiplier bug — flagged for down-ranking.
+      multihit: !!m.multihit,
       team1: [ATTACKER(m.name)],
       team2: [passiveDef(def)],
     };

@@ -55,3 +55,39 @@ that *does* implement it.
   random *pick* can still surface. These are `rng-artifact`, not bugs — verify by sweeping
   several seeds: if the *set* of outcomes matches and only the *pick* differs, it's RNG.
 - **Disposition**: `rng-artifact`; never filed.
+
+### Species-locked moves/abilities forced onto a generic probe carrier
+- **Symptom**: in-house applies the effect on the wrong species while Showdown no-ops it
+  (or vice versa) → a divergence.
+- **Why**: the auto-probe puts each ability on Snorlax and each move on Deoxys-Attack to
+  get universal coverage; Showdown gates species-locked entries by `baseSpecies`, the
+  in-house engine often does not. Examples seen: **Disguise** (Mimikyu), **Tera Shell**
+  (Terapagos), **Imposter** (transform), **Aura Wheel** (Morpeko), **Hyperspace Fury**
+  (Hoopa-Unbound). In real play only the intended species carries these, so the divergence
+  is a probe-design artifact, not a gameplay bug.
+- **Disposition**: `harness-limitation` / probe-design; not filed. (A targeted probe that
+  puts the ability on its legal carrier would be needed to judge these.)
+
+### Multi-hit hit-count is RNG across engines
+- **Symptom**: a 2–5-hit move (Pin Missile, Rock Blast, Bone Rush, Population Bomb, Triple
+  Axel) shows a large single-seed damage gap.
+- **Why**: each engine rolls its own hit count, so one seed isn't comparable. The base
+  per-hit math agrees; only the count differs.
+- **Disposition**: `sweep-all.mjs` down-ranks multi-hit `hp/damage` highs to low (the
+  scenario carries `multihit:true`). Skill-Link-style fixed-5-hit cases are covered by the
+  curated `damage-sweep.mjs`. Not a bug.
+
+### Random-target / random-stat / called-move moves
+- **Symptom**: Acupressure, Metronome, Moody, Assist, Sleep Talk diverge on the stat/move
+  they pick.
+- **Why**: the *pick* is RNG; independent PRNGs choose differently even when both engines
+  are correct (verified: the *set* of outcomes matches).
+- **Disposition**: `rng-artifact`; not filed.
+
+### Weather generation difference (Hail vs Snow)
+- **Symptom**: Snow Warning's damage probe diverges (in-house chips / no Ice-Def boost vs
+  Showdown gen-9 Snow).
+- **Why**: gen-8 Hail (chip damage, no Def boost) vs gen-9 Snow (no chip, +50% Ice Def).
+  This is a *generation-mechanic* choice, not a correctness bug — flag for the owner to
+  decide which gen the engine targets, rather than auto-filing.
+- **Disposition**: owner decision (balance/gen target); not auto-filed as a bug.
