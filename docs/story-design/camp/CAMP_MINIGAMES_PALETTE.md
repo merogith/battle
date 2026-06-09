@@ -92,17 +92,21 @@ Primitives marked **†** are *new* (see §4); the rest exist in `CAMP_MINIGAMES
 | **Pulse** | sustained rhythm | keep a slow breath / heartbeat rhythm going without dropping it | `tapTiming` (slow, sustained) |
 
 ## 4. Toolkit expansion (the new primitives implied)
-Each is "one small, individually-tested function returning a **Promise<boolean>**"
-(`CAMP_MINIGAMES §5`) — expansion is a few functions + data, **never a refactor**:
+Each is "one small, individually-tested function" (a pure `_campScore*` decider + a DOM/rAF
+mount calling `done(won)` — `CAMP_MINIGAMES §5`) — expansion is a few functions + data,
+**never a refactor**:
 
-`dodge` **†** (single directional evade on the real tell) · `catch` **†** (slide a catch-zone to
-collect good / avoid bad) · `lobAim` **†** (set angle + power for a parabolic toss) · `steady`
-**†** (micro-moves; touching the boundary fails) · `block` **†** (move/hold a defensive hitbox
-onto an incoming direction) · `balance` **†** (continuous correction to hold an angle upright).
+`dodge` **✓** (single directional evade on the real tell — wait out the feints) · `catch` **✓**
+(slide a basket to collect good / avoid bad) · `lobAim` **✓** (time a power gauge for a parabolic
+toss) · `steady` **✓** (press-and-hold on the drifting spot; straying or letting go fails) ·
+`block` **✓** (slide a defensive hitbox onto each incoming lane) · `balance` **✓** (continuous
+correction to hold the lean inside a cap).
 
-That takes the toolkit **9 → ~15** primitives, each reused across multiple games/paths. Remaining
-source categories (maze/navigation, platformer, crank/spin, intercept, gauge-stopper, quick-math)
-are a **further backlog** if more variety is ever wanted.
+> **SHIPPED (2026-06):** all six above are live in `_CAMP_PRIMITIVES`, plus two genre staples
+> from the "further backlog" — `gaugeStop` **✓** (freeze a sweeping needle in the safe band) and
+> `quickMath` **✓** (tap the right answer before the timer). Toolkit is now **9 → 17**. Remaining
+> backlog categories (maze/navigation, platformer, crank/spin, intercept) stay open if more
+> variety is ever wanted.
 
 ## 5. Staged ("Party") format
 A path's *signature* game can chain **2–3 quick stages** (Mario-Party-style), each stage one
