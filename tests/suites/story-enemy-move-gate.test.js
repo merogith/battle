@@ -1,6 +1,7 @@
 // Enemy move pool is gated by the city's TUTOR STAGE (user model), mirroring what
 // the player can teach at that city. Thresholds tutor:[0,2,5]:
-//   C0–C1 (Inner Strength): Natural only, BP ≤ 75.
+//   C0–C1 (Inner Strength): Natural only; FOE BP ≤ 60 (tighter than the player's 75 to
+//                           soften the very early game — STORY_FOE_MOVE_BP_CAP_BY_STAGE).
 //   C2–C4 (Unleashed):      ALL Natural (cap lifts; still NO Learnt/TM).
 //   C5+   (Guru):           no gate — full pool (Natural + Learnt + Awakened).
 //
@@ -54,10 +55,12 @@ test('foe gate: at Inner, only Natural moves survive (Learnt stripped)', async (
   assert.notEqual(naturalMove, learntMove, 'sample moves come from distinct tag buckets');
   const team = [{ name: 'Garchomp', build: { m: [naturalMove, learntMove, learntMove, naturalMove] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(0)));
-  // At Inner (stage 0) every kept move must be Natural.
+  // At Inner (stage 0) every kept move must be Natural AND within the foe BP ceiling (60).
+  const bp = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
     assert.ok(tag === 'natural' || tag === 'unknown', `Inner kept move "${m}" should be Natural (was ${tag})`);
+    assert.ok(bp(m) <= 60, `Inner foe kept move "${m}" must be ≤60 BP (was ${bp(m)})`);
   }
 });
 

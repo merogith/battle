@@ -41185,6 +41185,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyApplyMoveStageToBuild: (...a) => _storyApplyMoveStageToBuild(...a),
                     storyCoherentMoveRanker: (...a) => _storyCoherentMoveRanker(...a),
                     storyMoveBpCapForStage: (...a) => _storyMoveBpCapForStage(...a),
+                    storyFoeMoveBpCapForStage: (...a) => _storyFoeMoveBpCapForStage(...a),
                     moveTagIndexResultFor: (...a) => _moveTagIndexResultFor(...a),
                     ensureMoveData: (...a) => ensureMoveData(...a),
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
@@ -49619,7 +49620,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
         // full. From City 5 (Guru) on both sides have full move access → no-op. Deterministic.
         // Enemy move pool mirrors the player's TUTOR STAGE at this city (tutor:[0,2,5]):
-        //   C0–C1 (Inner Strength): Natural only, BP ≤ 75.
+        //   C0–C1 (Inner Strength): Natural only, BP ≤ 60 (foe ceiling — tighter than the
+        //                           player's 75 to soften the very early game; see
+        //                           STORY_FOE_MOVE_BP_CAP_BY_STAGE).
         //   C2–C4 (Unleashed):      ALL Natural (cap lifts; no Learnt yet).
         //   C5+   (Guru):           + Learnt + Awakened — i.e. unfiltered.
         // When a Smogon preset move sits above the allowed tag, drop it and refill from
@@ -49629,13 +49632,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The single move-pacing authority, shared by the foe gate and (Phase 3)
         // player-obtainable builds. Keyed on the TUTOR STAGE so both sides unlock in
         // lockstep with the player's Move Tutor:
-        //   stage 0 (Inner Strength, C0–C1): Natural-tag moves only, BP ≤ 75.
+        //   stage 0 (Inner Strength, C0–C1): Natural-tag moves only, BP ≤ 75 (player).
+        //                                     Foes use a tighter ≤ 60 cap — see below.
         //   stage 1 (Unleashed,       C2–C4): ALL Natural — the BP cap lifts; still no Learnt.
         //   stage 2 (Guru,            C5+):   no gate (full Smogon pool).
-        // STORY_MOVE_BP_CAP_BY_STAGE is a user-owned balance number (0 = no cap).
+        // STORY_MOVE_BP_CAP_BY_STAGE is a user-owned balance number (0 = no cap). This is
+        // the PLAYER-side authority (Move Tutor pool / stripe classification).
         const STORY_MOVE_BP_CAP_BY_STAGE = [75, 0, 0];
         function _storyMoveBpCapForStage(stage) {
             const c = STORY_MOVE_BP_CAP_BY_STAGE[stage | 0];
+            return (c && c > 0) ? c : Infinity;
+        }
+        // FOE-only ceiling: enemy movesets before City 2 (tutor stage 0 = C0–C1) are held
+        // to a tighter BP cap than the player's tutor pool, to soften the very early game.
+        // Foe ≤ player at every stage; the player's pool keeps STORY_MOVE_BP_CAP_BY_STAGE.
+        // User-owned balance number (0 = fall back to no cap). Only _storyGateFoeMovesByCity
+        // reads this — see the bpCapOverride arg threaded into _storyApplyMoveStageToBuild.
+        const STORY_FOE_MOVE_BP_CAP_BY_STAGE = [60, 0, 0];
+        function _storyFoeMoveBpCapForStage(stage) {
+            const c = STORY_FOE_MOVE_BP_CAP_BY_STAGE[stage | 0];
             return (c && c > 0) ? c : Infinity;
         }
         // Default backfill ranker: Smogon usage % (kept for reference / tie-breaks).
@@ -49682,7 +49697,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // in place. Assumes the species' learnset is warm in _tutorLearnsetCache (callers
         // await _tutorFetchLearnsetMoveNames first). Returns true if build.m changed.
         // rankFill(names, monName) orders the backfill candidates (role-aware in Phase 4).
-        function _storyApplyMoveStageToBuild(build, monName, stage, rankFill) {
+        // bpCapOverride (optional): a resolved cap (number or Infinity) to use instead of
+        // the shared player cap — the foe gate passes its tighter foe ceiling here.
+        function _storyApplyMoveStageToBuild(build, monName, stage, rankFill, bpCapOverride) {
             if (!build || !Array.isArray(build.m) || !build.m.length) return false;
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
@@ -49693,7 +49710,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // added at L2 the way it was previously.
             const allowed = new Set(learn.natural || learn.tier1 || []);
             if (!allowed.size) return false; // thin learnset → leave alone
-            const bpCap = _storyMoveBpCapForStage(stage);
+            const bpCap = (bpCapOverride != null) ? bpCapOverride : _storyMoveBpCapForStage(stage);
             const baseName = (mv) => String(mv).split('/')[0];
             const bpOK = (mv) => {
                 if (bpCap === Infinity) return true;
@@ -49733,12 +49750,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (city < 0) return;
             const tutorStage = _npcStageForCity('tutor', city); // 0 / 1 / 2
             if (tutorStage >= 2) return; // Guru — no tag filter, full Smogon pool stays
+            // Foes use the tighter FOE BP ceiling (≤ the player's tutor cap) so enemy
+            // movesets are softer than the player's pool in the very early game.
+            const foeBpCap = _storyFoeMoveBpCapForStage(tutorStage);
             const species = [...new Set(team.map(s => s && s.name).filter(Boolean))];
             // Warm all species' learnsets in parallel so the pre-fight delay stays small.
             try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
-                _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker);
+                _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker, foeBpCap);
             }
         }
         // ── CAMP BUFFER (Camp System PR C) — the between-events beat ──────────
