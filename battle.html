@@ -40152,6 +40152,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campIsDueForTransition: (...a) => _campIsDueForTransition(...a),
                     campDone: (...a) => _campDone(...a),
                     campMarkDone: (...a) => _campMarkDone(...a),
+                    campAwardBond: (...a) => campAwardBond(...a),
+                    campPickMicrogame: (...a) => campPickMicrogame(...a),
+                    campMasteredPaths: (...a) => campMasteredPaths(...a),
+                    campTitleFor: (...a) => campTitleFor(...a),
+                    campTitleFromMastered: (...a) => campTitleFromMastered(...a),
+                    campFavourite: (...a) => campFavourite(...a),
+                    campScoreTapTiming: (...a) => _campScoreTapTiming(...a),
+                    campScoreHoldRelease: (...a) => _campScoreHoldRelease(...a),
+                    campRunMicrogame: (...a) => _campRunMicrogame(...a),
+                    get CAMP_ACTIONS() { return CAMP_ACTIONS; },
+                    get CAMP_MICROGAMES() { return CAMP_MICROGAMES; },
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
                     storyFreezeFoeTeamForPersistence,
                     tutorFetchLearnsetMoveNames: (...a) => _tutorFetchLearnsetMoveNames(...a),
@@ -48528,31 +48539,317 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
             sm.campByEventIdx[String(destIdx)] = { done: true, ts: Date.now() };
         }
-        // Mount the camp buffer: a short campfire beat with a one-tap "Break camp"
-        // that stamps the gate, saves, and resumes the route. Built on _storyScene
-        // (the standard overlay substrate) rather than a dedicated DOM screen — the
-        // full screen-story-camp arrives in PR D when it has a party panel to host.
-        // Future menu actions prepend to options[] above Break camp.
+        // ── CAMP MINIGAMES + BONDING earning loop (Camp System PR D) ──────────
+        // docs/story-design/camp/CAMP_MINIGAMES.md + BONDING_RELATIONSHIPS.md.
+        // Phase 1 (this PR): ONE micro-game per action — 6 games on 2 shared input
+        // primitives (tapTiming, holdRelease) — proving the loop, the toolkit and the
+        // camp panel; pools (CAMP_ACTIONS[a].games[]) expand to the full 18 as content.
+        // A WIN = +1 to that path's slot.bonds counter; mastery (counter ≥ threshold)
+        // turns on the +5% buff ALREADY WIRED IN PR B (relationshipStatMult →
+        // buildPokemon). NUMBERS ARE [MAINTAINER]-OWNED, in-code for now (externalize
+        // to data/camp/*.json later, like RELATIONSHIP_PATHS). TONE: copy here is
+        // deliberately mild; the edgier cruel/romance variants (D10) need the
+        // maintainer's copy pass before shipping.
+        const CAMP_ACTIONS = {
+            cheer:    { path: 'praise',     label: '😊 Cheer',         games: ['clap'] },
+            feed:     { path: 'nurture',    label: '😊 Feed & Groom',  games: ['catch'] },
+            drill:    { path: 'discipline', label: '😠 Drill',         games: ['hold'] },
+            stare:    { path: 'intimidate', label: '😠 Cold Stare',    games: ['dontblink'] },
+            mirror:   { path: 'mimicry',    label: '🤪 Mirror',        games: ['tickle'] },
+            stargaze: { path: 'devotion',   label: '💗 Stargaze',      games: ['holdclose'] },
+        };
+        const CAMP_MICROGAMES = {
+            clap:      { primitive: 'tapTiming',   name: 'Clap!',        instr: 'Tap when the marker is in the green!',                rounds: 2, zoneHalf: 0.13 },
+            catch:     { primitive: 'tapTiming',   name: 'Catch!',       instr: 'Tap to catch the berry in the green!',                 rounds: 1, zoneHalf: 0.15 },
+            tickle:    { primitive: 'tapTiming',   name: 'Tickle!',      instr: 'Tap the wiggle in the green — keep up!',               rounds: 3, zoneHalf: 0.13 },
+            hold:      { primitive: 'holdRelease', name: 'Hold!',        instr: 'Hold the stance — release in the green band.',         green: 0.60, overdoAt: 0.90 },
+            dontblink: { primitive: 'holdRelease', name: "Don't Blink!", instr: 'Hold the stare — release before it curdles.',          green: 0.62, overdoAt: 0.92 },
+            holdclose: { primitive: 'holdRelease', name: 'Hold Close!',  instr: 'Linger close… release in the green, not a beat too long.', green: 0.58, overdoAt: 0.88 },
+        };
+        // Title rules — first match wins (most-specific first). Cosmetic, no mechanics.
+        const CAMP_TITLES = [
+            { id: 'Soulbonded',    test: m => m.length === 6 },
+            { id: 'the Obsession', test: m => m.includes('devotion') && (m.includes('discipline') || m.includes('intimidate')) },
+            { id: 'the Adored',    test: m => m.includes('devotion') && m.includes('nurture') },
+            { id: 'the Hardened',  test: m => m.includes('discipline') && m.includes('intimidate') },
+            { id: 'the Beloved',   test: m => m.includes('praise') && m.includes('nurture') },
+            { id: 'the Mirror',    test: m => m.includes('mimicry') },
+        ];
+
+        // Mastered path ids for a slot (counter ≥ its Nature-shifted threshold).
+        function campMasteredPaths(slot) {
+            const out = [];
+            const bonds = (slot && slot.bonds) || {};
+            for (const pid in RELATIONSHIP_PATHS) {
+                if ((bonds[pid] | 0) >= bondThreshold(pid, slot)) out.push(pid);
+            }
+            return out;
+        }
+        function campTitleFromMastered(mastered) {
+            for (const r of CAMP_TITLES) { try { if (r.test(mastered)) return r.id; } catch (e) {} }
+            return null;
+        }
+        function campTitleFor(slot) { return campTitleFromMastered(campMasteredPaths(slot)); }
+        // Seeded pick from an action's micro-game pool (deterministic replays).
+        function campPickMicrogame(actionId) {
+            const a = CAMP_ACTIONS[actionId];
+            if (!a || !a.games || !a.games.length) return null;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            return a.games[Math.floor(rng() * a.games.length)] || a.games[0];
+        }
+        // Stable per-Pokémon favourite index (FNV-1a over slot.id) — replay-safe,
+        // independent of the advancing RNG stream. Used by the Feed! game (content PR).
+        function campFavourite(slot, n) {
+            let h = 2166136261;
+            const s = String((slot && slot.id) || (slot && slot.name) || '');
+            for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+            return (h >>> 0) % Math.max(1, (n | 0) || 1);
+        }
+        // Award a successful bonding action: +1 counter, detect a just-crossed mastery
+        // and any new title, then save(). Returns the reveal payload (or null).
+        function campAwardBond(slot, path) {
+            if (!slot || !RELATIONSHIP_PATHS[path]) return null;
+            if (!slot.bonds || typeof slot.bonds !== 'object') {
+                slot.bonds = { praise: 0, nurture: 0, discipline: 0, intimidate: 0, mimicry: 0, devotion: 0 };
+            }
+            const masteredBefore = campMasteredPaths(slot);
+            slot.bonds[path] = (slot.bonds[path] | 0) + 1;
+            const masteredAfter = campMasteredPaths(slot);
+            const justMastered = !masteredBefore.includes(path) && masteredAfter.includes(path);
+            const titleBefore = campTitleFromMastered(masteredBefore);
+            const titleAfter = campTitleFromMastered(masteredAfter);
+            try { save(); } catch (e) {}
+            return {
+                path, count: slot.bonds[path], threshold: bondThreshold(path, slot),
+                justMastered, title: titleAfter, titleChanged: !!(titleAfter && titleAfter !== titleBefore),
+            };
+        }
+        // Pure win/lose deciders — the interactive primitives call these (tested directly).
+        function _campScoreTapTiming(pos, center, half) { return Math.abs(pos - center) <= half; }
+        function _campScoreHoldRelease(frac, green, overdoAt) { return frac >= green && frac < overdoAt; }
+
+        // ── Camp hub (PR D) ──────────────────────────────────────────────────
+        // The arrival beat opens a menu: bond with the team (the micro-games) or
+        // Break camp to resume the route. Built on _storyScene under a single stable
+        // id; sub-views DEFER-navigate (setTimeout) so each scene's finish() clears
+        // the prior overlay before the next mounts. Break camp resumes synchronously
+        // (observable + the finish() right after just clears the now-covered overlay).
+        // Party-sort and return-to-city slot into this menu in later PRs.
+        const _CAMP_SCENE_ID = 'story-camp-scene';
+        const _CAMP_ACCENT = '#ffb74d';
+        const _camp_raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
+        const _camp_caf = (typeof cancelAnimationFrame === 'function') ? cancelAnimationFrame : (id) => clearTimeout(id);
+        const _campNow = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        function _campDefer(fn) { setTimeout(fn, 0); }
+        function _campStatLabel(stat) {
+            return ({ hp: 'HP', atk: 'Attack', def: 'Defense', spa: 'Sp. Atk', spd: 'Sp. Def', spe: 'Speed' })[stat] || stat;
+        }
+        function _campCap(s) { return String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1); }
+
         function enterCamp(destIdx, resume) {
-            const _resume = (typeof resume === 'function') ? resume : function () {};
+            _campOpenMenu({ destIdx, resume: (typeof resume === 'function') ? resume : function () {} });
+        }
+        function _campBreak(ctx) {
+            _campMarkDone(ctx.destIdx);
+            try { save(); } catch (e) {}
+            ctx.resume();   // synchronous so it's observable; the scene's finish() clears the overlay right after
+        }
+        function _campOpenMenu(ctx) {
             const lead = (sm.team || []).find(s => s && !s.isEgg);
             const leadName = (lead && lead.name) ? _esc(lead.name) : 'your team';
-            const onDone = () => {
-                _campMarkDone(destIdx);
-                try { save(); } catch (e) {}
-                _resume();
-            };
-            const beats = [{
-                id: 'camp',
-                title: '⛺  Camp',
-                accent: '#ffb74d',
+            const hasTeam = (sm.team || []).some(s => s && !s.isEgg);
+            const options = [];
+            if (hasTeam) options.push({ label: '🔥  Spend time with your team', onPick: () => _campDefer(() => _campRoster(ctx)) });
+            options.push({ label: '▶▶  Break camp', onPick: () => _campBreak(ctx) });
+            _storyScene([{
+                id: 'camp-menu', title: '⛺  Camp', accent: _CAMP_ACCENT,
                 html: `<div style="text-align:center;font-size:34px;line-height:1;margin:2px 0 14px;">🔥</div>
                        <div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
-                options: [
-                    { label: '▶▶  Break camp' },   // no goto/onPick → _storyScene finish() → onDone → resume route
-                ],
-            }];
-            _storyScene(beats, onDone, 'story-camp-scene');
+                options,
+            }], null, _CAMP_SCENE_ID);
+        }
+        function _campRoster(ctx) {
+            const options = [];
+            (sm.team || []).forEach((slot, i) => {
+                if (!slot || slot.isEgg) return;
+                const title = campTitleFor(slot);
+                const mastered = campMasteredPaths(slot).length;
+                const tag = title ? ` — <span style="color:#ce93d8">${_esc(title)}</span>`
+                                  : (mastered ? ` — <span style="opacity:0.7">${mastered}/6 bonded</span>` : '');
+                options.push({ label: `${_esc(slot.name)}${tag}`, onPick: () => _campDefer(() => _campMon(ctx, i)) });
+            });
+            options.push({ label: '← Back', onPick: () => _campDefer(() => _campOpenMenu(ctx)) });
+            _storyScene([{
+                id: 'camp-roster', title: '⛺  Spend time with…', accent: _CAMP_ACCENT,
+                html: `<div>Who do you want to spend time with at the fire?</div>`,
+                options,
+            }], null, _CAMP_SCENE_ID);
+        }
+        // Six tone-coloured bond meters (text bars). The SVG hexagon is a later UI PR.
+        function _campBondMeterHtml(slot) {
+            const TONE = { praise: '#aed581', nurture: '#aed581', discipline: '#ef9a9a', intimidate: '#ef9a9a', mimicry: '#ce93d8', devotion: '#f48fb1' };
+            let rows = '';
+            for (const aid in CAMP_ACTIONS) {
+                const pid = CAMP_ACTIONS[aid].path;
+                const cur = (slot.bonds && (slot.bonds[pid] | 0)) || 0;
+                const thr = bondThreshold(pid, slot);
+                const done = cur >= thr;
+                const filled = Math.max(0, Math.min(10, Math.round((cur / Math.max(1, thr)) * 10)));
+                const bar = '▰'.repeat(filled) + '▱'.repeat(10 - filled);
+                rows += `<div style="display:flex;justify-content:space-between;gap:8px;margin:3px 0;color:${TONE[pid]};font-size:11px;">
+                    <span style="min-width:80px;">${_campCap(pid)}${done ? ' ✓' : ''}</span>
+                    <span style="font-family:monospace;letter-spacing:-1px;">${bar}</span>
+                    <span style="min-width:40px;text-align:right;">${Math.min(cur, thr)}/${thr}</span></div>`;
+            }
+            return rows;
+        }
+        function _campMon(ctx, slotIndex) {
+            const slot = sm.team[slotIndex];
+            if (!slot || slot.isEgg) { _campRoster(ctx); return; }
+            const title = campTitleFor(slot);
+            const options = [];
+            for (const aid in CAMP_ACTIONS) {
+                const pid = CAMP_ACTIONS[aid].path;
+                const done = (((slot.bonds && slot.bonds[pid]) | 0) || 0) >= bondThreshold(pid, slot);
+                options.push({ label: `${CAMP_ACTIONS[aid].label}${done ? '  ✓' : ''}`, onPick: () => _campDefer(() => _campRunAction(ctx, slotIndex, aid)) });
+            }
+            options.push({ label: '← Back', onPick: () => _campDefer(() => _campRoster(ctx)) });
+            _storyScene([{
+                id: 'camp-mon', title: `⛺  ${_esc(slot.name)}${title ? ' · ' + _esc(title) : ''}`, accent: _CAMP_ACCENT,
+                html: `<div style="margin-bottom:10px;">${_campBondMeterHtml(slot)}</div>
+                       <div style="font-size:11px;opacity:0.8;">Spend time together — each win deepens one bond (+5% to its stat once mastered).</div>`,
+                options,
+            }], null, _CAMP_SCENE_ID);
+        }
+        function _campRunAction(ctx, slotIndex, actionId) {
+            const slot = sm.team[slotIndex];
+            const action = CAMP_ACTIONS[actionId];
+            if (!slot || !action) { _campMon(ctx, slotIndex); return; }
+            const game = CAMP_MICROGAMES[campPickMicrogame(actionId)];
+            if (!game) { _campMon(ctx, slotIndex); return; }
+            _campRunMicrogame(game, (won) => {
+                const award = won ? campAwardBond(slot, action.path) : null;
+                try { window.StoryFx && window.StoryFx.playSfx(won ? ((award && award.justMastered) ? 'achv' : 'sparkle') : 'danger', 0.5); } catch (e) {}
+                _campResult(ctx, slotIndex, action, game, won, award);
+            });
+        }
+        function _campResult(ctx, slotIndex, action, game, won, award) {
+            const slot = sm.team[slotIndex] || { name: 'Your Pokémon', bonds: {} };
+            let html;
+            if (won) {
+                const lines = [`<b>${_esc(slot.name)}</b> warms to you.  <span style="color:#aed581;font-weight:bold;">+1 ${_campCap(action.path)}</span>`];
+                if (award && award.justMastered) lines.push(`<div style="margin-top:10px;color:#ffd54f;font-weight:bold;">⭐  ${_campCap(action.path)} mastered — +5% ${_campStatLabel(RELATIONSHIP_PATHS[action.path].stat)}!</div>`);
+                if (award && award.titleChanged) lines.push(`<div style="margin-top:6px;color:#ce93d8;">🏷  ${_esc(slot.name)} is now <b>${_esc(award.title)}</b>.</div>`);
+                html = lines.join('');
+            } else {
+                html = `<b>${_esc(slot.name)}</b> ${_campSulk(action)}  <span style="color:#ef9a9a;">No progress — try again.</span>`;
+            }
+            _storyScene([{
+                id: 'camp-result', title: won ? '✓  ' + _esc(game.name) : '✕  ' + _esc(game.name), accent: won ? '#aed581' : '#ef9a9a',
+                html,
+                options: [{ label: 'Continue ▶', onPick: () => _campDefer(() => _campMon(ctx, slotIndex)) }],
+            }], null, _CAMP_SCENE_ID);
+        }
+        function _campSulk(action) {
+            // Mild, non-graphic recoil per tone (maintainer copy pass for edgier variants).
+            if (action.path === 'discipline' || action.path === 'intimidate') return 'flinches and looks away, unsettled.';
+            if (action.path === 'devotion') return 'pulls back — that was a beat too long.';
+            return 'loses the thread and shakes it off.';
+        }
+
+        // ── Input toolkit (phase-1: 2 primitives → all 6 games) ───────────────
+        // Each builds its own overlay, runs, then calls onResult(won). The win/lose
+        // decision is the pure _campScore* helper (tested); the DOM is the wrapper.
+        function _campRunMicrogame(game, onResult) {
+            const done = (won) => { try { onResult(!!won); } catch (e) { console.warn('[Camp] microgame result', e); } };
+            try {
+                if (game.primitive === 'tapTiming') return _campTapTiming(game, done);
+                if (game.primitive === 'holdRelease') return _campHoldRelease(game, done);
+            } catch (e) { console.warn('[Camp] microgame run', e); }
+            done(true); // unknown primitive: never soft-lock the player — treat as a freebie
+        }
+        function _campMicrogameShell(game, innerHtml) {
+            const ov = document.createElement('div');
+            ov.id = 'camp-microgame';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;box-sizing:border-box;';
+            ov.innerHTML = `<div style="font-size:24px;font-weight:bold;color:#ffd54f;letter-spacing:0.04em;">${_esc(game.name)}</div>
+                            <div style="font-size:12px;color:#e0f2f1;max-width:430px;text-align:center;line-height:1.5;">${_esc(game.instr || '')}</div>
+                            ${innerHtml}`;
+            document.body.appendChild(ov);
+            return ov;
+        }
+        function _campTapTiming(game, done) {
+            const rounds = Math.max(1, (game.rounds | 0) || 1);
+            const half = (typeof game.zoneHalf === 'number') ? game.zoneHalf : 0.13;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const ov = _campMicrogameShell(game, `
+                <div style="position:relative;width:min(420px,86vw);height:34px;background:#10242a;border:1px solid #2e6e7a;border-radius:6px;overflow:hidden;">
+                    <div id="camp-tt-zone" style="position:absolute;top:0;bottom:0;background:rgba(174,213,129,0.35);border-left:1px solid #aed581;border-right:1px solid #aed581;"></div>
+                    <div id="camp-tt-marker" style="position:absolute;top:0;bottom:0;width:4px;background:#ffd54f;left:0;"></div>
+                </div>
+                <button type="button" id="camp-tt-tap" style="padding:12px 32px;background:#ffd54f;color:#001b1e;border:none;font-weight:bold;font-size:15px;cursor:pointer;font-family:inherit;border-radius:6px;">TAP</button>
+                <div id="camp-tt-progress" style="font-size:11px;color:#9fb;opacity:0.8;"></div>`);
+            const zoneEl = ov.querySelector('#camp-tt-zone');
+            const markerEl = ov.querySelector('#camp-tt-marker');
+            const progEl = ov.querySelector('#camp-tt-progress');
+            const period = 1100;
+            let round = 0, center = 0, raf = 0, start = 0, finished = false, deadline = 0;
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const posAt = (t) => { const p = ((t - start) % period) / period; return p < 0.5 ? p * 2 : (1 - p) * 2; }; // triangle 0→1→0
+            const loop = () => {
+                if (finished) return;
+                const now = _campNow();
+                markerEl.style.left = (posAt(now) * 100) + '%';
+                if (now > deadline) { settle(false); return; }   // dithered too long → miss
+                raf = _camp_raf(loop);
+            };
+            const nextRound = () => {
+                center = 0.18 + rng() * 0.64;
+                zoneEl.style.left = ((center - half) * 100) + '%';
+                zoneEl.style.width = (half * 2 * 100) + '%';
+                progEl.textContent = 'Round ' + (round + 1) + ' / ' + rounds;
+                start = _campNow(); deadline = start + 4000;
+                loop();
+            };
+            ov.querySelector('#camp-tt-tap').onclick = () => {
+                if (finished) return;
+                if (_campScoreTapTiming(posAt(_campNow()), center, half)) {
+                    round++;
+                    if (round >= rounds) settle(true); else nextRound();
+                } else settle(false);
+            };
+            nextRound();
+        }
+        function _campHoldRelease(game, done) {
+            const green = (typeof game.green === 'number') ? game.green : 0.6;
+            const overdoAt = (typeof game.overdoAt === 'number') ? game.overdoAt : 0.9;
+            const durationMs = Math.max(600, (game.durationMs | 0) || 1500);
+            const ov = _campMicrogameShell(game, `
+                <div style="position:relative;width:38px;height:230px;background:#10242a;border:1px solid #2e6e7a;border-radius:6px;overflow:hidden;">
+                    <div style="position:absolute;left:0;right:0;bottom:${green * 100}%;height:${(overdoAt - green) * 100}%;background:rgba(174,213,129,0.32);border-top:1px solid #aed581;border-bottom:1px solid #aed581;"></div>
+                    <div id="camp-hr-fill" style="position:absolute;left:0;right:0;bottom:0;height:0%;background:#ffd54f;"></div>
+                </div>
+                <button type="button" id="camp-hr-hold" style="padding:12px 32px;background:#ffd54f;color:#001b1e;border:none;font-weight:bold;font-size:15px;cursor:pointer;font-family:inherit;border-radius:6px;touch-action:none;user-select:none;">HOLD</button>`);
+            const fillEl = ov.querySelector('#camp-hr-fill');
+            const holdBtn = ov.querySelector('#camp-hr-hold');
+            let frac = 0, raf = 0, start = 0, holding = false, finished = false;
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const loop = () => {
+                if (finished || !holding) return;
+                frac = Math.min(1, (_campNow() - start) / durationMs);
+                fillEl.style.height = (frac * 100) + '%';
+                if (frac >= 1) { settle(false); return; }   // held too long → curdled
+                raf = _camp_raf(loop);
+            };
+            const begin = (e) => { if (e && e.preventDefault) e.preventDefault(); if (holding || finished) return; holding = true; start = _campNow(); loop(); };
+            const release = (e) => { if (e && e.preventDefault) e.preventDefault(); if (!holding || finished) return; holding = false; settle(_campScoreHoldRelease(frac, green, overdoAt)); };
+            holdBtn.addEventListener('mousedown', begin);
+            holdBtn.addEventListener('touchstart', begin, { passive: false });
+            holdBtn.addEventListener('mouseup', release);
+            holdBtn.addEventListener('touchend', release, { passive: false });
+            holdBtn.addEventListener('mouseleave', release);
         }
 
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {

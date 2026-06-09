@@ -77,7 +77,7 @@ test('gate: campMarkDone / campDone round-trip, once-per-transition', () => {
     assert.equal(typeof sm.campByEventIdx['8'].ts, 'number', 'timestamp stamped');
 });
 
-test('enterCamp: mounts the beat; Break camp resumes, stamps the gate, removes overlay', () => {
+test('enterCamp: mounts the camp menu; Break camp resumes, stamps the gate, removes overlay', () => {
     const sm = W.StoryMode.state;
     sm.campByEventIdx = {};
     sm.team = [{ name: 'Pikachu', build: {} }];
@@ -85,11 +85,11 @@ test('enterCamp: mounts the beat; Break camp resumes, stamps the gate, removes o
     ST.enterCamp(8, () => { resumed++; });
 
     const ov = W.document.getElementById('story-camp-scene');
-    assert.ok(ov, 'camp overlay mounted');
-    const btn = ov.querySelector('[data-scene-opt]');
-    assert.ok(btn, 'Break camp button rendered');
+    assert.ok(ov, 'camp menu mounted');
+    const breakBtn = Array.from(ov.querySelectorAll('[data-scene-opt]')).find(b => /Break camp/.test(b.textContent));
+    assert.ok(breakBtn, 'Break camp option rendered');
 
-    btn.onclick();
+    breakBtn.onclick();
     assert.equal(resumed, 1, 'resume() invoked exactly once');
     assert.equal(ST.campDone(8), true, 'gate stamped on break');
     assert.equal(W.document.getElementById('story-camp-scene'), null, 'overlay removed');
