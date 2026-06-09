@@ -19,6 +19,7 @@ enrichment file (`07`) is a set of *proposals*, not edits.
 | 05 | [`05-technique-toolkit.md`](05-technique-toolkit.md) | The distilled, reusable **craft library** (33 techniques) drawn from 01–04, with where each pays off in our build. |
 | 06 | [`06-game-narration-map.md`](06-game-narration-map.md) | The **"what we have today"** map — 3-track architecture, scene schema, full scene inventory by arc, the 19 choices, ambient pools, house-voice spec, sensitive-system guardrails. |
 | 07 | [`07-enrichment-recommendations.md`](07-enrichment-recommendations.md) | **The core deliverable** — research ↔ game, per villain arc (×10) / extra arc (×8) / main loop, with the +18 tone rubric and concrete polish opportunities tagged to `sceneKey`s. |
+| 08 | [`08-main-loop-direction.md`](08-main-loop-direction.md) | **Locked main-loop direction** — the decisions taken from `07 §1`: the "authorless trap" thesis, the cast of yous, the two-layer breadcrumb, the three-tier loop constant, the diegetic reveal, and the remember/forget capstone — turned into per-scene direction. |
 
 **New to this?** Read `06` (what we have) → `05` (the techniques) → `07` (what to do). Use `01`–`04` as
 the cited evidence base behind `05`/`07`.
