@@ -2976,6 +2976,13 @@
         .story-city-objective .obj-label { flex: 1; min-width: 0; font-weight: bold; }
         .story-city-objective .obj-go { color: #ffd54f; flex-shrink: 0; font-size: 14px; }
         .story-city-tips-sugg { width: 100%; margin: 4px 0 0; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a9bb0; opacity: 0.75; }
+        /* Narration overhaul (v26): thread-status subline + adventure journal */
+        .story-city-thread { text-transform: none; letter-spacing: 0.03em; font-size: 9.5px; color: #9fb3c8; opacity: 0.9; }
+        .story-journal-section { max-width: 560px; width: 100%; margin: 0 0 14px; padding: 10px 14px; background: linear-gradient(180deg, rgba(20,26,40,0.6), rgba(12,16,26,0.6)); border: 1px solid #2a3550; border-radius: 6px; box-sizing: border-box; }
+        .story-journal-section h3 { margin: 0 0 6px; font-size: 12px; color: #ffd54f; letter-spacing: 0.04em; }
+        .story-journal-section p { margin: 0; font-size: 12px; color: #cfd8e6; }
+        .story-journal-section ul { margin: 0; padding-left: 18px; }
+        .story-journal-section li { font-size: 12px; color: #cfd8e6; line-height: 1.6; }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
             font-size: 10px; line-height: 1; letter-spacing: 0.5px;
@@ -10376,7 +10383,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10388,7 +10395,10 @@
                         fetch('data/type-chart.json').then(r => r.json()),
                         fetch('data/story/ball-math.json').then(r => r.json()),
                         fetch('data/story/shops.json').then(r => r.json()),
-                        fetch('data/move-tags.json').then(r => r.json()).catch(() => null)
+                        fetch('data/move-tags.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/routes.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/errands.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/branches.json').then(r => r.json()).catch(() => null)
                     ]);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
@@ -10446,6 +10456,23 @@
                         STORY_BATTLE_BAG_SHOP_IDS.clear();
                         for (const r of POKEMART_ITEMS) { if (r.battleBag !== false) STORY_BATTLE_BAG_SHOP_IDS.add(r.id); }
                         for (const r of DEPT_ITEMS)     { if (r.battleBag !== false) STORY_BATTLE_BAG_SHOP_IDS.add(r.id); }
+                    }
+                    // Narration overhaul (v26): route flavor + courier errands.
+                    // Mutate the window-mirrored tables in place (sloppy-mode safe) so
+                    // any captured reference sees the fetched data; missing file →
+                    // DEFAULT_* fallbacks already populate the tables at declaration.
+                    if (_routes && _routes.routes && typeof _routes.routes === 'object') {
+                        Object.assign(ROUTE_LINES, _routes.routes);
+                    }
+                    if (_errands && Array.isArray(_errands.errands) && _errands.errands.length) {
+                        STORY_ERRANDS.length = 0;
+                        STORY_ERRANDS.push(..._errands.errands);
+                    }
+                    if (_branches && Array.isArray(_branches.inject) && _branches.inject.length) {
+                        STORY_BRANCH_INJECTS.length = 0;
+                        STORY_BRANCH_INJECTS.push(..._branches.inject);
+                        _indexStoryChoiceLabels(); // re-register existing authored choices
+                        _applyStoryBranchInjects(); // then layer the JSON injects on top
                     }
                 } catch (e) {
                     console.error('[dialogue/type-chart/ball-math/shops] load failed:', e && (e.message || e));
@@ -36638,6 +36665,558 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const n = Math.max(0, cityIdx | 0);
             return CITY_ARRIVAL_LINES[Math.min(n, CITY_ARRIVAL_LINES.length - 1)] || ['',''];
         }
+        // ── Narration overhaul (v26): per-route travel flavor ─────────────────
+        // One entry per road segment leaving a city for the next battle city.
+        // `scene` is a DEFAULT_STORY_BG_MANIFEST.scenes key. The interstitial shows
+        // `setOut` on departure; the arrival bookend (folded into the city welcome
+        // screen) shows `arrive`. Mirrors data/story/routes.json — that file is the
+        // live source; this DEFAULT is the offline fallback (sloppy-mode safe).
+        const DEFAULT_ROUTE_LINES = {
+            'city0to1': { name:'Route 1', scene:'forest',
+                setOut:['You shoulder your pack and step past the last fence of Pallet.','The badge is still warm; the road north runs long and bright and yours.'],
+                terrain:'Low coastal grass, split-rail fences, the sea somewhere off to your left.',
+                sightings:'A Pidgey wheels overhead. A Rattata watches from the ditch and thinks better of it.',
+                arrive:['The grass gives way to gravel, then paved street. Mining sirens carry on the wind ahead.'] },
+            'city1to2': { name:'Mineshaft Pass', scene:'cave',
+                setOut:['The road out of the mining town runs straight into the hillside and keeps going.','Lamplight, dripping stone, the rattle of an ore cart somewhere below.'],
+                terrain:'Worked-out tunnels, timber braces, the cool breath of deep rock.',
+                sightings:'Zubat stir in the dark. A Geodude sits so still you mistake it for the wall.',
+                arrive:['Daylight again — and the smell of coffee and hot solder. A craftsman town.'] },
+            'city2to3': { name:'Route 4', scene:'forest',
+                setOut:['Out past the kettles and the move tutors, the trees close back in.','You walk it with new moves you have not had a chance to use yet.'],
+                terrain:'Old-growth shade, mossed logs, a path more suggestion than road.',
+                sightings:'A Caterpie inches across the trail. Something heavier moves where you cannot see it.',
+                arrive:['Bells. Students. The path widens into a campus town that runs on lectures.'] },
+            'city3to4': { name:'Route 6', scene:'forest',
+                setOut:['The lecture halls fall behind. The signage stops. The mud starts.','Every kind of boot has come this way — ranger, hunter, poacher.'],
+                terrain:'Trailhead scrub thickening toward true wilderness.',
+                sightings:'Oddish duck under leaves. A Nidoran freezes, then is gone.',
+                arrive:['A gate, a warden, a sign: past here, "rare" stops being decorative.'] },
+            'city4to5': { name:'Lakeside Road', scene:'sea',
+                setOut:['You leave the Safari gate behind and follow the water down.','The wild quiets into something landscaped, lit, and for sale.'],
+                terrain:'A still lake under neon, boardwalks, the hum of a town that never sleeps.',
+                sightings:'Magikarp slap the shallows. A Psyduck stares at the slot-machine glow.',
+                arrive:['Slot bells and gym lights share one roof here. The last easy night before the climb.'] },
+            'city5to6': { name:'Route 9', scene:'mountain',
+                setOut:['The resort lights shrink behind you. The road tilts up toward a skyline.','The air gets thinner and the buildings get taller at the same time.'],
+                terrain:'Switchback highway shoulder, billboards, the city haze ahead.',
+                sightings:'A Spearow rides the updraft. A Machop spots for a road crew, unbothered.',
+                arrive:['The skyline ate the route signs. Twenty-four hours of city, all of it.'] },
+            'city6to7': { name:'Highcountry Pass', scene:'mountain',
+                setOut:['You climb out of the metropolis until the streets give up and the rock takes over.','Wind that tastes like the high country. Stone gates somewhere ahead.'],
+                terrain:'Bare ridgeline, switchback ramps, scree that shifts under your boots.',
+                sightings:'Onix grind through the cliffs below. A Skarmory cuts the wind, far up.',
+                arrive:['A town that has beaten the League, three times over. They will tell you the climb breaks people.'] },
+            'city7to8': { name:'Cathedral Approach', scene:'cavern',
+                setOut:['Past the Champion’s town the road runs underground, then up into stone arches.','Candle-smoke and cold air. Whatever waits here has waited a long time.'],
+                terrain:'A vaulted cavern road feeding into an old cathedral district.',
+                sightings:'Golbat hang in the rafters. A Misdreavus is there, then is not.',
+                arrive:['Bells, candles, stained-glass Lugia. The last gym sits inside the cathedral.'] },
+            'approachToLeague': { name:'Victory Road', scene:'league',
+                setOut:['Eight badges. No ninth city. There is the road, and there is the Plateau.','Victory Road is not a metaphor. It is a real climb, and it is in front of you.'],
+                terrain:'The final ascent — switchbacks, sealed doors, trainers who never left.',
+                sightings:'The strongest wild things in the region live up here, and they know it.',
+                arrive:['The Plateau hums under your boots. The Elite Four are in their chambers, waiting on you.'] }
+        };
+        let ROUTE_LINES = {};
+        Object.assign(ROUTE_LINES, DEFAULT_ROUTE_LINES);
+        window.ROUTE_LINES = ROUTE_LINES;
+        // Resolve the route segment leaving `fromCity` for `toCity`. League (city 9)
+        // approach uses the named 'approachToLeague' key. Falls back to DEFAULT.
+        function _routeLinesFor(fromCity, toCity) {
+            const f = Math.max(0, fromCity | 0), t = Math.max(0, toCity | 0);
+            const key = (t >= 9) ? 'approachToLeague' : ('city' + f + 'to' + t);
+            return ROUTE_LINES[key] || DEFAULT_ROUTE_LINES[key] || null;
+        }
+        window._routeLinesFor = _routeLinesFor;
+        // Resolve { fromCity, toCity } for a Battle row that opens a new route
+        // (the row right after a City row). Parses the "City N" labels in
+        // STORY_EVENTS_RAW. Returns null when `battleIdx` is not a route-opening
+        // battle (no preceding City, or no following City/HoF). League / Victory
+        // Road approaches resolve toCity = 9.
+        function _routeCitiesForBattle(battleIdx) {
+            const idx = battleIdx | 0;
+            const prev = STORY_EVENTS_RAW[idx - 1];
+            const cur = STORY_EVENTS_RAW[idx];
+            if (!cur || cur[1] !== 'Battle') return null;
+            if (!prev || prev[1] !== 'City') return null;
+            const fromM = String(prev[2] || '').match(/\d+/);
+            const fromCity = fromM ? (+fromM[0]) : -1;
+            if (fromCity < 0) return null;
+            let toCity = -1;
+            for (let i = idx + 1; i < STORY_EVENTS_RAW.length; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (!r) continue;
+                if (r[1] === 'City') { const m = String(r[2] || '').match(/\d+/); toCity = m ? (+m[0]) : -1; break; }
+                if (r[1] === 'Hall of Fame') { toCity = 9; break; }
+            }
+            if (toCity < 0) return null;
+            if (toCity === fromCity) return null; // same-city battles aren't a route
+            return { fromCity, toCity };
+        }
+        window._routeCitiesForBattle = _routeCitiesForBattle;
+        // ── Narration overhaul (v26): route interstitial ──────────────────────
+        // Shown once when leaving a city for the next battle city — the "you set
+        // out…" travel beat that gives the journey a sense of place. Fires before
+        // the cold-open / wild interrupts / trainer. Keyed by battle-row eventIndex
+        // in sm.routeShown (stamp BEFORE render → tab-close mid-overlay can't
+        // replay; the v26 migration back-fills past rows so resumes are clean).
+        // Returns true (and renders) when it fired, false otherwise.
+        function _maybeShowRouteInterstitial(ev, onDone) {
+            if (!sm) return false;
+            if (!sm.routeShown || typeof sm.routeShown !== 'object') sm.routeShown = {};
+            const idx = sm.eventIndex | 0;
+            if (sm.routeShown[idx]) return false;
+            const rc = _routeCitiesForBattle(idx);
+            if (!rc) return false;
+            const row = STORY_EVENTS_RAW[idx];
+            if (row && (row[0] | 0) === STORY_RIVAL_ROW_INTRO) return false; // starter duel, no route
+            const route = _routeLinesFor(rc.fromCity, rc.toCity);
+            if (!route) return false;
+            sm.routeShown[idx] = true;
+            try { save(); } catch (e) {}
+            const lines = [];
+            if (Array.isArray(route.setOut)) lines.push(...route.setOut);
+            if (route.sightings) lines.push('<span style="color:#9fb3c8;font-style:italic;">' + _esc(route.sightings) + '</span>');
+            try {
+                _renderNarrativeOverlay({
+                    backdropScene: route.scene || '',
+                    bannerParts: { location: 'Now Departing · ' + (route.name || ''), tod: _todForEventIndex(idx), sigil: '🧭' },
+                    nameplate: route.name || 'On the Road',
+                    name: '',
+                    sprite: null,
+                    typewriter: true,
+                    lines: lines,
+                    continueLabel: 'Set out →',
+                    onDone: () => { try { onDone && onDone(); } catch (e) {} }
+                });
+            } catch (e) {
+                console.warn('[Story] route interstitial failed', e);
+                try { onDone && onDone(); } catch (e2) {}
+            }
+            return true;
+        }
+        window._maybeShowRouteInterstitial = _maybeShowRouteInterstitial;
+        // ── Narration overhaul (v26): courier / fetch errands ─────────────────
+        // NPC in `fromCity` asks the player to deliver/recover, paid off at `toCity`.
+        // Mirrors data/story/errands.json (live source; DEFAULT is the fallback).
+        // Reward sizes are intentionally modest — MAINTAINER: tune these.
+        const DEFAULT_STORY_ERRANDS = [
+            { id:'deliver_route_ledger', kind:'deliver', fromCity:1, toCity:2,
+              npc:{ id:'npc_foreman1', name:'Mine Foreman', sprite:'Worker' },
+              item:{ name:'Sealed Ledger', icon:'sprites/items/big-root.png' },
+              offerLines:['A foreman flags you down at the gate, soot to the elbows.','"You’re headed up the pass? Take this ledger to the tutor’s shop in the next town. My courier quit. Pay’s good."'],
+              deliverLines:['The move tutor takes the ledger, reads two lines, and snorts.','"He still owes me from the spring. Here—for your trouble." Coins, counted twice.'],
+              reward:{ gold:1200 } },
+            { id:'deliver_campus_notes', kind:'deliver', fromCity:3, toCity:5,
+              npc:{ id:'npc_student3', name:'Frantic Student', sprite:'School_Kid' },
+              item:{ name:'Lecture Notes', icon:'sprites/items/bright-powder.png' },
+              offerLines:['A student catches you mid-stride, arms full of paper.','"Please—my sister’s at the lake resort and she needs these notes before finals. I can’t leave campus. You look fast."'],
+              deliverLines:['Poolside, the sister flips through the notes and exhales.','"He actually sent them. Tell him—no, don’t tell him anything. Here, take this. Hit the tables on me."'],
+              reward:{ gold:2000 } },
+            { id:'recover_trail_pouch', kind:'recover', fromCity:4, toCity:4, route:'city4to5',
+              npc:{ id:'npc_warden4', name:'Safari Warden', sprite:'Ranger' },
+              item:{ name:'Warden’s Pouch', icon:'sprites/items/black-belt.png' },
+              offerLines:['The Safari warden stops you at the gate, embarrassed.','"Dropped my field pouch somewhere on the lakeside road this morning. Bring it back and the next Ball’s on the house."'],
+              deliverLines:['You hand over the pouch, mud and all. The warden checks it twice.','"Everything’s here. You’re alright, kid. Take this—you’ll want it up the climb."'],
+              reward:{ ultra:1 } }
+        ];
+        let STORY_ERRANDS = [];
+        STORY_ERRANDS.push(...DEFAULT_STORY_ERRANDS);
+        window.STORY_ERRANDS = STORY_ERRANDS;
+        // ── Narration overhaul (v26): branching-encounter surface ─────────────
+        // The branch ENGINE (act.choice → _storyChoiceValue → act.branches[].when)
+        // already ships ~one authored choice per villain/extra arc. v26 adds two
+        // things: (1) a human-readable label index so the journal's Decisions
+        // section can render those picks, and (2) an OPTIONAL data-overlay
+        // (data/story/branches.json) for the maintainer to attach NEW cross-scene
+        // choice/consequence pairs WITHOUT editing generated prose. Ships with no
+        // default injects (so it can't conflict with the one-choice-per-arc
+        // contract that tests/integration/story-narration-system.test.js locks).
+        const DEFAULT_STORY_BRANCH_INJECTS = [];
+        let STORY_BRANCH_INJECTS = [];
+        STORY_BRANCH_INJECTS.push(...DEFAULT_STORY_BRANCH_INJECTS);
+        let STORY_CHOICE_LABELS = {};
+        window.STORY_BRANCH_INJECTS = STORY_BRANCH_INJECTS;
+        window.STORY_CHOICE_LABELS = STORY_CHOICE_LABELS;
+        // Register persistKey → { prompt, options:{value:label} } for one act.choice.
+        function _registerStoryChoiceLabel(persistKey, promptText, options) {
+            if (!persistKey) return;
+            const lab = { prompt: promptText || persistKey, options: {} };
+            for (const o of (options || [])) {
+                if (!o) continue;
+                lab.options[o.value != null ? o.value : o.label] = o.label;
+            }
+            STORY_CHOICE_LABELS[persistKey] = lab;
+        }
+        // Scan STORY_SCENES for the already-authored choices and register their
+        // labels — so the journal can show every existing decision, not just
+        // overlay-injected ones.
+        function _indexStoryChoiceLabels() {
+            try {
+                if (typeof STORY_SCENES !== 'object') return;
+                for (const sk in STORY_SCENES) {
+                    const sc = STORY_SCENES[sk];
+                    if (!sc || !Array.isArray(sc.acts)) continue;
+                    for (const act of sc.acts) {
+                        if (!act || !act.choice || !act.choice.persistKey) continue;
+                        _registerStoryChoiceLabel(act.choice.persistKey, sc.title || sk, act.choice.options);
+                    }
+                }
+            } catch (e) { console.warn('[Story] choice-label index failed', e); }
+        }
+        // Apply the optional JSON overlay: attach choice/branches onto a named act
+        // phase (idempotent) + register the choice label.
+        function _applyStoryBranchInjects() {
+            try {
+                for (const inj of STORY_BRANCH_INJECTS) {
+                    if (!inj || !inj.sceneKey) continue;
+                    const sc = (typeof STORY_SCENES === 'object') ? STORY_SCENES[inj.sceneKey] : null;
+                    if (!sc || !Array.isArray(sc.acts)) continue;
+                    const act = inj.phase ? sc.acts.find(a => a && a.phase === inj.phase) : sc.acts[sc.acts.length - 1];
+                    if (!act) continue;
+                    if (inj.choice) act.choice = inj.choice;
+                    if (inj.branches) act.branches = inj.branches;
+                    if (inj.choice && inj.choice.persistKey) {
+                        _registerStoryChoiceLabel(inj.choice.persistKey, inj.label || sc.title || inj.sceneKey, inj.choice.options);
+                    }
+                }
+            } catch (e) { console.warn('[Story] branch inject failed', e); }
+        }
+        window._applyStoryBranchInjects = _applyStoryBranchInjects;
+        window._indexStoryChoiceLabels = _indexStoryChoiceLabels;
+        _indexStoryChoiceLabels();   // register existing authored choices
+        _applyStoryBranchInjects();  // apply DEFAULT (empty) injects; load() re-applies JSON
+        // ── Narration overhaul (v26): thread labels + objective subline ───────
+        const _THREAD_LABELS = {
+            rocket:'Rocket', magma:'Magma', aqua:'Aqua', galactic:'Galactic', plasma:'Plasma',
+            flare:'Flare', skull:'Skull', yell:'Yell', macroCosmos:'Macro Cosmos', star:'Star',
+            cubone:'Cubone', yamask:'Yamask', hypno:'Hypno', phantump:'Phantump',
+            mimikyu:'Mimikyu', drifloon:'Drifloon', parasect:'Parasect', mewtwo:'Mewtwo'
+        };
+        function _threadLabel(id) {
+            if (!id) return '';
+            return _THREAD_LABELS[id] || (String(id).charAt(0).toUpperCase() + String(id).slice(1));
+        }
+        // Count an arc's unfired event beats → a one-word felt status.
+        function _threadStatusWord(table, trackId) {
+            if (!trackId || !table[trackId]) return null;
+            const beats = table[trackId];
+            const fired = (sm && sm.storyEventsFired) || {};
+            let total = 0, done = 0;
+            for (const k in beats) {
+                const b = beats[k];
+                if (!b || b.kind !== 'event') continue;
+                total++; if (fired[b.sceneKey]) done++;
+            }
+            if (!total) return null;
+            if (done >= total) return 'resolved';
+            if (done > 0) return 'unfolding';
+            return 'stirring';
+        }
+        // The quieter HUD subline under the city objective: badge progress + each
+        // track thread's status + any active errand. Drives the felt "what's going
+        // on" the player was missing. Read-only; deterministic.
+        function _storyThreadObjectiveLine() {
+            if (!sm) return '';
+            const parts = ['Badge ' + (sm.badges | 0) + '/8'];
+            const vs = _threadStatusWord(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain);
+            if (vs) parts.push('⚔ ' + _threadLabel(sm.tracks.villain) + ': ' + vs);
+            const xs = _threadStatusWord(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra);
+            if (xs) parts.push('👁 ' + _threadLabel(sm.tracks.extra) + ': ' + xs);
+            // Active errand (one shown — the soonest payoff).
+            try {
+                for (const id in (sm.errands || {})) {
+                    const st = sm.errands[id];
+                    if (st && st.state === 'active') { parts.push('✉ ' + _errandShortLabel(st)); break; }
+                }
+            } catch (e) {}
+            return parts.join('  ·  ');
+        }
+        // ── Narration overhaul (v26): courier / fetch errand logic ────────────
+        function _errandDefById(id) {
+            for (const e of STORY_ERRANDS) { if (e && e.id === id) return e; }
+            return null;
+        }
+        function _errandState(id) { return (sm && sm.errands && sm.errands[id]) ? sm.errands[id] : null; }
+        function _errandShortLabel(st) {
+            if (!st) return '';
+            const item = (st.item && st.item.name) ? st.item.name : 'a package';
+            if (st.kind === 'recover') return 'Recover ' + item + ' for City ' + (st.fromCity | 0);
+            return 'Deliver ' + item + ' to City ' + (st.toCity | 0);
+        }
+        function _errandRewardLabel(reward) {
+            if (!reward) return '';
+            if (typeof reward.gold === 'number' && reward.gold > 0) return 'Reward: ' + reward.gold.toLocaleString() + ' G';
+            if (typeof reward.ultra === 'number' && reward.ultra > 0) return 'Reward: ' + reward.ultra + ' Ultra Ball' + (reward.ultra > 1 ? 's' : '');
+            if (reward.item && reward.item.name) return 'Reward: ' + reward.item.name;
+            return '';
+        }
+        // The next offerable errand for `cityIdx` (fromCity match, not yet started).
+        function _errandOfferForCity(cityIdx) {
+            const c = cityIdx | 0;
+            for (const def of STORY_ERRANDS) {
+                if (!def || (def.fromCity | 0) !== c) continue;
+                const st = _errandState(def.id);
+                if (st && st.state) continue; // already offered/active/done
+                return def;
+            }
+            return null;
+        }
+        // An active errand whose payoff happens at `cityIdx` (deliver→toCity,
+        // recover→back at fromCity).
+        function _errandActiveForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (!sm || !sm.errands) return null;
+            for (const id in sm.errands) {
+                const st = sm.errands[id];
+                if (!st || st.state !== 'active') continue;
+                const payoff = (st.kind === 'recover') ? (st.fromCity | 0) : (st.toCity | 0);
+                if (payoff === c) return st;
+            }
+            return null;
+        }
+        function _recordNpcMet(npc, cityIdx) {
+            if (!npc || !npc.id) return;
+            if (!sm.npcsMet || typeof sm.npcsMet !== 'object') sm.npcsMet = {};
+            if (!sm.npcsMet[npc.id]) {
+                sm.npcsMet[npc.id] = { id: npc.id, name: npc.name || '', city: (cityIdx | 0), firstSeenBadges: (sm.badges | 0) };
+            }
+        }
+        function _acceptErrand(id) {
+            const def = _errandDefById(id);
+            if (!def) return false;
+            if (!sm.errands || typeof sm.errands !== 'object') sm.errands = {};
+            if (sm.errands[id] && sm.errands[id].state) return false; // already started/done
+            sm.errands[id] = {
+                id: def.id, kind: def.kind, fromCity: def.fromCity | 0, toCity: def.toCity | 0,
+                item: def.item || null, route: def.route || null, reward: def.reward || null,
+                npc: def.npc || null, state: 'active'
+            };
+            _recordNpcMet(def.npc, def.fromCity);
+            try { save(); } catch (e) {}
+            return true;
+        }
+        function _grantErrandReward(reward) {
+            if (!reward) return;
+            try {
+                if (typeof reward.gold === 'number' && reward.gold > 0) sm.gold = (sm.gold | 0) + (reward.gold | 0);
+                if (typeof reward.ultra === 'number' && reward.ultra > 0) {
+                    if (!sm.balls) sm.balls = { poke: 0, great: 0, ultra: 0, master: 0 };
+                    sm.balls.ultra = (sm.balls.ultra | 0) + (reward.ultra | 0);
+                }
+                if (reward.item && reward.item.id) {
+                    if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
+                    sm.inventory[reward.item.id] = (sm.inventory[reward.item.id] | 0) + (reward.item.count || 1);
+                }
+            } catch (e) {}
+        }
+        // State-guarded completion: grants the reward exactly once.
+        function _completeErrand(id) {
+            const st = _errandState(id);
+            if (!st || st.state !== 'active') return false;
+            const def = _errandDefById(id) || {};
+            st.state = 'done';
+            _grantErrandReward(st.reward || def.reward);
+            try { save(); } catch (e) {}
+            return true;
+        }
+        // Offer overlay — reuses the narration overlay's choice flow. Accept stamps
+        // the errand active (read back via the persisted choice). Returns true if
+        // an offer was shown.
+        function _showErrandOffer(cityIdx, onDone) {
+            const def = _errandOfferForCity(cityIdx);
+            if (!def) { try { onDone && onDone(); } catch (e) {} return false; }
+            const pk = 'errand_offer_' + def.id;
+            try {
+                _renderNarrativeOverlay({
+                    sprite: (def.npc && def.npc.sprite) ? def.npc.sprite : null,
+                    nameplate: (def.npc && def.npc.name) ? def.npc.name : 'A Local',
+                    lines: def.offerLines || [],
+                    typewriter: true,
+                    choices: [
+                        { label: 'Take the job', value: 'accept', persistKey: pk, reply: ['"You\'re a lifesaver. Off you go." — Added to your Journal.'] },
+                        { label: 'Not right now', value: 'decline', persistKey: pk, reply: ['"Suit yourself. The offer stands."'] }
+                    ],
+                    onDone: () => {
+                        try { if (sm.storyChoices && sm.storyChoices[pk] === 'accept') _acceptErrand(def.id); } catch (e) {}
+                        try { if (typeof _storyRefreshCityHubInPlace === 'function') _storyRefreshCityHubInPlace(); } catch (e) {}
+                        try { onDone && onDone(); } catch (e) {}
+                    }
+                });
+            } catch (e) {
+                console.warn('[Story] errand offer failed', e);
+                try { onDone && onDone(); } catch (e2) {}
+            }
+            return true;
+        }
+        // Completion overlay — grants the reward, plays the payoff lines.
+        function _showErrandComplete(id, onDone) {
+            const st = _errandState(id);
+            if (!st || st.state !== 'active') { try { onDone && onDone(); } catch (e) {} return false; }
+            const def = _errandDefById(id) || {};
+            const rewardLabel = _errandRewardLabel(st.reward || def.reward);
+            _completeErrand(id);
+            const lines = (def.deliverLines || []).slice();
+            if (rewardLabel) lines.push('<span style="color:#ffd54f;font-weight:bold;">' + _esc(rewardLabel) + '</span>');
+            try {
+                _renderNarrativeOverlay({
+                    sprite: (def.npc && def.npc.sprite) ? def.npc.sprite : null,
+                    nameplate: (def.npc && def.npc.name) ? def.npc.name : 'A Local',
+                    lines: lines,
+                    typewriter: true,
+                    sfx: 'buy',
+                    onDone: () => {
+                        try { if (typeof _storyRefreshCityHubInPlace === 'function') _storyRefreshCityHubInPlace(); } catch (e) {}
+                        try { onDone && onDone(); } catch (e) {}
+                    }
+                });
+            } catch (e) {
+                console.warn('[Story] errand complete failed', e);
+                try { onDone && onDone(); } catch (e2) {}
+            }
+            return true;
+        }
+        window._showErrandOffer = _showErrandOffer;
+        window._showErrandComplete = _showErrandComplete;
+        // ── Narration overhaul (v26): adventure journal ───────────────────────
+        // Read-only log built from existing run state — badges, the villain &
+        // extra threads (fired vs pending beats), active/done errands, people met.
+        // Pure render (no mutation, no RNG). Returns the inner HTML (test surface).
+        function _journalRenderHTML() {
+            if (!sm) return '';
+            const esc = (s) => _esc(String(s == null ? '' : s));
+            let h = '';
+            h += '<div class="story-journal-section"><h3>🏅 Badges</h3><p>' + (sm.badges | 0) + ' / 8 earned.</p></div>';
+            const fired = sm.storyEventsFired || {};
+            const threadBlock = (table, trackId, label, sigil) => {
+                if (!trackId || !table[trackId]) return '';
+                const beats = table[trackId];
+                let items = '';
+                for (const k in beats) {
+                    const b = beats[k];
+                    if (!b || b.kind !== 'event') continue;
+                    const sc = (typeof STORY_SCENES === 'object' && STORY_SCENES[b.sceneKey]) ? STORY_SCENES[b.sceneKey] : null;
+                    const title = sc && sc.title ? sc.title : b.sceneKey;
+                    const done = !!fired[b.sceneKey];
+                    items += '<li style="opacity:' + (done ? '1' : '0.4') + ';">' + (done ? '✓ ' : '• ') + esc(title) + '</li>';
+                }
+                if (!items) return '';
+                return '<div class="story-journal-section"><h3>' + sigil + ' ' + esc(label) + ' thread</h3><ul>' + items + '</ul></div>';
+            };
+            h += threadBlock(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain, _threadLabel(sm.tracks && sm.tracks.villain), '⚔');
+            h += threadBlock(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra, _threadLabel(sm.tracks && sm.tracks.extra), '👁');
+            const active = [], doneE = [];
+            for (const id in (sm.errands || {})) {
+                const st = sm.errands[id]; if (!st) continue;
+                if (st.state === 'active') active.push(st); else if (st.state === 'done') doneE.push(st);
+            }
+            if (active.length || doneE.length) {
+                let li = '';
+                active.forEach(st => { li += '<li>✉ ' + esc(_errandShortLabel(st)) + '</li>'; });
+                doneE.forEach(st => { li += '<li style="opacity:0.4;">✓ ' + esc(_errandShortLabel(st)) + '</li>'; });
+                h += '<div class="story-journal-section"><h3>✉ Errands</h3><ul>' + li + '</ul></div>';
+            }
+            const npcs = [];
+            for (const k in (sm.npcsMet || {})) { if (sm.npcsMet[k]) npcs.push(sm.npcsMet[k]); }
+            if (npcs.length) {
+                h += '<div class="story-journal-section"><h3>🧑 People Met</h3><ul>' +
+                    npcs.map(n => '<li>' + esc(n.name) + ' <span style="opacity:0.5;">— City ' + (n.city | 0) + '</span></li>').join('') +
+                    '</ul></div>';
+            }
+            // Decisions — branching-encounter picks, rendered human-readably via
+            // the persistKey → label map built from the branch injects.
+            const decisions = [];
+            const choices = sm.storyChoices || {};
+            for (const pk in choices) {
+                const lab = (typeof STORY_CHOICE_LABELS === 'object') ? STORY_CHOICE_LABELS[pk] : null;
+                if (!lab) continue; // only label keys we authored (skips internal flags)
+                const val = choices[pk];
+                const optLabel = (lab.options && lab.options[val]) ? lab.options[val] : val;
+                decisions.push({ prompt: lab.prompt || pk, choice: optLabel });
+            }
+            if (decisions.length) {
+                h += '<div class="story-journal-section"><h3>🧭 Decisions</h3><ul>' +
+                    decisions.map(d => '<li>' + esc(d.prompt) + ' <span style="opacity:0.6;">→ ' + esc(d.choice) + '</span></li>').join('') +
+                    '</ul></div>';
+            }
+            return h;
+        }
+        window._journalRenderHTML = _journalRenderHTML;
+        // Full-screen scrollable journal overlay (no dedicated #screen needed).
+        function enterJournal() {
+            const ov = document.createElement('div');
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', 'Adventure Journal');
+            ov.className = 'story-journal-overlay';
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(6,8,14,0.97);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;padding:24px 16px;box-sizing:border-box;overflow-y:auto;';
+            ov.innerHTML =
+                '<div style="color:#ffd54f;font-size:18px;font-weight:bold;letter-spacing:0.06em;margin-bottom:14px;">📓 Adventure Journal</div>' +
+                '<div class="story-journal-body" style="max-width:560px;width:100%;">' + _journalRenderHTML() + '</div>' +
+                '<button type="button" data-journal-close="1" style="margin-top:18px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Close</button>';
+            const close = () => { try { ov.remove(); } catch (e) {} if (escH) { try { document.removeEventListener('keydown', escH); } catch (e) {} } };
+            const btn = ov.querySelector('button[data-journal-close="1"]');
+            if (btn) btn.onclick = function (e) { e.stopPropagation(); close(); };
+            let escH = function (e) { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+            document.addEventListener('keydown', escH);
+            document.body.appendChild(ov);
+        }
+        window.enterJournal = enterJournal;
+        // ── Narration overhaul (v26): "Previously…" recap ─────────────────────
+        // Once-per-session catch-up on the villain + extra threads, built from
+        // sm.storyEventsFired. Session-scoped (module flag, not persisted) so a
+        // resume gets one recap, not one per city hub re-entry.
+        let _recapShownThisSession = false;
+        function _storyRecapLines() {
+            if (!sm) return [];
+            const fired = sm.storyEventsFired || {};
+            const lines = [];
+            const threadRecap = (table, trackId, label, sigil) => {
+                if (!trackId || !table[trackId]) return;
+                const beats = table[trackId];
+                let total = 0, done = 0, lastTitle = '';
+                for (const k in beats) {
+                    const b = beats[k];
+                    if (!b || b.kind !== 'event') continue;
+                    total++;
+                    if (fired[b.sceneKey]) {
+                        done++;
+                        const sc = (typeof STORY_SCENES === 'object') ? STORY_SCENES[b.sceneKey] : null;
+                        if (sc && sc.title) lastTitle = sc.title;
+                    }
+                }
+                if (!done) return;
+                lines.push(sigil + ' ' + label + ' — ' + done + ' of ' + total + ' beats seen.' + (lastTitle ? ' Last: "' + lastTitle + '".' : ''));
+            };
+            threadRecap(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain, _threadLabel(sm.tracks && sm.tracks.villain), '⚔');
+            threadRecap(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra, _threadLabel(sm.tracks && sm.tracks.extra), '👁');
+            return lines;
+        }
+        window._storyRecapLines = _storyRecapLines;
+        function _maybeShowStoryRecap(onDone) {
+            if (_recapShownThisSession) return false;
+            const lines = _storyRecapLines();
+            if (!lines.length) return false; // nothing worth recapping yet
+            _recapShownThisSession = true;
+            try {
+                _renderNarrativeOverlay({
+                    banner: '— Previously —',
+                    nameplate: 'Your Adventure So Far',
+                    name: '',
+                    lines: ['Badge ' + (sm.badges | 0) + '/8 earned.'].concat(lines),
+                    typewriter: true,
+                    continueLabel: 'Continue →',
+                    onDone: () => { try { onDone && onDone(); } catch (e) {} }
+                });
+            } catch (e) {
+                console.warn('[Story] recap failed', e);
+                try { onDone && onDone(); } catch (e2) {}
+                return false;
+            }
+            return true;
+        }
+        window._maybeShowStoryRecap = _maybeShowStoryRecap;
         // Mark every city up to and including the player's current event index as
         // "already arrived." Used by the v15+ migration (so resuming a save doesn't
         // pop a stray welcome overlay) and by the dev seeder URLs (so jumping into
@@ -36690,10 +37269,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const blurbHtml = blurb
                 ? '<div style="color:#ffd54f;font-size:12px;letter-spacing:0.04em;margin-top:6px;text-align:center;max-width:560px;">📍 ' + blurb + '</div>'
                 : '';
+            // Route arrival bookend (v26): the closing line of the road segment
+            // that ended here — the counterpart to the departing interstitial.
+            let arriveHtml = '';
+            try {
+                if ((cityIdx | 0) > 0) {
+                    const _rl = _routeLinesFor((cityIdx | 0) - 1, cityIdx | 0);
+                    if (_rl && Array.isArray(_rl.arrive) && _rl.arrive.length) {
+                        arriveHtml =
+                            '<div class="story-dialog-host" style="max-width:560px;width:100%;">' +
+                                '<div class="story-dialog-nameplate">' + _esc(_rl.name || 'The Road') + '</div>' +
+                                '<div class="story-dialog-box">' +
+                                    _rl.arrive.filter(Boolean).map(l => '<p class="story-dialog-text" style="margin:0 0 8px 0;">' + l + '</p>').join('') +
+                                '</div>' +
+                            '</div>';
+                    }
+                }
+            } catch (e) {}
             ov.innerHTML =
                 '<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">— Now Arriving —</div>' +
                 '<div style="color:#fff;font-size:24px;font-weight:bold;letter-spacing:0.04em;text-shadow:0 2px 6px rgba(0,0,0,0.8);">' + cityName + '</div>' +
                 blurbHtml +
+                arriveHtml +
                 '<img src="' + spriteSrc + '" onerror="this.style.display=\'none\'" style="width:140px;height:140px;object-fit:contain;image-rendering:pixelated;margin-top:6px;">' +
                 '<div class="story-dialog-host" style="max-width:560px;width:100%;">' +
                     '<div class="story-dialog-nameplate">City Guide</div>' +
@@ -36764,6 +37361,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         let _storyBgManifest = null;
         function getStoryBgManifest() { return _storyBgManifest || DEFAULT_STORY_BG_MANIFEST; }
+        // ── Narration overhaul (v26): scene-backdrop resolver ─────────────────
+        // Maps a beat sceneKey ('villain.aqua.event1', 'extra.cubone.event3',
+        // 'main.event1') to one of DEFAULT_STORY_BG_MANIFEST.scenes so story-beat
+        // overlays render over a gen3 backdrop instead of flat black. Villain arcs
+        // differ by org flavor; extra arcs are mostly graveyard/haunt themed. An
+        // empty return ('') keeps the legacy flat-black overlay (safe default).
+        const SCENE_BACKDROP_OVERRIDES = {
+            // villain arcs (prefix match on 'villain.<org>.'):
+            'villain.rocket.':'villain', 'villain.magma.':'mountain', 'villain.aqua.':'sea',
+            'villain.galactic.':'cavern', 'villain.plasma.':'mountain', 'villain.flare.':'villain',
+            'villain.skull.':'sea', 'villain.yell.':'forest', 'villain.macroCosmos.':'lab',
+            'villain.star.':'villain',
+            // extra (mystery/haunt) arcs:
+            'extra.cubone.':'cavern', 'extra.yamask.':'cavern', 'extra.hypno.':'mansion',
+            'extra.phantump.':'forest', 'extra.mimikyu.':'mansion', 'extra.drifloon.':'mansion',
+            'extra.parasect.':'forest', 'extra.mewtwo.':'lab'
+        };
+        window.SCENE_BACKDROP_OVERRIDES = SCENE_BACKDROP_OVERRIDES;
+        function _backdropKeyForScene(sceneKey, beat) {
+            if (!sceneKey) return '';
+            // An explicit per-scene override on STORY_SCENES wins (set in Phase 2 prose).
+            try {
+                const sc = (typeof STORY_SCENES === 'object' && STORY_SCENES) ? STORY_SCENES[sceneKey] : null;
+                if (sc && sc.backdrop) return sc.backdrop;
+            } catch (e) {}
+            for (const pre in SCENE_BACKDROP_OVERRIDES) {
+                if (sceneKey === pre || sceneKey.indexOf(pre) === 0) return SCENE_BACKDROP_OVERRIDES[pre];
+            }
+            // Heuristic fallback on the beat's kind / roadAnchor.
+            if (beat && beat.kind === 'raid') return 'cavern';
+            if (beat && beat.roadAnchor === 'league') return 'league';
+            if (/^main\./.test(sceneKey)) return 'forest';
+            return '';
+        }
+        window._backdropKeyForScene = _backdropKeyForScene;
         function applyStoryBgLayer(layerEl, imageUrl) {
             if (!layerEl) return;
             if (!imageUrl) { layerEl.style.backgroundImage = ''; return; }
@@ -36931,7 +37563,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // fresh wander budget.
         // v24 removes the post-HoF "Caged God" boss arc — migrateStoryPreV24 strips
         // the vestigial sm.bossArc state. The chain's last versioned step is v24.
-        const SAVE_VER = 25;
+        // v25 adds Camp bonding (slot.bonds) + camp-flow gate fields.
+        // v26 (Narration overhaul) adds travel/journal state — sm.errands (courier
+        // quests), sm.npcsMet (journal roster), sm.journalSeen (per-run recap flags),
+        // sm.routeShown (route-interstitial fire-once, keyed by battle-row eventIndex).
+        // All additive; migrateStoryPreV26 seeds them and back-fills routeShown for
+        // any row at/behind eventIndex so resumed saves never replay a stale route.
+        const SAVE_VER = 26;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -37489,6 +38127,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
             if (sm.campReturnPoint === undefined) sm.campReturnPoint = null;
         }
+        /** v26: Narration overhaul travel/journal state. All additive — courier
+         *  errands, the journal NPC roster, per-run recap flags, and the route
+         *  interstitial fire-once ledger. The routeShown back-fill is MANDATORY:
+         *  a save already past a route must NOT replay its "you set out…" screen.
+         *  Mirrors _storyBackfillCitiesArrived (citiesArrived) — every Battle row
+         *  at/behind eventIndex is stamped seen so resume is clean. */
+        function migrateStoryPreV26() {
+            if (!sm.errands     || typeof sm.errands     !== 'object') sm.errands     = {};
+            if (!sm.npcsMet     || typeof sm.npcsMet     !== 'object') sm.npcsMet     = {};
+            if (!sm.journalSeen || typeof sm.journalSeen !== 'object') sm.journalSeen = {};
+            if (!sm.routeShown  || typeof sm.routeShown  !== 'object') sm.routeShown  = {};
+            try {
+                const cap = sm.eventIndex | 0;
+                for (let i = 0; i <= cap && i < STORY_EVENTS_RAW.length; i++) {
+                    const r = STORY_EVENTS_RAW[i];
+                    if (r && r[1] === 'Battle') sm.routeShown[i] = true;
+                }
+            } catch (e) {}
+        }
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -37733,6 +38390,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    tracks: { main: 'classic_v2', villain: null, extra: null },
                    storyEventsFired: {},
                    stats: { battlesLost: 0 },
+                   errands: {},
+                   npcsMet: {},
+                   journalSeen: {},
+                   routeShown: {},
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -38071,6 +38732,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 25) {
                     try { migrateStoryPreV25(); } catch (e) { console.warn('[Story] v25 camp/bonding migrate', e); }
                 }
+                if (_loadedVer < 26) {
+                    try { migrateStoryPreV26(); } catch (e) { console.warn('[Story] v26 narration travel/journal migrate', e); }
+                }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -38091,6 +38755,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.storyEventsFired || typeof sm.storyEventsFired !== 'object') sm.storyEventsFired = {};
                 if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
                 if (typeof sm.stats.battlesLost !== 'number') sm.stats.battlesLost = 0;
+                // v26+ narration travel/journal safety back-fills (protect a v26 save
+                // against a dropped field; the migration only fires for _loadedVer < 26).
+                if (!sm.errands     || typeof sm.errands     !== 'object') sm.errands     = {};
+                if (!sm.npcsMet     || typeof sm.npcsMet     !== 'object') sm.npcsMet     = {};
+                if (!sm.journalSeen || typeof sm.journalSeen !== 'object') sm.journalSeen = {};
+                if (!sm.routeShown  || typeof sm.routeShown  !== 'object') sm.routeShown  = {};
                 // TONE RETIREMENT (2026-06): force every loaded save onto the clean
                 // 'classic' tone. The 8-tone STORYLINE_VARIANTS layer is retired in favor
                 // of the 3-track system (sm.tracks); some tones pointed the player at the
@@ -40454,6 +41124,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campBackCityIndex: (...a) => _campBackCityIndex(...a),
                     campBondHexSvg: (...a) => _campBondHexSvg(...a),
                     proceedToNextBattle: () => proceedToNextBattle(),
+                    showErrandOffer: (...a) => _showErrandOffer(...a),
+                    showErrandComplete: (...a) => _showErrandComplete(...a),
+                    enterJournal: () => enterJournal(),
                     campAwardBond: (...a) => campAwardBond(...a),
                     campPickMicrogame: (...a) => campPickMicrogame(...a),
                     campMasteredPaths: (...a) => campMasteredPaths(...a),
@@ -40543,6 +41216,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get EXTRA_TRACKS() { return EXTRA_TRACKS; },
                     pickTrack: (pool) => _pickTrack(pool),
                     migratePreV22: () => migrateStoryPreV22(),
+                    migratePreV26: () => migrateStoryPreV26(),
+                    // Narration overhaul (v26) test handles.
+                    get ROUTE_LINES() { return ROUTE_LINES; },
+                    get STORY_ERRANDS() { return STORY_ERRANDS; },
+                    get SCENE_BACKDROP_OVERRIDES() { return SCENE_BACKDROP_OVERRIDES; },
+                    routeLinesFor: (a, b) => _routeLinesFor(a, b),
+                    routeCitiesForBattle: (i) => _routeCitiesForBattle(i),
+                    backdropKeyForScene: (k, beat) => _backdropKeyForScene(k, beat),
+                    maybeShowRouteInterstitial: (ev, cb) => _maybeShowRouteInterstitial(ev, cb),
+                    storyThreadObjectiveLine: () => _storyThreadObjectiveLine(),
+                    journalRenderHTML: () => _journalRenderHTML(),
+                    errandOfferForCity: (c) => _errandOfferForCity(c),
+                    errandActiveForCity: (c) => _errandActiveForCity(c),
+                    acceptErrand: (id) => _acceptErrand(id),
+                    completeErrand: (id) => _completeErrand(id),
+                    resolveActLines: (act) => _resolveActLines(act),
+                    storyChoiceValue: (k) => _storyChoiceValue(k),
+                    storyRecapLines: () => _storyRecapLines(),
+                    get STORY_CHOICE_LABELS() { return STORY_CHOICE_LABELS; },
                     get MAIN_STORY_BEATS() { return MAIN_STORY_BEATS; },
                     get VILLAIN_STORY_BEATS() { return VILLAIN_STORY_BEATS; },
                     get EXTRA_STORY_BEATS() { return EXTRA_STORY_BEATS; },
@@ -43089,20 +43781,71 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Each act = one overlay page; a choice act swaps to its reply then
         // advances. `title` is the steady chapter nameplate across all acts so
         // the run reads as one event; the progress dots ride the banner slot.
-        function _playSceneActs(scene, baseMeta, onDone) {
+        // ── Narration overhaul (v26): beat banner context (location/tod/sigil) ──
+        const TRACK_SIGILS = { main: '🏅', villain: '⚔', extra: '👁', mystery: '👁' };
+        function _trackSigilForSceneKey(sceneKey) {
+            const k = String(sceneKey || '');
+            if (/^villain\./.test(k)) return TRACK_SIGILS.villain;
+            if (/^extra\./.test(k)) return TRACK_SIGILS.extra;
+            if (/^main\.mf/.test(k)) return TRACK_SIGILS.mystery;
+            if (/^main\./.test(k)) return TRACK_SIGILS.main;
+            return '';
+        }
+        // Deterministic time-of-day from the event index (no bare random — keeps
+        // seeded replays byte-identical). Cycles Morning→Noon→Dusk→Night.
+        const _STORY_TOD = ['Morning', 'Noon', 'Dusk', 'Night'];
+        function _todForEventIndex(idx) { return _STORY_TOD[((idx | 0) % _STORY_TOD.length + _STORY_TOD.length) % _STORY_TOD.length]; }
+        // Best-effort "where are we" label for the beat banner: the current route
+        // name if we're mid-journey, else the current town name.
+        function _storySceneLocationLabel() {
+            try {
+                const idx = sm ? (sm.eventIndex | 0) : 0;
+                const rc = _routeCitiesForBattle(idx);
+                if (rc) { const rl = _routeLinesFor(rc.fromCity, rc.toCity); if (rl && rl.name) return rl.name; }
+            } catch (e) {}
+            try {
+                const idx = sm ? (sm.eventIndex | 0) : 0;
+                // Walk back to the most recent City row for a town name.
+                for (let i = idx; i >= 0; i--) {
+                    const r = STORY_EVENTS_RAW[i];
+                    if (r && r[1] === 'City') {
+                        const nm = (typeof getStoryDisplayTownNameForCityRow === 'function') ? getStoryDisplayTownNameForCityRow(r) : '';
+                        return nm || String(r[2] || '');
+                    }
+                }
+            } catch (e) {}
+            return '';
+        }
+        function _bannerPartsForSceneKey(sceneKey) {
+            const idx = sm ? (sm.eventIndex | 0) : 0;
+            return {
+                location: _storySceneLocationLabel(),
+                tod: _todForEventIndex(idx),
+                sigil: _trackSigilForSceneKey(sceneKey),
+            };
+        }
+        function _playSceneActs(scene, baseMeta, onDone, ctx) {
             const acts = (scene && Array.isArray(scene.acts)) ? scene.acts.filter(Boolean) : [];
             if (!acts.length) { try { onDone && onDone(); } catch (e) {} return; }
             const total = acts.length;
+            const _ctx = ctx || {};
+            const _sceneKey = _ctx.sceneKey || (typeof baseMeta === 'string' ? baseMeta.replace(/^beat-/, '') : '');
+            const _bannerParts = _ctx.bannerParts || (_sceneKey ? _bannerPartsForSceneKey(_sceneKey) : null);
             const step = (i) => {
                 if (i >= total) { try { onDone && onDone(); } catch (e) {} return; }
                 const act = acts[i];
                 _renderNarrativeOverlay({
                     metaKey: baseMeta ? (baseMeta + '-' + i) : null,
                     sprite: scene.sprite || null,
+                    monSprite: scene.mon || null,
+                    monShiny: !!scene.monShiny,
                     name: '',
                     nameplate: scene.title || '',
+                    sceneKey: _sceneKey || null,
+                    bannerParts: (i === 0) ? _bannerParts : null, // context line on the opening act only
                     banner: _sceneProgressDots(i, total),
                     bannerClass: 'story-narr-progress',
+                    typewriter: true,
                     lines: _resolveActLines(act),
                     choices: _resolveActChoices(act),
                     continueLabel: (i === total - 1) ? 'Continue →' : 'Next →',
@@ -43202,7 +43945,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // visual language.
             if (Array.isArray(scene.acts) && scene.acts.length) {
                 try {
-                    _playSceneActs(scene, 'beat-' + sceneKey, () => { try { onDone && onDone(); } catch (e) {} });
+                    _playSceneActs(scene, 'beat-' + sceneKey, () => { try { onDone && onDone(); } catch (e) {} },
+                        { sceneKey: sceneKey });
                 } catch (e) {
                     console.warn('[Story] structured beat failed for', sceneKey, e);
                     try { onDone && onDone(); } catch (e2) {}
@@ -43213,8 +43957,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _renderNarrativeOverlay({
                     metaKey: 'beat-' + sceneKey,
                     sprite: null,
+                    monSprite: scene.mon || null,
+                    monShiny: !!scene.monShiny,
                     name: '',
                     nameplate: scene.title || '',
+                    sceneKey: sceneKey,
+                    bannerParts: _bannerPartsForSceneKey(sceneKey),
+                    typewriter: true,
                     lines: _splitBeatBodyIntoPages(scene.body),
                     continueLabel: 'Continue →',
                     onDone: () => { try { onDone && onDone(); } catch (e) {} }
@@ -44263,6 +45012,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // to City" button from a facility re-enters this function, so this preserves
             // the Crucible context across sub-screens.
             if (sm.atCrucible) { enterCrucible(); return; }
+            // Narration overhaul (v26): "Previously…" recap. Fires once per
+            // session on the first city entry that has thread progress to recap
+            // (so a fresh City0 start shows nothing). On dismiss, re-enters.
+            if (_maybeShowStoryRecap(() => enterCity())) return;
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
             // City0 cold open: 3-line narrator scene before the first hub render of a
@@ -44938,6 +45691,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `🎒 Bag (${_invCount} type${_invCount !== 1 ? 's' : ''})`
                 : '🎒 Bag — Empty';
             _push('utility', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
+            _push('utility', makeActionBtn('📓 Journal', 'journal', 'window.StoryMode.enterJournal()', 'link', { soft:true }));
 
             const _sectionCount = (html) => (html.match(/<button[^>]*class="story-action-btn/g) || []).length;
             const _emit = (key, iconPath, title) => {
@@ -44991,6 +45745,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _oico = objective.icon ? `<img class="obj-ico" src="icons/story/${objective.icon}?v=20260516" alt="" width="18" height="18" decoding="async">` : '';
                     _railHtml += `<button type="button" class="story-city-objective" onclick="${objective.click}"><span class="obj-kicker">${objective.kicker}</span>${_oico}<span class="obj-label">${objective.label}</span><span class="obj-go">▶</span></button>`;
                 }
+                // Narration overhaul (v26): thread-status subline + courier errand.
+                try {
+                    const _threadLine = _storyThreadObjectiveLine();
+                    if (_threadLine) _railHtml += `<div class="story-city-tips-sugg story-city-thread">${_esc(_threadLine)}</div>`;
+                    const _activeErr = _errandActiveForCity(cityIdx);
+                    if (_activeErr) {
+                        _railHtml += `<button type="button" class="story-city-objective" onclick="window.StoryMode.showErrandComplete('${_esc(_activeErr.id)}')"><span class="obj-kicker">ERRAND</span><span class="obj-label">Hand over: ${_esc(_errandShortLabel(_activeErr))}</span><span class="obj-go">▶</span></button>`;
+                    } else if (_errandOfferForCity(cityIdx)) {
+                        _railHtml += `<button type="button" class="story-city-tip" onclick="window.StoryMode.showErrandOffer(${cityIdx})"><span class="story-city-tip-ico">✉</span><span>Someone here needs a hand…</span></button>`;
+                    }
+                } catch (e) {}
                 // Remaining tips are optional, quieter suggestions (cap 3 so the action
                 // grid stays above the fold on phone portrait).
                 const _sugg = tips.slice(0, 3);
@@ -48168,6 +48933,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!ov) return;
             _narrationLive = true;
             try { document.body.appendChild(ov); } catch (e) {}
+            try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
         }
         function _renderNarrativeOverlay(opts) {
             const o = opts || {};
@@ -48182,21 +48948,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
             if (toneClass) ov.classList.add(toneClass);
+            // Narration overhaul (v26): optional gen3 scene backdrop behind the
+            // overlay. `backdropScene` is an explicit manifest.scenes key;
+            // `sceneKey` is a raw beat key resolved through _backdropKeyForScene.
+            // A dark gradient sits over the image so the dialog stays readable.
+            // Absent → the legacy flat rgba(0,0,0,0.94) is preserved untouched.
+            try {
+                let _bdKey = o.backdropScene || '';
+                if (!_bdKey && o.sceneKey) _bdKey = _backdropKeyForScene(o.sceneKey, o.beat || null);
+                if (_bdKey) {
+                    const _scenes = (getStoryBgManifest().scenes) || (DEFAULT_STORY_BG_MANIFEST.scenes) || {};
+                    const _bdUrl = _scenes[_bdKey];
+                    if (_bdUrl) {
+                        ov.style.background = 'linear-gradient(180deg, rgba(4,6,12,0.82) 0%, rgba(4,6,12,0.9) 60%, rgba(4,6,12,0.96) 100%), url("' + _bdUrl + '")';
+                        ov.style.backgroundSize = 'cover, cover';
+                        ov.style.backgroundPosition = 'center, center';
+                        ov.style.backgroundRepeat = 'no-repeat, no-repeat';
+                        ov.style.imageRendering = 'pixelated';
+                    }
+                }
+            } catch (e) {}
             // Sprite: `spriteSrc` (a pre-resolved URL — lets callers pass the SPRITE_MAP-
             // resolved path, e.g. Piers→Roughneck, which {spriteFile} would miss) wins over
-            // `sprite` (a file stem). `spriteClass` tags the <img> for treatments like the
-            // cast-emotion filters (§6.4). Both default to the prior behavior.
-            const _spriteSrc = o.spriteSrc || (sprite ? getTrainerSprite({ spriteFile: sprite }) : '');
+            // `monSprite` (a species name → animated gen5 sprite via getSprite) which wins
+            // over `sprite` (a trainer file stem). `spriteClass` tags the <img> for
+            // treatments like the cast-emotion filters (§6.4). Defaults preserve behavior.
+            let _monSrc = '';
+            try { if (o.monSprite) _monSrc = getSprite(o.monSprite, !!o.monShiny); } catch (e) {}
+            const _spriteSrc = o.spriteSrc || _monSrc || (sprite ? getTrainerSprite({ spriteFile: sprite }) : '');
             const _spriteClass = o.spriteClass || '';
             const spriteHtml = _spriteSrc
                 ? `<img${_spriteClass ? ` class="${_esc(_spriteClass)}"` : ''} src="${_esc(_spriteSrc)}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
                 : '';
             const bannerClass = o.bannerClass || '';
-            const bannerHtml = banner
+            // bannerParts {location, tod, sigil} renders a context line:
+            //   ⚔  ROUTE 3 · DUSK   — place + time-of-day + a track sigil.
+            // It coexists with `banner` (e.g. act progress dots), stacked above it.
+            let _contextHtml = '';
+            if (o.bannerParts && (o.bannerParts.location || o.bannerParts.tod || o.bannerParts.sigil)) {
+                const bp = o.bannerParts;
+                const _sig = bp.sigil ? `<span style="margin-right:8px;">${_esc(bp.sigil)}</span>` : '';
+                const _loc = bp.location ? _esc(bp.location) : '';
+                const _tod = bp.tod ? ` · ${_esc(bp.tod)}` : '';
+                _contextHtml = `<div class="story-narr-context" style="color:#cfd8e6;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,0.9);">${_sig}${_loc}${_tod}</div>`;
+            }
+            const _bannerLineHtml = banner
                 ? (bannerClass
                     ? `<div class="${_esc(bannerClass)}">${_esc(banner)}</div>`
                     : `<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">${_esc(banner)}</div>`)
                 : '';
+            const bannerHtml = _contextHtml + _bannerLineHtml;
             const nameHtml = name
                 ? `<div style="color:${accent};font-size:18px;font-weight:bold;">${_esc(name)}</div>`
                 : '';
@@ -48226,10 +49027,68 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="story-dialog-box" data-narr-body="1">${linesHtml}</div>
                 </div>
                 ${choices.length ? choiceBtnsHtml : continueBtnHtml}`;
+            // Narration overhaul (v26): typewriter reveal. Active only when
+            // opts.typewriter is set, there are no choice buttons, and the user
+            // has not requested reduced motion. While typing, the first tap
+            // completes the current text instantly; a tap after completion
+            // dismisses. Falls back to instant full text otherwise.
+            let _twTyping = false;
+            let _twTimer = null;
+            let _skipTypewriter = null;
+            // Typewriter is skipped for reduced-motion users (instant text). The
+            // reveal is started from requestAnimationFrame (see __startTypewriter)
+            // so it clears+reveals before the first paint in a real browser (no
+            // flash) while preserving the synchronous full-text DOM contract in
+            // headless/jsdom, where rAF doesn't fire within a sync test task.
+            const _wantsTypewriter = !!o.typewriter && !choices.length
+                && !(window.StoryFx && typeof window.StoryFx.isReducedMotion === 'function' && window.StoryFx.isReducedMotion());
+            ov.__startTypewriter = function () {
+                if (!_wantsTypewriter) return;
+                // Defer to rAF: fires before first paint in a real browser (so the
+                // clear+reveal is seamless), but does NOT run inside a synchronous
+                // test task (so jsdom keeps full text in the DOM immediately).
+                const _raf = (typeof window.requestAnimationFrame === 'function')
+                    ? window.requestAnimationFrame : (cb) => setTimeout(cb, 0);
+                _raf(_runTypewriter);
+            };
+            function _runTypewriter() {
+                if (dismissed) return;
+                const ps = Array.prototype.slice.call(ov.querySelectorAll('[data-narr-body="1"] .story-dialog-text'));
+                if (!ps.length) return;
+                const full = ps.map(p => ({ el: p, html: p.innerHTML, text: p.textContent || '' }));
+                full.forEach(f => { f.el.textContent = ''; });
+                _twTyping = true;
+                let pi = 0, ci = 0;
+                _skipTypewriter = function () {
+                    if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
+                    full.forEach(f => { f.el.innerHTML = f.html; });
+                    _twTyping = false;
+                    _skipTypewriter = null;
+                };
+                const tick = function () {
+                    if (!_twTyping) return;
+                    if (pi >= full.length) { if (_skipTypewriter) _skipTypewriter(); return; }
+                    const f = full[pi];
+                    if (ci < f.text.length) {
+                        ci += Math.max(1, Math.round(f.text.length / 160)); // ~steady pace on long lines
+                        f.el.textContent = f.text.slice(0, Math.min(ci, f.text.length));
+                        _twTimer = setTimeout(tick, 16);
+                    } else {
+                        f.el.innerHTML = f.html;
+                        pi += 1; ci = 0;
+                        _twTimer = setTimeout(tick, 110);
+                    }
+                };
+                tick();
+            };
             let dismissed = false;
             const dismiss = function () {
                 if (dismissed) return;
+                // If still typing, the first dismiss request completes the text
+                // instead of closing — so a tap never skips unread prose.
+                if (_twTyping && _skipTypewriter) { _skipTypewriter(); return; }
                 dismissed = true;
+                if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
                 if (o.metaKey) {
                     // Per-run dedupe (matches _runStoryColdOpen / playStoryTutorial)
                     // so narrative overlays replay on a fresh run.
@@ -48306,6 +49165,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 _narrationLive = true;
                 document.body.appendChild(ov);
+                try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
             }
             return ov;
         }
@@ -49501,13 +50361,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             setTimeout(playNext, 420);
         }
 
-        function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {
+        function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked, _routeChecked) {
             if (!ev) return;
             if (ev[1] !== 'Battle') {
                 console.warn('[Story] enterBattleEvent expected Battle row, got', ev[1]);
                 if (ev[1] === 'City') { enterCity(); return; }
                 if (ev[1] === 'Hall of Fame') { showHallOfFame(); return; }
                 processNextEvent();
+                return;
+            }
+            // Route interstitial (v26): the "you set out…" travel beat shown once
+            // when leaving a city for the next route. Fires FIRST, before camp /
+            // cold-open / wild interrupts / trainer, so the journey has a sense of
+            // place. Idempotent via sm.routeShown[idx] (stamped before render), so
+            // the later re-entries below that omit `_routeChecked` can't replay it.
+            if (!_routeChecked && _maybeShowRouteInterstitial(ev,
+                () => enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked, true))) {
                 return;
             }
             // Camp buffer (PR C): interpose a once-per-transition camp beat before
