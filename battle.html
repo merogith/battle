@@ -40445,6 +40445,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     migrateStoryPreV25: () => migrateStoryPreV25(),
                     enterCamp: (...a) => enterCamp(...a),
                     campIsDueForTransition: (...a) => _campIsDueForTransition(...a),
+                    campDeferForPendingWildChain: (...a) => _campDeferForPendingWildChain(...a),
                     campDone: (...a) => _campDone(...a),
                     campMarkDone: (...a) => _campMarkDone(...a),
                     campSearchGrass: (...a) => _campSearchGrass(...a),
@@ -48933,6 +48934,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
             sm.campByEventIdx[String(destIdx)] = { done: true, ts: Date.now() };
         }
+        /** Route-0 smoothing — hold the camp beat while this battle still has a
+         *  pre-battle wild chain queued. The camp gate sits at the TOP of
+         *  enterBattleEvent, above the interrupt dispatch that fires the scripted
+         *  catch tutorial ("Catching 101") + the route wilds. On route 0 the only
+         *  camp seam is the Rival→Basic-Trainer transition, which is exactly where
+         *  the catch tutorial lives — so without this, camp pre-empts the player's
+         *  very first wild-catch lesson (and the camp's own grass-search hands them
+         *  a redundant "The Road" lesson before the tutorial even runs). Deferring
+         *  until the chain is spent yields the intended cadence: catch tutorial →
+         *  wild #2 → camp → trainer. Elsewhere a camp seam is battle→battle with no
+         *  pending wild (route wilds only attach to a city→battle first-of-route, a
+         *  non-camp seam), so this returns false and camp fires exactly as before. */
+        function _campDeferForPendingWildChain(battleIdx) {
+            return _shouldFireCatchTutorialBeforeBattle(battleIdx)
+                || _shouldFireRoamingBeforeBattle(battleIdx)
+                || _shouldFireWildBeforeBattle(battleIdx);
+        }
         // ── CAMP MINIGAMES + BONDING earning loop (Camp System PR D) ──────────
         // docs/story-design/camp/CAMP_MINIGAMES.md + BONDING_RELATIONSHIPS.md.
         // Phase 1 (this PR): ONE micro-game per action — 6 games on 2 shared input
@@ -49540,7 +49558,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // this route battle (and its cold-open). eventIndex is already set + saved
             // by the upstream advance path; the resume re-enters here with the gate set
             // so the route continues normally. See CAMP_FLOW.md §3.
-            if (_campIsDueForTransition(sm.eventIndex) && !_campDone(sm.eventIndex)) {
+            //
+            // Route-0 ordering (_campDeferForPendingWildChain): the camp gate runs
+            // above the interrupt dispatch below, so on the Rival→Basic-Trainer seam
+            // it would fire BEFORE the scripted catch tutorial + route wilds. Hold
+            // camp while that chain is still queued (only when the interrupt phase
+            // hasn't been bypassed) so the cadence is catch tutorial → wild #2 → camp
+            // → trainer. Camp re-evaluates on each chained re-entry and fires once the
+            // wilds are spent. Non-route-0 camp seams have no pending wild → no change.
+            const _campWildChainPending = !_wildAlreadyChecked && _campDeferForPendingWildChain(sm.eventIndex);
+            if (_campIsDueForTransition(sm.eventIndex) && !_campDone(sm.eventIndex) && !_campWildChainPending) {
                 enterCamp(sm.eventIndex, () => enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked));
                 return;
             }

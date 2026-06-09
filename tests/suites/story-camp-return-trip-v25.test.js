@@ -30,6 +30,12 @@ function baseSm() {
     sm.campByEventIdx = {};
     sm.wanderByEventIdx = {};
     sm.campReturnPoint = null;
+    // These scenarios sit at mid-game route seams (idx 6/8), long past route 0
+    // where the scripted catch tutorial fired. Mark it done so the route-0 camp
+    // deferral (_campDeferForPendingWildChain, which holds camp while the catch
+    // tutorial is still pending) stays inactive here — matching real mid-route
+    // state, where camp re-fires normally on the return-trip.
+    sm.catchTutorialDone = true;
     return sm;
 }
 
