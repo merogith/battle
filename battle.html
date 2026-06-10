@@ -57904,7 +57904,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (old.n)        evoBuild.n        = old.n;
             if (old.evs)      evoBuild.evs      = { ...old.evs };
             if (old.teraType) evoBuild.teraType = old.teraType;
-            if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
+            // Held item carries over unchanged — the player chose it. Eviolite is kept
+            // too: its boost is NFE-gated in the damage calc, so on a now-fully-evolved
+            // form it simply lies inert until the player re-slots it (never an illegal
+            // hold). Only the '(none)' sentinel is skipped so the rolled default stands.
+            if (old.i && old.i !== '(none)') evoBuild.i = old.i;
             // Carry vitamin investment through evolution: IVs are the mon's,
             // not the species'. Without this, evolving a Fan-Club-trained mon
             // would silently reset its stats to the species default 31s.
@@ -58057,7 +58061,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const consumeNote = req.stoneId ? `\nA ${req.stone} from your bag will be consumed.`
                                   : req.tradeId ? `\nA ${req.trade} from your bag will be consumed.`
                                   : '';
-                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.${consumeNote}`;
+                const tail = `Nature, IVs, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), camp bond, and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.${consumeNote}`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
@@ -58105,7 +58109,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cost = _evoCostFor(evoGrade);
                 const flavor = _evoFlavorLine(evoName);
                 const head = `🍬 Use 1 Rare Candy to evolve ${mon.name} → ${evoName} (Grade ${evoGrade})? Saves ${cost.toLocaleString()}G.`;
-                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
+                const tail = `Nature, IVs, EVs, item, ability (if ${evoName} can have it), camp bond, and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
