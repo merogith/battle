@@ -382,7 +382,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f31bcfda964b
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Anomaly seeds fire via low-z `showGameAlert` on the same tick as the row's flow — can paint behind/over other overlays
@@ -504,7 +504,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d042b79a10dc
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery Figure sprite is now `Red` (the_first); the `'Cyrus'` fallback at enterBattleEvent is dead

@@ -73,7 +73,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 54819c046cee
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Entire Caged God boss-arc subsystem is dead code after v24 removal
