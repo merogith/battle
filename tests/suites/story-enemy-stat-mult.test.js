@@ -2,7 +2,7 @@
 //
 //   _storyEnemyStatMult(): NORMAL-difficulty progression curve, pure fn of
 //     (event, city, row). FOE_POWER_CURVE C0..C9 = 0.80 / 0.85 / 0.90 / 0.95 /
-//     1.00 / 1.00 / 1.05 / 1.08 / 1.10 / 1.15. Boss overrides: E1-E4 1.15,
+//     1.00 / 1.03 / 1.05 / 1.08 / 1.10 / 1.15. Boss overrides: E1-E4 1.15,
 //     Champion 1.20, Mystery Figure 1.30, intro Rival 0.75.
 //   _foeDifficultyMult(): orthogonal difficulty knob — 0.70 / 0.85 / 1.00 /
 //     1.15 / 1.30 (veryeasy / easy / normal / hard / challenge).
@@ -18,7 +18,8 @@ const eng = await loadEngine();
 const ST = eng.window.__storyTest;
 
 test('progression curve: soft early, parity mid, demanding by the League', () => {
-  const expected = { 0: 0.80, 1: 0.85, 2: 0.90, 3: 0.95, 4: 1.00, 5: 1.00, 6: 1.05, 7: 1.08, 8: 1.10, 9: 1.15 };
+  // C5 = 1.03 (a gradual mid-game step C4 1.00 → C5 1.03 → C6 1.05; breaks the old GL4≡GL5 plateau).
+  const expected = { 0: 0.80, 1: 0.85, 2: 0.90, 3: 0.95, 4: 1.00, 5: 1.03, 6: 1.05, 7: 1.08, 8: 1.10, 9: 1.15 };
   for (const [c, mult] of Object.entries(expected)) {
     const m = ST.storyEnemyStatMult('Basic Trainer', +c, 0);
     assert.ok(Math.abs(m - mult) < 1e-9, `C${c} curve should be ${mult} (got ${m})`);

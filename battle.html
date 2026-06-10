@@ -10398,7 +10398,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _archetypes, _synergies] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10413,8 +10413,15 @@
                         fetch('data/move-tags.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/routes.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/errands.json').then(r => r.json()).catch(() => null),
-                        fetch('data/story/branches.json').then(r => r.json()).catch(() => null)
+                        fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
+                        fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
+                        fetch('data/move-synergies.json').then(r => r.json()).catch(() => null)
                     ]);
+                    // Designed-build archetype engine tables (Object.assign in place so the
+                    // module-level BUILD_ARCHETYPES / MOVE_SYNERGIES + their window mirrors see
+                    // the data; missing files → empty defaults → legacy designed-build path).
+                    if (_archetypes && Array.isArray(_archetypes.archetypes)) Object.assign(BUILD_ARCHETYPES, _archetypes);
+                    if (_synergies && (_synergies.pairs || _synergies.moveItem)) Object.assign(MOVE_SYNERGIES, _synergies);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
                     // _tutorFetchLearnsetMoveNames only fires for species missing here).
@@ -11053,6 +11060,22 @@
         //   0.0 = pure designed (every build is role-coherent and legal)
         // A run setup UI exposes this; set it directly in the console
         // via `settings.csvBuildMix = 0.5` for one-off testing.
+        // ── Story DESIGNED-build archetype engine (data-driven) ─────────────────────────
+        // Loaded from data/build-archetypes.json + data/move-synergies.json in loadGameData
+        // (Object.assign in place — sloppy-mode safe). Empty defaults so the generator falls
+        // back to the legacy role-config path if the files are missing. Story-only; non-story
+        // designed builds keep the legacy path byte-for-byte.
+        let BUILD_ARCHETYPES = { archetypes: [] };
+        let MOVE_SYNERGIES = { pairs: [], moveItem: [] };
+        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; } catch (e) {}
+        const _ARCH_SETUP_MOVES = new Set([
+            'Swords Dance', 'Nasty Plot', 'Dragon Dance', 'Calm Mind', 'Shell Smash', 'Quiver Dance',
+            'Bulk Up', 'Coil', 'Curse', 'Agility', 'Rock Polish', 'Autotomize', 'Work Up', 'Growth',
+            'Tail Glow', 'Iron Defense', 'Belly Drum', 'Shift Gear', 'Victory Dance', 'No Retreat',
+            'Clangorous Soul', 'Geomancy', 'Tidy Up', 'Filament Dance'
+        ]);
+        const _ARCH_HAZARD_MOVES = new Set(['Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web', 'Ceaseless Edge']);
+
         const _DESIGNED_ROLE_CONFIG = {
             PHYS_ATTACKER:  { item: 'Choice Band',  nature: 'Adamant', evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
             SPEC_ATTACKER:  { item: 'Choice Specs', nature: 'Modest',  evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
@@ -11176,19 +11199,167 @@
             while (moves.length < 4) moves.push('Tackle'); // non-story / typeless last resort
             return moves.slice(0, 4);
         }
+        // Coarse role for archetype eligibility. _designedInferRole measures bulk as
+        // def+spd only, so an HP wall with thin defenses (Blissey, Chansey) reads as an
+        // attacker; fold total bulk (incl. HP) in here so those classify correctly.
+        function _designedCoarseRole(name) {
+            const b = baseStats[name] || {};
+            const off = Math.max(b.atk | 0, b.spa | 0);
+            const bulk = (b.hp | 0) + (b.def | 0) + (b.spd | 0);
+            if (off < 90 && bulk >= 260) return 'wall';
+            return _designedInferRole(name).includes('WALL') ? 'wall' : 'attacker';
+        }
+        function _archEligible(arche, base, coarse) {
+            const e = arche.eligible || {};
+            if (e.role && e.role !== 'any' && e.role !== coarse) return false;
+            if (e.minSpe != null && (base.spe | 0) < e.minSpe) return false;
+            if (e.minBulk != null && ((base.def | 0) + (base.spd | 0)) < e.minBulk) return false;
+            if (e.minOffense != null && Math.max(base.atk | 0, base.spa | 0) < e.minOffense) return false;
+            return true;
+        }
+        function _designedPickArchetype(base, coarse, rng) {
+            const all = (BUILD_ARCHETYPES && BUILD_ARCHETYPES.archetypes) || [];
+            const arr = all.filter(a => _archEligible(a, base, coarse));
+            if (!arr.length) return null;
+            let total = 0; for (const a of arr) total += (a.weight || 1);
+            let r = rng() * total;
+            for (const a of arr) { r -= (a.weight || 1); if (r <= 0) return a; }
+            return arr[arr.length - 1];
+        }
+        // Classify a species' legal move pool into role buckets (the raw material the
+        // archetype slot-distribution draws from). Damaging buckets are sorted by
+        // power×accuracy with a nudge toward the species' better attacking stat.
+        function _designedClassifyMoves(name, base, legalPool) {
+            const types = new Set([base.t1, base.t2].filter(Boolean));
+            const physical = (base.atk | 0) >= (base.spa | 0);
+            const out = { stab: [], coverage: [], status: [], setup: [], recovery: [], hazard: [] };
+            for (const m of legalPool) {
+                const md = ensureMoveData(m); if (!md) continue;
+                if (md.cat === 'Physical' || md.cat === 'Special') {
+                    const entry = { name: m, pow: md.pow || 0, acc: md.acc || 100, cat: md.cat };
+                    (types.has(md.type) ? out.stab : out.coverage).push(entry);
+                } else if (_DESIGNED_HEAL_MOVES.has(m)) out.recovery.push(m);
+                else if (_ARCH_HAZARD_MOVES.has(m)) out.hazard.push(m);
+                else if (_ARCH_SETUP_MOVES.has(m)) out.setup.push(m);
+                else out.status.push(m);
+            }
+            const dscore = (e) => e.pow * (e.acc / 100) + (((e.cat === 'Physical') === physical) ? 20 : -15);
+            out.stab.sort((x, y) => dscore(y) - dscore(x));
+            out.coverage.sort((x, y) => dscore(y) - dscore(x));
+            return out;
+        }
+        // Synergy bonus for a candidate move given the already-chosen moves + the build's item.
+        function _designedSynergyBonus(cand, chosen, item) {
+            let s = 0;
+            for (const p of (MOVE_SYNERGIES.pairs || [])) {
+                if (!p.moves || p.moves.length !== 2) continue;
+                const [a, b] = p.moves;
+                if ((cand === a && chosen.includes(b)) || (cand === b && chosen.includes(a))) s += (p.bonus || 0);
+            }
+            if (item) for (const mi of (MOVE_SYNERGIES.moveItem || [])) {
+                if (mi.move === cand && mi.item === item) s += (mi.bonus || 0);
+            }
+            return s;
+        }
+        function _designedPickItem(arche, physical, rng) {
+            let items = (arche.items || ['Leftovers']).slice();
+            items = items.filter(it => physical ? it !== 'Choice Specs' : it !== 'Choice Band');
+            if (!items.length) items = ['Leftovers'];
+            return items[Math.floor(rng() * items.length)];
+        }
+        function _designedEvSpread(shape, base) {
+            const off = (base.atk | 0) >= (base.spa | 0) ? 'atk' : 'spa';
+            const z = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            if (shape === 'bulk_offense') { z.hp = 252; z[off] = 252; z.def = 4; }
+            else if (shape === 'max_bulk') { z.hp = 252; z[(base.def | 0) <= (base.spd | 0) ? 'def' : 'spd'] = 252; z.spe = 4; }
+            else if (shape === 'bulk') { z.hp = 252; z.def = 128; z.spd = 128; }
+            else { z[off] = 252; z.spe = 252; z.hp = 4; } // max_offense_speed (default)
+            return z;
+        }
+        // Fill the archetype's slot distribution from the classified buckets, scoring each
+        // candidate by base usefulness + synergy with already-chosen moves/item (so combos
+        // co-occur). A short bucket redistributes its deficit to the next slots; the typed-
+        // STAB net guarantees a full 4 without ever surfacing literal Tackle on a real mon.
+        function _designedFillFromArchetype(name, base, arche, buckets, item, rng) {
+            const order = ['stab', 'coverage', 'setup', 'status', 'recovery', 'hazard'];
+            const pool = {}; for (const k of order) pool[k] = (buckets[k] || []).slice();
+            const chosen = [];
+            const takeFrom = (k) => {
+                const arr = pool[k]; if (!arr || !arr.length) return null;
+                let bestIdx = -1, bestScore = -1e9, bestName = null;
+                for (let i = 0; i < arr.length; i++) {
+                    const e = arr[i];
+                    const nm = (typeof e === 'string') ? e : e.name;
+                    let sc = (typeof e === 'string') ? 60 : e.pow * (e.acc / 100);
+                    sc += _designedSynergyBonus(nm, chosen, item) + rng() * 8;
+                    if (sc > bestScore) { bestScore = sc; bestIdx = i; bestName = nm; }
+                }
+                if (bestIdx >= 0) arr.splice(bestIdx, 1);
+                return bestName;
+            };
+            const slots = arche.slots || {};
+            for (const k of order) {
+                let n = slots[k] | 0;
+                while (n-- > 0 && chosen.length < 4) { const mv = takeFrom(k); if (mv && !chosen.includes(mv)) chosen.push(mv); }
+            }
+            for (const k of order) {
+                while (chosen.length < 4) { const mv = takeFrom(k); if (!mv) break; if (!chosen.includes(mv)) chosen.push(mv); }
+            }
+            if (chosen.length < 4) {
+                const STAB = window._T1_BASIC_STAB_BY_TYPE || {};
+                for (const c of [STAB[base.t1], STAB[base.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite']) {
+                    if (chosen.length >= 4) break;
+                    if (c && !chosen.includes(c)) chosen.push(c);
+                }
+            }
+            while (chosen.length < 4) chosen.push('Tackle');
+            return chosen.slice(0, 4);
+        }
+
         function makeDesignedBuild(name) {
             const base = baseStats[name];
             if (!base) return null;
             const legalPool = _designedCsvMovePool(name);
             if (legalPool.length < 3) return null;
-            const role = _designedInferRole(name);
-            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
-            const moves = _designedPickMoves(name, role, base, legalPool);
             let ability = 'None';
             if (base.abilities) {
                 const aPool = [base.abilities['0'], base.abilities['1'], base.abilities['H']].filter(Boolean);
                 if (aPool.length) ability = aPool[0];
             }
+            // Story archetype engine (data-driven): a coherent move distribution
+            // (stab/coverage/status/setup/recovery/hazard per the chosen archetype),
+            // synergy-scored move fill (Protect+Toxic, Rest+Sleep Talk…), and a stat-sensitive
+            // EV spread. Falls back to the legacy role-config path when not in a story run or
+            // when the archetype data isn't loaded — so non-story (Quick Play / PvP / draft)
+            // designed builds stay byte-identical.
+            const storyOn = (window.sm && window.sm.active)
+                || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            if (storyOn && BUILD_ARCHETYPES.archetypes && BUILD_ARCHETYPES.archetypes.length) {
+                const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const coarse = _designedCoarseRole(name);
+                const physical = _designedInferRole(name).startsWith('PHYS_');
+                const arche = _designedPickArchetype(base, coarse, rng);
+                if (arche) {
+                    const buckets = _designedClassifyMoves(name, base, legalPool);
+                    const item = _designedPickItem(arche, physical, rng);
+                    const moves = _designedFillFromArchetype(name, base, arche, buckets, item, rng);
+                    return {
+                        i: item,
+                        a: ability,
+                        n: (arche.nature && arche.nature[physical ? 'phys' : 'spec']) || (physical ? 'Adamant' : 'Modest'),
+                        m: moves,
+                        evs: _designedEvSpread(arche.evShape, base),
+                        gimmick: 'STANDARD',
+                        teraType: null,
+                        archetype: arche.id,
+                        _designed: true,
+                    };
+                }
+            }
+            // Legacy path (non-story / no archetype data) — unchanged.
+            const role = _designedInferRole(name);
+            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
+            const moves = _designedPickMoves(name, role, base, legalPool);
             return {
                 i: cfg.item,
                 a: ability,
@@ -11203,6 +11374,12 @@
         }
         window.makeDesignedBuild = makeDesignedBuild;
         window._designedPickMoves = _designedPickMoves; // harness-testable (thin-pool pad)
+        try {
+            window._designedClassifyMoves = _designedClassifyMoves;
+            window._designedFillFromArchetype = _designedFillFromArchetype;
+            window._designedPickArchetype = _designedPickArchetype;
+            window._designedSynergyBonus = _designedSynergyBonus;
+        } catch (e) {}
 
         // ── Smogon set POWER rating + power-weighted selection ──────────────────────────
         // A Smogon set's competitive tier IS a power ordering: an OU set outclasses a ZU
@@ -36415,7 +36592,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The two are multiplied together once at the stamp site (enterBattleEvent)
         // into a single build._storyStatMult. Wilds + Professor gifts are EXEMPT —
         // they keep their natural Lv50 line.
-        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.00, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
+        // City 5 steps to 1.03 (was 1.00) so the mid-game reads as a gradual climb —
+        // C4 parity (1.00) → C5 (1.03) → C6 (1.05) — instead of the old flat GL4≡GL5
+        // plateau ("same fight, different sprites"). Maintainer-owned curve — tune here.
+        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.03, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
         function _storyEnemyStatMult(eventType, city, storyRowIdx) {
             const e = String(eventType || '');
             const row = storyRowIdx | 0;

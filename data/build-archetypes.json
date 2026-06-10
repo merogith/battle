@@ -1,0 +1,77 @@
+{
+  "_doc": "Move-slot distribution templates for the story DESIGNED-build generator (makeDesignedBuild). Each archetype names how many of each role-slot to fill (stab / coverage / status / setup / recovery / hazard), an item pool, a nature per offense side, and an EV-spread shape. The generator picks an eligible archetype (by the species' stats), fills the slots from the species' classified move pool (synergy-scored via move-synergies.json), then sets item/nature/EVs. Low tiers re-cap EV/nature/item downstream in _storyDowngradeBuildForTier, so these matter most at T3/T4. Maintainer-owned — tune freely. evShape ids are resolved in code: max_offense_speed / bulk_offense / max_bulk / bulk.",
+  "archetypes": [
+    {
+      "id": "all_out_attacker",
+      "weight": 1.4,
+      "eligible": { "role": "attacker" },
+      "slots": { "stab": 2, "coverage": 2 },
+      "items": ["Life Orb", "Choice Band", "Choice Specs", "Expert Belt", "Silk Scarf"],
+      "nature": { "phys": "Adamant", "spec": "Modest" },
+      "evShape": "max_offense_speed"
+    },
+    {
+      "id": "coverage_attacker",
+      "weight": 1.0,
+      "eligible": { "role": "attacker" },
+      "slots": { "stab": 1, "coverage": 3 },
+      "items": ["Life Orb", "Expert Belt", "Choice Specs", "Choice Band"],
+      "nature": { "phys": "Naive", "spec": "Naive" },
+      "evShape": "max_offense_speed"
+    },
+    {
+      "id": "setup_sweeper",
+      "weight": 1.2,
+      "eligible": { "role": "attacker", "minSpe": 70 },
+      "slots": { "setup": 1, "stab": 2, "coverage": 1 },
+      "items": ["Life Orb", "Leftovers", "Weakness Policy", "Sitrus Berry"],
+      "nature": { "phys": "Jolly", "spec": "Timid" },
+      "evShape": "max_offense_speed"
+    },
+    {
+      "id": "bulky_attacker",
+      "weight": 0.9,
+      "eligible": { "role": "attacker", "minBulk": 160 },
+      "slots": { "stab": 2, "coverage": 1, "status": 1 },
+      "items": ["Assault Vest", "Leftovers", "Rocky Helmet", "Sitrus Berry"],
+      "nature": { "phys": "Adamant", "spec": "Modest" },
+      "evShape": "bulk_offense"
+    },
+    {
+      "id": "status_attacker",
+      "weight": 1.0,
+      "eligible": { "role": "any" },
+      "slots": { "stab": 1, "coverage": 1, "status": 2 },
+      "items": ["Leftovers", "Black Sludge", "Rocky Helmet", "Sitrus Berry"],
+      "nature": { "phys": "Adamant", "spec": "Modest" },
+      "evShape": "bulk_offense"
+    },
+    {
+      "id": "stall_wall",
+      "weight": 0.9,
+      "eligible": { "role": "wall" },
+      "slots": { "recovery": 1, "status": 2, "stab": 1 },
+      "items": ["Leftovers", "Black Sludge", "Rocky Helmet"],
+      "nature": { "phys": "Impish", "spec": "Calm" },
+      "evShape": "max_bulk"
+    },
+    {
+      "id": "hazard_setter",
+      "weight": 0.7,
+      "eligible": { "role": "wall" },
+      "slots": { "hazard": 1, "status": 1, "recovery": 1, "stab": 1 },
+      "items": ["Leftovers", "Rocky Helmet", "Red Card"],
+      "nature": { "phys": "Impish", "spec": "Calm" },
+      "evShape": "max_bulk"
+    },
+    {
+      "id": "defensive_pivot",
+      "weight": 0.8,
+      "eligible": { "role": "any" },
+      "slots": { "stab": 1, "coverage": 1, "status": 1, "recovery": 1 },
+      "items": ["Leftovers", "Sitrus Berry", "Assault Vest"],
+      "nature": { "phys": "Careful", "spec": "Calm" },
+      "evShape": "bulk"
+    }
+  ]
+}
