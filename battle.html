@@ -10398,7 +10398,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10413,7 +10413,8 @@
                         fetch('data/move-tags.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/routes.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/errands.json').then(r => r.json()).catch(() => null),
-                        fetch('data/story/branches.json').then(r => r.json()).catch(() => null)
+                        fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
+                        fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null)
                     ]);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
@@ -10431,6 +10432,8 @@
                     Object.assign(TRAINER_QUOTES_BY_NAME,   _tqbn || {});
                     if (Array.isArray(_cgq)) CITY_GUIDE_QUOTES.push(..._cgq);
                     Object.assign(BARK_POOLS,               _barks || {});
+                    // Strip the JSON doc-comment key before merging the authored bridges.
+                    if (_subBridges && typeof _subBridges === 'object') { const _sb = { ..._subBridges }; delete _sb._meta; Object.assign(SUBSTITUTION_BRIDGES, _sb); }
                     Object.assign(typeChart,                _tc   || {});
                     // Ball math: object-container fields mutated in place; primitives
                     // reassigned through the lexically-scoped lets. "guaranteed" →
@@ -12833,18 +12836,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
         const sleep = ms => (typeof window !== 'undefined' && window.__testHarness === true) ? Promise.resolve() : new Promise(res => setTimeout(res, settings.animations ? ms : 10));
+        // Concurrent battle popups (CRITICAL!, Super Effective!, damage/heal numbers) used
+        // to stack at one fixed coord per side, so a crit+super-effective hit rendered both
+        // labels on top of each other (unreadable). Track how many are live per side and
+        // offset each down a row; decrement when one clears so a later isolated popup starts
+        // back at the top. Purely visual — no state/RNG touched.
+        const _activePopups = { player: 0, foe: 0 };
         function showBattlePopup(text, cssClass, isPlayerSide) {
             if (!settings.animations) return;
             let container = document.getElementById('screen-battle');
             if (!container) return;
+            const side = isPlayerSide ? 'player' : 'foe';
+            const slot = Math.min(_activePopups[side]++, 3);   // cap the stagger at 3 rows
             let popup = document.createElement('div');
             popup.className = 'battle-popup ' + cssClass;
             popup.textContent = text;
-            // Position near the target sprite (foe upper-center; player bottom-center, slight left)
+            // Position near the target sprite (foe upper-center; player bottom-center, slight
+            // left), offset 9% per concurrent popup so simultaneous labels don't overlap.
             popup.style.left = isPlayerSide ? '15%' : '55%';
-            popup.style.top = isPlayerSide ? '50%' : '15%';
+            popup.style.top = ((isPlayerSide ? 50 : 15) + slot * 9) + '%';
             container.appendChild(popup);
-            setTimeout(() => popup.remove(), 1300);
+            setTimeout(() => {
+                try { popup.remove(); } catch (e) {}
+                _activePopups[side] = Math.max(0, _activePopups[side] - 1);
+            }, 1300);
         }
 
         // Battle "impact" — graded screen shake on a critical / super-effective hit. Single
@@ -36763,6 +36778,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const n = Math.max(0, cityIdx | 0);
             return CITY_ARRIVAL_LINES[Math.min(n, CITY_ARRIVAL_LINES.length - 1)] || ['',''];
         }
+        // H2-5 (arrival reactivity) — one world-narrator line per arc that acknowledges the
+        // villain/extra lead the player JUST crossed on the road into this city, so arrival
+        // reacts to the road behind instead of resetting. Keyed by arc id (sm.tracks.villain /
+        // sm.tracks.extra); resolved through _lastRoadArcForCity. Falls back silently to the
+        // generic City-Guide blurb when no arc beat fired on the prior segment.
+        const CITY_ARRIVAL_BY_PRIOR_ARC = {
+            // Villain orgs (complete set — §C).
+            rocket:      "Word on the street: Rocket grunts cleared out of the last route in a hurry. You'd know why.",
+            magma:       "Ash on the wind from the hills behind you. Magma was busy back there.",
+            aqua:        "The harbor talk is all storms and Aqua divers. You met some.",
+            galactic:    "People here heard Galactic worked the last road. They look at you differently for having walked it.",
+            plasma:      "A Plasma sermon still rings in your ears from the road in.",
+            skull:       "Fresh Skull tags on the underpass into town. You passed the kids who sprayed them.",
+            yell:        "Team Yell's chants faded a mile back. The quiet here is louder for it.",
+            flare:       "Someone on the last road tried to sort you. Flare's stickers don't wash off the memory.",
+            macroCosmos: "The corporate banners thin out past the last checkpoint. Macro Cosmos was thick back there.",
+            star:        "The streams are still buzzing about Star's last stunt on the road behind you.",
+            // Extra (horror) arcs — cubone exemplar (§C) + 7 authored to the same register.
+            cubone:      "The town keeps its lights on tonight. Something on the road behind you didn't want to be alone.",
+            yamask:      "Someone scratched a name off the milestone at the town line. Then scratched in yours.",
+            hypno:       "Half this town slept past noon and won't say why. You walked in wide awake, for once.",
+            phantump:    "The treeline crowds closer to the road behind you than the maps allow. Nobody here looks back at it.",
+            mimikyu:     "A flyer on the noticeboard has your face on it, badly drawn, captioned 'our favorite.' You don't remember posing.",
+            drifloon:    "Children here are warned off the high ground after dark. Something on the last road already knew your name on the wind.",
+            parasect:    "The damp on your boots isn't dew. The town pretends not to notice what grows back down that road.",
+            mewtwo:      "The lab lights on the ridge behind you were supposed to be dead for years. They watched you the whole way in.",
+        };
         // ── Narration overhaul (v26): per-route travel flavor ─────────────────
         // One entry per road segment leaving a city for the next battle city.
         // `scene` is a DEFAULT_STORY_BG_MANIFEST.scenes key. The interstitial shows
@@ -37384,10 +37426,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
+            // H4-4: acknowledge the villain/extra lead the player just crossed on the road
+            // into this city (a callback off sm.storyEventsFired). Silent when no arc beat
+            // fired on the prior segment — the generic City-Guide blurb still shows below.
+            let ackHtml = '';
+            try {
+                const _priorArc = _lastRoadArcForCity(cityIdx | 0);
+                const _ackLine = _priorArc && CITY_ARRIVAL_BY_PRIOR_ARC[_priorArc];
+                if (_ackLine) {
+                    ackHtml =
+                        '<div class="story-dialog-host" style="max-width:560px;width:100%;">' +
+                            '<div class="story-dialog-nameplate">The Road Behind</div>' +
+                            '<div class="story-dialog-box">' +
+                                '<p class="story-dialog-text" style="margin:0;">' + _esc(_ackLine) + '</p>' +
+                            '</div>' +
+                        '</div>';
+                }
+            } catch (e) {}
             ov.innerHTML =
                 '<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">— Now Arriving —</div>' +
                 '<div style="color:#fff;font-size:24px;font-weight:bold;letter-spacing:0.04em;text-shadow:0 2px 6px rgba(0,0,0,0.8);">' + cityName + '</div>' +
                 blurbHtml +
+                ackHtml +
                 arriveHtml +
                 '<img src="' + spriteSrc + '" onerror="this.style.display=\'none\'" style="width:140px;height:140px;object-fit:contain;image-rendering:pixelated;margin-top:6px;">' +
                 '<div class="story-dialog-host" style="max-width:560px;width:100%;">' +
@@ -41434,6 +41494,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     showBossBanner: (t, a) => _showBossBanner(t, a),
                     // Canon trainer overrides (PR-B/C).
                     get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
+                    // H2-3 substitution-bridge lines (one per canon-swap key).
+                    get SUBSTITUTION_BRIDGES() { return SUBSTITUTION_BRIDGES; },
                     // Post-battle scenes (PR-D).
                     get STORY_POST_SCENES() { return STORY_POST_SCENES; },
                     playPostBattleScene: (k, cb) => _playPostBattleScene(k, cb),
@@ -41446,6 +41508,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Anomaly seeds (PR-7).
                     get ANOMALY_SEEDS() { return ANOMALY_SEEDS; },
                     tryFireAnomalySeed: (ev) => _tryFireAnomalySeed(ev),
+                    // Arrival reactivity (H4-4 / H2-5).
+                    get CITY_ARRIVAL_BY_PRIOR_ARC() { return CITY_ARRIVAL_BY_PRIOR_ARC; },
+                    lastRoadArcForCity: (c) => _lastRoadArcForCity(c),
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
@@ -43903,6 +43968,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
+        // Arrival reactivity (H4-4): which active arc fired a beat on the road segment
+        // leading INTO cityIdx (the stretch the player just walked). Road N arrives at
+        // city N, so the prior road's ordinal === cityIdx. Villain arc wins over extra
+        // (the louder road event). Pure read of sm.tracks + sm.storyEventsFired — no
+        // mutation, no RNG. Returns the arc id ('rocket' | 'cubone' | …) or '' for none.
+        function _lastRoadArcForCity(cityIdx) {
+            try {
+                if (!sm || !sm.tracks) return '';
+                const targetOrd = cityIdx | 0;
+                if (targetOrd < 1) return '';
+                const fired = sm.storyEventsFired || {};
+                const arcFiredOnRoad = (beats) => {
+                    for (const slot of Object.values(beats || {})) {
+                        if (slot && _roadOrdinal(slot.roadAnchor) === targetOrd && fired[slot.sceneKey]) return true;
+                    }
+                    return false;
+                };
+                const v = sm.tracks.villain;
+                if (v && arcFiredOnRoad(VILLAIN_STORY_BEATS[v])) return v;
+                const x = sm.tracks.extra;
+                if (x && arcFiredOnRoad(EXTRA_STORY_BEATS[x])) return x;
+                return '';
+            } catch (e) { return ''; }
+        }
+        window._lastRoadArcForCity = _lastRoadArcForCity;
         // Returns ordered unfired event-kind beats for the road, in priority
         // order: main → villain → extra. Battle / boss / raid kinds are filtered
         // out — those fire as pre-battle scenes from the battle-entry hook
@@ -44397,8 +44487,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.scenesShown) sm.scenesShown = {};
                 sm.scenesShown[tipKey] = true;
             }
-            try { if (typeof window.showGameAlert === 'function') window.showGameAlert(seed); }
-            catch (e) {}
+            // H3-2: deliver the anomaly seed on the diegetic narration surface (z-indexed
+            // above other layers) instead of the bare system alert, which painted BEHIND
+            // overlays (the NOTIF z-order bug). showGameAlert remains the catch fallback so
+            // a render failure still surfaces the seed.
+            try {
+                _renderNarrativeOverlay({
+                    lines: [seed],
+                    nameplate: 'A Small Wrongness',
+                    name: '',
+                    sprite: null,
+                    toneClass: 'story-anomaly',
+                    typewriter: true,
+                    continueLabel: 'Continue →',
+                });
+            } catch (e) {
+                try { if (typeof window.showGameAlert === 'function') window.showGameAlert(seed); } catch (e2) {}
+            }
             return true;
         }
 
@@ -44537,6 +44642,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.macroCosmos.miniBoss': 'Oleana',
             'villain.star.miniBoss':        'Giacomo',
         };
+
+        // SUBSTITUTION_BRIDGES (H2-3) — one world-narrator line per BEAT_CANON_TRAINER
+        // swap key. When a scheduled road battle is overridden to a canon villain, this
+        // line plays at the encounter intro (before the beat scene) so the named villain
+        // doesn't read as an unexplained reskin. Externalized to
+        // data/dialogue/substitution-bridges.json; this DEFAULT_ is the offline fallback
+        // mirror (mirrors the ROUTE_LINES pattern). Keys MUST match BEAT_CANON_TRAINER.
+        const DEFAULT_SUBSTITUTION_BRIDGES = {
+            'villain.rocket.boss':       "This was supposed to be one more road fight. Then the grunts cleared out, and Giovanni took the field himself.",
+            'villain.magma.boss':        "The next trainer on the road never showed. Maxie did — Magma doesn't send a stranger to finish its own work.",
+            'villain.aqua.boss':         "No scheduled challenger here. Just Archie, and the tide he brought with him.",
+            'villain.galactic.boss':     "The road's roster meant nothing to him. Cyrus was always going to be standing here.",
+            'villain.plasma.boss':       "The expected fight dissolves. Ghetsis prefers to arrange who you face — and he arranged himself.",
+            'villain.skull.boss':        "Forget whoever the road lined up. Guzma kicked the door in and took the slot.",
+            'villain.yell.boss':         "The booked act cancelled. Piers is closing the show himself tonight.",
+            'villain.flare.boss':        "The trainer the road promised isn't coming. Lysandre arranged this meeting personally.",
+            'villain.macroCosmos.boss':  "No ordinary challenger. Rose cleared his calendar — and yours — for this.",
+            'villain.star.boss':         "The scheduled fight blinks out like a dropped feed. Penny logged in instead.",
+            'villain.rocket.miniBoss':   "The road's next trainer steps aside. Proton doesn't ask twice.",
+            'villain.magma.miniBoss':    "Not the challenger you expected — Tabitha, clearing the way for Maxie.",
+            'villain.aqua.miniBoss':     "The slot's been reassigned. Shelly is here on Archie's orders.",
+            'villain.galactic.miniBoss': "The scheduled fight is scrubbed. Mars took it for Team Galactic.",
+            'villain.plasma.miniBoss':   "No road trainer here — Saturn, holding the line for Cyrus.",
+            'villain.flare.miniBoss':    "The expected face is gone. Bryony runs Lysandre's errands, and you're one.",
+            'villain.skull.miniBoss':    "Forget the roster. Plumeria looks after the Skull kids — and she's looking at you.",
+            'villain.yell.miniBoss':     "The booked fight's off. Marnie steps up for Spikemuth.",
+            'villain.macroCosmos.miniBoss': "The challenger withdrew. Oleana manages Rose's problems. You qualify.",
+            'villain.star.miniBoss':        "The feed cuts to Giacomo. Star sets its own schedule.",
+        };
+        // Sloppy-mode safe: declare the live object, then Object.assign the mirror in —
+        // never reassign the binding (loadGameData also Object.assigns the fetched JSON).
+        let SUBSTITUTION_BRIDGES = {};
+        Object.assign(SUBSTITUTION_BRIDGES, DEFAULT_SUBSTITUTION_BRIDGES);
+        window.SUBSTITUTION_BRIDGES = SUBSTITUTION_BRIDGES;
 
         // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
         // boss/raid prose ("Phase 3 at 25%", "PRIMAL HEAT", "PRIMORDIAL RAIN",
@@ -51244,10 +51383,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { save(); } catch (e) {}
                     }
                 } catch (e) { console.warn('[Story] canon trainer override:', e); }
-                _playStoryBeatScene(_beatBattle.sceneKey, () => {
+                const _runBeatScene = () => _playStoryBeatScene(_beatBattle.sceneKey, () => {
                     try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
                     catch (e) { _storyRecoverFromEntryFailure('beat-battle scene continuation', e); }
                 });
+                // H2-3 substitution bridge: when this beat swapped a scheduled road battle
+                // for a canon villain (boss/miniBoss), render one world-narrator line first
+                // so the named villain doesn't read as an unexplained reskin. The bridge is
+                // null on every non-swap path (keys mirror BEAT_CANON_TRAINER exactly), so
+                // behaviour is unchanged everywhere a swap didn't happen.
+                const _bridgeLine = (BEAT_CANON_TRAINER && BEAT_CANON_TRAINER[_beatBattle.sceneKey])
+                    ? SUBSTITUTION_BRIDGES[_beatBattle.sceneKey] : null;
+                if (_bridgeLine) {
+                    try {
+                        _renderNarrativeOverlay({
+                            lines: [_bridgeLine],
+                            nameplate: 'The Road',
+                            name: '',
+                            sprite: null,
+                            typewriter: true,
+                            sceneKey: _beatBattle.sceneKey,
+                            continueLabel: 'Continue →',
+                            onDone: _runBeatScene,
+                        });
+                    } catch (e) { console.warn('[Story] substitution bridge failed', e); _runBeatScene(); }
+                } else {
+                    _runBeatScene();
+                }
                 return;
             }
             const [idx, type, event, gradeWeights, coins] = ev;

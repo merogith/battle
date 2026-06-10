@@ -105,6 +105,23 @@ test('RAID_LORE covers all 8 arcs', () => {
     }
 });
 
+// Stronger guard: every roster key (24 of them) must resolve a lore line THROUGH the
+// arc-stem extraction _showRaidEncounterIntro actually uses (`/^extra\.([a-z0-9]+)\./`),
+// not just the arc-name lookup above. Catches a future roster addition (a 9th arc, or a
+// sceneKey whose stem doesn't match a RAID_LORE key) that the arc-only test would miss.
+test('every raid roster key resolves a RAID_LORE line via the intro arc-stem path', () => {
+    const LORE = ST.RAID_LORE;
+    const stemOf = (sceneKey) => (/^extra\.([a-z0-9]+)\./.exec(String(sceneKey || '')) || [])[1] || '';
+    for (const arc of ARCS) {
+        for (const suffix of SUFFIXES) {
+            const stem = stemOf(key(arc, suffix));
+            assert.ok(stem, `${key(arc, suffix)} yields a non-empty arc stem`);
+            assert.ok(typeof LORE[stem] === 'string' && LORE[stem].length > 20,
+                `${key(arc, suffix)} → RAID_LORE['${stem}'] is non-empty`);
+        }
+    }
+});
+
 test('raidNarratorLines distinguishes the full raid from the mini-raids', () => {
     const full = ST.raidNarratorLines('extra.cubone.raid');
     const mini = ST.raidNarratorLines('extra.cubone.miniRaid');
