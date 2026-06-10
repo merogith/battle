@@ -11204,10 +11204,59 @@
         window.makeDesignedBuild = makeDesignedBuild;
         window._designedPickMoves = _designedPickMoves; // harness-testable (thin-pool pad)
 
+        // ── Smogon set POWER rating + power-weighted selection ──────────────────────────
+        // A Smogon set's competitive tier IS a power ordering: an OU set outclasses a ZU
+        // set on the same species. The story foe roller uses this so a Champion never rolls
+        // a weak ZU set and an early trainer rolls a humble one — instead of today's uniform
+        // random pick over the whole legal pool. Map a set's _format (its tier) → a 0..1
+        // power score. Maintainer-owned numbers — tune here. Unknown / exotic singles
+        // formats score neutral (0.5) so they neither dominate nor vanish.
+        const _SMOGON_FORMAT_POWER = Object.freeze({
+            ubers: 1.00, anythinggoes: 1.00, nationaldexubers: 1.00, ubersuu: 0.82,
+            ou: 0.90, nationaldex: 0.90,
+            uu: 0.75, nationaldexuu: 0.75,
+            ru: 0.62, nationaldexru: 0.62,
+            nu: 0.50,
+            pu: 0.40,
+            zu: 0.30,
+            nfe: 0.28, lc: 0.25,
+            '1v1': 0.68,
+        });
+        function _smogonSetPower(b) {
+            if (!b) return 0.5;
+            const f = String(b._format || '').toLowerCase();
+            return Object.prototype.hasOwnProperty.call(_SMOGON_FORMAT_POWER, f) ? _SMOGON_FORMAT_POWER[f] : 0.5;
+        }
+        // Sample one set from `pool`, weighting each by a Gaussian on its distance from
+        // `target` power (so the roll clusters near the stage's intended strength but keeps
+        // variety — never a hard argmax). SIGMA widens/narrows the spread. Deterministic in
+        // story replays (Math.random routes through storyRngNext when a run is active).
+        const _SET_POWER_SIGMA = 0.18;
+        function _pickSetByPower(pool, target, rng) {
+            if (!pool || !pool.length) return null;
+            if (pool.length === 1) return pool[0];
+            const r = (typeof rng === 'function') ? rng : Math.random;
+            const w = new Array(pool.length);
+            let total = 0;
+            for (let i = 0; i < pool.length; i++) {
+                const d = _smogonSetPower(pool[i]) - target;
+                const wi = Math.exp(-(d * d) / (2 * _SET_POWER_SIGMA * _SET_POWER_SIGMA));
+                w[i] = wi; total += wi;
+            }
+            if (!(total > 0)) return pool[Math.floor(r() * pool.length)];
+            let x = r() * total;
+            for (let i = 0; i < pool.length; i++) { x -= w[i]; if (x <= 0) return pool[i]; }
+            return pool[pool.length - 1];
+        }
+        try { window._smogonSetPower = _smogonSetPower; window._pickSetByPower = _pickSetByPower; } catch (e) {}
+
         // Central build factory — used by draft, gauntlet rounds, and draw recovery.
-        //   gimmickOpts.forceGimmick  — pin to MEGA / ZMOVE / TERA / STANDARD
-        //   gimmickOpts.allowIllegal  — let illegal builds into the pool (default: false; story end-game opts in)
-        //   gimmickOpts.forceIllegal  — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.forceGimmick   — pin to MEGA / ZMOVE / TERA / STANDARD
+        //   gimmickOpts.allowIllegal   — let illegal builds into the pool (default: false; story end-game opts in)
+        //   gimmickOpts.forceIllegal   — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.setPowerTarget — 0..1; when set (story foes only), the CSV set is
+        //                                power-weighted toward this strength instead of picked
+        //                                uniformly. Absent for non-story callers → unchanged.
         function makeBuild(name, gimmickOpts) {
             // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
             // can't be skipped by a forced-STANDARD call. Skip when a non-standard
@@ -11266,7 +11315,12 @@
             }
 
             if (pool.length) {
-                if (settings.smartDraftPool && pool.length > 1) {
+                const _spt = gimmickOpts && typeof gimmickOpts.setPowerTarget === 'number' ? gimmickOpts.setPowerTarget : null;
+                if (_spt != null && pool.length > 1) {
+                    // Story foe: power-weighted pick toward the stage's target strength
+                    // (fixes weak-Champion / weak-mid-late / "only very good in league").
+                    b = { ..._pickSetByPower(pool, _spt, Math.random) };
+                } else if (settings.smartDraftPool && pool.length > 1) {
                     const groups = {};
                     for (const bd of pool) {
                         const a = bd.archetype || 'other';
@@ -40407,6 +40461,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return STORY_BUILD_TIER.NOVICE;
         }
 
+        // Target Smogon-set POWER (0..1) for power-weighted selection, derived from the
+        // event's build tier (the approved T1-T4 curve): humble early → near-best late.
+        // The league and everything after it (E1-E4 / Champion / Mystery / Victory Road /
+        // post-HoF Crucible at badges>=8) clamps to a near-best floor so only very good sets
+        // roll there (maintainer choice: "best & only very good builds in league"), while
+        // _SET_POWER_SIGMA still admits slight variety so fights aren't identical.
+        // Maintainer-owned numbers — tune the tier map / league floor here.
+        const _STAGE_SET_POWER_BY_TIER = Object.freeze({ 1: 0.30, 2: 0.50, 3: 0.72, 4: 0.90 });
+        const _LEAGUE_SET_POWER_FLOOR = 0.94;
+        function _stagePowerTargetForEvent(eventType, storyRowIdx, badges) {
+            const tier = _storyBuildTierForEvent(eventType, storyRowIdx, badges) | 0;
+            let t = _STAGE_SET_POWER_BY_TIER[tier];
+            if (typeof t !== 'number') t = 0.5;
+            const e = String(eventType || '');
+            const isLeaguePlus = e === 'Mystery Figure' || e === 'Champion' || e === 'Victory Road'
+                || /^E[1-4]$/.test(e) || (badges | 0) >= 8;
+            if (isLeaguePlus) t = Math.max(t, _LEAGUE_SET_POWER_FLOOR);
+            return t;
+        }
+
         /** Professor gift: matches the contemporary trainer floor for the city.
          *  No longer "one tier above" — the player has to invest (Evo Sage / EV
          *  Trainer / Move Tutor / Battle Dojo) to push their team beyond the
@@ -40900,6 +40974,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // filler pool and the signature aces below so a random/authored over-grade mon
             // (the "Lapras at Gym 1" spike) can't land before the player can answer it.
             const _earlyGradeCeiling = _storyEnemyGradeCeilingForRow(storyRowIdx);
+            // Power-weighted Smogon set target for this event (humble early, near-best in the
+            // league+). Passed into every makeBuild below so foes roll a stage-appropriate
+            // set instead of a uniform-random one. Only computed inside an active run; the
+            // Frontier/Crucible generator path uses its own callers.
+            const _setPowerTarget = (sm && sm.active)
+                ? _stagePowerTargetForEvent(battleEventType, storyRowIdx, sm.badges)
+                : null;
             // Eldritch-tagged trainers (Shadow Blue, Cursed Lance, Eldritch N, etc.) bypass
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
@@ -41101,7 +41182,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
                     usedR.add(chosen);
-                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _setPowerTarget }) });
                 }
                 const _origSigsR = new Set((trainer.sigs || []));
                 const _lockedR = new Set(_counterLock);
@@ -41260,7 +41341,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 _markUsed(chosen);
-                const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
+                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _setPowerTarget });
                 team.push({ name: chosen, build });
             }
             const _origSigs = new Set((trainer.sigs || []));
@@ -41417,6 +41498,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     capGradePoolsByGradeFloor: (...a) => _capGradePoolsByGradeFloor(...a),
                     storyEnemyGradeCeilingForRow: (...a) => _storyEnemyGradeCeilingForRow(...a),
                     capGradePoolsByGradeCeiling: (...a) => _capGradePoolsByGradeCeiling(...a),
+                    stagePowerTargetForEvent: (...a) => _stagePowerTargetForEvent(...a),
                     evolveSigToGradeFloor: (...a) => _evolveSigToGradeFloor(...a),
                     rollCityIVs: (...a) => _rollCityIVs(...a),
                     trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
@@ -41631,6 +41713,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return { name: s.name, nickname: s.nickname || '', build };
                 });
             }
+            // Power-weighted set target for the post-game superboss: near-best (the league
+            // floor) so the Mystery's mirror/fallback rolls are top-quality, not random.
+            const _mysticPower = (sm && sm.active)
+                ? _stagePowerTargetForEvent('Mystery Figure', null, (sm.badges | 0) || 8) : null;
             // Legacy mirror fallback (old saves with no HoF snapshot): re-roll the
             // player's live species with STANDARD movesets + a stronger lead dup.
             const playerTeam = Array.isArray(sm && sm.team) ? sm.team.filter(s => s && s.name) : [];
@@ -41638,15 +41724,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const picks = [];
                 // Mirror up to (partySize - 1) player mons.
                 for (let i = 0; i < Math.min(partySize - 1, playerTeam.length); i++) {
-                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD' }) });
+                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 }
                 // The +1 starter slot — second copy of the player's lead (sm.team[0]).
                 // This is The First's "stronger you" slot.
                 const starterName = playerTeam[0].name;
-                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 // Pad if needed (player had < partySize-1 mons in storage).
                 while (picks.length < partySize) {
-                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 }
                 return picks;
             }
@@ -41682,7 +41768,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 usedNames.add(chosen);
                 const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
                 if (t1) usedTypes.add(t1);
-                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
             }
             // Final boss rolls from every unlocked mechanic. Pass the forced gimmick flags
             // as a local override context instead of mutating (and restoring) the shared
