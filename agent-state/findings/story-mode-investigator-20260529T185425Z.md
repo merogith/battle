@@ -162,7 +162,7 @@ file: battle.html
 agents: []
 fingerprint: aea4e9950e8b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery swap picker mislabels BST grade as "Power tier (1-4)"
@@ -190,7 +190,7 @@ file: battle.html
 agents: []
 fingerprint: 6f7d78ccc064
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Grade badge prefix differs between prof pick cards (G#) and swap slots (T#)
@@ -252,7 +252,7 @@ file: battle.html
 agents: []
 fingerprint: d62e9395acd6
 confidence: low
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_EVENTS_RAW resolves to 67 rows in harness vs 68 stated in spec/mandate

@@ -7,7 +7,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 4592b2ea36ea
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Ball inventory + `catchMode` flag in STORY_FEATURES_INTEGRATION §1/§2/§5 do not match shipped code
@@ -41,7 +41,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 43572c0f06d7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4
@@ -71,7 +71,7 @@ file: docs/design-audit/DESIGN_CONSISTENCY_CHECKLIST.md
 agents: [spec-drift-auditor]
 fingerprint: d4d3b918cb44
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Design checklist's load-bearing "CSS block = battle.html lines 16-4156" guardrail is wrong by ~3700 lines
@@ -102,7 +102,7 @@ file: docs/STORY_MODE_CATCH_INTEGRATION_RISK.md
 agents: [spec-drift-auditor]
 fingerprint: 29bf2f08d270
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Doc `battle.html:LINE` anchors still stale (50 refs, 18 drifted) despite PR #140 "fix"
@@ -136,7 +136,7 @@ file: README.md
 agents: [spec-drift-auditor]
 fingerprint: 1f3b34879073
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: README calls shipped catch / PC / Underground / Safari / boss-arc systems "upcoming"

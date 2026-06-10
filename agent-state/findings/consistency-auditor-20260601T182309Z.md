@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: f4639e9e207a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Two parallel story-flow engines coexist — new "unified" engine built but never wired (P2/P3 never done)
@@ -37,7 +37,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 67a1e4cfc010
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Dead `build.tired` fatigue field still written/backfilled at 5 sites, read in zero gameplay paths
@@ -68,7 +68,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: ab3e79af56a9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Inert `_permBoostsRead`/`_permBoostTotal` stubs (+ window export) have zero callers — fully dead
@@ -97,7 +97,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: fe19faa27ad9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `_pendingProfRoll` (singular) only ever assigned null — dead variable shadowing live `_pendingProfRolls`
@@ -126,7 +126,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: c4298b3df1c1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Legacy storyline picker is dead UI — hidden DOM + uncalled renderer + unreachable card handlers, superseded by sm.tracks

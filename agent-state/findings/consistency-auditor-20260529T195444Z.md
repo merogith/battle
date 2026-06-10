@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 51dd9b25936e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: "Vitamin" names three distinct systems — IV items, casino prize, EV voucher
@@ -67,7 +67,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 4dca97446477
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Grade badge prefix differs — `G{tier}` on draft cards vs `T{grade}` on swap/daycare slots
@@ -96,7 +96,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: e9291216e754
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Nature Rater cost badge shows "2000+" but TUTOR_COST_NATURE is a flat 2000

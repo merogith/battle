@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d317e1091ec7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Poké Center never clears Fatigue, yet the in-game bulletin tells players a Center stay clears it
@@ -39,7 +39,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: ea3cd4d05640
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Poké Center chip sits in "Heal & Team" section with a "Free" badge but performs no heal interaction
@@ -102,7 +102,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2b18728e7602
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: City0 welcome tip says the Underground "buys … never your starter" but starters are sellable
@@ -130,7 +130,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 99d6d7a2d22b
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Rival-gate tip labelled "Heal …" deep-links to the Poké Center, which performs no heal

@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 4b71628ae0f5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Nurse Joy first-Center tutorial says PC has "ten slots" but PC_BOX_CAP is 30

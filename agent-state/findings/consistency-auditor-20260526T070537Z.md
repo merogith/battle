@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 3422a6976f0b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Player-facing city actions read "Pokemon League" / "Pokemon Fan Club" (no diacritic)
@@ -142,7 +142,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 156f9f10653f
 confidence: medium
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: Variant rival quote pools are uneven — several phases have a single line; many phases absent
