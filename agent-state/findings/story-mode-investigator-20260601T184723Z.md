@@ -39,7 +39,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 19a080eb1e8e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Dormant "unified flow engine" is now triple-orphaned — live dispatch is a 3rd design that leapfrogged it
@@ -70,7 +70,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 771f1e021e9c
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Catch-tutorial gate comment claims "starting kit gives 5 balls" — fresh-run kit is actually 0
@@ -159,7 +159,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e8bc3184fc4b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: SAVE_VER=23 but migration chain stops at PreV22 — no migrateStoryPreV23 step (v23 added wanderByEventIdx, back-filled unconditionally)

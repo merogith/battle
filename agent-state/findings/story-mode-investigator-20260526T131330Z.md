@@ -98,7 +98,7 @@ file: tests/helpers/load-engine.js
 agents: [story-mode-investigator]
 fingerprint: 05d7604f22a5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Test-harness docs promise window.SAVE_VER / window.sm / window.newStoryRun but only StoryMode + __storyLoad are exposed
@@ -157,7 +157,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b61c4fb64fc9
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery Figure identity is rolled at run start before sm.active/runSeed are live — not reproducible under fixed debug seeds
@@ -188,7 +188,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a523f2cc0e8d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — full migrate chain v8→v21 round-trips pre-v15 saves without crash or party/PC/badge loss
@@ -281,7 +281,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: eb2165a89001
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Battle Frontier hub displays stale, weaker foe-scaling numbers than what applyStoryLeagueFoeStatBoost actually applies
@@ -313,7 +313,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 62b71f668975
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: rollTrainerTeam's evo-stage cap uses cityIndexFromEventIndex on a ROW ID (not array index) — intro Rival gets cap 2 (fully evolved) instead of 0 (basics-only)

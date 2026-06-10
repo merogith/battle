@@ -7,7 +7,7 @@ current_line_hint: 33916
 agents: [performance-profiler]
 fingerprint: 67d442f2bbd6
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit
@@ -71,7 +71,7 @@ current_line_hint: 12726
 agents: [performance-profiler]
 fingerprint: 92e4f7817cc9
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session

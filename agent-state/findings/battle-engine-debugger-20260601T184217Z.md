@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 03906b358d2f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Fresh run starts with 0 Poké Balls; skipping the optional City-0 Mart silently no-ops the catch tutorial

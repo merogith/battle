@@ -38,7 +38,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 920d7e405954
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-merge saves with partial unlockedGimmicks are not re-derived on load — Tera/Z silently withheld until next milestone win

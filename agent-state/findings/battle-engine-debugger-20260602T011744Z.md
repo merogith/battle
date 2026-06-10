@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 3fd8df38ef77
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Foe stats pass through FOUR stacking multipliers on the live path (band × early × stage-gated × diff+league); band & stage-gated & league each triple-special-case Champion/Mystery
