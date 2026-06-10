@@ -11075,6 +11075,12 @@
             'Clangorous Soul', 'Geomancy', 'Tidy Up', 'Filament Dance'
         ]);
         const _ARCH_HAZARD_MOVES = new Set(['Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web', 'Ceaseless Edge']);
+        // Strictly broken 0-effect moves — never let the archetype engine fill these on a
+        // foe (a thin-pool mon like Magikarp would otherwise pick up Splash as a status
+        // slot). Mirrors the test's STRICT_MEME_MOVES; the broader player-recommendation
+        // blocklist (_TX_MEME_MOVE_BLOCKLIST) lives in a different scope and over-excludes
+        // legit enemy picks (Hyper Beam / Giga Impact), so keep this list tight.
+        const _ARCH_MEME_MOVES = new Set(['Splash', 'Celebrate', 'Hold Hands', 'Happy Hour']);
 
         const _DESIGNED_ROLE_CONFIG = {
             PHYS_ATTACKER:  { item: 'Choice Band',  nature: 'Adamant', evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
@@ -11234,6 +11240,7 @@
             const physical = (base.atk | 0) >= (base.spa | 0);
             const out = { stab: [], coverage: [], status: [], setup: [], recovery: [], hazard: [] };
             for (const m of legalPool) {
+                if (_ARCH_MEME_MOVES.has(m)) continue; // strictly broken — never field on a foe
                 const md = ensureMoveData(m); if (!md) continue;
                 if (md.cat === 'Physical' || md.cat === 'Special') {
                     const entry = { name: m, pow: md.pow || 0, acc: md.acc || 100, cat: md.cat };
@@ -40847,6 +40854,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _diffStep = _trainerDifficultyStep(eventType);
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
+                // Strip strictly-broken meme moves from ANY source (CSV / randbats /
+                // designed) and backfill a typed STAB, so a thin-pool foe (e.g. a rolled
+                // Magikarp) never fields Splash / Celebrate / Hold Hands / Happy Hour.
+                if (Array.isArray(slot.build.m)) {
+                    const _bsM = (typeof baseStats === 'object') ? (baseStats[slot.name] || {}) : {};
+                    const _STAB = window._T1_BASIC_STAB_BY_TYPE || {};
+                    for (let _mi = 0; _mi < slot.build.m.length; _mi++) {
+                        if (!_ARCH_MEME_MOVES.has(slot.build.m[_mi])) continue;
+                        const _chain = [_STAB[_bsM.t1], _STAB[_bsM.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite', 'Tackle'];
+                        slot.build.m[_mi] = _chain.find(c => c && !slot.build.m.includes(c)) || 'Tackle';
+                    }
+                }
                 // Snapshot the optimized build BEFORE the tier downgrade so the
                 // city/difficulty optimization gradient can selectively restore it.
                 const _optN = slot.build.n;
