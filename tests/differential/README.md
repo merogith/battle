@@ -15,6 +15,15 @@ The point: make "battle bugs resolved for good" a *measurable, continuously-chec
 property instead of a whack-a-mole. The oracle finds divergences automatically and,
 kept in CI, stops fixed bugs from silently regressing.
 
+> **Comprehensive sweep (all moves/abilities/items).** The hand-authored battery below
+> (`scenarios.mjs` + `damage-sweep.mjs`, ~117 probes) is now complemented by an
+> **enumerated** sweep that probes *every* entity from `@pkmn/dex`:
+> `generate-scenarios.mjs` (Stage 1) → `sweep-all.mjs` (Stage 2) → the
+> `differential-triage-auditor` agent (Stage 3, via `/differential-sweep`).
+> Run it with `npm run test:differential:all`. The full methodology — including the
+> six-bucket triage taxonomy and the FIDELITY scorecard — is in
+> **[`METHODOLOGY.md`](./METHODOLOGY.md)**.
+
 **See [`FINDINGS.md`](./FINDINGS.md)** for the consolidated conclusions (what
 diverges, what's confirmed correct, and the harness-fidelity fixes made along the way).
 

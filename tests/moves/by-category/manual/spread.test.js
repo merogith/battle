@@ -51,7 +51,8 @@ const DAMAGE_ONLY = [
   'Lava Plume', 'Make It Rain', 'Matcha Gotcha', 'Muddy Water', 'Nihil Light', 'Origin Pulse',
   'Overdrive', 'Parabolic Charge', 'Polar Flare', 'Powder Snow', 'Relic Song', 'Sandsear Storm',
   'Searing Shot', 'Sludge Wave', 'Sparkling Aria', 'Splishy Splash', 'Springtide Storm',
-  'Surf', 'Swift', 'Synchronoise', 'Twister', 'Wildbolt Storm',
+  'Surf', 'Swift', 'Twister', 'Wildbolt Storm',
+  // (Synchronoise is handled separately — it only hits a target that shares the user's type.)
 ];
 
 // Spread moves whose 100%-chance secondary is deterministic — checked on a bulky
@@ -75,4 +76,7 @@ describe('Spread / multi-target moves (draft fills)', () => {
     const label = opts.status ? `inflicts ${opts.status}` : `${opts.boost[0]} ${opts.boost[1]}`;
     it(`${move} (damage + ${label})`, () => spreadHit(move, { defender: 'Blissey', ...opts }));
   }
+  // Synchronoise only hits a target that shares a type with the user (Mew = Psychic), so it
+  // needs a Psychic-typed foe — Slowpoke (Water/Psychic) shares Psychic and survives the hit.
+  it('Synchronoise (damages a shared-type foe)', () => spreadHit('Synchronoise', { defender: 'Slowpoke' }));
 });
