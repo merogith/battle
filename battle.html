@@ -10417,7 +10417,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges, _archetypes, _synergies] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10433,8 +10433,15 @@
                         fetch('data/story/routes.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/errands.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
-                        fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null)
+                        fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null),
+                        fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
+                        fetch('data/move-synergies.json').then(r => r.json()).catch(() => null)
                     ]);
+                    // Designed-build archetype engine tables (Object.assign in place so the
+                    // module-level BUILD_ARCHETYPES / MOVE_SYNERGIES + their window mirrors see
+                    // the data; missing files → empty defaults → legacy designed-build path).
+                    if (_archetypes && Array.isArray(_archetypes.archetypes)) Object.assign(BUILD_ARCHETYPES, _archetypes);
+                    if (_synergies && (_synergies.pairs || _synergies.moveItem)) Object.assign(MOVE_SYNERGIES, _synergies);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
                     // _tutorFetchLearnsetMoveNames only fires for species missing here).
@@ -11075,6 +11082,28 @@
         //   0.0 = pure designed (every build is role-coherent and legal)
         // A run setup UI exposes this; set it directly in the console
         // via `settings.csvBuildMix = 0.5` for one-off testing.
+        // ── Story DESIGNED-build archetype engine (data-driven) ─────────────────────────
+        // Loaded from data/build-archetypes.json + data/move-synergies.json in loadGameData
+        // (Object.assign in place — sloppy-mode safe). Empty defaults so the generator falls
+        // back to the legacy role-config path if the files are missing. Story-only; non-story
+        // designed builds keep the legacy path byte-for-byte.
+        let BUILD_ARCHETYPES = { archetypes: [] };
+        let MOVE_SYNERGIES = { pairs: [], moveItem: [] };
+        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; } catch (e) {}
+        const _ARCH_SETUP_MOVES = new Set([
+            'Swords Dance', 'Nasty Plot', 'Dragon Dance', 'Calm Mind', 'Shell Smash', 'Quiver Dance',
+            'Bulk Up', 'Coil', 'Curse', 'Agility', 'Rock Polish', 'Autotomize', 'Work Up', 'Growth',
+            'Tail Glow', 'Iron Defense', 'Belly Drum', 'Shift Gear', 'Victory Dance', 'No Retreat',
+            'Clangorous Soul', 'Geomancy', 'Tidy Up', 'Filament Dance'
+        ]);
+        const _ARCH_HAZARD_MOVES = new Set(['Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web', 'Ceaseless Edge']);
+        // Strictly broken 0-effect moves — never let the archetype engine fill these on a
+        // foe (a thin-pool mon like Magikarp would otherwise pick up Splash as a status
+        // slot). Mirrors the test's STRICT_MEME_MOVES; the broader player-recommendation
+        // blocklist (_TX_MEME_MOVE_BLOCKLIST) lives in a different scope and over-excludes
+        // legit enemy picks (Hyper Beam / Giga Impact), so keep this list tight.
+        const _ARCH_MEME_MOVES = new Set(['Splash', 'Celebrate', 'Hold Hands', 'Happy Hour']);
+
         const _DESIGNED_ROLE_CONFIG = {
             PHYS_ATTACKER:  { item: 'Choice Band',  nature: 'Adamant', evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
             SPEC_ATTACKER:  { item: 'Choice Specs', nature: 'Modest',  evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
@@ -11174,22 +11203,192 @@
                     if (!moves.includes(m)) moves.push(m);
                 }
             }
-            while (moves.length < 4) moves.push('Tackle');
+            // Final pad for a thin CSV pool. In a story run, fill with the species' typed
+            // basic STAB instead of a literal Tackle — the "Tackle at Gym 6" fix: a
+            // fully-evolved mid/late trainer's mon should never show up holding Tackle just
+            // because its CSV set was short. This factory lives in a story-agnostic scope
+            // (no `sm` binding, no access to the story-side _T1_BASIC_STAB_BY_TYPE), so read
+            // the run flag + the shared type→basic-STAB map off window (same pattern as the
+            // _smActive check ~line 14343). Deterministic ordering, no RNG draw, so non-story
+            // callers (Quick Play / PvP / draft) keep the legacy Tackle pad below byte-for-byte.
+            const _storyOn = (window.sm && window.sm.active)
+                || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            if (_storyOn && moves.length < 4) {
+                const STAB = window._T1_BASIC_STAB_BY_TYPE || null;
+                const bs = (typeof baseStats !== 'undefined' && baseStats[name]) || base || {};
+                if (STAB) {
+                    const chain = [STAB[bs.t1], STAB[bs.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite'];
+                    for (const cand of chain) {
+                        if (moves.length >= 4) break;
+                        if (cand && !moves.includes(cand)) moves.push(cand);
+                    }
+                }
+            }
+            while (moves.length < 4) moves.push('Tackle'); // non-story / typeless last resort
             return moves.slice(0, 4);
         }
+        // Coarse role for archetype eligibility. _designedInferRole measures bulk as
+        // def+spd only, so an HP wall with thin defenses (Blissey, Chansey) reads as an
+        // attacker; fold total bulk (incl. HP) in here so those classify correctly.
+        function _designedCoarseRole(name) {
+            const b = baseStats[name] || {};
+            const off = Math.max(b.atk | 0, b.spa | 0);
+            const bulk = (b.hp | 0) + (b.def | 0) + (b.spd | 0);
+            if (off < 90 && bulk >= 260) return 'wall';
+            return _designedInferRole(name).includes('WALL') ? 'wall' : 'attacker';
+        }
+        function _archEligible(arche, base, coarse) {
+            const e = arche.eligible || {};
+            if (e.role && e.role !== 'any' && e.role !== coarse) return false;
+            if (e.minSpe != null && (base.spe | 0) < e.minSpe) return false;
+            if (e.minBulk != null && ((base.def | 0) + (base.spd | 0)) < e.minBulk) return false;
+            if (e.minOffense != null && Math.max(base.atk | 0, base.spa | 0) < e.minOffense) return false;
+            return true;
+        }
+        function _designedPickArchetype(base, coarse, rng) {
+            const all = (BUILD_ARCHETYPES && BUILD_ARCHETYPES.archetypes) || [];
+            const arr = all.filter(a => _archEligible(a, base, coarse));
+            if (!arr.length) return null;
+            let total = 0; for (const a of arr) total += (a.weight || 1);
+            let r = rng() * total;
+            for (const a of arr) { r -= (a.weight || 1); if (r <= 0) return a; }
+            return arr[arr.length - 1];
+        }
+        // Classify a species' legal move pool into role buckets (the raw material the
+        // archetype slot-distribution draws from). Damaging buckets are sorted by
+        // power×accuracy with a nudge toward the species' better attacking stat.
+        function _designedClassifyMoves(name, base, legalPool) {
+            const types = new Set([base.t1, base.t2].filter(Boolean));
+            const physical = (base.atk | 0) >= (base.spa | 0);
+            const out = { stab: [], coverage: [], status: [], setup: [], recovery: [], hazard: [] };
+            for (const m of legalPool) {
+                if (_ARCH_MEME_MOVES.has(m)) continue; // strictly broken — never field on a foe
+                const md = ensureMoveData(m); if (!md) continue;
+                if (md.cat === 'Physical' || md.cat === 'Special') {
+                    const entry = { name: m, pow: md.pow || 0, acc: md.acc || 100, cat: md.cat };
+                    (types.has(md.type) ? out.stab : out.coverage).push(entry);
+                } else if (_DESIGNED_HEAL_MOVES.has(m)) out.recovery.push(m);
+                else if (_ARCH_HAZARD_MOVES.has(m)) out.hazard.push(m);
+                else if (_ARCH_SETUP_MOVES.has(m)) out.setup.push(m);
+                else out.status.push(m);
+            }
+            const dscore = (e) => e.pow * (e.acc / 100) + (((e.cat === 'Physical') === physical) ? 20 : -15);
+            out.stab.sort((x, y) => dscore(y) - dscore(x));
+            out.coverage.sort((x, y) => dscore(y) - dscore(x));
+            return out;
+        }
+        // Synergy bonus for a candidate move given the already-chosen moves + the build's item.
+        function _designedSynergyBonus(cand, chosen, item) {
+            let s = 0;
+            for (const p of (MOVE_SYNERGIES.pairs || [])) {
+                if (!p.moves || p.moves.length !== 2) continue;
+                const [a, b] = p.moves;
+                if ((cand === a && chosen.includes(b)) || (cand === b && chosen.includes(a))) s += (p.bonus || 0);
+            }
+            if (item) for (const mi of (MOVE_SYNERGIES.moveItem || [])) {
+                if (mi.move === cand && mi.item === item) s += (mi.bonus || 0);
+            }
+            return s;
+        }
+        function _designedPickItem(arche, physical, rng) {
+            let items = (arche.items || ['Leftovers']).slice();
+            items = items.filter(it => physical ? it !== 'Choice Specs' : it !== 'Choice Band');
+            if (!items.length) items = ['Leftovers'];
+            return items[Math.floor(rng() * items.length)];
+        }
+        function _designedEvSpread(shape, base) {
+            const off = (base.atk | 0) >= (base.spa | 0) ? 'atk' : 'spa';
+            const z = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            if (shape === 'bulk_offense') { z.hp = 252; z[off] = 252; z.def = 4; }
+            else if (shape === 'max_bulk') { z.hp = 252; z[(base.def | 0) <= (base.spd | 0) ? 'def' : 'spd'] = 252; z.spe = 4; }
+            else if (shape === 'bulk') { z.hp = 252; z.def = 128; z.spd = 128; }
+            else { z[off] = 252; z.spe = 252; z.hp = 4; } // max_offense_speed (default)
+            return z;
+        }
+        // Fill the archetype's slot distribution from the classified buckets, scoring each
+        // candidate by base usefulness + synergy with already-chosen moves/item (so combos
+        // co-occur). A short bucket redistributes its deficit to the next slots; the typed-
+        // STAB net guarantees a full 4 without ever surfacing literal Tackle on a real mon.
+        function _designedFillFromArchetype(name, base, arche, buckets, item, rng) {
+            const order = ['stab', 'coverage', 'setup', 'status', 'recovery', 'hazard'];
+            const pool = {}; for (const k of order) pool[k] = (buckets[k] || []).slice();
+            const chosen = [];
+            const takeFrom = (k) => {
+                const arr = pool[k]; if (!arr || !arr.length) return null;
+                let bestIdx = -1, bestScore = -1e9, bestName = null;
+                for (let i = 0; i < arr.length; i++) {
+                    const e = arr[i];
+                    const nm = (typeof e === 'string') ? e : e.name;
+                    let sc = (typeof e === 'string') ? 60 : e.pow * (e.acc / 100);
+                    sc += _designedSynergyBonus(nm, chosen, item) + rng() * 8;
+                    if (sc > bestScore) { bestScore = sc; bestIdx = i; bestName = nm; }
+                }
+                if (bestIdx >= 0) arr.splice(bestIdx, 1);
+                return bestName;
+            };
+            const slots = arche.slots || {};
+            for (const k of order) {
+                let n = slots[k] | 0;
+                while (n-- > 0 && chosen.length < 4) { const mv = takeFrom(k); if (mv && !chosen.includes(mv)) chosen.push(mv); }
+            }
+            for (const k of order) {
+                while (chosen.length < 4) { const mv = takeFrom(k); if (!mv) break; if (!chosen.includes(mv)) chosen.push(mv); }
+            }
+            if (chosen.length < 4) {
+                const STAB = window._T1_BASIC_STAB_BY_TYPE || {};
+                for (const c of [STAB[base.t1], STAB[base.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite']) {
+                    if (chosen.length >= 4) break;
+                    if (c && !chosen.includes(c)) chosen.push(c);
+                }
+            }
+            while (chosen.length < 4) chosen.push('Tackle');
+            return chosen.slice(0, 4);
+        }
+
         function makeDesignedBuild(name) {
             const base = baseStats[name];
             if (!base) return null;
             const legalPool = _designedCsvMovePool(name);
             if (legalPool.length < 3) return null;
-            const role = _designedInferRole(name);
-            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
-            const moves = _designedPickMoves(name, role, base, legalPool);
             let ability = 'None';
             if (base.abilities) {
                 const aPool = [base.abilities['0'], base.abilities['1'], base.abilities['H']].filter(Boolean);
                 if (aPool.length) ability = aPool[0];
             }
+            // Story archetype engine (data-driven): a coherent move distribution
+            // (stab/coverage/status/setup/recovery/hazard per the chosen archetype),
+            // synergy-scored move fill (Protect+Toxic, Rest+Sleep Talk…), and a stat-sensitive
+            // EV spread. Falls back to the legacy role-config path when not in a story run or
+            // when the archetype data isn't loaded — so non-story (Quick Play / PvP / draft)
+            // designed builds stay byte-identical.
+            const storyOn = (window.sm && window.sm.active)
+                || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            if (storyOn && BUILD_ARCHETYPES.archetypes && BUILD_ARCHETYPES.archetypes.length) {
+                const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const coarse = _designedCoarseRole(name);
+                const physical = _designedInferRole(name).startsWith('PHYS_');
+                const arche = _designedPickArchetype(base, coarse, rng);
+                if (arche) {
+                    const buckets = _designedClassifyMoves(name, base, legalPool);
+                    const item = _designedPickItem(arche, physical, rng);
+                    const moves = _designedFillFromArchetype(name, base, arche, buckets, item, rng);
+                    return {
+                        i: item,
+                        a: ability,
+                        n: (arche.nature && arche.nature[physical ? 'phys' : 'spec']) || (physical ? 'Adamant' : 'Modest'),
+                        m: moves,
+                        evs: _designedEvSpread(arche.evShape, base),
+                        gimmick: 'STANDARD',
+                        teraType: null,
+                        archetype: arche.id,
+                        _designed: true,
+                    };
+                }
+            }
+            // Legacy path (non-story / no archetype data) — unchanged.
+            const role = _designedInferRole(name);
+            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
+            const moves = _designedPickMoves(name, role, base, legalPool);
             return {
                 i: cfg.item,
                 a: ability,
@@ -11203,11 +11402,67 @@
             };
         }
         window.makeDesignedBuild = makeDesignedBuild;
+        window._designedPickMoves = _designedPickMoves; // harness-testable (thin-pool pad)
+        try {
+            window._designedClassifyMoves = _designedClassifyMoves;
+            window._designedFillFromArchetype = _designedFillFromArchetype;
+            window._designedPickArchetype = _designedPickArchetype;
+            window._designedSynergyBonus = _designedSynergyBonus;
+        } catch (e) {}
+
+        // ── Smogon set POWER rating + power-weighted selection ──────────────────────────
+        // A Smogon set's competitive tier IS a power ordering: an OU set outclasses a ZU
+        // set on the same species. The story foe roller uses this so a Champion never rolls
+        // a weak ZU set and an early trainer rolls a humble one — instead of today's uniform
+        // random pick over the whole legal pool. Map a set's _format (its tier) → a 0..1
+        // power score. Maintainer-owned numbers — tune here. Unknown / exotic singles
+        // formats score neutral (0.5) so they neither dominate nor vanish.
+        const _SMOGON_FORMAT_POWER = Object.freeze({
+            ubers: 1.00, anythinggoes: 1.00, nationaldexubers: 1.00, ubersuu: 0.82,
+            ou: 0.90, nationaldex: 0.90,
+            uu: 0.75, nationaldexuu: 0.75,
+            ru: 0.62, nationaldexru: 0.62,
+            nu: 0.50,
+            pu: 0.40,
+            zu: 0.30,
+            nfe: 0.28, lc: 0.25,
+            '1v1': 0.68,
+        });
+        function _smogonSetPower(b) {
+            if (!b) return 0.5;
+            const f = String(b._format || '').toLowerCase();
+            return Object.prototype.hasOwnProperty.call(_SMOGON_FORMAT_POWER, f) ? _SMOGON_FORMAT_POWER[f] : 0.5;
+        }
+        // Sample one set from `pool`, weighting each by a Gaussian on its distance from
+        // `target` power (so the roll clusters near the stage's intended strength but keeps
+        // variety — never a hard argmax). SIGMA widens/narrows the spread. Deterministic in
+        // story replays (Math.random routes through storyRngNext when a run is active).
+        const _SET_POWER_SIGMA = 0.18;
+        function _pickSetByPower(pool, target, rng) {
+            if (!pool || !pool.length) return null;
+            if (pool.length === 1) return pool[0];
+            const r = (typeof rng === 'function') ? rng : Math.random;
+            const w = new Array(pool.length);
+            let total = 0;
+            for (let i = 0; i < pool.length; i++) {
+                const d = _smogonSetPower(pool[i]) - target;
+                const wi = Math.exp(-(d * d) / (2 * _SET_POWER_SIGMA * _SET_POWER_SIGMA));
+                w[i] = wi; total += wi;
+            }
+            if (!(total > 0)) return pool[Math.floor(r() * pool.length)];
+            let x = r() * total;
+            for (let i = 0; i < pool.length; i++) { x -= w[i]; if (x <= 0) return pool[i]; }
+            return pool[pool.length - 1];
+        }
+        try { window._smogonSetPower = _smogonSetPower; window._pickSetByPower = _pickSetByPower; } catch (e) {}
 
         // Central build factory — used by draft, gauntlet rounds, and draw recovery.
-        //   gimmickOpts.forceGimmick  — pin to MEGA / ZMOVE / TERA / STANDARD
-        //   gimmickOpts.allowIllegal  — let illegal builds into the pool (default: false; story end-game opts in)
-        //   gimmickOpts.forceIllegal  — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.forceGimmick   — pin to MEGA / ZMOVE / TERA / STANDARD
+        //   gimmickOpts.allowIllegal   — let illegal builds into the pool (default: false; story end-game opts in)
+        //   gimmickOpts.forceIllegal   — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.setPowerTarget — 0..1; when set (story foes only), the CSV set is
+        //                                power-weighted toward this strength instead of picked
+        //                                uniformly. Absent for non-story callers → unchanged.
         function makeBuild(name, gimmickOpts) {
             // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
             // can't be skipped by a forced-STANDARD call. Skip when a non-standard
@@ -11266,7 +11521,12 @@
             }
 
             if (pool.length) {
-                if (settings.smartDraftPool && pool.length > 1) {
+                const _spt = gimmickOpts && typeof gimmickOpts.setPowerTarget === 'number' ? gimmickOpts.setPowerTarget : null;
+                if (_spt != null && pool.length > 1) {
+                    // Story foe: power-weighted pick toward the stage's target strength
+                    // (fixes weak-Champion / weak-mid-late / "only very good in league").
+                    b = { ..._pickSetByPower(pool, _spt, Math.random) };
+                } else if (settings.smartDraftPool && pool.length > 1) {
                     const groups = {};
                     for (const bd of pool) {
                         const a = bd.archetype || 'other';
@@ -36549,7 +36809,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The two are multiplied together once at the stamp site (enterBattleEvent)
         // into a single build._storyStatMult. Wilds + Professor gifts are EXEMPT —
         // they keep their natural Lv50 line.
-        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.00, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
+        // City 5 steps to 1.03 (was 1.00) so the mid-game reads as a gradual climb —
+        // C4 parity (1.00) → C5 (1.03) → C6 (1.05) — instead of the old flat GL4≡GL5
+        // plateau ("same fight, different sprites"). Maintainer-owned curve — tune here.
+        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.03, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
         function _storyEnemyStatMult(eventType, city, storyRowIdx) {
             const e = String(eventType || '');
             const row = storyRowIdx | 0;
@@ -39802,6 +40065,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (let g = 1; g <= 4; g++) out[g] = (g <= f) ? (T[g] || []) : [];
             return out;
         }
+        // Early-game grade CEILING for enemy teams — the mirror of the late-game floor.
+        // Tracks the player's evolution availability so foes never field a grade tier the
+        // player can't yet match: before City 2 the player only has a G4-tier basic starter
+        // (Evolution Tutor debuts City 2), so a random G3 (evolved-tier) foe is an
+        // unbeatable early spike. Returns the STRONGEST grade NUMBER allowed (1 = G1 ok …
+        // 4 = only G4) — a HIGHER number is a WEAKER ceiling. Schedule mirrors
+        // _playerEvoStageCapForCity / _storyEvoGradeFloorForCity:
+        //   City 0-1 → G4 only · City 2-3 → G3+ · City 4-5 → G2+ · City 6+ → all.
+        // Only bites early; the late-game gradeWeights + G2 floor own City 6+. Out-of-story
+        // / Frontier callers return 1 (no ceiling), same convention as the floor.
+        function _storyEnemyGradeCeilingForRow(storyRowIdx) {
+            if (storyRowIdx == null || !(sm && sm.active)) return 1;
+            // Frontier / Crucible are out-of-story ladders — no early ceiling (they run at
+            // full T4 power; see _storyBuildTierForEvent's frontier short-circuit).
+            if (sm.frontier && sm.frontier.active) return 1;
+            const c = _cityIndexForStoryRow(storyRowIdx);
+            const city = c < 0 ? cityIndexFromEventIndex(storyRowIdx) : c;
+            const ci = city | 0;
+            // Unresolvable city (out-of-story caller) → no ceiling, mirroring the floor's
+            // safe default. The ceiling clamps strength, so its no-op value is 1, not 4.
+            if (ci < 0) return 1;
+            if (ci <= 1) return 4; // City 0-1: basic-tier only — no G3 until City 2
+            if (ci <= 3) return 3; // City 2-3: first-evo era
+            if (ci <= 5) return 2; // City 4-5: finals era
+            return 1;              // City 6+: unrestricted (weights + floor take over)
+        }
+        // Apply the grade ceiling to a (local copy of the) grade partition: empty the
+        // buckets STRONGER than `ceilingGrade` (lower grade NUMBER = stronger mon) so no
+        // downstream picker can pull an over-grade early foe. Mirror of
+        // _capGradePoolsByGradeFloor — same local-copy + fail-open discipline (if NOTHING
+        // sits at/under the ceiling for this type+gen, the full pool is returned unchanged
+        // so a roll never breaks).
+        function _capGradePoolsByGradeCeiling(T, ceilingGrade) {
+            if (!T || (ceilingGrade | 0) <= 1) return T;
+            const c = ceilingGrade | 0;
+            let keep = 0;
+            for (let g = c; g <= 4; g++) keep += (T[g] || []).length;
+            if (keep === 0) return T; // fail open — no at/below-ceiling species available
+            const out = { 1: [], 2: [], 3: [], 4: [] };
+            for (let g = 1; g <= 4; g++) out[g] = (g >= c) ? (T[g] || []) : [];
+            return out;
+        }
         // Late-game signature EVOLVE-UP (mirror of _devolveSigToGradeCeiling). A
         // signature weaker than the floor walks UP its own evo line to the first form
         // that meets the floor — Caterpie → Butterfree at the G2 floor — preserving the
@@ -40474,6 +40779,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Steel':    'Metal Claw',
             'Fairy':    'Fairy Wind'
         };
+        // Mirror to window so the story-agnostic build factory (makeDesignedBuild's pad,
+        // ~line 11155) can read the same table across the scope boundary without duplicating it.
+        try { window._T1_BASIC_STAB_BY_TYPE = _T1_BASIC_STAB_BY_TYPE; } catch (e) {}
         function _t1ReplacementForSpecies(name) {
             const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             const t1 = bs.t1 || 'Normal';
@@ -40593,6 +40901,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return STORY_BUILD_TIER.UNTRAINED;
             }
             return STORY_BUILD_TIER.NOVICE;
+        }
+
+        // Target Smogon-set POWER (0..1) for power-weighted selection, derived from the
+        // event's build tier (the approved T1-T4 curve): humble early → near-best late.
+        // The league and everything after it (E1-E4 / Champion / Mystery / Victory Road /
+        // post-HoF Crucible at badges>=8) clamps to a near-best floor so only very good sets
+        // roll there (maintainer choice: "best & only very good builds in league"), while
+        // _SET_POWER_SIGMA still admits slight variety so fights aren't identical.
+        // Maintainer-owned numbers — tune the tier map / league floor here.
+        const _STAGE_SET_POWER_BY_TIER = Object.freeze({ 1: 0.30, 2: 0.50, 3: 0.72, 4: 0.90 });
+        const _LEAGUE_SET_POWER_FLOOR = 0.94;
+        function _stagePowerTargetForEvent(eventType, storyRowIdx, badges) {
+            const tier = _storyBuildTierForEvent(eventType, storyRowIdx, badges) | 0;
+            let t = _STAGE_SET_POWER_BY_TIER[tier];
+            if (typeof t !== 'number') t = 0.5;
+            const e = String(eventType || '');
+            const isLeaguePlus = e === 'Mystery Figure' || e === 'Champion' || e === 'Victory Road'
+                || /^E[1-4]$/.test(e) || (badges | 0) >= 8;
+            if (isLeaguePlus) t = Math.max(t, _LEAGUE_SET_POWER_FLOOR);
+            return t;
         }
 
         /** Professor gift: matches the contemporary trainer floor for the city.
@@ -40781,6 +41109,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _diffStep = _trainerDifficultyStep(eventType);
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
+                // Strip strictly-broken meme moves from ANY source (CSV / randbats /
+                // designed) and backfill a typed STAB, so a thin-pool foe (e.g. a rolled
+                // Magikarp) never fields Splash / Celebrate / Hold Hands / Happy Hour.
+                if (Array.isArray(slot.build.m)) {
+                    const _bsM = (typeof baseStats === 'object') ? (baseStats[slot.name] || {}) : {};
+                    const _STAB = window._T1_BASIC_STAB_BY_TYPE || {};
+                    for (let _mi = 0; _mi < slot.build.m.length; _mi++) {
+                        if (!_ARCH_MEME_MOVES.has(slot.build.m[_mi])) continue;
+                        const _chain = [_STAB[_bsM.t1], _STAB[_bsM.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite', 'Tackle'];
+                        slot.build.m[_mi] = _chain.find(c => c && !slot.build.m.includes(c)) || 'Tackle';
+                    }
+                }
                 // Snapshot the optimized build BEFORE the tier downgrade so the
                 // city/difficulty optimization gradient can selectively restore it.
                 const _optN = slot.build.n;
@@ -40956,17 +41296,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((gw.g3 || 0) > 0) return 3;
             return 4;
         }
-        function _filterSigsByGradeCeiling(sigs, minGradeNumber) {
+        function _filterSigsByGradeCeiling(sigs, minGradeNumber, dropUndevolvable) {
             if (!Array.isArray(sigs) || sigs.length === 0) return [];
             const ceiling = minGradeNumber | 0;
             // Scale rather than drop: a signature stronger than the ceiling devolves to the
             // strongest form that fits (keeps the trainer's identity). Forms already at/under
             // the ceiling pass through unchanged.
+            // dropUndevolvable (early-game ceiling only): if a still-too-strong sig can't
+            // devolve to fit (a no-evo high-BST mon like Lapras, which _devolveSigToGradeCeiling
+            // returns unchanged), DROP it so the type-matched ceiling-grade filler/top-up
+            // replaces it — otherwise it leaks past the early G4 wall (the "Lapras at Gym 1"
+            // spike). Default false keeps the legacy devolve-or-keep behavior for the
+            // grade-weights ceiling so a late-game legendary ace is never dropped.
             return sigs.map(name => {
                 const b = baseStats[name];
                 if (!b) return null;
                 if (getMonGrade(name, getBST(name)) >= ceiling) return name;
-                return _devolveSigToGradeCeiling(name, ceiling);
+                const dv = _devolveSigToGradeCeiling(name, ceiling);
+                if (dropUndevolvable && dv && getMonGrade(dv, getBST(dv)) < ceiling) return null;
+                return dv;
             }).filter(Boolean);
         }
         // Gym Leader union pool support: if a leader's post-cap sig pool falls
@@ -41074,6 +41422,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the trainer's signatures stay exempt (low-grade aces allowed). See
             // _storyFillerGradeFloorForRow / _capGradePoolsByGradeFloor.
             const _fillerFloor = _storyFillerGradeFloorForRow(storyRowIdx);
+            // Early-game grade CEILING (mirror of the floor): no G3 enemies before City 2,
+            // tracking the player's evolution availability. Strongest grade NUMBER allowed
+            // (4 = only G4 … 1 = unrestricted). Bites the early cities only; clamps both the
+            // filler pool and the signature aces below so a random/authored over-grade mon
+            // (the "Lapras at Gym 1" spike) can't land before the player can answer it.
+            const _earlyGradeCeiling = _storyEnemyGradeCeilingForRow(storyRowIdx);
+            // Power-weighted Smogon set target for this event (humble early, near-best in the
+            // league+). Passed into every makeBuild below so foes roll a stage-appropriate
+            // set instead of a uniform-random one. Only computed inside an active run; the
+            // Frontier/Crucible generator path uses its own callers.
+            const _setPowerTarget = (sm && sm.active)
+                ? _stagePowerTargetForEvent(battleEventType, storyRowIdx, sm.badges)
+                : null;
             // Eldritch-tagged trainers (Shadow Blue, Cursed Lance, Eldritch N, etc.) bypass
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
@@ -41140,8 +41501,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // weights say G3, but the G2 floor wants G2 filler — letting the leader's
                 // ace reach G2 too keeps it the strongest mon on the team (never weaker
                 // than its own filler). Pre-city-6 the floor is 4, so this is a no-op.
-                const _ceiling = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                S = _filterSigsByGradeCeiling(S, _ceiling);
+                const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                // Weaken (raise the number) when the early-game ceiling is the binding
+                // constraint; drop over-grade no-evo aces (Lapras) so the top-up replaces them.
+                const _ceiling = Math.max(_sigCeilBase, _earlyGradeCeiling);
+                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling > _sigCeilBase);
                 // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
                 // identity sig plus type-matched G2 partners.
                 if (/^Gym Leader\s*\d$/.test(_evtStr)) {
@@ -41155,7 +41519,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
             // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
-                S = _filterSigsByGradeCeiling(S, Math.min(_storySigGradeCeiling(gwIn), _fillerFloor));
+                const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling > _sigCeilBase2);
             }
             // Evo-stage gate on the signature pool: pre-C2 even a leader's ace
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
@@ -41212,6 +41577,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Empties the G3/G4 buckets so neither the standard picks nor the Rival
             // counter-pick can pull weak filler late; signatures (S) are untouched.
             if (_fillerFloor < 4) T = _capGradePoolsByGradeFloor(T, _fillerFloor);
+            // Early-game grade CEILING on the filler pool (City 0-1 → G4, City 2-3 → G3):
+            // empties the buckets STRONGER than the ceiling so no early foe — standard pick
+            // or Rival counter-pick — out-grades the player's basic-tier team. Same
+            // local-copy + fail-open discipline as the floor above.
+            if (_earlyGradeCeiling > 1) T = _capGradePoolsByGradeCeiling(T, _earlyGradeCeiling);
 
             // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
             // built fresh against your LIVE six (dynamic, never cached). Score every
@@ -41266,7 +41636,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
                     usedR.add(chosen);
-                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _setPowerTarget }) });
                 }
                 const _origSigsR = new Set((trainer.sigs || []));
                 const _lockedR = new Set(_counterLock);
@@ -41309,7 +41679,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Clamp the filler ceiling no weaker than the floor so the [ceiling..floor]
             // band stays valid (GL6: weights say G3 but the floor forces G2, so the
             // ceiling must tighten to G2 or the spiral would have nothing to land on).
-            const _fillerCeiling = Math.min(_exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn), _fillerFloor);
+            const _fillerCeiling = Math.max(
+                Math.min(_exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn), _fillerFloor),
+                _earlyGradeCeiling // early-game wall: no filler stronger than the city ceiling
+            );
             // Per-species slot allowance. Authored multiplicity comes from the ORIGINAL sigs
             // list (verbatim): only an intentional same-species duplicate — Lance's triple
             // Dragonite — earns >1 slot. The gen/grade/evo transforms above can collapse
@@ -41422,7 +41795,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 _markUsed(chosen);
-                const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
+                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _setPowerTarget });
                 team.push({ name: chosen, build });
             }
             const _origSigs = new Set((trainer.sigs || []));
@@ -41577,6 +41950,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
                     storyFillerGradeFloorForRow: (...a) => _storyFillerGradeFloorForRow(...a),
                     capGradePoolsByGradeFloor: (...a) => _capGradePoolsByGradeFloor(...a),
+                    storyEnemyGradeCeilingForRow: (...a) => _storyEnemyGradeCeilingForRow(...a),
+                    capGradePoolsByGradeCeiling: (...a) => _capGradePoolsByGradeCeiling(...a),
+                    stagePowerTargetForEvent: (...a) => _stagePowerTargetForEvent(...a),
                     evolveSigToGradeFloor: (...a) => _evolveSigToGradeFloor(...a),
                     rollCityIVs: (...a) => _rollCityIVs(...a),
                     trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
@@ -41796,6 +42172,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return { name: s.name, nickname: s.nickname || '', build };
                 });
             }
+            // Power-weighted set target for the post-game superboss: near-best (the league
+            // floor) so the Mystery's mirror/fallback rolls are top-quality, not random.
+            const _mysticPower = (sm && sm.active)
+                ? _stagePowerTargetForEvent('Mystery Figure', null, (sm.badges | 0) || 8) : null;
             // Legacy mirror fallback (old saves with no HoF snapshot): re-roll the
             // player's live species with STANDARD movesets + a stronger lead dup.
             const playerTeam = Array.isArray(sm && sm.team) ? sm.team.filter(s => s && s.name) : [];
@@ -41803,15 +42183,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const picks = [];
                 // Mirror up to (partySize - 1) player mons.
                 for (let i = 0; i < Math.min(partySize - 1, playerTeam.length); i++) {
-                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD' }) });
+                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 }
                 // The +1 starter slot — second copy of the player's lead (sm.team[0]).
                 // This is The First's "stronger you" slot.
                 const starterName = playerTeam[0].name;
-                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 // Pad if needed (player had < partySize-1 mons in storage).
                 while (picks.length < partySize) {
-                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 }
                 return picks;
             }
@@ -41847,7 +42227,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 usedNames.add(chosen);
                 const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
                 if (t1) usedTypes.add(t1);
-                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
             }
             // Final boss rolls from every unlocked mechanic. Pass the forced gimmick flags
             // as a local override context instead of mutating (and restoring) the shared
