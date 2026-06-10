@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-10T09:08:04.272Z
+> **Generated**: 2026-06-10T18:41:41.560Z
 > **Source**: `agent-state/findings/*.md` (444 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -495,7 +495,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 307c0fad776a
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible League Run + Random Gym Rematch use row ids as array indices — wrong opponents (skips E1, runs into Rival; can launch City3)
@@ -575,7 +575,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 691dcd5cb693
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Mystery Figure" button is dead — STORY_POST_HOF_MYSTERY_ROW (67) is out of bounds as an array index
@@ -611,7 +611,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9e4b435d44de
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Rival Rematch" targets the Hall of Fame row — STORY_LEAGUE_RIVAL_ROW (65) is a row id, not the array index (64)
@@ -803,7 +803,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 39dff38f7dce
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible row constants are STORY_EVENTS_RAW *row-ids*, not array indices — `_crucibleBattleSetup` assigns them straight to `sm.eventIndex`
@@ -840,7 +840,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 75cdcf609fdb
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Two early-game foe-softening systems STACK multiplicatively — C0 foe is 64% of base, not the documented ~80%
@@ -914,7 +914,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 13be257103c9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Villain-track "ending" event fires before the villain boss fight (road7 event-kind drains first)
@@ -1097,7 +1097,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 3fd8df38ef77
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Foe stats pass through FOUR stacking multipliers on the live path (band × early × stage-gated × diff+league); band & stage-gated & league each triple-special-case Champion/Mystery
@@ -1134,7 +1134,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c55e0a763c3a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: "Up next" trainer name is the pre-override name — boss beats relabel the trainer after the preview
@@ -1301,7 +1301,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 721b22bdaa85
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Road event-beats fire before in-city Gym Trainer / Gym Leader fights, not only on the route
@@ -1596,7 +1596,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 07232f72109f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Three conflicting "canon" docs for the boss/endgame arc; code matches none cleanly
@@ -1668,7 +1668,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1a2a30d45840
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Sleep wake-check is off-by-one — ~1/3 of sleeps cost 0 turns (instant wake, mon acts same turn)
@@ -1723,7 +1723,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: e264dd705b7b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Sleep off-by-one: sleepDuration=1 wakes and attacks on its first turn (0 turns lost); effective sleep is 0-2 turns not 1-3
@@ -1864,7 +1864,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 4592b2ea36ea
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Ball inventory + `catchMode` flag in STORY_FEATURES_INTEGRATION §1/§2/§5 do not match shipped code
@@ -2012,7 +2012,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 347bfcbf535d
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible League Run skips E1 and ends on the Rival — `_CRUCIBLE_LEAGUE_ROWS` are off-by-one row-ids
@@ -2386,7 +2386,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2ff4479d31a1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Save-migration integration test never exercises the migrate chain (vacuous pass)
@@ -2469,7 +2469,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 37ef284799b0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Secondary flinch/Stench write `defender.volatile.flinch` unguarded — throws if volatile missing (sibling _tryConfuse guards it)
@@ -3307,7 +3307,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 3422a6976f0b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Player-facing city actions read "Pokemon League" / "Pokemon Fan Club" (no diacritic)
@@ -3346,7 +3346,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 27b0bb57fb3a
 confidence: high
-status: open
+status: wontfix-out-of-scope-a11y-nonstory
 ---
 
 **Title**: Draft pick cards are click-only <div>s — keyboard/SR users cannot select a Pokémon
@@ -4012,7 +4012,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: f4639e9e207a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Two parallel story-flow engines coexist — new "unified" engine built but never wired (P2/P3 never done)
@@ -4047,7 +4047,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 19a080eb1e8e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Dormant "unified flow engine" is now triple-orphaned — live dispatch is a 3rd design that leapfrogged it
@@ -4083,7 +4083,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 10765c88017a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Variants are rolled every run (not forced classic) — so variant Champion/post-HoF lines pointing at the dead broker/cage DO fire
@@ -4155,7 +4155,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: e9291216e754
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Nature Rater cost badge shows "2000+" but TUTOR_COST_NATURE is a flat 2000
@@ -4189,7 +4189,7 @@ file: online-pvp.js
 agents: [consistency-auditor]
 fingerprint: 52cc0edfbc71
 confidence: high
-status: open
+status: wontfix-out-of-scope-pvp
 ---
 
 **Title**: 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js
@@ -4266,7 +4266,7 @@ file: data/species.json
 agents: [data-integrity-auditor]
 fingerprint: 6cd268a1ac66
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: species.json Hisui formes are stale (gen8 snapshot) — Samurott-Hisui/Kleavor lack gen9 Sharpness, so every legal-tier build is dropped
@@ -4467,7 +4467,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f642d84a30e0
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Rivalry tab is mis-homed in the Pokémon Center — belongs in a progression/journal surface
@@ -4575,7 +4575,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 38f68891607d
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: _renderCrucible rebuilds a 17.7KB / 109-node innerHTML on every open + lead-collect + hard-mode toggle
@@ -4613,7 +4613,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: eb2165a89001
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Battle Frontier hub displays stale, weaker foe-scaling numbers than what applyStoryLeagueFoeStatBoost actually applies
@@ -4690,7 +4690,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: cc5df56aa969
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Road beat clumping: 2 beats/road (villain road7 = 3, league = 7) play back-to-back, breaking pacing
@@ -4727,7 +4727,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 771f1e021e9c
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Catch-tutorial gate comment claims "starting kit gives 5 balls" — fresh-run kit is actually 0
@@ -4839,7 +4839,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 2f6b5645d86f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3)
@@ -4908,7 +4908,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1598e26c657a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss surge/immunity timers live on the active foe mon — lost on switch, stale on bench
@@ -4945,7 +4945,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: e3f00646f827
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Single `_bossPendingTelegraph` slot drops a phase when two mechanics telegraph on the same turn (mfBattle)
@@ -4981,7 +4981,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 92d44000abc0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Shipped BOSS_CONFIGS uses surge/immunity/heal phases, not the EXPANSION_PLAN "multi-form transformation"
@@ -5152,7 +5152,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 62b71f668975
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: rollTrainerTeam's evo-stage cap uses cityIndexFromEventIndex on a ROW ID (not array index) — intro Rival gets cap 2 (fully evolved) instead of 0 (basics-only)
@@ -5264,7 +5264,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: bbbcf8f348ca
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Planned hatch animation + Fight Club transitions need reduced-motion + live-region design up front
@@ -5340,7 +5340,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 092d23ae6973
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CSV-load cache invalidation pokes IIFE-private `_txMetaCache`/`_txGlobalMetaCached` — invalidation is dead
@@ -5374,7 +5374,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b77e444a2cf6
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `_variantMysteryOutro` is dead — `_MYSTERY_OUTRO_BY_VARIANT` keyed only by retired identities, never matches `the_first`
@@ -5412,7 +5412,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 910267b13380
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: All ~30 per-variant Mystery-Figure outros are dead — keyed by retired identities, never match `the_first`
@@ -5487,7 +5487,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: b90b810adcdc
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: applyStatus dereferences `state.pActive.volatile.lockMove` / `state.fActive.volatile.lockMove` unconditionally (Uproar check) — throws if an active is null
@@ -6012,7 +6012,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 8566e89fd047
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `sm.catchUnlocked` is written 3× but never read; spec §10 says it gates wild-route prompts
@@ -6052,7 +6052,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: d2e9f5d532b4
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `sm.settings.catchMode` toggle never implemented; catch shipped as always-on, 3 specs still gate on it
@@ -6239,7 +6239,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 963c0784871b
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Mystery Figure" rematch uses out-of-bounds index 67 (array length is 67, max idx 66)
@@ -6273,7 +6273,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2a58bef716ae
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Rival Rematch" targets the Hall of Fame row (array idx 65), not the league rival
@@ -6347,7 +6347,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: f399b81a21b5
 confidence: medium
-status: open
+status: wontfix-out-of-scope-pvp
 ---
 
 **Title**: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` — silently drops Set/Map/Date/undefined/circular refs across the entire snapshot pipeline
@@ -6386,7 +6386,7 @@ file: docs/design-audit/DESIGN_CONSISTENCY_CHECKLIST.md
 agents: [spec-drift-auditor]
 fingerprint: d4d3b918cb44
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Design checklist's load-bearing "CSS block = battle.html lines 16-4156" guardrail is wrong by ~3700 lines
@@ -6571,7 +6571,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 145ee8564182
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: PLAN COLLISION — Daycare unlock is keyed on the "Gym Leader 1" event name, not a city; redesign wants C2/C4/C6
@@ -6609,7 +6609,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d317e1091ec7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Poké Center never clears Fatigue, yet the in-game bulletin tells players a Center stay clears it
@@ -6861,7 +6861,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4becfea84542
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: City-3 HUD/route name falls back to "City 3" — GYM_CITY_LEADER_EVENT array-index keys trainerAssignments (row-id keyed)
@@ -6896,7 +6896,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 8a35ede06e36
 confidence: high
-status: open
+status: wontfix-out-of-scope-pvp
 ---
 
 **Title**: 36 references to 18 distinct `global.__*` variables across `online-pvp.js` — the PvP module mutates host-side state through ad-hoc globals instead of a single observable
@@ -6940,7 +6940,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6ff4d34cde7f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: City-3 display name always falls back to "City 3" — GYM_CITY_LEADER_EVENT returns an array index, but trainerAssignments is keyed by row ID
@@ -7129,7 +7129,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 920d7e405954
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-merge saves with partial unlockedGimmicks are not re-derived on load — Tera/Z silently withheld until next milestone win
@@ -7359,7 +7359,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 685e7677fbe1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-v15 post-HoF saves are forced back through the Mystery Figure climax — postHofMysteryClimaxDone migration shadowed by default boolean
@@ -7628,7 +7628,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 5f7903cb05a5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: In-game help text still says "PC Storage (cap 10)" — actual PC_BOX_CAP is 30
@@ -7663,7 +7663,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: d7eb819e92a0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pokémon Center storage rows are mouse-only clickable divs (no keyboard access)
@@ -7801,7 +7801,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 51dd9b25936e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: "Vitamin" names three distinct systems — IV items, casino prize, EV voucher
@@ -7836,7 +7836,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 4b71628ae0f5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Nurse Joy first-Center tutorial says PC has "ten slots" but PC_BOX_CAP is 30
@@ -7955,7 +7955,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 8d497740c197
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json`
@@ -7994,7 +7994,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 4177b7fb1027
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mart/Dept consumables (30 ids: potion, xAttack, sunOrb, evResetCharm…) are a self-contained namespace, NOT entries in items.json
@@ -8032,7 +8032,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c69ad43dcc8c
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: `_storyBattleEntryBusy` can latch true on a cold-open / beat-scene continuation throw → soft-locks "Enter Gym / Continue Route"
@@ -8107,7 +8107,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: aea4e9950e8b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery swap picker mislabels BST grade as "Power tier (1-4)"
@@ -8140,7 +8140,7 @@ file: README.md
 agents: [spec-drift-auditor]
 fingerprint: 61ee59240f4d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: README calls catch / PC / Underground / Safari / boss-arc "upcoming"; all are shipped
@@ -8258,7 +8258,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4fc1e6825b2d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pokémon Center copy promises a "Heal" that no longer exists (full-heal is automatic)
@@ -8331,7 +8331,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 67d442f2bbd6
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit
@@ -8368,7 +8368,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 43572c0f06d7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4
@@ -8532,7 +8532,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e8bc3184fc4b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: SAVE_VER=23 but migration chain stops at PreV22 — no migrateStoryPreV23 step (v23 added wanderByEventIdx, back-filled unconditionally)
@@ -8567,7 +8567,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: bfdd6b8592a2
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pending Healing Wish / Lunar Dance flags bleed into next battle and auto-heal its lead
@@ -8753,7 +8753,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f31bcfda964b
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Anomaly seeds fire via low-z `showGameAlert` on the same tick as the row's flow — can paint behind/over other overlays
@@ -8903,7 +8903,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 03906b358d2f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Fresh run starts with 0 Poké Balls; skipping the optional City-0 Mart silently no-ops the catch tutorial
@@ -9015,7 +9015,7 @@ file: STORY_MODE_FLOW.md
 agents: [spec-drift-auditor]
 fingerprint: e585e95483b0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_MODE_FLOW says timeline is "68 rows"; STORY_EVENTS_RAW actually has 67 rows
@@ -9228,7 +9228,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 95a0a3a5f2ea
 confidence: high
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast
@@ -9369,7 +9369,7 @@ file: docs/STORY_NARRATIVE_VARIANTS.md
 agents: [spec-drift-auditor]
 fingerprint: e9e4c9139950
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_NARRATIVE_VARIANTS.md presents a cut 8-variant design as "canonical" (future-prompt-rebuild trap)
@@ -9404,7 +9404,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 294ac88b95dd
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded
@@ -9778,7 +9778,7 @@ file: docs/EVOLUTION_FLOW_REBUILD.md
 agents: [spec-drift-auditor]
 fingerprint: 70efe53e89e9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: EVOLUTION_FLOW_REBUILD.md header says "Status: Plan — review before implementation" but the system fully shipped
@@ -9926,7 +9926,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 62f1b4b5cef8
 confidence: high
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: Lead→city mapping duplicated (`_BOSS_LEAD_CITIES` const vs inline `_leadCity` literal)
@@ -10074,7 +10074,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 54819c046cee
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Entire Caged God boss-arc subsystem is dead code after v24 removal
@@ -10145,7 +10145,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 676d6b1d9871
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — PC overflow at party-cap + 30/30 shows explicit message; sell/release path exists
@@ -10253,7 +10253,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 09cd7d1f62cd
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Variant Champion / rival dialogue narratively routes player to the dead broker + cage
@@ -10323,7 +10323,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: e8d49fac6605
 confidence: high
-status: open
+status: wontfix-gen2-berries-not-loaded-by-gen9-engine-by-design
 ---
 
 **Title**: 9 Gen-2-legacy "isBerry" items are dead data — no engine handler and never referenced by any build
@@ -10399,7 +10399,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: fe19faa27ad9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `_pendingProfRoll` (singular) only ever assigned null — dead variable shadowing live `_pendingProfRolls`
@@ -10433,7 +10433,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: ab3e79af56a9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Inert `_permBoostsRead`/`_permBoostTotal` stubs (+ window export) have zero callers — fully dead
@@ -10579,7 +10579,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 2b9d-imageprefetch
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images
@@ -10686,7 +10686,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6f7d78ccc064
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Grade badge prefix differs between prof pick cards (G#) and swap slots (T#)
@@ -10897,7 +10897,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: df15067e7f6b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — catch tutorial fires exactly once; mid-tutorial reload cannot refire or lock
@@ -10969,7 +10969,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 58d14e311a0e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CORRECTION to prior audit: storyline variant is rolled randomly every run, NOT forced to 'classic'
@@ -11005,7 +11005,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 9d2a9248db19
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: faintPhase counts the active foe as "fainted" mid-tick if it is at 0 HP before the swap
@@ -11273,7 +11273,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d042b79a10dc
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery Figure sprite is now `Red` (the_first); the `'Cyrus'` fallback at enterBattleEvent is dead
@@ -11308,7 +11308,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2ed72d9b81f5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Stale comment on `_storyGrantTrackEndReward` — claims scene-queue piggy-back that is structurally impossible
@@ -11342,7 +11342,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d683843c4c03
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Extra-track raid EXP-Share reward + boss BOSS_MECHANICS are partly data-only — engine wiring deferred (mechanics are no-ops that only record)
@@ -11377,7 +11377,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 306eabc530b8
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — party-cap curve = min(6, 2+badges) with no off-by-one; foe sizing matches
@@ -11413,7 +11413,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: c4298b3df1c1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Legacy storyline picker is dead UI — hidden DOM + uncalled renderer + unreachable card handlers, superseded by sm.tracks
@@ -11484,7 +11484,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 156f9f10653f
 confidence: medium
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: Variant rival quote pools are uneven — several phases have a single line; many phases absent
@@ -11553,7 +11553,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fc7eab00919a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path
@@ -11661,7 +11661,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 672996ea646e
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Latent state-bleed: artifact battle-flags reset is behind an empty-artifacts early-return (same init-inside-guard shape as the fixed boss-bleed)
@@ -11744,7 +11744,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7e1cdcbb0b91
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Spec §8 says league boost stacks multiplicatively with difficulty; code now stacks additively (the cliff was fixed)
@@ -11780,7 +11780,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 25cb66b09cd0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Spec §8 says league boost stacks MULTIPLICATIVELY with difficulty; code now stacks ADDITIVELY
@@ -11924,7 +11924,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 67a1e4cfc010
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Dead `build.tired` fatigue field still written/backfilled at 5 sites, read in zero gameplay paths
@@ -12173,7 +12173,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a461bb932f94
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: sm.catchUnlocked written by defaults + v15 migration + newStoryRun but read nowhere (live gate is sm.catchTutorialDone)
@@ -12331,7 +12331,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f93740a17e98
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible rematch pickers use bare Math.random — breaks the seeded-replay contract for post-game
@@ -12509,7 +12509,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2b18728e7602
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: City0 welcome tip says the Underground "buys … never your starter" but starters are sellable
@@ -12542,7 +12542,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 75a751b3f4d7
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible sub-sections improve wayfinding but the orientation tip + "Mystery vs Caged God" disambiguation still lean on long alert text
@@ -12579,7 +12579,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: ea3cd4d05640
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Poké Center chip sits in "Heal & Team" section with a "Free" badge but performs no heal interaction
@@ -12803,7 +12803,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 70fdae9ad188
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Exp Share Voucher item (3TRACK_IMPL_PLAN PR-5) never shipped; `sm.inventory.expShareVoucher` is dead init
@@ -12836,7 +12836,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 5c179bd13408
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `expShareVoucher:0` inventory field is dead — no reader, no writer; extra-raid reward grants vitamins instead
@@ -12870,7 +12870,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6c771c9b218f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map
@@ -12924,7 +12924,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2a1b8a63bc6e
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible-reachable Frontier surrender uses raw window.confirm — drops fullscreen, breaks modal convention
@@ -12960,7 +12960,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 89ea3a3e2152
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Gauntlet score readout is a plain div with no live region — score changes are silent to SR
@@ -12992,7 +12992,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1e8eb0a0eb0d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior
@@ -13063,7 +13063,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 92e4f7817cc9
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session
@@ -13211,7 +13211,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: da9a1c34d71e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED FIXED — GYM_CITY_LEADER_EVENT is now derived from STORY_EVENTS_RAW at boot (prior audit 1.3)
@@ -13360,7 +13360,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a523f2cc0e8d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — full migrate chain v8→v21 round-trips pre-v15 saves without crash or party/PC/badge loss
@@ -13423,7 +13423,7 @@ file: tests/helpers/load-engine.js
 agents: [story-mode-investigator]
 fingerprint: 05d7604f22a5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Test-harness docs promise window.SAVE_VER / window.sm / window.newStoryRun but only StoryMode + __storyLoad are exposed
@@ -13525,7 +13525,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 4dca97446477
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Grade badge prefix differs — `G{tier}` on draft cards vs `T{grade}` on swap/daycare slots
@@ -13761,7 +13761,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1839297b78a2
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-v15 saves get 0 Poké Balls instead of the intended 5 — migrateStoryPreV15 balls default is shadowed by the default sm object
@@ -13980,7 +13980,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 91bb9bebbb7a
 confidence: high
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: CONFIRMED FIXED — Mystery Figure is now a rotating 10-identity cast (prior audit: hardcoded Cyrus)
@@ -14016,7 +14016,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e46f43a0e592
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `mysteryBias` per-variant config is orphaned — seeds weights for retired MF identities, never read
@@ -14119,7 +14119,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 8407ee14cfc4
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: A cluster of form controls lack accessible names (online host/join, casino bet, gauntlet opt-in)
@@ -14739,7 +14739,7 @@ file: README.md
 agents: [spec-drift-auditor]
 fingerprint: 1f3b34879073
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: README calls shipped catch / PC / Underground / Safari / boss-arc systems "upcoming"
@@ -14777,7 +14777,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4066d35d9141
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Nature Rater availability is gappy (C0, C3, C5–C9) — absent C1/C2/C4 with no unlock rationale
@@ -14810,7 +14810,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 99d6d7a2d22b
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Rival-gate tip labelled "Heal …" deep-links to the Poké Center, which performs no heal
@@ -14920,7 +14920,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: de6142450105
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive)
@@ -15292,7 +15292,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 671336517e09
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Player gimmick-unlock order shifts when a mechanic is disabled in settings — DMax unlocks at Gym 5 instead of Gym 6 if Mega is off
@@ -15643,7 +15643,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b61c4fb64fc9
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery Figure identity is rolled at run start before sm.active/runSeed are live — not reproducible under fixed debug seeds
@@ -15858,7 +15858,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6287bc4c5a37
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Service-timeline pacing — City1 post-gym hub is a dead zone (no new "thing to do")
@@ -15893,7 +15893,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1351f59a0b47
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_EVENTS_RAW has 67 array rows (incl. 2 'Hall of Fame' string matches) — mandate/spec cite "68 rows"
@@ -15927,7 +15927,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d62e9395acd6
 confidence: low
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_EVENTS_RAW resolves to 67 rows in harness vs 68 stated in spec/mandate
@@ -16096,7 +16096,7 @@ file: docs/STORY_MODE_AUDIT.md
 agents: [story-mode-investigator]
 fingerprint: bd78781b71ff
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: docs/STORY_MODE_AUDIT.md is stale — most of its flagged issues are now fixed (SAVE_VER 14→22)
@@ -16172,7 +16172,7 @@ file: docs/STORY_MODE_CATCH_INTEGRATION_RISK.md
 agents: [spec-drift-auditor]
 fingerprint: 29bf2f08d270
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Doc `battle.html:LINE` anchors still stale (50 refs, 18 drifted) despite PR #140 "fix"
@@ -16359,7 +16359,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8b2bced8d3b7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Spec/mandate says timeline is "68 rows"; STORY_EVENTS_RAW has 67 (array idx 0–66), and rowId 68 is the intro Rival at array idx 1
@@ -16472,7 +16472,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 48fe61e2f764
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible & Catch headers use empty spacer spans instead of a back control; no escape from Crucible header
@@ -16812,7 +16812,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2f91ba9853c9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED FIXED — Hard coin mult floored to 1.00 (prior audit 2.1); Challenge 1.10
@@ -17140,7 +17140,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1e345769ae23
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `SAVE_VER = 23` but migration dispatch stops at `_loadedVer < 22` — no numbered v23 step
