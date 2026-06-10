@@ -11152,7 +11152,28 @@
                     if (!moves.includes(m)) moves.push(m);
                 }
             }
-            while (moves.length < 4) moves.push('Tackle');
+            // Final pad for a thin CSV pool. In a story run, fill with the species' typed
+            // basic STAB instead of a literal Tackle — the "Tackle at Gym 6" fix: a
+            // fully-evolved mid/late trainer's mon should never show up holding Tackle just
+            // because its CSV set was short. This factory lives in a story-agnostic scope
+            // (no `sm` binding, no access to the story-side _T1_BASIC_STAB_BY_TYPE), so read
+            // the run flag + the shared type→basic-STAB map off window (same pattern as the
+            // _smActive check ~line 14343). Deterministic ordering, no RNG draw, so non-story
+            // callers (Quick Play / PvP / draft) keep the legacy Tackle pad below byte-for-byte.
+            const _storyOn = (window.sm && window.sm.active)
+                || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            if (_storyOn && moves.length < 4) {
+                const STAB = window._T1_BASIC_STAB_BY_TYPE || null;
+                const bs = (typeof baseStats !== 'undefined' && baseStats[name]) || base || {};
+                if (STAB) {
+                    const chain = [STAB[bs.t1], STAB[bs.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite'];
+                    for (const cand of chain) {
+                        if (moves.length >= 4) break;
+                        if (cand && !moves.includes(cand)) moves.push(cand);
+                    }
+                }
+            }
+            while (moves.length < 4) moves.push('Tackle'); // non-story / typeless last resort
             return moves.slice(0, 4);
         }
         function makeDesignedBuild(name) {
@@ -11181,6 +11202,7 @@
             };
         }
         window.makeDesignedBuild = makeDesignedBuild;
+        window._designedPickMoves = _designedPickMoves; // harness-testable (thin-pool pad)
 
         // Central build factory — used by draft, gauntlet rounds, and draw recovery.
         //   gimmickOpts.forceGimmick  — pin to MEGA / ZMOVE / TERA / STANDARD
@@ -40261,6 +40283,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Steel':    'Metal Claw',
             'Fairy':    'Fairy Wind'
         };
+        // Mirror to window so the story-agnostic build factory (makeDesignedBuild's pad,
+        // ~line 11155) can read the same table across the scope boundary without duplicating it.
+        try { window._T1_BASIC_STAB_BY_TYPE = _T1_BASIC_STAB_BY_TYPE; } catch (e) {}
         function _t1ReplacementForSpecies(name) {
             const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             const t1 = bs.t1 || 'Normal';
