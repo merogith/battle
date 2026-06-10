@@ -50986,7 +50986,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ms = Math.max(800, (game.ms | 0) || 2000);
             const driftAmp = Math.max(0, (typeof game.driftAmp === 'number') ? game.driftAmp : 16);
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const seed = rng() * 6.28;
+            const sx = rng() < 0.5 ? 1 : -1, sy = rng() < 0.5 ? 1 : -1;   // drift directions (seeded)
             const ov = _campMicrogameShell(game, `
                 <div style="font-size:13px;color:#aed581;">Press &amp; hold on the spot — keep steady as it drifts.</div>
                 <div id="camp-st-field" style="position:relative;width:min(360px,84vw);height:200px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;">
@@ -50997,27 +50997,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let finished = false, raf = 0, holding = false, start = 0, maxDev = 0, px = -1, py = -1;
             const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
             const settle = (won) => { if (finished) return; cleanup(); done(won); };
-            const dotPos = (tm) => { const r = field.getBoundingClientRect(); return { x: (0.5 + 0.32 * Math.sin(tm / 700 + seed)) * r.width, y: (0.5 + (driftAmp / 100) * Math.sin(tm / 480 + seed * 2)) * r.height }; };
+            // Position relative to elapsed-since-grab: at elapsed 0 the spot is DEAD CENTER, then
+            // it drifts. Before the grab we feed elapsed 0, so it sits centered and visible (the
+            // player presses there to start) — not stranded in the corner.
+            const dotPos = (elapsed) => { const r = field.getBoundingClientRect(); return { x: (0.5 + sx * 0.30 * Math.sin(elapsed / 700)) * r.width, y: (0.5 + sy * (driftAmp / 100) * Math.sin(elapsed / 480)) * r.height }; };
             const setPtr = (e) => { const tt = (e.touches && e.touches[0]) || e; const r = field.getBoundingClientRect(); px = tt.clientX - r.left; py = tt.clientY - r.top; };
             const loop = () => {
-                if (finished || !holding) return;
-                const now = _campNow(), el = now - start, d = dotPos(now);
-                dot.style.left = d.x + 'px'; dot.style.top = d.y + 'px';
-                const dev = Math.hypot(px - d.x, py - d.y); if (dev > maxDev) maxDev = dev;
-                bar.style.width = Math.min(100, el / ms * 100) + '%';
-                if (dev > limitPx) { settle(false); return; }   // strayed past the edge
-                if (el >= ms) { settle(_campScoreSteady(maxDev, limitPx)); return; }
+                if (finished) return;
+                const elapsed = holding ? (_campNow() - start) : 0, d = dotPos(elapsed);
+                dot.style.left = d.x + 'px'; dot.style.top = d.y + 'px';   // placed every frame, before the grab too
+                if (holding) {
+                    const dev = Math.hypot(px - d.x, py - d.y); if (dev > maxDev) maxDev = dev;
+                    bar.style.width = Math.min(100, elapsed / ms * 100) + '%';
+                    if (dev > limitPx) { settle(false); return; }   // strayed past the edge
+                    if (elapsed >= ms) { settle(_campScoreSteady(maxDev, limitPx)); return; }
+                }
                 raf = _camp_raf(loop);
             };
             const begin = (e) => {
                 if (e && e.preventDefault) e.preventDefault(); if (holding || finished) return; setPtr(e);
-                const d = dotPos(_campNow()); if (Math.hypot(px - d.x, py - d.y) > limitPx) return;   // must grab the spot first
-                holding = true; start = _campNow(); maxDev = 0; loop();
+                const d = dotPos(0); if (Math.hypot(px - d.x, py - d.y) > limitPx) return;   // must grab the (centered) spot first
+                holding = true; start = _campNow(); maxDev = 0;
             };
             const release = () => { if (!holding || finished) return; settle(false); };   // let go early → slip
             field.addEventListener('mousedown', begin); field.addEventListener('touchstart', begin, { passive: false });
             field.addEventListener('mousemove', setPtr); field.addEventListener('touchmove', setPtr, { passive: false });
             field.addEventListener('mouseup', release); field.addEventListener('touchend', release, { passive: false }); field.addEventListener('mouseleave', release);
+            loop();   // start the visual loop immediately so the spot is centered & on-screen from mount
         }
 
         // block — slide the shield into each incoming hit's lane before it lands (Brace!).
