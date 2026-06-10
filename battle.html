@@ -4449,6 +4449,15 @@
         @keyframes switchOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.3); } }
         @keyframes hitFlash { 0% { filter: brightness(1); } 15% { filter: brightness(3) saturate(0); } 30% { filter: brightness(1); } 45% { filter: brightness(2) saturate(0); } 60% { filter: brightness(1); } }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 70% { opacity: 1; transform: translateY(-40px) scale(1.1); } 100% { opacity: 0; transform: translateY(-60px) scale(0.9); } }
+        /* Status-infliction blink: a brief colored glow when BRN/PSN/PAR/SLP/FRZ lands
+           (color set inline via --status-flash-color). Punctuates a previously log-only
+           event. Only added by JS when motion is allowed, so no reduced-motion override. */
+        .anim-status-flash { animation: statusFlash 0.46s ease-out; }
+        @keyframes statusFlash {
+            0%   { filter: drop-shadow(0 0 0 var(--status-flash-color, #fff)); }
+            35%  { filter: drop-shadow(0 0 10px var(--status-flash-color, #fff)) brightness(1.25); }
+            100% { filter: drop-shadow(0 0 0 var(--status-flash-color, #fff)); }
+        }
 
         /* Z-Move animation: dramatic zoom + invert flash + heavy shake */
         .anim-zmove-attacker { animation: zMoveCharge 0.8s ease-out; }
@@ -12883,6 +12892,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
         }
 
+        // Status-infliction blink — a brief colored glow on the affected sprite when a
+        // status lands (BRN red, PSN/TOX purple, PAR yellow, SLP grey, FRZ ice-blue), so a
+        // previously log-only event reads on the field. Purely visual; gated by
+        // settings.animations + reduced motion. The badge itself is refreshed by the
+        // updateUI() call at the apply site.
+        const _STATUS_FLASH_COLOR = { BRN:'#ff4500', PSN:'#a040a0', TOX:'#a040a0', PAR:'#ffd700', SLP:'#888888', FRZ:'#81d4fa' };
+        function _battleStatusFlash(mon, status) {
+            try {
+                if (!settings.animations) return;
+                if (window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion()) return;
+                const color = _STATUS_FLASH_COLOR[status]; if (!color) return;
+                const el = document.getElementById((mon === state.pActive) ? 'player-sprite' : 'foe-sprite');
+                if (!el) return;
+                el.style.setProperty('--status-flash-color', color);
+                el.classList.remove('anim-status-flash'); void el.offsetWidth;   // restart if mid-anim
+                el.classList.add('anim-status-flash');
+                setTimeout(() => { try { el.classList.remove('anim-status-flash'); } catch (e) {} }, 480);
+            } catch (e) {}
+        }
+
+        // Entry-hazard flash — when Stealth Rock / Steelsurge / Spikes chip a mon on
+        // switch-in, flash the entering sprite + play a neutral hit sound, so the chip
+        // isn't silent (the mon used to just appear already-damaged). Purely visual.
+        function _battleEntryHazardFlash(isPlayer) {
+            try {
+                if (!settings.animations) return;
+                const el = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
+                if (el) { el.classList.add('anim-hit-flash'); setTimeout(() => { try { el.classList.remove('anim-hit-flash'); } catch (e) {} }, 400); }
+                try { AudioSystem.playHitSound(1); } catch (e) {}
+            } catch (e) {}
+        }
+
         // ─── Enhanced Move Animation Engine (anime.js) ───────────────────
         const MoveAnimEngine = (() => {
             // Base stop (index 0) = canonical type palette from the CSS .type-* rules (single source of truth);
@@ -18339,6 +18380,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let hpBar = el.hpBar;
                 hpBar.style.width = `${hpPct}%`;
                 hpBar.className = 'hp-fill' + (hpPct <= 10 ? ' hp-critical' : hpPct <= 20 ? ' hp-low' : hpPct <= 50 ? ' hp-mid' : ' hp-high');
+                // Low-HP audio cue: when the player's active mon FIRST crosses into the
+                // critical band (≤10%, still alive), play the already-vendored lowHp beep
+                // once. Re-arms when it heals back above the threshold so it never
+                // machine-guns. The visual .hp-critical pulse is wired above.
+                if (mon === state.pActive) {
+                    if (hpPct <= 10 && mon.currentHp > 0) {
+                        if (!mon._lowHpBeeped) { mon._lowHpBeeped = true; try { AudioSystem.playUiSfx('lowHp', 0.5); } catch (e) {} }
+                    } else {
+                        mon._lowHpBeeped = false;
+                    }
+                }
                 // count element removed (pokeballs replaced it)
                 let statBox = el.status;
                 statBox.innerText = mon.status || '';
@@ -27127,6 +27179,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.item === "Heavy-Duty Boots" && state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz") return;
             let isGrounded = isGroundedMon(mon);
             const _hazardMult = (state && state._heavyGravityHazardMult > 1 && state.gravity > 0) ? state._heavyGravityHazardMult : 1;
+            let _hazardDealtDmg = false;   // flash the entering sprite once if any hazard chips it
             if (side.stealthRock) {
                 let eff = getMoveEffectiveness("Rock", mon.type1, mon.type2);
                 if (eff > 0) {
@@ -27136,6 +27189,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let dmg = Math.max(1, Math.floor(mon.maxHp * (0.125 * eff) * _hazardMult));
                     let actualDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actualDmg;
+                    if (actualDmg > 0) _hazardDealtDmg = true;
                     logMsg(`Pointed stones dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
                     }
                 }
@@ -27147,6 +27201,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let dmg = Math.max(1, Math.floor(mon.maxHp * (0.125 * eff) * _hazardMult));
                     let actualDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actualDmg;
+                    if (actualDmg > 0) _hazardDealtDmg = true;
                     logMsg(`Sharp-steel spikes dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
                 }
             }
@@ -27158,9 +27213,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let dmg = Math.max(1, Math.floor(mon.maxHp * spikesDmg * _hazardMult));
                 let actualDmg = Math.min(mon.currentHp, dmg);
                 mon.currentHp -= actualDmg;
+                if (actualDmg > 0) _hazardDealtDmg = true;
                 logMsg(`${mon.name} was hurt by the spikes! (${actualDmg} damage)`, 'dmg');
                 }
             }
+            if (_hazardDealtDmg) _battleEntryHazardFlash(isPlayer);
             if (side.toxicSpikes > 0 && isGrounded && mon.currentHp > 0) {
                 if (mon.type1 === "Poison" || mon.type2 === "Poison") {
                     side.toxicSpikes = 0;
@@ -29015,6 +29072,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (status === "SLP") mon.sleepDuration = Math.floor(Math.random() * 3) + 1;
             let msgs = {"PSN":"was poisoned!","TOX":"was badly poisoned!","BRN":"was burned!","PAR":"was paralyzed!","SLP":"fell asleep!","FRZ":"was frozen solid!"};
             logMsg(`${mon.name} ${msgs[status]}`, 'status');
+            // Punctuate the (previously log-only) status: refresh the badge immediately and
+            // blink the sprite in the status color. Purely visual — no mechanics change.
+            try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
+            _battleStatusFlash(mon, status);
             // Synchronize: Mirror status to opponent
             if (mon.ability === "Synchronize" && !noSync && (status === "PSN" || status === "TOX" || status === "BRN" || status === "PAR")) {
                 let foe = (mon === state.pActive) ? state.fActive : state.pActive;
