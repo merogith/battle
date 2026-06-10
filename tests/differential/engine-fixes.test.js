@@ -127,3 +127,112 @@ test('finding #4: a burned Facade keeps its ×2 (burn Attack-drop exempted)', as
   assert.ok(ratio > 1.7 && ratio < 2.3,
     `burned Facade should be ~2× unburned (burn drop exempted); got burned=${burned.toFixed(1)} clean=${clean.toFixed(1)} ratio=${ratio.toFixed(2)}`);
 });
+
+// Generic single-turn driver: the player uses move-slot 0; the foe uses a forced slot.
+// `player`/`foe` are mkMon configs; an extra `foe.status` (e.g. 'SLP') is applied post-build.
+async function run({ player, foe, foeSlot = 0, seed = 909 }) {
+  eng.seedRng(seed);
+  const p = eng.mkMon(player);
+  const f = eng.mkMon(foe);
+  if (foe.status) f.status = foe.status;
+  setup(p, f);
+  const start = eng.logs.length;
+  eng.engine.setForcedFoeMoveSlot(foeSlot);
+  await W.playTurn(0, null);
+  return { p, f, logs: eng.logs.slice(start).map((l) => l.text) };
+}
+
+// ── ISSUE-055: the generic boost block must not swallow a move's extra effect ──
+// Each of these moves carries a `boosts` data field AND a named branch that adds a
+// second effect (faint / status / confusion / trap). Pre-fix the block's
+// `if (applied > 0) return;` fired first and the second effect was silently lost, so
+// these assertions target the second effect specifically.
+
+test('ISSUE-055: Memento drops foe Atk/SpA AND faints the user', async () => {
+  const { p, f } = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Memento', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'] },
+  });
+  assert.equal(p.currentHp, 0, 'Memento must faint the user');
+  assert.equal(f.stages.atk, -2, 'Memento must drop the foe Attack by 2');
+  assert.equal(f.stages.spa, -2, 'Memento must drop the foe Sp. Atk by 2');
+});
+
+test('ISSUE-055: Toxic Thread drops foe Speed AND poisons it', async () => {
+  const { f } = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Toxic Thread', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'] },
+  });
+  assert.equal(f.stages.spe, -1, 'Toxic Thread must drop the foe Speed by 1');
+  assert.equal(f.status, 'PSN', 'Toxic Thread must poison the foe');
+});
+
+test('ISSUE-055: Swagger raises foe Atk AND confuses it', async () => {
+  const { f } = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Swagger', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'] },
+  });
+  assert.equal(f.stages.atk, 2, 'Swagger must raise the foe Attack by 2');
+  assert.ok(f.volatile.confusion > 0, 'Swagger must confuse the foe');
+});
+
+test('ISSUE-055: No Retreat raises all the user\'s stats AND traps it', async () => {
+  const { p } = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['No Retreat', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'] },
+  });
+  for (const s of ['atk', 'def', 'spa', 'spd', 'spe']) {
+    assert.equal(p.stages[s], 1, `No Retreat must raise the user's ${s} by 1`);
+  }
+  assert.equal(p.volatile.trapped, true, 'No Retreat must trap the user');
+});
+
+// ── ISSUE-186: three moves were missing their fail-precondition ──
+
+test('ISSUE-186: Dream Eater fails on an awake target, connects on a sleeping one', async () => {
+  const awake = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Dream Eater', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'] },
+  });
+  assert.ok(awake.logs.some((l) => /isn't asleep/i.test(l)), `Dream Eater should fail vs an awake foe (logs: ${awake.logs.join(' | ')})`);
+  assert.equal(awake.f.currentHp, awake.f.maxHp, 'Dream Eater must deal 0 to an awake foe');
+
+  const asleep = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Dream Eater', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'], status: 'SLP' },
+  });
+  assert.ok(asleep.f.maxHp - asleep.f.currentHp > 0, 'Dream Eater must damage a sleeping foe');
+});
+
+test('ISSUE-186: Synchronoise fails on a no-shared-type target, hits a shared-type one', async () => {
+  const noShare = await run({
+    player: { species: 'Abra', ability: 'Inner Focus', moves: ['Synchronoise', 'Shadow Ball'] }, // Psychic
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Defense Curl'] },   // Normal
+  });
+  assert.ok(noShare.logs.some((l) => /it failed/i.test(l)), `Synchronoise should fail vs a non-shared-type foe (logs: ${noShare.logs.join(' | ')})`);
+  assert.equal(noShare.f.currentHp, noShare.f.maxHp, 'Synchronoise must deal 0 to a non-shared-type foe');
+
+  const share = await run({
+    player: { species: 'Abra', ability: 'Inner Focus', moves: ['Synchronoise', 'Shadow Ball'] }, // Psychic
+    foe: { species: 'Drowzee', ability: 'Insomnia', moves: ['Defense Curl', 'Defense Curl'] },    // Psychic
+  });
+  assert.ok(share.f.maxHp - share.f.currentHp > 0, 'Synchronoise must hit a shared-type foe');
+});
+
+test('ISSUE-186: Thunderclap fails when the target picks a status move, hits when it attacks', async () => {
+  // Foe slot 0 = Defense Curl (Status) → Thunderclap fails; slot 0 = Tackle (damaging) → hits.
+  const vsStatus = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Thunderclap', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Tackle'] },
+    foeSlot: 0,
+  });
+  assert.ok(vsStatus.logs.some((l) => /it failed/i.test(l)), `Thunderclap should fail vs a status-selecting foe (logs: ${vsStatus.logs.join(' | ')})`);
+  assert.equal(vsStatus.f.currentHp, vsStatus.f.maxHp, 'Thunderclap must deal 0 vs a status-selecting foe');
+
+  const vsAttack = await run({
+    player: { species: 'Pelipper', ability: 'Keen Eye', moves: ['Thunderclap', 'Water Gun'] },
+    foe: { species: 'Snorlax', ability: 'Thick Fat', moves: ['Defense Curl', 'Tackle'] },
+    foeSlot: 1,
+  });
+  assert.ok(vsAttack.f.maxHp - vsAttack.f.currentHp > 0, 'Thunderclap must hit a foe that selected a damaging move');
+});

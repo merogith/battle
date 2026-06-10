@@ -21,6 +21,8 @@ const SKIP = new Set([
   // Need prior damage / situational
   'Counter', 'Mirror Coat', 'Metal Burst', 'Bide', 'Last Resort',
   'Fake Out', 'Sucker Punch', 'Pursuit', 'Upper Hand', 'Revenge', 'Avalanche', 'Assurance',
+  'Thunderclap',                       // requires opponent picking attack (Electric Sucker Punch)
+  'Dream Eater', 'Synchronoise',       // require sleeping / shared-type target
   'Focus Punch', 'Beat Up', 'Magnitude', 'Endeavor',
   'Burn Up', 'Double Shock', 'Snore',  // require user type/status
   'Future Sight', 'Doom Desire',       // delayed damage

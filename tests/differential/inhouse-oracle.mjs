@@ -102,6 +102,17 @@ export async function runInhouseBattle(opts) {
   engine.state.pSide = freshSide();
   engine.state.fSide = freshSide();
 
+  // Fire the leads' switch-in abilities, mirroring the real battle-start path
+  // (battle.html startBattle: `applySwitchInAbilities(pActive, fActive)` + reverse).
+  // CRITICAL for parity: bypassing startBattle and assigning pActive/fActive directly
+  // would skip Intimidate / Download / Dauntless Shield / Intrepid Sword / Slow Start /
+  // weather+terrain surges / Imposter / Berserk Gene — making every switch-in effect
+  // look "not implemented" (a false divergence) when Showdown fires them at battle start.
+  if (typeof window.applySwitchInAbilities === 'function') {
+    try { window.applySwitchInAbilities(engine.state.pActive, engine.state.fActive); } catch (e) { /* harness-tolerant */ }
+    try { window.applySwitchInAbilities(engine.state.fActive, engine.state.pActive); } catch (e) { /* harness-tolerant */ }
+  }
+
   const turns = [];
   const maxT = Math.max(choices1.length, choices2.length, 1);
   for (let t = 0; t < maxT; t++) {
