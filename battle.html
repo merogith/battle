@@ -6587,6 +6587,16 @@
         .popup-nve { color: #f44336; font-size: 14px; }
         .popup-crit { color: #ffd54f; font-size: 17px; }
         .popup-immune { color: #888; font-size: 15px; }
+        .popup-dmg { color: #ff7043; font-size: 14px; }   /* floating damage number */
+        .popup-heal { color: #69f0ae; font-size: 15px; }  /* floating heal number */
+        /* Brief green glow on the HP bar when a heal lands, so a heal reads as a moment
+           (the bar's width transition already animates the refill). */
+        .hp-fill.hp-heal-pulse { animation: hpHealPulse 0.5s ease-out; }
+        @keyframes hpHealPulse {
+            0%   { box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 0 rgba(105,240,174,0); }
+            40%  { box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 14px rgba(105,240,174,0.9); }
+            100% { box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 0 rgba(105,240,174,0); }
+        }
         .status-icon { position: absolute; bottom: 2px; left: 2px; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; color: #fff; z-index: 5; }
         .field-pill { font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 8px; cursor: help; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); transition: filter 0.15s; }
         .field-pill:hover { filter: brightness(1.3); }
@@ -12921,6 +12931,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const el = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
                 if (el) { el.classList.add('anim-hit-flash'); setTimeout(() => { try { el.classList.remove('anim-hit-flash'); } catch (e) {} }, 400); }
                 try { AudioSystem.playHitSound(1); } catch (e) {}
+            } catch (e) {}
+        }
+
+        // A tiny "hit-stop" — a brief freeze after a heavy hit, the classic crunch of
+        // game-feel. Returns a promise the (async) damage path awaits. Harness-aware (sleep
+        // resolves instantly under tests) and bypassed entirely under reduced motion / when
+        // animations are off, so it never adds real delay where motion isn't wanted.
+        function _hitStop(ms) {
+            if (!settings.animations) return Promise.resolve();
+            if (window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion()) return Promise.resolve();
+            return sleep(Math.max(0, ms | 0));
+        }
+        // Graded hit impact — fires exactly ONE screen shake selected by tier (boss-phase /
+        // crit / super-effective), plus a short hit-stop on crit + boss-phase. This replaces
+        // the previous pair of back-to-back crit + super-effective shake calls at the
+        // effectiveness telegraph, which double-shook a hit that was BOTH crit AND
+        // super-effective. Reuses the proven, reduced-motion-aware _battleHitShake for the
+        // shake itself; the hit FLASH stays wired at the hit sites (this is the shake +
+        // hit-stop dispatcher). Purely visual — never touches state / RNG / damage. async so
+        // the caller can `await` the hit-stop beat.
+        async function _applyHitImpact(opts) {
+            try {
+                const o = opts || {};
+                if (!settings.animations) return;
+                if (window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion()) return;
+                if (o.bossPhase)              { _battleHitShake('crit');  await _hitStop(120); }
+                else if (o.crit)              { _battleHitShake('crit');  await _hitStop(90);  }
+                else if (o.effectiveness > 1) { _battleHitShake('super'); }
+                // normal / not-very-effective → no shake (the hit flash already played)
+            } catch (e) {}
+        }
+
+        // Shared heal presentation — a green +N popup, a brief HP-bar glow, and the restore
+        // chime, so a heal (berry auto-heal, Leftovers, etc.) reads as its own moment instead
+        // of a number teleporting up. PURELY VISUAL: does not change who / whether / how much
+        // heals (the caller already applied the HP). Rides the popup stagger so it never
+        // overlaps the damage number.
+        function _presentHeal(mon, amount) {
+            try {
+                if (!mon || amount <= 0) return;
+                const isPlayerMon = (mon === state.pActive);
+                if (settings.animations) {
+                    showBattlePopup('+' + amount, 'popup-heal', isPlayerMon);
+                    const bar = document.getElementById(isPlayerMon ? 'player-hp-bar' : 'foe-hp-bar');
+                    if (bar) { bar.classList.add('hp-heal-pulse'); setTimeout(() => { try { bar.classList.remove('hp-heal-pulse'); } catch (e) {} }, 520); }
+                }
+                try { AudioSystem.playUiSfx('restore', 0.5); } catch (e) {}
             } catch (e) {}
         }
 
@@ -24926,6 +24983,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let totalDmg = 0, hitsLanded = 0;
                     let hitSub = false;
                     let endureTriggered = false;
+                    const _mhStartHp = defender.currentHp;   // snapshot for the stepwise visual replay (C1)
+                    const _mhPerHit = [];                    // real-HP damage per landed hit (presentation only)
                     for (let h = 0; h < numHits; h++) {
                         // Triple Axel / Triple Kick: per-hit independent accuracy check (90%/90%/90% base, modified by user/target accuracy/evasion).
                         // Loaded Dice bypasses these per-hit checks. (Skip the very first hit since the main acc check already passed it.)
@@ -24951,7 +25010,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); hitSub = true; break; }
                             hitSub = true;
                         } else {
-                            let hd = Math.min(defender.currentHp, _hitDmg); defender.currentHp -= hd; totalDmg += hd; hitsLanded++;
+                            let hd = Math.min(defender.currentHp, _hitDmg); defender.currentHp -= hd; totalDmg += hd; hitsLanded++; _mhPerHit.push(hd);
                             // Endure: survive at 1 HP, stop subsequent hits from killing
                             if (defender.volatile.endure && defender.currentHp <= 0) {
                                 defender.currentHp = 1; endureTriggered = true; break;
@@ -24967,12 +25026,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (actualDamage > 0) defender.volatile.timesHit = (defender.volatile.timesHit || 0) + hitsLanded;
                     if (move.cat === "Physical") defender.volatile.lastPhysicalDmg = actualDamage;
                     if (move.cat === "Special") defender.volatile.lastSpecialDmg = actualDamage;
-                    if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
-                    try { AudioSystem.playHitSound(typeEff); } catch (e) {}   // parity with single-hit path (was missing on multi-hit)
+                    // C1 — multi-hit visual replay: a multi-hit move used to apply every hit
+                    // in the loop above, then show ONE flash + one HP snap, reading as a single
+                    // instant lump. Replay each landed hit as a quick flash + HP step-down so it
+                    // reads as several hits. PURELY VISUAL: the loop already applied all damage;
+                    // here we rewind the DISPLAYED HP to the pre-hit value and step it back down
+                    // to the (unchanged) final value, ending exactly where the loop left it — no
+                    // re-roll, no extra damage. Collapses to the old single flash under reduced
+                    // motion / animations-off.
+                    const _mhReduced = !!(window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion());
+                    if (settings.animations && !_mhReduced && hitsLanded > 1 && _mhPerHit.length > 1) {
+                        const _mhFinalHp = defender.currentHp;
+                        let _mhRun = _mhStartHp; const _mhCps = [];
+                        for (const _hd of _mhPerHit) { _mhRun = Math.max(_mhFinalHp, _mhRun - _hd); _mhCps.push(_mhRun); }
+                        if (_mhCps[_mhCps.length - 1] !== _mhFinalHp) _mhCps.push(_mhFinalHp);
+                        const _mhSpriteId = !isPlayer ? 'foe-sprite' : 'player-sprite';
+                        defender.currentHp = _mhStartHp; updateUI();   // rewind the displayed bar
+                        for (let _h = 0; _h < _mhCps.length; _h++) {
+                            defender.currentHp = _mhCps[_h];
+                            const ts = document.getElementById(_mhSpriteId);
+                            if (ts) { ts.classList.add('anim-hit-flash'); setTimeout(() => { try { ts.classList.remove('anim-hit-flash'); } catch (e) {} }, 160); }
+                            try { AudioSystem.playHitSound(typeEff); } catch (e) {}
+                            updateUI();
+                            await sleep(140);
+                        }
+                        defender.currentHp = _mhFinalHp;   // guarantee the exact final value
+                    } else {
+                        if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
+                        try { AudioSystem.playHitSound(typeEff); } catch (e) {}   // parity with single-hit path
+                    }
                     await sleep(200);
-                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); _battleHitShake('crit'); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
-                    if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); _battleHitShake('super'); }
+                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
+                    if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
+                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1 });   // one shake by tier (no double-shake)
+                    if (actualDamage > 0) showBattlePopup('-' + actualDamage, 'popup-dmg', !isPlayer);
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
                         let vh = Math.max(1, Math.floor(actualDamage * 0.1));
@@ -25111,6 +25199,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${attacker.name}'s Infiltrator bypassed the substitute!`, 'info');
                     }
                     actualDamage = Math.min(defender.currentHp, damage); defender.currentHp -= actualDamage;
+                    if (actualDamage > 0) showBattlePopup('-' + actualDamage, 'popup-dmg', !isPlayer);   // floating damage number (rides the popup stagger)
                     // Snapshot HP right after the hit, BEFORE a pinch berry (Sitrus/Oran) can heal it back up.
                     // On-hit HP-cross abilities (Berserk / Anger Shell) read this so a berry heal above 50%
                     // doesn't suppress them (canon: the ability fires on the hit, then the berry heals).
@@ -25173,17 +25262,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     AudioSystem.playHitSound(typeEff);
                     await sleep(200);
 
-                    // Step 4: Show effectiveness/crit text + anime.js screen shake
+                    // Step 4: Show effectiveness/crit text + graded screen shake (+ hit-stop)
                     if (crit > 1) {
                         logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer);
                         if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO');
-                        _battleHitShake('crit');
                     }
                     if (typeEff > 1) {
                         logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer);
-                        _battleHitShake('super');
                     }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
+                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1 });   // one shake by tier (no double-shake)
                     await sleep(200);
 
                     // Step 5: Damage number and HP bar animation
@@ -26483,26 +26571,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!unnerved && mon.item === "Sitrus Berry" && mon.currentHp <= mon.maxHp * 0.5) {
                 let heal = Math.floor(mon.maxHp / 4);
                 let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
-                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Sitrus Berry and restored ${act} HP!`, 'heal'); }
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Sitrus Berry and restored ${act} HP!`, 'heal'); _presentHeal(mon, act); }
                 mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Sitrus Berry"); return;
             }
             // Oran
             if (!unnerved && mon.item === "Oran Berry" && mon.currentHp <= mon.maxHp * 0.5) {
                 let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, 10));
-                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Oran Berry and restored ${act} HP!`, 'heal'); }
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Oran Berry and restored ${act} HP!`, 'heal'); _presentHeal(mon, act); }
                 mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Oran Berry"); return;
             }
             // Berry Juice (not a berry; Unnerve doesn't apply)
             if (mon.item === "Berry Juice" && mon.currentHp <= mon.maxHp * 0.5) {
                 let act = Math.min(mon.maxHp - mon.currentHp, 20);
-                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} drank its Berry Juice and restored ${act} HP!`, 'heal'); }
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} drank its Berry Juice and restored ${act} HP!`, 'heal'); _presentHeal(mon, act); }
                 mon.item = null; mon.itemConsumed = true; return;
             }
             // Flavor berries
             if (!unnerved && ["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry","Iapapa Berry"].includes(mon.item) && mon.currentHp <= mon.maxHp * pinchThresh) {
                 let heal = Math.floor(mon.maxHp / 2);
                 let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
-                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its ${mon.item} and restored ${act} HP!`, 'heal'); }
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its ${mon.item} and restored ${act} HP!`, 'heal'); _presentHeal(mon, act); }
                 const _eatenBerry = mon.item; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, _eatenBerry); return;
             }
             // Pinch stat berries
