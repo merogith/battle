@@ -49,7 +49,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 13be257103c9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Villain-track "ending" event fires before the villain boss fight (road7 event-kind drains first)
@@ -117,7 +117,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c55e0a763c3a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: "Up next" trainer name is the pre-override name — boss beats relabel the trainer after the preview
@@ -148,7 +148,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 721b22bdaa85
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Road event-beats fire before in-city Gym Trainer / Gym Leader fights, not only on the route
@@ -217,7 +217,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 910267b13380
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: All ~30 per-variant Mystery-Figure outros are dead — keyed by retired identities, never match `the_first`
@@ -249,7 +249,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 10765c88017a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Variants are rolled every run (not forced classic) — so variant Champion/post-HoF lines pointing at the dead broker/cage DO fire
@@ -282,7 +282,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: cc5df56aa969
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Road beat clumping: 2 beats/road (villain road7 = 3, league = 7) play back-to-back, breaking pacing
@@ -473,7 +473,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 58d14e311a0e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CORRECTION to prior audit: storyline variant is rolled randomly every run, NOT forced to 'classic'
