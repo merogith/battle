@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-09T22:55:58.691Z
+> **Generated**: 2026-06-10T09:08:04.272Z
 > **Source**: `agent-state/findings/*.md` (444 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -2546,7 +2546,7 @@ file: battle.html
 agents: [differential-triage-auditor]
 fingerprint: 444b0dea4920
 confidence: high
-status: open
+status: fixed-claude/intelligent-einstein-8ji8nj
 ---
 
 **Title**: Data-driven boost block returns early, bypassing named-branch extra effects (Memento self-faint, Toxic Thread poison)
@@ -7509,7 +7509,7 @@ file: battle.html
 agents: [differential-triage-auditor]
 fingerprint: 98c05652f3a8
 confidence: high
-status: open
+status: fixed-claude/intelligent-einstein-8ji8nj
 ---
 
 **Title**: Precondition moves unimplemented — deal damage that should fail (Dream Eater, Thunderclap, Synchronoise)

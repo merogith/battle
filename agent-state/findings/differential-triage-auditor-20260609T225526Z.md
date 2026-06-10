@@ -13,7 +13,8 @@ file: battle.html
 agents: [differential-triage-auditor]
 fingerprint: 444b0dea4920
 confidence: high
-status: open
+status: fixed-claude/intelligent-einstein-8ji8nj
+resolution: "battle.html ~27827 — the generic boost block now skips a _NAMED_BOOST_MOVES set (Memento, Toxic Thread, Swagger, Flatter, No Retreat, Charge, Defense Curl, Minimize) so each reaches its self-contained named branch (boosts + extra effect). Guarded by tests/differential/engine-fixes.test.js (ISSUE-055 cases). Branch claude/intelligent-einstein-8ji8nj."
 ---
 
 **Title**: Data-driven boost block returns early, bypassing named-branch extra effects (Memento self-faint, Toxic Thread poison)
@@ -48,7 +49,8 @@ file: battle.html
 agents: [differential-triage-auditor]
 fingerprint: 98c05652f3a8
 confidence: high
-status: open
+status: fixed-claude/intelligent-einstein-8ji8nj
+resolution: "battle.html ~22660 performAction precondition block — added fail-guards: Dream Eater (defender must be SLP), Thunderclap (target must select a damaging move; mirrors Sucker Punch), Synchronoise (attacker/defender must share a type). Guarded by tests/differential/engine-fixes.test.js (ISSUE-186 cases). Branch claude/intelligent-einstein-8ji8nj."
 ---
 
 **Title**: Precondition moves unimplemented — deal damage that should fail (Dream Eater, Thunderclap, Synchronoise)

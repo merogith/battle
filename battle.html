@@ -22659,6 +22659,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // THUNDERCLAP: Electric Sucker Punch — fails unless the target is about to use a damaging move.
+            if (move.name === "Thunderclap") {
+                let defenderAction = isPlayer ? state.p2Action : state.p1Action;
+                let defMove = null;
+                if (defenderAction && defenderAction.moveIndex !== null && defenderAction.switchIndex === null) {
+                    defMove = defender.moves[defenderAction.moveIndex] || (defenderAction.aiMove);
+                }
+                if (!defMove || defMove.cat === "Status") {
+                    if (move.pp > 0) move.pp--;
+                    logMsg(`${attacker.name} used Thunderclap!`);
+                    logMsg(`But it failed!`);
+                    attacker.volatile.lastMoveUsed = move.name;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
+                }
+            }
+
+            // DREAM EATER: only works on a sleeping target (heal is data-driven via move.drain).
+            if (move.name === "Dream Eater" && defender.status !== "SLP") {
+                logMsg(`${attacker.name} used Dream Eater!`);
+                logMsg(`But it failed! ${defender.name} isn't asleep!`, 'info');
+                if (move.pp > 0) move.pp--;
+                attacker.volatile.lastMoveUsed = move.name;
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+
+            // SYNCHRONOISE: only hits a target that shares a type with the user.
+            if (move.name === "Synchronoise") {
+                const _userTypes = [attacker.type1, attacker.type2].filter(Boolean);
+                const _foeTypes = [defender.type1, defender.type2].filter(Boolean);
+                if (!_userTypes.some(t => _foeTypes.includes(t))) {
+                    logMsg(`${attacker.name} used Synchronoise!`);
+                    logMsg(`But it failed!`, 'info');
+                    if (move.pp > 0) move.pp--;
+                    attacker.volatile.lastMoveUsed = move.name;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
+                }
+            }
+
             // SHELL TRAP: Fails unless the user took PHYSICAL damage this turn (pri -3, so it
             // resolves after the foe; lastPhysicalDmg is set when a physical hit lands, cleared each turn).
             if (move.name === "Shell Trap") {
@@ -27824,7 +27862,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Generic boosts dispatch (for data-driven status moves like Confide, Fake Tears, Play Nice, etc.) ===
-            if (move.cat === "Status" && move.boosts && typeof move.boosts === 'object') {
+            // These moves carry a `boosts` data field but ALSO have a self-contained named branch
+            // below that applies the same boosts *plus* an extra effect (faint / status / volatile / trap).
+            // They must skip this generic block so `if (applied > 0) return;` doesn't swallow that extra
+            // effect. Each listed branch calls changeStage itself, so no boost is lost. (Tar Shot is not
+            // listed because its branch sits above this block and already returns first.)
+            const _NAMED_BOOST_MOVES = new Set(["Memento", "Toxic Thread", "Swagger", "Flatter",
+                "No Retreat", "Charge", "Defense Curl", "Minimize"]);
+            if (move.cat === "Status" && move.boosts && typeof move.boosts === 'object'
+                && !_NAMED_BOOST_MOVES.has(move.name)) {
                 // Determine target: moves targeting self or allies boost attacker; otherwise defender
                 const selfBoost = move.target === 'self' || move.target === 'allies' || move.target === 'allySide';
                 const target = selfBoost ? attacker : defender;

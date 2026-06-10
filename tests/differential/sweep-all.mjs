@@ -110,6 +110,19 @@ async function runOne(scn, n) {
   // boost/status mismatch is an RNG artifact, not an unimplemented secondary (verified:
   // Crunch Def-drop fires ~20% in BOTH engines). Down-rank those to medium so they
   // don't masquerade as high-confidence bugs; keep hp/faint/winner/order as high.
+  // A damaging move's CHANCE status secondary (Poison Sting/Smog psn, Scald brn …) fires
+  // independently per engine's PRNG. When it lands in one engine but not the other, the
+  // END-OF-TURN chip it leaves behind (psn 1/8, brn 1/16) is folded into the NET end-state
+  // HP the trace measures — inflating the hp/damage gap into a false "formula" high (e.g.
+  // Smog: ~20 move dmg in both, but +31 poison chip on the seed that poisoned). The status
+  // divergence itself is already reported at medium, so the entity still surfaces; we only
+  // stop the chip-driven HP gap from masquerading as a high-confidence damage bug. Precise:
+  // down-rank an hp/damage high ONLY when it co-occurs with a status divergence on the same
+  // turn+slot (i.e. the chip actually diverged on this seed) — a genuine formula bug whose
+  // status matched across engines keeps its high.
+  const statusDivKeys = new Set(
+    d.divergences.filter((x) => x.field === 'status').map((x) => `${x.turn}:${x.slot}`),
+  );
   const divs = d.divergences.map((x) => {
     if (scn.family === 'damaging' && x.confidence === 'high' && /^(boost\.|status)/.test(x.field)) {
       return { ...x, confidence: 'medium', note: 'chance-secondary (RNG across engines)' };
@@ -118,6 +131,11 @@ async function runOne(scn, n) {
     // gap is RNG, not a multiplier/formula bug. Down-rank the hp/damage diff to low.
     if (scn.multihit && x.confidence === 'high' && x.field === 'hp/damage') {
       return { ...x, confidence: 'low', note: 'multi-hit count (RNG across engines)' };
+    }
+    // Chance-status-secondary chip pollutes net HP (see note above).
+    if (scn.family === 'damaging' && x.confidence === 'high' && x.field === 'hp/damage'
+        && statusDivKeys.has(`${x.turn}:${x.slot}`)) {
+      return { ...x, confidence: 'low', note: 'status-chip (chance-secondary chip pollutes net HP)' };
     }
     return x;
   });

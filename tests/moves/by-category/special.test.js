@@ -306,6 +306,7 @@ describe('Special moves', () => {
   it('Dream Eater' + ' [100 BP Psychic Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Dream Eater', 'Splash', 'Splash', 'Splash'] });
     const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    defender.status = 'SLP'; // Dream Eater only connects on a sleeping target
     const beforeHp = defender.currentHp;
     await runTurn({ playerMon: attacker, foeMon: defender });
     assert.ok(defender.currentHp < beforeHp, 'Dream Eater should reduce defender HP');
@@ -1449,9 +1450,10 @@ describe('Special moves', () => {
 
   it('Thunderclap' + ' [70 BP Electric Special]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Thunderclap', 'Splash', 'Splash', 'Splash'] });
-    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    // Thunderclap (Electric Sucker Punch) only connects if the target picks a damaging move.
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Tackle', 'Splash', 'Splash', 'Splash'] });
     const beforeHp = defender.currentHp;
-    await runTurn({ playerMon: attacker, foeMon: defender });
+    await runTurn({ playerMon: attacker, foeMon: defender, foeMoveSlot: 0 });
     assert.ok(defender.currentHp < beforeHp, 'Thunderclap should reduce defender HP');
   });
 

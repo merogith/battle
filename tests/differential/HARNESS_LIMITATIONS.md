@@ -77,6 +77,19 @@ that *does* implement it.
   scenario carries `multihit:true`). Skill-Link-style fixed-5-hit cases are covered by the
   curated `damage-sweep.mjs`. Not a bug.
 
+### Chance status-secondary chip pollutes net HP
+- **Symptom**: a damaging move with a *chance* status secondary (Poison Sting/Smog → psn,
+  Scald → brn) shows a large single-seed `hp/damage` gap even though the per-hit base damage
+  agrees (e.g. Smog: ~20 move dmg in both engines, but the seed that poisoned adds a +31
+  poison chip to the net end-state HP the trace measures).
+- **Why**: the secondary fires independently in each engine's PRNG. When it lands in one
+  engine but not the other, the end-of-turn status tick (psn 1/8, brn 1/16) is folded into
+  net HP, inflating the gap into a false "formula" high.
+- **Disposition**: `sweep-all.mjs` down-ranks an `hp/damage` high to low **only when it
+  co-occurs with a status divergence on the same turn+slot** (i.e. the chip actually diverged
+  on this seed). The move still surfaces via its medium status divergence; a genuine formula
+  bug whose status matched across engines keeps its high. Not a bug.
+
 ### Random-target / random-stat / called-move moves
 - **Symptom**: Acupressure, Metronome, Moody, Assist, Sleep Talk diverge on the stat/move
   they pick.

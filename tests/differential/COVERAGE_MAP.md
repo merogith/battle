@@ -1,6 +1,6 @@
 # Generated Coverage Map
 
-> 2026-06-09 · `generate-scenarios.mjs` · reference data: @pkmn/dex gen 9 (MIT).
+> 2026-06-10 · `generate-scenarios.mjs` · reference data: @pkmn/dex gen 9 (MIT).
 
 **Entities enumerated:** 1855 · **scenarios emitted:** 3070 (trace 1605 · sweep 1465)
 
