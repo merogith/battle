@@ -39547,6 +39547,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (let g = 1; g <= 4; g++) out[g] = (g <= f) ? (T[g] || []) : [];
             return out;
         }
+        // Early-game grade CEILING for enemy teams — the mirror of the late-game floor.
+        // Tracks the player's evolution availability so foes never field a grade tier the
+        // player can't yet match: before City 2 the player only has a G4-tier basic starter
+        // (Evolution Tutor debuts City 2), so a random G3 (evolved-tier) foe is an
+        // unbeatable early spike. Returns the STRONGEST grade NUMBER allowed (1 = G1 ok …
+        // 4 = only G4) — a HIGHER number is a WEAKER ceiling. Schedule mirrors
+        // _playerEvoStageCapForCity / _storyEvoGradeFloorForCity:
+        //   City 0-1 → G4 only · City 2-3 → G3+ · City 4-5 → G2+ · City 6+ → all.
+        // Only bites early; the late-game gradeWeights + G2 floor own City 6+. Out-of-story
+        // / Frontier callers return 1 (no ceiling), same convention as the floor.
+        function _storyEnemyGradeCeilingForRow(storyRowIdx) {
+            if (storyRowIdx == null || !(sm && sm.active)) return 1;
+            // Frontier / Crucible are out-of-story ladders — no early ceiling (they run at
+            // full T4 power; see _storyBuildTierForEvent's frontier short-circuit).
+            if (sm.frontier && sm.frontier.active) return 1;
+            const c = _cityIndexForStoryRow(storyRowIdx);
+            const city = c < 0 ? cityIndexFromEventIndex(storyRowIdx) : c;
+            const ci = city | 0;
+            // Unresolvable city (out-of-story caller) → no ceiling, mirroring the floor's
+            // safe default. The ceiling clamps strength, so its no-op value is 1, not 4.
+            if (ci < 0) return 1;
+            if (ci <= 1) return 4; // City 0-1: basic-tier only — no G3 until City 2
+            if (ci <= 3) return 3; // City 2-3: first-evo era
+            if (ci <= 5) return 2; // City 4-5: finals era
+            return 1;              // City 6+: unrestricted (weights + floor take over)
+        }
+        // Apply the grade ceiling to a (local copy of the) grade partition: empty the
+        // buckets STRONGER than `ceilingGrade` (lower grade NUMBER = stronger mon) so no
+        // downstream picker can pull an over-grade early foe. Mirror of
+        // _capGradePoolsByGradeFloor — same local-copy + fail-open discipline (if NOTHING
+        // sits at/under the ceiling for this type+gen, the full pool is returned unchanged
+        // so a roll never breaks).
+        function _capGradePoolsByGradeCeiling(T, ceilingGrade) {
+            if (!T || (ceilingGrade | 0) <= 1) return T;
+            const c = ceilingGrade | 0;
+            let keep = 0;
+            for (let g = c; g <= 4; g++) keep += (T[g] || []).length;
+            if (keep === 0) return T; // fail open — no at/below-ceiling species available
+            const out = { 1: [], 2: [], 3: [], 4: [] };
+            for (let g = 1; g <= 4; g++) out[g] = (g >= c) ? (T[g] || []) : [];
+            return out;
+        }
         // Late-game signature EVOLVE-UP (mirror of _devolveSigToGradeCeiling). A
         // signature weaker than the floor walks UP its own evo line to the first form
         // that meets the floor — Caterpie → Butterfree at the G2 floor — preserving the
@@ -40701,17 +40743,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((gw.g3 || 0) > 0) return 3;
             return 4;
         }
-        function _filterSigsByGradeCeiling(sigs, minGradeNumber) {
+        function _filterSigsByGradeCeiling(sigs, minGradeNumber, dropUndevolvable) {
             if (!Array.isArray(sigs) || sigs.length === 0) return [];
             const ceiling = minGradeNumber | 0;
             // Scale rather than drop: a signature stronger than the ceiling devolves to the
             // strongest form that fits (keeps the trainer's identity). Forms already at/under
             // the ceiling pass through unchanged.
+            // dropUndevolvable (early-game ceiling only): if a still-too-strong sig can't
+            // devolve to fit (a no-evo high-BST mon like Lapras, which _devolveSigToGradeCeiling
+            // returns unchanged), DROP it so the type-matched ceiling-grade filler/top-up
+            // replaces it — otherwise it leaks past the early G4 wall (the "Lapras at Gym 1"
+            // spike). Default false keeps the legacy devolve-or-keep behavior for the
+            // grade-weights ceiling so a late-game legendary ace is never dropped.
             return sigs.map(name => {
                 const b = baseStats[name];
                 if (!b) return null;
                 if (getMonGrade(name, getBST(name)) >= ceiling) return name;
-                return _devolveSigToGradeCeiling(name, ceiling);
+                const dv = _devolveSigToGradeCeiling(name, ceiling);
+                if (dropUndevolvable && dv && getMonGrade(dv, getBST(dv)) < ceiling) return null;
+                return dv;
             }).filter(Boolean);
         }
         // Gym Leader union pool support: if a leader's post-cap sig pool falls
@@ -40819,6 +40869,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the trainer's signatures stay exempt (low-grade aces allowed). See
             // _storyFillerGradeFloorForRow / _capGradePoolsByGradeFloor.
             const _fillerFloor = _storyFillerGradeFloorForRow(storyRowIdx);
+            // Early-game grade CEILING (mirror of the floor): no G3 enemies before City 2,
+            // tracking the player's evolution availability. Strongest grade NUMBER allowed
+            // (4 = only G4 … 1 = unrestricted). Bites the early cities only; clamps both the
+            // filler pool and the signature aces below so a random/authored over-grade mon
+            // (the "Lapras at Gym 1" spike) can't land before the player can answer it.
+            const _earlyGradeCeiling = _storyEnemyGradeCeilingForRow(storyRowIdx);
             // Eldritch-tagged trainers (Shadow Blue, Cursed Lance, Eldritch N, etc.) bypass
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
@@ -40885,8 +40941,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // weights say G3, but the G2 floor wants G2 filler — letting the leader's
                 // ace reach G2 too keeps it the strongest mon on the team (never weaker
                 // than its own filler). Pre-city-6 the floor is 4, so this is a no-op.
-                const _ceiling = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                S = _filterSigsByGradeCeiling(S, _ceiling);
+                const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                // Weaken (raise the number) when the early-game ceiling is the binding
+                // constraint; drop over-grade no-evo aces (Lapras) so the top-up replaces them.
+                const _ceiling = Math.max(_sigCeilBase, _earlyGradeCeiling);
+                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling > _sigCeilBase);
                 // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
                 // identity sig plus type-matched G2 partners.
                 if (/^Gym Leader\s*\d$/.test(_evtStr)) {
@@ -40900,7 +40959,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
             // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
-                S = _filterSigsByGradeCeiling(S, Math.min(_storySigGradeCeiling(gwIn), _fillerFloor));
+                const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling > _sigCeilBase2);
             }
             // Evo-stage gate on the signature pool: pre-C2 even a leader's ace
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
@@ -40957,6 +41017,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Empties the G3/G4 buckets so neither the standard picks nor the Rival
             // counter-pick can pull weak filler late; signatures (S) are untouched.
             if (_fillerFloor < 4) T = _capGradePoolsByGradeFloor(T, _fillerFloor);
+            // Early-game grade CEILING on the filler pool (City 0-1 → G4, City 2-3 → G3):
+            // empties the buckets STRONGER than the ceiling so no early foe — standard pick
+            // or Rival counter-pick — out-grades the player's basic-tier team. Same
+            // local-copy + fail-open discipline as the floor above.
+            if (_earlyGradeCeiling > 1) T = _capGradePoolsByGradeCeiling(T, _earlyGradeCeiling);
 
             // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
             // built fresh against your LIVE six (dynamic, never cached). Score every
@@ -41054,7 +41119,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Clamp the filler ceiling no weaker than the floor so the [ceiling..floor]
             // band stays valid (GL6: weights say G3 but the floor forces G2, so the
             // ceiling must tighten to G2 or the spiral would have nothing to land on).
-            const _fillerCeiling = Math.min(_exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn), _fillerFloor);
+            const _fillerCeiling = Math.max(
+                Math.min(_exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn), _fillerFloor),
+                _earlyGradeCeiling // early-game wall: no filler stronger than the city ceiling
+            );
             // Per-species slot allowance. Authored multiplicity comes from the ORIGINAL sigs
             // list (verbatim): only an intentional same-species duplicate — Lance's triple
             // Dragonite — earns >1 slot. The gen/grade/evo transforms above can collapse
@@ -41322,6 +41390,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
                     storyFillerGradeFloorForRow: (...a) => _storyFillerGradeFloorForRow(...a),
                     capGradePoolsByGradeFloor: (...a) => _capGradePoolsByGradeFloor(...a),
+                    storyEnemyGradeCeilingForRow: (...a) => _storyEnemyGradeCeilingForRow(...a),
+                    capGradePoolsByGradeCeiling: (...a) => _capGradePoolsByGradeCeiling(...a),
                     evolveSigToGradeFloor: (...a) => _evolveSigToGradeFloor(...a),
                     rollCityIVs: (...a) => _rollCityIVs(...a),
                     trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
