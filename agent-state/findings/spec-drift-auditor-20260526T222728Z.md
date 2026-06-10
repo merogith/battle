@@ -51,7 +51,7 @@ file: STORY_MODE_FLOW.md
 agents: [spec-drift-auditor]
 fingerprint: e585e95483b0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_MODE_FLOW says timeline is "68 rows"; STORY_EVENTS_RAW actually has 67 rows

@@ -17,7 +17,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2ff4479d31a1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Save-migration integration test never exercises the migrate chain (vacuous pass)

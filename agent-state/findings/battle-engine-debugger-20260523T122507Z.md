@@ -41,7 +41,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 37ef284799b0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Secondary flinch/Stench write `defender.volatile.flinch` unguarded — throws if volatile missing (sibling _tryConfuse guards it)
@@ -73,7 +73,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: b90b810adcdc
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: applyStatus dereferences `state.pActive.volatile.lockMove` / `state.fActive.volatile.lockMove` unconditionally (Uproar check) — throws if an active is null

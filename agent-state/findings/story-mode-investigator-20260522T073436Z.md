@@ -968,7 +968,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 671336517e09
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Player gimmick-unlock order shifts when a mechanic is disabled in settings — DMax unlocks at Gym 5 instead of Gym 6 if Mega is off

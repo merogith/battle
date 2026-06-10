@@ -72,7 +72,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 4177b7fb1027
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mart/Dept consumables (30 ids: potion, xAttack, sunOrb, evResetCharm…) are a self-contained namespace, NOT entries in items.json

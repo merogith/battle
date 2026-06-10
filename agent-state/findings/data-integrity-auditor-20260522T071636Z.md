@@ -100,7 +100,7 @@ current_line_hint: ~28876
 agents: [data-integrity-auditor]
 fingerprint: 8d497740c197
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json`
