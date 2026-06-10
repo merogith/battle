@@ -13,6 +13,24 @@
 > from Gym 4 on (endgame peaks cut hardest — see §1 / §2g). Also note: the §2d foe-stat
 > multiplier model below was **deleted** in the June refactor (unified into
 > `FOE_POWER_CURVE` + `_foeDifficultyMult`); treat §2d as historical until re-synthesized.
+>
+> **⚠️ 2026-06 build-gen + early-ceiling pass (this branch):** four shipped changes —
+> (1) an **early-game grade CEILING** mirroring the floor and tracking the player's
+>     evolution availability: **no enemy G3 before City 2**, then C2-3 → G3, C4-5 → G2,
+>     C6+ → unrestricted (`_storyEnemyGradeCeilingForRow` / `_capGradePoolsByGradeCeiling`).
+>     Closes the early random-G3 / "Lapras at Gym 1" power spike (the gym-leader grade
+>     matrix forbids G4, so GL1's `g3:25/g4:75` was renormalizing to an effective `g3:100`).
+> (2) **Power-weighted Smogon set selection** for story foes (`_smogonSetPower` /
+>     `_pickSetByPower` / `_stagePowerTargetForEvent`): the chosen set's competitive tier
+>     (OU > UU > … > ZU) is biased by stage — humble early, **near-best in the league and
+>     everything after** (floor 0.94). Replaces the old uniform-random pick so a Champion
+>     never rolls a weak set and mid/late trainers don't roll unviable ones.
+> (3) a **data-driven archetype engine** for the designed-build share (`makeDesignedBuild`):
+>     move-slot distributions + synergy combos + stat-sensitive spreads
+>     (`data/build-archetypes.json`, `data/move-synergies.json`).
+> (4) **`FOE_POWER_CURVE[5]` 1.00 → 1.03** — breaks the old GL4≡GL5 plateau into a gradual
+>     C4 1.00 → C5 1.03 → C6 1.05 climb. The §2d/§8/§15 softening-constant tables remain
+>     historical (those named constants do not exist in code).
 
 Deliverables, in order:
 - **§1–§2** = Deliverable 1, the master design file (sequential timeline + every lever).
