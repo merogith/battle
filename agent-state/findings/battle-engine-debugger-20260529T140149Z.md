@@ -99,7 +99,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: e264dd705b7b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Sleep off-by-one: sleepDuration=1 wakes and attacks on its first turn (0 turns lost); effective sleep is 0-2 turns not 1-3

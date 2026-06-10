@@ -37,7 +37,7 @@ file: docs/EVOLUTION_FLOW_REBUILD.md
 agents: [spec-drift-auditor]
 fingerprint: 70efe53e89e9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: EVOLUTION_FLOW_REBUILD.md header says "Status: Plan — review before implementation" but the system fully shipped

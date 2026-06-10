@@ -38,7 +38,7 @@ file: docs/STORY_NARRATIVE_VARIANTS.md
 agents: [spec-drift-auditor]
 fingerprint: e9e4c9139950
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_NARRATIVE_VARIANTS.md presents a cut 8-variant design as "canonical" (future-prompt-rebuild trap)

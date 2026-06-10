@@ -41,7 +41,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 672996ea646e
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Latent state-bleed: artifact battle-flags reset is behind an empty-artifacts early-return (same init-inside-guard shape as the fixed boss-bleed)

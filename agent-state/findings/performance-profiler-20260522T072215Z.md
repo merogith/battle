@@ -107,7 +107,7 @@ current_line_hint: 11983
 agents: [performance-profiler]
 fingerprint: 2b9d-imageprefetch
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images

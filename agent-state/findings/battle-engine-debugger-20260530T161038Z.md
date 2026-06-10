@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1598e26c657a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Boss surge/immunity timers live on the active foe mon — lost on switch, stale on bench
@@ -39,7 +39,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: e3f00646f827
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Single `_bossPendingTelegraph` slot drops a phase when two mechanics telegraph on the same turn (mfBattle)
@@ -70,7 +70,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 9d2a9248db19
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: faintPhase counts the active foe as "fainted" mid-tick if it is at 0 HP before the swap

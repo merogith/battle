@@ -7,7 +7,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 75cdcf609fdb
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Two early-game foe-softening systems STACK multiplicatively — C0 foe is 64% of base, not the documented ~80%

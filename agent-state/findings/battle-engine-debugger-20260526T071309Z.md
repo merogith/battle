@@ -71,7 +71,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 2f6b5645d86f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3)
@@ -101,7 +101,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1e8eb0a0eb0d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior

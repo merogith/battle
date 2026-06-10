@@ -72,7 +72,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: bfdd6b8592a2
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pending Healing Wish / Lunar Dance flags bleed into next battle and auto-heal its lead

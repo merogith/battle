@@ -120,7 +120,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 8566e89fd047
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `sm.catchUnlocked` is written 3× but never read; spec §10 says it gates wild-route prompts
@@ -206,7 +206,7 @@ file: README.md
 agents: [spec-drift-auditor]
 fingerprint: 61ee59240f4d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: README calls catch / PC / Underground / Safari / boss-arc "upcoming"; all are shipped
