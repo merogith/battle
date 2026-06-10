@@ -91,7 +91,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1839297b78a2
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-v15 saves get 0 Poké Balls instead of the intended 5 — migrateStoryPreV15 balls default is shadowed by the default sm object
@@ -118,7 +118,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 685e7677fbe1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-v15 post-HoF saves are forced back through the Mystery Figure climax — postHofMysteryClimaxDone migration shadowed by default boolean
