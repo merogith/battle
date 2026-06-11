@@ -2226,12 +2226,18 @@
             --sn-box-hi:     #1e2030;   /* dialog box gradient (top) */
             --sn-box-lo:     #12141e;   /* dialog box gradient (bottom) */
             --sn-muted:      #8b9bb4;   /* progress dots / sub-labels */
+            --sn-z-screen-raised:   20; /* defeat screen: above sibling screens, below all overlay tiers */
             --sn-z-scrim:         1200; /* modal alert / confirm scrim */
             --sn-z-battle-banner: 9000; /* in-battle gimmick banner */
             --sn-z-overlay:       9998; /* story narrative overlay (canonical) */
             --sn-z-spotlight:     9999; /* victory card / boss banner */
             --sn-z-toast:        10001; /* toasts ride above overlays */
         }
+        /* P0.2: deterministic layering — sibling .screen elements carry no
+           z-index, so the defeat screen's paint order vs late-mounted surfaces
+           was DOM-order luck. Pin it explicitly (still below every --sn-z-*
+           overlay tier, so VS splash / victory card / toasts ride above). */
+        #screen-story-gameover { z-index: var(--sn-z-screen-raised); }
         /* Subtle arc-progress row shown in a structured scene's banner slot —
            communicates "consequential multi-beat event, N of M" without a
            mechanical INTRO/CLIMAX caption. */
@@ -37512,6 +37518,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (done > 0) return 'unfolding';
             return 'stirring';
         }
+        // P0.7: the raw "Aqua: stirring" status read like a debug flag. Phrase
+        // each thread state as a line a person would actually say. Villain
+        // threads speak of the team; extra threads are the eerie species
+        // mysteries (Cubone / Hypno / …), phrased as rumors → a deepening case.
+        function _threadStatusPhrase(kind, label, word) {
+            if (!label || !word) return '';
+            if (kind === 'villain') {
+                // Canon: every villain crew is "Team X" except Macro Cosmos.
+                const team = label === 'Macro Cosmos' ? label : 'Team ' + label;
+                if (word === 'stirring') return 'Rumors of ' + team + ' on the road';
+                if (word === 'unfolding') return team + ' is making its move';
+                return team + ' routed';
+            }
+            if (word === 'stirring') return 'Odd stories about ' + label + ' going around';
+            if (word === 'unfolding') return 'The ' + label + ' mystery deepens';
+            return 'The ' + label + ' mystery laid to rest';
+        }
         // The quieter HUD subline under the city objective: badge progress + each
         // track thread's status + any active errand. Drives the felt "what's going
         // on" the player was missing. Read-only; deterministic.
@@ -37519,9 +37542,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm) return '';
             const parts = ['Badge ' + (sm.badges | 0) + '/8'];
             const vs = _threadStatusWord(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain);
-            if (vs) parts.push('⚔ ' + _threadLabel(sm.tracks.villain) + ': ' + vs);
+            if (vs) parts.push('⚔ ' + _threadStatusPhrase('villain', _threadLabel(sm.tracks.villain), vs));
             const xs = _threadStatusWord(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra);
-            if (xs) parts.push('👁 ' + _threadLabel(sm.tracks.extra) + ': ' + xs);
+            if (xs) parts.push('👁 ' + _threadStatusPhrase('extra', _threadLabel(sm.tracks.extra), xs));
             // Active errand (one shown — the soonest payoff).
             try {
                 for (const id in (sm.errands || {})) {
@@ -40515,7 +40538,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyEventRowToUpNext: (...a) => _storyEventRowToUpNext(...a),
                 roadForArrayIdx: (...a) => _roadForArrayIdx(...a),
                 narrationQueueDepth: () => _narrationQueue.length,
-                isNarrationLive: () => _narrationLive,
+                isNarrationLive: () => _narrationIsLive(),
+                narrationForceClear: () => _narrationForceClear(),
             };
         }
         function _rivalSpeciesHasType(name, t) {
@@ -43725,7 +43749,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'cold-classic-npc-r48',
                 run(ev, onDone) { _renderNarrativeOverlay({
                     metaKey: 'cold-classic-npc-r48',
-                    sprite: 'Veteran', name: 'Veteran', nameplate: 'The Veteran Knows Your Name',
+                    sprite: 'Veteran', name: 'Veteran', nameplate: 'The Veteran, One Last Time',
                     lines: [
                         '"You again. Seven badges. I stopped betting against you somewhere around the fifth."',
                         '"Last town before the Plateau. Take the long look back — six routes, the team you built, the calls you made. That\'s who walks into the eighth gym. Go on."'
@@ -46297,7 +46321,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _rp = getRivalEncounterPhase(nxId);
                     const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
                     const _tease = _rivalTease[_rp];
-                    nextLabel = `🏁 ${trAssign || 'Rival'}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
+                    // §11.1: the rolled identity (Blue/Silver/…) is never surfaced —
+                    // the hub label says "Rival" like every other rival-facing UI.
+                    nextLabel = `🏁 ${_rivalDisplayName()}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
                 }
                 else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
@@ -46342,11 +46368,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hasTeam) {
                 if (actions.includes('Battle Dojo')) {
                     const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
-                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
+                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: n === 1 ? '1 Pokémon needs a held item' : `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
                 }
                 if (actions.includes('Move Tutor')) {
                     const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
-                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
+                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: n === 1 ? '1 Pokémon has an empty move slot' : `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
                 }
                 if (actions.includes('EV Trainer')) {
                     const n = sm.team.filter(s => {
@@ -46354,7 +46380,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const e = s.build.evs || {};
                         return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
                     }).length;
-                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
+                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: n === 1 ? '1 Pokémon has no EVs' : `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
                 }
             }
             const relicAvailableHere = [0, 3, 6, 9].includes(cityIdx);
@@ -46744,6 +46770,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
                     label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
                     click: 'window.StoryMode.enterProfessor()' };
+            } else if (sm.campReturnPoint) {
+                // P0.8 audit fix: on a camp round-trip revisit the only forward
+                // action is returning to camp (the action grid already shows just
+                // "↩ Back to the road"). Without this branch the objective fell
+                // through to the next-battle scan, which reads from the revisited
+                // city's row — labeling an already-cleared route fight while the
+                // click warps back to camp. Label and destination now agree.
+                objective = { kicker: 'NEXT', icon: 'story_route.png', label: 'Head back to the road — camp waits', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (_introsPending && _pendingNames.length) {
                 // Facilities come BEFORE the gym: surface the new/upgraded facility as
                 // the objective so the player meets it first. A first-time facility
@@ -49962,12 +49996,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // false — when the next is requested, so it mounts immediately. The
         // queue only engages when overlays genuinely overlap, i.e. the bug case.
         let _narrationLive = false;
+        let _narrationLiveEl = null;  // the mounted overlay the lock belongs to
         const _narrationQueue = [];
+        // The lock is only as trustworthy as the dismiss() discipline of every
+        // teardown path. If a live overlay is ever removed via raw .remove()
+        // (screen resets, recovery paths), a bare boolean would stay true
+        // forever and every later overlay would queue invisibly — e.g. the
+        // city-hub errand offer turning into a silent no-op. _narrationIsLive()
+        // therefore self-heals: a lock whose tracked element has left the DOM
+        // is released. It must NEVER release while the element is still
+        // connected — that would re-open the stacked-overlay bug the queue
+        // exists to prevent.
+        function _narrationIsLive() {
+            if (_narrationLive && _narrationLiveEl && !_narrationLiveEl.isConnected) {
+                _narrationLive = false;
+                _narrationLiveEl = null;
+            }
+            return _narrationLive;
+        }
+        // Explicit teardown for navigation seams that clear the stage without
+        // a dismiss(): removes the live overlay (if any), releases the lock,
+        // then flushes the queue so a pending overlay's onDone chain still runs.
+        function _narrationForceClear() {
+            if (_narrationLiveEl) { try { _narrationLiveEl.remove(); } catch (e) {} }
+            _narrationLive = false;
+            _narrationLiveEl = null;
+            _narrationMountNext();
+        }
         function _narrationMountNext() {
-            if (_narrationLive) return;
+            if (_narrationIsLive()) return;
             const ov = _narrationQueue.shift();
             if (!ov) return;
             _narrationLive = true;
+            _narrationLiveEl = ov;
             try { document.body.appendChild(ov); } catch (e) {}
             try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
         }
@@ -50142,6 +50203,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immediately; then flush any genuinely-queued overlay that
                 // overlapped this one.
                 _narrationLive = false;
+                if (_narrationLiveEl === ov) _narrationLiveEl = null;
                 try { o.onDone && o.onDone(); }
                 catch (e) { console.error('[Story] narrative overlay callback', e); }
                 _narrationMountNext();
@@ -50207,10 +50269,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Mount now if the stage is clear; otherwise queue behind the live
             // overlay (flushed on its dismiss). Either way the caller gets its
             // element reference back.
-            if (_narrationLive) {
+            if (_narrationIsLive()) {
                 _narrationQueue.push(ov);
             } else {
                 _narrationLive = true;
+                _narrationLiveEl = ov;
                 document.body.appendChild(ov);
                 try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
             }
@@ -51056,6 +51119,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // to the camp menu on Move On / exhaustion.
         function _campSearchGrass(ctx) {
             try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            // Raw-teardown seam: clear any wedged narration lock before the
+            // wander screen mounts (defensive; no-op when the stage is clean).
+            try { _narrationForceClear(); } catch (e) {}
             const key = _campGrassKey(ctx);
             let cidx = 0; try { cidx = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
             _showWanderScreen(key, cidx, () => _campDefer(() => _campOpenMenu(ctx)), false);
@@ -51081,6 +51147,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.eventIndex = back;
             try { save(); } catch (e) {}
             try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            // Raw-teardown seam (see _campSearchGrass): heal the narration lock
+            // before the city hub renders so its overlays can't queue invisibly.
+            try { _narrationForceClear(); } catch (e) {}
             enterCity();
         }
         function _campOpenMenu(ctx) {
@@ -52615,6 +52684,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (e) { console.warn('[Story] retry inv save', e); }
             }
             applyMechanicsToSettings();
+            // Mirror acceptRivalLossAndContinue/retreatToLastPokemonCenter: clear
+            // the defeat screen (and any other visible screen/modal) BEFORE battle
+            // re-entry, so the VS splash never mounts over a still-visible
+            // gameover surface.
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             if (ev && ev[1] === 'Battle' && sm.currentEnemyLock && sm.currentEnemyLock.eventIdx === sm.eventIndex) {
                 // Retry replays the SAME trainer fight. The route wild / catch
@@ -52651,7 +52725,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 'You conceded this round. Your rival is the better trainer until you take it back.';
             let rivalSay = '';
             try { rivalSay = getRivalAftermathLine(false, getRivalEncounterPhase(rowIdx)); } catch (e) {}
-            const who = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'Rival';
+            // §11.1: never surface the rolled identity — the concede alert
+            // attributes the line to the generic "Rival".
+            const who = _rivalDisplayName();
             const msg = rivalSay ? `${baseMsg}\n\n${who}: "${rivalSay}"` : baseMsg;
             try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
             processNextEvent();
@@ -52687,6 +52763,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
+        // Victory card input-arm (P0.1): the card no longer auto-closes (the old
+        // 6s timer + click-anywhere dismiss made rewards unreadable). Dismissal
+        // is Continue / Enter / Esc only, and input is ignored for the first
+        // ~400ms so taps/keys still buffered from the battle's final exchange
+        // can't blow the card away. Tests zero the window via __victoryInputArmMs.
+        const VICTORY_INPUT_ARM_MS = 400;
         function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx, rewardLines) {
             const ov = document.createElement('div');
             ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
@@ -52703,10 +52785,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             contBtn.textContent = 'Continue →';
             contBtn.style.cssText = 'margin-top:8px;padding:10px 24px;position:relative;z-index:3;';
             let finished = false;
+            const _armMs = (typeof window.__victoryInputArmMs === 'number')
+                ? window.__victoryInputArmMs : VICTORY_INPUT_ARM_MS;
+            const _armAt = Date.now() + _armMs;
             const dismiss = () => {
                 if (finished) return;
+                if (Date.now() < _armAt) return; // buffered-input guard
                 finished = true;
-                clearTimeout(autoClose);
                 document.removeEventListener('keydown', escListener);
                 if (ov.parentElement) ov.remove();
                 // Defensive: cb() advances story flow (processNextEvent → enterBattleEvent → startBattle).
@@ -52722,7 +52807,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
             };
             document.addEventListener('keydown', escListener);
-            const autoClose = setTimeout(dismiss, 6000);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
             const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
@@ -52793,7 +52877,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Rival's spoken aftermath, standing-aware (grudging respect / concession).
                     let rivalSay = '';
                     try { rivalSay = getRivalAftermathLine(true, rp); } catch (e) {}
-                    const who = _trainerName || 'Rival';
+                    // §11.1: never surface the rolled identity (Blue/Silver/…).
+                    const who = _rivalDisplayName();
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;">${narr}</div>` +
                         (rivalSay ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${who}: "${rivalSay}"</div>` : '');
                 }
@@ -52831,7 +52916,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const conf = ov.querySelector('.story-fx-confetti');
             storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
             ov.appendChild(contBtn);
-            ov.onclick = () => dismiss();
             document.body.appendChild(ov);
             // Focus the Continue button so Enter dismisses immediately and SR
             // users hear "Continue → button, dialog 'VICTORY!'". Defer one tick
