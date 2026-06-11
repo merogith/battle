@@ -37518,6 +37518,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (done > 0) return 'unfolding';
             return 'stirring';
         }
+        // P0.7: the raw "Aqua: stirring" status read like a debug flag. Phrase
+        // each thread state as a line a person would actually say. Villain
+        // threads speak of the team; extra threads are the eerie species
+        // mysteries (Cubone / Hypno / …), phrased as rumors → a deepening case.
+        function _threadStatusPhrase(kind, label, word) {
+            if (!label || !word) return '';
+            if (kind === 'villain') {
+                // Canon: every villain crew is "Team X" except Macro Cosmos.
+                const team = label === 'Macro Cosmos' ? label : 'Team ' + label;
+                if (word === 'stirring') return 'Rumors of ' + team + ' on the road';
+                if (word === 'unfolding') return team + ' is making its move';
+                return team + ' routed';
+            }
+            if (word === 'stirring') return 'Odd stories about ' + label + ' going around';
+            if (word === 'unfolding') return 'The ' + label + ' mystery deepens';
+            return 'The ' + label + ' mystery laid to rest';
+        }
         // The quieter HUD subline under the city objective: badge progress + each
         // track thread's status + any active errand. Drives the felt "what's going
         // on" the player was missing. Read-only; deterministic.
@@ -37525,9 +37542,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm) return '';
             const parts = ['Badge ' + (sm.badges | 0) + '/8'];
             const vs = _threadStatusWord(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain);
-            if (vs) parts.push('⚔ ' + _threadLabel(sm.tracks.villain) + ': ' + vs);
+            if (vs) parts.push('⚔ ' + _threadStatusPhrase('villain', _threadLabel(sm.tracks.villain), vs));
             const xs = _threadStatusWord(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra);
-            if (xs) parts.push('👁 ' + _threadLabel(sm.tracks.extra) + ': ' + xs);
+            if (xs) parts.push('👁 ' + _threadStatusPhrase('extra', _threadLabel(sm.tracks.extra), xs));
             // Active errand (one shown — the soonest payoff).
             try {
                 for (const id in (sm.errands || {})) {
@@ -43732,7 +43749,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'cold-classic-npc-r48',
                 run(ev, onDone) { _renderNarrativeOverlay({
                     metaKey: 'cold-classic-npc-r48',
-                    sprite: 'Veteran', name: 'Veteran', nameplate: 'The Veteran Knows Your Name',
+                    sprite: 'Veteran', name: 'Veteran', nameplate: 'The Veteran, One Last Time',
                     lines: [
                         '"You again. Seven badges. I stopped betting against you somewhere around the fifth."',
                         '"Last town before the Plateau. Take the long look back — six routes, the team you built, the calls you made. That\'s who walks into the eighth gym. Go on."'
@@ -46351,11 +46368,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hasTeam) {
                 if (actions.includes('Battle Dojo')) {
                     const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
-                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
+                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: n === 1 ? '1 Pokémon needs a held item' : `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
                 }
                 if (actions.includes('Move Tutor')) {
                     const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
-                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
+                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: n === 1 ? '1 Pokémon has an empty move slot' : `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
                 }
                 if (actions.includes('EV Trainer')) {
                     const n = sm.team.filter(s => {
@@ -46363,7 +46380,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const e = s.build.evs || {};
                         return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
                     }).length;
-                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
+                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: n === 1 ? '1 Pokémon has no EVs' : `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
                 }
             }
             const relicAvailableHere = [0, 3, 6, 9].includes(cityIdx);

@@ -174,6 +174,10 @@ test('_storyThreadObjectiveLine reflects badge count + threads, deterministicall
     assert.match(line, /Badge 3\/8/);
     // Same inputs → same output.
     assert.equal(line, ST.storyThreadObjectiveLine());
+    // P0.7: thread status is phrased ("Rumors of Team Aqua on the road"),
+    // never the raw debug-flag form ("Aqua: stirring").
+    assert.ok(!/:\s*(stirring|unfolding|resolved)/.test(line),
+      `no raw status words in the subline: "${line}"`);
 });
 
 test('_journalRenderHTML lists badges + threads without mutating sm', () => {
