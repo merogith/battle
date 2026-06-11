@@ -527,10 +527,38 @@ async function exercisePostHoFFlow(window) {
   // (We can't replace onBattleEnd on StoryMode since it's read-only. Instead,
   // we'll observe the climax-done flag.)
 
+  // The programmatic main loop drives StoryMode by API and never reads the
+  // story overlays, so by post-HoF time the narration queue holds a long
+  // unread backlog. Drain it (force-clear pops one per call) so the climax
+  // lead-in scene can actually mount on a clear stage.
+  try {
+    const nt = window.__narrationTest;
+    if (nt) {
+      let g = 0;
+      while ((nt.isNarrationLive() || nt.narrationQueueDepth() > 0) && ++g < 400) nt.narrationForceClear();
+    }
+  } catch (e) {}
+
   // Force a clean state and call continuePostGame.
   try { window.StoryMode.continuePostGame && window.StoryMode.continuePostGame(); }
   catch (e) { record('error', 'postHof.continuePostGame', e.message); return; }
   await tick(window);
+
+  // The post-HoF flow stages narrative beats as click-through overlays (the
+  // main.event9 "Hall of Fame closes" lead-in acts, then the pre-boss
+  // cinematic) before the Mystery climax fight routes. Click through them
+  // like a player would — choices included — until the routing fires.
+  const clickThroughNarration = async (stopWhen) => {
+    for (let g = 0; g < 40; g++) {
+      if (stopWhen && stopWhen()) return;
+      const btn = window.document.querySelector('button[data-narr-continue="1"]')
+        || window.document.querySelector('button[data-narr-choice-idx]');
+      if (btn) btn.click();
+      await tick(window);
+    }
+  };
+  await clickThroughNarration(() => window.StoryMode.state.crucibleBattleSource === 'postHofMystery');
+  await playThroughVsIntro(window);
 
   // The Mystery battle is now in flight. Wait for it to resolve (or force-win
   // via the crucible source path).
@@ -540,6 +568,9 @@ async function exercisePostHoFFlow(window) {
     try { window.StoryMode.onBattleEnd(true, 'Mystery cleared', ''); }
     catch (e) { record('error', 'postHof.forceWinMystery', e.message); }
     await tick(window);
+    // The win re-enters continuePostGame: post-HoF epilogue + orientation tip
+    // are click-through overlays on the way back to the city.
+    await clickThroughNarration();
   } else if (!sm2.postHofMysteryClimaxDone) {
     record('warn', 'postHof.noClimax', `After continuePostGame, climax flag still false and no crucibleBattleSource. eventIndex=${sm2.eventIndex}`);
   }
@@ -550,7 +581,7 @@ async function exercisePostHoFFlow(window) {
   if (!sm3.postHofMysteryClimaxDone) {
     record('error', 'postHof.climaxFlagNotSet', `postHofMysteryClimaxDone is still false after Mystery resolve. eventIndex=${sm3.eventIndex}`);
   } else {
-    record('info', 'progress', `Post-HoF Mystery cleared. bossArc.available=${sm3.bossArc?.available} masterBalls=${sm3.balls?.master|0}`);
+    record('info', 'progress', `Post-HoF Mystery cleared. masterBalls=${sm3.balls?.master|0}`);
   }
 
   // Try Crucible
@@ -659,11 +690,14 @@ async function exerciseEdgeCases(window) {
     }
   } catch (e) { record('warn', 'edge.underground.lastMon', e.message); }
 
-  // --- Edge: starter unsellable flag
+  // --- Edge: starter keepsake contract. ★ STARTER is a visual marker only —
+  // the shipped design strips the legacy `unsellable` lock from starters (a
+  // load-time backfill deletes it; the PC tooltip reads "keepsake marker
+  // only, no restrictions"). Error if the legacy lock ever resurfaces.
   try {
     const starter = (sm.team||[]).find(m => m && m.starter);
-    if (starter && !starter.unsellable) {
-      record('error', 'edge.starter.unsellable', 'Starter not flagged unsellable');
+    if (starter && starter.unsellable === true) {
+      record('error', 'edge.starter.keepsake', 'Starter carries the legacy unsellable lock (keepsake contract broken)');
     }
   } catch (e) {}
 
