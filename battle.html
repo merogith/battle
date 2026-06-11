@@ -3452,6 +3452,45 @@
                 linear-gradient(180deg, transparent 58%, rgba(0,0,0,0.22) 100%);
         }
 
+        /* P2c: story marquee arena tint — a type-colored grade over the shared
+           stadium for story Gym Leader / E4 / Champion fights (class applied by
+           refreshBattleBg, stripped everywhere else). Same geometry + z-tier as
+           the vignette ::before above, so it grades the arena only — never the
+           command bar — and the bg_*.png art ships untouched. The faint ring is
+           the arena's "crest": a stadium emblem circle in the gym's color. */
+        #screen-battle[class*="battle-tint-"]::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            bottom: var(--battle-ui-h, 190px);
+            background:
+                radial-gradient(circle at 50% 34%, transparent 88px, var(--arena-tint-strong, transparent) 89px, transparent 93px),
+                radial-gradient(ellipse 120% 80% at 50% 0%, var(--arena-tint-strong, transparent) 0%, transparent 64%),
+                radial-gradient(ellipse 90% 70% at 50% 100%, transparent 46%, var(--arena-tint-soft, transparent) 100%),
+                linear-gradient(180deg, var(--arena-tint-soft, transparent) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .battle-tint-normal   { --arena-tint-strong: rgba(168,168,120,0.28); --arena-tint-soft: rgba(168,168,120,0.14); }
+        .battle-tint-fire     { --arena-tint-strong: rgba(240,128,48,0.30);  --arena-tint-soft: rgba(240,80,32,0.15); }
+        .battle-tint-water    { --arena-tint-strong: rgba(104,144,240,0.30); --arena-tint-soft: rgba(64,112,224,0.15); }
+        .battle-tint-electric { --arena-tint-strong: rgba(248,208,48,0.26);  --arena-tint-soft: rgba(248,208,48,0.13); }
+        .battle-tint-grass    { --arena-tint-strong: rgba(120,200,80,0.28);  --arena-tint-soft: rgba(96,176,64,0.14); }
+        .battle-tint-ice      { --arena-tint-strong: rgba(152,216,216,0.30); --arena-tint-soft: rgba(120,200,216,0.15); }
+        .battle-tint-fighting { --arena-tint-strong: rgba(192,48,40,0.28);   --arena-tint-soft: rgba(160,40,32,0.14); }
+        .battle-tint-poison   { --arena-tint-strong: rgba(160,64,160,0.30);  --arena-tint-soft: rgba(128,48,128,0.15); }
+        .battle-tint-ground   { --arena-tint-strong: rgba(224,192,104,0.28); --arena-tint-soft: rgba(184,152,72,0.14); }
+        .battle-tint-flying   { --arena-tint-strong: rgba(168,144,240,0.26); --arena-tint-soft: rgba(136,112,216,0.13); }
+        .battle-tint-psychic  { --arena-tint-strong: rgba(248,88,136,0.26);  --arena-tint-soft: rgba(216,64,112,0.13); }
+        .battle-tint-bug      { --arena-tint-strong: rgba(168,184,32,0.26);  --arena-tint-soft: rgba(136,152,24,0.13); }
+        .battle-tint-rock     { --arena-tint-strong: rgba(184,160,86,0.30);  --arena-tint-soft: rgba(152,128,56,0.16); }
+        .battle-tint-ghost    { --arena-tint-strong: rgba(112,88,152,0.32);  --arena-tint-soft: rgba(80,56,120,0.18); }
+        .battle-tint-dragon   { --arena-tint-strong: rgba(112,56,248,0.26);  --arena-tint-soft: rgba(88,40,200,0.14); }
+        .battle-tint-dark     { --arena-tint-strong: rgba(72,56,48,0.40);    --arena-tint-soft: rgba(40,32,28,0.24); }
+        .battle-tint-steel    { --arena-tint-strong: rgba(184,184,208,0.26); --arena-tint-soft: rgba(144,144,168,0.14); }
+        .battle-tint-fairy    { --arena-tint-strong: rgba(238,153,172,0.26); --arena-tint-soft: rgba(216,120,144,0.13); }
+        .battle-tint-league   { --arena-tint-strong: rgba(186,104,200,0.26); --arena-tint-soft: rgba(255,213,79,0.10); }
+
         /* ── Battle field ─────────────────────────────────────────────────── */
         /* Floor shadows scale with container so larger Pokémon get larger shadows */
         .foe-platform {
@@ -9968,9 +10007,41 @@
         }
         window.getBattleBgUrl = getBattleBgUrl;
 
+        // P2c: story marquee arena tint. Resolves the CURRENT story battle to a
+        // battle-tint-* class when it's a Gym Leader / Elite Four / Champion
+        // fight — the marquee fights that deserve a themed arena — and ''
+        // everywhere else (routes, raids, Quick Play, PvP, Frontier), so the
+        // shared stadium stays clean outside story marquee fights. Type comes
+        // from the assigned trainer's primary type; a typeless Champion/E4
+        // (type "Mixed") falls back to the purple league grade.
+        function _storyArenaTintClass() {
+            try {
+                if (typeof state === 'undefined' || !state || state.mode !== 'story') return '';
+                const SM = window.StoryMode && window.StoryMode.state;
+                const rows = window.STORY_EVENTS_RAW;
+                if (!SM || !Array.isArray(rows)) return '';
+                const row = rows[SM.eventIndex | 0];
+                if (!row || row[1] !== 'Battle') return '';
+                const ev = String(row[2] || '');
+                const isLeague = /^E[1-4]$/.test(ev) || ev === 'Champion';
+                if (!/^Gym Leader [1-8]$/.test(ev) && !isLeague) return '';
+                const td = SM.currentTrainerData;
+                const first = (td && td.type ? String(td.type) : '').split(/[\/,]/)[0].trim().toLowerCase();
+                const KNOWN = { normal: 1, fire: 1, water: 1, electric: 1, grass: 1, ice: 1, fighting: 1, poison: 1, ground: 1, flying: 1, psychic: 1, bug: 1, rock: 1, ghost: 1, dragon: 1, dark: 1, steel: 1, fairy: 1 };
+                if (KNOWN[first]) return 'battle-tint-' + first;
+                return isLeague ? 'battle-tint-league' : '';
+            } catch (e) { return ''; }
+        }
         function refreshBattleBg() {
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
+            // P2c: strip any prior tint FIRST so non-marquee battles (and Quick
+            // Play / PvP, which reuse this screen) always start clean.
+            try {
+                Array.prototype.slice.call(sb.classList).forEach(c => { if (c.lastIndexOf('battle-tint-', 0) === 0) sb.classList.remove(c); });
+                const _tint = _storyArenaTintClass();
+                if (_tint) sb.classList.add(_tint);
+            } catch (e) {}
             const layout = sb.getAttribute('data-battle-layout') || 'arena';
             /* arena → the wide "landscape" stadium (deep flat field) on every screen — desktop
                frame and touch alike; stack → the "portrait" stadium. */
