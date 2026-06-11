@@ -2884,6 +2884,30 @@
         @media (prefers-reduced-motion: reduce) {
             .vs2-outcome-badge, .vs-marquee-name, .vs-marquee-epithet, .vs-marquee-sprite { animation: none !important; }
         }
+        /* ── Scene presentation (P3): cast row + entrance/ambience fx ──────────
+           Used by _storyScene (cast above the card) and reusing the vs* keyframes.
+           scene-fx-fire is the camp's breathing firelight behind the cast. */
+        .story-scene-cast { display: flex; align-items: flex-end; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; max-width: 540px; }
+        .story-scene-cast-img { object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.7)); position: relative; z-index: 1; }
+        .scene-fx-rise { animation: vsRise 0.45s both; }
+        .scene-fx-pop { animation: vsPop 0.5s both; }
+        .scene-fx-fire::before {
+            content: ''; position: absolute; inset: -24px -36px; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 82%, rgba(255,152,0,0.38) 0%, rgba(255,87,34,0.14) 46%, transparent 75%);
+            animation: campFireGlow 2.6s ease-in-out infinite;
+        }
+        @keyframes campFireGlow { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+        /* Narration overlay (P3): optional side-by-side speaker framing + the
+           tap-to-reveal line gate. Defaults (fields absent) render exactly the
+           legacy column layout with every line visible. */
+        .story-narr-duo { display: flex; align-items: flex-end; justify-content: center; gap: 14px; max-width: 640px; width: 100%; }
+        .story-narr-duo-right { flex-direction: row-reverse; }
+        .story-narr-duo-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+        .story-narr-line-hidden { display: none; }
+        @media (prefers-reduced-motion: reduce) {
+            .scene-fx-rise, .scene-fx-pop { animation: none !important; }
+            .scene-fx-fire::before { animation: none !important; }
+        }
         /* Portrait-emotion (§6.4) — CSS treatments on a recurring-cast sprite. No new art:
            the single shipped sprite is tinted / shaken / dimmed to read an emotional beat.
            Applied to an overlay <img> via _renderNarrativeOverlay's spriteClass. */
@@ -37853,12 +37877,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (Array.isArray(route.setOut)) lines.push(...route.setOut);
             if (route.sightings) lines.push('<span style="color:#9fb3c8;font-style:italic;">' + _esc(route.sightings) + '</span>');
             try {
+                // P3: the lead partner walks the route with you — a cheap cast
+                // beat on the departure card (degrades to no sprite on lookup
+                // failure / an all-egg party).
+                let _leadMon = null;
+                try { const _l = (sm.team || []).find(s => s && !s.isEgg); if (_l) _leadMon = _l.name; } catch (e) {}
                 _renderNarrativeOverlay({
                     backdropScene: route.scene || '',
                     bannerParts: { location: 'Now Departing · ' + (route.name || ''), tod: _todForEventIndex(idx), sigil: '🧭' },
                     nameplate: route.name || 'On the Road',
                     name: '',
                     sprite: null,
+                    monSprite: _leadMon,
                     typewriter: true,
                     lines: lines,
                     continueLabel: 'Set out →',
@@ -42523,6 +42553,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     banterPostBattleLine: (...a) => _banterPostBattleLine(...a),
                     banterLogBark: (...a) => _banterLogBark(...a),
                     get BANTER_ATTITUDES() { return BANTER_ATTITUDES; },
+                    // Scene presentation (P3) test handles.
+                    storyScene: (...a) => _storyScene(...a),
+                    renderNarrativeOverlay: (...a) => _renderNarrativeOverlay(...a),
                     // Narration overhaul (v26) test handles.
                     get ROUTE_LINES() { return ROUTE_LINES; },
                     get STORY_ERRANDS() { return STORY_ERRANDS; },
@@ -47861,6 +47894,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   • no options → a single "Continue ▶▶" advancing to the next beat.
         // `onDone()` fires exactly once when the script ends. Trusted HTML only
         // (all copy is authored here — never interpolate raw player text).
+        /** Generic story scene engine. Beats: { id?, title?, html, accent?, options? }
+         *  plus OPTIONAL presentation fields (P3 — absent → legacy render unchanged):
+         *    backdropCss   raw CSS background for the overlay (e.g. the camp night sky),
+         *    backdropScene manifest.scenes key → gen3 scene image under a dark gradient,
+         *    sceneKey      raw beat key resolved through _backdropKeyForScene,
+         *    cast          [{ mon|spriteFile, shiny?, size?, cls? }] sprites above the card,
+         *    fx            'rise' | 'pop' | 'fire' — entrance/ambience class on cast+card.
+         *  The beats/options API and the DOM contract (data-scene-opt/-cont buttons,
+         *  goto/finish flow) are unchanged, so all callers upgrade for free. */
         function _storyScene(beats, onDone, sceneId) {
             sceneId = sceneId || 'story-scene-overlay';
             let done = false;
@@ -47876,9 +47918,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = sceneId;
-                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;' + 'flex-direction:column;gap:12px;';
                     document.body.appendChild(ov);
                 }
+                // P3 backdrop — recomputed per beat (the element is reused across
+                // beats): explicit CSS wins, then a manifest scene image under the
+                // same dark-gradient treatment applyStoryBgLayer uses; neither →
+                // the legacy flat black.
+                try {
+                    let _bg = '';
+                    if (beat.backdropCss) _bg = String(beat.backdropCss);
+                    else {
+                        const _bdKey = beat.backdropScene || (beat.sceneKey ? _backdropKeyForScene(beat.sceneKey, beat.beat || null) : '');
+                        if (_bdKey) {
+                            const _scenes = (getStoryBgManifest().scenes) || (DEFAULT_STORY_BG_MANIFEST.scenes) || {};
+                            const _u = _scenes[_bdKey];
+                            if (_u) _bg = 'linear-gradient(180deg, rgba(4,6,12,0.78) 0%, rgba(4,6,12,0.88) 55%, rgba(4,6,12,0.96) 100%), url("' + String(_u).replace(/"/g, '') + '") center / cover no-repeat';
+                        }
+                    }
+                    ov.style.background = _bg || 'rgba(0,0,0,0.93)';
+                    if (_bg) ov.style.imageRendering = 'pixelated';
+                } catch (e) {}
                 const accent = beat.accent || '#aed581';
                 const opts = Array.isArray(beat.options) ? beat.options : null;
                 let btns;
@@ -47887,7 +47947,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     btns = `<div style="text-align:right;margin-top:15px;"><button type="button" data-scene-cont="1" style="padding:9px 18px;background:${accent};color:#001b1e;border:none;font-weight:bold;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:0.04em;">Continue ▶▶</button></div>`;
                 }
-                ov.innerHTML = `<div style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
+                // P3 cast — sprite row above the card. Failed lookups degrade to
+                // nothing (a bad species name never breaks the scene).
+                const _fxCls = ({ rise: 'scene-fx-rise', pop: 'scene-fx-pop', fire: 'scene-fx-fire' })[beat.fx] || '';
+                let _castHtml = '';
+                if (Array.isArray(beat.cast) && beat.cast.length) {
+                    const _imgs = beat.cast.map(c => {
+                        if (!c) return '';
+                        let _src = '';
+                        try {
+                            if (c.mon) _src = getSprite((typeof spriteDisplayName === 'function') ? spriteDisplayName({ name: c.mon }) : c.mon, !!c.shiny);
+                            else if (c.spriteFile) _src = getTrainerSprite({ spriteFile: c.spriteFile });
+                        } catch (e) {}
+                        if (!_src) return '';
+                        const _size = (c.size | 0) || 96;
+                        return `<img class="story-scene-cast-img${c.cls ? ' ' + _esc(String(c.cls)) : ''}" src="${_esc(_src)}" onerror="this.style.display='none'" style="width:${_size}px;height:${_size}px;" alt="">`;
+                    }).join('');
+                    if (_imgs) _castHtml = `<div class="story-scene-cast${_fxCls ? ' ' + _fxCls : ''}">${_imgs}</div>`;
+                }
+                ov.innerHTML = `${_castHtml}<div class="story-scene-card${(!_castHtml && _fxCls) ? ' ' + _fxCls : ''}" style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
                     ${beat.title ? `<div style="font-size:13px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">${beat.title}</div>` : ''}
                     <div>${beat.html || ''}</div>
                     ${btns}
@@ -50627,8 +50705,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const nameHtml = name
                 ? `<div style="color:${accent};font-size:18px;font-weight:bold;">${_esc(name)}</div>`
                 : '';
+            // P3 revealLines: stage lines one tap at a time (first line visible,
+            // each dismiss-tap surfaces the next before anything can close).
+            // Opt-in, mutually exclusive with typewriter + choices — defaults
+            // render every line immediately, exactly as before.
+            const _revealMode = !!o.revealLines && lines.length > 1 && !o.typewriter
+                && !(Array.isArray(o.choices) && o.choices.filter(c => c && c.label).length);
             const linesHtml = lines.map((l, i) =>
-                `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
+                `<p class="story-dialog-text${_revealMode && i ? ' story-narr-line-hidden' : ''}"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
             ).join('');
             // Optional multi-choice prompt. Each choice is
             //   { label, reply: [line, line, ...], persistKey? }
@@ -50644,14 +50728,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     choices.map((c, i) => `<button type="button" data-narr-choice-idx="${i}" style="padding:9px 16px;background:#1a2a4a;color:#fff;border:1px solid #ffd54f;border-radius:4px;cursor:pointer;text-align:left;font-family:inherit;line-height:1.4;">▸ ${_esc(c.label)}</button>`).join('')
                   }</div>`
                 : '';
-            ov.innerHTML = `
-                ${bannerHtml}
-                ${spriteHtml}
-                ${nameHtml}
-                <div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
+            // P3 spriteSide: optional side-by-side speaker framing — the sprite
+            // sits beside the dialog ('left'/'right') instead of stacked above.
+            // Absent → the legacy stacked column, unchanged.
+            const _dialogHostHtml = `<div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
                     <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
                     <div class="story-dialog-box" data-narr-body="1">${linesHtml}</div>
-                </div>
+                </div>`;
+            const _spriteSide = (o.spriteSide === 'left' || o.spriteSide === 'right') ? o.spriteSide : '';
+            const _bodyHtml = (_spriteSide && spriteHtml)
+                ? `<div class="story-narr-duo${_spriteSide === 'right' ? ' story-narr-duo-right' : ''}">${spriteHtml}<div class="story-narr-duo-col">${nameHtml}${_dialogHostHtml}</div></div>`
+                : `${spriteHtml}
+                ${nameHtml}
+                ${_dialogHostHtml}`;
+            ov.innerHTML = `
+                ${bannerHtml}
+                ${_bodyHtml}
                 ${choices.length ? choiceBtnsHtml : continueBtnHtml}`;
             // Narration overhaul (v26): typewriter reveal. Active only when
             // opts.typewriter is set, there are no choice buttons, and the user
@@ -50713,6 +50805,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // If still typing, the first dismiss request completes the text
                 // instead of closing — so a tap never skips unread prose.
                 if (_twTyping && _skipTypewriter) { _skipTypewriter(); return; }
+                // P3 revealLines: surface the next staged line before anything
+                // can close — a tap never skips an unread beat.
+                if (_revealMode) {
+                    const _nxt = ov.querySelector('.story-narr-line-hidden');
+                    if (_nxt) { _nxt.classList.remove('story-narr-line-hidden'); return; }
+                }
                 dismissed = true;
                 if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
                 if (o.metaKey) {
@@ -51700,10 +51798,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 options.push({ label: `🏙  Head back to ${_esc(_backName)}`, onPick: () => _campDefer(() => _campHeadBack(ctx)) });
             }
             options.push({ label: '▶▶  Break camp', onPick: () => _campBreak(ctx) });
+            // P3: full-screen night scene — sky-into-firelight backdrop, the
+            // breathing fire glow, the lead settled in close (big, animated) and
+            // the rest of the party gathered small around it. Options/onPick are
+            // byte-identical (the camp-*-v25 suites are the canary).
+            const _campCast = [];
+            try {
+                if (lead && lead.name) _campCast.push({ mon: lead.name, shiny: !!(lead.build && lead.build._isShiny), size: 112 });
+                (sm.team || []).forEach(s => {
+                    if (!s || s.isEgg || s === lead) return;
+                    _campCast.push({ mon: s.name, shiny: !!(s.build && s.build._isShiny), size: 44 });
+                });
+            } catch (e) {}
             _storyScene([{
                 id: 'camp-menu', title: '⛺  Camp', accent: _CAMP_ACCENT,
-                html: `<div style="text-align:center;font-size:34px;line-height:1;margin:2px 0 14px;">🔥</div>
-                       <div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
+                backdropCss: 'linear-gradient(180deg, #070d1f 0%, #0d1730 38%, #1a1208 76%, #241405 100%)',
+                fx: 'fire',
+                cast: _campCast,
+                html: `<div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
                 options,
             }], null, _CAMP_SCENE_ID);
         }
