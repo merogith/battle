@@ -40515,7 +40515,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyEventRowToUpNext: (...a) => _storyEventRowToUpNext(...a),
                 roadForArrayIdx: (...a) => _roadForArrayIdx(...a),
                 narrationQueueDepth: () => _narrationQueue.length,
-                isNarrationLive: () => _narrationLive,
+                isNarrationLive: () => _narrationIsLive(),
+                narrationForceClear: () => _narrationForceClear(),
             };
         }
         function _rivalSpeciesHasType(name, t) {
@@ -49962,12 +49963,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // false — when the next is requested, so it mounts immediately. The
         // queue only engages when overlays genuinely overlap, i.e. the bug case.
         let _narrationLive = false;
+        let _narrationLiveEl = null;  // the mounted overlay the lock belongs to
         const _narrationQueue = [];
+        // The lock is only as trustworthy as the dismiss() discipline of every
+        // teardown path. If a live overlay is ever removed via raw .remove()
+        // (screen resets, recovery paths), a bare boolean would stay true
+        // forever and every later overlay would queue invisibly — e.g. the
+        // city-hub errand offer turning into a silent no-op. _narrationIsLive()
+        // therefore self-heals: a lock whose tracked element has left the DOM
+        // is released. It must NEVER release while the element is still
+        // connected — that would re-open the stacked-overlay bug the queue
+        // exists to prevent.
+        function _narrationIsLive() {
+            if (_narrationLive && _narrationLiveEl && !_narrationLiveEl.isConnected) {
+                _narrationLive = false;
+                _narrationLiveEl = null;
+            }
+            return _narrationLive;
+        }
+        // Explicit teardown for navigation seams that clear the stage without
+        // a dismiss(): removes the live overlay (if any), releases the lock,
+        // then flushes the queue so a pending overlay's onDone chain still runs.
+        function _narrationForceClear() {
+            if (_narrationLiveEl) { try { _narrationLiveEl.remove(); } catch (e) {} }
+            _narrationLive = false;
+            _narrationLiveEl = null;
+            _narrationMountNext();
+        }
         function _narrationMountNext() {
-            if (_narrationLive) return;
+            if (_narrationIsLive()) return;
             const ov = _narrationQueue.shift();
             if (!ov) return;
             _narrationLive = true;
+            _narrationLiveEl = ov;
             try { document.body.appendChild(ov); } catch (e) {}
             try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
         }
@@ -50142,6 +50170,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immediately; then flush any genuinely-queued overlay that
                 // overlapped this one.
                 _narrationLive = false;
+                if (_narrationLiveEl === ov) _narrationLiveEl = null;
                 try { o.onDone && o.onDone(); }
                 catch (e) { console.error('[Story] narrative overlay callback', e); }
                 _narrationMountNext();
@@ -50207,10 +50236,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Mount now if the stage is clear; otherwise queue behind the live
             // overlay (flushed on its dismiss). Either way the caller gets its
             // element reference back.
-            if (_narrationLive) {
+            if (_narrationIsLive()) {
                 _narrationQueue.push(ov);
             } else {
                 _narrationLive = true;
+                _narrationLiveEl = ov;
                 document.body.appendChild(ov);
                 try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
             }
@@ -51056,6 +51086,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // to the camp menu on Move On / exhaustion.
         function _campSearchGrass(ctx) {
             try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            // Raw-teardown seam: clear any wedged narration lock before the
+            // wander screen mounts (defensive; no-op when the stage is clean).
+            try { _narrationForceClear(); } catch (e) {}
             const key = _campGrassKey(ctx);
             let cidx = 0; try { cidx = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
             _showWanderScreen(key, cidx, () => _campDefer(() => _campOpenMenu(ctx)), false);
@@ -51081,6 +51114,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.eventIndex = back;
             try { save(); } catch (e) {}
             try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            // Raw-teardown seam (see _campSearchGrass): heal the narration lock
+            // before the city hub renders so its overlays can't queue invisibly.
+            try { _narrationForceClear(); } catch (e) {}
             enterCity();
         }
         function _campOpenMenu(ctx) {
