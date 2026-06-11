@@ -2827,6 +2827,52 @@
             .vs-fighter-player, .vs-fighter-foe, .vs-glyph, .vs-intro-dialog { animation: none !important; }
             .vs-flash { display: none !important; }
         }
+        /* ── Vibe Exchange + Marquee Entry (P2a) ───────────────────────────────
+           The interactive pre-battle exchange and the static marquee title card
+           share the VS splash's stage/fighter/accent system above. Buttons are
+           input-armed in JS (~400ms) against buffered taps. */
+        .vs2-pick-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 560px; width: 100%; }
+        .vs2-pick-btn {
+            flex: 1 1 240px; display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+            background: linear-gradient(180deg, #1a1d2a 0%, #10121a 100%);
+            border: 2px solid #4a4f5e; color: var(--text-color); cursor: pointer;
+            font-family: var(--battle-font) !important; font-size: 12px; text-align: left;
+            box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .vs2-pick-btn:hover { border-color: #8a92a6; background: linear-gradient(180deg, #222637 0%, #161a26 100%); }
+        .vs2-pick-btn:active { transform: translateY(1px); }
+        .vs2-pick-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+        .vs2-pick-label { flex: 1; min-width: 0; line-height: 1.35; }
+        .vs2-persona-chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+            font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+            color: #cfd8e6; background: rgba(20,28,44,0.7); border: 1px solid #3a4b66;
+        }
+        .vs2-outcome-badge {
+            display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px;
+            font-size: 12px; font-weight: bold; letter-spacing: 0.04em; max-width: 560px;
+            border: 1px solid; animation: vsRise 0.35s both;
+        }
+        .vs2-outcome-badge.buff    { color: #aed581; border-color: #7cb342; background: rgba(124,179,66,0.12); text-shadow: 0 0 8px rgba(174,213,129,0.4); }
+        .vs2-outcome-badge.debuff  { color: #ef9a9a; border-color: #e57373; background: rgba(229,115,115,0.12); text-shadow: 0 0 8px rgba(239,154,154,0.4); }
+        .vs2-outcome-badge.neutral { color: #b0bec5; border-color: #546e7a; background: rgba(84,110,122,0.12); }
+        .vs2-battle-btn {
+            margin-top: 6px; padding: 11px 30px; font-family: var(--battle-font) !important;
+            font-size: 13px; font-weight: bold; letter-spacing: 0.05em; cursor: pointer;
+            color: #ffb4b4; background: linear-gradient(180deg, #2a1218 0%, #1a0808 100%); border: 2px solid #e57373;
+            box-shadow: inset -2px -2px 0 #2a0e14, inset 2px 2px 0 #4a1a22;
+        }
+        .vs2-battle-btn:hover { border-color: #ff8a8a; box-shadow: inset -2px -2px 0 #2a0e14, inset 2px 2px 0 #4a1a22, 0 0 12px rgba(229,115,115,0.25); }
+        .vs2-battle-btn:active { transform: translateY(1px); }
+        /* Marquee entry — the league's boss title card. */
+        .vs-marquee-kicker { color: #bbb; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; }
+        .vs-marquee-name { color: #fff; font-size: 30px; font-weight: bold; letter-spacing: 0.05em; text-shadow: 0 2px 10px rgba(0,0,0,0.85), 0 0 22px var(--vs-accent, #ffd54f); animation: vsPop 0.5s 0.25s both; }
+        .vs-marquee-epithet { color: var(--vs-accent, #ffd54f); font-size: 13px; font-style: italic; letter-spacing: 0.04em; max-width: 520px; text-align: center; line-height: 1.6; animation: vsRise 0.4s 0.5s both; }
+        .vs-marquee-sprite { width: min(46vw, 230px); height: min(46vw, 230px); object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 26px var(--vs-accent, rgba(255,213,79,0.5))) drop-shadow(0 8px 18px rgba(0,0,0,0.7)); animation: vsSlideInR 0.55s cubic-bezier(0.18,0.8,0.3,1.18) both; }
+        @media (prefers-reduced-motion: reduce) {
+            .vs2-outcome-badge, .vs-marquee-name, .vs-marquee-epithet, .vs-marquee-sprite { animation: none !important; }
+        }
         /* Portrait-emotion (§6.4) — CSS treatments on a recurring-cast sprite. No new art:
            the single shipped sprite is tinted / shaken / dimmed to read an emotional beat.
            Applied to an overlay <img> via _renderNarrativeOverlay's spriteClass. */
@@ -18107,6 +18153,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.banterMod = 1;
             if (state.mode === 'story' && typeof window._storyBanterMultForCurrentBattle === 'function') {
                 try { state.banterMod = window._storyBanterMultForCurrentBattle(); } catch (e) { state.banterMod = 1; }
+            }
+            if (state.mode === 'story' && state.banterMod !== 1 && typeof window._storyBanterLogBarkForCurrentBattle === 'function') {
+                try { const _bark = window._storyBanterLogBarkForCurrentBattle(); if (_bark) logMsg(_bark, 'info'); } catch (e) {}
             }
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
                 try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
@@ -37384,6 +37433,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { return 1; }
         }
         window._storyBanterMultForCurrentBattle = _storyBanterMultForCurrentBattle;
+        // Battle-log opening bark for the current battle's recorded exchange —
+        // only when the outcome actually moved the needle (buff/debuff).
+        function _storyBanterLogBarkForCurrentBattle() {
+            try {
+                if (!sm || sm.active !== true) return '';
+                const row = STORY_EVENTS_RAW[sm.eventIndex | 0];
+                if (!row || row[1] !== 'Battle') return '';
+                const rec = sm.banterByRow && sm.banterByRow[row[0] | 0];
+                if (!rec || !rec.outcome || rec.outcome === 'neutral') return '';
+                return _banterLogBark(rec.outcome, sm.eventIndex | 0);
+            } catch (e) { return ''; }
+        }
+        window._storyBanterLogBarkForCurrentBattle = _storyBanterLogBarkForCurrentBattle;
         // ── Vibe Exchange line selection ─────────────────────────────────────
         // Seeded per (run, row, salt): a reload shows the same lines. Salts:
         // 1 opener · 2 rep-recognition roll · 3 reaction · 4 post-battle ·
@@ -42570,6 +42632,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
                     pendingFacilityIntrosHere: (...a) => _pendingFacilityIntrosHere(...a),
                     showVictoryOverlay: (...a) => showVictoryOverlay(...a),
+                    showBattleIntro: (...a) => showBattleIntro(...a),
                     // Catch-screen handles (Master Ball unlock regression coverage).
                     get catchState() { return _catchState; },
                     set catchState(v) { _catchState = v; },
@@ -52658,9 +52721,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
             // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
+            // Shared battle-start handoff: remove the given overlay, then run the
+            // launch callback with crash recovery. callback() is launchBattle →
+            // startBattle (async, NOT awaited): if startBattle throws synchronously
+            // (corrupt lock team, missing build, bad foe sprite), the unhandled
+            // rejection would silently strand the player on a half-built battle
+            // screen — bail back to the city instead of infinite black.
+            const _startBattleFrom = (overlay) => {
+                try { overlay.remove(); } catch (e) {}
+                try { callback(); }
+                catch (e) {
+                    console.error('[showBattleIntro] callback threw — recovering to city:', e);
+                    try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
+                    try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
+                }
+            };
+            // Buffered-input arm (mirrors the victory card): buttons on the new
+            // interactive paths ignore input for the first ~400ms.
+            const _armMs = () => (typeof window.__vsInputArmMs === 'number') ? window.__vsInputArmMs : 400;
             const _runIntro = () => {
-                const overlay = document.createElement('div');
-                overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
                 const roleLookup = {
                     'Basic Trainer':'Basic Trainer','Gym Trainer':'Gym Trainer',
                     'Gym Leader 1':'Gym Leader','Gym Leader 2':'Gym Leader','Gym Leader 3':'Gym Leader',
@@ -52671,9 +52750,122 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     'Mystery Figure':'Rival',
                 };
                 const quoteRole = roleLookup[eventType] || 'Basic Trainer';
-                const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
                 const roleLabel = storyDisplayRoleLabel(eventType);
                 const isRivalBattle = String(eventType) === 'Rival';
+                // VS splash: player vs opponent, accent + drama scaled by battle tier.
+                const VS_ACCENT = { 'Gym Leader':'#ffd54f', 'Rival':'#ff9800', 'Elite Trainer':'#ba68c8', 'E1':'#ba68c8', 'E2':'#ba68c8', 'E3':'#ba68c8', 'E4':'#ba68c8', 'Champion':'#ffd700', 'Victory Road':'#80cbc4', 'Basic Trainer':'#b0bec5', 'Gym Trainer':'#b0bec5' };
+                const vsIsMystery = String(eventType) === 'Mystery Figure';
+                const vsAccent = vsIsMystery ? '#7e57c2' : (VS_ACCENT[quoteRole] || VS_ACCENT[String(eventType)] || '#b0bec5');
+                const vsIsMajor = !(quoteRole === 'Basic Trainer' || quoteRole === 'Gym Trainer');
+                const vsPlayerSprite = _trainerSpritePath((sm && sm.trainerProfile && sm.trainerProfile.sprite) || TRAINER_DEFAULT);
+                const _vsStageHtml = `
+                    <div class="vs-stage${vsIsMajor ? ' vs-big' : ''}" style="--vs-accent:${vsAccent};">
+                        <img class="vs-fighter vs-fighter-player" src="${_esc(vsPlayerSprite)}" onerror="this.style.visibility='hidden'" alt="">
+                        <div class="vs-glyph" aria-hidden="true">VS</div>
+                        <img class="vs-fighter vs-fighter-foe${vsIsMystery ? ' vs-fighter-mystery' : ''}" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="">
+                    </div>
+                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>`;
+
+                // ── Vibe Exchange (P2b UI): interactive pre-battle banter ────────
+                // Story trainer rows only, ONCE per row (a recorded exchange —
+                // including retry/rematch — and a silent foe both fall through to
+                // the static paths below). Crucible re-fights never banter.
+                const _runVibeExchange = (foeVibe, arrIdx, rowId) => {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;';
+                    const opener = _banterOpenerForRow(arrIdx, eventType);
+                    const persona = (sm && sm.banterPersona) || { id: 'wildcard', tier: 0 };
+                    const PERSONA_LABEL = { flirty: '💘 The Heartbreaker', positive: '🤝 The Ray of Sunshine', negative: '💢 The Menace', stoic: '🗿 The Quiet One' };
+                    const chip = (persona.id !== 'wildcard' && (persona.tier | 0) > 0 && PERSONA_LABEL[persona.id])
+                        ? `<div class="vs2-persona-chip">${PERSONA_LABEL[persona.id]} · Tier ${persona.tier}</div>` : '';
+                    overlay.innerHTML = `
+                        ${_vsStageHtml}
+                        ${chip}
+                        <div class="story-dialog-host story-battle-intro-dialog vs-intro-dialog" style="margin-top:2px;">
+                            <div class="story-dialog-nameplate">${roleLabel}</div>
+                            <div class="story-dialog-box"><p class="story-dialog-text" data-vs2-line="1">"${_esc(opener)}"</p></div>
+                        </div>
+                        <div class="vs2-pick-row" data-vs2-picks="1">
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="flirty"><span class="vs2-pick-ico">💘</span><span class="vs2-pick-label">Flirt</span></button>
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="positive"><span class="vs2-pick-ico">🤝</span><span class="vs2-pick-label">Encourage</span></button>
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="negative"><span class="vs2-pick-ico">💢</span><span class="vs2-pick-label">Trash-talk</span></button>
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="stoic"><span class="vs2-pick-ico">🗿</span><span class="vs2-pick-label">Skip the talk</span></button>
+                        </div>
+                        <div style="font-size:10px;color:#667;letter-spacing:0.06em;">Read them right for an edge — or skip straight to battle.</div>`;
+                    document.body.appendChild(overlay);
+                    try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                    const armAt = Date.now() + _armMs();
+                    overlay.querySelectorAll('button[data-vs2-pick]').forEach(btn => {
+                        btn.onclick = () => {
+                            if (Date.now() < armAt) return;
+                            const pick = btn.getAttribute('data-vs2-pick');
+                            let outcome = 'neutral';
+                            try { outcome = _banterRecordExchange(rowId, foeVibe, pick); } catch (e) {}
+                            let reaction = '…';
+                            try { reaction = _banterReactionLine(arrIdx, foeVibe, pick); } catch (e) {}
+                            const line = overlay.querySelector('[data-vs2-line="1"]');
+                            if (line) line.textContent = `"${reaction}"`;
+                            const BADGE = {
+                                buff:    '⚡ You read them perfectly — your side deals +5% damage this battle!',
+                                debuff:  '💢 That landed badly — your side deals −5% damage this battle.',
+                                neutral: 'The exchange settles nothing. The battle will.',
+                            };
+                            const picks = overlay.querySelector('[data-vs2-picks="1"]');
+                            if (picks) picks.outerHTML = `
+                                <div class="vs2-outcome-badge ${outcome}">${BADGE[outcome]}</div>
+                                <button type="button" class="vs2-battle-btn" data-vs2-battle="1">⚔ Battle!</button>`;
+                            const armAt2 = Date.now() + Math.min(300, _armMs());
+                            const bb = overlay.querySelector('button[data-vs2-battle="1"]');
+                            if (bb) bb.onclick = () => { if (Date.now() < armAt2) return; _startBattleFrom(overlay); };
+                        };
+                    });
+                };
+
+                // ── Marquee Entry (P2a-special): static league title card ───────
+                // Aura-independent, no choices, no buff. Script from
+                // MARQUEE_ENTRIES[eventType]; a missing key falls through to the
+                // legacy splash. (Mystery Figure is deliberately absent — its
+                // pre-boss cinematic + identity intros own that entrance.)
+                const _runMarquee = (mq) => {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;box-sizing:border-box;';
+                    overlay.innerHTML = `
+                        <div class="vs-flash" aria-hidden="true"></div>
+                        <div class="vs-marquee-kicker">${_esc(String(mq.kicker || roleLabel))}</div>
+                        <img class="vs-marquee-sprite${vsIsMystery ? ' vs-fighter-mystery' : ''}" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="" style="--vs-accent:${vsAccent};">
+                        <div class="vs-marquee-name" style="--vs-accent:${vsAccent};">${_esc(String(trainer.name || ''))}</div>
+                        ${mq.epithet ? `<div class="vs-marquee-epithet" style="--vs-accent:${vsAccent};">${_esc(String(mq.epithet))}</div>` : ''}
+                        <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:2px;">
+                            <div class="story-dialog-nameplate">${roleLabel}</div>
+                            <div class="story-dialog-box">${mq.lines.map((l, i) => `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>"${_esc(String(l))}"</p>`).join('')}</div>
+                        </div>
+                        <button type="button" class="vs2-battle-btn" data-vs2-battle="1">Face them →</button>`;
+                    document.body.appendChild(overlay);
+                    try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                    const armAt = Date.now() + _armMs();
+                    const bb = overlay.querySelector('button[data-vs2-battle="1"]');
+                    if (bb) bb.onclick = () => { if (Date.now() < armAt) return; _startBattleFrom(overlay); };
+                };
+
+                // Dispatch: exchange → marquee → legacy splash. Any failure in the
+                // new paths falls back to the splash (never block battle entry).
+                try {
+                    if (sm && sm.active === true && storyBattleRowIdx != null && !sm.crucibleBattleSource) {
+                        const arrIdx = sm.eventIndex | 0;
+                        const rowId = storyBattleRowIdx | 0;
+                        if (_banterEligibleForRow(arrIdx) && !(sm.banterByRow && sm.banterByRow[rowId])) {
+                            const vibe = _banterRollFoeVibe(arrIdx);
+                            if (vibe !== 'silent') { _runVibeExchange(vibe, arrIdx, rowId); return; }
+                        }
+                        const mq = (typeof MARQUEE_ENTRIES === 'object' && MARQUEE_ENTRIES) ? MARQUEE_ENTRIES[String(eventType)] : null;
+                        if (mq && Array.isArray(mq.lines) && mq.lines.length) { _runMarquee(mq); return; }
+                    }
+                } catch (e) { console.warn('[VS] v2 intro failed — falling back to splash:', e); }
+
+                // ── Legacy timed splash (unchanged behavior) ─────────────────────
+                const overlay = document.createElement('div');
+                overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+                const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
                 const rivalPhase = isRivalBattle && storyBattleRowIdx != null ? getRivalEncounterPhase(storyBattleRowIdx) : null;
                 const badgesNow = (sm && sm.badges) | 0;
                 const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
@@ -52683,20 +52875,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const silentAttr = _storyQuoteIsSilent(quote)
                     ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
                     : '';
-                // VS splash: player vs opponent, accent + drama scaled by battle tier.
-                const VS_ACCENT = { 'Gym Leader':'#ffd54f', 'Rival':'#ff9800', 'Elite Trainer':'#ba68c8', 'E1':'#ba68c8', 'E2':'#ba68c8', 'E3':'#ba68c8', 'E4':'#ba68c8', 'Champion':'#ffd700', 'Victory Road':'#80cbc4', 'Basic Trainer':'#b0bec5', 'Gym Trainer':'#b0bec5' };
-                const vsIsMystery = String(eventType) === 'Mystery Figure';
-                const vsAccent = vsIsMystery ? '#7e57c2' : (VS_ACCENT[quoteRole] || VS_ACCENT[String(eventType)] || '#b0bec5');
-                const vsIsMajor = !(quoteRole === 'Basic Trainer' || quoteRole === 'Gym Trainer');
-                const vsPlayerSprite = _trainerSpritePath((sm && sm.trainerProfile && sm.trainerProfile.sprite) || TRAINER_DEFAULT);
                 overlay.innerHTML = `
                     ${vsIsMajor ? '<div class="vs-flash" aria-hidden="true"></div>' : ''}
-                    <div class="vs-stage${vsIsMajor ? ' vs-big' : ''}" style="--vs-accent:${vsAccent};">
-                        <img class="vs-fighter vs-fighter-player" src="${_esc(vsPlayerSprite)}" onerror="this.style.visibility='hidden'" alt="">
-                        <div class="vs-glyph" aria-hidden="true">VS</div>
-                        <img class="vs-fighter vs-fighter-foe${vsIsMystery ? ' vs-fighter-mystery' : ''}" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="">
-                    </div>
-                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>
+                    ${_vsStageHtml}
                     ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
                     <div class="story-dialog-host story-battle-intro-dialog vs-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
@@ -52709,19 +52890,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.body.appendChild(overlay);
                 try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
                 const introMs = isRivalBattle ? 3400 : (vsIsMajor ? 2900 : 2200);
-                setTimeout(() => {
-                    try { overlay.remove(); } catch (e) {}
-                    // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
-                    // startBattle throws synchronously (corrupt lock team, missing build, bad foe
-                    // sprite), the unhandled rejection silently strands the player on a half-built
-                    // battle screen. Catch + bail back to the city is much better than infinite black.
-                    try { callback(); }
-                    catch (e) {
-                        console.error('[showBattleIntro] callback threw — recovering to city:', e);
-                        try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
-                        try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
-                    }
-                }, introMs);
+                setTimeout(() => { _startBattleFrom(overlay); }, introMs);
             };
             _enqueueIntroTutorial('firstTrainerBattle', _runIntro);
         }
@@ -53339,6 +53508,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : `<div style="font-size:14px;color:#ce93d8;">The mask falls — but the figure dissolves before you can see who wore it.</div>`;
                 }
             }
+            // Vibe Exchange aftermath: the foe's parting line keyed by the row's
+            // recorded vibe. Rival is excluded — getRivalAftermathLine above owns
+            // rival aftermath (no double goodbye).
+            let banterAftermath = '';
+            try {
+                if (storyRowIdx != null && String(battleEventName || '') !== 'Rival' && typeof _banterPostBattleLine === 'function') {
+                    const _bLine = _banterPostBattleLine(storyRowIdx | 0, true);
+                    if (_bLine) {
+                        const _bWho = _trainerName || 'The trainer';
+                        banterAftermath = `<div style="font-size:13px;color:#b0bec5;line-height:1.5;max-width:380px;font-style:italic;">${_esc(_bWho)}: "${_esc(_bLine)}"</div>`;
+                    }
+                }
+            } catch (e) {}
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             const _firstClearBanner = _isCareerFirstClear
                 ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First clear ★</div>'
@@ -53356,6 +53538,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${_firstClearBanner}
                 ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">A milestone falls.</div>`:'')}
                 ${badgeFlavor}
+                ${banterAftermath}
                 <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
                 <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div>
                 ${(Array.isArray(rewardLines) && rewardLines.length) ? `<div style="display:flex;flex-direction:column;gap:3px;margin-top:2px;max-width:380px;">${rewardLines.map(l => `<div style="font-size:12px;color:#d7c98a;line-height:1.4;">${_esc(l)}</div>`).join('')}</div>` : ''}
