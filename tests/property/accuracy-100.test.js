@@ -28,6 +28,7 @@ const SKIP = new Set([
   'Future Sight', 'Doom Desire',       // delayed damage
   'Final Gambit',                      // damage = user HP; user faints, log differs
   'Steel Roller', 'Ice Spinner',       // require terrain
+  'Aura Wheel', 'Hyperspace Fury',     // species-locked per Showdown (Morpeko / Hoopa-Unbound)
   // Multi-hit moves: at least one hit always connects but the simple log check may miss
   // Doubles-only
   'Heal Pulse', 'Floral Healing',      // heals foe (no "used" line for damage)
