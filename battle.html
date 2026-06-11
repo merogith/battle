@@ -2238,6 +2238,17 @@
            was DOM-order luck. Pin it explicitly (still below every --sn-z-*
            overlay tier, so VS splash / victory card / toasts ride above). */
         #screen-story-gameover { z-index: var(--sn-z-screen-raised); }
+        /* P2d: compact defeat card — one framed panel instead of loose floating
+           text. Children keep their legacy inline styles; only the shell is new. */
+        .story-defeat-card {
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+            width: 100%; max-width: 480px; padding: 22px 26px 24px;
+            background: linear-gradient(180deg, rgba(26,10,12,0.96) 0%, rgba(12,6,8,0.97) 100%);
+            border: 2px solid #6e2a2a;
+            box-shadow: inset -3px -3px 0 0 #1a0a0c, inset 3px 3px 0 0 #3a1418, 0 14px 44px rgba(0,0,0,0.8);
+        }
+        .story-defeat-head { display: flex; flex-direction: column; align-items: center; padding-bottom: 6px; }
+        .story-defeat-head h1 { text-shadow: 0 0 16px rgba(244,67,54,0.45), 0 2px 4px rgba(0,0,0,0.9); }
         /* Subtle arc-progress row shown in a structured scene's banner slot —
            communicates "consequential multi-beat event, N of M" without a
            mechanical INTRO/CLIMAX caption. */
@@ -9655,18 +9666,25 @@
         </div>
     </div>
 
-    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="story gameover" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
-        <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
-        <p style="color:#888;font-size:12px;text-align:center;margin:0;max-width:400px;">You blacked out.</p>
-        <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
-        <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
-        <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
-        <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
-        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
-            <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
-            <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
-            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
-            <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="story gameover" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;font-family:var(--battle-font);">
+        <!-- P2d: compact defeat card. Every element id and button onclick is
+             unchanged — only the card wrapper + the foe's parting line are new. -->
+        <div class="story-defeat-card">
+            <div class="story-defeat-head">
+                <h1 style="color:#f44336;font-size:30px;margin:0;letter-spacing:3px;">DEFEATED</h1>
+                <p style="color:#888;font-size:12px;text-align:center;margin:4px 0 0;">You blacked out.</p>
+            </div>
+            <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
+            <p id="story-gameover-banter" style="display:none;color:#b0bec5;font-size:12px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
+            <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
+            <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
+            <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
+            <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
+                <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
+                <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
+                <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
+                <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+            </div>
         </div>
     </div>
 
@@ -53257,6 +53275,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const sv = (sm.runSeed >>> 0).toString();
                     seedEl.innerHTML = `Run seed: <code style="color:#888;font-family:inherit;">${sv}</code><br><button type="button" style="margin-top:8px;font-size:11px;padding:4px 10px;font-family:inherit;" onclick="navigator.clipboard.writeText('${sv}').then(function(){window.showGameAlert('Seed copied');}).catch(function(){})">Copy seed</button>`;
                 } else if (seedEl) seedEl.style.display = 'none';
+                // P2d: the victorious foe's parting line, keyed by this row's
+                // recorded vibe exchange. Rival is excluded (the concede flow
+                // owns rival aftermath); silent rows / no exchange show nothing.
+                try {
+                    const _bEl = document.getElementById('story-gameover-banter');
+                    if (_bEl) {
+                        let _bLine = '';
+                        if (ev && ev[1] === 'Battle' && String(ev[2]) !== 'Rival') _bLine = _banterPostBattleLine(ev[0] | 0, false);
+                        if (_bLine) {
+                            const _bWho = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'The trainer';
+                            _bEl.textContent = `${_bWho}: "${_bLine}"`;
+                            _bEl.style.display = '';
+                        } else {
+                            _bEl.style.display = 'none';
+                        }
+                    }
+                } catch (e) {}
                 refreshStoryGameOverRetreatUI();
                 showScreen('screen-story-gameover');
             }

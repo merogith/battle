@@ -132,6 +132,36 @@ test('a missing marquee script falls back to the legacy splash', async () => {
   }
 });
 
+// ── Defeat card (P2d): the victorious foe gets the last word ─────────────────
+test('defeat card shows the foe parting line from the loss bucket', async () => {
+  const { arrIdx, rowId } = talkativeBasicRow();
+  const vibe = ST.banterRollFoeVibe(arrIdx);
+  freshSm({
+    eventIndex: arrIdx,
+    banterByRow: { [rowId]: { foeVibe: vibe, pick: 'negative', outcome: 'neutral' } },
+    currentTrainerData: { name: 'Picnicker Liz', type: 'Normal' },
+    stats: { battlesLost: 0 }, inventory: {}, gymCleared: {}, trainerAssignments: {},
+  });
+  E.engine.state.mode = 'story';
+  E.engine.state.playerParty = [];
+  E.engine.state.foeParty = [];
+  W.StoryMode.onBattleEnd(false, 'Defeat', '');
+  await tick();
+
+  const el = W.document.getElementById('story-gameover-banter');
+  assert.ok(el && el.style.display !== 'none', 'parting line shown');
+  const B = N(ST.BANTER_ATTITUDES);
+  assert.ok(B.postBattle[vibe].loss.some(l => el.textContent.includes(l)), 'line from the loss bucket');
+  assert.match(el.textContent, /^Picnicker Liz: /, 'attributed to the foe');
+
+  // No exchange recorded → the line hides again.
+  freshSm({ eventIndex: arrIdx, currentTrainerData: { name: 'Picnicker Liz', type: 'Normal' }, stats: { battlesLost: 0 }, inventory: {}, gymCleared: {}, trainerAssignments: {} });
+  W.StoryMode.onBattleEnd(false, 'Defeat', '');
+  await tick();
+  assert.equal(W.document.getElementById('story-gameover-banter').style.display, 'none', 'hidden without a record');
+  [...W.document.querySelectorAll('.screen,.modal')].forEach(s => s.classList.add('hidden'));
+});
+
 // ── Crucible guard ───────────────────────────────────────────────────────────
 test('crucible-sourced fights never banter or marquee', async () => {
   const { arrIdx, rowId } = talkativeBasicRow();
