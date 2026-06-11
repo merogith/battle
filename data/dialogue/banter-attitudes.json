@@ -1,0 +1,298 @@
+{
+  "_meta": {
+    "doc": "Vibe Exchange dialogue pools (P2b). The foe's vibe is HIDDEN: 'openers*' must stay ambiguous — any line that telegraphs flirty/positive/negative breaks the gamble and belongs in 'reactions' instead. Flow: opener → player picks flirty/positive/negative/stoic → reactions[foeVibe][pick] reveals the vibe → outcome badge → battle. Line selection is seeded per (runSeed,row) — pools of 5+ keep repeats rare.",
+    "schema": {
+      "openers": "string[] — ambiguous pre-battle line, any regular trainer",
+      "openersGymLeader": "string[] — ambiguous, gym-leader register",
+      "openersRival": "string[] — ambiguous, rival register",
+      "reactions": "{foeVibe:{pick:string[]}} — the foe's vibe-revealing reply to your pick. Tone contract: flirty = charged innuendo / fade-to-black, never explicit; negative = raw toxic (temper, gaslight, humiliation, superiority — no slurs); positive = warm hype.",
+      "reactionsT2": "{foeVibe:{matchPick:string[]}} — deeper pools for the MATCH cell, unlocked at persona Tier 2. Escalates intensity.",
+      "reactionsT3": "{foeVibe:{matchPick:string[]}} — Tier 3 match pools. The ceiling: steamiest flirt / rawest toxic / warmest hype this file ships.",
+      "postBattle": "{foeVibe:{win|loss:string[]}} — foe's parting line on the victory (win) / defeat (loss) card. Rival is EXCLUDED here (getRivalAftermathLine already owns rival aftermath).",
+      "repOpeners": "{personaId:string[]} — 'word travels' openers that occasionally replace the ambiguous opener at persona Tier 2+. They speak about YOUR reputation and must not hint the foe's vibe.",
+      "logBarks": "{outcome:string[]} — one battle-log line at battle start, by exchange outcome."
+    },
+    "editing": "This file is the user-facing authoring surface. To push the flirty pools past the shipped ceiling (+18), replace or extend any 'flirty' arrays — the engine renders strings verbatim (HTML-escaped) and never inspects content. Keep lines ≤ ~110 chars so cards don't overflow."
+  },
+
+  "openers": [
+    "Hold up. You're the one the route's been talking about, aren't you?",
+    "I've been standing here all day waiting for someone worth the wait.",
+    "Nice team. Let's see if the trainer matches it.",
+    "You've got that look — like the road's been easy so far.",
+    "One battle. Everything you've got. That's all I'm asking.",
+    "I watched you walk up. I've already learned three things about you.",
+    "They said someone was coming up this road. Didn't say it'd be you.",
+    "Stop. Route rules — nobody passes me without a fight.",
+    "Huh. You're not what I pictured. Closer, actually.",
+    "Before we start — whatever happens in this battle, it means something.",
+    "I had a feeling today wasn't going to be boring.",
+    "You walk like you've already won. Let's test that.",
+    "Last trainer through here left crying. Just so you know the stakes.",
+    "Finally. I was starting to think the road forgot about me."
+  ],
+  "openersGymLeader": [
+    "So you're today's challenger. The lobby talks, you know.",
+    "Every badge on your jacket is a story. Show me you deserve another chapter.",
+    "I've watched your fights from the back of the hall. Now it's my turn.",
+    "Challengers knock. The interesting ones kick the door. Which are you?",
+    "This arena has broken better records than yours. Impress me anyway.",
+    "I reviewed your gym tape. I have… thoughts. Shall we?"
+  ],
+  "openersRival": [
+    "Took you long enough. I've been rehearsing this conversation.",
+    "Same road, same two of us. It always comes back to this.",
+    "Don't say anything yet. I want to read your face first.",
+    "I know your team better than you do. Prove me wrong.",
+    "Every time we meet, one of us leaves different. Ready?",
+    "I saved my best for you. I always save my best for you."
+  ],
+
+  "reactions": {
+    "flirty": {
+      "flirty": [
+        "Oh? Bold AND pretty. Careful — I bite back, and I aim to win.",
+        "Mm. Keep talking like that and I'll forget we're supposed to fight.",
+        "There it is — that spark. Battle first. We'll negotiate the rest after.",
+        "You flirt like you fight dirty. Good. I wasn't planning to play fair either.",
+        "Finally, someone who speaks my language. Loser buys dinner. Deal."
+      ],
+      "positive": [
+        "Sweet. Genuinely. Not what I was fishing for, but I'll take it.",
+        "You're kind. Dangerous trait on this road. Let's see if it survives me.",
+        "Aw. You really mean that, don't you. Fine — best behavior. Almost.",
+        "Compliments accepted. Surrender not included, I assume?",
+        "That warmth of yours… I almost feel bad about what I'm about to do."
+      ],
+      "negative": [
+        "Wow. I open my heart and THAT'S what comes back? You'll regret it.",
+        "Cute. I've ruined trainers for less. Now I'm not holding anything back.",
+        "Rejection I can take. Rudeness? That's a battle crime. Pay up.",
+        "Oh, you're cruel-cruel. Noted. The gloves are off, gorgeous.",
+        "And here I was, ready to go easy on you. Your loss. Literally."
+      ],
+      "stoic": [
+        "Silent type, hm? Fine. Your Pokémon can do the talking.",
+        "Not even a hello? Tragic. I'll make you say SOMETHING by round two.",
+        "All business. Shame — I had such good material ready.",
+        "Cold. I respect it. Doesn't mean I'll forgive it.",
+        "Okay, mystery trainer. Let's see if the quiet act holds under pressure."
+      ]
+    },
+    "positive": {
+      "flirty": [
+        "Oh! Um. That's — wow. I'm going to battle now before my face catches fire.",
+        "Ha… haha. You can't just SAY things like that before a fight. Unfair tactic.",
+        "I— okay. Flattered. Flustered. Possibly compromised. Let's just battle.",
+        "That's very forward and I have NO idea where to put my hands now.",
+        "You're trouble. The nice kind, maybe, but trouble. Eyes on the battle!"
+      ],
+      "positive": [
+        "See, THIS is what the road's about! Two trainers, full hearts. Let's go!",
+        "You're good people. Win or lose, I'm glad it's you today.",
+        "Right back at you! Now show me that team you're so proud of!",
+        "Okay okay okay — best vibes, best battle. No regrets, either side!",
+        "You hype me up, I hype you up, our Pokémon settle the rest. Perfect."
+      ],
+      "negative": [
+        "Ha! Nice try. My coach says trash talk is just nerves with extra words.",
+        "That all you got? My little brother heckles harder. Let's battle!",
+        "Boo me all you want — I run on it. Thanks for the fuel!",
+        "Aw, someone woke up spicy. Doesn't work on me, friend.",
+        "I'll pretend you said 'good luck'. You'll need it more than me!"
+      ],
+      "stoic": [
+        "Quiet focus! I respect that. Right — let's both bring our best.",
+        "No words needed. Your stance says plenty. Battle on!",
+        "Strong silent type, huh? My favorite kind of rival. Here we go!",
+        "Saving it all for the fight. Smart. So am I — starting NOW.",
+        "Got it. Talk less, battle more. I can work with that!"
+      ]
+    },
+    "negative": {
+      "flirty": [
+        "…What. Is this a tactic? Are you serious right now? Whatever. WHATEVER.",
+        "Flirting. With ME. Before a beating. You've got nerve, I'll give you that.",
+        "Save the winks. Though — no. NO. We are FIGHTING.",
+        "That's the dumbest opener I've ever heard. Why is it working. FIGHT ME.",
+        "You think charm fixes that team of yours? …Stop smiling. Battle. NOW."
+      ],
+      "positive": [
+        "Encouraging words? From YOU? I'll feed them back to you in pieces.",
+        "Oh, precious. You think this is a friendly match. Watch closely — it isn't.",
+        "Keep smiling. It'll make the look on your face afterward so much better.",
+        "Kindness is what trainers hide behind when they can't win. Observe.",
+        "You're sweet. The road eats sweet. I'm just today's bill collector."
+      ],
+      "negative": [
+        "HA! Finally someone with teeth! Come on then — let's make this UGLY.",
+        "Oh I like you. I'm still going to dismantle you, but I LIKE you.",
+        "Big talk. My favorite sound. Let's see who's still loud in three rounds.",
+        "There's the fire! Burn it all on me — I feed on exactly that.",
+        "You and I speak the same language. Shame only one of us walks away fluent."
+      ],
+      "stoic": [
+        "Nothing? No comeback? Pathetic. I'll get a scream out of you yet.",
+        "The silent treatment. Adorable. Your Pokémon will do the screaming then.",
+        "Mute, huh. Fine. I talk enough for two — and hit for three.",
+        "No words? Smart. Nothing you could say would save you anyway.",
+        "I've broken chattier trainers than you. The quiet ones break faster."
+      ]
+    }
+  },
+
+  "reactionsT2": {
+    "flirty": {
+      "flirty": [
+        "Careful, sweetheart. Trainers who talk like that end up in my contact list.",
+        "Battle me like you mean it and maybe I'll let you walk me to the next town.",
+        "You're dangerous. I haven't lost a wink-fight all season and I'm losing this one.",
+        "Mm, confidence looks GOOD on you. Take it off a notch — you're distracting my team."
+      ]
+    },
+    "positive": {
+      "positive": [
+        "You know what? Whatever happens here, you've already made my whole week.",
+        "Trainers like you are why I still wait on this road. All heart. Let's GO.",
+        "I'm going to remember this one. The good ones, you remember.",
+        "My team's been low all week — and then YOU show up. Look at them stand taller."
+      ]
+    },
+    "negative": {
+      "negative": [
+        "Yes. YES. Bring the venom. Everyone else folds — you ESCALATE. Delicious.",
+        "I keep a list of trainers worth hating properly. Congratulations. You're on it.",
+        "We could've been friends in another life. In this one I get to enjoy this MORE.",
+        "Don't you dare go soft mid-fight. I want the full ugly version of you."
+      ]
+    }
+  },
+
+  "reactionsT3": {
+    "flirty": {
+      "flirty": [
+        "Okay, new rules: you win, you pick where we disappear to after. I win — I pick. Either way…",
+        "The whole route gossips about you. The blush they didn't mention. That part's mine now.",
+        "Fight me at your absolute best. I want to know exactly what I'm taking home tonight.",
+        "You command like THAT and expect me to focus? Fine. Pin me on the scoreboard — if you can."
+      ]
+    },
+    "positive": {
+      "positive": [
+        "I trained six extra hours for whoever you turned out to be. Worth every minute. EVERY one.",
+        "Win or lose, you're the trainer I'll tell my kids about. Now make it a good story!",
+        "The road's been long, and people like you are the reason it's worth walking. Full power, now!",
+        "My whole team perks up when your name comes down the route. That's YOUR doing. Own it!"
+      ]
+    },
+    "negative": {
+      "negative": [
+        "I told everyone down the road you're overrated. Make me a liar. I DARE you.",
+        "No mercy, no manners, no take-backs. Whatever's left of us shakes hands after.",
+        "You're the only trainer who hits back in kind. So today nobody's holding the leash.",
+        "When you lose, I won't even gloat. I'll just look at you. You know EXACTLY which look."
+      ]
+    }
+  },
+
+  "postBattle": {
+    "flirty": {
+      "win": [
+        "Beaten AND charmed. This is the worst day. Text me. I mean— go. Just go.",
+        "You win the battle, I keep my dignity. …Most of it. See you down the road, hot stuff.",
+        "Fine, you're as good as you look. That's the problem.",
+        "Go on then. But when you replay this fight tonight — and you will — think of me."
+      ],
+      "loss": [
+        "Mmm, delicious. You fight better flustered, you know. Almost worked.",
+        "I won! Dinner's on you anyway. Route rules. I just invented them.",
+        "Don't pout. It's a good look on you, but don't.",
+        "Rematch anytime. I'll even let you pick the venue. Choose somewhere nice."
+      ]
+    },
+    "positive": {
+      "win": [
+        "That was the best fight I've had all month! Go on — the road's lucky to have you.",
+        "Beaten fair and square. I'm taking notes AND a good mood from this one.",
+        "My team lost the battle and still came out taller. That's your doing. Thank you.",
+        "You're going all the way, aren't you. I'll tell people I fought you when."
+      ],
+      "loss": [
+        "Good battle! You almost had me twice — work the third and you've got it.",
+        "I needed that win, but honestly? You made me earn every second of it.",
+        "Chin up! The trainer you'll be next month would've beaten me easily.",
+        "That loss will read like a lesson by tomorrow. Trust me — I've eaten plenty."
+      ]
+    },
+    "negative": {
+      "win": [
+        "Whatever. Wind advantage. Sun in my eyes. Rigged terrain. …Decent battle.",
+        "You won. Don't make it a personality. The next one folds you in half.",
+        "Tch. Enjoy it loudly somewhere else.",
+        "I'll remember this. I remember everything. Especially this."
+      ],
+      "loss": [
+        "And THAT'S the difference between us. Study it on your walk back.",
+        "Did you really think today was your day? Adorable. It was mine.",
+        "Go heal up. Then go practice. Then go practice MORE.",
+        "I'd say good game, but only one of us played one."
+      ]
+    }
+  },
+
+  "repOpeners": {
+    "flirty": [
+      "Wait — you're the heartbreaker, aren't you. Half the route's still recovering.",
+      "Word is you sweet-talk trainers before you wreck them. Try me. Please.",
+      "Oh, I've heard about you. The wink, the win, the walk-away. Show me the wink at least.",
+      "Trainers two towns over still describe you with this LOOK in their eyes. Now I get it.",
+      "They warned me about your mouth. They under-warned me, didn't they."
+    ],
+    "positive": [
+      "You're the one who hypes up every trainer they beat. Weirdo. Wonderful weirdo.",
+      "Folks down the road said losing to you somehow feels like a pep talk. Prove it.",
+      "Ah, the route's golden child. Even the losers speak well of you. Annoying. Impressive.",
+      "My cousin lost to you last week and WON'T stop smiling about it. Explain yourself.",
+      "They say your kindness is a strategy. I say nothing that warm is fake. Battle me."
+    ],
+    "negative": [
+      "So YOU'RE the menace. Trainers flinch when your name comes up. Good. I like menaces.",
+      "They say you talk trainers into the dirt before the first move. My ears are open.",
+      "The route calls you a storm with a trainer card. Storms pass. I'm still standing here.",
+      "Heard you made the last one cry. The one before that too. Collecting tears, are we?",
+      "You've got a reputation sharp enough to shave with. Let's dull it together."
+    ],
+    "stoic": [
+      "You're the quiet one. No banter, no warning, just results. Respect — and fear.",
+      "They say you've never answered a single taunt. Today that streak dies. …Right?",
+      "The silent storm, in the flesh. Fine. I'll skip the speech too.",
+      "Word is you let the scoreboard do your talking. It's been LOUD lately.",
+      "No small talk with this one, they said. Suits me. Almost."
+    ],
+    "wildcard": [
+      "I asked three trainers about you and got three different people. Who shows up today?",
+      "Nobody can read you. Flirt, friend, fiend — the road can't decide. I'm dying to.",
+      "You're the wildcard. Every story about you contradicts the last one. I love it.",
+      "They couldn't even tell me what you'd SAY. Do you know? Does anyone?",
+      "Unpredictable, they said. Finally — someone the playbook doesn't cover."
+    ]
+  },
+
+  "logBarks": {
+    "buff": [
+      "The exchange went your way — your side strides in fired up!",
+      "You read them perfectly. Your team feeds off the momentum!",
+      "Advantage: you. The battle starts on your terms."
+    ],
+    "debuff": [
+      "That landed badly… your side walks in rattled.",
+      "You misread the room. The opening is theirs.",
+      "Ouch. The exchange stung — your team feels it."
+    ],
+    "neutral": [
+      "The exchange settles nothing. The battle will.",
+      "An even opening. Pokémon decide the rest.",
+      "No edge gained, none given. Fight's on."
+    ]
+  }
+}

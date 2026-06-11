@@ -205,6 +205,67 @@ test('single application site, gated story + player side (source guard)', () => 
   assert.ok(src.includes("state.mode === 'story' && isPlayer && state.banterMod"), 'site is story- and player-gated');
 });
 
+// ── Dialogue pools: schema + seeded selection ────────────────────────────────
+test('banter-attitudes.json covers every cell with healthy pools', () => {
+  const J = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'dialogue', 'banter-attitudes.json'), 'utf8'));
+  const pool = (arr, min, label) => {
+    assert.ok(Array.isArray(arr) && arr.length >= min, `${label}: ≥${min} lines (got ${(arr || []).length})`);
+    for (const s of arr) {
+      assert.equal(typeof s, 'string');
+      assert.ok(s.length > 0 && s.length <= 120, `${label}: line length sane ("${s.slice(0, 40)}…" = ${s.length})`);
+    }
+  };
+  pool(J.openers, 10, 'openers');
+  pool(J.openersGymLeader, 4, 'openersGymLeader');
+  pool(J.openersRival, 4, 'openersRival');
+  for (const vibe of ['flirty', 'positive', 'negative']) {
+    for (const pick of ['flirty', 'positive', 'negative', 'stoic']) {
+      pool(J.reactions[vibe][pick], 4, `reactions.${vibe}.${pick}`);
+    }
+    pool(J.reactionsT2[vibe][vibe], 3, `reactionsT2.${vibe} match cell`);
+    pool(J.reactionsT3[vibe][vibe], 3, `reactionsT3.${vibe} match cell`);
+    pool(J.postBattle[vibe].win, 3, `postBattle.${vibe}.win`);
+    pool(J.postBattle[vibe].loss, 3, `postBattle.${vibe}.loss`);
+  }
+  for (const persona of ['flirty', 'positive', 'negative', 'stoic', 'wildcard']) {
+    pool(J.repOpeners[persona], 4, `repOpeners.${persona}`);
+  }
+  for (const outcome of ['buff', 'debuff', 'neutral']) {
+    pool(J.logBarks[outcome], 2, `logBarks.${outcome}`);
+  }
+});
+
+test('line selection is seeded, tier-gates the match cell, and degrades safely', () => {
+  const J = N(ST.BANTER_ATTITUDES);
+  assert.ok(Array.isArray(J.openers) && J.openers.length >= 10, 'loader populated BANTER_ATTITUDES');
+
+  freshSm();
+  const a = ST.banterOpenerForRow(7, 'Basic Trainer');
+  assert.equal(a, ST.banterOpenerForRow(7, 'Basic Trainer'), 'opener deterministic per row');
+  assert.ok(J.openers.includes(a), 'opener drawn from the ambiguous pool');
+  assert.ok(J.openersGymLeader.includes(ST.banterOpenerForRow(7, 'Gym Leader 3')), 'gym register');
+  assert.ok(J.openersRival.includes(ST.banterOpenerForRow(7, 'Rival')), 'rival register');
+
+  // Base reaction from the right cell; deeper pool only once the TRACK earns it.
+  const r0 = ST.banterReactionLine(7, 'flirty', 'flirty');
+  assert.ok(J.reactions.flirty.flirty.includes(r0), 'tier 0 match uses the base cell');
+  ST.sm.banterStats.flirty = 10; // track tier 2
+  const r2 = ST.banterReactionLine(7, 'flirty', 'flirty');
+  assert.ok(J.reactionsT2.flirty.flirty.includes(r2), 'track tier 2 unlocks the deeper match pool');
+  ST.sm.banterStats.flirty = 18; // track tier 3
+  const r3 = ST.banterReactionLine(7, 'flirty', 'flirty');
+  assert.ok(J.reactionsT3.flirty.flirty.includes(r3), 'track tier 3 unlocks the ceiling pool');
+  assert.ok(J.reactions.flirty.stoic.includes(ST.banterReactionLine(7, 'flirty', 'stoic')), 'non-match cells never deepen');
+
+  // Post-battle line keys off the recorded exchange; silent rows say nothing.
+  freshSm();
+  ST.sm.banterByRow[9] = { foeVibe: 'negative', pick: 'positive', outcome: 'debuff' };
+  assert.ok(J.postBattle.negative.win.includes(ST.banterPostBattleLine(9, true)), 'win bucket');
+  assert.ok(J.postBattle.negative.loss.includes(ST.banterPostBattleLine(9, false)), 'loss bucket');
+  assert.equal(ST.banterPostBattleLine(404, true), '', 'no record → no line');
+  assert.ok(J.logBarks.debuff.includes(ST.banterLogBark('debuff', 9)), 'log bark by outcome');
+});
+
 // ── Persistence: SAVE_VER 27 + migration round-trip ──────────────────────────
 test('v25 save migrates to 27 with banter fields seeded; v27 data round-trips', () => {
   const LS = installLocalStorageShim();

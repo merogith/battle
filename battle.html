@@ -10533,6 +10533,12 @@
         // Bark variance layer (data/dialogue/barks.json) — non-state, additive-only
         // flavor pools appended after canonical battle-log lines. See barks.json _meta.
         let BARK_POOLS = {};
+        // Vibe Exchange dialogue pools (data/dialogue/banter-attitudes.json) and
+        // marquee-entry cinematic scripts (data/dialogue/marquee-entries.json).
+        // Missing files → empty objects → the exchange/marquee UIs fall back to
+        // their built-in minimal lines / the legacy timed splash.
+        let BANTER_ATTITUDES = {};
+        let MARQUEE_ENTRIES = {};
         let typeChart = {};
         // Precomputed per-species move-tag index — data/move-tags.json, generated
         // OFFLINE by scripts/build/gen-move-tag-index.mjs from the LOCAL @pkmn/dex.
@@ -10577,6 +10583,8 @@
             window.TRAINER_QUOTES_BY_NAME = TRAINER_QUOTES_BY_NAME;
             window.CITY_GUIDE_QUOTES = CITY_GUIDE_QUOTES;
             window.BARK_POOLS = BARK_POOLS;
+            window.BANTER_ATTITUDES = BANTER_ATTITUDES;
+            window.MARQUEE_ENTRIES = MARQUEE_ENTRIES;
             window.MOVE_TAG_INDEX = MOVE_TAG_INDEX;
             // window.typeChart is also set later (line ~14730) for backwards compat.
             window._CATCH_BALL_MULT = _CATCH_BALL_MULT;
@@ -10613,7 +10621,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges, _archetypes, _synergies] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10631,7 +10639,9 @@
                         fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
                         fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null),
                         fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
-                        fetch('data/move-synergies.json').then(r => r.json()).catch(() => null)
+                        fetch('data/move-synergies.json').then(r => r.json()).catch(() => null),
+                        fetch('data/dialogue/banter-attitudes.json').then(r => r.json()).catch(() => null),
+                        fetch('data/dialogue/marquee-entries.json').then(r => r.json()).catch(() => null)
                     ]);
                     // Designed-build archetype engine tables (Object.assign in place so the
                     // module-level BUILD_ARCHETYPES / MOVE_SYNERGIES + their window mirrors see
@@ -10656,6 +10666,9 @@
                     Object.assign(BARK_POOLS,               _barks || {});
                     // Strip the JSON doc-comment key before merging the authored bridges.
                     if (_subBridges && typeof _subBridges === 'object') { const _sb = { ..._subBridges }; delete _sb._meta; Object.assign(SUBSTITUTION_BRIDGES, _sb); }
+                    // Vibe Exchange pools + marquee entry scripts (same _meta strip).
+                    if (_banter && typeof _banter === 'object') { const _ba = { ..._banter }; delete _ba._meta; Object.assign(BANTER_ATTITUDES, _ba); }
+                    if (_marquee && typeof _marquee === 'object') { const _mq = { ..._marquee }; delete _mq._meta; Object.assign(MARQUEE_ENTRIES, _mq); }
                     Object.assign(typeChart,                _tc   || {});
                     // Ball math: object-container fields mutated in place; primitives
                     // reassigned through the lexically-scoped lets. "guaranteed" →
@@ -37371,6 +37384,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { return 1; }
         }
         window._storyBanterMultForCurrentBattle = _storyBanterMultForCurrentBattle;
+        // ── Vibe Exchange line selection ─────────────────────────────────────
+        // Seeded per (run, row, salt): a reload shows the same lines. Salts:
+        // 1 opener · 2 rep-recognition roll · 3 reaction · 4 post-battle ·
+        // 5 log bark · 12 rep opener. Pools come from BANTER_ATTITUDES (JSON);
+        // every helper degrades to a safe string when the file is missing.
+        function _banterPickLine(pool, rowIdx, salt) {
+            if (!Array.isArray(pool) || !pool.length) return '';
+            return pool[Math.floor(_storySideRng((rowIdx | 0) + 79, salt | 0) * pool.length)];
+        }
+        function _banterOpenerForRow(rowIdx, eventName) {
+            const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+            // "Word travels": a settled reputation gets recognized in ~35% of
+            // openers — persona Tier 2+, or a Wildcard with 10+ picks (the
+            // road has noticed it CAN'T read you). Rep openers speak about the
+            // player, never the foe's vibe, so the gamble stays hidden.
+            try {
+                const p = (sm && sm.banterPersona) || { id: 'wildcard', tier: 0 };
+                const s = (sm && sm.banterStats) || {};
+                const total = ['flirty', 'positive', 'negative', 'stoic'].reduce((n, k) => n + (s[k] | 0), 0);
+                const known = (p.id !== 'wildcard' && (p.tier | 0) >= 2) || (p.id === 'wildcard' && total >= 10);
+                const rep = (B.repOpeners || {})[p.id];
+                if (known && Array.isArray(rep) && rep.length && _storySideRng((rowIdx | 0) + 79, 2) < 0.35) {
+                    return _banterPickLine(rep, rowIdx, 12);
+                }
+            } catch (e) {}
+            const ev = String(eventName || '');
+            if (/^Gym Leader/.test(ev) && Array.isArray(B.openersGymLeader) && B.openersGymLeader.length) return _banterPickLine(B.openersGymLeader, rowIdx, 1);
+            if (ev === 'Rival' && Array.isArray(B.openersRival) && B.openersRival.length) return _banterPickLine(B.openersRival, rowIdx, 1);
+            return _banterPickLine(B.openers || [], rowIdx, 1) || 'Trainer eyes lock. A battle is coming.';
+        }
+        function _banterReactionLine(rowIdx, foeVibe, pick) {
+            const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+            let pool = null;
+            // The deeper T2/T3 pools reward CONSISTENCY in that style: they gate
+            // on the matching TRACK's tier (your flirt depth unlocks flirt
+            // depth), not the active persona — and apply to the match cell only.
+            if (pick === foeVibe && pick !== 'stoic') {
+                const trackTier = _banterTierFor((sm && sm.banterStats && sm.banterStats[pick]) | 0);
+                if (trackTier >= 3 && B.reactionsT3 && B.reactionsT3[foeVibe]) pool = B.reactionsT3[foeVibe][pick];
+                else if (trackTier >= 2 && B.reactionsT2 && B.reactionsT2[foeVibe]) pool = B.reactionsT2[foeVibe][pick];
+            }
+            if (!Array.isArray(pool) || !pool.length) {
+                pool = B.reactions && B.reactions[foeVibe] && B.reactions[foeVibe][pick];
+            }
+            return _banterPickLine(pool || [], rowIdx, 3) || '…';
+        }
+        function _banterPostBattleLine(rowId, playerWon) {
+            try {
+                const rec = sm && sm.banterByRow && sm.banterByRow[rowId | 0];
+                if (!rec || !rec.foeVibe || rec.foeVibe === 'silent') return '';
+                const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+                const bucket = B.postBattle && B.postBattle[rec.foeVibe];
+                return _banterPickLine((bucket && (playerWon ? bucket.win : bucket.loss)) || [], rowId, 4);
+            } catch (e) { return ''; }
+        }
+        function _banterLogBark(outcome, rowIdx) {
+            const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+            return _banterPickLine((B.logBarks && B.logBarks[outcome]) || [], rowIdx, 5);
+        }
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
@@ -42366,6 +42438,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     banterEligibleForRow: (...a) => _banterEligibleForRow(...a),
                     banterRecordExchange: (...a) => _banterRecordExchange(...a),
                     storyBanterMultForCurrentBattle: () => _storyBanterMultForCurrentBattle(),
+                    banterOpenerForRow: (...a) => _banterOpenerForRow(...a),
+                    banterReactionLine: (...a) => _banterReactionLine(...a),
+                    banterPostBattleLine: (...a) => _banterPostBattleLine(...a),
+                    banterLogBark: (...a) => _banterLogBark(...a),
+                    get BANTER_ATTITUDES() { return BANTER_ATTITUDES; },
                     // Narration overhaul (v26) test handles.
                     get ROUTE_LINES() { return ROUTE_LINES; },
                     get STORY_ERRANDS() { return STORY_ERRANDS; },
