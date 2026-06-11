@@ -46770,6 +46770,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
                     label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
                     click: 'window.StoryMode.enterProfessor()' };
+            } else if (sm.campReturnPoint) {
+                // P0.8 audit fix: on a camp round-trip revisit the only forward
+                // action is returning to camp (the action grid already shows just
+                // "↩ Back to the road"). Without this branch the objective fell
+                // through to the next-battle scan, which reads from the revisited
+                // city's row — labeling an already-cleared route fight while the
+                // click warps back to camp. Label and destination now agree.
+                objective = { kicker: 'NEXT', icon: 'story_route.png', label: 'Head back to the road — camp waits', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (_introsPending && _pendingNames.length) {
                 // Facilities come BEFORE the gym: surface the new/upgraded facility as
                 // the objective so the player meets it first. A first-time facility
