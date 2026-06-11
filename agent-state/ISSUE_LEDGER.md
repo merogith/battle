@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-10T18:41:41.560Z
+> **Generated**: 2026-06-11T05:46:32.403Z
 > **Source**: `agent-state/findings/*.md` (444 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -3133,7 +3133,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 7496103ecc97
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: End-of-turn residual block is not try-wrapped — any throw masks as "Turn skipped" + skips residuals
@@ -3822,7 +3822,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 06c1239b57d5
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Turn-resolution catch masks any in-loop throw as "[Error: …. Turn skipped.]" — both moves abandoned, real bugs hidden (PT-001)
@@ -4121,7 +4121,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 82b8202f5d43
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Colress Signature-Z silently overwrites the last move; confirm warns only about item/gimmick
@@ -10218,7 +10218,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 71a1ae0137d8
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Regular wild encounter with zero balls shows greyed buttons but no "out of balls" message
@@ -11625,7 +11625,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e9994d066619
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Anomaly seeds are keyed by row ID but several land on mismatched event types vs their prose
@@ -12767,7 +12767,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c0b555664db0
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Empty-choices Professor path shows status but renders no body buttons
@@ -14591,7 +14591,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7a285290260d
 confidence: low
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: proceedToNextBattle guards on total team length, but the launch path guards on non-egg fighter count — an all-egg party advances eventIndex then bounces
@@ -14628,7 +14628,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a1eccebec359
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: proceedToNextBattle "no Pokémon" guard counts eggs (team.length) while the fight launch counts only fighters — egg-only party advances then bounces
@@ -14994,7 +14994,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: cb88ee48b37a
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Mystery Figure climax boss has ZERO gimmicks if the player disabled all 4 mechanics at run start — the "force all on" ctx is dead-coded
@@ -15502,7 +15502,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e5f5ed16bbbe
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Victory overlay auto-dismisses after 6s regardless of how much narrative it stacks — the biggest story beats can vanish before they're read
@@ -15572,7 +15572,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 361a9dacf73d
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Inconsistent auto-dismiss across scene types — victory 6s timeout vs beat scenes never auto-dismiss

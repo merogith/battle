@@ -100,7 +100,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c0b555664db0
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Empty-choices Professor path shows status but renders no body buttons

@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 7496103ecc97
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: End-of-turn residual block is not try-wrapped — any throw masks as "Turn skipped" + skips residuals

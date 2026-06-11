@@ -68,7 +68,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: cb88ee48b37a
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Mystery Figure climax boss has ZERO gimmicks if the player disabled all 4 mechanics at run start — the "force all on" ctx is dead-coded
@@ -249,7 +249,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7a285290260d
 confidence: low
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: proceedToNextBattle guards on total team length, but the launch path guards on non-egg fighter count — an all-egg party advances eventIndex then bounces

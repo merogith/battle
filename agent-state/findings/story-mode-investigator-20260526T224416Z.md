@@ -292,7 +292,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a1eccebec359
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: proceedToNextBattle "no Pokémon" guard counts eggs (team.length) while the fight launch counts only fighters — egg-only party advances then bounces

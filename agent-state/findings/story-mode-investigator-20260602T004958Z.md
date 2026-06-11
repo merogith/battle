@@ -411,7 +411,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 361a9dacf73d
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Inconsistent auto-dismiss across scene types — victory 6s timeout vs beat scenes never auto-dismiss
@@ -597,7 +597,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e9994d066619
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Anomaly seeds are keyed by row ID but several land on mismatched event types vs their prose

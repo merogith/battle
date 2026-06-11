@@ -129,7 +129,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 06c1239b57d5
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Turn-resolution catch masks any in-loop throw as "[Error: …. Turn skipped.]" — both moves abandoned, real bugs hidden (PT-001)

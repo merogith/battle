@@ -22160,11 +22160,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // End of turn
-                runVolatileTimers();
-                runWishHealing();
-                endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
-                tickWeather();
+                // End of turn — each residual step is isolated so one throwing
+                // effect can't abort the rest of the chain (Dynamax countdown,
+                // turn counters, EoT faint check) and dump the turn into the
+                // generic catch with a misleading "Turn skipped" after the
+                // moves already executed.
+                const _eotStep = (label, fn) => {
+                    try { fn(); }
+                    catch (err) {
+                        console.error('[Battle] end-of-turn step failed: ' + label, err);
+                        try { window._lastTurnError = { step: label, message: String(err && err.message || err), stack: String(err && err.stack || ''), at: Date.now() }; } catch (e) {}
+                    }
+                };
+                _eotStep('volatileTimers', () => runVolatileTimers());
+                _eotStep('wishHealing', () => runWishHealing());
+                _eotStep('residuals(player→foe)', () => endOfTurnEffects(state.pActive, state.fActive));
+                _eotStep('residuals(foe→player)', () => endOfTurnEffects(state.fActive, state.pActive));
+                _eotStep('weather', () => tickWeather());
                 // Dynamax turn countdown
                 if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
                 if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
@@ -22189,6 +22201,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             } catch(err) {
                 console.error("Battle error:", err);
+                // Keep the last turn error inspectable (console is gone by the
+                // time a player reports "turn skipped") — read via
+                // window._lastTurnError in DevTools / bug reports / tests.
+                try { window._lastTurnError = { step: 'turn', message: String(err && err.message || err), stack: String(err && err.stack || ''), at: Date.now() }; } catch (e) {}
                 try { logMsg(`[Error: ${err && err.message ? err.message : err}. Turn skipped.]`, 'dmg'); } catch (e) {}
                 state.isLocked = false;
                 if (state.mode === 'story') { state.storyItemUsedThisTurn = false; state.foeStoryItemUsedThisTurn = false; }
@@ -39842,12 +39858,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // "Cannot read properties of undefined (reading 'dynaOn')" → dead loading state).
             const S = (ctx && ctx.settings) || sm.settings || {};
             const k = [];
+            // An explicit ctx bypasses the unlock gate: sm.unlockedGimmicks is itself
+            // rebuilt from the settings toggles at every grant site, so for a player
+            // who ran with mechanics off the unlock set is empty and a ctx that only
+            // overrode the S flags could never add a key — the Mystery Figure's
+            // "rolls from every mechanic" override was dead in every scenario.
+            const forced = !!(ctx && ctx.settings);
             const unlocked = new Set(Array.isArray(sm.unlockedGimmicks) ? sm.unlockedGimmicks : []);
-            if (S.dynaOn && unlocked.has('dmax')) k.push('gmax');
-            if (S.megaOn && unlocked.has('mega')) k.push('mega');
-            if (S.dynaOn && unlocked.has('dmax')) k.push('dmax');
-            if (S.zOn && unlocked.has('z')) k.push('z');
-            if (S.teraOn && unlocked.has('tera')) k.push('tera');
+            if (S.dynaOn && (forced || unlocked.has('dmax'))) k.push('gmax');
+            if (S.megaOn && (forced || unlocked.has('mega'))) k.push('mega');
+            if (S.dynaOn && (forced || unlocked.has('dmax'))) k.push('dmax');
+            if (S.zOn && (forced || unlocked.has('z'))) k.push('z');
+            if (S.teraOn && (forced || unlocked.has('tera'))) k.push('tera');
             return k;
         }
         function _kindToForcedTag(kind) {
@@ -41539,6 +41561,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get CAMP_ACTIONS() { return CAMP_ACTIONS; },
                     get CAMP_MICROGAMES() { return CAMP_MICROGAMES; },
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
+                    daycareDropOff: (...a) => _daycareDropOff(...a),
                     recordHallOfFame: () => _storyRecordHallOfFame(),
                     mysteryFigureSpriteFile: () => _mysteryFigureSpriteFile(),
                     getTrainerSprite: (...a) => getTrainerSprite(...a),
@@ -44651,7 +44674,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const ANOMALY_SEEDS = {
             7:  "A new sticker on your map reads 'Welcome Back.' You don't remember peeling it.",
             14: "Your Pokédex updates — a sentence appears in YOUR handwriting that you don't remember writing.",
-            30: "An Elite Trainer says, casually, mid-fight: 'Tell The First we said hi.' You don't ask who that is.",
+            30: "A Gym Trainer says, casually, mid-fight: 'Tell The First we said hi.' You don't ask who that is.",
             49: "Your starter's Pokédex entry now closes with a single line. The line is in YOUR handwriting.",
         };
         function _tryFireAnomalySeed(ev) {
@@ -47221,6 +47244,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const slot = (from === 'team') ? team[found] : box[found];
             if (slot.isEgg) return;
+            // Last-fighter re-check: the card button is rendered disabled for the
+            // last party fighter, but this handler is directly callable — without
+            // the same gate it could swap the only fighter for an egg (0-fighter
+            // party), the state every battle-launch guard assumes impossible.
+            if (from === 'team' && _storyCountFighters() <= 1) {
+                try { window.showGameAlert && window.showGameAlert('Party needs at least one battle-ready Pokémon.'); } catch (_) {}
+                return;
+            }
             const pname = slot.nickname || slot.name;
             // Lock the hatch species now (shares parent typing, one grade tier up).
             const eggSpecies = _daycareRollHatchSpecies(slot.name);
@@ -48792,6 +48823,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (!choices.length) {
                     statusEl.textContent = 'No Pokémon available for your enabled generations.';
+                    // Dead-end guard: this early return skips _renderProfChoices(),
+                    // which is what renders the action buttons — without rendering
+                    // an exit here the player was stranded on a button-less screen.
+                    const _emptyCardEl = document.getElementById('story-prof-rolled-card');
+                    if (_emptyCardEl) { _emptyCardEl.innerHTML = ''; _emptyCardEl.style.display = 'none'; }
+                    const _emptyBtnsEl = document.getElementById('story-prof-buttons');
+                    if (_emptyBtnsEl) {
+                        _emptyBtnsEl.innerHTML = '';
+                        const _emptyBackBtn = document.createElement('button');
+                        _emptyBackBtn.textContent = '← Back to City';
+                        _emptyBackBtn.style.color = '#aaa';
+                        _emptyBackBtn.onclick = () => window.StoryMode.enterCity();
+                        _emptyBtnsEl.appendChild(_emptyBackBtn);
+                    }
                     showScreen('screen-story-professor');
                     return;
                 }
@@ -49516,6 +49561,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
+            // Fighter-count parity with the fight-launch guard: eggs occupy team
+            // slots but can't battle. Without this, an egg-only party passed here,
+            // advanced eventIndex + fired cold-opens, then bounced at startFight
+            // with the index already moved (stale-battle-row state).
+            if (_storyCountFighters() === 0) { window.showGameAlert('Your party has no battle-ready Pokémon — only eggs. Visit the Professor first.'); return; }
             // Camp round-trip return (CAMP_FLOW §5): if the player went back to a prior city from
             // camp, "↩ Back to the road" restores the saved point and resumes — camp re-fires at
             // the top of enterBattleEvent (its gate wasn't stamped), dropping them back at the fire.
@@ -52342,7 +52392,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
             };
             document.addEventListener('keydown', escListener);
-            const autoClose = setTimeout(dismiss, 6000);
+            // Auto-close is armed after the overlay content is assembled (below):
+            // milestone overlays (gotBadge) can stack 3-4 narrative beats and must
+            // wait for an explicit Continue; routine wins keep a timer scaled to
+            // how much text is on screen instead of a flat 6s yank.
+            let autoClose = null;
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
             const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
@@ -52452,6 +52506,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
             ov.appendChild(contBtn);
             ov.onclick = () => dismiss();
+            // Milestone overlays (badge/Elite/Champion/Mystery) hold until the
+            // player continues — they carry the run's biggest narrative beats.
+            // Routine wins auto-advance on a content-proportional timer
+            // (~35ms/char, floor 6s) so short overlays behave exactly as before.
+            if (!gotBadge) {
+                const _ovChars = (ov.textContent || '').length;
+                autoClose = setTimeout(dismiss, Math.max(6000, 2500 + _ovChars * 35));
+            }
             document.body.appendChild(ov);
             // Focus the Continue button so Enter dismisses immediately and SR
             // users hear "Continue → button, dialog 'VICTORY!'". Defer one tick
@@ -54590,6 +54652,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ${rightLabel}
                     </button>`;
                 }).join('');
+                // Out-of-balls notice: with every ball at ×0 all four buttons render
+                // disabled and nothing said why — the screen read as silently broken.
+                const _totalThrowable = ['poke', 'great', 'ultra', 'master']
+                    .reduce((n, k) => n + ((sm.balls && (sm.balls[k] | 0)) || 0), 0);
+                if (_totalThrowable <= 0) {
+                    ballRows = `<div style="padding:8px 12px;background:rgba(40,16,12,0.6);border:1px solid #ff7043;color:#ffab91;font-size:12px;">You're out of Poké Balls — flee for now and restock at any city PokéMart.</div>` + ballRows;
+                }
             }
             // Shiny encounters get a sparkle on the name, a friendlier header
             // line, and a soft gold accent on the grade chip — the player
@@ -64528,12 +64597,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
             const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
             if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirmPay(mon, `Awaken Signature Z — equip ${sigZ}`, voucherPath))) return;
+            // Destructive-action parity: when the signature move must be taught and
+            // all 4 slots are full, the last move gets replaced — say so in the
+            // confirm (Release/Sell/Tutor all warn; this was the silent one).
+            const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
+            const _sigMoves = (mon.build.m || []);
+            const _sigWillTeach = !!(reqMove && !_sigMoves.includes(reqMove));
+            const _sigWillDrop = (_sigWillTeach && _sigMoves.length >= 4) ? _sigMoves[_sigMoves.length - 1] : null;
+            const _sigHeadline = `Awaken Signature Z — equip ${sigZ}`
+                + (_sigWillDrop ? ` (teaches ${reqMove}, replacing ${_sigWillDrop})`
+                   : (_sigWillTeach ? ` (teaches ${reqMove})` : ''));
+            if (!(await _colressConfirmPay(mon, _sigHeadline, voucherPath))) return;
             if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = sigZ;
             delete mon.build.teraType;
-            const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
             if (reqMove) {
                 mon.build.m = mon.build.m || [];
                 if (!mon.build.m.includes(reqMove)) {

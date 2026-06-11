@@ -125,7 +125,7 @@ file: battle.html
 agents: []
 fingerprint: e5f5ed16bbbe
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Victory overlay auto-dismisses after 6s regardless of how much narrative it stacks — the biggest story beats can vanish before they're read

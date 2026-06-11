@@ -125,7 +125,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 82b8202f5d43
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Colress Signature-Z silently overwrites the last move; confirm warns only about item/gimmick
