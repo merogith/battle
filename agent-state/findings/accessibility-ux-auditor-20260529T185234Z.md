@@ -36,7 +36,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: d7eb819e92a0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pokémon Center storage rows are mouse-only clickable divs (no keyboard access)
@@ -161,7 +161,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 48fe61e2f764
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible & Catch headers use empty spacer spans instead of a back control; no escape from Crucible header

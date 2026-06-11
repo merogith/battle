@@ -7,7 +7,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 07232f72109f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Three conflicting "canon" docs for the boss/endgame arc; code matches none cleanly
@@ -69,7 +69,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 92d44000abc0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Shipped BOSS_CONFIGS uses surge/immunity/heal phases, not the EXPANSION_PLAN "multi-form transformation"
@@ -133,7 +133,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: d2e9f5d532b4
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `sm.settings.catchMode` toggle never implemented; catch shipped as always-on, 3 specs still gate on it
@@ -226,7 +226,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 70fdae9ad188
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Exp Share Voucher item (3TRACK_IMPL_PLAN PR-5) never shipped; `sm.inventory.expShareVoucher` is dead init

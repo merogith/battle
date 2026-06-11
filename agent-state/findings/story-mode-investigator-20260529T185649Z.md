@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 39dff38f7dce
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible row constants are STORY_EVENTS_RAW *row-ids*, not array indices — `_crucibleBattleSetup` assigns them straight to `sm.eventIndex`
@@ -39,7 +39,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 347bfcbf535d
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible League Run skips E1 and ends on the Rival — `_CRUCIBLE_LEAGUE_ROWS` are off-by-one row-ids
@@ -67,7 +67,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2a58bef716ae
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Rival Rematch" targets the Hall of Fame row (array idx 65), not the league rival
@@ -96,7 +96,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 963c0784871b
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Mystery Figure" rematch uses out-of-bounds index 67 (array length is 67, max idx 66)
@@ -125,7 +125,7 @@ file: battle.html
 agents: []
 fingerprint: e5f5ed16bbbe
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Victory overlay auto-dismisses after 6s regardless of how much narrative it stacks — the biggest story beats can vanish before they're read

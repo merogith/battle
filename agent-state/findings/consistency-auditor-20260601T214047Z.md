@@ -147,7 +147,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 09cd7d1f62cd
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Variant Champion / rival dialogue narratively routes player to the dead broker + cage
@@ -211,7 +211,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: c5bc08173c0c
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Redundant tier branches in `_storyBuildTierForEvent` (dead duplicate conditions)

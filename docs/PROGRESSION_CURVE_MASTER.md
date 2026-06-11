@@ -262,7 +262,7 @@ C5: Casino · C6: Dept Store · C7: Colress · (C8 repeats Dept/Dojo/EV) · Fan 
 
 ### 2j. Wild & Safari grade curves (deliberately one step behind trainers)
 **Wild** `_WILD_GRADE_CURVE_BY_BADGES` (`43920`): b0 g4:100 → b5 g3:100 → b8 g3:92/g2:8. **Never G1.**
-**Safari** `_SAFARI_GRADE_CURVE_BY_BADGES` (`STORY_MODE_FLOW §15g`): b3 g3:60/g4:35 → b8 g2:50/g3:40/g1:5. The only path to G2/G1 catches.
+**Safari** `_SAFARI_GRADE_CURVE_BY_BADGES` (`STORY_MODE_FLOW §15g`): b4 g3:60/g4:35 → b8 g2:45/g3:45/g1:2. The only path to G2/G1 catches. (Re-keyed +1 badge 2026-06-11, memo #3, so the gentlest row lands on the real C5 debut.)
 **Wild build** `makeWildBuild` (`44083`): T1 move-downgrade + slot-0 ability + no item, BUT **random 0–31 IVs** + **~170 curated EVs** — a head-start over T1 trainers (~"70% battle-ready").
 
 ---

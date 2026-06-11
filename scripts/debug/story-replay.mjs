@@ -118,7 +118,9 @@ async function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(e => { console.error(e); process.exit(1); });
+  // The booted jsdom windows keep live timers, so the event loop never drains
+  // on its own — exit explicitly once main() settles or the process hangs.
+  main().then(() => process.exit(0), e => { console.error(e); process.exit(1); });
 }
 
 export { runReplay, diffTraces, snapshot };

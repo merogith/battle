@@ -126,7 +126,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 71a1ae0137d8
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Regular wild encounter with zero balls shows greyed buttons but no "out of balls" message

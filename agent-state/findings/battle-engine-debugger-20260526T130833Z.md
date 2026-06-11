@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1a2a30d45840
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Sleep wake-check is off-by-one — ~1/3 of sleeps cost 0 turns (instant wake, mon acts same turn)

@@ -30,6 +30,7 @@ const NEEDS_CONTEXT = new Set([
   'Beat Up',     // depends on full party
   'Magnitude',   // RNG roll for BP, can roll 1 BP = ok but test wants neutral
   'Endeavor',    // sets HP equal; if attacker has more HP, fails
+  'Aura Wheel', 'Hyperspace Fury', // species-locked per Showdown (Morpeko / Hoopa-Unbound)
 ]);
 
 // Charge moves: turn 1 charges, turn 2 damages. Damaging-nonzero needs both turns OR a power-herb.

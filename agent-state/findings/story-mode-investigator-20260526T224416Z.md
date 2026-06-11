@@ -38,7 +38,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 920d7e405954
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-merge saves with partial unlockedGimmicks are not re-derived on load — Tera/Z silently withheld until next milestone win
@@ -68,7 +68,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a2bb5974a473
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Safari curve key [3] ("first unlock") is dead code — Safari actually unlocks at 4 badges, so first visit uses the harsher [4] curve
@@ -91,7 +91,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1839297b78a2
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-v15 saves get 0 Poké Balls instead of the intended 5 — migrateStoryPreV15 balls default is shadowed by the default sm object
@@ -118,7 +118,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 685e7677fbe1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pre-v15 post-HoF saves are forced back through the Mystery Figure climax — postHofMysteryClimaxDone migration shadowed by default boolean
@@ -170,7 +170,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8b9a943876e8
 confidence: low
-status: open
+status: wontfix-ratified-memo1-hard-parity-by-design
 ---
 
 **Title**: Hard mode still earns less gold per fight than Normal (1.00 vs 1.30) despite facing 1.15x-stronger foes — residual difficulty/economy asymmetry
@@ -292,7 +292,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a1eccebec359
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: proceedToNextBattle "no Pokémon" guard counts eggs (team.length) while the fight launch counts only fighters — egg-only party advances then bounces

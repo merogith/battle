@@ -266,7 +266,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d751963ad1f8
 confidence: low
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Featured Mega/Ultra stones (bought one-per-city at 5x/3x) are sellable from the bag at half list price

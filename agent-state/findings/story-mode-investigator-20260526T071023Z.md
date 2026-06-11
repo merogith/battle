@@ -17,7 +17,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2ff4479d31a1
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Save-migration integration test never exercises the migrate chain (vacuous pass)
@@ -82,7 +82,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4fc1e6825b2d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Pokémon Center copy promises a "Heal" that no longer exists (full-heal is automatic)
@@ -113,7 +113,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f642d84a30e0
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Rivalry tab is mis-homed in the Pokémon Center — belongs in a progression/journal surface
@@ -142,7 +142,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 5f7903cb05a5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: In-game help text still says "PC Storage (cap 10)" — actual PC_BOX_CAP is 30
@@ -204,7 +204,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 25cb66b09cd0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Spec §8 says league boost stacks MULTIPLICATIVELY with difficulty; code now stacks ADDITIVELY
@@ -301,7 +301,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6287bc4c5a37
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Service-timeline pacing — City1 post-gym hub is a dead zone (no new "thing to do")
@@ -331,7 +331,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4066d35d9141
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Nature Rater availability is gappy (C0, C3, C5–C9) — absent C1/C2/C4 with no unlock rationale
@@ -359,7 +359,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 145ee8564182
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: PLAN COLLISION — Daycare unlock is keyed on the "Gym Leader 1" event name, not a city; redesign wants C2/C4/C6
@@ -392,7 +392,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fc7eab00919a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path
@@ -424,7 +424,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 306eabc530b8
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — party-cap curve = min(6, 2+badges) with no off-by-one; foe sizing matches
@@ -455,7 +455,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: df15067e7f6b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — catch tutorial fires exactly once; mid-tutorial reload cannot refire or lock
@@ -485,7 +485,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: da9a1c34d71e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED FIXED — GYM_CITY_LEADER_EVENT is now derived from STORY_EVENTS_RAW at boot (prior audit 1.3)
@@ -521,7 +521,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 676d6b1d9871
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED CLEAN — PC overflow at party-cap + 30/30 shows explicit message; sell/release path exists
@@ -554,7 +554,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 91bb9bebbb7a
 confidence: high
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: CONFIRMED FIXED — Mystery Figure is now a rotating 10-identity cast (prior audit: hardcoded Cyrus)
@@ -585,7 +585,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1351f59a0b47
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_EVENTS_RAW has 67 array rows (incl. 2 'Hall of Fame' string matches) — mandate/spec cite "68 rows"
@@ -614,7 +614,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2f91ba9853c9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED FIXED — Hard coin mult floored to 1.00 (prior audit 2.1); Challenge 1.10
@@ -642,7 +642,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: de6142450105
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive)
@@ -669,7 +669,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6c771c9b218f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map

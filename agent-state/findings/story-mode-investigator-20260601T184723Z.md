@@ -39,7 +39,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 19a080eb1e8e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Dormant "unified flow engine" is now triple-orphaned — live dispatch is a 3rd design that leapfrogged it
@@ -70,7 +70,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 771f1e021e9c
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Catch-tutorial gate comment claims "starting kit gives 5 balls" — fresh-run kit is actually 0
@@ -159,7 +159,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e8bc3184fc4b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: SAVE_VER=23 but migration chain stops at PreV22 — no migrateStoryPreV23 step (v23 added wanderByEventIdx, back-filled unconditionally)
@@ -280,7 +280,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8bf7bfeb549b
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Post-HoF orientation tip frames the Mystery Figure as un-fought, but row-67 climax already unmasked "The First" moments earlier
@@ -340,7 +340,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8b2bced8d3b7
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Spec/mandate says timeline is "68 rows"; STORY_EVENTS_RAW has 67 (array idx 0–66), and rowId 68 is the intro Rival at array idx 1
@@ -369,7 +369,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a461bb932f94
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: sm.catchUnlocked written by defaults + v15 migration + newStoryRun but read nowhere (live gate is sm.catchTutorialDone)
@@ -398,7 +398,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d683843c4c03
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Extra-track raid EXP-Share reward + boss BOSS_MECHANICS are partly data-only — engine wiring deferred (mechanics are no-ops that only record)

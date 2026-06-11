@@ -250,7 +250,7 @@ file: online-pvp.js
 agents: [consistency-auditor]
 fingerprint: 52cc0edfbc71
 confidence: high
-status: open
+status: wontfix-out-of-scope-pvp
 ---
 
 **Title**: 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js

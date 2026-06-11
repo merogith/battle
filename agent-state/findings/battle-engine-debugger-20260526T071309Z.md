@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1ebee7303e60
 confidence: high
-status: open
+status: wontfix-ratified-memo9-difficulty-blind-ai-is-the-product
 ---
 
 **Title**: Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall
@@ -39,7 +39,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1b994537ce76
 confidence: high
-status: open
+status: wontfix-ratified-memo9-sleep-mechanics-showdown-faithful
 ---
 
 **Title**: No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk)
@@ -71,7 +71,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 2f6b5645d86f
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3)
@@ -101,7 +101,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1e8eb0a0eb0d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior

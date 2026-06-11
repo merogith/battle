@@ -40,7 +40,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2ed72d9b81f5
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Stale comment on `_storyGrantTrackEndReward` — claims scene-queue piggy-back that is structurally impossible
@@ -69,7 +69,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b77e444a2cf6
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `_variantMysteryOutro` is dead — `_MYSTERY_OUTRO_BY_VARIANT` keyed only by retired identities, never matches `the_first`
@@ -102,7 +102,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e46f43a0e592
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `mysteryBias` per-variant config is orphaned — seeds weights for retired MF identities, never read
@@ -165,7 +165,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 5c179bd13408
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `expShareVoucher:0` inventory field is dead — no reader, no writer; extra-raid reward grants vitamins instead
@@ -257,7 +257,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 20628d0fad96
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Extra-raid stat scaling compounds `_storyStatMult` × `_bossStatMult` × `_bossHpScale`; the doc comment omits `_storyStatMult`
@@ -287,7 +287,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1e345769ae23
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `SAVE_VER = 23` but migration dispatch stops at `_loadedVer < 22` — no numbered v23 step

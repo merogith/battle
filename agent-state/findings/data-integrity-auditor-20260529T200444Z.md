@@ -7,7 +7,7 @@ file: data/species.json
 agents: [data-integrity-auditor]
 fingerprint: 6cd268a1ac66
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: species.json Hisui formes are stale (gen8 snapshot) — Samurott-Hisui/Kleavor lack gen9 Sharpness, so every legal-tier build is dropped
@@ -70,7 +70,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: e8d49fac6605
 confidence: high
-status: open
+status: wontfix-gen2-berries-not-loaded-by-gen9-engine-by-design
 ---
 
 **Title**: 9 Gen-2-legacy "isBerry" items are dead data — no engine handler and never referenced by any build

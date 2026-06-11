@@ -16,7 +16,7 @@ agents: [story-mode-investigator]
 fingerprint: 4becfea84542
 confidence: high
 domain: pasteur
-status: open
+status: fixed-main
 ---
 
 **Title**: City-3 HUD/route name falls back to "City 3" — GYM_CITY_LEADER_EVENT array-index keys trainerAssignments (row-id keyed)
@@ -47,7 +47,7 @@ agents: [story-mode-investigator]
 fingerprint: c69ad43dcc8c
 confidence: medium
 domain: engine
-status: open
+status: fixed-main
 ---
 
 **Title**: `_storyBattleEntryBusy` can latch true on a cold-open / beat-scene continuation throw → soft-locks "Enter Gym / Continue Route"

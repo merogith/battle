@@ -63,7 +63,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 294ac88b95dd
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded
@@ -91,7 +91,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 092d23ae6973
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CSV-load cache invalidation pokes IIFE-private `_txMetaCache`/`_txGlobalMetaCached` — invalidation is dead

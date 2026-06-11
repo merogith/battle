@@ -7,7 +7,7 @@ file: battle.html
 agents: [performance-profiler]
 fingerprint: 38f68891607d
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: _renderCrucible rebuilds a 17.7KB / 109-node innerHTML on every open + lead-collect + hard-mode toggle

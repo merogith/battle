@@ -1033,16 +1033,18 @@ with `_SAFARI_GRADE_CURVE_BY_BADGES`:
 
 | Badges | g1 | g2 | g3 | g4 |
 |---|---|---|---|---|
-| 3 (first unlock at City 4) | 0 | 5 | 60 | 35 |
-| 4 | 0 | 15 | 60 | 25 |
-| 5 | 0 | 25 | 60 | 15 |
-| 6 | 1 | 35 | 54 | 10 |
-| 7 | 2 | 45 | 45 | 8 |
-| 8+ (post-game / Crucible) | 5 | 50 | 40 | 5 |
+| 4 (debut visit at City 5) | 0 | 5 | 60 | 35 |
+| 5 | 0 | 15 | 60 | 25 |
+| 6 | 0 | 25 | 60 | 15 |
+| 7 | 1 | 35 | 54 | 10 |
+| 8+ (post-game / Crucible) | 2 | 45 | 45 | 8 |
 
 Safari is the "Stage 2/3 G2-catch path" first, with a small G1
-chance only from Gym 6 onward. Players who unlock Safari at
-City 4 no longer have a 17%-per-session chance at Zapdos.
+chance only from Gym 7 onward. Players who unlock Safari no
+longer have a 17%-per-session chance at Zapdos. (Re-keyed +1
+badge 2026-06-11, memo #3: the original table assumed a City 4
+debut that never shipped — Safari debuts at City 5 with 4
+badges, so the gentlest row was unreachable.)
 
 ### Wild route G2 leak ramp
 

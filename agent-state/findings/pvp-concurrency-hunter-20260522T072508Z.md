@@ -286,7 +286,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: f399b81a21b5
 confidence: medium
-status: open
+status: wontfix-out-of-scope-pvp
 ---
 
 **Title**: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` — silently drops Set/Map/Date/undefined/circular refs across the entire snapshot pipeline
@@ -320,7 +320,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 8a35ede06e36
 confidence: high
-status: open
+status: wontfix-out-of-scope-pvp
 ---
 
 **Title**: 36 references to 18 distinct `global.__*` variables across `online-pvp.js` — the PvP module mutates host-side state through ad-hoc globals instead of a single observable

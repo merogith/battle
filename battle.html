@@ -16176,8 +16176,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // too, so effective raid HP ≈ _bossStatMult × _bossHpScale × base (at maxParty 6:
             // 1.3 × 5 ≈ 6.5× base HP, NOT the bare ×5 that _bossHpScale alone implies). That
             // total is a balance number (user-owned, tunable); this block is deliberately
-            // honest about the compounding. Kept off _storyStatMult because enterBattleEvent
-            // overwrites that field on every rolled team member.
+            // honest about the compounding. Since 2026-06-11 (memo #8) raid builds are
+            // SKIPPED by enterBattleEvent's _storyStatMult stamp, so these two knobs are
+            // the only scaling layers on a raid boss — no third generic-curve multiplier.
             if (build && monName !== 'Shedinja') {
                 if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
                     const bm = build._bossStatMult;
@@ -20971,7 +20972,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Disguise (Mimikyu): the first hit only deals 1/8 maxHp chip; full damage is blocked.
             // Disguise is NOT bypassed by Mold Breaker but Gastro Acid still suppresses it.
             const _gAcid = defender.volatile && defender.volatile.abilityGastroAcid;
-            if (defender.ability === "Disguise" && !(defender.volatile && defender.volatile.disguiseBroken) && !_gAcid && move.cat !== "Status") {
+            if (defender.ability === "Disguise" && !(defender.volatile && defender.volatile.disguiseBroken) && !_gAcid && move.cat !== "Status"
+                && /^Mimikyu/i.test(String(defender._baseName || defender.name || ''))) {
                 dmg = Math.floor(defender.maxHp / 8);
             }
             return dmg;
@@ -21847,6 +21849,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let willDieFirst = outsped && threat >= attacker.currentHp;
     // Are we walled? (low-damage AND opponent isn't already low enough that we can chip-finish)
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
+    // All-immune skip (maintainer-approved 2026-06-11, memo #9): an attacker whose
+    // EVERY damaging move is type/ability-immune against the defender, with no
+    // usable status move, can never accomplish anything by staying — getBestMove's
+    // scores all collapse to 0 and it spams 0-damage attacks. Treat that as an
+    // unconditional switch trigger (no HP gate, no boost hold). Mons with a live
+    // status move keep the normal walled logic — stall value is real.
+    const allImmune = myBestDmg === 0
+        && _evalMoves.some(m => m && m.cat !== "Status" && m.pp > 0)
+        && !_evalMoves.some(m => m && m.cat === "Status" && m.pp > 0);
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
     // Do we have priority that KOs? (Restricted to the locked move when choice-locked.)
@@ -21855,13 +21866,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     // Never switch if we can KO (unless priority covers it)
     if (canKO && !willDieFirst) return null;
     if (hasPriorityKO) return null;
-    // Don't switch if boosted significantly
-    if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst) return null;
+    // Don't switch if boosted significantly (boosts are worthless if we're all-immune)
+    if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst && !allImmune) return null;
 
     // Switch when we're losing the current matchup: either outsped+KO'd, or walled while still healthy enough
     // to come back later. The earlier "predicted-switch-into-bench-counter" clause caused over-switching when
     // the AI was actually winning — a bench resist isn't a reason to abandon a position you're ahead in.
-    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35);
+    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35) || allImmune;
 
     if (shouldSwitch) {
         let switchTo = aiBestSwitch(bench, defender);
@@ -21880,8 +21891,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // switching just burns a turn (and possibly entry-hazard chip) without breaking the wall.
             // aiBestSwitch always returns a best-of-bench, so the AI was cycling its whole team
             // against a single wall-breaker. Hold position and chip / status instead.
+            // Exception: an all-immune attacker has NO chip — any nonzero-damage bench mon
+            // is strictly better than staying, so the hold doesn't apply.
             let switchTargetWalled = newBestDmg < defender.maxHp * 0.08 && newBestDmg < defender.currentHp * 0.12;
-            if (walled && switchTargetWalled && !willDieFirst) return null;
+            if (walled && switchTargetWalled && !willDieFirst && !(allImmune && newBestDmg > 0)) return null;
 
             // Switch if the new mon is meaningfully better, or if we're dying anyway
             if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) return switchIdx;
@@ -21987,7 +22000,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!state.residualPhaseComplete) {
                             runVolatileTimers();
                             runWishHealing();
-                            endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
+                            runResidualsBySpeed();
                             tickWeather();
                             // Dynamax turn countdown
                             if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
@@ -22177,6 +22190,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (mon.volatile.telekinesis > 0) { mon.volatile.telekinesis--; if (mon.volatile.telekinesis === 0) logMsg(`${mon.name} was freed from Telekinesis!`, 'info'); }
                 // Charge: ticks down once per end-of-turn. Already 0'd if consumed by an Electric move.
                 if (mon.volatile.charge > 0) mon.volatile.charge--;
+                // Laser Focus: 2 on use → 1 after that turn (crits next turn) → 0
+                if (mon.volatile.laserFocus > 0) mon.volatile.laserFocus--;
             });
             // Clear per-turn boosted flag (used by Burning Jealousy); team protection moves expire EoT.
             // statsRaisedThisTurn (Opportunist accumulator) also resets here so a non-Opportunist
@@ -22187,6 +22202,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.volatile.statsRaisedThisTurn = null;
                 mon.volatile.quickGuard = false;
                 mon.volatile.wideGuard = false;
+                mon.volatile.craftyShield = false;
+                mon.volatile.matBlock = false;
+                mon.volatile.powdered = false;
+                mon.volatile.electrified = false;
             });
             // Side countdowns
             [state.pSide, state.fSide].forEach((side, i) => {
@@ -22765,11 +22784,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // End of turn
-                runVolatileTimers();
-                runWishHealing();
-                endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
-                tickWeather();
+                // End of turn — each residual step is isolated so one throwing
+                // effect can't abort the rest of the chain (Dynamax countdown,
+                // turn counters, EoT faint check) and dump the turn into the
+                // generic catch with a misleading "Turn skipped" after the
+                // moves already executed.
+                const _eotStep = (label, fn) => {
+                    try { fn(); }
+                    catch (err) {
+                        console.error('[Battle] end-of-turn step failed: ' + label, err);
+                        try { window._lastTurnError = { step: label, message: String(err && err.message || err), stack: String(err && err.stack || ''), at: Date.now() }; } catch (e) {}
+                    }
+                };
+                _eotStep('volatileTimers', () => runVolatileTimers());
+                _eotStep('wishHealing', () => runWishHealing());
+                _eotStep('residuals(speed order)', () => runResidualsBySpeed());
+                _eotStep('weather', () => tickWeather());
                 // Dynamax turn countdown
                 if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
                 if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
@@ -22794,6 +22824,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             } catch(err) {
                 console.error("Battle error:", err);
+                // Keep the last turn error inspectable (console is gone by the
+                // time a player reports "turn skipped") — read via
+                // window._lastTurnError in DevTools / bug reports / tests.
+                try { window._lastTurnError = { step: 'turn', message: String(err && err.message || err), stack: String(err && err.stack || ''), at: Date.now() }; } catch (e) {}
                 try { logMsg(`[Error: ${err && err.message ? err.message : err}. Turn skipped.]`, 'dmg'); } catch (e) {}
                 state.isLocked = false;
                 if (state.mode === 'story') { state.storyItemUsedThisTurn = false; state.foeStoryItemUsedThisTurn = false; }
@@ -23481,6 +23515,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
 
+            // POWDER (volatile, set by the move "Powder"): if the covered Pokémon uses a
+            // Fire-type move this turn, the move fails and the user loses 1/4 max HP
+            // (rounded half up, min 1). Magic Guard prevents the damage; the move still
+            // fails. An Electrify'd move is no longer Fire-type, so it doesn't ignite.
+            if (attacker.volatile.powdered && move.type === "Fire" && !attacker.volatile.electrified) {
+                if (move.pp > 0) move.pp--;
+                logMsg(`${attacker.name} used ${move.name}!`);
+                logMsg(`When the flame touched the powder on ${attacker.name}, it exploded!`, 'dmg');
+                if (attacker.ability !== "Magic Guard") {
+                    const _pwDmg = Math.min(attacker.currentHp, Math.max(1, Math.round(attacker.maxHp / 4)));
+                    attacker.currentHp -= _pwDmg;
+                }
+                attacker.volatile.lastMoveUsed = move.name;
+                updateUI();
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+
             // Bide: check if we're mid-bide
             if (attacker.volatile.bideActive) {
                 attacker.volatile.bideTurns--;
@@ -23667,6 +23718,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             attacker.volatile.lastMoveUsed = move.name;
+            // ELECTRIFY (volatile, set by the move "Electrify"): the covered Pokémon's
+            // move becomes Electric-type this turn (Struggle exempt — Showdown parity).
+            // Applied after PP deduction; the spread copy never touches the real slot's PP.
+            if (attacker.volatile.electrified && move.name !== "Struggle" && move.type !== "Electric") {
+                move = { ...move, type: "Electric" };
+            }
             // Glaive Rush: 2x damage / auto-hit penalty on the user lasts until the user's next move executes.
             // Clear it now so the penalty only affected the prior incoming hit.
             if (attacker.volatile.glaiveRush && move.name !== "Glaive Rush") attacker.volatile.glaiveRush = false;
@@ -23702,6 +23759,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Double Shock" && attacker.type1 !== "Electric" && attacker.type2 !== "Electric") {
                 logMsg(`But it failed! ${attacker.name} is not Electric type.`, 'info');
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+            // Aura Wheel: only Morpeko (either form) can use it (Showdown onTry).
+            if (move.name === "Aura Wheel" && !/^Morpeko/i.test(String(attacker._baseName || attacker.name || ''))) {
+                logMsg(`But it failed! Only Morpeko can use Aura Wheel.`, 'info');
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+            // Hyperspace Fury: only Hoopa-Unbound can use it (Showdown onTry).
+            if (move.name === "Hyperspace Fury" && !/^Hoopa-Unbound/i.test(String(attacker._baseName || attacker.name || ''))) {
+                logMsg(`But it failed! Only Hoopa Unbound can use Hyperspace Fury.`, 'info');
                 abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Consume Lock-On after it has guaranteed the hit this turn
@@ -23865,7 +23932,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Feint: always deals damage; if target is protecting, lifts all protection this turn (Gen 5+)
             // Note: Feint does NOT bypass Max Guard.
             if (move.name === "Feint") {
-                if (defender.volatile.protect || defender.volatile.endure || defender.volatile.quickGuard || defender.volatile.wideGuard) {
+                if (defender.volatile.protect || defender.volatile.endure || defender.volatile.quickGuard || defender.volatile.wideGuard || defender.volatile.craftyShield || defender.volatile.matBlock) {
                     if (defender.volatile.maxGuard) {
                         // Feint cannot break Max Guard — fall through to normal protect block below.
                     } else {
@@ -23880,6 +23947,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         defender.volatile.burningBulwark = false;
                         defender.volatile.quickGuard = false;
                         defender.volatile.wideGuard = false;
+                        defender.volatile.craftyShield = false;
+                        defender.volatile.matBlock = false;
                     }
                 }
                 // Falls through to deal normal damage regardless
@@ -23891,7 +23960,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_protectBypassMoves.has(move.name) && !defender.volatile.maxGuard) {
                 if (defender.volatile.protect || defender.volatile.spikyShield || defender.volatile.kingShield ||
                     defender.volatile.banefulBunker || defender.volatile.silkTrap || defender.volatile.obstruct ||
-                    defender.volatile.burningBulwark || defender.volatile.quickGuard || defender.volatile.wideGuard) {
+                    defender.volatile.burningBulwark || defender.volatile.quickGuard || defender.volatile.wideGuard ||
+                    defender.volatile.craftyShield || defender.volatile.matBlock) {
                     logMsg(`${attacker.name}'s ${move.name} broke through ${defender.name}'s protection!`, 'info');
                     defender.volatile.protect = false;
                     defender.volatile.spikyShield = false;
@@ -23902,6 +23972,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     defender.volatile.burningBulwark = false;
                     defender.volatile.quickGuard = false;
                     defender.volatile.wideGuard = false;
+                    defender.volatile.craftyShield = false;
+                    defender.volatile.matBlock = false;
                 }
             }
 
@@ -24032,6 +24104,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 await sleep(1000); return;
             }
+            // Crafty Shield: blocks status moves aimed at the user's side this turn.
+            // No 1/3 protect-chain decay (Showdown: not a stalling move; doesn't touch
+            // the protect counter). Fails if the opponent already moved this turn
+            // (Showdown onTry: !!this.queue.willAct()).
+            if (move.name === "Crafty Shield") {
+                if (defender.volatile && defender.volatile.movedThisTurn === true) {
+                    logMsg(`But it failed!`); AudioSystem.playMissSound();
+                } else {
+                    attacker.volatile.craftyShield = true;
+                    logMsg(`${attacker.name} protected its team with Crafty Shield!`); AudioSystem.playMoveSound(move);
+                }
+                await sleep(1000); return;
+            }
+            // Mat Block: blocks damaging moves this turn; only works on the user's first
+            // turn on the field (Fake Out-style gate; Showdown onTry: activeMoveActions > 1
+            // fails). No protect-chain decay; fails if the opponent already moved.
+            if (move.name === "Mat Block") {
+                // hadFakeOutOk: first-action flag captured before it was consumed above
+                if (!hadFakeOutOk) {
+                    logMsg(`But it failed! Mat Block only works on the first turn out.`, 'info'); AudioSystem.playMissSound();
+                } else if (defender.volatile && defender.volatile.movedThisTurn === true) {
+                    logMsg(`But it failed!`); AudioSystem.playMissSound();
+                } else {
+                    attacker.volatile.matBlock = true;
+                    logMsg(`${attacker.name} kicked up a mat to intercept attacks!`); AudioSystem.playMoveSound(move);
+                }
+                await sleep(1000); return;
+            }
             if (defender.volatile.quickGuard && (move.pri || 0) > 0 && move.cat !== "Status") {
                 logMsg(`${defender.name}'s Quick Guard blocked ${attacker.name}'s ${move.name}!`, 'info');
                 AudioSystem.playMissSound();
@@ -24044,6 +24144,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 registerMoveConnectionFailure(attacker, move);
                 await sleep(1000); return;
             }
+            // Crafty Shield: blocks opponent STATUS moves aimed at the holder's side
+            // (self-targeting / field status moves pass through, mirroring Showdown's
+            // ['self','all'] target exemption).
+            if (defender.volatile.craftyShield && move.cat === "Status" && !SELF_TARGETING_STATUS.has(move.name)) {
+                logMsg(`${defender.name}'s Crafty Shield blocked ${attacker.name}'s ${move.name}!`, 'info');
+                AudioSystem.playMissSound();
+                registerMoveConnectionFailure(attacker, move);
+                await sleep(1000); return;
+            }
+            // Mat Block: blocks DAMAGING moves the turn it was set (status moves pass).
+            if (defender.volatile.matBlock && move.cat !== "Status") {
+                logMsg(`${attacker.name}'s ${move.name} was blocked by the kicked-up mat!`, 'info');
+                AudioSystem.playMissSound();
+                registerMoveConnectionFailure(attacker, move);
+                await sleep(1000); return;
+            }
             // Helping Hand: fails in singles (no ally to receive the boost)
             if (move.name === "Helping Hand") {
                 logMsg(`But it failed! There is no ally to help!`, 'info');
@@ -24051,7 +24167,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Doubles-only ally-targeting support moves fail in singles
             if (move.name === "Follow Me" || move.name === "Rage Powder" || move.name === "Spotlight"
-                || move.name === "Ally Switch" || move.name === "Decorate" || move.name === "Aromatic Mist"
+                || move.name === "Ally Switch" || move.name === "Aromatic Mist"
                 || move.name === "Coaching" || move.name === "Hold Hands" || move.name === "Heal Pulse"
                 || move.name === "Floral Healing" || move.name === "Pollen Puff") {
                 // Heal Pulse/Pollen Puff/Floral Healing fail with no valid ally target in singles
@@ -24233,12 +24349,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Blizzard" && (_curWeather === "Hail" || _curWeather === "Snow")) { neverMiss = true; }
             // Solar Beam / Solar Blade: halved power in Rain/Sand/Hail (handled in basePower section, acc unaffected)
 
+            // === OHKO MOVES: fixed accuracy, bypasses normal modifiers (Showdown) ===
+            // acc = 30 + (attacker level − defender level); Sheer Cold drops to 20 base
+            // for a non-Ice attacker (Gen 7+). Fails outright against a higher-level
+            // target; Ice-types are immune to Sheer Cold even through No Guard.
+            // Accuracy/evasion stages, acc items (Wide Lens etc.), Hustle/Compound Eyes
+            // and Gravity do NOT apply (Showdown skips ModifyAccuracy for ohko moves).
+            // No Guard / Lock-On / Glaive Rush still auto-hit (the Accuracy event runs
+            // after the OHKO override in Showdown).
+            const _ohkoAccMoves = new Set(["Fissure","Horn Drill","Guillotine","Sheer Cold"]);
+            const _isOhkoAccMove = _ohkoAccMoves.has(move.name);
+            {
+                if (_isOhkoAccMove) {
+                    if (move.name === "Sheer Cold" && (defender.type1 === "Ice" || defender.type2 === "Ice")) {
+                        logMsg(`Sheer Cold doesn't affect ${defender.name} because it's an Ice type!`, 'info');
+                        registerMoveConnectionFailure(attacker, move, false);
+                        await sleep(1000); return;
+                    }
+                    const _ohkoAtkLv = attacker.level || 50;
+                    const _ohkoDefLv = defender.level || 50;
+                    if (_ohkoDefLv > _ohkoAtkLv) {
+                        logMsg(`${defender.name} is unaffected — its level is too high!`, 'info');
+                        registerMoveConnectionFailure(attacker, move, false);
+                        await sleep(1000); return;
+                    }
+                    let _ohkoBase = 30;
+                    if (move.name === "Sheer Cold" && attacker.type1 !== "Ice" && attacker.type2 !== "Ice") _ohkoBase = 20;
+                    finalAcc = _ohkoBase + (_ohkoAtkLv - _ohkoDefLv);
+                    neverMiss = attacker.ability === "No Guard" || defender.ability === "No Guard" ||
+                        attacker.volatile.lockOn || !!(defender.volatile && defender.volatile.glaiveRush);
+                }
+            }
+
             if (!neverMiss && Math.random() * 100 > finalAcc) {
                 logMsg(`${attacker.name}'s attack missed!`);
                 AudioSystem.playMissSound();
                 registerMoveConnectionFailure(attacker, move);
                 // Blunder Policy: +2 Speed when an accuracy-checked move misses, consumed
-                if (_accAtkItemActive && attacker.item === "Blunder Policy" && attacker.currentHp > 0) {
+                // (Showdown: does NOT trigger on OHKO-move misses)
+                if (_accAtkItemActive && attacker.item === "Blunder Policy" && attacker.currentHp > 0 && !_isOhkoAccMove) {
                     changeStage(attacker, 'spe', 2);
                     logMsg(`${attacker.name}'s Blunder Policy sharply boosted its Speed!`, 'info');
                     attacker.item = null; attacker.itemConsumed = true;
@@ -24591,29 +24740,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_ohkoMoves.has(move.name)) {
                     // VGC: OHKO moves fail against Dynamaxed targets
                     if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
-                    // Sheer Cold misses non-Ice types more (accuracy=20 in DB, no special override needed)
+                    // (Accuracy is the fixed OHKO formula — 30/20 + level diff — applied in the accuracy section above.)
                     // Invulnerable targets are immune
                     if (defender.volatile.invulnerable) { logMsg(`${attacker.name}'s attack missed!`); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
+                    // Sheer Cold: Ice-types are immune (also enforced pre-accuracy; kept here for direct callers)
+                    if (move.name === "Sheer Cold" && (defender.type1 === "Ice" || defender.type2 === "Ice")) {
+                        logMsg(`Sheer Cold doesn't affect ${defender.name} because it's an Ice type!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return;
+                    }
                     // Type immunity (Ghost immune to Normal-type moves → Guillotine/Fissure/Horn Drill fail)
                     if (move.name !== "Sheer Cold") {
                         let typeEff = getMoveEffectiveness(move.type || "Normal", defender.type1, defender.type2);
                         if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     }
-                    // Sturdy (bypassed by Mold Breaker / Gastro Acid) and Focus Sash (full HP, item active) block OHKOs
+                    // Sturdy: full IMMUNITY to OHKO moves (Showdown onTryHit → -immune), not a
+                    // survive-at-1-HP. Bypassed by Mold Breaker / suppressed by Gastro Acid.
                     {
-                        const _sashItemActive = state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz";
                         const _ohkoMb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
                         const _sturdy = defender.ability === "Sturdy" && !_ohkoMb && !(defender.volatile && defender.volatile.abilityGastroAcid);
-                        const _sash = _sashItemActive && defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
-                        if (_sturdy || _sash) {
-                            logMsg(`${defender.name} withstood the OHKO with ${_sturdy ? "Sturdy" : "Focus Sash"}!`, 'info');
-                            defender.currentHp = 1; if (_sash) { defender.item = null; defender.itemConsumed = true; }
-                            updateUI(); await sleep(1000); return;
+                        if (_sturdy) {
+                            logMsg(`${defender.name} is unaffected thanks to Sturdy!`, 'info');
+                            registerMoveConnectionFailure(attacker, move, false);
+                            await sleep(1000); return;
                         }
                     }
-                    // Sheer Cold has 0% accuracy against Ice types
-                    if (move.name === "Sheer Cold" && (defender.type1 === "Ice" || defender.type2 === "Ice")) {
-                        logMsg(`Sheer Cold doesn't affect ${defender.name} because it's an Ice type!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return;
+                    // Focus Sash (full HP, item active): survive the OHKO at 1 HP, sash consumed
+                    {
+                        const _sashItemActive = state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz";
+                        const _sash = _sashItemActive && defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
+                        if (_sash) {
+                            logMsg(`${defender.name} withstood the OHKO with Focus Sash!`, 'info');
+                            defender.currentHp = 1; defender.item = null; defender.itemConsumed = true;
+                            updateUI(); await sleep(1000); return;
+                        }
                     }
                     let ohkoDmg = defender.currentHp;
                     defender.currentHp = 0; defender.tookDamageThisTurn = true;
@@ -24666,6 +24824,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // willCrit: always-crit moves (Flower Trick, Frost Breath, Storm Throw, Surging Strikes, Wicked Blow, Zippy Zap)
                 const _alwaysCritMoves = new Set(["Flower Trick","Frost Breath","Storm Throw","Surging Strikes","Wicked Blow","Zippy Zap"]);
                 if (move.willCrit || _alwaysCritMoves.has(move.name)) critStage = 99;
+                // Laser Focus: guaranteed crit until the end of the next turn (Battle/Shell Armor still block)
+                if (attacker.volatile && attacker.volatile.laserFocus > 0) critStage = 99;
                 {
                     const _critItemActive = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
                     if (_critItemActive && (attacker.item === "Scope Lens" || attacker.item === "Razor Claw")) critStage++;
@@ -24846,7 +25006,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Variable-power moves
                 if (move.name === "Return") basePower = 102; // assume max happiness
-                if (move.name === "Frustration") basePower = 102; // assume min happiness
+                if (move.name === "Frustration") basePower = 102; // assume min happiness — INTENTIONAL deviation from Showdown (default happiness 255 → BP 1); happiness isn't modeled and 17 builds.csv entries carry this move (maintainer-approved 2026-06)
                 if (move.name === "Hidden Power" && !basePower) basePower = 60;
                 if (move.name === "Flail") {
                     let hpPct = attacker.currentHp / attacker.maxHp;
@@ -25174,9 +25334,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Tera Shell (Terapagos-Terastal): at full HP, all damaging moves are resisted (effectiveness x0.5).
                 // Ignored if defender is naturally immune to the move type, or if attacker has Mold Breaker-class.
+                // Species-gated to Terapagos (any form) — Showdown's Tera Shell is inert on other holders.
                 {
                     const _mbForShell = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
                     if (!defender.volatile.abilityGastroAcid && defender.ability === "Tera Shell"
+                        && /^Terapagos/i.test(String(defender._baseName || defender.name || ''))
                         && defender.currentHp === defender.maxHp && typeEff > 0 && move.cat !== "Status" && !_mbForShell) {
                         typeEff = typeEff * 0.5;
                         logMsg(`${defender.name}'s Tera Shell deflected the attack!`, 'info');
@@ -25340,7 +25502,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await sleep(1000); return;
                 }
 
-                let modifier = stab * typeEff * crit * rng * lifeOrb;
+                // Showdown-parity staged rounding: stab/typeEff/crit/rng are NO longer
+                // pre-multiplied here — they are applied as separate floored/pokeRounded
+                // steps in _stagedDamage below. `modifier` accumulates only the remaining
+                // (item/ability/screen/sport) multipliers, applied last as one step.
+                let _burnHalf = false;
+                let modifier = lifeOrb;
                 // Glaive Rush: defender takes 2× damage from any move until its next turn.
                 if (defender.volatile && defender.volatile.glaiveRush) modifier *= 2;
                 // Mud Sport: Electric damage 1/3 power while active.
@@ -25351,7 +25518,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Rivalry" && attacker.gender !== null && defender.gender !== null) {
                     modifier *= attacker.gender === defender.gender ? 1.25 : 0.75;
                 }
-                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts" && move.name !== "Facade") modifier *= 0.5;
+                if (attacker.status === "BRN" && _effectiveCat === "Physical" && attacker.ability !== "Guts" && move.name !== "Facade") _burnHalf = true; // own floored step (after type-eff, before final mods)
                 if (attacker.ability === "Tinted Lens" && typeEff < 1 && typeEff > 0) modifier *= 2;
                 // Neuroforce: x1.25 when move is super effective
                 if (attacker.ability === "Neuroforce" && typeEff > 1) modifier *= 1.25;
@@ -25489,13 +25656,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // *** COMPETITIVE FIX: Lv100 damage formula ***
-                // damage = ((2*Level/5 + 2) * Power * A/D) / 50 + 2) * modifier
-                // At Lv50: (2*50/5 + 2) = 22
+                // base = floor(floor(22 * Power * A/D) / 50) + 2  (at Lv50: 2*50/5+2 = 22),
+                // then Showdown's staged modifier chain with truncation BETWEEN steps:
+                //   crit (floor) → random 85–100 (floor) → STAB (pokeRound) →
+                //   type effectiveness (floor) → burn ×0.5 (floor) →
+                //   remaining modifiers (items/abilities/screens/sports — one pokeRound step).
+                // pokeRound = round-half-DOWN (Showdown's modify()/chainModify rounding).
+                // Documented remaining deviations: (a) weather ×1.5/×0.5 is folded into
+                // basePower here, Showdown chains it at the damage stage; (b) the
+                // "remaining modifiers" are one float product applied with a single
+                // pokeRound instead of pairwise 4096-space chaining (≤1 HP drift).
                 // Showdown truncates the *modified* Attack and Defense to integers before the A/D
                 // division (stage/item/ability mults routinely leave them fractional, e.g. 85*1.5=127.5).
                 A = Math.floor(A); D = Math.floor(D);
-                let damage = Math.floor((Math.floor(Math.floor(22 * basePower * (A / D)) / 50) + 2) * modifier);
-                damage = Math.max(1, Math.floor(damage));
+                const _pokeRound = (v) => ((v % 1) > 0.5 ? Math.ceil(v) : Math.floor(v));
+                const _stagedDamage = (bp) => {
+                    let d = Math.floor(Math.floor(22 * bp * (A / D)) / 50) + 2;
+                    if (crit > 1) d = Math.floor(d * crit);
+                    d = Math.floor(d * rng);
+                    if (stab !== 1) d = _pokeRound(d * stab);
+                    if (typeEff !== 1) d = Math.floor(d * typeEff);
+                    if (_burnHalf) d = Math.floor(d * 0.5);
+                    if (modifier !== 1) d = _pokeRound(d * modifier);
+                    return Math.max(1, Math.floor(d));
+                };
+                let damage = _stagedDamage(basePower);
                 // Glass Cannon Pact artifact: +25% all damage, both sides
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
                 // Story boss surge phase: the boss deals +25% while its surge window is
@@ -25570,15 +25755,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${attacker.name} gave ${defender.name} a gift, restoring ${heal} HP!`, 'heal');
                         updateUI(); return;
                     }
-                    damage = r < 0.6 ? Math.floor((Math.floor(Math.floor(22 * 40 * (A/D))/50)+2)*modifier)
-                           : r < 0.9 ? Math.floor((Math.floor(Math.floor(22 * 80 * (A/D))/50)+2)*modifier)
-                           :           Math.floor((Math.floor(Math.floor(22 * 120 * (A/D))/50)+2)*modifier);
-                    damage = Math.max(1, damage);
+                    damage = r < 0.6 ? _stagedDamage(40)
+                           : r < 0.9 ? _stagedDamage(80)
+                           :           _stagedDamage(120);
                 }
                 // Pika Papow / Veevee Volley: power = friendship (max 102, assume max)
                 if (move.name === "Pika Papow" || move.name === "Veevee Volley") {
-                    damage = Math.floor((Math.floor(Math.floor(22 * 102 * (A/D))/50)+2)*modifier);
-                    damage = Math.max(1, damage);
+                    damage = _stagedDamage(102);
                 }
                 // Misty Explosion: 1.5x power in Misty Terrain
                 if (move.name === "Misty Explosion" && state.terrain === "Misty") damage = Math.floor(damage * 1.5);
@@ -25634,6 +25817,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let totalDmg = 0, hitsLanded = 0;
                     let hitSub = false;
                     let endureTriggered = false;
+                    let _anyHitCrit = crit > 1;   // per-hit crits (Showdown rolls each hit)
                     const _mhStartHp = defender.currentHp;   // snapshot for the stepwise visual replay (C1)
                     const _mhPerHit = [];                    // real-HP damage per landed hit (presentation only)
                     for (let h = 0; h < numHits; h++) {
@@ -25654,6 +25838,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const _scaledBP = Math.max(_baseBP * (h + 1), _teraFloor);
                             const _hit1BP = Math.max(_baseBP, _teraFloor);
                             _hitDmg = Math.max(1, Math.floor(damage * (_scaledBP / _hit1BP)));
+                        }
+                        // Showdown parity: every hit of a multi-hit move rolls its own 85–100
+                        // damage variance AND its own crit check. Hit 1 keeps the rolls already
+                        // baked into `damage`; later hits re-roll both and rescale by the ratio
+                        // to those baked-in rolls (same Math.random source as the formula).
+                        // Known approximation: a later hit's crit does not retro-adjust the
+                        // stat-stage-ignore or screen-bypass that were locked in at formula time.
+                        if (h > 0) {
+                            const _rrCrit = (!armorBlocksCrit && Math.random() < critRate) ? (attacker.ability === "Sniper" ? 2.25 : 1.5) : 1;
+                            const _rrRng = (85 + Math.floor(Math.random() * 16)) / 100;
+                            _hitDmg = Math.max(1, Math.floor(_hitDmg * (_rrCrit / crit) * (_rrRng / rng)));
+                            if (_rrCrit > 1) _anyHitCrit = true;
                         }
                         if (defender.volatile.sub > 0 && !(attacker.ability === "Infiltrator")) {
                             let sd = Math.min(defender.volatile.sub, _hitDmg); defender.volatile.sub -= sd;
@@ -25707,10 +25903,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { AudioSystem.playHitSound(typeEff); } catch (e) {}   // parity with single-hit path
                     }
                     await sleep(200);
-                    if (crit > 1) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
+                    if (_anyHitCrit) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
                     if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
-                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1 });   // one shake by tier (no double-shake)
+                    await _applyHitImpact({ effectiveness: typeEff, crit: _anyHitCrit });   // one shake by tier (no double-shake)
                     if (actualDamage > 0) showBattlePopup('-' + actualDamage, 'popup-dmg', !isPlayer);
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
@@ -25786,6 +25982,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 defender.volatile.flinch = true;
                             }
                         }
+                        // Sand Spit (defender): on damaging hit (fires once for the multi-hit volley)
+                        if (defender.ability === "Sand Spit" && totalDmg > 0 && defender.currentHp > 0 && state.weather !== "Sandstorm") {
+                            const _sspRockMh = state.magicRoom === 0 && !(defender.volatile && defender.volatile.embargo > 0) && defender.item === "Smooth Rock";
+                            state.weather = "Sandstorm"; state.weatherTurns = _sspRockMh ? 8 : 5;
+                            logMsg(`${defender.name}'s Sand Spit whipped up a sandstorm!`, 'info');
+                            try { _applyWeatherFormChanges(); } catch (e) {}
+                        }
                         updateUI();
                     }
                     return;
@@ -25816,8 +26019,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     updateUI(); await sleep(800);
                     hitSub = true; // skip damage application
                 }
-                // Disguise (Mimikyu): absorb one hit, take 1/8 max HP chip damage, block full damage
-                if (defender.ability === "Disguise" && !defender.volatile.disguiseBroken) {
+                // Disguise (Mimikyu): absorb one hit, take 1/8 max HP chip damage, block full damage.
+                // Species-gated like Showdown (['mimikyu','mimikyutotem']) — on any other holder
+                // the ability does nothing.
+                if (defender.ability === "Disguise" && !defender.volatile.disguiseBroken && /^Mimikyu/i.test(String(defender._baseName || defender.name || ''))) {
                     defender.volatile.disguiseBroken = true;
                     let chipDmg = Math.max(1, Math.floor(defender.maxHp / 8));
                     chipDmg = Math.min(defender.currentHp, chipDmg);
@@ -26207,6 +26412,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _ssTurns = (state.magicRoom === 0 && defender.item === "Terrain Extender" && defender.ability !== "Klutz") ? 8 : 5;
                         state.terrain = "Grassy"; state.terrainTurns = _ssTurns;
                         logMsg(`${defender.name}'s Seed Sower covered the field in grass!`, 'info');
+                    }
+                    // Sand Spit (defender): on damaging hit, whip up a Sandstorm (Showdown onDamagingHit).
+                    if (defender.ability === "Sand Spit" && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0 && state.weather !== "Sandstorm") {
+                        const _sspRock = state.magicRoom === 0 && !(defender.volatile && defender.volatile.embargo > 0) && defender.item === "Smooth Rock";
+                        state.weather = "Sandstorm"; state.weatherTurns = _sspRock ? 8 : 5;
+                        logMsg(`${defender.name}'s Sand Spit whipped up a sandstorm!`, 'info');
+                        try { _applyWeatherFormChanges(); } catch (e) {}
                     }
                     // Wind Power (defender): hit by a wind-flag move → "charged" (next Electric move ×2).
                     // Canonical 17-move set per data/moves.json `flags.wind` lookup. Kept in sync
@@ -27659,6 +27871,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${mon.name}'s ${src} boosted its ${best.toUpperCase()}!`, 'info');
                 }
             }
+            // Berserk Gene (relic item): on entry, sharply raises Attack (+2) and confuses
+            // the holder; the item is consumed (Showdown onUpdate: useItem → +2 Atk + confusion).
+            {
+                const _bgItemActive = state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz";
+                if (_bgItemActive && mon.item === "Berserk Gene" && mon.currentHp > 0) {
+                    mon.item = null; mon.itemConsumed = true;
+                    logMsg(`${mon.name}'s Berserk Gene activated!`, 'info');
+                    changeStage(mon, 'atk', 2);
+                    if (mon.ability === "Own Tempo") {
+                        logMsg(`${mon.name}'s Own Tempo prevented confusion!`, 'info');
+                    } else if (!mon.volatile.confusion) {
+                        const _bgRng = storyAwareRng();
+                        mon.volatile.confusion = Math.floor(_bgRng() * 3) + 2;
+                        logMsg(`${mon.name} went berserk with confusion!`, 'status');
+                    }
+                }
+            }
             // Story artifact: Berserker's Serum — once per switch-in (skip nested Trace re-entry)
             if (_storySwitchDepth === 0 && state && state.mode === 'story' && state._berserkerSerumActive && mon && mon.currentHp > 0) {
                 const _bsOpts = { bypassStagnation: true, bypassNullifier: true };
@@ -27679,7 +27908,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // (Wish and Future Sight are deliberately absent — they are SIDE/slot effects stored
         // on state.pSide / state.fSide, not on the mon, so they affect whoever is active.)
         function makeVolatile() {
-            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, bagRegen: null, ingrain: false, stockpile: 0, lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
+            return { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, bagRegen: null, ingrain: false, stockpile: 0, lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0, craftyShield: false, matBlock: false, powdered: false, electrified: false, nightmare: false, laserFocus: 0 };
         }
 
         // Baton Pass hands the passable volatiles + stat stages to the incoming mon, then runs
@@ -27743,6 +27972,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.burningBulwark = false;
             mon.volatile.quickGuard = false;
             mon.volatile.wideGuard = false;
+            mon.volatile.craftyShield = false;
+            mon.volatile.matBlock = false;
+            mon.volatile.powdered = false;
+            mon.volatile.electrified = false;
+            mon.volatile.nightmare = false;
+            mon.volatile.laserFocus = 0;
             mon.volatile.encore = 0;
             mon.volatile.encoreMove = null;
             mon.volatile.lastMoveUsed = null;
@@ -28162,8 +28397,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Substitute: blocks opponent-targeting status moves ===
-            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap"]);
-            const _selfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song"]);
+            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap","Powder"]);
+            const _selfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song","Laser Focus"]);
             // === Good as Gold: immune to opponent's status moves (still allows the attacker's self-targeting status moves)
             if (defender.ability === "Good as Gold" && move.cat === "Status" && !_selfTargetMoves.has(move.name)) {
                 logMsg(`${defender.name}'s Good as Gold makes it immune to ${move.name}!`, 'info');
@@ -28175,6 +28410,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Pure status move named handlers (must come first) ===
+            // POWDER: covers the target for the turn; its Fire-type moves fail and burn
+            // it for 1/4 max HP (gate lives in performAction; powder/Grass/Overcoat/
+            // Safety Goggles immunity handled by the powderMoves block above).
+            if (move.name === "Powder") {
+                defender.volatile.powdered = true;
+                logMsg(`${defender.name} is covered in powder!`, 'status'); return;
+            }
+            // ELECTRIFY: the target's move becomes Electric-type this turn.
+            // Fails if the target has already moved (Showdown onTryHit: willMove check).
+            if (move.name === "Electrify") {
+                if (defender.volatile.movedThisTurn === true) { logMsg(`But it failed!`, 'info'); return; }
+                defender.volatile.electrified = true;
+                logMsg(`${defender.name}'s moves have been electrified!`, 'status'); return;
+            }
+            // NIGHTMARE: only affects a sleeping target; 1/4 max HP loss at the end of
+            // each turn while it stays asleep (residual lives in endOfTurnEffects).
+            if (move.name === "Nightmare") {
+                if ((defender.status !== "SLP" && defender.ability !== "Comatose") || defender.volatile.nightmare) {
+                    logMsg(`But it failed!`, 'info'); return;
+                }
+                defender.volatile.nightmare = true;
+                logMsg(`${defender.name} began having a nightmare!`, 'status'); return;
+            }
+            // LASER FOCUS: the user's moves are guaranteed crits until the end of the
+            // NEXT turn (counter ticks down in runVolatileTimers; crit hook in the
+            // damage formula's crit-stage calc).
+            if (move.name === "Laser Focus") {
+                attacker.volatile.laserFocus = 2;
+                logMsg(`${attacker.name} concentrated intensely!`, 'status'); return;
+            }
             if (move.name === "Will-O-Wisp") { applyStatus(defender, "BRN"); return; }
             if (move.name === "Thunder Wave" || move.name === "Stun Spore" || move.name === "Glare") {
                 // Thunder Wave is Electric-type — Ground types are immune
@@ -29036,6 +29301,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Missing stat boost/drop moves ===
+            // Decorate: +2 Atk / +2 SpA to the TARGET (target:normal — in singles that is
+            // the opponent, matching Showdown; previously misfiled as a doubles-only fail).
+            if (move.name === "Decorate") {
+                changeStage(defender, 'atk', 2, true);
+                changeStage(defender, 'spa', 2, true);
+                return;
+            }
             if (move.name === "Amnesia") { changeStage(attacker, 'spd', 2); return; }
             if (move.name === "Barrier" || move.name === "Iron Defense" || move.name === "Acid Armor") { changeStage(attacker, 'def', 2); return; }
             if (move.name === "Cotton Guard") { changeStage(attacker, 'def', 3); return; }
@@ -29085,11 +29357,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Tickle") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'def', -1, true); return; }
             if (move.name === "Parting Shot") {
+                // Showdown: the -1 Atk / -1 SpA always lands; the switch simply doesn't
+                // happen with no healthy bench. (Previously the whole move failed without
+                // a bench, so the debuffs never applied — FIDELITY divergence efa/Parting Shot.)
+                changeStage(defender, 'atk', -1, true); changeStage(defender, 'spa', -1, true);
                 const _psTeam = isPlayer ? state.playerParty : state.foeParty;
                 const _psBench = _psTeam && _psTeam.some(t => t && t !== attacker && t.currentHp > 0);
-                if (!_psBench) { logMsg(`But it failed!`, 'info'); return; }
-                changeStage(defender, 'atk', -1, true); changeStage(defender, 'spa', -1, true);
-                await handlePivotSwitch(isPlayer, move); return;
+                if (_psBench) await handlePivotSwitch(isPlayer, move);
+                return;
             }
             if (move.name === "Memento") {
                 if (defender.volatile && defender.volatile.sub > 0) { logMsg(`But it failed!`, 'info'); return; }
@@ -29967,6 +30242,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Showdown parity: end-of-turn residuals resolve in effective-speed order each
+        // turn (the faster mon's residuals run first; Trick Room inverts the order;
+        // speed ties keep the engine's historical player-first order — deterministic,
+        // no extra RNG draw). Both turn-loop call sites route through here.
+        function runResidualsBySpeed() {
+            let pFirst = true;
+            try {
+                const _rw = getCurrentWeather();
+                const _ps = getEffectiveSpeed(state.pActive, _rw);
+                const _fs = getEffectiveSpeed(state.fActive, _rw);
+                const _tr = state.trickRoom > 0;
+                if (_tr ? (_fs < _ps) : (_fs > _ps)) pFirst = false;
+            } catch (e) {}
+            if (pFirst) {
+                endOfTurnEffects(state.pActive, state.fActive);
+                endOfTurnEffects(state.fActive, state.pActive);
+            } else {
+                endOfTurnEffects(state.fActive, state.pActive);
+                endOfTurnEffects(state.pActive, state.fActive);
+            }
+        }
+
         function endOfTurnEffects(mon, foe) {
             if (mon.currentHp <= 0) return;
             mon.volatile.protect = false;
@@ -30006,8 +30303,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === PHASE 4 END-OF-TURN ORDER (authoritative) ===
             // 1. Weather Damage
             // 2. Item Healing/Damage (Leftovers, Black Sludge, Orbs)
-            // 3. Non-Volatile Status Damage (Burn, Poison, Toxic)
-            // 4. Binding/Trap Damage (Leech Seed, Partial Trap, Curse)
+            // 3. Leech Seed drain (Showdown residual order 8 — BEFORE status damage)
+            // 4. Non-Volatile Status Damage (Burn, Poison, Toxic — residual order 9)
+            // 5. Binding/Trap Damage (Partial Trap, Curse)
 
             if (mon.ability !== "Magic Guard" && mon.item !== "Safety Goggles" && mon.ability !== "Overcoat") {
                 // 1. Weather damage
@@ -30175,7 +30473,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (mon.volatile) mon.volatile.dealtDamageThisTurn = 0;
 
-            // 3. Non-Volatile Status Damage
+            // 3. Leech Seed — drains BEFORE burn/poison damage (Showdown residual order:
+            // Aqua Ring/Ingrain → Leech Seed → PSN/BRN). Magic Guard prevents the drain
+            // (so the seeder also heals nothing).
+            if (mon.volatile.leechSeed && mon.ability !== "Magic Guard") {
+                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                    logMsg(`Type Nullifier: ${mon.name} ignored Leech Seed's drain!`, 'info');
+                } else {
+                let drain = Math.max(1, Math.floor(mon.maxHp / 8));
+                let actualDrain = Math.min(mon.currentHp, drain);
+                mon.currentHp -= actualDrain;
+                if (foe.currentHp > 0) {
+                    let healAmt = actualDrain;
+                    const _foeItemActive = state.magicRoom === 0 && !(foe.volatile && foe.volatile.embargo > 0) && foe.ability !== "Klutz";
+                    if (_foeItemActive && foe.item === "Big Root") healAmt = Math.floor(healAmt * 1.3);
+                    let actualHeal = Math.min(foe.maxHp - foe.currentHp, healAmt);
+                    foe.currentHp += actualHeal;
+                }
+                logMsg(`${mon.name} had ${actualDrain} HP sapped by Leech Seed!`, 'dmg');
+                }
+            }
+
+            // 4. Non-Volatile Status Damage
             if (mon.ability !== "Magic Guard") {
                 const _nullInd2 = state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon);
                 // Burn: 1/16 max HP (Gen 5+ standard); Heatproof halves it to 1/32
@@ -30228,26 +30547,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_monItemActive && mon.currentHp > 0 && !mon.status && mon.item === "Flame Orb") applyStatus(mon, "BRN");
             if (_monItemActive && mon.currentHp > 0 && !mon.status && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
 
-            // 4. Binding/Trap Damage
-            // Leech Seed — Magic Guard prevents the drain (so the seeder also heals nothing).
-            if (mon.volatile.leechSeed && mon.ability !== "Magic Guard") {
-                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
-                    logMsg(`Type Nullifier: ${mon.name} ignored Leech Seed's drain!`, 'info');
-                } else {
-                let drain = Math.max(1, Math.floor(mon.maxHp / 8));
-                let actualDrain = Math.min(mon.currentHp, drain);
-                mon.currentHp -= actualDrain;
-                if (foe.currentHp > 0) {
-                    let healAmt = actualDrain;
-                    const _foeItemActive = state.magicRoom === 0 && !(foe.volatile && foe.volatile.embargo > 0) && foe.ability !== "Klutz";
-                    if (_foeItemActive && foe.item === "Big Root") healAmt = Math.floor(healAmt * 1.3);
-                    let actualHeal = Math.min(foe.maxHp - foe.currentHp, healAmt);
-                    foe.currentHp += actualHeal;
-                }
-                logMsg(`${mon.name} had ${actualDrain} HP sapped by Leech Seed!`, 'dmg');
-                }
-            }
-
+            // 5. Binding/Trap Damage
             // Curse (Ghost-type): 1/4 max HP damage per turn
             if (mon.volatile.cursed && mon.ability !== "Magic Guard") {
                 if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
@@ -30257,6 +30557,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let actCurseDmg = Math.min(mon.currentHp, curseDmg);
                 mon.currentHp -= actCurseDmg;
                 logMsg(`${mon.name} took ${actCurseDmg} damage from the curse!`, 'dmg');
+                }
+            }
+
+            // Nightmare: 1/4 max HP per turn while the victim stays asleep (Showdown
+            // residual order 11, right after Curse). Ends silently when it wakes.
+            // Magic Guard prevents the damage but the nightmare persists.
+            if (mon.volatile.nightmare) {
+                if (mon.status !== "SLP" && mon.ability !== "Comatose") {
+                    mon.volatile.nightmare = false;
+                    logMsg(`${mon.name} woke from its nightmare!`, 'info');
+                } else if (mon.ability !== "Magic Guard") {
+                    if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                        logMsg(`Type Nullifier: ${mon.name} shrugged off the nightmare!`, 'info');
+                    } else {
+                        let nmDmg = Math.max(1, Math.floor(mon.maxHp / 4));
+                        let actNmDmg = Math.min(mon.currentHp, nmDmg);
+                        mon.currentHp -= actNmDmg;
+                        logMsg(`${mon.name} is locked in a nightmare! It lost ${actNmDmg} HP!`, 'dmg');
+                    }
                 }
             }
 
@@ -36388,6 +36707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'easy') return 1.50;
             if (diff === 'veryeasy') return 1.60;
             // Hard/Challenge used to pay below parity while late-game prices spike; floored at parity so the coin curve stops fighting the difficulty curve.
+            // Maintainer-ratified 2026-06-11 (memo #1): hard stays at 1.00.
             if (diff === 'hard') return 1.00;
             if (diff === 'challenge') return 1.10;
             return 1;
@@ -36408,6 +36728,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // safe extrapolation — the spec has no professor past C6, and C8 is the Mystery
         // Figure (overridden by mystery mode), C9 the League legendary gate.
         const PROF_ROLLS = [
+          // C0 = 100% G4 is maintainer-ratified (2026-06-11, memo #2): the
+          // flat-weakest start is a deliberate curve anchor, not an oversight.
           {g1:0,  g2:0,  g3:0,   g4:100}, // C0 — pure G4 basic
           {g1:0,  g2:0,  g3:20,  g4:80 }, // C1
           {g1:0,  g2:0,  g3:40,  g4:60 }, // C2
@@ -40730,12 +41052,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // "Cannot read properties of undefined (reading 'dynaOn')" → dead loading state).
             const S = (ctx && ctx.settings) || sm.settings || {};
             const k = [];
+            // An explicit ctx bypasses the unlock gate: sm.unlockedGimmicks is itself
+            // rebuilt from the settings toggles at every grant site, so for a player
+            // who ran with mechanics off the unlock set is empty and a ctx that only
+            // overrode the S flags could never add a key — the Mystery Figure's
+            // "rolls from every mechanic" override was dead in every scenario.
+            const forced = !!(ctx && ctx.settings);
             const unlocked = new Set(Array.isArray(sm.unlockedGimmicks) ? sm.unlockedGimmicks : []);
-            if (S.dynaOn && unlocked.has('dmax')) k.push('gmax');
-            if (S.megaOn && unlocked.has('mega')) k.push('mega');
-            if (S.dynaOn && unlocked.has('dmax')) k.push('dmax');
-            if (S.zOn && unlocked.has('z')) k.push('z');
-            if (S.teraOn && unlocked.has('tera')) k.push('tera');
+            if (S.dynaOn && (forced || unlocked.has('dmax'))) k.push('gmax');
+            if (S.megaOn && (forced || unlocked.has('mega'))) k.push('mega');
+            if (S.dynaOn && (forced || unlocked.has('dmax'))) k.push('dmax');
+            if (S.zOn && (forced || unlocked.has('z'))) k.push('z');
+            if (S.teraOn && (forced || unlocked.has('tera'))) k.push('tera');
             return k;
         }
         function _kindToForcedTag(kind) {
@@ -41442,8 +41770,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Rival follows the stage of the badges they're encountered at.
                 // Mid-game rivals (row 12, 39) hit at badges 2 and 5 — Stage 2 and Stage 3 mid.
                 // The league Rival (row 65, badges 8+) is T4 via the earlier b>=8 short-circuit.
-                if (b >= 7) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 — T3, T4 via b>=8 above
-                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
+                // Intentionally flat from badge 5 through 7 (maintainer-ratified
+                // 2026-06-11, memo #5): the rival plateaus at T3 for all of
+                // Stage 3 and only jumps to T4 via the b>=8 short-circuit.
+                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 — T3
                 if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
@@ -41479,8 +41809,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Basic Trainer') {
                 // Route fodder sits one tier below the gym trainer of the same
                 // stage so the player has a clear "wild trainer < gym staff <
-                // gym leader" ladder within each stage.
-                if (b >= 5) return STORY_BUILD_TIER.NOVICE;
+                // gym leader" ladder within each stage. Intentionally flat at
+                // T2 from badge 2 onward (maintainer-ratified 2026-06-11,
+                // memo #5): route fodder never scales past NOVICE.
                 if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
@@ -42496,6 +42827,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get CAMP_ACTIONS() { return CAMP_ACTIONS; },
                     get CAMP_MICROGAMES() { return CAMP_MICROGAMES; },
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
+                    daycareDropOff: (...a) => _daycareDropOff(...a),
                     recordHallOfFame: () => _storyRecordHallOfFame(),
                     mysteryFigureSpriteFile: () => _mysteryFigureSpriteFile(),
                     getTrainerSprite: (...a) => getTrainerSprite(...a),
@@ -45642,7 +45974,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const ANOMALY_SEEDS = {
             7:  "A new sticker on your map reads 'Welcome Back.' You don't remember peeling it.",
             14: "Your Pokédex updates — a sentence appears in YOUR handwriting that you don't remember writing.",
-            30: "An Elite Trainer says, casually, mid-fight: 'Tell The First we said hi.' You don't ask who that is.",
+            30: "A Gym Trainer says, casually, mid-fight: 'Tell The First we said hi.' You don't ask who that is.",
             49: "Your starter's Pokédex entry now closes with a single line. The line is in YOUR handwriting.",
         };
         function _tryFireAnomalySeed(ev) {
@@ -46050,6 +46382,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _applyBossPhaseEffect(stateRef, foeMon, effect, magnitude) {
             switch (effect) {
                 case 'heal': {
+                    // Once per battle by construction (maintainer-ratified
+                    // 2026-06-11, memo #7): the hp_<at> fired-key in
+                    // _bossMechanicsFired is set at trigger time and never
+                    // resets mid-battle, so this is a single "second wind",
+                    // not a loop — even across boss switch-ins.
                     const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
                     foeMon.currentHp = Math.min(foeMon.maxHp, (foeMon.currentHp | 0) + amt);
                     break;
@@ -48280,6 +48617,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const slot = (from === 'team') ? team[found] : box[found];
             if (slot.isEgg) return;
+            // Last-fighter re-check: the card button is rendered disabled for the
+            // last party fighter, but this handler is directly callable — without
+            // the same gate it could swap the only fighter for an egg (0-fighter
+            // party), the state every battle-launch guard assumes impossible.
+            if (from === 'team' && _storyCountFighters() <= 1) {
+                try { window.showGameAlert && window.showGameAlert('Party needs at least one battle-ready Pokémon.'); } catch (_) {}
+                return;
+            }
             const pname = slot.nickname || slot.name;
             // Lock the hatch species now (shares parent typing, one grade tier up).
             const eggSpecies = _daycareRollHatchSpecies(slot.name);
@@ -49851,6 +50196,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (!choices.length) {
                     statusEl.textContent = 'No Pokémon available for your enabled generations.';
+                    // Dead-end guard: this early return skips _renderProfChoices(),
+                    // which is what renders the action buttons — without rendering
+                    // an exit here the player was stranded on a button-less screen.
+                    const _emptyCardEl = document.getElementById('story-prof-rolled-card');
+                    if (_emptyCardEl) { _emptyCardEl.innerHTML = ''; _emptyCardEl.style.display = 'none'; }
+                    const _emptyBtnsEl = document.getElementById('story-prof-buttons');
+                    if (_emptyBtnsEl) {
+                        _emptyBtnsEl.innerHTML = '';
+                        const _emptyBackBtn = document.createElement('button');
+                        _emptyBackBtn.textContent = '← Back to City';
+                        _emptyBackBtn.style.color = '#aaa';
+                        _emptyBackBtn.onclick = () => window.StoryMode.enterCity();
+                        _emptyBtnsEl.appendChild(_emptyBackBtn);
+                    }
                     showScreen('screen-story-professor');
                     return;
                 }
@@ -50575,6 +50934,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
+            // Fighter-count parity with the fight-launch guard: eggs occupy team
+            // slots but can't battle. Without this, an egg-only party passed here,
+            // advanced eventIndex + fired cold-opens, then bounced at startFight
+            // with the index already moved (stale-battle-row state).
+            if (_storyCountFighters() === 0) { window.showGameAlert('Your party has no battle-ready Pokémon — only eggs. Visit the Professor first.'); return; }
             // Camp round-trip return (CAMP_FLOW §5): if the player went back to a prior city from
             // camp, "↩ Back to the road" restores the saved point and resumes — camp re-fires at
             // the top of enterBattleEvent (its gate wasn't stamped), dropping them back at the fire.
@@ -52864,7 +53228,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // trainer foe is scaled — no second pass can compound on top.
                     const _enemyMult = _storyEnemyStatMult(event, _enemyCity, idx)
                                      * _foeDifficultyMult((sm && sm.storyDifficulty) || 'normal');
-                    for (const s of enemyTeam) if (s && s.build) s.build._storyStatMult = _enemyMult;
+                    for (const s of enemyTeam) {
+                        if (!s || !s.build) continue;
+                        // Raid / miniRaid bosses are tuned ONLY by their own two
+                        // knobs (_bossStatMult × _bossHpScale) — maintainer
+                        // decision 2026-06-11 (memo #8): the generic story curve
+                        // must not stack a third multiplier on top.
+                        if (s.build._bossStatMult > 1 || s.build._bossHpScale > 1) continue;
+                        s.build._storyStatMult = _enemyMult;
+                    }
                 } catch (_e) {}
                 try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
@@ -54307,25 +54679,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 10 encounters / 10 Safari Balls.
         const SAFARI_ENTRY_COST = 10000;
         const SAFARI_MAX_ENCOUNTERS = 10;
-        // v19 stage-gated Safari curve. Safari unlocks at City 4 (badges 3),
-        // and the player shouldn't see G1 legendaries until they're deep in
-        // Stage 3 (post-GL6). G2 only emerges meaningfully after the unlock
-        // so the first visit reads as "a real chance at a strong G3" rather
-        // than "a 17% chance per session at Zapdos." Pre-v19 was static
-        // {g1:3,g2:22,g3:50,g4:25}.
+        // v19 stage-gated Safari curve. Safari debuts at City 5 (badges 4,
+        // see FACILITY_DEBUT_CITY), and the player shouldn't see G1
+        // legendaries until they're deep in Stage 3 (post-GL6). G2 only
+        // emerges meaningfully after the unlock so the first visit reads as
+        // "a real chance at a strong G3" rather than "a 17% chance per
+        // session at Zapdos." Pre-v19 was static {g1:3,g2:22,g3:50,g4:25}.
+        // Maintainer decision 2026-06-11 (memo #3): table re-keyed +1 badge —
+        // the original was keyed for a C4 debut that never shipped, so its
+        // gentlest row was unreachable and the debut visit ran one row hot.
         const _SAFARI_GRADE_CURVE_BY_BADGES = {
-            3: { g1: 0, g2: 5,  g3: 60, g4: 35 },  // first unlock @ City 4
-            4: { g1: 0, g2: 15, g3: 60, g4: 25 },  // post-G4 — G2 emerging
-            5: { g1: 0, g2: 25, g3: 60, g4: 15 },  // post-G5 — G2 ramping
-            6: { g1: 1, g2: 35, g3: 54, g4: 10 },  // post-G6 — first G1 leak
-            7: { g1: 2, g2: 45, g3: 45, g4: 8  },  // post-G7
-            8: { g1: 5, g2: 50, g3: 40, g4: 5  }   // post-G8 / Crucible re-entry
+            4: { g1: 0, g2: 5,  g3: 60, g4: 35 },  // debut visit @ City 5
+            5: { g1: 0, g2: 15, g3: 60, g4: 25 },  // post-G5 — G2 emerging
+            6: { g1: 0, g2: 25, g3: 60, g4: 15 },  // post-G6 — G2 ramping
+            7: { g1: 1, g2: 35, g3: 54, g4: 10 },  // post-G7 — first G1 leak
+            8: { g1: 2, g2: 45, g3: 45, g4: 8  }   // post-G8 / Crucible re-entry
         };
         function _safariGradeWeightsForBadges() {
             const b = Math.max(0, Math.min(8, (sm && sm.badges) | 0));
-            // Pre-unlock (badges 0-2) is unreachable in normal flow; fall back
-            // to the first-unlock curve so the engine never NaNs.
-            if (b < 3) return _SAFARI_GRADE_CURVE_BY_BADGES[3];
+            // Pre-unlock (badges 0-3) is unreachable in normal flow; fall back
+            // to the debut curve so the engine never NaNs.
+            if (b < 4) return _SAFARI_GRADE_CURVE_BY_BADGES[4];
             return _SAFARI_GRADE_CURVE_BY_BADGES[b];
         }
         async function enterSafariZone() {
@@ -55901,6 +56275,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ${rightLabel}
                     </button>`;
                 }).join('');
+                // Out-of-balls notice: with every ball at ×0 all four buttons render
+                // disabled and nothing said why — the screen read as silently broken.
+                const _totalThrowable = ['poke', 'great', 'ultra', 'master']
+                    .reduce((n, k) => n + ((sm.balls && (sm.balls[k] | 0)) || 0), 0);
+                if (_totalThrowable <= 0) {
+                    ballRows = `<div style="padding:8px 12px;background:rgba(40,16,12,0.6);border:1px solid #ff7043;color:#ffab91;font-size:12px;">You're out of Poké Balls — flee for now and restock at any city PokéMart.</div>` + ballRows;
+                }
             }
             // Shiny encounters get a sparkle on the name, a friendlier header
             // line, and a soft gold accent on the grade chip — the player
@@ -59432,6 +59813,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     bagEl.appendChild(div);
                     return;
                 }
+                // Featured Mega/Ultra stones are progression items (one purchase
+                // per city, the city lock survives a sale) — sell-locked like
+                // PERM_BOOST_IDS so a needed stone can't be sold by accident.
+                // Maintainer decision 2026-06-11 (memo #10).
+                if (typeof item.id === 'string' && (item.id.startsWith('mega_') || item.id.startsWith('ultra_'))) {
+                    div.innerHTML = icon + `<div class="story-bag-item-text">
+                        <div class="name">${item.name}</div>
+                        <div class="qty">×${qty}</div>
+                        <div class="eff">${item.desc}</div>
+                    </div>`;
+                    bagEl.appendChild(div);
+                    return;
+                }
                 div.innerHTML = icon + `<div class="story-bag-item-text">
                     <div class="name">${item.name}</div>
                     <div class="qty">×${qty}</div>
@@ -59459,6 +59853,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
             // Perm-boost vitamins are earned-only and never sellable.
             if (PERM_BOOST_IDS.has(itemId)) return;
+            // Featured Mega/Ultra stones are sell-locked progression items
+            // (memo #10, 2026-06-11) — backstop for the hidden Sell button.
+            if (typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'))) return;
             sm.inventory[itemId]--;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
             sm.gold += sellPrice;
@@ -65843,12 +66240,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
             const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
             if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirmPay(mon, `Awaken Signature Z — equip ${sigZ}`, voucherPath))) return;
+            // Destructive-action parity: when the signature move must be taught and
+            // all 4 slots are full, the last move gets replaced — say so in the
+            // confirm (Release/Sell/Tutor all warn; this was the silent one).
+            const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
+            const _sigMoves = (mon.build.m || []);
+            const _sigWillTeach = !!(reqMove && !_sigMoves.includes(reqMove));
+            const _sigWillDrop = (_sigWillTeach && _sigMoves.length >= 4) ? _sigMoves[_sigMoves.length - 1] : null;
+            const _sigHeadline = `Awaken Signature Z — equip ${sigZ}`
+                + (_sigWillDrop ? ` (teaches ${reqMove}, replacing ${_sigWillDrop})`
+                   : (_sigWillTeach ? ` (teaches ${reqMove})` : ''));
+            if (!(await _colressConfirmPay(mon, _sigHeadline, voucherPath))) return;
             if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = sigZ;
             delete mon.build.teraType;
-            const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
             if (reqMove) {
                 mon.build.m = mon.build.m || [];
                 if (!mon.build.m.includes(reqMove)) {
@@ -66772,6 +67178,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pcSectionHtml: typeof _evoLabPcSectionHtml === 'function' ? _evoLabPcSectionHtml : null,
                     npcStage: typeof _npcStage === 'function' ? (k) => _npcStage(k) : null,
                     setPcOpenId: (id) => { _storyEvoLabPcOpenId = id; },
+                    safariGradeWeightsForBadges: typeof _safariGradeWeightsForBadges === 'function' ? () => _safariGradeWeightsForBadges() : null,
                     get sm() { return sm; },
                     set sm(v) { sm = v; },
                 };

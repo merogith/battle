@@ -51,7 +51,7 @@ file: STORY_MODE_FLOW.md
 agents: [spec-drift-auditor]
 fingerprint: e585e95483b0
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_MODE_FLOW says timeline is "68 rows"; STORY_EVENTS_RAW actually has 67 rows
@@ -120,7 +120,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 8566e89fd047
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: `sm.catchUnlocked` is written 3× but never read; spec §10 says it gates wild-route prompts
@@ -206,7 +206,7 @@ file: README.md
 agents: [spec-drift-auditor]
 fingerprint: 61ee59240f4d
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: README calls catch / PC / Underground / Safari / boss-arc "upcoming"; all are shipped

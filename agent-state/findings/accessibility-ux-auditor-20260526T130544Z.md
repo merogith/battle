@@ -123,7 +123,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 89ea3a3e2152
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Gauntlet score readout is a plain div with no live region — score changes are silent to SR

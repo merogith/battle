@@ -7,7 +7,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 27b0bb57fb3a
 confidence: high
-status: open
+status: wontfix-out-of-scope-a11y-nonstory
 ---
 
 **Title**: Draft pick cards are click-only <div>s — keyboard/SR users cannot select a Pokémon
@@ -130,7 +130,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 95a0a3a5f2ea
 confidence: high
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast
@@ -161,7 +161,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: bbbcf8f348ca
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Planned hatch animation + Fight Club transitions need reduced-motion + live-region design up front
@@ -191,7 +191,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 8407ee14cfc4
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: A cluster of form controls lack accessible names (online host/join, casino bet, gauntlet opt-in)

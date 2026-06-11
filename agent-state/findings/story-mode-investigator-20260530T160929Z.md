@@ -152,7 +152,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 62f1b4b5cef8
 confidence: high
-status: open
+status: wontfix-descoped
 ---
 
 **Title**: Lead→city mapping duplicated (`_BOSS_LEAD_CITIES` const vs inline `_leadCity` literal)
@@ -183,7 +183,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2a1b8a63bc6e
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible-reachable Frontier surrender uses raw window.confirm — drops fullscreen, breaks modal convention
@@ -278,7 +278,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7e1cdcbb0b91
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Spec §8 says league boost stacks multiplicatively with difficulty; code now stacks additively (the cliff was fixed)
@@ -372,7 +372,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f93740a17e98
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible rematch pickers use bare Math.random — breaks the seeded-replay contract for post-game
@@ -437,7 +437,7 @@ file: docs/STORY_MODE_AUDIT.md
 agents: [story-mode-investigator]
 fingerprint: bd78781b71ff
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: docs/STORY_MODE_AUDIT.md is stale — most of its flagged issues are now fixed (SAVE_VER 14→22)
@@ -470,7 +470,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 691dcd5cb693
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Mystery Figure" button is dead — STORY_POST_HOF_MYSTERY_ROW (67) is out of bounds as an array index
@@ -501,7 +501,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9e4b435d44de
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible "Rival Rematch" targets the Hall of Fame row — STORY_LEAGUE_RIVAL_ROW (65) is a row id, not the array index (64)
@@ -531,7 +531,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 307c0fad776a
 confidence: high
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible League Run + Random Gym Rematch use row ids as array indices — wrong opponents (skips E1, runs into Rival; can launch City3)
@@ -596,7 +596,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 75a751b3f4d7
 confidence: medium
-status: open
+status: wontfix-out-of-scope-crucible
 ---
 
 **Title**: Crucible sub-sections improve wayfinding but the orientation tip + "Mystery vs Caged God" disambiguation still lean on long alert text

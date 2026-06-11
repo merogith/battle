@@ -49,7 +49,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 13be257103c9
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Villain-track "ending" event fires before the villain boss fight (road7 event-kind drains first)
@@ -117,7 +117,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c55e0a763c3a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: "Up next" trainer name is the pre-override name — boss beats relabel the trainer after the preview
@@ -148,7 +148,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 721b22bdaa85
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Road event-beats fire before in-city Gym Trainer / Gym Leader fights, not only on the route
@@ -217,7 +217,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 910267b13380
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: All ~30 per-variant Mystery-Figure outros are dead — keyed by retired identities, never match `the_first`
@@ -249,7 +249,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 10765c88017a
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Variants are rolled every run (not forced classic) — so variant Champion/post-HoF lines pointing at the dead broker/cage DO fire
@@ -282,7 +282,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: cc5df56aa969
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Road beat clumping: 2 beats/road (villain road7 = 3, league = 7) play back-to-back, breaking pacing
@@ -382,7 +382,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f31bcfda964b
 confidence: medium
-status: open
+status: fixed-main
 ---
 
 **Title**: Anomaly seeds fire via low-z `showGameAlert` on the same tick as the row's flow — can paint behind/over other overlays
@@ -411,7 +411,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 361a9dacf73d
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Inconsistent auto-dismiss across scene types — victory 6s timeout vs beat scenes never auto-dismiss
@@ -473,7 +473,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 58d14e311a0e
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: CORRECTION to prior audit: storyline variant is rolled randomly every run, NOT forced to 'classic'
@@ -504,7 +504,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d042b79a10dc
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery Figure sprite is now `Red` (the_first); the `'Cyrus'` fallback at enterBattleEvent is dead
@@ -597,7 +597,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e9994d066619
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Anomaly seeds are keyed by row ID but several land on mismatched event types vs their prose

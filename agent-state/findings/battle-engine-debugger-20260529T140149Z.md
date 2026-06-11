@@ -99,7 +99,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: e264dd705b7b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Sleep off-by-one: sleepDuration=1 wakes and attacks on its first turn (0 turns lost); effective sleep is 0-2 turns not 1-3
@@ -129,7 +129,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 06c1239b57d5
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Turn-resolution catch masks any in-loop throw as "[Error: …. Turn skipped.]" — both moves abandoned, real bugs hidden (PT-001)

@@ -110,7 +110,8 @@ describe('Physical moves', () => {
   });
 
   it('Aura Wheel' + ' [110 BP Electric Physical]', async () => {
-    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Aura Wheel', 'Splash', 'Splash', 'Splash'] });
+    // Species-locked per Showdown: Aura Wheel fails for non-Morpeko users.
+    const attacker = mkMon({ species: 'Morpeko', ability: 'None', moves: ['Aura Wheel', 'Splash', 'Splash', 'Splash'] });
     const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
     const beforeHp = defender.currentHp;
     await runTurn({ playerMon: attacker, foeMon: defender });
@@ -1032,7 +1033,8 @@ describe('Physical moves', () => {
   });
 
   it('Hyperspace Fury' + ' [100 BP Dark Physical]', async () => {
-    const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Hyperspace Fury', 'Splash', 'Splash', 'Splash'] });
+    // Species-locked per Showdown: Hyperspace Fury is Hoopa-Unbound only.
+    const attacker = mkMon({ species: 'Hoopa-Unbound', ability: 'None', moves: ['Hyperspace Fury', 'Splash', 'Splash', 'Splash'] });
     const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
     const beforeHp = defender.currentHp;
     await runTurn({ playerMon: attacker, foeMon: defender });

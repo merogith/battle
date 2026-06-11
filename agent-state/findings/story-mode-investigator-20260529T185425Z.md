@@ -40,7 +40,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1ac1fa493205
 confidence: high
-status: open
+status: wontfix-ratified-memo2-flat-weak-start-by-design
 ---
 
 **Title**: City-0 starter pick is drawn from a pure-G4 (weakest tier) pool
@@ -100,7 +100,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c0b555664db0
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Empty-choices Professor path shows status but renders no body buttons
@@ -162,7 +162,7 @@ file: battle.html
 agents: []
 fingerprint: aea4e9950e8b
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Mystery swap picker mislabels BST grade as "Power tier (1-4)"
@@ -190,7 +190,7 @@ file: battle.html
 agents: []
 fingerprint: 6f7d78ccc064
 confidence: high
-status: open
+status: fixed-main
 ---
 
 **Title**: Grade badge prefix differs between prof pick cards (G#) and swap slots (T#)
@@ -252,7 +252,7 @@ file: battle.html
 agents: []
 fingerprint: d62e9395acd6
 confidence: low
-status: open
+status: fixed-main
 ---
 
 **Title**: STORY_EVENTS_RAW resolves to 67 rows in harness vs 68 stated in spec/mandate
