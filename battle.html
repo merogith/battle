@@ -46304,7 +46304,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _rp = getRivalEncounterPhase(nxId);
                     const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
                     const _tease = _rivalTease[_rp];
-                    nextLabel = `🏁 ${trAssign || 'Rival'}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
+                    // §11.1: the rolled identity (Blue/Silver/…) is never surfaced —
+                    // the hub label says "Rival" like every other rival-facing UI.
+                    nextLabel = `🏁 ${_rivalDisplayName()}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
                 }
                 else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
@@ -52698,7 +52700,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 'You conceded this round. Your rival is the better trainer until you take it back.';
             let rivalSay = '';
             try { rivalSay = getRivalAftermathLine(false, getRivalEncounterPhase(rowIdx)); } catch (e) {}
-            const who = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'Rival';
+            // §11.1: never surface the rolled identity — the concede alert
+            // attributes the line to the generic "Rival".
+            const who = _rivalDisplayName();
             const msg = rivalSay ? `${baseMsg}\n\n${who}: "${rivalSay}"` : baseMsg;
             try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
             processNextEvent();
@@ -52848,7 +52852,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Rival's spoken aftermath, standing-aware (grudging respect / concession).
                     let rivalSay = '';
                     try { rivalSay = getRivalAftermathLine(true, rp); } catch (e) {}
-                    const who = _trainerName || 'Rival';
+                    // §11.1: never surface the rolled identity (Blue/Silver/…).
+                    const who = _rivalDisplayName();
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;">${narr}</div>` +
                         (rivalSay ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${who}: "${rivalSay}"</div>` : '');
                 }
