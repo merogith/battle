@@ -2226,12 +2226,18 @@
             --sn-box-hi:     #1e2030;   /* dialog box gradient (top) */
             --sn-box-lo:     #12141e;   /* dialog box gradient (bottom) */
             --sn-muted:      #8b9bb4;   /* progress dots / sub-labels */
+            --sn-z-screen-raised:   20; /* defeat screen: above sibling screens, below all overlay tiers */
             --sn-z-scrim:         1200; /* modal alert / confirm scrim */
             --sn-z-battle-banner: 9000; /* in-battle gimmick banner */
             --sn-z-overlay:       9998; /* story narrative overlay (canonical) */
             --sn-z-spotlight:     9999; /* victory card / boss banner */
             --sn-z-toast:        10001; /* toasts ride above overlays */
         }
+        /* P0.2: deterministic layering — sibling .screen elements carry no
+           z-index, so the defeat screen's paint order vs late-mounted surfaces
+           was DOM-order luck. Pin it explicitly (still below every --sn-z-*
+           overlay tier, so VS splash / victory card / toasts ride above). */
+        #screen-story-gameover { z-index: var(--sn-z-screen-raised); }
         /* Subtle arc-progress row shown in a structured scene's banner slot —
            communicates "consequential multi-beat event, N of M" without a
            mechanical INTRO/CLIMAX caption. */
@@ -52651,6 +52657,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (e) { console.warn('[Story] retry inv save', e); }
             }
             applyMechanicsToSettings();
+            // Mirror acceptRivalLossAndContinue/retreatToLastPokemonCenter: clear
+            // the defeat screen (and any other visible screen/modal) BEFORE battle
+            // re-entry, so the VS splash never mounts over a still-visible
+            // gameover surface.
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             if (ev && ev[1] === 'Battle' && sm.currentEnemyLock && sm.currentEnemyLock.eventIdx === sm.eventIndex) {
                 // Retry replays the SAME trainer fight. The route wild / catch
