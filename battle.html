@@ -18088,6 +18088,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // foes — the Battle Frontier ladder and wild encounters. Wrap each so a
             // single bad mon entry can't crash init and strand the player on the
             // placeholder MissingNo HUD.
+            // Vibe Exchange (P2b): stamp the player-side damage multiplier for
+            // this story battle. 1 everywhere else (and when no exchange
+            // happened), so Quick Play / PvP / Frontier never see it.
+            state.banterMod = 1;
+            if (state.mode === 'story' && typeof window._storyBanterMultForCurrentBattle === 'function') {
+                try { state.banterMod = window._storyBanterMultForCurrentBattle(); } catch (e) { state.banterMod = 1; }
+            }
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
                 try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
             }
@@ -25356,6 +25363,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
                     if (typeof _storyMonHasType === 'function' && _storyMonHasType(defender, state._typeAmplifierType)) damage = Math.floor(damage * 1.15);
+                }
+                // Vibe Exchange (P2b): the pre-battle exchange shifts the PLAYER
+                // side's damage dealt by ±5% for this battle only (state.banterMod
+                // is stamped at story battle init; absent/1 everywhere else). The
+                // foe's damage path never reads it. Fixed-damage moves below
+                // override `damage` entirely, like every other post-modifier here.
+                if (state && state.mode === 'story' && isPlayer && state.banterMod && state.banterMod !== 1) {
+                    damage = Math.max(1, Math.floor(damage * state.banterMod));
                 }
                 // Final Gambit: damage = user's current HP exactly; user faints
                 if (move.name === "Final Gambit") damage = attacker.currentHp;
@@ -37243,6 +37258,119 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const k of keys) mix(k | 0);
             return (h >>> 0) / 0x100000000;
         }
+        // ── Vibe Exchange (P2b) ───────────────────────────────────────────────
+        // Pre-battle banter on regular trainer fights: the foe rolls a HIDDEN
+        // vibe; the player answers with one of four fixed styles. Matching the
+        // vibe buffs YOUR damage dealt by +5% for that battle only; each style
+        // has exactly one punishing mismatch (−5%); Stoic is the guaranteed-
+        // neutral out. The foe's numbers are NEVER touched. Picks accrue
+        // per-style counters whose leading track (with hysteresis) becomes the
+        // run's persona — bending future foe-vibe odds toward your style, the
+        // only (and indirect) mechanical effect of reputation. Every constant
+        // below is a tuning knob; user-approved 2026-06-11.
+        const BANTER_MOD = 0.05;                        // ±5% player damage dealt, one battle
+        const BANTER_FOE_BASE_WEIGHTS = { flirty: 30, positive: 30, negative: 30, silent: 10 };
+        const BANTER_TIER_THRESHOLDS = [4, 10, 18];     // picks-per-style → Tier 1/2/3
+        const BANTER_TIER_MIRROR_BONUS = [10, 20, 30];  // foe-vibe weight bonus by tier
+        const BANTER_PERSONA_LEAD = 3;                  // lead needed to acquire/steal the persona
+        // The Latin square's debuff cells — each pick has exactly ONE foe vibe
+        // that punishes it (match = buff, the remaining cell = neutral):
+        //   Flirt    vs Positive foe — they're earnest; it gets awkward.
+        //   Positive vs Negative foe — kindness steamrolled by a narcissist.
+        //   Negative vs Flirty foe   — cruel rejection; they turn vicious.
+        const BANTER_DEBUFF_VS = { flirty: 'positive', positive: 'negative', negative: 'flirty' };
+        function _banterResolve(pick, foeVibe) {
+            if (pick === 'stoic' || !foeVibe || foeVibe === 'silent') return 'neutral';
+            if (pick === foeVibe) return 'buff';
+            return BANTER_DEBUFF_VS[pick] === foeVibe ? 'debuff' : 'neutral';
+        }
+        function _banterTierFor(count) {
+            let t = 0;
+            for (const th of BANTER_TIER_THRESHOLDS) if ((count | 0) >= th) t++;
+            return t;
+        }
+        function _banterComputePersona() {
+            const s = (sm && sm.banterStats) || {};
+            const count = (k) => (s[k] | 0);
+            const keys = ['flirty', 'positive', 'negative', 'stoic'];
+            const prev = (sm && sm.banterPersona && sm.banterPersona.id) || 'wildcard';
+            let id = prev;
+            if (prev === 'wildcard' || keys.indexOf(prev) === -1) {
+                // Acquire: a clear leader by ≥ LEAD over the runner-up;
+                // otherwise the mixed player IS a persona — the Wildcard.
+                const sorted = keys.map(k => ({ k, n: count(k) })).sort((a, b) => b.n - a.n);
+                id = (sorted[0].n - sorted[1].n >= BANTER_PERSONA_LEAD) ? sorted[0].k : 'wildcard';
+            } else {
+                // Hysteresis: hold the current persona until another track
+                // overtakes it by ≥ LEAD — no flip-flopping every other fight.
+                const challenger = keys.filter(k => k !== prev)
+                    .map(k => ({ k, n: count(k) })).sort((a, b) => b.n - a.n)[0];
+                if (challenger && challenger.n - count(prev) >= BANTER_PERSONA_LEAD) id = challenger.k;
+            }
+            return { id, tier: id === 'wildcard' ? 0 : _banterTierFor(count(id)) };
+        }
+        // Foe vibe roll — seeded per (run, row): static across flee / reload.
+        // The active persona bends the odds toward its own vibe by tier (a
+        // Stoic persona attracts more silent foes — fewer exchanges offered).
+        function _banterRollFoeVibe(arrayIdx) {
+            const w = Object.assign({}, BANTER_FOE_BASE_WEIGHTS);
+            const p = (sm && sm.banterPersona) || null;
+            const tier = p ? (p.tier | 0) : 0;
+            if (p && tier > 0) {
+                const bonus = BANTER_TIER_MIRROR_BONUS[Math.min(tier, BANTER_TIER_MIRROR_BONUS.length) - 1] | 0;
+                const key = p.id === 'stoic' ? 'silent' : p.id;
+                if (w[key] != null) w[key] += bonus;
+            }
+            const order = ['flirty', 'positive', 'negative', 'silent'];
+            const total = order.reduce((n, k) => n + w[k], 0);
+            let r = _storySideRng((arrayIdx | 0) + 73, 901) * total;
+            for (const k of order) { r -= w[k]; if (r < 0) return k; }
+            return 'silent';
+        }
+        // Which battles offer the exchange: regular road/gym trainers + gym
+        // leaders + the rival. Marquee fights (E4 / Champion / Mystery Figure /
+        // Victory Road) and rows carrying an injected boss/raid beat never do —
+        // they keep their gravity (and get the static marquee entry instead).
+        function _banterEligibleForRow(arrayIdx) {
+            try {
+                const row = STORY_EVENTS_RAW[arrayIdx | 0];
+                if (!row || row[1] !== 'Battle') return false;
+                const ev = String(row[2] || '');
+                if (!/^(Basic Trainer|Gym Trainer( [12])?|Gym Leader [1-8]|Elite Trainer|Rival)$/.test(ev)) return false;
+                const beat = (typeof _injectedBattleBeatForRow === 'function') ? _injectedBattleBeatForRow(arrayIdx | 0) : null;
+                if (beat && (beat.kind === 'boss' || beat.kind === 'miniBoss' || beat.kind === 'raid' || beat.kind === 'mysteryBoss')) return false;
+                return true;
+            } catch (e) { return false; }
+        }
+        // Record one exchange: bump the style counter, stamp the per-row record
+        // (reload / retry replays the same outcome — never re-rolled), then
+        // recompute the persona. Returns 'buff' | 'debuff' | 'neutral'.
+        function _banterRecordExchange(rowId, foeVibe, pick) {
+            if (!sm.banterStats || typeof sm.banterStats !== 'object') sm.banterStats = { flirty: 0, positive: 0, negative: 0, stoic: 0 };
+            if (!sm.banterByRow || typeof sm.banterByRow !== 'object') sm.banterByRow = {};
+            const outcome = _banterResolve(pick, foeVibe);
+            sm.banterStats[pick] = (sm.banterStats[pick] | 0) + 1;
+            sm.banterByRow[rowId | 0] = { foeVibe: foeVibe, pick: pick, outcome: outcome };
+            sm.banterPersona = _banterComputePersona();
+            try { save(); } catch (e) {}
+            return outcome;
+        }
+        // Engine-side read: ×(1±BANTER_MOD) on the player's damage dealt for the
+        // CURRENT story battle. startBattle stamps it onto state.banterMod; the
+        // damage pipeline applies it to the player side only.
+        function _storyBanterMultForCurrentBattle() {
+            try {
+                if (!sm || sm.active !== true) return 1;
+                const row = STORY_EVENTS_RAW[sm.eventIndex | 0];
+                if (!row || row[1] !== 'Battle') return 1;
+                const rec = sm.banterByRow && sm.banterByRow[row[0] | 0];
+                if (!rec) return 1;
+                if (rec.outcome === 'buff') return 1 + BANTER_MOD;
+                if (rec.outcome === 'debuff') return 1 - BANTER_MOD;
+                return 1;
+            } catch (e) { return 1; }
+        }
+        window._storyBanterMultForCurrentBattle = _storyBanterMultForCurrentBattle;
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
@@ -38398,7 +38526,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // sm.routeShown (route-interstitial fire-once, keyed by battle-row eventIndex).
         // All additive; migrateStoryPreV26 seeds them and back-fills routeShown for
         // any row at/behind eventIndex so resumed saves never replay a stale route.
-        const SAVE_VER = 26;
+        const SAVE_VER = 27;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -38977,6 +39105,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
             if (sm.campReturnPoint === undefined) sm.campReturnPoint = null;
         }
+        /** v27: Vibe Exchange (banter) state. All additive — per-row exchange
+         *  records ({foeVibe, pick, outcome} keyed by row id), per-style pick
+         *  counters, and the derived persona. Older saves simply start with
+         *  empty trackers (a mid-run save begins building its persona from its
+         *  next trainer fight — no back-fill is possible or needed). */
+        function migrateStoryPreV27() {
+            if (!sm.banterByRow || typeof sm.banterByRow !== 'object') sm.banterByRow = {};
+            if (!sm.banterStats || typeof sm.banterStats !== 'object') sm.banterStats = { flirty: 0, positive: 0, negative: 0, stoic: 0 };
+            for (const k of ['flirty', 'positive', 'negative', 'stoic']) {
+                if (typeof sm.banterStats[k] !== 'number') sm.banterStats[k] = 0;
+            }
+            if (!sm.banterPersona || typeof sm.banterPersona !== 'object') sm.banterPersona = { id: 'wildcard', tier: 0 };
+        }
         /** v26: Narration overhaul travel/journal state. All additive — courier
          *  errands, the journal NPC roster, per-run recap flags, and the route
          *  interstitial fire-once ledger. The routeShown back-fill is MANDATORY:
@@ -39245,6 +39386,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    npcsMet: {},
                    journalSeen: {},
                    routeShown: {},
+                   banterByRow: {},
+                   banterStats: { flirty: 0, positive: 0, negative: 0, stoic: 0 },
+                   banterPersona: { id: 'wildcard', tier: 0 },
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -39586,6 +39730,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 26) {
                     try { migrateStoryPreV26(); } catch (e) { console.warn('[Story] v26 narration travel/journal migrate', e); }
                 }
+                if (_loadedVer < 27) {
+                    try { migrateStoryPreV27(); } catch (e) { console.warn('[Story] v27 vibe-exchange migrate', e); }
+                }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -39612,6 +39759,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.npcsMet     || typeof sm.npcsMet     !== 'object') sm.npcsMet     = {};
                 if (!sm.journalSeen || typeof sm.journalSeen !== 'object') sm.journalSeen = {};
                 if (!sm.routeShown  || typeof sm.routeShown  !== 'object') sm.routeShown  = {};
+                // v27+ vibe-exchange safety back-fills (protect a v27 save against
+                // a dropped field; the migration only fires for _loadedVer < 27).
+                try { migrateStoryPreV27(); } catch (e) {}
                 // Mirror-self HoF snapshot (additive, no SAVE_VER bump). Old saves that
                 // already reached the Hall of Fame have no snapshot → the Mystery Figure
                 // team builder falls back to the legacy live-team mirror path.
@@ -42203,6 +42353,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pickTrack: (pool) => _pickTrack(pool),
                     migratePreV22: () => migrateStoryPreV22(),
                     migratePreV26: () => migrateStoryPreV26(),
+                    migratePreV27: () => migrateStoryPreV27(),
+                    // Vibe Exchange (v27) test handles.
+                    get BANTER_MOD() { return BANTER_MOD; },
+                    get BANTER_TIER_THRESHOLDS() { return BANTER_TIER_THRESHOLDS; },
+                    get BANTER_TIER_MIRROR_BONUS() { return BANTER_TIER_MIRROR_BONUS; },
+                    get BANTER_PERSONA_LEAD() { return BANTER_PERSONA_LEAD; },
+                    banterResolve: (...a) => _banterResolve(...a),
+                    banterTierFor: (...a) => _banterTierFor(...a),
+                    banterComputePersona: () => _banterComputePersona(),
+                    banterRollFoeVibe: (...a) => _banterRollFoeVibe(...a),
+                    banterEligibleForRow: (...a) => _banterEligibleForRow(...a),
+                    banterRecordExchange: (...a) => _banterRecordExchange(...a),
+                    storyBanterMultForCurrentBattle: () => _storyBanterMultForCurrentBattle(),
                     // Narration overhaul (v26) test handles.
                     get ROUTE_LINES() { return ROUTE_LINES; },
                     get STORY_ERRANDS() { return STORY_ERRANDS; },
@@ -43726,6 +43889,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 tracks: { main: 'classic_v2', villain: _pickTrack(VILLAIN_TRACKS), extra: _pickTrack(EXTRA_TRACKS) },
                 storyEventsFired: {},
                 stats: { battlesLost: 0 },
+                // Vibe Exchange (v27): per-row exchange records + per-style pick
+                // counters + the derived persona. Fresh runs start unwritten.
+                banterByRow: {},
+                banterStats: { flirty: 0, positive: 0, negative: 0, stoic: 0 },
+                banterPersona: { id: 'wildcard', tier: 0 },
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
