@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-11T08:04:49.118Z
+> **Generated**: 2026-06-11T18:10:18.421Z
 > **Source**: `agent-state/findings/*.md` (445 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1413,7 +1413,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1ebee7303e60
 confidence: high
-status: open
+status: wontfix-ratified-memo9-difficulty-blind-ai-is-the-product
 ---
 
 **Title**: Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall
@@ -6758,7 +6758,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1b994537ce76
 confidence: high
-status: open
+status: wontfix-ratified-memo9-sleep-mechanics-showdown-faithful
 ---
 
 **Title**: No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk)
@@ -6795,7 +6795,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 607fa56cad8d
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: When every damaging move is immune (score 0), AI throws a 0-dmg attack instead of switching/using status
@@ -8072,7 +8072,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1ac1fa493205
 confidence: high
-status: open
+status: wontfix-ratified-memo2-flat-weak-start-by-design
 ---
 
 **Title**: City-0 starter pick is drawn from a pure-G4 (weakest tier) pool
@@ -10792,7 +10792,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a2bb5974a473
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Safari curve key [3] ("first unlock") is dead code — Safari actually unlocks at 4 badges, so first visit uses the harsher [4] curve
@@ -11117,7 +11117,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: c5bc08173c0c
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Redundant tier branches in `_storyBuildTierForEvent` (dead duplicate conditions)
@@ -11225,7 +11225,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8909d73d953d
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Basic Trainer build-tier ladder collapses at Stage 2 — same tier as Gym Trainers despite the "one tier below" comment
@@ -11997,7 +11997,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 20628d0fad96
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Extra-raid stat scaling compounds `_storyStatMult` × `_bossStatMult` × `_bossHpScale`; the doc comment omits `_storyStatMult`
@@ -13176,7 +13176,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d751963ad1f8
 confidence: low
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Featured Mega/Ultra stones (bought one-per-city at 5x/3x) are sellable from the bag at half list price
@@ -16882,7 +16882,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8b9a943876e8
 confidence: low
-status: open
+status: wontfix-ratified-memo1-hard-parity-by-design
 ---
 
 **Title**: Hard mode still earns less gold per fight than Normal (1.00 vs 1.30) despite facing 1.15x-stronger foes — residual difficulty/economy asymmetry

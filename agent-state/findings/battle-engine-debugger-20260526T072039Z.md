@@ -100,7 +100,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 607fa56cad8d
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: When every damaging move is immune (score 0), AI throws a 0-dmg attack instead of switching/using status

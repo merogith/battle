@@ -257,7 +257,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 20628d0fad96
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Extra-raid stat scaling compounds `_storyStatMult` × `_bossStatMult` × `_bossHpScale`; the doc comment omits `_storyStatMult`

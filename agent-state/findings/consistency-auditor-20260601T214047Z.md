@@ -211,7 +211,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: c5bc08173c0c
 confidence: medium
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Redundant tier branches in `_storyBuildTierForEvent` (dead duplicate conditions)

@@ -40,7 +40,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1ac1fa493205
 confidence: high
-status: open
+status: wontfix-ratified-memo2-flat-weak-start-by-design
 ---
 
 **Title**: City-0 starter pick is drawn from a pure-G4 (weakest tier) pool

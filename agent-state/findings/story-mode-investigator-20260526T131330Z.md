@@ -217,7 +217,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8909d73d953d
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Basic Trainer build-tier ladder collapses at Stage 2 — same tier as Gym Trainers despite the "one tier below" comment

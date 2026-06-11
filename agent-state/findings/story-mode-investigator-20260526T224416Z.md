@@ -68,7 +68,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: a2bb5974a473
 confidence: high
-status: open
+status: fixed-claude/gifted-fermat-yfnqq5
 ---
 
 **Title**: Safari curve key [3] ("first unlock") is dead code — Safari actually unlocks at 4 badges, so first visit uses the harsher [4] curve
@@ -170,7 +170,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8b9a943876e8
 confidence: low
-status: open
+status: wontfix-ratified-memo1-hard-parity-by-design
 ---
 
 **Title**: Hard mode still earns less gold per fight than Normal (1.00 vs 1.30) despite facing 1.15x-stronger foes — residual difficulty/economy asymmetry

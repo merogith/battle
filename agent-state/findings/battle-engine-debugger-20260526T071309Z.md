@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1ebee7303e60
 confidence: high
-status: open
+status: wontfix-ratified-memo9-difficulty-blind-ai-is-the-product
 ---
 
 **Title**: Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall
@@ -39,7 +39,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 1b994537ce76
 confidence: high
-status: open
+status: wontfix-ratified-memo9-sleep-mechanics-showdown-faithful
 ---
 
 **Title**: No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk)

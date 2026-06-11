@@ -15581,8 +15581,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // too, so effective raid HP ≈ _bossStatMult × _bossHpScale × base (at maxParty 6:
             // 1.3 × 5 ≈ 6.5× base HP, NOT the bare ×5 that _bossHpScale alone implies). That
             // total is a balance number (user-owned, tunable); this block is deliberately
-            // honest about the compounding. Kept off _storyStatMult because enterBattleEvent
-            // overwrites that field on every rolled team member.
+            // honest about the compounding. Since 2026-06-11 (memo #8) raid builds are
+            // SKIPPED by enterBattleEvent's _storyStatMult stamp, so these two knobs are
+            // the only scaling layers on a raid boss — no third generic-curve multiplier.
             if (build && monName !== 'Shedinja') {
                 if (typeof build._bossStatMult === 'number' && build._bossStatMult > 1) {
                     const bm = build._bossStatMult;
@@ -21243,6 +21244,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let willDieFirst = outsped && threat >= attacker.currentHp;
     // Are we walled? (low-damage AND opponent isn't already low enough that we can chip-finish)
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
+    // All-immune skip (maintainer-approved 2026-06-11, memo #9): an attacker whose
+    // EVERY damaging move is type/ability-immune against the defender, with no
+    // usable status move, can never accomplish anything by staying — getBestMove's
+    // scores all collapse to 0 and it spams 0-damage attacks. Treat that as an
+    // unconditional switch trigger (no HP gate, no boost hold). Mons with a live
+    // status move keep the normal walled logic — stall value is real.
+    const allImmune = myBestDmg === 0
+        && _evalMoves.some(m => m && m.cat !== "Status" && m.pp > 0)
+        && !_evalMoves.some(m => m && m.cat === "Status" && m.pp > 0);
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
     // Do we have priority that KOs? (Restricted to the locked move when choice-locked.)
@@ -21251,13 +21261,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     // Never switch if we can KO (unless priority covers it)
     if (canKO && !willDieFirst) return null;
     if (hasPriorityKO) return null;
-    // Don't switch if boosted significantly
-    if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst) return null;
+    // Don't switch if boosted significantly (boosts are worthless if we're all-immune)
+    if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst && !allImmune) return null;
 
     // Switch when we're losing the current matchup: either outsped+KO'd, or walled while still healthy enough
     // to come back later. The earlier "predicted-switch-into-bench-counter" clause caused over-switching when
     // the AI was actually winning — a bench resist isn't a reason to abandon a position you're ahead in.
-    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35);
+    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35) || allImmune;
 
     if (shouldSwitch) {
         let switchTo = aiBestSwitch(bench, defender);
@@ -21276,8 +21286,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // switching just burns a turn (and possibly entry-hazard chip) without breaking the wall.
             // aiBestSwitch always returns a best-of-bench, so the AI was cycling its whole team
             // against a single wall-breaker. Hold position and chip / status instead.
+            // Exception: an all-immune attacker has NO chip — any nonzero-damage bench mon
+            // is strictly better than staying, so the hold doesn't apply.
             let switchTargetWalled = newBestDmg < defender.maxHp * 0.08 && newBestDmg < defender.currentHp * 0.12;
-            if (walled && switchTargetWalled && !willDieFirst) return null;
+            if (walled && switchTargetWalled && !willDieFirst && !(allImmune && newBestDmg > 0)) return null;
 
             // Switch if the new mon is meaningfully better, or if we're dying anyway
             if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) return switchIdx;
@@ -36082,6 +36094,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'easy') return 1.50;
             if (diff === 'veryeasy') return 1.60;
             // Hard/Challenge used to pay below parity while late-game prices spike; floored at parity so the coin curve stops fighting the difficulty curve.
+            // Maintainer-ratified 2026-06-11 (memo #1): hard stays at 1.00.
             if (diff === 'hard') return 1.00;
             if (diff === 'challenge') return 1.10;
             return 1;
@@ -36102,6 +36115,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // safe extrapolation — the spec has no professor past C6, and C8 is the Mystery
         // Figure (overridden by mystery mode), C9 the League legendary gate.
         const PROF_ROLLS = [
+          // C0 = 100% G4 is maintainer-ratified (2026-06-11, memo #2): the
+          // flat-weakest start is a deliberate curve anchor, not an oversight.
           {g1:0,  g2:0,  g3:0,   g4:100}, // C0 — pure G4 basic
           {g1:0,  g2:0,  g3:20,  g4:80 }, // C1
           {g1:0,  g2:0,  g3:40,  g4:60 }, // C2
@@ -40863,8 +40878,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Rival follows the stage of the badges they're encountered at.
                 // Mid-game rivals (row 12, 39) hit at badges 2 and 5 — Stage 2 and Stage 3 mid.
                 // The league Rival (row 65, badges 8+) is T4 via the earlier b>=8 short-circuit.
-                if (b >= 7) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 — T3, T4 via b>=8 above
-                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
+                // Intentionally flat from badge 5 through 7 (maintainer-ratified
+                // 2026-06-11, memo #5): the rival plateaus at T3 for all of
+                // Stage 3 and only jumps to T4 via the b>=8 short-circuit.
+                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 — T3
                 if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
@@ -40900,8 +40917,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Basic Trainer') {
                 // Route fodder sits one tier below the gym trainer of the same
                 // stage so the player has a clear "wild trainer < gym staff <
-                // gym leader" ladder within each stage.
-                if (b >= 5) return STORY_BUILD_TIER.NOVICE;
+                // gym leader" ladder within each stage. Intentionally flat at
+                // T2 from badge 2 onward (maintainer-ratified 2026-06-11,
+                // memo #5): route fodder never scales past NOVICE.
                 if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
@@ -45373,6 +45391,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _applyBossPhaseEffect(stateRef, foeMon, effect, magnitude) {
             switch (effect) {
                 case 'heal': {
+                    // Once per battle by construction (maintainer-ratified
+                    // 2026-06-11, memo #7): the hp_<at> fired-key in
+                    // _bossMechanicsFired is set at trigger time and never
+                    // resets mid-battle, so this is a single "second wind",
+                    // not a loop — even across boss switch-ins.
                     const amt = Math.floor((foeMon.maxHp || 0) * (magnitude || 0.25));
                     foeMon.currentHp = Math.min(foeMon.maxHp, (foeMon.currentHp | 0) + amt);
                     break;
@@ -52077,7 +52100,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // trainer foe is scaled — no second pass can compound on top.
                     const _enemyMult = _storyEnemyStatMult(event, _enemyCity, idx)
                                      * _foeDifficultyMult((sm && sm.storyDifficulty) || 'normal');
-                    for (const s of enemyTeam) if (s && s.build) s.build._storyStatMult = _enemyMult;
+                    for (const s of enemyTeam) {
+                        if (!s || !s.build) continue;
+                        // Raid / miniRaid bosses are tuned ONLY by their own two
+                        // knobs (_bossStatMult × _bossHpScale) — maintainer
+                        // decision 2026-06-11 (memo #8): the generic story curve
+                        // must not stack a third multiplier on top.
+                        if (s.build._bossStatMult > 1 || s.build._bossHpScale > 1) continue;
+                        s.build._storyStatMult = _enemyMult;
+                    }
                 } catch (_e) {}
                 try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
@@ -53349,25 +53380,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 10 encounters / 10 Safari Balls.
         const SAFARI_ENTRY_COST = 10000;
         const SAFARI_MAX_ENCOUNTERS = 10;
-        // v19 stage-gated Safari curve. Safari unlocks at City 4 (badges 3),
-        // and the player shouldn't see G1 legendaries until they're deep in
-        // Stage 3 (post-GL6). G2 only emerges meaningfully after the unlock
-        // so the first visit reads as "a real chance at a strong G3" rather
-        // than "a 17% chance per session at Zapdos." Pre-v19 was static
-        // {g1:3,g2:22,g3:50,g4:25}.
+        // v19 stage-gated Safari curve. Safari debuts at City 5 (badges 4,
+        // see FACILITY_DEBUT_CITY), and the player shouldn't see G1
+        // legendaries until they're deep in Stage 3 (post-GL6). G2 only
+        // emerges meaningfully after the unlock so the first visit reads as
+        // "a real chance at a strong G3" rather than "a 17% chance per
+        // session at Zapdos." Pre-v19 was static {g1:3,g2:22,g3:50,g4:25}.
+        // Maintainer decision 2026-06-11 (memo #3): table re-keyed +1 badge —
+        // the original was keyed for a C4 debut that never shipped, so its
+        // gentlest row was unreachable and the debut visit ran one row hot.
         const _SAFARI_GRADE_CURVE_BY_BADGES = {
-            3: { g1: 0, g2: 5,  g3: 60, g4: 35 },  // first unlock @ City 4
-            4: { g1: 0, g2: 15, g3: 60, g4: 25 },  // post-G4 — G2 emerging
-            5: { g1: 0, g2: 25, g3: 60, g4: 15 },  // post-G5 — G2 ramping
-            6: { g1: 1, g2: 35, g3: 54, g4: 10 },  // post-G6 — first G1 leak
-            7: { g1: 2, g2: 45, g3: 45, g4: 8  },  // post-G7
-            8: { g1: 5, g2: 50, g3: 40, g4: 5  }   // post-G8 / Crucible re-entry
+            4: { g1: 0, g2: 5,  g3: 60, g4: 35 },  // debut visit @ City 5
+            5: { g1: 0, g2: 15, g3: 60, g4: 25 },  // post-G5 — G2 emerging
+            6: { g1: 0, g2: 25, g3: 60, g4: 15 },  // post-G6 — G2 ramping
+            7: { g1: 1, g2: 35, g3: 54, g4: 10 },  // post-G7 — first G1 leak
+            8: { g1: 2, g2: 45, g3: 45, g4: 8  }   // post-G8 / Crucible re-entry
         };
         function _safariGradeWeightsForBadges() {
             const b = Math.max(0, Math.min(8, (sm && sm.badges) | 0));
-            // Pre-unlock (badges 0-2) is unreachable in normal flow; fall back
-            // to the first-unlock curve so the engine never NaNs.
-            if (b < 3) return _SAFARI_GRADE_CURVE_BY_BADGES[3];
+            // Pre-unlock (badges 0-3) is unreachable in normal flow; fall back
+            // to the debut curve so the engine never NaNs.
+            if (b < 4) return _SAFARI_GRADE_CURVE_BY_BADGES[4];
             return _SAFARI_GRADE_CURVE_BY_BADGES[b];
         }
         async function enterSafariZone() {
@@ -58477,6 +58510,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     bagEl.appendChild(div);
                     return;
                 }
+                // Featured Mega/Ultra stones are progression items (one purchase
+                // per city, the city lock survives a sale) — sell-locked like
+                // PERM_BOOST_IDS so a needed stone can't be sold by accident.
+                // Maintainer decision 2026-06-11 (memo #10).
+                if (typeof item.id === 'string' && (item.id.startsWith('mega_') || item.id.startsWith('ultra_'))) {
+                    div.innerHTML = icon + `<div class="story-bag-item-text">
+                        <div class="name">${item.name}</div>
+                        <div class="qty">×${qty}</div>
+                        <div class="eff">${item.desc}</div>
+                    </div>`;
+                    bagEl.appendChild(div);
+                    return;
+                }
                 div.innerHTML = icon + `<div class="story-bag-item-text">
                     <div class="name">${item.name}</div>
                     <div class="qty">×${qty}</div>
@@ -58504,6 +58550,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
             // Perm-boost vitamins are earned-only and never sellable.
             if (PERM_BOOST_IDS.has(itemId)) return;
+            // Featured Mega/Ultra stones are sell-locked progression items
+            // (memo #10, 2026-06-11) — backstop for the hidden Sell button.
+            if (typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'))) return;
             sm.inventory[itemId]--;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
             sm.gold += sellPrice;
@@ -65826,6 +65875,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pcSectionHtml: typeof _evoLabPcSectionHtml === 'function' ? _evoLabPcSectionHtml : null,
                     npcStage: typeof _npcStage === 'function' ? (k) => _npcStage(k) : null,
                     setPcOpenId: (id) => { _storyEvoLabPcOpenId = id; },
+                    safariGradeWeightsForBadges: typeof _safariGradeWeightsForBadges === 'function' ? () => _safariGradeWeightsForBadges() : null,
                     get sm() { return sm; },
                     set sm(v) { sm = v; },
                 };
