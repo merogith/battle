@@ -52723,6 +52723,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
+        // Victory card input-arm (P0.1): the card no longer auto-closes (the old
+        // 6s timer + click-anywhere dismiss made rewards unreadable). Dismissal
+        // is Continue / Enter / Esc only, and input is ignored for the first
+        // ~400ms so taps/keys still buffered from the battle's final exchange
+        // can't blow the card away. Tests zero the window via __victoryInputArmMs.
+        const VICTORY_INPUT_ARM_MS = 400;
         function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx, rewardLines) {
             const ov = document.createElement('div');
             ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
@@ -52739,10 +52745,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             contBtn.textContent = 'Continue →';
             contBtn.style.cssText = 'margin-top:8px;padding:10px 24px;position:relative;z-index:3;';
             let finished = false;
+            const _armMs = (typeof window.__victoryInputArmMs === 'number')
+                ? window.__victoryInputArmMs : VICTORY_INPUT_ARM_MS;
+            const _armAt = Date.now() + _armMs;
             const dismiss = () => {
                 if (finished) return;
+                if (Date.now() < _armAt) return; // buffered-input guard
                 finished = true;
-                clearTimeout(autoClose);
                 document.removeEventListener('keydown', escListener);
                 if (ov.parentElement) ov.remove();
                 // Defensive: cb() advances story flow (processNextEvent → enterBattleEvent → startBattle).
@@ -52758,7 +52767,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
             };
             document.addEventListener('keydown', escListener);
-            const autoClose = setTimeout(dismiss, 6000);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
             const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
@@ -52867,7 +52875,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const conf = ov.querySelector('.story-fx-confetti');
             storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
             ov.appendChild(contBtn);
-            ov.onclick = () => dismiss();
             document.body.appendChild(ov);
             // Focus the Continue button so Enter dismisses immediately and SR
             // users hear "Continue → button, dialog 'VICTORY!'". Defer one tick

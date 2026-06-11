@@ -59,6 +59,7 @@ async function boot() {
     pretendToBeVisual: true,
     beforeParse(window) {
       window.__testHarness = true;
+      window.__victoryInputArmMs = 0; // P0.1 buffered-input guard: off under the harness
       window.fetch = makeFetchStub();
 
       // Stub canvas + media + anime + supabase + service worker
@@ -244,8 +245,17 @@ async function forceWinCurrentBattle(window, ctx) {
     record('error', 'battle.onBattleEnd', `${e.message} for event ${event}`, ctx);
     return false;
   }
-  // showVictoryOverlay setTimeout(autoclose, 6000) -> our patched setTimeout fires at 0ms.
+  // The victory card no longer auto-closes (P0.1): dismiss it explicitly via
+  // its Continue button (arm window is zeroed in beforeParse).
   await tick(window);
+  try {
+    const dialogs = [...window.document.querySelectorAll('div[role="dialog"]')]
+      .filter(d => /^victory/i.test(d.getAttribute('aria-label') || ''));
+    for (const d of dialogs) {
+      const cont = [...d.querySelectorAll('button')].find(b => /Continue/.test(b.textContent || ''));
+      if (cont) cont.click();
+    }
+  } catch (e) {}
   await tick(window);
   return true;
 }

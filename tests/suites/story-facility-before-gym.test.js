@@ -173,6 +173,7 @@ test('gym is gated behind facility tier-ups, then opens once they are seen', () 
 // ── Item 4 — reward lines render on the victory card ──────────────────────────
 test('victory card shows the reward lines (loot is no longer buried behind the overlay)', () => {
   setSm({ gold: 1711, badges: 4 });
+  W.__victoryInputArmMs = 0; // P0.1 buffered-input guard: off so the click below lands
   const rewardLines = ['💊 Loot: +2 Protein, +1 Iron', '🏋️ EV training · +6 EVs to each of your 3 Pokémon'];
   ST.showVictoryOverlay('VICTORY!', 1711, false, () => {}, 'Basic Trainer', 5, rewardLines);
 
@@ -181,7 +182,7 @@ test('victory card shows the reward lines (loot is no longer buried behind the o
   assert.ok(ov.innerHTML.includes('💊 Loot: +2 Protein, +1 Iron'), 'vitamin loot shows on the card');
   assert.ok(ov.innerHTML.includes('EV training'), 'EV training shows on the card');
 
-  // Dismiss to clear the auto-close timer and detach the overlay.
+  // Dismiss via Continue to detach the overlay (no auto-close exists anymore).
   const btn = ov.querySelector('button');
   if (btn) btn.click();
   assert.ok(!W.document.querySelector('div[role="dialog"][aria-label="VICTORY!"]'), 'overlay removed on dismiss');
