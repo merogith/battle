@@ -59,6 +59,8 @@ async function boot() {
     pretendToBeVisual: true,
     beforeParse(window) {
       window.__testHarness = true;
+      window.__victoryInputArmMs = 0; // P0.1 buffered-input guard: off under the harness
+      window.__vsInputArmMs = 0;      // P2a VS-intro buttons: same
       window.fetch = makeFetchStub();
 
       // Stub canvas + media + anime + supabase + service worker
@@ -227,8 +229,25 @@ async function fillTeamFromProfessor(window, max=6) {
   }
 }
 
+// P2a: eligible trainer fights open the interactive Vibe Exchange (pick →
+// reaction → Battle!) instead of the timed splash, and league fights show a
+// marquee card with a Continue button. Pick Stoic (the guaranteed-neutral
+// out) and click through so battle entry completes and the entry-busy flag
+// releases. No-op when only the legacy timed splash is present.
+async function playThroughVsIntro(window) {
+  for (let g = 0; g < 4; g++) {
+    const doc = window.document;
+    const stoic = doc.querySelector('button[data-vs2-pick="stoic"]');
+    if (stoic) { stoic.click(); await tick(window); }
+    const battle = doc.querySelector('button[data-vs2-battle="1"]');
+    if (battle) { battle.click(); await tick(window); continue; }
+    if (!stoic) break;
+  }
+}
+
 async function forceWinCurrentBattle(window, ctx) {
   // The cleanest way: call onBattleEnd(true) directly with the event's name.
+  await playThroughVsIntro(window);
   const sm = window.StoryMode.state;
   if (!sm) return false;
   const ev = window.STORY_EVENTS_RAW[sm.eventIndex];
@@ -244,8 +263,17 @@ async function forceWinCurrentBattle(window, ctx) {
     record('error', 'battle.onBattleEnd', `${e.message} for event ${event}`, ctx);
     return false;
   }
-  // showVictoryOverlay setTimeout(autoclose, 6000) -> our patched setTimeout fires at 0ms.
+  // The victory card no longer auto-closes (P0.1): dismiss it explicitly via
+  // its Continue button (arm window is zeroed in beforeParse).
   await tick(window);
+  try {
+    const dialogs = [...window.document.querySelectorAll('div[role="dialog"]')]
+      .filter(d => /^victory/i.test(d.getAttribute('aria-label') || ''));
+    for (const d of dialogs) {
+      const cont = [...d.querySelectorAll('button')].find(b => /Continue/.test(b.textContent || ''));
+      if (cont) cont.click();
+    }
+  } catch (e) {}
   await tick(window);
   return true;
 }
@@ -409,9 +437,10 @@ async function runStory(window) {
         break;
       }
       await tick(window);
-      // proceedToNextBattle calls enterBattleEvent which calls showBattleIntro
-      // with a setTimeout. Our patched setTimeout fires at 0, so the battle starts.
-      // Now force-win.
+      // proceedToNextBattle calls enterBattleEvent which calls showBattleIntro:
+      // legacy splash fires via our patched 0ms setTimeout; the interactive
+      // exchange / marquee paths are clicked through explicitly.
+      await playThroughVsIntro(window);
       sm = window.StoryMode.state;
       const ev2 = window.STORY_EVENTS_RAW[sm.eventIndex];
       if (ev2 && ev2[1] === 'Battle') {

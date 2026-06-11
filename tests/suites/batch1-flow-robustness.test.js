@@ -6,8 +6,9 @@
 //     fight-launch guard — egg-only used to advance eventIndex then bounce).
 //  3. _daycareDropOff last-fighter re-check (handler is directly callable;
 //     only the BUTTON was gated before).
-//  4. Victory overlay: milestone (gotBadge) overlays no longer auto-dismiss;
-//     routine overlays still auto-advance on a content-scaled timer.
+//  4. (removed) Victory-overlay auto-advance: superseded by the P0.1 redesign
+//     on main — NO card auto-closes now. Contract lives in
+//     victory-overlay-dismiss-v27.test.js (incl. a no-autoClose source guard).
 //  5. End-of-turn residual isolation: a throwing residual effect no longer
 //     aborts the turn tail into the generic "[... Turn skipped.]" catch, and
 //     window._lastTurnError records what failed.
@@ -91,34 +92,6 @@ test('_daycareDropOff refuses to take the last party fighter', () => {
         assert.ok(!sm.team[0].isEgg, 'no egg replaced the last fighter');
         assert.ok(alerts.some(m => /battle-ready/i.test(m)), 'player is told why');
     } finally { window.showGameAlert = origAlert; restoreSm(snap); }
-});
-
-test('victory overlay: milestone holds for explicit Continue; routine auto-advances', async () => {
-    const snap = snapshotSm();
-    try {
-        sm.gold = 1000; sm.badges = 1;
-        // Milestone (gotBadge=true): no auto-close. Wait past the old 6s yank.
-        let milestoneAdvanced = 0;
-        T.showVictoryOverlay('VICTORY!', 100, true, () => { milestoneAdvanced++; }, 'Gym Leader 1', 5, []);
-        await new Promise(r => setTimeout(r, 6800));
-        assert.equal(milestoneAdvanced, 0, 'milestone overlay must NOT auto-advance (old code yanked at 6s)');
-        const overlay = window.document.querySelector('[role="dialog"][aria-label="VICTORY!"]');
-        assert.ok(overlay, 'milestone overlay still on screen');
-        // Explicit Continue still works.
-        const btn = Array.from(overlay.querySelectorAll('button')).find(b => /Continue/.test(b.textContent));
-        btn.click();
-        assert.equal(milestoneAdvanced, 1, 'Continue advances exactly once');
-        assert.ok(!overlay.parentElement, 'overlay removed after Continue');
-
-        // Routine (gotBadge=false): auto-advances on the content-scaled timer.
-        let routineAdvanced = 0;
-        T.showVictoryOverlay('VICTORY!', 50, false, () => { routineAdvanced++; }, null, null, []);
-        const deadline = Date.now() + 14000;
-        while (routineAdvanced === 0 && Date.now() < deadline) {
-            await new Promise(r => setTimeout(r, 250));
-        }
-        assert.equal(routineAdvanced, 1, 'routine overlay still auto-advances (content-scaled timer)');
-    } finally { restoreSm(snap); }
 });
 
 test('a throwing end-of-turn residual no longer skips the turn tail', async () => {

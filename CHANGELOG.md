@@ -3,6 +3,29 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Build-generation engine & early-game balance (branch claude/jolly-lovelace-gwa2b7)
+
+Story-mode (normal) balance pass focused on enemy/player build generation and the
+early-game curve. Out-of-scope modes (Quick Play / PvP / draft) are unchanged — every new
+path is gated behind an active story run or an opt-in flag.
+
+- **No more early power spikes.** Added an early-game enemy **grade ceiling** that tracks
+  your evolution availability — enemies can't field a G3 (evolved-tier) Pokémon before
+  City 2, where the Evolution Tutor opens. Fixes the "a fully-evolved tank shows up at Gym
+  1" cases (e.g. Lapras). Grade then opens to G2 by mid-game and unrestricted from City 6.
+- **No more weak/odd enemy sets.** Enemy Smogon sets are now picked by **competitive power
+  scaled to the stage**: humble early, and **only very good sets in the Elite Four, Champion,
+  and everything after** — so a Champion never rolls a weak set, and mid-game trainers stop
+  rolling unviable ones.
+- **No more "Tackle from a Gym 6 leader."** Designed builds that ran short on moves used to
+  pad with literal Tackle; they now fill the species' typed STAB.
+- **Livelier, more coherent builds.** A new data-driven **archetype engine** gives designed
+  builds (enemy *and* your wild catches) real move distributions (STAB / coverage / status /
+  setup / recovery / hazard), **combo synergy** (Protect+Toxic, Rest+Sleep Talk, …), and
+  **stat-sensitive EV spreads** instead of a frozen 252/252 + greedy four attacks.
+- **Smoother mid-game.** City 5 steps up slightly (foe stat curve 1.00 → 1.03) so Gyms 4→5→6
+  read as a gradual climb instead of three identical fights.
+
 ## 1.4.0 — Narration system, facility polish, party UI, Evolution Tutor & engine fixes 2026-06-03
 
 ### Story narration system — all 198 scenes converted to structured acts

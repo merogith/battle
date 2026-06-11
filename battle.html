@@ -2226,12 +2226,67 @@
             --sn-box-hi:     #1e2030;   /* dialog box gradient (top) */
             --sn-box-lo:     #12141e;   /* dialog box gradient (bottom) */
             --sn-muted:      #8b9bb4;   /* progress dots / sub-labels */
+            --sn-z-screen-raised:   20; /* defeat screen: above sibling screens, below all overlay tiers */
             --sn-z-scrim:         1200; /* modal alert / confirm scrim */
             --sn-z-battle-banner: 9000; /* in-battle gimmick banner */
             --sn-z-overlay:       9998; /* story narrative overlay (canonical) */
             --sn-z-spotlight:     9999; /* victory card / boss banner */
             --sn-z-toast:        10001; /* toasts ride above overlays */
         }
+        /* P0.2: deterministic layering — sibling .screen elements carry no
+           z-index, so the defeat screen's paint order vs late-mounted surfaces
+           was DOM-order luck. Pin it explicitly (still below every --sn-z-*
+           overlay tier, so VS splash / victory card / toasts ride above). */
+        #screen-story-gameover { z-index: var(--sn-z-screen-raised); }
+        /* P2d: compact defeat card — one framed panel instead of loose floating
+           text. Children keep their legacy inline styles; only the shell is new. */
+        .story-defeat-card {
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+            width: 100%; max-width: 480px; padding: 22px 26px 24px;
+            background: linear-gradient(180deg, rgba(26,10,12,0.96) 0%, rgba(12,6,8,0.97) 100%);
+            border: 2px solid #6e2a2a;
+            box-shadow: inset -3px -3px 0 0 #1a0a0c, inset 3px 3px 0 0 #3a1418, 0 14px 44px rgba(0,0,0,0.8);
+        }
+        .story-defeat-head { display: flex; flex-direction: column; align-items: center; padding-bottom: 6px; }
+        .story-defeat-head h1 { text-shadow: 0 0 16px rgba(244,67,54,0.45), 0 2px 4px rgba(0,0,0,0.9); }
+        /* P4: structured victory card — shares the end-card framing language
+           with .story-defeat-card above (same inset bevel + drop shadow),
+           keyed gold instead of red. */
+        .story-victory-v2-card {
+            position: relative; z-index: 2;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            width: 100%; max-width: 440px; padding: 20px 24px 22px;
+            background: linear-gradient(180deg, rgba(24,20,8,0.96) 0%, rgba(12,10,5,0.97) 100%);
+            border: 2px solid #8a7330;
+            box-shadow: inset -3px -3px 0 0 #14100a, inset 3px 3px 0 0 #3a3014, 0 14px 44px rgba(0,0,0,0.8);
+        }
+        .story-victory-v2-head { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 2px; }
+        .story-victory-v2-title { font-size: 28px; color: #ffd700; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 18px rgba(255,213,79,0.4), 0 2px 4px rgba(0,0,0,0.9); }
+        .story-victory-v2-medallion { font-size: 40px; line-height: 1; filter: drop-shadow(0 0 14px rgba(255,213,79,0.6)); }
+        .story-victory-v2-milestone { font-size: 15px; color: #4caf50; }
+        .story-victory-v2-quote {
+            display: flex; flex-direction: column; gap: 8px; align-items: center;
+            padding: 10px 14px; width: 100%; box-sizing: border-box;
+            background: rgba(0,0,0,0.32); border-left: 3px solid #8a7330;
+        }
+        .story-victory-v2-gold { display: flex; align-items: baseline; gap: 14px; font-size: 14px; color: #ffeb3b; }
+        .story-victory-v2-gold-total { font-size: 12px; color: #888; }
+        .story-victory-v2-rewards { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 392px; }
+        .story-victory-v2-line { width: 100%; font-size: 12px; color: #d7c98a; line-height: 1.4; text-align: center; }
+        .story-victory-v2-chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+            font-size: 11px; color: #e7d6a3; background: rgba(28,22,8,0.6); border: 1px solid #5a4a22;
+        }
+        .story-victory-v2-chip img { image-rendering: pixelated; }
+        .story-victory-v2-next { margin-top: 2px; }
+        .story-victory-v2-continue {
+            font-family: var(--battle-font) !important; font-weight: bold; letter-spacing: 0.04em;
+            color: #ffe9a3; background: linear-gradient(180deg, #2a2310 0%, #191307 100%);
+            border: 2px solid #8a7330; cursor: pointer;
+            box-shadow: inset -2px -2px 0 #14100a, inset 2px 2px 0 #3a3014;
+        }
+        .story-victory-v2-continue:hover { border-color: #ffd54f; color: #fff3c4; }
+        body.is-mobile .story-victory-v2-card { max-width: 94vw; padding: 16px 14px 18px; }
         /* Subtle arc-progress row shown in a structured scene's banner slot —
            communicates "consequential multi-beat event, N of M" without a
            mechanical INTRO/CLIMAX caption. */
@@ -2821,6 +2876,76 @@
             .vs-fighter-player, .vs-fighter-foe, .vs-glyph, .vs-intro-dialog { animation: none !important; }
             .vs-flash { display: none !important; }
         }
+        /* ── Vibe Exchange + Marquee Entry (P2a) ───────────────────────────────
+           The interactive pre-battle exchange and the static marquee title card
+           share the VS splash's stage/fighter/accent system above. Buttons are
+           input-armed in JS (~400ms) against buffered taps. */
+        .vs2-pick-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 560px; width: 100%; }
+        .vs2-pick-btn {
+            flex: 1 1 240px; display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+            background: linear-gradient(180deg, #1a1d2a 0%, #10121a 100%);
+            border: 2px solid #4a4f5e; color: var(--text-color); cursor: pointer;
+            font-family: var(--battle-font) !important; font-size: 12px; text-align: left;
+            box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .vs2-pick-btn:hover { border-color: #8a92a6; background: linear-gradient(180deg, #222637 0%, #161a26 100%); }
+        .vs2-pick-btn:active { transform: translateY(1px); }
+        .vs2-pick-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+        .vs2-pick-label { flex: 1; min-width: 0; line-height: 1.35; }
+        .vs2-persona-chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+            font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+            color: #cfd8e6; background: rgba(20,28,44,0.7); border: 1px solid #3a4b66;
+        }
+        .vs2-outcome-badge {
+            display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px;
+            font-size: 12px; font-weight: bold; letter-spacing: 0.04em; max-width: 560px;
+            border: 1px solid; animation: vsRise 0.35s both;
+        }
+        .vs2-outcome-badge.buff    { color: #aed581; border-color: #7cb342; background: rgba(124,179,66,0.12); text-shadow: 0 0 8px rgba(174,213,129,0.4); }
+        .vs2-outcome-badge.debuff  { color: #ef9a9a; border-color: #e57373; background: rgba(229,115,115,0.12); text-shadow: 0 0 8px rgba(239,154,154,0.4); }
+        .vs2-outcome-badge.neutral { color: #b0bec5; border-color: #546e7a; background: rgba(84,110,122,0.12); }
+        .vs2-battle-btn {
+            margin-top: 6px; padding: 11px 30px; font-family: var(--battle-font) !important;
+            font-size: 13px; font-weight: bold; letter-spacing: 0.05em; cursor: pointer;
+            color: #ffb4b4; background: linear-gradient(180deg, #2a1218 0%, #1a0808 100%); border: 2px solid #e57373;
+            box-shadow: inset -2px -2px 0 #2a0e14, inset 2px 2px 0 #4a1a22;
+        }
+        .vs2-battle-btn:hover { border-color: #ff8a8a; box-shadow: inset -2px -2px 0 #2a0e14, inset 2px 2px 0 #4a1a22, 0 0 12px rgba(229,115,115,0.25); }
+        .vs2-battle-btn:active { transform: translateY(1px); }
+        /* Marquee entry — the league's boss title card. */
+        .vs-marquee-kicker { color: #bbb; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; }
+        .vs-marquee-name { color: #fff; font-size: 30px; font-weight: bold; letter-spacing: 0.05em; text-shadow: 0 2px 10px rgba(0,0,0,0.85), 0 0 22px var(--vs-accent, #ffd54f); animation: vsPop 0.5s 0.25s both; }
+        .vs-marquee-epithet { color: var(--vs-accent, #ffd54f); font-size: 13px; font-style: italic; letter-spacing: 0.04em; max-width: 520px; text-align: center; line-height: 1.6; animation: vsRise 0.4s 0.5s both; }
+        .vs-marquee-sprite { width: min(46vw, 230px); height: min(46vw, 230px); object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 26px var(--vs-accent, rgba(255,213,79,0.5))) drop-shadow(0 8px 18px rgba(0,0,0,0.7)); animation: vsSlideInR 0.55s cubic-bezier(0.18,0.8,0.3,1.18) both; }
+        @media (prefers-reduced-motion: reduce) {
+            .vs2-outcome-badge, .vs-marquee-name, .vs-marquee-epithet, .vs-marquee-sprite { animation: none !important; }
+        }
+        /* ── Scene presentation (P3): cast row + entrance/ambience fx ──────────
+           Used by _storyScene (cast above the card) and reusing the vs* keyframes.
+           scene-fx-fire is the camp's breathing firelight behind the cast. */
+        .story-scene-cast { display: flex; align-items: flex-end; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; max-width: 540px; }
+        .story-scene-cast-img { object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.7)); position: relative; z-index: 1; }
+        .scene-fx-rise { animation: vsRise 0.45s both; }
+        .scene-fx-pop { animation: vsPop 0.5s both; }
+        .scene-fx-fire::before {
+            content: ''; position: absolute; inset: -24px -36px; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 82%, rgba(255,152,0,0.38) 0%, rgba(255,87,34,0.14) 46%, transparent 75%);
+            animation: campFireGlow 2.6s ease-in-out infinite;
+        }
+        @keyframes campFireGlow { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+        /* Narration overlay (P3): optional side-by-side speaker framing + the
+           tap-to-reveal line gate. Defaults (fields absent) render exactly the
+           legacy column layout with every line visible. */
+        .story-narr-duo { display: flex; align-items: flex-end; justify-content: center; gap: 14px; max-width: 640px; width: 100%; }
+        .story-narr-duo-right { flex-direction: row-reverse; }
+        .story-narr-duo-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+        .story-narr-line-hidden { display: none; }
+        @media (prefers-reduced-motion: reduce) {
+            .scene-fx-rise, .scene-fx-pop { animation: none !important; }
+            .scene-fx-fire::before { animation: none !important; }
+        }
         /* Portrait-emotion (§6.4) — CSS treatments on a recurring-cast sprite. No new art:
            the single shipped sprite is tinted / shaken / dimmed to read an emotional beat.
            Applied to an overlay <img> via _renderNarrativeOverlay's spriteClass. */
@@ -2983,6 +3108,115 @@
         .story-city-tips-sugg { width: 100%; margin: 4px 0 0; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a9bb0; opacity: 0.75; }
         /* Narration overhaul (v26): thread-status subline + adventure journal */
         .story-city-thread { text-transform: none; letter-spacing: 0.03em; font-size: 9.5px; color: #9fb3c8; opacity: 0.9; }
+        /* ── CITY HUB V2 (desktop) ────────────────────────────────────────────
+           Dense card-grid hub for big screens. STRICTLY desktop-scoped: every
+           layout selector is gated on body:not(.is-mobile), so the phone layout
+           (and its portrait media-query overrides) stays byte-identical. The
+           .story-action-btn BASE rules above are never edited — the casino
+           reuses them — the card treatment is scoped to the city action grid.
+           `!important` is used only where a legacy inline style on
+           #story-city-left / #story-city-actions / #story-action-buttons must
+           be beaten; everything else wins on specificity alone. */
+        :root {
+            --city-card-min: 236px;  /* facility card min width → the grid auto-fills 2–3 columns */
+            --city-rail-w: 300px;    /* left rail: NPC panel + dialog + objective/tips */
+        }
+        .story-city-identity { display: none; }
+        body:not(.is-mobile) #screen-story-city .story-city-identity {
+            display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+            margin: 0; padding: 10px 20px 12px;
+            background: linear-gradient(180deg, rgba(6,8,14,0.05) 0%, rgba(6,8,14,0.5) 100%);
+            border-bottom: 1px solid rgba(138,160,188,0.22);
+            flex-shrink: 0;
+        }
+        .story-city-identity-kicker {
+            font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+            color: #b3c2d6; opacity: 0.85; margin-bottom: 2px;
+        }
+        .story-city-identity-name {
+            font-size: 24px; font-weight: bold; color: #fff; letter-spacing: 0.04em;
+            line-height: 1.15;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8), 0 0 18px rgba(255,213,79,0.18);
+        }
+        .story-city-identity-badges { display: flex; gap: 7px; align-items: center; padding-bottom: 6px; }
+        .story-city-badge-pip {
+            width: 11px; height: 11px; transform: rotate(45deg); flex-shrink: 0;
+            background: rgba(0,0,0,0.45); border: 1px solid rgba(255,213,79,0.35);
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.6);
+        }
+        .story-city-badge-pip.earned {
+            background: linear-gradient(135deg, #ffe082 0%, #ffb300 100%);
+            border-color: #ffd54f;
+            box-shadow: 0 0 7px rgba(255,213,79,0.55);
+        }
+        /* The band is the hero copy of the town name — drop the small HUD chip
+           on desktop so the same fact isn't printed twice in adjacent rows. */
+        body:not(.is-mobile) #screen-story-city #story-hud-city { display: none; }
+        /* Main area: 2-column grid. display:contents promotes the center
+           column's children (dialog / tips / action grid) to grid items, so the
+           DOM contract (ids, nesting, render targets) is untouched. */
+        body:not(.is-mobile) #screen-story-city .story-city-main-row {
+            display: grid;
+            grid-template-columns: var(--city-rail-w) minmax(0, 1fr);
+            grid-template-rows: auto auto minmax(0, 1fr);
+            grid-template-areas: "rail actions" "dialog actions" "tips actions";
+            column-gap: 16px; row-gap: 10px;
+            padding: 12px 16px 14px;
+            overflow: hidden; min-height: 0;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-actions { display: contents !important; }
+        body:not(.is-mobile) #screen-story-city #story-city-left {
+            grid-area: rail;
+            width: auto !important;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 10px 12px !important;
+            border-right: none !important;
+            border: 1px solid rgba(138,160,188,0.2);
+            background: linear-gradient(180deg, rgba(16,19,30,0.85) 0%, rgba(9,11,18,0.85) 100%) !important;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            min-height: 0;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-left .story-city-portrait-wrap { width: 84px; height: 84px; flex-shrink: 0; }
+        body:not(.is-mobile) #screen-story-city #story-city-left .story-city-portrait-wrap img { width: 76px; height: 76px; }
+        body:not(.is-mobile) #screen-story-city #story-city-npc-name {
+            font-size: 12px; text-align: left !important; flex: 1; min-width: 0; line-height: 1.4;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-actions > .story-dialog-host {
+            grid-area: dialog; max-width: none; margin: 0; min-height: 0;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-actions > .story-dialog-host .story-dialog-box {
+            max-height: 190px; overflow-y: auto;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-tips {
+            grid-area: tips;
+            display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+            overflow-y: auto; min-height: 0; padding-right: 2px;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-tip { width: 100%; box-sizing: border-box; }
+        /* Facility card grid — section headers span the full row. */
+        body:not(.is-mobile) #screen-story-city #story-action-buttons {
+            grid-area: actions;
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(var(--city-card-min), 1fr));
+            gap: 10px !important;
+            align-content: start;
+            overflow-y: auto; min-height: 0;
+            padding: 2px 6px 12px 2px;
+        }
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-section-header { grid-column: 1 / -1; margin: 12px 0 0; }
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-section-header:first-child { margin-top: 0; }
+        /* Card treatment — scoped to the city grid; casino reuse untouched. */
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn {
+            min-height: 56px; height: 100%; box-sizing: border-box;
+        }
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn:hover {
+            box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050, 0 6px 16px rgba(0,0,0,0.45);
+        }
+        /* Primary CTAs (professor / gym / route) read as full-width hero rows. */
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn.primary { grid-column: 1 / -1; min-height: 60px; }
         .story-journal-section { max-width: 560px; width: 100%; margin: 0 0 14px; padding: 10px 14px; background: linear-gradient(180deg, rgba(20,26,40,0.6), rgba(12,16,26,0.6)); border: 1px solid #2a3550; border-radius: 6px; box-sizing: border-box; }
         .story-journal-section h3 { margin: 0 0 6px; font-size: 12px; color: #ffd54f; letter-spacing: 0.04em; }
         .story-journal-section p { margin: 0; font-size: 12px; color: #cfd8e6; }
@@ -3336,6 +3570,45 @@
                 radial-gradient(ellipse 135% 55% at 50% -8%, rgba(0,0,0,0.45) 0%, transparent 72%),
                 linear-gradient(180deg, transparent 58%, rgba(0,0,0,0.22) 100%);
         }
+
+        /* P2c: story marquee arena tint — a type-colored grade over the shared
+           stadium for story Gym Leader / E4 / Champion fights (class applied by
+           refreshBattleBg, stripped everywhere else). Same geometry + z-tier as
+           the vignette ::before above, so it grades the arena only — never the
+           command bar — and the bg_*.png art ships untouched. The faint ring is
+           the arena's "crest": a stadium emblem circle in the gym's color. */
+        #screen-battle[class*="battle-tint-"]::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            bottom: var(--battle-ui-h, 190px);
+            background:
+                radial-gradient(circle at 50% 34%, transparent 88px, var(--arena-tint-strong, transparent) 89px, transparent 93px),
+                radial-gradient(ellipse 120% 80% at 50% 0%, var(--arena-tint-strong, transparent) 0%, transparent 64%),
+                radial-gradient(ellipse 90% 70% at 50% 100%, transparent 46%, var(--arena-tint-soft, transparent) 100%),
+                linear-gradient(180deg, var(--arena-tint-soft, transparent) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .battle-tint-normal   { --arena-tint-strong: rgba(168,168,120,0.28); --arena-tint-soft: rgba(168,168,120,0.14); }
+        .battle-tint-fire     { --arena-tint-strong: rgba(240,128,48,0.30);  --arena-tint-soft: rgba(240,80,32,0.15); }
+        .battle-tint-water    { --arena-tint-strong: rgba(104,144,240,0.30); --arena-tint-soft: rgba(64,112,224,0.15); }
+        .battle-tint-electric { --arena-tint-strong: rgba(248,208,48,0.26);  --arena-tint-soft: rgba(248,208,48,0.13); }
+        .battle-tint-grass    { --arena-tint-strong: rgba(120,200,80,0.28);  --arena-tint-soft: rgba(96,176,64,0.14); }
+        .battle-tint-ice      { --arena-tint-strong: rgba(152,216,216,0.30); --arena-tint-soft: rgba(120,200,216,0.15); }
+        .battle-tint-fighting { --arena-tint-strong: rgba(192,48,40,0.28);   --arena-tint-soft: rgba(160,40,32,0.14); }
+        .battle-tint-poison   { --arena-tint-strong: rgba(160,64,160,0.30);  --arena-tint-soft: rgba(128,48,128,0.15); }
+        .battle-tint-ground   { --arena-tint-strong: rgba(224,192,104,0.28); --arena-tint-soft: rgba(184,152,72,0.14); }
+        .battle-tint-flying   { --arena-tint-strong: rgba(168,144,240,0.26); --arena-tint-soft: rgba(136,112,216,0.13); }
+        .battle-tint-psychic  { --arena-tint-strong: rgba(248,88,136,0.26);  --arena-tint-soft: rgba(216,64,112,0.13); }
+        .battle-tint-bug      { --arena-tint-strong: rgba(168,184,32,0.26);  --arena-tint-soft: rgba(136,152,24,0.13); }
+        .battle-tint-rock     { --arena-tint-strong: rgba(184,160,86,0.30);  --arena-tint-soft: rgba(152,128,56,0.16); }
+        .battle-tint-ghost    { --arena-tint-strong: rgba(112,88,152,0.32);  --arena-tint-soft: rgba(80,56,120,0.18); }
+        .battle-tint-dragon   { --arena-tint-strong: rgba(112,56,248,0.26);  --arena-tint-soft: rgba(88,40,200,0.14); }
+        .battle-tint-dark     { --arena-tint-strong: rgba(72,56,48,0.40);    --arena-tint-soft: rgba(40,32,28,0.24); }
+        .battle-tint-steel    { --arena-tint-strong: rgba(184,184,208,0.26); --arena-tint-soft: rgba(144,144,168,0.14); }
+        .battle-tint-fairy    { --arena-tint-strong: rgba(238,153,172,0.26); --arena-tint-soft: rgba(216,120,144,0.13); }
+        .battle-tint-league   { --arena-tint-strong: rgba(186,104,200,0.26); --arena-tint-soft: rgba(255,213,79,0.10); }
 
         /* ── Battle field ─────────────────────────────────────────────────── */
         /* Floor shadows scale with container so larger Pokémon get larger shadows */
@@ -8552,7 +8825,7 @@
     </script>
 </head>
 <body>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.5.0</div>
+    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.5.1</div>
     <!-- Rotate overlay (portrait phones only) -->
     <div id="rotate-overlay">
         <div class="rotate-icon">▒</div>
@@ -9001,6 +9274,16 @@
                 <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
             </div>
         </div>
+        <!-- CITY HUB V2: identity band — town name + badge pips over the bg layer.
+             Hidden by default; desktop-only via CSS (body:not(.is-mobile)). Content
+             is mirrored by the presentational tail of renderCityActions. -->
+        <div id="story-city-identity" class="story-city-identity" aria-hidden="true">
+            <div class="story-city-identity-text">
+                <div class="story-city-identity-kicker">— Welcome to —</div>
+                <div id="story-city-identity-name" class="story-city-identity-name"></div>
+            </div>
+            <div id="story-city-identity-badges" class="story-city-identity-badges" title="Gym badges earned"></div>
+        </div>
         <!-- Main content -->
         <div class="story-city-main-row">
             <!-- Left: Trainer sprite + event info -->
@@ -9445,18 +9728,25 @@
         </div>
     </div>
 
-    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="story gameover" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
-        <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
-        <p style="color:#888;font-size:12px;text-align:center;margin:0;max-width:400px;">You blacked out.</p>
-        <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
-        <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
-        <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
-        <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
-        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
-            <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
-            <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
-            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
-            <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="story gameover" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;font-family:var(--battle-font);">
+        <!-- P2d: compact defeat card. Every element id and button onclick is
+             unchanged — only the card wrapper + the foe's parting line are new. -->
+        <div class="story-defeat-card">
+            <div class="story-defeat-head">
+                <h1 style="color:#f44336;font-size:30px;margin:0;letter-spacing:3px;">DEFEATED</h1>
+                <p style="color:#888;font-size:12px;text-align:center;margin:4px 0 0;">You blacked out.</p>
+            </div>
+            <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
+            <p id="story-gameover-banter" style="display:none;color:#b0bec5;font-size:12px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
+            <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
+            <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
+            <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
+            <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
+                <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
+                <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
+                <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
+                <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+            </div>
         </div>
     </div>
 
@@ -9843,9 +10133,41 @@
         }
         window.getBattleBgUrl = getBattleBgUrl;
 
+        // P2c: story marquee arena tint. Resolves the CURRENT story battle to a
+        // battle-tint-* class when it's a Gym Leader / Elite Four / Champion
+        // fight — the marquee fights that deserve a themed arena — and ''
+        // everywhere else (routes, raids, Quick Play, PvP, Frontier), so the
+        // shared stadium stays clean outside story marquee fights. Type comes
+        // from the assigned trainer's primary type; a typeless Champion/E4
+        // (type "Mixed") falls back to the purple league grade.
+        function _storyArenaTintClass() {
+            try {
+                if (typeof state === 'undefined' || !state || state.mode !== 'story') return '';
+                const SM = window.StoryMode && window.StoryMode.state;
+                const rows = window.STORY_EVENTS_RAW;
+                if (!SM || !Array.isArray(rows)) return '';
+                const row = rows[SM.eventIndex | 0];
+                if (!row || row[1] !== 'Battle') return '';
+                const ev = String(row[2] || '');
+                const isLeague = /^E[1-4]$/.test(ev) || ev === 'Champion';
+                if (!/^Gym Leader [1-8]$/.test(ev) && !isLeague) return '';
+                const td = SM.currentTrainerData;
+                const first = (td && td.type ? String(td.type) : '').split(/[\/,]/)[0].trim().toLowerCase();
+                const KNOWN = { normal: 1, fire: 1, water: 1, electric: 1, grass: 1, ice: 1, fighting: 1, poison: 1, ground: 1, flying: 1, psychic: 1, bug: 1, rock: 1, ghost: 1, dragon: 1, dark: 1, steel: 1, fairy: 1 };
+                if (KNOWN[first]) return 'battle-tint-' + first;
+                return isLeague ? 'battle-tint-league' : '';
+            } catch (e) { return ''; }
+        }
         function refreshBattleBg() {
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
+            // P2c: strip any prior tint FIRST so non-marquee battles (and Quick
+            // Play / PvP, which reuse this screen) always start clean.
+            try {
+                Array.prototype.slice.call(sb.classList).forEach(c => { if (c.lastIndexOf('battle-tint-', 0) === 0) sb.classList.remove(c); });
+                const _tint = _storyArenaTintClass();
+                if (_tint) sb.classList.add(_tint);
+            } catch (e) {}
             const layout = sb.getAttribute('data-battle-layout') || 'arena';
             /* arena → the wide "landscape" stadium (deep flat field) on every screen — desktop
                frame and touch alike; stack → the "portrait" stadium. */
@@ -10337,6 +10659,12 @@
         // Bark variance layer (data/dialogue/barks.json) — non-state, additive-only
         // flavor pools appended after canonical battle-log lines. See barks.json _meta.
         let BARK_POOLS = {};
+        // Vibe Exchange dialogue pools (data/dialogue/banter-attitudes.json) and
+        // marquee-entry cinematic scripts (data/dialogue/marquee-entries.json).
+        // Missing files → empty objects → the exchange/marquee UIs fall back to
+        // their built-in minimal lines / the legacy timed splash.
+        let BANTER_ATTITUDES = {};
+        let MARQUEE_ENTRIES = {};
         let typeChart = {};
         // Precomputed per-species move-tag index — data/move-tags.json, generated
         // OFFLINE by scripts/build/gen-move-tag-index.mjs from the LOCAL @pkmn/dex.
@@ -10381,6 +10709,8 @@
             window.TRAINER_QUOTES_BY_NAME = TRAINER_QUOTES_BY_NAME;
             window.CITY_GUIDE_QUOTES = CITY_GUIDE_QUOTES;
             window.BARK_POOLS = BARK_POOLS;
+            window.BANTER_ATTITUDES = BANTER_ATTITUDES;
+            window.MARQUEE_ENTRIES = MARQUEE_ENTRIES;
             window.MOVE_TAG_INDEX = MOVE_TAG_INDEX;
             // window.typeChart is also set later (line ~14730) for backwards compat.
             window._CATCH_BALL_MULT = _CATCH_BALL_MULT;
@@ -10417,7 +10747,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10433,8 +10763,17 @@
                         fetch('data/story/routes.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/errands.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
-                        fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null)
+                        fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null),
+                        fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
+                        fetch('data/move-synergies.json').then(r => r.json()).catch(() => null),
+                        fetch('data/dialogue/banter-attitudes.json').then(r => r.json()).catch(() => null),
+                        fetch('data/dialogue/marquee-entries.json').then(r => r.json()).catch(() => null)
                     ]);
+                    // Designed-build archetype engine tables (Object.assign in place so the
+                    // module-level BUILD_ARCHETYPES / MOVE_SYNERGIES + their window mirrors see
+                    // the data; missing files → empty defaults → legacy designed-build path).
+                    if (_archetypes && Array.isArray(_archetypes.archetypes)) Object.assign(BUILD_ARCHETYPES, _archetypes);
+                    if (_synergies && (_synergies.pairs || _synergies.moveItem)) Object.assign(MOVE_SYNERGIES, _synergies);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
                     // _tutorFetchLearnsetMoveNames only fires for species missing here).
@@ -10453,6 +10792,9 @@
                     Object.assign(BARK_POOLS,               _barks || {});
                     // Strip the JSON doc-comment key before merging the authored bridges.
                     if (_subBridges && typeof _subBridges === 'object') { const _sb = { ..._subBridges }; delete _sb._meta; Object.assign(SUBSTITUTION_BRIDGES, _sb); }
+                    // Vibe Exchange pools + marquee entry scripts (same _meta strip).
+                    if (_banter && typeof _banter === 'object') { const _ba = { ..._banter }; delete _ba._meta; Object.assign(BANTER_ATTITUDES, _ba); }
+                    if (_marquee && typeof _marquee === 'object') { const _mq = { ..._marquee }; delete _mq._meta; Object.assign(MARQUEE_ENTRIES, _mq); }
                     Object.assign(typeChart,                _tc   || {});
                     // Ball math: object-container fields mutated in place; primitives
                     // reassigned through the lexically-scoped lets. "guaranteed" →
@@ -11075,6 +11417,28 @@
         //   0.0 = pure designed (every build is role-coherent and legal)
         // A run setup UI exposes this; set it directly in the console
         // via `settings.csvBuildMix = 0.5` for one-off testing.
+        // ── Story DESIGNED-build archetype engine (data-driven) ─────────────────────────
+        // Loaded from data/build-archetypes.json + data/move-synergies.json in loadGameData
+        // (Object.assign in place — sloppy-mode safe). Empty defaults so the generator falls
+        // back to the legacy role-config path if the files are missing. Story-only; non-story
+        // designed builds keep the legacy path byte-for-byte.
+        let BUILD_ARCHETYPES = { archetypes: [] };
+        let MOVE_SYNERGIES = { pairs: [], moveItem: [] };
+        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; } catch (e) {}
+        const _ARCH_SETUP_MOVES = new Set([
+            'Swords Dance', 'Nasty Plot', 'Dragon Dance', 'Calm Mind', 'Shell Smash', 'Quiver Dance',
+            'Bulk Up', 'Coil', 'Curse', 'Agility', 'Rock Polish', 'Autotomize', 'Work Up', 'Growth',
+            'Tail Glow', 'Iron Defense', 'Belly Drum', 'Shift Gear', 'Victory Dance', 'No Retreat',
+            'Clangorous Soul', 'Geomancy', 'Tidy Up', 'Filament Dance'
+        ]);
+        const _ARCH_HAZARD_MOVES = new Set(['Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web', 'Ceaseless Edge']);
+        // Strictly broken 0-effect moves — never let the archetype engine fill these on a
+        // foe (a thin-pool mon like Magikarp would otherwise pick up Splash as a status
+        // slot). Mirrors the test's STRICT_MEME_MOVES; the broader player-recommendation
+        // blocklist (_TX_MEME_MOVE_BLOCKLIST) lives in a different scope and over-excludes
+        // legit enemy picks (Hyper Beam / Giga Impact), so keep this list tight.
+        const _ARCH_MEME_MOVES = new Set(['Splash', 'Celebrate', 'Hold Hands', 'Happy Hour']);
+
         const _DESIGNED_ROLE_CONFIG = {
             PHYS_ATTACKER:  { item: 'Choice Band',  nature: 'Adamant', evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
             SPEC_ATTACKER:  { item: 'Choice Specs', nature: 'Modest',  evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
@@ -11174,22 +11538,192 @@
                     if (!moves.includes(m)) moves.push(m);
                 }
             }
-            while (moves.length < 4) moves.push('Tackle');
+            // Final pad for a thin CSV pool. In a story run, fill with the species' typed
+            // basic STAB instead of a literal Tackle — the "Tackle at Gym 6" fix: a
+            // fully-evolved mid/late trainer's mon should never show up holding Tackle just
+            // because its CSV set was short. This factory lives in a story-agnostic scope
+            // (no `sm` binding, no access to the story-side _T1_BASIC_STAB_BY_TYPE), so read
+            // the run flag + the shared type→basic-STAB map off window (same pattern as the
+            // _smActive check ~line 14343). Deterministic ordering, no RNG draw, so non-story
+            // callers (Quick Play / PvP / draft) keep the legacy Tackle pad below byte-for-byte.
+            const _storyOn = (window.sm && window.sm.active)
+                || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            if (_storyOn && moves.length < 4) {
+                const STAB = window._T1_BASIC_STAB_BY_TYPE || null;
+                const bs = (typeof baseStats !== 'undefined' && baseStats[name]) || base || {};
+                if (STAB) {
+                    const chain = [STAB[bs.t1], STAB[bs.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite'];
+                    for (const cand of chain) {
+                        if (moves.length >= 4) break;
+                        if (cand && !moves.includes(cand)) moves.push(cand);
+                    }
+                }
+            }
+            while (moves.length < 4) moves.push('Tackle'); // non-story / typeless last resort
             return moves.slice(0, 4);
         }
+        // Coarse role for archetype eligibility. _designedInferRole measures bulk as
+        // def+spd only, so an HP wall with thin defenses (Blissey, Chansey) reads as an
+        // attacker; fold total bulk (incl. HP) in here so those classify correctly.
+        function _designedCoarseRole(name) {
+            const b = baseStats[name] || {};
+            const off = Math.max(b.atk | 0, b.spa | 0);
+            const bulk = (b.hp | 0) + (b.def | 0) + (b.spd | 0);
+            if (off < 90 && bulk >= 260) return 'wall';
+            return _designedInferRole(name).includes('WALL') ? 'wall' : 'attacker';
+        }
+        function _archEligible(arche, base, coarse) {
+            const e = arche.eligible || {};
+            if (e.role && e.role !== 'any' && e.role !== coarse) return false;
+            if (e.minSpe != null && (base.spe | 0) < e.minSpe) return false;
+            if (e.minBulk != null && ((base.def | 0) + (base.spd | 0)) < e.minBulk) return false;
+            if (e.minOffense != null && Math.max(base.atk | 0, base.spa | 0) < e.minOffense) return false;
+            return true;
+        }
+        function _designedPickArchetype(base, coarse, rng) {
+            const all = (BUILD_ARCHETYPES && BUILD_ARCHETYPES.archetypes) || [];
+            const arr = all.filter(a => _archEligible(a, base, coarse));
+            if (!arr.length) return null;
+            let total = 0; for (const a of arr) total += (a.weight || 1);
+            let r = rng() * total;
+            for (const a of arr) { r -= (a.weight || 1); if (r <= 0) return a; }
+            return arr[arr.length - 1];
+        }
+        // Classify a species' legal move pool into role buckets (the raw material the
+        // archetype slot-distribution draws from). Damaging buckets are sorted by
+        // power×accuracy with a nudge toward the species' better attacking stat.
+        function _designedClassifyMoves(name, base, legalPool) {
+            const types = new Set([base.t1, base.t2].filter(Boolean));
+            const physical = (base.atk | 0) >= (base.spa | 0);
+            const out = { stab: [], coverage: [], status: [], setup: [], recovery: [], hazard: [] };
+            for (const m of legalPool) {
+                if (_ARCH_MEME_MOVES.has(m)) continue; // strictly broken — never field on a foe
+                const md = ensureMoveData(m); if (!md) continue;
+                if (md.cat === 'Physical' || md.cat === 'Special') {
+                    const entry = { name: m, pow: md.pow || 0, acc: md.acc || 100, cat: md.cat };
+                    (types.has(md.type) ? out.stab : out.coverage).push(entry);
+                } else if (_DESIGNED_HEAL_MOVES.has(m)) out.recovery.push(m);
+                else if (_ARCH_HAZARD_MOVES.has(m)) out.hazard.push(m);
+                else if (_ARCH_SETUP_MOVES.has(m)) out.setup.push(m);
+                else out.status.push(m);
+            }
+            const dscore = (e) => e.pow * (e.acc / 100) + (((e.cat === 'Physical') === physical) ? 20 : -15);
+            out.stab.sort((x, y) => dscore(y) - dscore(x));
+            out.coverage.sort((x, y) => dscore(y) - dscore(x));
+            return out;
+        }
+        // Synergy bonus for a candidate move given the already-chosen moves + the build's item.
+        function _designedSynergyBonus(cand, chosen, item) {
+            let s = 0;
+            for (const p of (MOVE_SYNERGIES.pairs || [])) {
+                if (!p.moves || p.moves.length !== 2) continue;
+                const [a, b] = p.moves;
+                if ((cand === a && chosen.includes(b)) || (cand === b && chosen.includes(a))) s += (p.bonus || 0);
+            }
+            if (item) for (const mi of (MOVE_SYNERGIES.moveItem || [])) {
+                if (mi.move === cand && mi.item === item) s += (mi.bonus || 0);
+            }
+            return s;
+        }
+        function _designedPickItem(arche, physical, rng) {
+            let items = (arche.items || ['Leftovers']).slice();
+            items = items.filter(it => physical ? it !== 'Choice Specs' : it !== 'Choice Band');
+            if (!items.length) items = ['Leftovers'];
+            return items[Math.floor(rng() * items.length)];
+        }
+        function _designedEvSpread(shape, base) {
+            const off = (base.atk | 0) >= (base.spa | 0) ? 'atk' : 'spa';
+            const z = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            if (shape === 'bulk_offense') { z.hp = 252; z[off] = 252; z.def = 4; }
+            else if (shape === 'max_bulk') { z.hp = 252; z[(base.def | 0) <= (base.spd | 0) ? 'def' : 'spd'] = 252; z.spe = 4; }
+            else if (shape === 'bulk') { z.hp = 252; z.def = 128; z.spd = 128; }
+            else { z[off] = 252; z.spe = 252; z.hp = 4; } // max_offense_speed (default)
+            return z;
+        }
+        // Fill the archetype's slot distribution from the classified buckets, scoring each
+        // candidate by base usefulness + synergy with already-chosen moves/item (so combos
+        // co-occur). A short bucket redistributes its deficit to the next slots; the typed-
+        // STAB net guarantees a full 4 without ever surfacing literal Tackle on a real mon.
+        function _designedFillFromArchetype(name, base, arche, buckets, item, rng) {
+            const order = ['stab', 'coverage', 'setup', 'status', 'recovery', 'hazard'];
+            const pool = {}; for (const k of order) pool[k] = (buckets[k] || []).slice();
+            const chosen = [];
+            const takeFrom = (k) => {
+                const arr = pool[k]; if (!arr || !arr.length) return null;
+                let bestIdx = -1, bestScore = -1e9, bestName = null;
+                for (let i = 0; i < arr.length; i++) {
+                    const e = arr[i];
+                    const nm = (typeof e === 'string') ? e : e.name;
+                    let sc = (typeof e === 'string') ? 60 : e.pow * (e.acc / 100);
+                    sc += _designedSynergyBonus(nm, chosen, item) + rng() * 8;
+                    if (sc > bestScore) { bestScore = sc; bestIdx = i; bestName = nm; }
+                }
+                if (bestIdx >= 0) arr.splice(bestIdx, 1);
+                return bestName;
+            };
+            const slots = arche.slots || {};
+            for (const k of order) {
+                let n = slots[k] | 0;
+                while (n-- > 0 && chosen.length < 4) { const mv = takeFrom(k); if (mv && !chosen.includes(mv)) chosen.push(mv); }
+            }
+            for (const k of order) {
+                while (chosen.length < 4) { const mv = takeFrom(k); if (!mv) break; if (!chosen.includes(mv)) chosen.push(mv); }
+            }
+            if (chosen.length < 4) {
+                const STAB = window._T1_BASIC_STAB_BY_TYPE || {};
+                for (const c of [STAB[base.t1], STAB[base.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite']) {
+                    if (chosen.length >= 4) break;
+                    if (c && !chosen.includes(c)) chosen.push(c);
+                }
+            }
+            while (chosen.length < 4) chosen.push('Tackle');
+            return chosen.slice(0, 4);
+        }
+
         function makeDesignedBuild(name) {
             const base = baseStats[name];
             if (!base) return null;
             const legalPool = _designedCsvMovePool(name);
             if (legalPool.length < 3) return null;
-            const role = _designedInferRole(name);
-            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
-            const moves = _designedPickMoves(name, role, base, legalPool);
             let ability = 'None';
             if (base.abilities) {
                 const aPool = [base.abilities['0'], base.abilities['1'], base.abilities['H']].filter(Boolean);
                 if (aPool.length) ability = aPool[0];
             }
+            // Story archetype engine (data-driven): a coherent move distribution
+            // (stab/coverage/status/setup/recovery/hazard per the chosen archetype),
+            // synergy-scored move fill (Protect+Toxic, Rest+Sleep Talk…), and a stat-sensitive
+            // EV spread. Falls back to the legacy role-config path when not in a story run or
+            // when the archetype data isn't loaded — so non-story (Quick Play / PvP / draft)
+            // designed builds stay byte-identical.
+            const storyOn = (window.sm && window.sm.active)
+                || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            if (storyOn && BUILD_ARCHETYPES.archetypes && BUILD_ARCHETYPES.archetypes.length) {
+                const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const coarse = _designedCoarseRole(name);
+                const physical = _designedInferRole(name).startsWith('PHYS_');
+                const arche = _designedPickArchetype(base, coarse, rng);
+                if (arche) {
+                    const buckets = _designedClassifyMoves(name, base, legalPool);
+                    const item = _designedPickItem(arche, physical, rng);
+                    const moves = _designedFillFromArchetype(name, base, arche, buckets, item, rng);
+                    return {
+                        i: item,
+                        a: ability,
+                        n: (arche.nature && arche.nature[physical ? 'phys' : 'spec']) || (physical ? 'Adamant' : 'Modest'),
+                        m: moves,
+                        evs: _designedEvSpread(arche.evShape, base),
+                        gimmick: 'STANDARD',
+                        teraType: null,
+                        archetype: arche.id,
+                        _designed: true,
+                    };
+                }
+            }
+            // Legacy path (non-story / no archetype data) — unchanged.
+            const role = _designedInferRole(name);
+            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
+            const moves = _designedPickMoves(name, role, base, legalPool);
             return {
                 i: cfg.item,
                 a: ability,
@@ -11203,11 +11737,67 @@
             };
         }
         window.makeDesignedBuild = makeDesignedBuild;
+        window._designedPickMoves = _designedPickMoves; // harness-testable (thin-pool pad)
+        try {
+            window._designedClassifyMoves = _designedClassifyMoves;
+            window._designedFillFromArchetype = _designedFillFromArchetype;
+            window._designedPickArchetype = _designedPickArchetype;
+            window._designedSynergyBonus = _designedSynergyBonus;
+        } catch (e) {}
+
+        // ── Smogon set POWER rating + power-weighted selection ──────────────────────────
+        // A Smogon set's competitive tier IS a power ordering: an OU set outclasses a ZU
+        // set on the same species. The story foe roller uses this so a Champion never rolls
+        // a weak ZU set and an early trainer rolls a humble one — instead of today's uniform
+        // random pick over the whole legal pool. Map a set's _format (its tier) → a 0..1
+        // power score. Maintainer-owned numbers — tune here. Unknown / exotic singles
+        // formats score neutral (0.5) so they neither dominate nor vanish.
+        const _SMOGON_FORMAT_POWER = Object.freeze({
+            ubers: 1.00, anythinggoes: 1.00, nationaldexubers: 1.00, ubersuu: 0.82,
+            ou: 0.90, nationaldex: 0.90,
+            uu: 0.75, nationaldexuu: 0.75,
+            ru: 0.62, nationaldexru: 0.62,
+            nu: 0.50,
+            pu: 0.40,
+            zu: 0.30,
+            nfe: 0.28, lc: 0.25,
+            '1v1': 0.68,
+        });
+        function _smogonSetPower(b) {
+            if (!b) return 0.5;
+            const f = String(b._format || '').toLowerCase();
+            return Object.prototype.hasOwnProperty.call(_SMOGON_FORMAT_POWER, f) ? _SMOGON_FORMAT_POWER[f] : 0.5;
+        }
+        // Sample one set from `pool`, weighting each by a Gaussian on its distance from
+        // `target` power (so the roll clusters near the stage's intended strength but keeps
+        // variety — never a hard argmax). SIGMA widens/narrows the spread. Deterministic in
+        // story replays (Math.random routes through storyRngNext when a run is active).
+        const _SET_POWER_SIGMA = 0.18;
+        function _pickSetByPower(pool, target, rng) {
+            if (!pool || !pool.length) return null;
+            if (pool.length === 1) return pool[0];
+            const r = (typeof rng === 'function') ? rng : Math.random;
+            const w = new Array(pool.length);
+            let total = 0;
+            for (let i = 0; i < pool.length; i++) {
+                const d = _smogonSetPower(pool[i]) - target;
+                const wi = Math.exp(-(d * d) / (2 * _SET_POWER_SIGMA * _SET_POWER_SIGMA));
+                w[i] = wi; total += wi;
+            }
+            if (!(total > 0)) return pool[Math.floor(r() * pool.length)];
+            let x = r() * total;
+            for (let i = 0; i < pool.length; i++) { x -= w[i]; if (x <= 0) return pool[i]; }
+            return pool[pool.length - 1];
+        }
+        try { window._smogonSetPower = _smogonSetPower; window._pickSetByPower = _pickSetByPower; } catch (e) {}
 
         // Central build factory — used by draft, gauntlet rounds, and draw recovery.
-        //   gimmickOpts.forceGimmick  — pin to MEGA / ZMOVE / TERA / STANDARD
-        //   gimmickOpts.allowIllegal  — let illegal builds into the pool (default: false; story end-game opts in)
-        //   gimmickOpts.forceIllegal  — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.forceGimmick   — pin to MEGA / ZMOVE / TERA / STANDARD
+        //   gimmickOpts.allowIllegal   — let illegal builds into the pool (default: false; story end-game opts in)
+        //   gimmickOpts.forceIllegal   — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.setPowerTarget — 0..1; when set (story foes only), the CSV set is
+        //                                power-weighted toward this strength instead of picked
+        //                                uniformly. Absent for non-story callers → unchanged.
         function makeBuild(name, gimmickOpts) {
             // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
             // can't be skipped by a forced-STANDARD call. Skip when a non-standard
@@ -11266,7 +11856,12 @@
             }
 
             if (pool.length) {
-                if (settings.smartDraftPool && pool.length > 1) {
+                const _spt = gimmickOpts && typeof gimmickOpts.setPowerTarget === 'number' ? gimmickOpts.setPowerTarget : null;
+                if (_spt != null && pool.length > 1) {
+                    // Story foe: power-weighted pick toward the stage's target strength
+                    // (fixes weak-Champion / weak-mid-late / "only very good in league").
+                    b = { ..._pickSetByPower(pool, _spt, Math.random) };
+                } else if (settings.smartDraftPool && pool.length > 1) {
                     const groups = {};
                     for (const bd of pool) {
                         const a = bd.archetype || 'other';
@@ -17633,6 +18228,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // foes — the Battle Frontier ladder and wild encounters. Wrap each so a
             // single bad mon entry can't crash init and strand the player on the
             // placeholder MissingNo HUD.
+            // Vibe Exchange (P2b): stamp the player-side damage multiplier for
+            // this story battle. 1 everywhere else (and when no exchange
+            // happened), so Quick Play / PvP / Frontier never see it.
+            state.banterMod = 1;
+            if (state.mode === 'story' && typeof window._storyBanterMultForCurrentBattle === 'function') {
+                try { state.banterMod = window._storyBanterMultForCurrentBattle(); } catch (e) { state.banterMod = 1; }
+            }
+            if (state.mode === 'story' && state.banterMod !== 1 && typeof window._storyBanterLogBarkForCurrentBattle === 'function') {
+                try { const _bark = window._storyBanterLogBarkForCurrentBattle(); if (_bark) logMsg(_bark, 'info'); } catch (e) {}
+            }
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
                 try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
             }
@@ -25085,6 +25690,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state && state.mode === 'story' && state._typeAmplifierType) {
                     if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
                     if (typeof _storyMonHasType === 'function' && _storyMonHasType(defender, state._typeAmplifierType)) damage = Math.floor(damage * 1.15);
+                }
+                // Vibe Exchange (P2b): the pre-battle exchange shifts the PLAYER
+                // side's damage dealt by ±5% for this battle only (state.banterMod
+                // is stamped at story battle init; absent/1 everywhere else). The
+                // foe's damage path never reads it. Fixed-damage moves below
+                // override `damage` entirely, like every other post-modifier here.
+                if (state && state.mode === 'story' && isPlayer && state.banterMod && state.banterMod !== 1) {
+                    damage = Math.max(1, Math.floor(damage * state.banterMod));
                 }
                 // Final Gambit: damage = user's current HP exactly; user faints
                 if (move.name === "Final Gambit") damage = attacker.currentHp;
@@ -36871,7 +37484,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The two are multiplied together once at the stamp site (enterBattleEvent)
         // into a single build._storyStatMult. Wilds + Professor gifts are EXEMPT —
         // they keep their natural Lv50 line.
-        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.00, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
+        // City 5 steps to 1.03 (was 1.00) so the mid-game reads as a gradual climb —
+        // C4 parity (1.00) → C5 (1.03) → C6 (1.05) — instead of the old flat GL4≡GL5
+        // plateau ("same fight, different sprites"). Maintainer-owned curve — tune here.
+        const FOE_POWER_CURVE = Object.freeze([0.80, 0.85, 0.90, 0.95, 1.00, 1.03, 1.05, 1.08, 1.10, 1.15]); // index = city 0..9
         function _storyEnemyStatMult(eventType, city, storyRowIdx) {
             const e = String(eventType || '');
             const row = storyRowIdx | 0;
@@ -37105,6 +37721,191 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mix(seed);
             for (const k of keys) mix(k | 0);
             return (h >>> 0) / 0x100000000;
+        }
+        // ── Vibe Exchange (P2b) ───────────────────────────────────────────────
+        // Pre-battle banter on regular trainer fights: the foe rolls a HIDDEN
+        // vibe; the player answers with one of four fixed styles. Matching the
+        // vibe buffs YOUR damage dealt by +5% for that battle only; each style
+        // has exactly one punishing mismatch (−5%); Stoic is the guaranteed-
+        // neutral out. The foe's numbers are NEVER touched. Picks accrue
+        // per-style counters whose leading track (with hysteresis) becomes the
+        // run's persona — bending future foe-vibe odds toward your style, the
+        // only (and indirect) mechanical effect of reputation. Every constant
+        // below is a tuning knob; user-approved 2026-06-11.
+        const BANTER_MOD = 0.05;                        // ±5% player damage dealt, one battle
+        const BANTER_FOE_BASE_WEIGHTS = { flirty: 30, positive: 30, negative: 30, silent: 10 };
+        const BANTER_TIER_THRESHOLDS = [4, 10, 18];     // picks-per-style → Tier 1/2/3
+        const BANTER_TIER_MIRROR_BONUS = [10, 20, 30];  // foe-vibe weight bonus by tier
+        const BANTER_PERSONA_LEAD = 3;                  // lead needed to acquire/steal the persona
+        // The Latin square's debuff cells — each pick has exactly ONE foe vibe
+        // that punishes it (match = buff, the remaining cell = neutral):
+        //   Flirt    vs Positive foe — they're earnest; it gets awkward.
+        //   Positive vs Negative foe — kindness steamrolled by a narcissist.
+        //   Negative vs Flirty foe   — cruel rejection; they turn vicious.
+        const BANTER_DEBUFF_VS = { flirty: 'positive', positive: 'negative', negative: 'flirty' };
+        function _banterResolve(pick, foeVibe) {
+            if (pick === 'stoic' || !foeVibe || foeVibe === 'silent') return 'neutral';
+            if (pick === foeVibe) return 'buff';
+            return BANTER_DEBUFF_VS[pick] === foeVibe ? 'debuff' : 'neutral';
+        }
+        function _banterTierFor(count) {
+            let t = 0;
+            for (const th of BANTER_TIER_THRESHOLDS) if ((count | 0) >= th) t++;
+            return t;
+        }
+        function _banterComputePersona() {
+            const s = (sm && sm.banterStats) || {};
+            const count = (k) => (s[k] | 0);
+            const keys = ['flirty', 'positive', 'negative', 'stoic'];
+            const prev = (sm && sm.banterPersona && sm.banterPersona.id) || 'wildcard';
+            let id = prev;
+            if (prev === 'wildcard' || keys.indexOf(prev) === -1) {
+                // Acquire: a clear leader by ≥ LEAD over the runner-up;
+                // otherwise the mixed player IS a persona — the Wildcard.
+                const sorted = keys.map(k => ({ k, n: count(k) })).sort((a, b) => b.n - a.n);
+                id = (sorted[0].n - sorted[1].n >= BANTER_PERSONA_LEAD) ? sorted[0].k : 'wildcard';
+            } else {
+                // Hysteresis: hold the current persona until another track
+                // overtakes it by ≥ LEAD — no flip-flopping every other fight.
+                const challenger = keys.filter(k => k !== prev)
+                    .map(k => ({ k, n: count(k) })).sort((a, b) => b.n - a.n)[0];
+                if (challenger && challenger.n - count(prev) >= BANTER_PERSONA_LEAD) id = challenger.k;
+            }
+            return { id, tier: id === 'wildcard' ? 0 : _banterTierFor(count(id)) };
+        }
+        // Foe vibe roll — seeded per (run, row): static across flee / reload.
+        // The active persona bends the odds toward its own vibe by tier (a
+        // Stoic persona attracts more silent foes — fewer exchanges offered).
+        function _banterRollFoeVibe(arrayIdx) {
+            const w = Object.assign({}, BANTER_FOE_BASE_WEIGHTS);
+            const p = (sm && sm.banterPersona) || null;
+            const tier = p ? (p.tier | 0) : 0;
+            if (p && tier > 0) {
+                const bonus = BANTER_TIER_MIRROR_BONUS[Math.min(tier, BANTER_TIER_MIRROR_BONUS.length) - 1] | 0;
+                const key = p.id === 'stoic' ? 'silent' : p.id;
+                if (w[key] != null) w[key] += bonus;
+            }
+            const order = ['flirty', 'positive', 'negative', 'silent'];
+            const total = order.reduce((n, k) => n + w[k], 0);
+            let r = _storySideRng((arrayIdx | 0) + 73, 901) * total;
+            for (const k of order) { r -= w[k]; if (r < 0) return k; }
+            return 'silent';
+        }
+        // Which battles offer the exchange: regular road/gym trainers + gym
+        // leaders + the rival. Marquee fights (E4 / Champion / Mystery Figure /
+        // Victory Road) and rows carrying an injected boss/raid beat never do —
+        // they keep their gravity (and get the static marquee entry instead).
+        function _banterEligibleForRow(arrayIdx) {
+            try {
+                const row = STORY_EVENTS_RAW[arrayIdx | 0];
+                if (!row || row[1] !== 'Battle') return false;
+                const ev = String(row[2] || '');
+                if (!/^(Basic Trainer|Gym Trainer( [12])?|Gym Leader [1-8]|Elite Trainer|Rival)$/.test(ev)) return false;
+                const beat = (typeof _injectedBattleBeatForRow === 'function') ? _injectedBattleBeatForRow(arrayIdx | 0) : null;
+                if (beat && (beat.kind === 'boss' || beat.kind === 'miniBoss' || beat.kind === 'raid' || beat.kind === 'mysteryBoss')) return false;
+                return true;
+            } catch (e) { return false; }
+        }
+        // Record one exchange: bump the style counter, stamp the per-row record
+        // (reload / retry replays the same outcome — never re-rolled), then
+        // recompute the persona. Returns 'buff' | 'debuff' | 'neutral'.
+        function _banterRecordExchange(rowId, foeVibe, pick) {
+            if (!sm.banterStats || typeof sm.banterStats !== 'object') sm.banterStats = { flirty: 0, positive: 0, negative: 0, stoic: 0 };
+            if (!sm.banterByRow || typeof sm.banterByRow !== 'object') sm.banterByRow = {};
+            const outcome = _banterResolve(pick, foeVibe);
+            sm.banterStats[pick] = (sm.banterStats[pick] | 0) + 1;
+            sm.banterByRow[rowId | 0] = { foeVibe: foeVibe, pick: pick, outcome: outcome };
+            sm.banterPersona = _banterComputePersona();
+            try { save(); } catch (e) {}
+            return outcome;
+        }
+        // Engine-side read: ×(1±BANTER_MOD) on the player's damage dealt for the
+        // CURRENT story battle. startBattle stamps it onto state.banterMod; the
+        // damage pipeline applies it to the player side only.
+        function _storyBanterMultForCurrentBattle() {
+            try {
+                if (!sm || sm.active !== true) return 1;
+                const row = STORY_EVENTS_RAW[sm.eventIndex | 0];
+                if (!row || row[1] !== 'Battle') return 1;
+                const rec = sm.banterByRow && sm.banterByRow[row[0] | 0];
+                if (!rec) return 1;
+                if (rec.outcome === 'buff') return 1 + BANTER_MOD;
+                if (rec.outcome === 'debuff') return 1 - BANTER_MOD;
+                return 1;
+            } catch (e) { return 1; }
+        }
+        window._storyBanterMultForCurrentBattle = _storyBanterMultForCurrentBattle;
+        // Battle-log opening bark for the current battle's recorded exchange —
+        // only when the outcome actually moved the needle (buff/debuff).
+        function _storyBanterLogBarkForCurrentBattle() {
+            try {
+                if (!sm || sm.active !== true) return '';
+                const row = STORY_EVENTS_RAW[sm.eventIndex | 0];
+                if (!row || row[1] !== 'Battle') return '';
+                const rec = sm.banterByRow && sm.banterByRow[row[0] | 0];
+                if (!rec || !rec.outcome || rec.outcome === 'neutral') return '';
+                return _banterLogBark(rec.outcome, sm.eventIndex | 0);
+            } catch (e) { return ''; }
+        }
+        window._storyBanterLogBarkForCurrentBattle = _storyBanterLogBarkForCurrentBattle;
+        // ── Vibe Exchange line selection ─────────────────────────────────────
+        // Seeded per (run, row, salt): a reload shows the same lines. Salts:
+        // 1 opener · 2 rep-recognition roll · 3 reaction · 4 post-battle ·
+        // 5 log bark · 12 rep opener. Pools come from BANTER_ATTITUDES (JSON);
+        // every helper degrades to a safe string when the file is missing.
+        function _banterPickLine(pool, rowIdx, salt) {
+            if (!Array.isArray(pool) || !pool.length) return '';
+            return pool[Math.floor(_storySideRng((rowIdx | 0) + 79, salt | 0) * pool.length)];
+        }
+        function _banterOpenerForRow(rowIdx, eventName) {
+            const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+            // "Word travels": a settled reputation gets recognized in ~35% of
+            // openers — persona Tier 2+, or a Wildcard with 10+ picks (the
+            // road has noticed it CAN'T read you). Rep openers speak about the
+            // player, never the foe's vibe, so the gamble stays hidden.
+            try {
+                const p = (sm && sm.banterPersona) || { id: 'wildcard', tier: 0 };
+                const s = (sm && sm.banterStats) || {};
+                const total = ['flirty', 'positive', 'negative', 'stoic'].reduce((n, k) => n + (s[k] | 0), 0);
+                const known = (p.id !== 'wildcard' && (p.tier | 0) >= 2) || (p.id === 'wildcard' && total >= 10);
+                const rep = (B.repOpeners || {})[p.id];
+                if (known && Array.isArray(rep) && rep.length && _storySideRng((rowIdx | 0) + 79, 2) < 0.35) {
+                    return _banterPickLine(rep, rowIdx, 12);
+                }
+            } catch (e) {}
+            const ev = String(eventName || '');
+            if (/^Gym Leader/.test(ev) && Array.isArray(B.openersGymLeader) && B.openersGymLeader.length) return _banterPickLine(B.openersGymLeader, rowIdx, 1);
+            if (ev === 'Rival' && Array.isArray(B.openersRival) && B.openersRival.length) return _banterPickLine(B.openersRival, rowIdx, 1);
+            return _banterPickLine(B.openers || [], rowIdx, 1) || 'Trainer eyes lock. A battle is coming.';
+        }
+        function _banterReactionLine(rowIdx, foeVibe, pick) {
+            const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+            let pool = null;
+            // The deeper T2/T3 pools reward CONSISTENCY in that style: they gate
+            // on the matching TRACK's tier (your flirt depth unlocks flirt
+            // depth), not the active persona — and apply to the match cell only.
+            if (pick === foeVibe && pick !== 'stoic') {
+                const trackTier = _banterTierFor((sm && sm.banterStats && sm.banterStats[pick]) | 0);
+                if (trackTier >= 3 && B.reactionsT3 && B.reactionsT3[foeVibe]) pool = B.reactionsT3[foeVibe][pick];
+                else if (trackTier >= 2 && B.reactionsT2 && B.reactionsT2[foeVibe]) pool = B.reactionsT2[foeVibe][pick];
+            }
+            if (!Array.isArray(pool) || !pool.length) {
+                pool = B.reactions && B.reactions[foeVibe] && B.reactions[foeVibe][pick];
+            }
+            return _banterPickLine(pool || [], rowIdx, 3) || '…';
+        }
+        function _banterPostBattleLine(rowId, playerWon) {
+            try {
+                const rec = sm && sm.banterByRow && sm.banterByRow[rowId | 0];
+                if (!rec || !rec.foeVibe || rec.foeVibe === 'silent') return '';
+                const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+                const bucket = B.postBattle && B.postBattle[rec.foeVibe];
+                return _banterPickLine((bucket && (playerWon ? bucket.win : bucket.loss)) || [], rowId, 4);
+            } catch (e) { return ''; }
+        }
+        function _banterLogBark(outcome, rowIdx) {
+            const B = (typeof BANTER_ATTITUDES === 'object' && BANTER_ATTITUDES) || {};
+            return _banterPickLine((B.logBarks && B.logBarks[outcome]) || [], rowIdx, 5);
         }
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
@@ -37436,12 +38237,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (Array.isArray(route.setOut)) lines.push(...route.setOut);
             if (route.sightings) lines.push('<span style="color:#9fb3c8;font-style:italic;">' + _esc(route.sightings) + '</span>');
             try {
+                // P3: the lead partner walks the route with you — a cheap cast
+                // beat on the departure card (degrades to no sprite on lookup
+                // failure / an all-egg party).
+                let _leadMon = null;
+                try { const _l = (sm.team || []).find(s => s && !s.isEgg); if (_l) _leadMon = _l.name; } catch (e) {}
                 _renderNarrativeOverlay({
                     backdropScene: route.scene || '',
                     bannerParts: { location: 'Now Departing · ' + (route.name || ''), tod: _todForEventIndex(idx), sigil: '🧭' },
                     nameplate: route.name || 'On the Road',
                     name: '',
                     sprite: null,
+                    monSprite: _leadMon,
                     typewriter: true,
                     lines: lines,
                     continueLabel: 'Set out →',
@@ -37571,6 +38378,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (done > 0) return 'unfolding';
             return 'stirring';
         }
+        // P0.7: the raw "Aqua: stirring" status read like a debug flag. Phrase
+        // each thread state as a line a person would actually say. Villain
+        // threads speak of the team; extra threads are the eerie species
+        // mysteries (Cubone / Hypno / …), phrased as rumors → a deepening case.
+        function _threadStatusPhrase(kind, label, word) {
+            if (!label || !word) return '';
+            if (kind === 'villain') {
+                // Canon: every villain crew is "Team X" except Macro Cosmos.
+                const team = label === 'Macro Cosmos' ? label : 'Team ' + label;
+                if (word === 'stirring') return 'Rumors of ' + team + ' on the road';
+                if (word === 'unfolding') return team + ' is making its move';
+                return team + ' routed';
+            }
+            if (word === 'stirring') return 'Odd stories about ' + label + ' going around';
+            if (word === 'unfolding') return 'The ' + label + ' mystery deepens';
+            return 'The ' + label + ' mystery laid to rest';
+        }
         // The quieter HUD subline under the city objective: badge progress + each
         // track thread's status + any active errand. Drives the felt "what's going
         // on" the player was missing. Read-only; deterministic.
@@ -37578,9 +38402,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm) return '';
             const parts = ['Badge ' + (sm.badges | 0) + '/8'];
             const vs = _threadStatusWord(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain);
-            if (vs) parts.push('⚔ ' + _threadLabel(sm.tracks.villain) + ': ' + vs);
+            if (vs) parts.push('⚔ ' + _threadStatusPhrase('villain', _threadLabel(sm.tracks.villain), vs));
             const xs = _threadStatusWord(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra);
-            if (xs) parts.push('👁 ' + _threadLabel(sm.tracks.extra) + ': ' + xs);
+            if (xs) parts.push('👁 ' + _threadStatusPhrase('extra', _threadLabel(sm.tracks.extra), xs));
             // Active errand (one shown — the soonest payoff).
             try {
                 for (const id in (sm.errands || {})) {
@@ -38244,7 +39068,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // sm.routeShown (route-interstitial fire-once, keyed by battle-row eventIndex).
         // All additive; migrateStoryPreV26 seeds them and back-fills routeShown for
         // any row at/behind eventIndex so resumed saves never replay a stale route.
-        const SAVE_VER = 26;
+        const SAVE_VER = 27;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -38823,6 +39647,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
             if (sm.campReturnPoint === undefined) sm.campReturnPoint = null;
         }
+        /** v27: Vibe Exchange (banter) state. All additive — per-row exchange
+         *  records ({foeVibe, pick, outcome} keyed by row id), per-style pick
+         *  counters, and the derived persona. Older saves simply start with
+         *  empty trackers (a mid-run save begins building its persona from its
+         *  next trainer fight — no back-fill is possible or needed). */
+        function migrateStoryPreV27() {
+            if (!sm.banterByRow || typeof sm.banterByRow !== 'object') sm.banterByRow = {};
+            if (!sm.banterStats || typeof sm.banterStats !== 'object') sm.banterStats = { flirty: 0, positive: 0, negative: 0, stoic: 0 };
+            for (const k of ['flirty', 'positive', 'negative', 'stoic']) {
+                if (typeof sm.banterStats[k] !== 'number') sm.banterStats[k] = 0;
+            }
+            if (!sm.banterPersona || typeof sm.banterPersona !== 'object') sm.banterPersona = { id: 'wildcard', tier: 0 };
+        }
         /** v26: Narration overhaul travel/journal state. All additive — courier
          *  errands, the journal NPC roster, per-run recap flags, and the route
          *  interstitial fire-once ledger. The routeShown back-fill is MANDATORY:
@@ -39091,6 +39928,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    npcsMet: {},
                    journalSeen: {},
                    routeShown: {},
+                   banterByRow: {},
+                   banterStats: { flirty: 0, positive: 0, negative: 0, stoic: 0 },
+                   banterPersona: { id: 'wildcard', tier: 0 },
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -39432,6 +40272,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 26) {
                     try { migrateStoryPreV26(); } catch (e) { console.warn('[Story] v26 narration travel/journal migrate', e); }
                 }
+                if (_loadedVer < 27) {
+                    try { migrateStoryPreV27(); } catch (e) { console.warn('[Story] v27 vibe-exchange migrate', e); }
+                }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -39458,6 +40301,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.npcsMet     || typeof sm.npcsMet     !== 'object') sm.npcsMet     = {};
                 if (!sm.journalSeen || typeof sm.journalSeen !== 'object') sm.journalSeen = {};
                 if (!sm.routeShown  || typeof sm.routeShown  !== 'object') sm.routeShown  = {};
+                // v27+ vibe-exchange safety back-fills (protect a v27 save against
+                // a dropped field; the migration only fires for _loadedVer < 27).
+                try { migrateStoryPreV27(); } catch (e) {}
                 // Mirror-self HoF snapshot (additive, no SAVE_VER bump). Old saves that
                 // already reached the Hall of Fame have no snapshot → the Mystery Figure
                 // team builder falls back to the legacy live-team mirror path.
@@ -40124,6 +40970,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (let g = 1; g <= 4; g++) out[g] = (g <= f) ? (T[g] || []) : [];
             return out;
         }
+        // Early-game grade CEILING for enemy teams — the mirror of the late-game floor.
+        // Tracks the player's evolution availability so foes never field a grade tier the
+        // player can't yet match: before City 2 the player only has a G4-tier basic starter
+        // (Evolution Tutor debuts City 2), so a random G3 (evolved-tier) foe is an
+        // unbeatable early spike. Returns the STRONGEST grade NUMBER allowed (1 = G1 ok …
+        // 4 = only G4) — a HIGHER number is a WEAKER ceiling. Schedule mirrors
+        // _playerEvoStageCapForCity / _storyEvoGradeFloorForCity:
+        //   City 0-1 → G4 only · City 2-3 → G3+ · City 4-5 → G2+ · City 6+ → all.
+        // Only bites early; the late-game gradeWeights + G2 floor own City 6+. Out-of-story
+        // / Frontier callers return 1 (no ceiling), same convention as the floor.
+        function _storyEnemyGradeCeilingForRow(storyRowIdx) {
+            if (storyRowIdx == null || !(sm && sm.active)) return 1;
+            // Frontier / Crucible are out-of-story ladders — no early ceiling (they run at
+            // full T4 power; see _storyBuildTierForEvent's frontier short-circuit).
+            if (sm.frontier && sm.frontier.active) return 1;
+            const c = _cityIndexForStoryRow(storyRowIdx);
+            const city = c < 0 ? cityIndexFromEventIndex(storyRowIdx) : c;
+            const ci = city | 0;
+            // Unresolvable city (out-of-story caller) → no ceiling, mirroring the floor's
+            // safe default. The ceiling clamps strength, so its no-op value is 1, not 4.
+            if (ci < 0) return 1;
+            if (ci <= 1) return 4; // City 0-1: basic-tier only — no G3 until City 2
+            if (ci <= 3) return 3; // City 2-3: first-evo era
+            if (ci <= 5) return 2; // City 4-5: finals era
+            return 1;              // City 6+: unrestricted (weights + floor take over)
+        }
+        // Apply the grade ceiling to a (local copy of the) grade partition: empty the
+        // buckets STRONGER than `ceilingGrade` (lower grade NUMBER = stronger mon) so no
+        // downstream picker can pull an over-grade early foe. Mirror of
+        // _capGradePoolsByGradeFloor — same local-copy + fail-open discipline (if NOTHING
+        // sits at/under the ceiling for this type+gen, the full pool is returned unchanged
+        // so a roll never breaks).
+        function _capGradePoolsByGradeCeiling(T, ceilingGrade) {
+            if (!T || (ceilingGrade | 0) <= 1) return T;
+            const c = ceilingGrade | 0;
+            let keep = 0;
+            for (let g = c; g <= 4; g++) keep += (T[g] || []).length;
+            if (keep === 0) return T; // fail open — no at/below-ceiling species available
+            const out = { 1: [], 2: [], 3: [], 4: [] };
+            for (let g = 1; g <= 4; g++) out[g] = (g >= c) ? (T[g] || []) : [];
+            return out;
+        }
         // Late-game signature EVOLVE-UP (mirror of _devolveSigToGradeCeiling). A
         // signature weaker than the floor walks UP its own evo line to the first form
         // that meets the floor — Caterpie → Butterfree at the G2 floor — preserving the
@@ -40538,7 +41426,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyEventRowToUpNext: (...a) => _storyEventRowToUpNext(...a),
                 roadForArrayIdx: (...a) => _roadForArrayIdx(...a),
                 narrationQueueDepth: () => _narrationQueue.length,
-                isNarrationLive: () => _narrationLive,
+                isNarrationLive: () => _narrationIsLive(),
+                narrationForceClear: () => _narrationForceClear(),
             };
         }
         function _rivalSpeciesHasType(name, t) {
@@ -40802,6 +41691,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Steel':    'Metal Claw',
             'Fairy':    'Fairy Wind'
         };
+        // Mirror to window so the story-agnostic build factory (makeDesignedBuild's pad,
+        // ~line 11155) can read the same table across the scope boundary without duplicating it.
+        try { window._T1_BASIC_STAB_BY_TYPE = _T1_BASIC_STAB_BY_TYPE; } catch (e) {}
         function _t1ReplacementForSpecies(name) {
             const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             const t1 = bs.t1 || 'Normal';
@@ -40924,6 +41816,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return STORY_BUILD_TIER.UNTRAINED;
             }
             return STORY_BUILD_TIER.NOVICE;
+        }
+
+        // Target Smogon-set POWER (0..1) for power-weighted selection, derived from the
+        // event's build tier (the approved T1-T4 curve): humble early → near-best late.
+        // The league and everything after it (E1-E4 / Champion / Mystery / Victory Road /
+        // post-HoF Crucible at badges>=8) clamps to a near-best floor so only very good sets
+        // roll there (maintainer choice: "best & only very good builds in league"), while
+        // _SET_POWER_SIGMA still admits slight variety so fights aren't identical.
+        // Maintainer-owned numbers — tune the tier map / league floor here.
+        const _STAGE_SET_POWER_BY_TIER = Object.freeze({ 1: 0.30, 2: 0.50, 3: 0.72, 4: 0.90 });
+        const _LEAGUE_SET_POWER_FLOOR = 0.94;
+        function _stagePowerTargetForEvent(eventType, storyRowIdx, badges) {
+            const tier = _storyBuildTierForEvent(eventType, storyRowIdx, badges) | 0;
+            let t = _STAGE_SET_POWER_BY_TIER[tier];
+            if (typeof t !== 'number') t = 0.5;
+            const e = String(eventType || '');
+            const isLeaguePlus = e === 'Mystery Figure' || e === 'Champion' || e === 'Victory Road'
+                || /^E[1-4]$/.test(e) || (badges | 0) >= 8;
+            if (isLeaguePlus) t = Math.max(t, _LEAGUE_SET_POWER_FLOOR);
+            return t;
         }
 
         /** Professor gift: matches the contemporary trainer floor for the city.
@@ -41112,6 +42024,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _diffStep = _trainerDifficultyStep(eventType);
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
+                // Strip strictly-broken meme moves from ANY source (CSV / randbats /
+                // designed) and backfill a typed STAB, so a thin-pool foe (e.g. a rolled
+                // Magikarp) never fields Splash / Celebrate / Hold Hands / Happy Hour.
+                if (Array.isArray(slot.build.m)) {
+                    const _bsM = (typeof baseStats === 'object') ? (baseStats[slot.name] || {}) : {};
+                    const _STAB = window._T1_BASIC_STAB_BY_TYPE || {};
+                    for (let _mi = 0; _mi < slot.build.m.length; _mi++) {
+                        if (!_ARCH_MEME_MOVES.has(slot.build.m[_mi])) continue;
+                        const _chain = [_STAB[_bsM.t1], _STAB[_bsM.t2], 'Quick Attack', 'Body Slam', 'Swift', 'Bite', 'Tackle'];
+                        slot.build.m[_mi] = _chain.find(c => c && !slot.build.m.includes(c)) || 'Tackle';
+                    }
+                }
                 // Snapshot the optimized build BEFORE the tier downgrade so the
                 // city/difficulty optimization gradient can selectively restore it.
                 const _optN = slot.build.n;
@@ -41287,17 +42211,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((gw.g3 || 0) > 0) return 3;
             return 4;
         }
-        function _filterSigsByGradeCeiling(sigs, minGradeNumber) {
+        function _filterSigsByGradeCeiling(sigs, minGradeNumber, dropUndevolvable) {
             if (!Array.isArray(sigs) || sigs.length === 0) return [];
             const ceiling = minGradeNumber | 0;
             // Scale rather than drop: a signature stronger than the ceiling devolves to the
             // strongest form that fits (keeps the trainer's identity). Forms already at/under
             // the ceiling pass through unchanged.
+            // dropUndevolvable (early-game ceiling only): if a still-too-strong sig can't
+            // devolve to fit (a no-evo high-BST mon like Lapras, which _devolveSigToGradeCeiling
+            // returns unchanged), DROP it so the type-matched ceiling-grade filler/top-up
+            // replaces it — otherwise it leaks past the early G4 wall (the "Lapras at Gym 1"
+            // spike). Default false keeps the legacy devolve-or-keep behavior for the
+            // grade-weights ceiling so a late-game legendary ace is never dropped.
             return sigs.map(name => {
                 const b = baseStats[name];
                 if (!b) return null;
                 if (getMonGrade(name, getBST(name)) >= ceiling) return name;
-                return _devolveSigToGradeCeiling(name, ceiling);
+                const dv = _devolveSigToGradeCeiling(name, ceiling);
+                if (dropUndevolvable && dv && getMonGrade(dv, getBST(dv)) < ceiling) return null;
+                return dv;
             }).filter(Boolean);
         }
         // Gym Leader union pool support: if a leader's post-cap sig pool falls
@@ -41405,6 +42337,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the trainer's signatures stay exempt (low-grade aces allowed). See
             // _storyFillerGradeFloorForRow / _capGradePoolsByGradeFloor.
             const _fillerFloor = _storyFillerGradeFloorForRow(storyRowIdx);
+            // Early-game grade CEILING (mirror of the floor): no G3 enemies before City 2,
+            // tracking the player's evolution availability. Strongest grade NUMBER allowed
+            // (4 = only G4 … 1 = unrestricted). Bites the early cities only; clamps both the
+            // filler pool and the signature aces below so a random/authored over-grade mon
+            // (the "Lapras at Gym 1" spike) can't land before the player can answer it.
+            const _earlyGradeCeiling = _storyEnemyGradeCeilingForRow(storyRowIdx);
+            // Power-weighted Smogon set target for this event (humble early, near-best in the
+            // league+). Passed into every makeBuild below so foes roll a stage-appropriate
+            // set instead of a uniform-random one. Only computed inside an active run; the
+            // Frontier/Crucible generator path uses its own callers.
+            const _setPowerTarget = (sm && sm.active)
+                ? _stagePowerTargetForEvent(battleEventType, storyRowIdx, sm.badges)
+                : null;
             // Eldritch-tagged trainers (Shadow Blue, Cursed Lance, Eldritch N, etc.) bypass
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
@@ -41471,8 +42416,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // weights say G3, but the G2 floor wants G2 filler — letting the leader's
                 // ace reach G2 too keeps it the strongest mon on the team (never weaker
                 // than its own filler). Pre-city-6 the floor is 4, so this is a no-op.
-                const _ceiling = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                S = _filterSigsByGradeCeiling(S, _ceiling);
+                const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                // Weaken (raise the number) when the early-game ceiling is the binding
+                // constraint; drop over-grade no-evo aces (Lapras) so the top-up replaces them.
+                const _ceiling = Math.max(_sigCeilBase, _earlyGradeCeiling);
+                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling > _sigCeilBase);
                 // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
                 // identity sig plus type-matched G2 partners.
                 if (/^Gym Leader\s*\d$/.test(_evtStr)) {
@@ -41486,7 +42434,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
             // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
-                S = _filterSigsByGradeCeiling(S, Math.min(_storySigGradeCeiling(gwIn), _fillerFloor));
+                const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling > _sigCeilBase2);
             }
             // Evo-stage gate on the signature pool: pre-C2 even a leader's ace
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
@@ -41543,6 +42492,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Empties the G3/G4 buckets so neither the standard picks nor the Rival
             // counter-pick can pull weak filler late; signatures (S) are untouched.
             if (_fillerFloor < 4) T = _capGradePoolsByGradeFloor(T, _fillerFloor);
+            // Early-game grade CEILING on the filler pool (City 0-1 → G4, City 2-3 → G3):
+            // empties the buckets STRONGER than the ceiling so no early foe — standard pick
+            // or Rival counter-pick — out-grades the player's basic-tier team. Same
+            // local-copy + fail-open discipline as the floor above.
+            if (_earlyGradeCeiling > 1) T = _capGradePoolsByGradeCeiling(T, _earlyGradeCeiling);
 
             // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
             // built fresh against your LIVE six (dynamic, never cached). Score every
@@ -41597,7 +42551,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
                     usedR.add(chosen);
-                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _setPowerTarget }) });
                 }
                 const _origSigsR = new Set((trainer.sigs || []));
                 const _lockedR = new Set(_counterLock);
@@ -41640,7 +42594,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Clamp the filler ceiling no weaker than the floor so the [ceiling..floor]
             // band stays valid (GL6: weights say G3 but the floor forces G2, so the
             // ceiling must tighten to G2 or the spiral would have nothing to land on).
-            const _fillerCeiling = Math.min(_exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn), _fillerFloor);
+            const _fillerCeiling = Math.max(
+                Math.min(_exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn), _fillerFloor),
+                _earlyGradeCeiling // early-game wall: no filler stronger than the city ceiling
+            );
             // Per-species slot allowance. Authored multiplicity comes from the ORIGINAL sigs
             // list (verbatim): only an intentional same-species duplicate — Lance's triple
             // Dragonite — earns >1 slot. The gen/grade/evo transforms above can collapse
@@ -41753,7 +42710,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 _markUsed(chosen);
-                const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
+                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _setPowerTarget });
                 team.push({ name: chosen, build });
             }
             const _origSigs = new Set((trainer.sigs || []));
@@ -41909,6 +42866,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
                     storyFillerGradeFloorForRow: (...a) => _storyFillerGradeFloorForRow(...a),
                     capGradePoolsByGradeFloor: (...a) => _capGradePoolsByGradeFloor(...a),
+                    storyEnemyGradeCeilingForRow: (...a) => _storyEnemyGradeCeilingForRow(...a),
+                    capGradePoolsByGradeCeiling: (...a) => _capGradePoolsByGradeCeiling(...a),
+                    stagePowerTargetForEvent: (...a) => _stagePowerTargetForEvent(...a),
                     evolveSigToGradeFloor: (...a) => _evolveSigToGradeFloor(...a),
                     rollCityIVs: (...a) => _rollCityIVs(...a),
                     trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
@@ -41945,6 +42905,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pickTrack: (pool) => _pickTrack(pool),
                     migratePreV22: () => migrateStoryPreV22(),
                     migratePreV26: () => migrateStoryPreV26(),
+                    migratePreV27: () => migrateStoryPreV27(),
+                    // Vibe Exchange (v27) test handles.
+                    get BANTER_MOD() { return BANTER_MOD; },
+                    get BANTER_TIER_THRESHOLDS() { return BANTER_TIER_THRESHOLDS; },
+                    get BANTER_TIER_MIRROR_BONUS() { return BANTER_TIER_MIRROR_BONUS; },
+                    get BANTER_PERSONA_LEAD() { return BANTER_PERSONA_LEAD; },
+                    banterResolve: (...a) => _banterResolve(...a),
+                    banterTierFor: (...a) => _banterTierFor(...a),
+                    banterComputePersona: () => _banterComputePersona(),
+                    banterRollFoeVibe: (...a) => _banterRollFoeVibe(...a),
+                    banterEligibleForRow: (...a) => _banterEligibleForRow(...a),
+                    banterRecordExchange: (...a) => _banterRecordExchange(...a),
+                    storyBanterMultForCurrentBattle: () => _storyBanterMultForCurrentBattle(),
+                    banterOpenerForRow: (...a) => _banterOpenerForRow(...a),
+                    banterReactionLine: (...a) => _banterReactionLine(...a),
+                    banterPostBattleLine: (...a) => _banterPostBattleLine(...a),
+                    banterLogBark: (...a) => _banterLogBark(...a),
+                    get BANTER_ATTITUDES() { return BANTER_ATTITUDES; },
+                    // Scene presentation (P3) test handles.
+                    storyScene: (...a) => _storyScene(...a),
+                    renderNarrativeOverlay: (...a) => _renderNarrativeOverlay(...a),
                     // Narration overhaul (v26) test handles.
                     get ROUTE_LINES() { return ROUTE_LINES; },
                     get STORY_ERRANDS() { return STORY_ERRANDS; },
@@ -42072,6 +43053,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     isFacilityStageUpPendingHere: (...a) => _isFacilityStageUpPendingHere(...a),
                     pendingFacilityIntrosHere: (...a) => _pendingFacilityIntrosHere(...a),
                     showVictoryOverlay: (...a) => showVictoryOverlay(...a),
+                    showBattleIntro: (...a) => showBattleIntro(...a),
                     // Catch-screen handles (Master Ball unlock regression coverage).
                     get catchState() { return _catchState; },
                     set catchState(v) { _catchState = v; },
@@ -42128,6 +43110,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return { name: s.name, nickname: s.nickname || '', build };
                 });
             }
+            // Power-weighted set target for the post-game superboss: near-best (the league
+            // floor) so the Mystery's mirror/fallback rolls are top-quality, not random.
+            const _mysticPower = (sm && sm.active)
+                ? _stagePowerTargetForEvent('Mystery Figure', null, (sm.badges | 0) || 8) : null;
             // Legacy mirror fallback (old saves with no HoF snapshot): re-roll the
             // player's live species with STANDARD movesets + a stronger lead dup.
             const playerTeam = Array.isArray(sm && sm.team) ? sm.team.filter(s => s && s.name) : [];
@@ -42135,15 +43121,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const picks = [];
                 // Mirror up to (partySize - 1) player mons.
                 for (let i = 0; i < Math.min(partySize - 1, playerTeam.length); i++) {
-                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD' }) });
+                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 }
                 // The +1 starter slot — second copy of the player's lead (sm.team[0]).
                 // This is The First's "stronger you" slot.
                 const starterName = playerTeam[0].name;
-                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 // Pad if needed (player had < partySize-1 mons in storage).
                 while (picks.length < partySize) {
-                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
                 }
                 return picks;
             }
@@ -42179,7 +43165,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 usedNames.add(chosen);
                 const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
                 if (t1) usedTypes.add(t1);
-                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', setPowerTarget: _mysticPower }) });
             }
             // Final boss rolls from every unlocked mechanic. Pass the forced gimmick flags
             // as a local override context instead of mutating (and restoring) the shared
@@ -43464,6 +44450,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 tracks: { main: 'classic_v2', villain: _pickTrack(VILLAIN_TRACKS), extra: _pickTrack(EXTRA_TRACKS) },
                 storyEventsFired: {},
                 stats: { battlesLost: 0 },
+                // Vibe Exchange (v27): per-row exchange records + per-style pick
+                // counters + the derived persona. Fresh runs start unwritten.
+                banterByRow: {},
+                banterStats: { flirty: 0, positive: 0, negative: 0, stoic: 0 },
+                banterPersona: { id: 'wildcard', tier: 0 },
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -43677,7 +44668,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'cold-classic-npc-r48',
                 run(ev, onDone) { _renderNarrativeOverlay({
                     metaKey: 'cold-classic-npc-r48',
-                    sprite: 'Veteran', name: 'Veteran', nameplate: 'The Veteran Knows Your Name',
+                    sprite: 'Veteran', name: 'Veteran', nameplate: 'The Veteran, One Last Time',
                     lines: [
                         '"You again. Seven badges. I stopped betting against you somewhere around the fifth."',
                         '"Last town before the Plateau. Take the long look back — six routes, the team you built, the calls you made. That\'s who walks into the eighth gym. Go on."'
@@ -46254,7 +47245,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _rp = getRivalEncounterPhase(nxId);
                     const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
                     const _tease = _rivalTease[_rp];
-                    nextLabel = `🏁 ${trAssign || 'Rival'}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
+                    // §11.1: the rolled identity (Blue/Silver/…) is never surfaced —
+                    // the hub label says "Rival" like every other rival-facing UI.
+                    nextLabel = `🏁 ${_rivalDisplayName()}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
                 }
                 else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
@@ -46299,11 +47292,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hasTeam) {
                 if (actions.includes('Battle Dojo')) {
                     const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
-                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
+                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: n === 1 ? '1 Pokémon needs a held item' : `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
                 }
                 if (actions.includes('Move Tutor')) {
                     const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
-                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
+                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: n === 1 ? '1 Pokémon has an empty move slot' : `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
                 }
                 if (actions.includes('EV Trainer')) {
                     const n = sm.team.filter(s => {
@@ -46311,7 +47304,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const e = s.build.evs || {};
                         return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
                     }).length;
-                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
+                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: n === 1 ? '1 Pokémon has no EVs' : `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
                 }
             }
             const relicAvailableHere = [0, 3, 6, 9].includes(cityIdx);
@@ -46701,6 +47694,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
                     label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
                     click: 'window.StoryMode.enterProfessor()' };
+            } else if (sm.campReturnPoint) {
+                // P0.8 audit fix: on a camp round-trip revisit the only forward
+                // action is returning to camp (the action grid already shows just
+                // "↩ Back to the road"). Without this branch the objective fell
+                // through to the next-battle scan, which reads from the revisited
+                // city's row — labeling an already-cleared route fight while the
+                // click warps back to camp. Label and destination now agree.
+                objective = { kicker: 'NEXT', icon: 'story_route.png', label: 'Head back to the road — camp waits', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (_introsPending && _pendingNames.length) {
                 // Facilities come BEFORE the gym: surface the new/upgraded facility as
                 // the objective so the player meets it first. A first-time facility
@@ -46762,6 +47763,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
+            // CITY HUB V2 identity band — presentation only (no gate logic):
+            // mirror the resolved town name + badge pips into the static band.
+            // The band is display:none on mobile; this write is inert there.
+            try {
+                const _idNameEl = document.getElementById('story-city-identity-name');
+                if (_idNameEl) _idNameEl.textContent = getStoryDisplayTownNameForCityRow(ev) || '';
+                const _idPipsEl = document.getElementById('story-city-identity-badges');
+                if (_idPipsEl) {
+                    let _pips = '';
+                    for (let i = 0; i < 8; i++) _pips += `<span class="story-city-badge-pip${i < (sm.badges | 0) ? ' earned' : ''}"></span>`;
+                    _idPipsEl.innerHTML = _pips;
+                }
+            } catch (e) {}
         }
         // Test hook: render a given city's action chips and return the HTML (headless
         // verification of facility presence + NEW/visited badge state).
@@ -47255,6 +48269,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   • no options → a single "Continue ▶▶" advancing to the next beat.
         // `onDone()` fires exactly once when the script ends. Trusted HTML only
         // (all copy is authored here — never interpolate raw player text).
+        /** Generic story scene engine. Beats: { id?, title?, html, accent?, options? }
+         *  plus OPTIONAL presentation fields (P3 — absent → legacy render unchanged):
+         *    backdropCss   raw CSS background for the overlay (e.g. the camp night sky),
+         *    backdropScene manifest.scenes key → gen3 scene image under a dark gradient,
+         *    sceneKey      raw beat key resolved through _backdropKeyForScene,
+         *    cast          [{ mon|spriteFile, shiny?, size?, cls? }] sprites above the card,
+         *    fx            'rise' | 'pop' | 'fire' — entrance/ambience class on cast+card.
+         *  The beats/options API and the DOM contract (data-scene-opt/-cont buttons,
+         *  goto/finish flow) are unchanged, so all callers upgrade for free. */
         function _storyScene(beats, onDone, sceneId) {
             sceneId = sceneId || 'story-scene-overlay';
             let done = false;
@@ -47270,9 +48293,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = sceneId;
-                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;' + 'flex-direction:column;gap:12px;';
                     document.body.appendChild(ov);
                 }
+                // P3 backdrop — recomputed per beat (the element is reused across
+                // beats): explicit CSS wins, then a manifest scene image under the
+                // same dark-gradient treatment applyStoryBgLayer uses; neither →
+                // the legacy flat black.
+                try {
+                    let _bg = '';
+                    if (beat.backdropCss) _bg = String(beat.backdropCss);
+                    else {
+                        const _bdKey = beat.backdropScene || (beat.sceneKey ? _backdropKeyForScene(beat.sceneKey, beat.beat || null) : '');
+                        if (_bdKey) {
+                            const _scenes = (getStoryBgManifest().scenes) || (DEFAULT_STORY_BG_MANIFEST.scenes) || {};
+                            const _u = _scenes[_bdKey];
+                            if (_u) _bg = 'linear-gradient(180deg, rgba(4,6,12,0.78) 0%, rgba(4,6,12,0.88) 55%, rgba(4,6,12,0.96) 100%), url("' + String(_u).replace(/"/g, '') + '") center / cover no-repeat';
+                        }
+                    }
+                    ov.style.background = _bg || 'rgba(0,0,0,0.93)';
+                    if (_bg) ov.style.imageRendering = 'pixelated';
+                } catch (e) {}
                 const accent = beat.accent || '#aed581';
                 const opts = Array.isArray(beat.options) ? beat.options : null;
                 let btns;
@@ -47281,7 +48322,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     btns = `<div style="text-align:right;margin-top:15px;"><button type="button" data-scene-cont="1" style="padding:9px 18px;background:${accent};color:#001b1e;border:none;font-weight:bold;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:0.04em;">Continue ▶▶</button></div>`;
                 }
-                ov.innerHTML = `<div style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
+                // P3 cast — sprite row above the card. Failed lookups degrade to
+                // nothing (a bad species name never breaks the scene).
+                const _fxCls = ({ rise: 'scene-fx-rise', pop: 'scene-fx-pop', fire: 'scene-fx-fire' })[beat.fx] || '';
+                let _castHtml = '';
+                if (Array.isArray(beat.cast) && beat.cast.length) {
+                    const _imgs = beat.cast.map(c => {
+                        if (!c) return '';
+                        let _src = '';
+                        try {
+                            if (c.mon) _src = getSprite((typeof spriteDisplayName === 'function') ? spriteDisplayName({ name: c.mon }) : c.mon, !!c.shiny);
+                            else if (c.spriteFile) _src = getTrainerSprite({ spriteFile: c.spriteFile });
+                        } catch (e) {}
+                        if (!_src) return '';
+                        const _size = (c.size | 0) || 96;
+                        return `<img class="story-scene-cast-img${c.cls ? ' ' + _esc(String(c.cls)) : ''}" src="${_esc(_src)}" onerror="this.style.display='none'" style="width:${_size}px;height:${_size}px;" alt="">`;
+                    }).join('');
+                    if (_imgs) _castHtml = `<div class="story-scene-cast${_fxCls ? ' ' + _fxCls : ''}">${_imgs}</div>`;
+                }
+                ov.innerHTML = `${_castHtml}<div class="story-scene-card${(!_castHtml && _fxCls) ? ' ' + _fxCls : ''}" style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
                     ${beat.title ? `<div style="font-size:13px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">${beat.title}</div>` : ''}
                     <div>${beat.html || ''}</div>
                     ${btns}
@@ -49946,12 +51005,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // false — when the next is requested, so it mounts immediately. The
         // queue only engages when overlays genuinely overlap, i.e. the bug case.
         let _narrationLive = false;
+        let _narrationLiveEl = null;  // the mounted overlay the lock belongs to
         const _narrationQueue = [];
+        // The lock is only as trustworthy as the dismiss() discipline of every
+        // teardown path. If a live overlay is ever removed via raw .remove()
+        // (screen resets, recovery paths), a bare boolean would stay true
+        // forever and every later overlay would queue invisibly — e.g. the
+        // city-hub errand offer turning into a silent no-op. _narrationIsLive()
+        // therefore self-heals: a lock whose tracked element has left the DOM
+        // is released. It must NEVER release while the element is still
+        // connected — that would re-open the stacked-overlay bug the queue
+        // exists to prevent.
+        function _narrationIsLive() {
+            if (_narrationLive && _narrationLiveEl && !_narrationLiveEl.isConnected) {
+                _narrationLive = false;
+                _narrationLiveEl = null;
+            }
+            return _narrationLive;
+        }
+        // Explicit teardown for navigation seams that clear the stage without
+        // a dismiss(): removes the live overlay (if any), releases the lock,
+        // then flushes the queue so a pending overlay's onDone chain still runs.
+        function _narrationForceClear() {
+            if (_narrationLiveEl) { try { _narrationLiveEl.remove(); } catch (e) {} }
+            _narrationLive = false;
+            _narrationLiveEl = null;
+            _narrationMountNext();
+        }
         function _narrationMountNext() {
-            if (_narrationLive) return;
+            if (_narrationIsLive()) return;
             const ov = _narrationQueue.shift();
             if (!ov) return;
             _narrationLive = true;
+            _narrationLiveEl = ov;
             try { document.body.appendChild(ov); } catch (e) {}
             try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
         }
@@ -50021,8 +51107,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const nameHtml = name
                 ? `<div style="color:${accent};font-size:18px;font-weight:bold;">${_esc(name)}</div>`
                 : '';
+            // P3 revealLines: stage lines one tap at a time (first line visible,
+            // each dismiss-tap surfaces the next before anything can close).
+            // Opt-in, mutually exclusive with typewriter + choices — defaults
+            // render every line immediately, exactly as before.
+            const _revealMode = !!o.revealLines && lines.length > 1 && !o.typewriter
+                && !(Array.isArray(o.choices) && o.choices.filter(c => c && c.label).length);
             const linesHtml = lines.map((l, i) =>
-                `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
+                `<p class="story-dialog-text${_revealMode && i ? ' story-narr-line-hidden' : ''}"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
             ).join('');
             // Optional multi-choice prompt. Each choice is
             //   { label, reply: [line, line, ...], persistKey? }
@@ -50038,14 +51130,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     choices.map((c, i) => `<button type="button" data-narr-choice-idx="${i}" style="padding:9px 16px;background:#1a2a4a;color:#fff;border:1px solid #ffd54f;border-radius:4px;cursor:pointer;text-align:left;font-family:inherit;line-height:1.4;">▸ ${_esc(c.label)}</button>`).join('')
                   }</div>`
                 : '';
-            ov.innerHTML = `
-                ${bannerHtml}
-                ${spriteHtml}
-                ${nameHtml}
-                <div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
+            // P3 spriteSide: optional side-by-side speaker framing — the sprite
+            // sits beside the dialog ('left'/'right') instead of stacked above.
+            // Absent → the legacy stacked column, unchanged.
+            const _dialogHostHtml = `<div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
                     <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
                     <div class="story-dialog-box" data-narr-body="1">${linesHtml}</div>
-                </div>
+                </div>`;
+            const _spriteSide = (o.spriteSide === 'left' || o.spriteSide === 'right') ? o.spriteSide : '';
+            const _bodyHtml = (_spriteSide && spriteHtml)
+                ? `<div class="story-narr-duo${_spriteSide === 'right' ? ' story-narr-duo-right' : ''}">${spriteHtml}<div class="story-narr-duo-col">${nameHtml}${_dialogHostHtml}</div></div>`
+                : `${spriteHtml}
+                ${nameHtml}
+                ${_dialogHostHtml}`;
+            ov.innerHTML = `
+                ${bannerHtml}
+                ${_bodyHtml}
                 ${choices.length ? choiceBtnsHtml : continueBtnHtml}`;
             // Narration overhaul (v26): typewriter reveal. Active only when
             // opts.typewriter is set, there are no choice buttons, and the user
@@ -50107,6 +51207,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // If still typing, the first dismiss request completes the text
                 // instead of closing — so a tap never skips unread prose.
                 if (_twTyping && _skipTypewriter) { _skipTypewriter(); return; }
+                // P3 revealLines: surface the next staged line before anything
+                // can close — a tap never skips an unread beat.
+                if (_revealMode) {
+                    const _nxt = ov.querySelector('.story-narr-line-hidden');
+                    if (_nxt) { _nxt.classList.remove('story-narr-line-hidden'); return; }
+                }
                 dismissed = true;
                 if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
                 if (o.metaKey) {
@@ -50126,6 +51232,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immediately; then flush any genuinely-queued overlay that
                 // overlapped this one.
                 _narrationLive = false;
+                if (_narrationLiveEl === ov) _narrationLiveEl = null;
                 try { o.onDone && o.onDone(); }
                 catch (e) { console.error('[Story] narrative overlay callback', e); }
                 _narrationMountNext();
@@ -50191,10 +51298,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Mount now if the stage is clear; otherwise queue behind the live
             // overlay (flushed on its dismiss). Either way the caller gets its
             // element reference back.
-            if (_narrationLive) {
+            if (_narrationIsLive()) {
                 _narrationQueue.push(ov);
             } else {
                 _narrationLive = true;
+                _narrationLiveEl = ov;
                 document.body.appendChild(ov);
                 try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
             }
@@ -51040,6 +52148,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // to the camp menu on Move On / exhaustion.
         function _campSearchGrass(ctx) {
             try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            // Raw-teardown seam: clear any wedged narration lock before the
+            // wander screen mounts (defensive; no-op when the stage is clean).
+            try { _narrationForceClear(); } catch (e) {}
             const key = _campGrassKey(ctx);
             let cidx = 0; try { cidx = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
             _showWanderScreen(key, cidx, () => _campDefer(() => _campOpenMenu(ctx)), false);
@@ -51065,6 +52176,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.eventIndex = back;
             try { save(); } catch (e) {}
             try { const o = document.getElementById(_CAMP_SCENE_ID); if (o) o.remove(); } catch (e) {}
+            // Raw-teardown seam (see _campSearchGrass): heal the narration lock
+            // before the city hub renders so its overlays can't queue invisibly.
+            try { _narrationForceClear(); } catch (e) {}
             enterCity();
         }
         function _campOpenMenu(ctx) {
@@ -51086,10 +52200,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 options.push({ label: `🏙  Head back to ${_esc(_backName)}`, onPick: () => _campDefer(() => _campHeadBack(ctx)) });
             }
             options.push({ label: '▶▶  Break camp', onPick: () => _campBreak(ctx) });
+            // P3: full-screen night scene — sky-into-firelight backdrop, the
+            // breathing fire glow, the lead settled in close (big, animated) and
+            // the rest of the party gathered small around it. Options/onPick are
+            // byte-identical (the camp-*-v25 suites are the canary).
+            const _campCast = [];
+            try {
+                if (lead && lead.name) _campCast.push({ mon: lead.name, shiny: !!(lead.build && lead.build._isShiny), size: 112 });
+                (sm.team || []).forEach(s => {
+                    if (!s || s.isEgg || s === lead) return;
+                    _campCast.push({ mon: s.name, shiny: !!(s.build && s.build._isShiny), size: 44 });
+                });
+            } catch (e) {}
             _storyScene([{
                 id: 'camp-menu', title: '⛺  Camp', accent: _CAMP_ACCENT,
-                html: `<div style="text-align:center;font-size:34px;line-height:1;margin:2px 0 14px;">🔥</div>
-                       <div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
+                backdropCss: 'linear-gradient(180deg, #070d1f 0%, #0d1730 38%, #1a1208 76%, #241405 100%)',
+                fx: 'fire',
+                cast: _campCast,
+                html: `<div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
                 options,
             }], null, _CAMP_SCENE_ID);
         }
@@ -52133,9 +53261,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
             // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
+            // Shared battle-start handoff: remove the given overlay, then run the
+            // launch callback with crash recovery. callback() is launchBattle →
+            // startBattle (async, NOT awaited): if startBattle throws synchronously
+            // (corrupt lock team, missing build, bad foe sprite), the unhandled
+            // rejection would silently strand the player on a half-built battle
+            // screen — bail back to the city instead of infinite black.
+            const _startBattleFrom = (overlay) => {
+                try { overlay.remove(); } catch (e) {}
+                try { callback(); }
+                catch (e) {
+                    console.error('[showBattleIntro] callback threw — recovering to city:', e);
+                    try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
+                    try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
+                }
+            };
+            // Buffered-input arm (mirrors the victory card): buttons on the new
+            // interactive paths ignore input for the first ~400ms.
+            const _armMs = () => (typeof window.__vsInputArmMs === 'number') ? window.__vsInputArmMs : 400;
             const _runIntro = () => {
-                const overlay = document.createElement('div');
-                overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
                 const roleLookup = {
                     'Basic Trainer':'Basic Trainer','Gym Trainer':'Gym Trainer',
                     'Gym Leader 1':'Gym Leader','Gym Leader 2':'Gym Leader','Gym Leader 3':'Gym Leader',
@@ -52146,9 +53290,122 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     'Mystery Figure':'Rival',
                 };
                 const quoteRole = roleLookup[eventType] || 'Basic Trainer';
-                const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
                 const roleLabel = storyDisplayRoleLabel(eventType);
                 const isRivalBattle = String(eventType) === 'Rival';
+                // VS splash: player vs opponent, accent + drama scaled by battle tier.
+                const VS_ACCENT = { 'Gym Leader':'#ffd54f', 'Rival':'#ff9800', 'Elite Trainer':'#ba68c8', 'E1':'#ba68c8', 'E2':'#ba68c8', 'E3':'#ba68c8', 'E4':'#ba68c8', 'Champion':'#ffd700', 'Victory Road':'#80cbc4', 'Basic Trainer':'#b0bec5', 'Gym Trainer':'#b0bec5' };
+                const vsIsMystery = String(eventType) === 'Mystery Figure';
+                const vsAccent = vsIsMystery ? '#7e57c2' : (VS_ACCENT[quoteRole] || VS_ACCENT[String(eventType)] || '#b0bec5');
+                const vsIsMajor = !(quoteRole === 'Basic Trainer' || quoteRole === 'Gym Trainer');
+                const vsPlayerSprite = _trainerSpritePath((sm && sm.trainerProfile && sm.trainerProfile.sprite) || TRAINER_DEFAULT);
+                const _vsStageHtml = `
+                    <div class="vs-stage${vsIsMajor ? ' vs-big' : ''}" style="--vs-accent:${vsAccent};">
+                        <img class="vs-fighter vs-fighter-player" src="${_esc(vsPlayerSprite)}" onerror="this.style.visibility='hidden'" alt="">
+                        <div class="vs-glyph" aria-hidden="true">VS</div>
+                        <img class="vs-fighter vs-fighter-foe${vsIsMystery ? ' vs-fighter-mystery' : ''}" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="">
+                    </div>
+                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>`;
+
+                // ── Vibe Exchange (P2b UI): interactive pre-battle banter ────────
+                // Story trainer rows only, ONCE per row (a recorded exchange —
+                // including retry/rematch — and a silent foe both fall through to
+                // the static paths below). Crucible re-fights never banter.
+                const _runVibeExchange = (foeVibe, arrIdx, rowId) => {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;';
+                    const opener = _banterOpenerForRow(arrIdx, eventType);
+                    const persona = (sm && sm.banterPersona) || { id: 'wildcard', tier: 0 };
+                    const PERSONA_LABEL = { flirty: '💘 The Heartbreaker', positive: '🤝 The Ray of Sunshine', negative: '💢 The Menace', stoic: '🗿 The Quiet One' };
+                    const chip = (persona.id !== 'wildcard' && (persona.tier | 0) > 0 && PERSONA_LABEL[persona.id])
+                        ? `<div class="vs2-persona-chip">${PERSONA_LABEL[persona.id]} · Tier ${persona.tier}</div>` : '';
+                    overlay.innerHTML = `
+                        ${_vsStageHtml}
+                        ${chip}
+                        <div class="story-dialog-host story-battle-intro-dialog vs-intro-dialog" style="margin-top:2px;">
+                            <div class="story-dialog-nameplate">${roleLabel}</div>
+                            <div class="story-dialog-box"><p class="story-dialog-text" data-vs2-line="1">"${_esc(opener)}"</p></div>
+                        </div>
+                        <div class="vs2-pick-row" data-vs2-picks="1">
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="flirty"><span class="vs2-pick-ico">💘</span><span class="vs2-pick-label">Flirt</span></button>
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="positive"><span class="vs2-pick-ico">🤝</span><span class="vs2-pick-label">Encourage</span></button>
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="negative"><span class="vs2-pick-ico">💢</span><span class="vs2-pick-label">Trash-talk</span></button>
+                            <button type="button" class="vs2-pick-btn" data-vs2-pick="stoic"><span class="vs2-pick-ico">🗿</span><span class="vs2-pick-label">Skip the talk</span></button>
+                        </div>
+                        <div style="font-size:10px;color:#667;letter-spacing:0.06em;">Read them right for an edge — or skip straight to battle.</div>`;
+                    document.body.appendChild(overlay);
+                    try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                    const armAt = Date.now() + _armMs();
+                    overlay.querySelectorAll('button[data-vs2-pick]').forEach(btn => {
+                        btn.onclick = () => {
+                            if (Date.now() < armAt) return;
+                            const pick = btn.getAttribute('data-vs2-pick');
+                            let outcome = 'neutral';
+                            try { outcome = _banterRecordExchange(rowId, foeVibe, pick); } catch (e) {}
+                            let reaction = '…';
+                            try { reaction = _banterReactionLine(arrIdx, foeVibe, pick); } catch (e) {}
+                            const line = overlay.querySelector('[data-vs2-line="1"]');
+                            if (line) line.textContent = `"${reaction}"`;
+                            const BADGE = {
+                                buff:    '⚡ You read them perfectly — your side deals +5% damage this battle!',
+                                debuff:  '💢 That landed badly — your side deals −5% damage this battle.',
+                                neutral: 'The exchange settles nothing. The battle will.',
+                            };
+                            const picks = overlay.querySelector('[data-vs2-picks="1"]');
+                            if (picks) picks.outerHTML = `
+                                <div class="vs2-outcome-badge ${outcome}">${BADGE[outcome]}</div>
+                                <button type="button" class="vs2-battle-btn" data-vs2-battle="1">⚔ Battle!</button>`;
+                            const armAt2 = Date.now() + Math.min(300, _armMs());
+                            const bb = overlay.querySelector('button[data-vs2-battle="1"]');
+                            if (bb) bb.onclick = () => { if (Date.now() < armAt2) return; _startBattleFrom(overlay); };
+                        };
+                    });
+                };
+
+                // ── Marquee Entry (P2a-special): static league title card ───────
+                // Aura-independent, no choices, no buff. Script from
+                // MARQUEE_ENTRIES[eventType]; a missing key falls through to the
+                // legacy splash. (Mystery Figure is deliberately absent — its
+                // pre-boss cinematic + identity intros own that entrance.)
+                const _runMarquee = (mq) => {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;box-sizing:border-box;';
+                    overlay.innerHTML = `
+                        <div class="vs-flash" aria-hidden="true"></div>
+                        <div class="vs-marquee-kicker">${_esc(String(mq.kicker || roleLabel))}</div>
+                        <img class="vs-marquee-sprite${vsIsMystery ? ' vs-fighter-mystery' : ''}" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="" style="--vs-accent:${vsAccent};">
+                        <div class="vs-marquee-name" style="--vs-accent:${vsAccent};">${_esc(String(trainer.name || ''))}</div>
+                        ${mq.epithet ? `<div class="vs-marquee-epithet" style="--vs-accent:${vsAccent};">${_esc(String(mq.epithet))}</div>` : ''}
+                        <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:2px;">
+                            <div class="story-dialog-nameplate">${roleLabel}</div>
+                            <div class="story-dialog-box">${mq.lines.map((l, i) => `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>"${_esc(String(l))}"</p>`).join('')}</div>
+                        </div>
+                        <button type="button" class="vs2-battle-btn" data-vs2-battle="1">Face them →</button>`;
+                    document.body.appendChild(overlay);
+                    try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                    const armAt = Date.now() + _armMs();
+                    const bb = overlay.querySelector('button[data-vs2-battle="1"]');
+                    if (bb) bb.onclick = () => { if (Date.now() < armAt) return; _startBattleFrom(overlay); };
+                };
+
+                // Dispatch: exchange → marquee → legacy splash. Any failure in the
+                // new paths falls back to the splash (never block battle entry).
+                try {
+                    if (sm && sm.active === true && storyBattleRowIdx != null && !sm.crucibleBattleSource) {
+                        const arrIdx = sm.eventIndex | 0;
+                        const rowId = storyBattleRowIdx | 0;
+                        if (_banterEligibleForRow(arrIdx) && !(sm.banterByRow && sm.banterByRow[rowId])) {
+                            const vibe = _banterRollFoeVibe(arrIdx);
+                            if (vibe !== 'silent') { _runVibeExchange(vibe, arrIdx, rowId); return; }
+                        }
+                        const mq = (typeof MARQUEE_ENTRIES === 'object' && MARQUEE_ENTRIES) ? MARQUEE_ENTRIES[String(eventType)] : null;
+                        if (mq && Array.isArray(mq.lines) && mq.lines.length) { _runMarquee(mq); return; }
+                    }
+                } catch (e) { console.warn('[VS] v2 intro failed — falling back to splash:', e); }
+
+                // ── Legacy timed splash (unchanged behavior) ─────────────────────
+                const overlay = document.createElement('div');
+                overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+                const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
                 const rivalPhase = isRivalBattle && storyBattleRowIdx != null ? getRivalEncounterPhase(storyBattleRowIdx) : null;
                 const badgesNow = (sm && sm.badges) | 0;
                 const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
@@ -52158,20 +53415,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const silentAttr = _storyQuoteIsSilent(quote)
                     ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
                     : '';
-                // VS splash: player vs opponent, accent + drama scaled by battle tier.
-                const VS_ACCENT = { 'Gym Leader':'#ffd54f', 'Rival':'#ff9800', 'Elite Trainer':'#ba68c8', 'E1':'#ba68c8', 'E2':'#ba68c8', 'E3':'#ba68c8', 'E4':'#ba68c8', 'Champion':'#ffd700', 'Victory Road':'#80cbc4', 'Basic Trainer':'#b0bec5', 'Gym Trainer':'#b0bec5' };
-                const vsIsMystery = String(eventType) === 'Mystery Figure';
-                const vsAccent = vsIsMystery ? '#7e57c2' : (VS_ACCENT[quoteRole] || VS_ACCENT[String(eventType)] || '#b0bec5');
-                const vsIsMajor = !(quoteRole === 'Basic Trainer' || quoteRole === 'Gym Trainer');
-                const vsPlayerSprite = _trainerSpritePath((sm && sm.trainerProfile && sm.trainerProfile.sprite) || TRAINER_DEFAULT);
                 overlay.innerHTML = `
                     ${vsIsMajor ? '<div class="vs-flash" aria-hidden="true"></div>' : ''}
-                    <div class="vs-stage${vsIsMajor ? ' vs-big' : ''}" style="--vs-accent:${vsAccent};">
-                        <img class="vs-fighter vs-fighter-player" src="${_esc(vsPlayerSprite)}" onerror="this.style.visibility='hidden'" alt="">
-                        <div class="vs-glyph" aria-hidden="true">VS</div>
-                        <img class="vs-fighter vs-fighter-foe${vsIsMystery ? ' vs-fighter-mystery' : ''}" src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" alt="">
-                    </div>
-                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>
+                    ${_vsStageHtml}
                     ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
                     <div class="story-dialog-host story-battle-intro-dialog vs-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
@@ -52184,19 +53430,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.body.appendChild(overlay);
                 try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
                 const introMs = isRivalBattle ? 3400 : (vsIsMajor ? 2900 : 2200);
-                setTimeout(() => {
-                    try { overlay.remove(); } catch (e) {}
-                    // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
-                    // startBattle throws synchronously (corrupt lock team, missing build, bad foe
-                    // sprite), the unhandled rejection silently strands the player on a half-built
-                    // battle screen. Catch + bail back to the city is much better than infinite black.
-                    try { callback(); }
-                    catch (e) {
-                        console.error('[showBattleIntro] callback threw — recovering to city:', e);
-                        try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
-                        try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
-                    }
-                }, introMs);
+                setTimeout(() => { _startBattleFrom(overlay); }, introMs);
             };
             _enqueueIntroTutorial('firstTrainerBattle', _runIntro);
         }
@@ -52366,8 +53600,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_lootN > 0) {
                         const _got = _storyGrantRandomVitamins(_lootN);
                         try {
-                            const _ls = Object.keys(_got).map(k => '+' + _got[k] + ' ' + (_IV_VITAMIN_LABEL[k] || k)).join(', ');
-                            if (_ls) _victoryRewardLines.push('💊 Loot: ' + _ls);
+                            // P4: itemized reward entries — {icon,label} renders as a
+                            // sprite chip on the victory card (strings keep rendering
+                            // as plain full-width lines).
+                            const _slugByKey = { hpUp: 'hp-up', protein: 'protein', iron: 'iron', calcium: 'calcium', zinc: 'zinc', carbos: 'carbos' };
+                            for (const k of Object.keys(_got)) {
+                                _victoryRewardLines.push({
+                                    icon: _slugByKey[k] ? 'sprites/pokesprite/items/' + _slugByKey[k] + '.png' : '',
+                                    label: '+' + _got[k] + ' ' + (_IV_VITAMIN_LABEL[k] || k),
+                                });
+                            }
                         } catch (e) {}
                     }
                 }
@@ -52563,6 +53805,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const sv = (sm.runSeed >>> 0).toString();
                     seedEl.innerHTML = `Run seed: <code style="color:#888;font-family:inherit;">${sv}</code><br><button type="button" style="margin-top:8px;font-size:11px;padding:4px 10px;font-family:inherit;" onclick="navigator.clipboard.writeText('${sv}').then(function(){window.showGameAlert('Seed copied');}).catch(function(){})">Copy seed</button>`;
                 } else if (seedEl) seedEl.style.display = 'none';
+                // P2d: the victorious foe's parting line, keyed by this row's
+                // recorded vibe exchange. Rival is excluded (the concede flow
+                // owns rival aftermath); silent rows / no exchange show nothing.
+                try {
+                    const _bEl = document.getElementById('story-gameover-banter');
+                    if (_bEl) {
+                        let _bLine = '';
+                        if (ev && ev[1] === 'Battle' && String(ev[2]) !== 'Rival') _bLine = _banterPostBattleLine(ev[0] | 0, false);
+                        if (_bLine) {
+                            const _bWho = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'The trainer';
+                            _bEl.textContent = `${_bWho}: "${_bLine}"`;
+                            _bEl.style.display = '';
+                        } else {
+                            _bEl.style.display = 'none';
+                        }
+                    }
+                } catch (e) {}
                 refreshStoryGameOverRetreatUI();
                 showScreen('screen-story-gameover');
             }
@@ -52607,6 +53866,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (e) { console.warn('[Story] retry inv save', e); }
             }
             applyMechanicsToSettings();
+            // Mirror acceptRivalLossAndContinue/retreatToLastPokemonCenter: clear
+            // the defeat screen (and any other visible screen/modal) BEFORE battle
+            // re-entry, so the VS splash never mounts over a still-visible
+            // gameover surface.
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             if (ev && ev[1] === 'Battle' && sm.currentEnemyLock && sm.currentEnemyLock.eventIdx === sm.eventIndex) {
                 // Retry replays the SAME trainer fight. The route wild / catch
@@ -52643,7 +53907,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 'You conceded this round. Your rival is the better trainer until you take it back.';
             let rivalSay = '';
             try { rivalSay = getRivalAftermathLine(false, getRivalEncounterPhase(rowIdx)); } catch (e) {}
-            const who = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'Rival';
+            // §11.1: never surface the rolled identity — the concede alert
+            // attributes the line to the generic "Rival".
+            const who = _rivalDisplayName();
             const msg = rivalSay ? `${baseMsg}\n\n${who}: "${rivalSay}"` : baseMsg;
             try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
             processNextEvent();
@@ -52679,6 +53945,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
+        // Victory card input-arm (P0.1): the card no longer auto-closes (the old
+        // 6s timer + click-anywhere dismiss made rewards unreadable). Dismissal
+        // is Continue / Enter / Esc only, and input is ignored for the first
+        // ~400ms so taps/keys still buffered from the battle's final exchange
+        // can't blow the card away. Tests zero the window via __victoryInputArmMs.
+        const VICTORY_INPUT_ARM_MS = 400;
         function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx, rewardLines) {
             const ov = document.createElement('div');
             ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
@@ -52695,10 +53967,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             contBtn.textContent = 'Continue →';
             contBtn.style.cssText = 'margin-top:8px;padding:10px 24px;position:relative;z-index:3;';
             let finished = false;
+            const _armMs = (typeof window.__victoryInputArmMs === 'number')
+                ? window.__victoryInputArmMs : VICTORY_INPUT_ARM_MS;
+            const _armAt = Date.now() + _armMs;
             const dismiss = () => {
                 if (finished) return;
+                if (Date.now() < _armAt) return; // buffered-input guard
                 finished = true;
-                clearTimeout(autoClose);
                 document.removeEventListener('keydown', escListener);
                 if (ov.parentElement) ov.remove();
                 // Defensive: cb() advances story flow (processNextEvent → enterBattleEvent → startBattle).
@@ -52714,11 +53989,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
             };
             document.addEventListener('keydown', escListener);
-            // Auto-close is armed after the overlay content is assembled (below):
-            // milestone overlays (gotBadge) can stack 3-4 narrative beats and must
-            // wait for an explicit Continue; routine wins keep a timer scaled to
-            // how much text is on screen instead of a flat 6s yank.
-            let autoClose = null;
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
             const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
@@ -52789,7 +54059,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Rival's spoken aftermath, standing-aware (grudging respect / concession).
                     let rivalSay = '';
                     try { rivalSay = getRivalAftermathLine(true, rp); } catch (e) {}
-                    const who = _trainerName || 'Rival';
+                    // §11.1: never surface the rolled identity (Blue/Silver/…).
+                    const who = _rivalDisplayName();
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;">${narr}</div>` +
                         (rivalSay ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${who}: "${rivalSay}"</div>` : '');
                 }
@@ -52802,6 +54073,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : `<div style="font-size:14px;color:#ce93d8;">The mask falls — but the figure dissolves before you can see who wore it.</div>`;
                 }
             }
+            // Vibe Exchange aftermath: the foe's parting line keyed by the row's
+            // recorded vibe. Rival is excluded — getRivalAftermathLine above owns
+            // rival aftermath (no double goodbye).
+            let banterAftermath = '';
+            try {
+                if (storyRowIdx != null && String(battleEventName || '') !== 'Rival' && typeof _banterPostBattleLine === 'function') {
+                    const _bLine = _banterPostBattleLine(storyRowIdx | 0, true);
+                    if (_bLine) {
+                        const _bWho = _trainerName || 'The trainer';
+                        banterAftermath = `<div style="font-size:13px;color:#b0bec5;line-height:1.5;max-width:380px;font-style:italic;">${_esc(_bWho)}: "${_esc(_bLine)}"</div>`;
+                    }
+                }
+            } catch (e) {}
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             const _firstClearBanner = _isCareerFirstClear
                 ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First clear ★</div>'
@@ -52811,31 +54095,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _upNextHtml = (typeof _storyUpNextPillHtml === 'function')
                 ? _storyUpNextPillHtml({ accent: '#bca455', tone: 'rgba(28,22,8,0.55)', labelColor: '#e7d6a3', valueColor: '#fff8d6', phase: 'postVictory' })
                 : '';
+            // P4: structured victory card — header band with the badge medallion,
+            // quote block (leader flavor + banter aftermath), gold delta row,
+            // itemized rewards ({icon,label} entries render as sprite chips;
+            // plain strings keep rendering as full-width lines), up-next pill,
+            // explicit Continue (P0.1). Scoped story-victory-v2 classes; the
+            // hardcoded heading stays "VICTORY!" (the title param remains the
+            // aria-label, as before).
+            const _rewardHtml = (Array.isArray(rewardLines) && rewardLines.length)
+                ? `<div class="story-victory-v2-rewards">${rewardLines.map(l => {
+                    if (l && typeof l === 'object' && l.label) {
+                        const _ico = l.icon ? `<img src="${_esc(String(l.icon))}" alt="" width="18" height="18" decoding="async" onerror="this.style.display='none'">` : '';
+                        return `<span class="story-victory-v2-chip">${_ico}<span>${_esc(String(l.label))}</span></span>`;
+                    }
+                    return `<div class="story-victory-v2-line">${_esc(String(l))}</div>`;
+                  }).join('')}</div>`
+                : '';
+            const _quoteHtml = (badgeFlavor || banterAftermath)
+                ? `<div class="story-victory-v2-quote">${badgeFlavor}${banterAftermath}</div>` : '';
+            ov.classList.add('story-victory-v2');
             ov.innerHTML = `
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
-                <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;max-width:420px;padding:12px;">
-                ${gotBadge ? '<div class="story-victory-badge-slot" title="Milestone">🏅</div>' : ''}
-                <div style="font-size:28px;color:#ffd700;font-weight:bold;">VICTORY!</div>
-                ${_firstClearBanner}
-                ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">A milestone falls.</div>`:'')}
-                ${badgeFlavor}
-                <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
-                <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div>
-                ${(Array.isArray(rewardLines) && rewardLines.length) ? `<div style="display:flex;flex-direction:column;gap:3px;margin-top:2px;max-width:380px;">${rewardLines.map(l => `<div style="font-size:12px;color:#d7c98a;line-height:1.4;">${_esc(l)}</div>`).join('')}</div>` : ''}
-                ${_upNextHtml ? `<div style="margin-top:4px;">${_upNextHtml}</div>` : ''}
+                <div class="story-victory-v2-card">
+                    <div class="story-victory-v2-head">
+                        ${gotBadge ? '<div class="story-victory-badge-slot story-victory-v2-medallion" title="Milestone">🏅</div>' : ''}
+                        <div class="story-victory-v2-title">VICTORY!</div>
+                        ${_firstClearBanner}
+                        ${isGymBadgeEvent?`<div class="story-victory-v2-milestone">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div class="story-victory-v2-milestone">A milestone falls.</div>`:'')}
+                    </div>
+                    ${_quoteHtml}
+                    <div class="story-victory-v2-gold">
+                        <span class="story-victory-v2-gold-delta">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</span>
+                        <span class="story-victory-v2-gold-total">Total: ${storyGoldHtml(sm.gold.toLocaleString())}</span>
+                    </div>
+                    ${_rewardHtml}
+                    ${_upNextHtml ? `<div class="story-victory-v2-next">${_upNextHtml}</div>` : ''}
                 </div>`;
             const conf = ov.querySelector('.story-fx-confetti');
             storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
-            ov.appendChild(contBtn);
-            ov.onclick = () => dismiss();
-            // Milestone overlays (badge/Elite/Champion/Mystery) hold until the
-            // player continues — they carry the run's biggest narrative beats.
-            // Routine wins auto-advance on a content-proportional timer
-            // (~35ms/char, floor 6s) so short overlays behave exactly as before.
-            if (!gotBadge) {
-                const _ovChars = (ov.textContent || '').length;
-                autoClose = setTimeout(dismiss, Math.max(6000, 2500 + _ovChars * 35));
-            }
+            contBtn.classList.add('story-victory-v2-continue');
+            (ov.querySelector('.story-victory-v2-card') || ov).appendChild(contBtn);
             document.body.appendChild(ov);
             // Focus the Continue button so Enter dismisses immediately and SR
             // users hear "Continue → button, dialog 'VICTORY!'". Defer one tick
@@ -57917,7 +59216,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (old.n)        evoBuild.n        = old.n;
             if (old.evs)      evoBuild.evs      = { ...old.evs };
             if (old.teraType) evoBuild.teraType = old.teraType;
-            if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
+            // Held item carries over unchanged — the player chose it. Eviolite is kept
+            // too: its boost is NFE-gated in the damage calc, so on a now-fully-evolved
+            // form it simply lies inert until the player re-slots it (never an illegal
+            // hold). Only the '(none)' sentinel is skipped so the rolled default stands.
+            if (old.i && old.i !== '(none)') evoBuild.i = old.i;
             // Carry vitamin investment through evolution: IVs are the mon's,
             // not the species'. Without this, evolving a Fan-Club-trained mon
             // would silently reset its stats to the species default 31s.
@@ -58070,7 +59373,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const consumeNote = req.stoneId ? `\nA ${req.stone} from your bag will be consumed.`
                                   : req.tradeId ? `\nA ${req.trade} from your bag will be consumed.`
                                   : '';
-                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.${consumeNote}`;
+                const tail = `Nature, IVs, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), camp bond, and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.${consumeNote}`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
@@ -58118,7 +59421,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cost = _evoCostFor(evoGrade);
                 const flavor = _evoFlavorLine(evoName);
                 const head = `🍬 Use 1 Rare Candy to evolve ${mon.name} → ${evoName} (Grade ${evoGrade})? Saves ${cost.toLocaleString()}G.`;
-                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
+                const tail = `Nature, IVs, EVs, item, ability (if ${evoName} can have it), camp bond, and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;

@@ -44,8 +44,8 @@ function plantSave(extra) {
 }
 
 // ── Schema / migration ────────────────────────────────────────────────────
-test('SAVE_VER is 26', () => {
-    assert.equal(W.__STORY_SAVE_VER, 26);
+test('SAVE_VER is at least 26 (v27 bumped it for the Vibe Exchange)', () => {
+    assert.ok(W.__STORY_SAVE_VER >= 26);
 });
 
 test('migrateStoryPreV26 seeds the new additive fields', () => {
@@ -56,7 +56,7 @@ test('migrateStoryPreV26 seeds the new additive fields', () => {
     assert.equal(typeof sm.npcsMet, 'object');
     assert.equal(typeof sm.journalSeen, 'object');
     assert.equal(typeof sm.routeShown, 'object');
-    assert.equal(sm.version, 26);
+    assert.equal(sm.version, W.__STORY_SAVE_VER);
 });
 
 test('migration back-fills routeShown for battle rows at/behind eventIndex (no stale interstitial on resume)', () => {
@@ -174,6 +174,10 @@ test('_storyThreadObjectiveLine reflects badge count + threads, deterministicall
     assert.match(line, /Badge 3\/8/);
     // Same inputs → same output.
     assert.equal(line, ST.storyThreadObjectiveLine());
+    // P0.7: thread status is phrased ("Rumors of Team Aqua on the road"),
+    // never the raw debug-flag form ("Aqua: stirring").
+    assert.ok(!/:\s*(stirring|unfolding|resolved)/.test(line),
+      `no raw status words in the subline: "${line}"`);
 });
 
 test('_journalRenderHTML lists badges + threads without mutating sm', () => {
