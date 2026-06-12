@@ -60,20 +60,38 @@ test('gen-agnostic: signature identities (Gym Leader / E4 / Champion) appear reg
   assert.ok(seen('E4', 'Drasna'), 'Drasna (Gen 6) is an E4 candidate in a Gen-2-only run');
 });
 
-test('gen-agnostic: the Elite-Trainer FLAVOUR pool stays charGen-gated (only the 3 signature pools opt out)', () => {
-  // A non-rival, non-leader Elite Trainer whose charGen is off should NOT surface in a narrow
-  // run — proving the opt-out is scoped to Gym Leader / E4 / Champion, not the whole game.
+test('gen-agnostic: the principle extends to ALL named pools — the Elite-Trainer pool opts out too', () => {
+  // Maintainer call (Q2): gen-agnostic appearance applies to every non-basic pool, not just the
+  // three signature ones. A Gen-8+ named Elite Trainer must surface in a Gen-1-only run; only the
+  // generated Basic/Gym fodder keeps a charGen check.
   const data = E.TRAINER_DATA;
   const offGen = data.find(t => t.role === 'Elite Trainer' && !t.isRival && t.charGen >= 8);
   assert.ok(offGen, 'there is a Gen-8+ named Elite Trainer to test with');
   const GEN1 = [1];
   let sawOffGen = false;
-  for (let s = 0; s < 400 && !sawOffGen; s++) {
+  for (let s = 0; s < 600 && !sawOffGen; s++) {
     eng.seedRng(41000 + s);
     const t = E.selectTrainerForRole('Elite Trainer', GEN1, new Set());
     if (t && t.name === offGen.name) sawOffGen = true;
   }
-  assert.ok(!sawOffGen, `Gen-${offGen.charGen} Elite Trainer ${offGen.name} stays gen-gated in a Gen-1-only run`);
+  assert.ok(sawOffGen, `Gen-${offGen.charGen} Elite Trainer ${offGen.name} is now a candidate in a Gen-1-only run`);
+});
+
+test('grade-appropriate fallback: a roster-less Champion backfills with G1/G2 all-stars, not fodder', () => {
+  // Cynthia (Mixed) in a Gen-1-only run has every authored ace gen-locked, so she falls to the
+  // synthetic pool. With grade-weighted backfill it should lean G1/G2 (her Champion tier), not
+  // the old weak-first G3/G4. We roll her under a G1/G2-heavy weight set and check the mean grade.
+  const cynthia = E.TRAINER_DATA.find(t => t.name === 'Cynthia' && t.role === 'Champion');
+  const g = (n) => E.getMonGrade(n, E.getBST(n));
+  E.sm.active = true;
+  let strong = 0, total = 0;
+  for (let s = 0; s < 12; s++) {
+    E.sm.runSeed = (47000 + s) >>> 0; E.sm._strngState = null;
+    const team = E.rollTrainerTeam(cynthia, 6, { g1: 55, g2: 45, g3: 0, g4: 0 }, [1], 'Champion', 60);
+    for (const m of team) { total++; if (g(m.name) <= 2) strong++; }
+  }
+  E.sm.active = false;
+  assert.ok(strong / total >= 0.7, `roster-less Champion leans G1/G2 (got ${(strong / total).toFixed(2)} at-or-above-G2)`);
 });
 
 test('gen-agnostic: an off-gen leader still fields a TYPE-COHERENT roster (rules adapt the team)', () => {
@@ -95,6 +113,24 @@ test('gen-agnostic: an off-gen leader still fields a TYPE-COHERENT roster (rules
   }
   E.sm.active = false;
   assert.ok(rockFrac / rolls >= 0.4, `Brock-in-Gen2 roster leans Rock (got ${(rockFrac / rolls).toFixed(2)})`);
+});
+
+test('gen-respecting evolve-up: an off-gen leader never promotes a sig into a disabled gen', () => {
+  // Brock at Gym 8 under floor pressure evolves Onix up to meet G2 — but in a Gen-1-only run
+  // Steelix (Gen 2) is disabled, so Onix must STAY Onix; the climb only takes gen-legal forms.
+  const brock = E.TRAINER_DATA.find(t => t.name === 'Brock' && /^Gym Leader/.test(t.role));
+  const genOf = (n) => { const b = E.baseStats[n]; return b ? b.gen : 0; };
+  E.sm.active = true;
+  let sawSteelix = false, sawOnix = false, offGen = 0, total = 0;
+  for (let s = 0; s < 20; s++) {
+    E.sm.runSeed = (48000 + s) >>> 0; E.sm._strngState = null;
+    const team = E.rollTrainerTeam(brock, 6, { g1: 0, g2: 100, g3: 0, g4: 0 }, [1], 'Gym Leader 8', 53);
+    for (const m of team) { total++; if (genOf(m.name) !== 1) offGen++; if (m.name === 'Steelix') sawSteelix = true; if (m.name === 'Onix') sawOnix = true; }
+  }
+  E.sm.active = false;
+  assert.equal(sawSteelix, false, 'Steelix (Gen 2) never leaks into a Gen-1-only run');
+  assert.equal(offGen, 0, `every mon is Gen 1 in a Gen-1-only run (got ${offGen}/${total} off-gen)`);
+  assert.ok(sawOnix, 'Brock keeps his Gen-1 Onix instead');
 });
 
 test('5c-recur: leaders spent as leaders still appear in the Elite Trainer pool', () => {
