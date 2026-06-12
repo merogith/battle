@@ -42355,6 +42355,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // encounters specifically meant to surface species the player chose not to
             // include. Their pkmGens already covers all 9 gens; the tag is the green light.
             const _isEldritch = !!(trainer && trainer.tag === 'eldritch');
+            // The Rival is a PURE counter to the player's LIVE party (no signatures): its
+            // species pool must span every enabled gen, NOT the rival NPC's narrow pkmGens
+            // (Blue=Gen1, N=Gen5, May/Brendan=Gen3…). Honoring pkmGens here would leave whole
+            // counter-types unanswerable in an all-gen run — a Gen-1 Blue could never field a
+            // Dark/Steel/Fairy counter, a Gen-5 N never a Fairy one — silently degrading the
+            // "hard counter" mechanic. pkmGens still themes filler for every OTHER (signature-
+            // bearing) trainer; only the Rival's all-filler counter team opts out.
+            const _isRivalEvent = String(battleEventType) === 'Rival';
             // Player's enabled-gens toggle — the ONLY legit gen gate for a trainer's
             // *signatures* (see sigGenSet below). pkmGens narrows the FILLER theme only.
             const _playerGens = _isEldritch
@@ -42366,7 +42374,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 allowedGens = _playerGens.slice();
                 const pg = trainer && trainer.pkmGens;
-                if (pg && pg.length) {
+                if (!_isRivalEvent && pg && pg.length) {
                     const crossed = allowedGens.filter((g) => pg.includes(g));
                     if (crossed.length) allowedGens = crossed;
                     else {
@@ -42407,10 +42415,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || _evtStr === 'Champion'
                 || /^E[1-4]$/.test(_evtStr)
                 || _evtStr === 'Rival');
-            // "Boss" = the sig-cap-exempt set PLUS gym leaders — these keep their
-            // authored signatures verbatim (incl. iconic low-grade aces). Non-bosses
-            // (gym trainers / basic / elite) get the late-game sig evolve-up below.
-            const _evtIsBoss = _exemptFromSigCap || /^Gym Leader\s*\d$/.test(_evtStr);
+            // Late-game signature EVOLVE-UP (city 6+) — runs FIRST, before the grade-ceiling
+            // devolve below, so the two transforms never fight. A trainer's authored
+            // UNDER-grade ace climbs its own line to meet the late-game grade floor: Bug
+            // Maniac's Caterpie → Butterfree, and (gym leaders too now) an all-gen
+            // Brock-as-GL8's Onix → Steelix, Jasmine's Magnemite → Magnezone. Gated
+            // `!_exemptFromSigCap`, so gym leaders promote but the truly-exempt bosses
+            // (E1-4 / Champion / Rival / Mystery) keep their authored, often-iconic aces
+            // verbatim (Red's Pikachu never becomes Raichu). Pre-city-6 the floor is 4 so
+            // this is a no-op — early gyms keep low-grade aces (Onix stays Onix at GL1).
+            // Already-at/above-floor aces (Dragonite, grade ≤ floor) pass through untouched
+            // here and are handled by the ceiling devolve; if a weak ace OVERSHOOTS the
+            // ceiling on the way up (Dratini → Dragonite past a G2 ceiling), the ceiling
+            // devolve immediately below clamps it back down — deterministic, no oscillation.
+            if (_fillerFloor < 4 && !_exemptFromSigCap && Array.isArray(S) && S.length) {
+                S = S.map(n => _evolveSigToGradeFloor(n, _fillerFloor));
+            }
             if (!_exemptFromSigCap) {
                 // Clamp the sig ceiling no weaker than the filler floor: at GL6 the row
                 // weights say G3, but the G2 floor wants G2 filler — letting the leader's
@@ -42452,13 +42472,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (d && sigGenSet.has((baseStats[d] || {}).gen) && !seen.has(d)) { seen.add(d); fitted.push(d); }
                 }
                 S = fitted;
-            }
-            // Late-game signature EVOLVE-UP (city 6+, non-boss trainers only): a theme
-            // trainer's authored baby sig evolves up its own line to meet the G2 floor
-            // (Bug Maniac's Caterpie → Butterfree). Bosses keep their authored aces (the
-            // low-grade-signature exception). No-op pre-city-6 (_fillerFloor === 4).
-            if (_fillerFloor < 4 && !_evtIsBoss && Array.isArray(S) && S.length) {
-                S = S.map(n => _evolveSigToGradeFloor(n, _fillerFloor));
             }
             const _poolKey = (isMixed ? 'mixed' : types.slice().sort().join('+')) + '|' + Array.from(genSet).sort((a, b) => a - b).join(',');
             let T = _trainerPoolCache.get(_poolKey);
@@ -43459,18 +43472,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     usedBase.add(_baseTrainerName(t.name));
                 }
             });
-            // Pass 2: gym trainer 1 / 2 — type-matched to the upcoming gym leader.
-            STORY_EVENTS_RAW.forEach((ev, posInRaw) => {
-                const [idx, type, event] = ev;
-                if (type !== 'Battle') return;
-                if (!/^Gym Trainer( [12])?$/.test(String(event))) return;
-                const prefType = preferredTypeBeforeGymBattle(posInRaw);
-                const t = selectTrainerForRole(event, eg, usedBase, prefType);
-                if (t) {
-                    sm.trainerAssignments[idx] = t.name;
-                    usedBase.add(_baseTrainerName(t.name));
-                }
-            });
+            // Pass 2 REMOVED: Gym Trainer 1/2 fights are GENERATED on the fly at battle entry
+            // (_generateBasicTrainer — rolled type forced to the gym's, generic sprite, no
+            // signatures), so a stored named assignment here was dead: enterBattleEvent never
+            // read it. Gym-trainer typing comes from the assigned gym LEADER via
+            // preferredTypeBeforeGymBattle, not from any stored gym-trainer name. (Pass 3
+            // likewise skips generic Basic/Gym rows — see the skip there.)
             // Pass 2.5: pin canonical named Elite Four to their slots when their
             // charGen is enabled, before Pass 3's untargeted picker can spend
             // them on the Champion (Lance) or leave them out of the run entirely.
@@ -43501,6 +43508,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 if (event === 'Mystery Figure') return;
+                // Generic Basic / Gym Trainer fights are GENERATED at battle entry
+                // (_generateBasicTrainer), so a stored name here is never read — skip them
+                // outright. This also retires the old "early-route fodder" / themed-basic
+                // assignment paths below, which all fed a value the battle discarded.
+                if (event === 'Basic Trainer' || /^Gym Trainer( [12])?$/.test(String(event))) return;
                 let _eliteWhitelist = null;
                 // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
                 const theme = _resolveThemeForBattleRow(idx);
@@ -43535,20 +43547,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _eliteWhitelist = STORY_ELITE_VILLAIN_NAMES;
                     }
                 }
-                // Pre-Gym-1 route fodder: the lone Basic Trainer between intro rival and
-                // City 1 should *always* be a classic route trainer (Youngster, Bug
-                // Catcher, Lass, …), not a Rocket Executive or Cursed Vagrant. Locks the
-                // very first fight after the starter city to a thematic early-route
-                // class so the curve eases the player in.
-                if (event === 'Basic Trainer' && countGymBadgesBeforeStoryRow(posInRaw) === 0) {
-                    const early = _pickEarlyRouteBasicTrainer(eg, usedBase);
-                    if (early) {
-                        sm.trainerAssignments[idx] = early.name;
-                        usedBase.add(_baseTrainerName(early.name));
-                        return;
-                    }
-                    // fall through to standard picker if the filter somehow empties
-                }
                 const t = selectTrainerForRole(event, eg, usedBase, null, _eliteWhitelist);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
@@ -43558,50 +43556,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.usedTrainerNames = [...usedBase];
         }
 
-        /** "Extra-easy" fodder-class allowlist for the lone pre-Gym-1 Basic
-         * Trainer slot (the route fight between intro rival and City 1). Tightens
-         * the broader untagged Basic-Trainer pool to only the classes whose
-         * signature roster reads as Route-1 fodder — Rattata, Caterpie, Wurmple,
-         * Geodude, Magikarp tier. Explicitly drops Dragon Tamer (Dratini/Bagon/
-         * Gible feel premium even at Grade 4), Hex Maniac, Black Belt, Bird
-         * Keeper (Pidgeotto/Staravia sigs), Reactor Tech (Beldum sig), Mystic
-         * (Abra family), Crooked Beat. Result: the first non-rival fight always
-         * reads as "easy starter route" — a Youngster with a Rattata, never a
-         * Dragon Tamer with a Dratini. */
-        const _EARLY_ROUTE_FODDER_CLASSES = new Set([
-            'Youngster', 'Lass', 'Bug Catcher', 'Hiker', 'Fisherman',
-            'Lab Rat', 'Mountain Guide', 'Ace Diver', 'Tea Aroma',
-            'Glacial Trekker', 'Marsh Walker'
-        ]);
-        function _pickEarlyRouteBasicTrainer(enabledGens, usedBaseNames) {
-            const genSet = new Set(normalizeEnabledGens(enabledGens));
-            let pool = TRAINER_DATA.filter(t => {
-                if (!t || String(t.role || '').toLowerCase() !== 'basic trainer') return false;
-                if (t.tag) return false; // exclude cursed / multitype / villain / eldritch
-                if (!_EARLY_ROUTE_FODDER_CLASSES.has(t.name)) return false;
-                // Route trainers are gen-agnostic class fillers; charGen gating already
-                // exempts them, but keep the same fallback shape as selectTrainerForRole.
-                return !_isRegionalBasicTrainer(t) || genSet.has(t.charGen);
-            });
-            if (usedBaseNames) {
-                const fresh = pool.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
-                if (fresh.length) pool = fresh;
-            }
-            if (!pool.length) return null;
-            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            // Type-first pick (same flatten as selectTrainerForRole) so Normal-typed
-            // trainers don't dominate.
-            const byType = {};
-            for (const t of pool) {
-                const key = isPlaceholderSignatureList(t.sigs || []) ? 'Mixed' : (t.type || 'Mixed');
-                if (!byType[key]) byType[key] = [];
-                byType[key].push(t);
-            }
-            const typeKeys = Object.keys(byType);
-            const chosenType = typeKeys[Math.floor(_rng() * typeKeys.length)];
-            const typePool = byType[chosenType];
-            return typePool[Math.floor(_rng() * typePool.length)];
-        }
+        // _pickEarlyRouteBasicTrainer + _EARLY_ROUTE_FODDER_CLASSES REMOVED: the pre-Gym-1
+        // Basic Trainer fight (like every Basic/Gym Trainer fight) is GENERATED at battle
+        // entry by _generateBasicTrainer, which never consulted this curated assignment — so
+        // the "easy Youngster/Rattata" curation here was dead. The early fight stays fair via
+        // the grade pipeline (UNTRAINED build tier + the City 0-1 G4 grade ceiling), not via
+        // a hand-picked fodder class. Revive from git history if a curated early roster is
+        // ever wired into the generator.
 
         /** Find a trainer whose `tag` matches `theme` and whose role matches the slot.
          * Falls through to null if no candidate exists — caller should retry with the
