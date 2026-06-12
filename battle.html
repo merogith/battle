@@ -3381,9 +3381,59 @@
         .pc-price-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; font-size:10px; }
         .pc-price-chip { padding:3px 8px; background:rgba(20,28,40,0.6); border:1px solid #2c3a52; color:#aaa; border-radius:4px; }
         .pc-price-chip strong { color:#ffd700; }
+        /* ── PC drag-and-drop ────────────────────────────────────────────────
+           Reorder a zone (Party / PC Box) or move a Pokémon across zones
+           (deposit / withdraw) by dragging a card's grip. Purely additive over
+           the Deposit / Withdraw / ▲▼ buttons, which remain the keyboard +
+           discoverable fallback. Drags resolve mons by stable id, so they can
+           never desync sm.team / sm.pcBox. In-box reorder needs manual order
+           (sort = Order caught, no filters); cross-zone deposit works in any sort. */
+        .pc-card { position:relative; }
+        .pc-drag-handle {
+            appearance:none; -webkit-appearance:none; border:0; margin:0 0 1px; padding:3px 0;
+            width:100%; height:16px; display:flex; align-items:center; justify-content:center;
+            background:transparent; color:#5b6172; cursor:grab; border-radius:4px;
+            touch-action:none; -webkit-tap-highlight-color:transparent;
+            transition:color .12s, background-color .12s;
+        }
+        .pc-drag-handle:hover { color:var(--accent); background-color:rgba(255,255,255,0.05); }
+        .pc-drag-handle:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+        .pc-drag-handle:active { cursor:grabbing; color:var(--accent); }
+        .pc-drag-grip {
+            width:22px; height:8px; color:inherit;
+            background-image:
+                radial-gradient(circle, currentColor 1.1px, transparent 1.5px),
+                radial-gradient(circle, currentColor 1.1px, transparent 1.5px),
+                radial-gradient(circle, currentColor 1.1px, transparent 1.5px),
+                radial-gradient(circle, currentColor 1.1px, transparent 1.5px),
+                radial-gradient(circle, currentColor 1.1px, transparent 1.5px),
+                radial-gradient(circle, currentColor 1.1px, transparent 1.5px);
+            background-repeat:no-repeat; background-size:4px 4px;
+            background-position:0 0, 9px 0, 18px 0, 0 4px, 9px 4px, 18px 4px;
+        }
+        .pc-card.pc-dragging { opacity:0.38; }
+        .pc-card.pc-drop-before { box-shadow:inset 3px 0 0 -1px var(--accent); }
+        .pc-card.pc-drop-after  { box-shadow:inset -3px 0 0 -1px var(--accent); }
+        .pc-card.pc-just-moved { animation:pcJustMoved 0.6s ease-out; }
+        @keyframes pcJustMoved { 0% { background-color:rgba(255,213,79,0.22); } 100% { background-color:transparent; } }
+        .pc-zone.pc-zone-target { outline:2px dashed rgba(255,213,79,0.5); outline-offset:3px; border-radius:6px; }
+        .pc-empty.pc-zone-target { outline:2px dashed rgba(255,213,79,0.5); outline-offset:0; }
+        .pc-drag-ghost {
+            position:fixed; left:0; top:0; margin:0; pointer-events:none; z-index:99999;
+            opacity:0.95; box-shadow:0 12px 32px rgba(0,0,0,0.6); border-color:var(--accent) !important;
+        }
+        .pc-drag-ghost .pc-drag-handle { cursor:grabbing; }
+        .pc-drag-hint { font-size:10px; color:#7c8597; margin:0 0 10px; line-height:1.5; display:flex; align-items:center; gap:6px; }
+        .pc-drag-hint .pc-drag-grip { flex-shrink:0; color:#7c8597; }
+        .pc-sr-live { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+        @media (prefers-reduced-motion: reduce) {
+            .pc-card.pc-just-moved { animation:none !important; }
+            .pc-drag-handle { transition:none !important; }
+        }
         @media (max-width: 768px) and (orientation: portrait) {
             .pc-card-btn { min-height:40px; }
             .pc-tool-select, .pc-tool-search, .pc-tool-toggle { min-height:40px; }
+            .pc-drag-handle { height:24px; }
         }
         .story-prof-card-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: stretch; width: 100%; max-width: 1200px; margin: 12px auto; box-sizing: border-box; }
         .prof-pick-card { flex: 1 1 280px; max-width: 420px; min-width: min(100%, 240px); }
@@ -9485,6 +9535,7 @@
                 <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
+            <div id="story-pc-live" class="pc-sr-live" role="status" aria-live="polite"></div>
             <div style="padding:10px;flex-shrink:0;">
                 <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
             </div>
@@ -54275,6 +54326,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_pcCurrentTab === 'storage') body.innerHTML = _pcRenderStorageTab();
             else body.innerHTML = _pcRenderUndergroundTab();
             _pcInstallRowClickHandler();
+            _pcInstallStorageDrag(body);
         }
         function pcSwitchTab(tab) {
             _pcCurrentTab = (tab === 'underground') ? tab : 'storage';
@@ -54424,6 +54476,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const id = slot.id || '';
             const idEsc = _esc(id);
             ctx = ctx || {};
+            // Drag grip — only the live Party (deposit) and PC Box (withdraw) cards
+            // get one; the Underground (sell) list is not reorderable. Resolves to a
+            // zone the drag controller knows ('team' | 'pc'). Eggs are draggable too.
+            const _dragZone = where === 'party' ? 'team' : (where === 'pc' ? 'pc' : '');
+            const _dragName = _esc(slot.nickname || slot.name || (slot.isEgg ? 'Mystery Egg' : 'Pokémon'));
+            const _dragHandle = (_dragZone && id)
+                ? `<button type="button" class="pc-drag-handle" data-pc-dragzone="${_dragZone}" data-pc-drag-id="${idEsc}" data-pc-name="${_dragName}" title="Drag to reorder or move between Party and PC — or focus and use the arrow keys" aria-label="Reorder ${_dragName}. Press and hold to drag, or use the arrow keys to move."><span class="pc-drag-grip" aria-hidden="true"></span></button>`
+                : '';
             if (slot.isEgg) {
                 const can = where === 'party' ? (!ctx.boxFull && !!id) : (!ctx.partyFull && !!id);
                 const reason = where === 'party'
@@ -54434,6 +54494,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : `<button type="button" class="pc-card-btn pc-card-btn--withdraw" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${idEsc}')" ${can ? '' : 'disabled'} title="${_esc(reason)}">Withdraw</button>`
                       + `<button type="button" class="pc-card-btn pc-card-btn--release" onclick="event.stopPropagation();window.StoryMode.pcRelease('${idEsc}')" title="Release this egg">Release</button>`;
                 return `<div class="pc-card pc-card--egg" data-pc-row="${where}" data-pc-id="${idEsc}">
+                    ${_dragHandle}
                     <div class="pc-card-hit" role="button" tabindex="0" data-pc-open="1" aria-label="Mystery Egg" title="It's an egg">
                         <div class="pc-card-sprite-wrap pc-card-sprite-wrap--egg">${_eggIconHTML(48)}</div>
                         <div class="pc-card-name">🥚 Mystery Egg</div>
@@ -54472,6 +54533,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         + `<button type="button" class="pc-card-btn pc-card-btn--release" onclick="event.stopPropagation();window.StoryMode.pcRelease('${idEsc}')" title="Release ${_esc(slot.name)}">Release</button>`;
             }
             return `<div class="pc-card tier-${g}${sh ? ' is-shiny' : ''}${where === 'sell' ? ' pc-card--sell' : ''}" data-pc-row="${rowAttr}" data-pc-id="${idEsc}">
+                ${_dragHandle}
                 <div class="pc-card-hit" role="button" tabindex="0" data-pc-open="1" aria-label="View ${_esc(slot.nickname || slot.name)} summary" title="View full summary">
                     ${srcRow}
                     <div class="pc-card-sprite-wrap">
@@ -54517,7 +54579,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const head = (view.length !== box.length)
                 ? `<div class="pc-grid-count">Showing ${view.length} of ${box.length}</div>` : '';
-            return head + `<div class="pc-grid">${view.map(s => _pcCardHtml(s, 'pc', ctx)).join('')}</div>`;
+            return head + `<div class="pc-grid pc-zone" data-pc-zone="pc">${view.map(s => _pcCardHtml(s, 'pc', ctx)).join('')}</div>`;
         }
         // Re-render only the box grid (keeps the toolbar DOM, so search keeps focus).
         function _pcRerenderBoxGrid() {
@@ -54562,19 +54624,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html += `<div style="padding:8px 10px;margin-bottom:10px;background:rgba(255,193,7,0.12);border:1px solid #ffb300;color:#ffd54f;font-size:11px;line-height:1.4;">⚠ PC almost full (${box.length}/${PC_BOX_CAP}). Free up space soon.</div>`;
             }
 
-            // Party — compact card grid (Deposit action).
+            // One-time drag hint so the grips are discoverable.
+            html += `<div class="pc-drag-hint"><span class="pc-drag-grip" aria-hidden="true"></span>Drag a grip to reorder, or to move a Pokémon between Party and PC. Keyboard: focus a grip and use the arrow keys.</div>`;
+
+            // Party — compact card grid (Deposit action). The grid is a drop zone.
             html += `<h4 class="pc-section-head pc-section-head--party">Party</h4>`;
             if (!team.length) {
-                html += `<div class="pc-empty">No Pokémon in your party. Visit the Professor or withdraw from the PC.</div>`;
+                html += `<div class="pc-empty pc-zone" data-pc-zone="team">No Pokémon in your party. Visit the Professor or withdraw from the PC.</div>`;
             } else {
                 const pctx = { boxFull, partyLastOne };
-                html += `<div class="pc-grid">${team.map(s => _pcCardHtml(s, 'party', pctx)).join('')}</div>`;
+                html += `<div class="pc-grid pc-zone" data-pc-zone="team">${team.map(s => _pcCardHtml(s, 'party', pctx)).join('')}</div>`;
             }
 
             // PC Box — sort/filter toolbar + responsive card grid.
             html += `<h4 class="pc-section-head pc-section-head--box">PC Box</h4>`;
             if (!box.length) {
-                html += `<div class="pc-empty">PC is empty. Catch wild Pokémon or deposit from your party.</div>`;
+                html += `<div class="pc-empty pc-zone" data-pc-zone="pc">PC is empty. Catch wild Pokémon or deposit from your party.</div>`;
             } else {
                 html += _pcRenderBoxToolbar(box);
                 html += `<div id="story-pc-box-grid">${_pcRenderBoxGridInner()}</div>`;
@@ -54610,6 +54675,279 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!hit || !body.contains(hit)) return;
                 ev.preventDefault();
                 _openFrom(hit);
+            });
+        }
+
+        // ── PC drag-and-drop controller ──────────────────────────────────────
+        // Pointer Events (mouse + touch) drag for the storage tab: reorder within a
+        // zone, or deposit / withdraw across zones, by dragging a card's grip. Bound
+        // once on #story-pc-body; reads live cards at drag time so it survives the
+        // innerHTML repaint after each drop. Resolves mons by stable id — never by
+        // array index — so it cannot desync sm.team / sm.pcBox. Mirrors the party
+        // modal's _installPartyDrag, extended for a grid + cross-zone moves.
+
+        // True only when the on-screen box order == sm.pcBox order, i.e. an index
+        // move is meaningful. Any active sort/filter/search breaks that mapping, so
+        // in-box reorder is disabled then (cross-zone deposit still appends).
+        function _pcManualBoxOrder() {
+            return _pcBoxSort === 'caught' && !_pcBoxFilterType && !_pcBoxShinyOnly && !String(_pcBoxSearch || '').trim();
+        }
+        // Polite screen-reader announce (re-fires even on an identical message).
+        function _pcAnnounce(msg) {
+            const el = document.getElementById('story-pc-live');
+            if (!el) return;
+            el.textContent = '';
+            requestAnimationFrame(() => { el.textContent = msg; });
+        }
+        // Pure: returns a NEW array with the slot whose id === dragId moved to the
+        // insertion gap insIndex (0..n over the list, counting the dragged slot —
+        // same convention the pointer drag computes). Returns null on a no-op / miss.
+        // The on-screen order equals the array order for any reorderable zone, so the
+        // gap maps straight onto the array. Mirrors partyReorder's removal-shift math.
+        function pcReorderByInsertion(list, dragId, insIndex) {
+            const arr = Array.isArray(list) ? list.slice() : [];
+            const from = arr.findIndex(s => s && s.id === dragId);
+            if (from < 0) return null;
+            let to = insIndex > from ? insIndex - 1 : insIndex;
+            to = Math.max(0, Math.min(arr.length - 1, to));
+            if (to === from) return null;
+            const [m] = arr.splice(from, 1);
+            arr.splice(to, 0, m);
+            return arr;
+        }
+        // Apply the pure reorder to sm.team / sm.pcBox in place (preserve the array
+        // reference). Returns the resting index, or -1 on a no-op.
+        function _pcReorderWithin(zone, dragId, insIndex) {
+            const arr = zone === 'team' ? sm.team : sm.pcBox;
+            if (!Array.isArray(arr)) return -1;
+            const next = pcReorderByInsertion(arr, dragId, insIndex);
+            if (!next) return -1;
+            arr.length = 0;
+            for (const m of next) arr.push(m);
+            return arr.findIndex(s => s && s.id === dragId);
+        }
+        // Deposit (team→pc) or withdraw (pc→team) via drag, inserting at insIndex in
+        // the destination. Re-uses the exact gates from pcDeposit / pcWithdraw. The
+        // box honors a precise slot only in manual order; otherwise it appends.
+        // Returns true on success.
+        function _pcMoveAcross(dragId, destZone, insIndex) {
+            _pcEnsureBoxArray();
+            const found = _pcFindSlotById(dragId);
+            if (!found) return false;
+            if (destZone === 'pc') {
+                if (found.where !== 'team') return false;
+                if (!found.slot.isEgg && _pcTeamHasOnlyOneMon()) return false;
+                if (sm.pcBox.length >= PC_BOX_CAP) return false;
+                const [moved] = sm.team.splice(found.index, 1);
+                const at = _pcManualBoxOrder() ? Math.max(0, Math.min(sm.pcBox.length, insIndex)) : sm.pcBox.length;
+                sm.pcBox.splice(at, 0, moved);
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('pbTrayBall', 0.7); } catch (e) {}
+                return true;
+            }
+            if (destZone === 'team') {
+                if (found.where !== 'pc') return false;
+                if ((sm.team || []).length >= _storyMaxPartySize()) return false;
+                const [moved] = sm.pcBox.splice(found.index, 1);
+                const at = Math.max(0, Math.min(sm.team.length, insIndex));
+                sm.team.splice(at, 0, moved);
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('pbRel', 0.7); } catch (e) {}
+                return true;
+            }
+            return false;
+        }
+        // Keyboard fallback: arrow keys on a focused grip move the card one slot
+        // within its zone (cross-zone moves stay on the Deposit/Withdraw buttons).
+        function _pcHandleKeyReorder(handle, dir) {
+            const zone = handle.getAttribute('data-pc-dragzone');
+            const id = handle.getAttribute('data-pc-drag-id');
+            const nm = handle.getAttribute('data-pc-name') || 'Pokémon';
+            if (!zone || !id) return;
+            if (zone === 'pc' && !_pcManualBoxOrder()) {
+                _pcAnnounce('Set the sort to “Order caught” to rearrange the PC box.');
+                return;
+            }
+            const arr = zone === 'team' ? sm.team : sm.pcBox;
+            const from = arr.findIndex(s => s && s.id === id);
+            if (from < 0) return;
+            const to = from + dir;
+            if (to < 0 || to >= arr.length) return;
+            [arr[from], arr[to]] = [arr[to], arr[from]];
+            save();
+            _pcRefresh();
+            _pcAnnounce(`${nm} moved to slot ${to + 1}.`);
+            requestAnimationFrame(() => {
+                const h = Array.from(document.querySelectorAll('.pc-drag-handle'))
+                    .find(x => x.getAttribute('data-pc-dragzone') === zone && x.getAttribute('data-pc-drag-id') === id);
+                if (h) h.focus();
+            });
+        }
+        function _pcInstallStorageDrag(body) {
+            if (!body || body._pcDragBound) return;
+            body._pcDragBound = true;
+            let dragId = null, dragZone = null, dragName = '', dragFromIdx = -1;
+            let ghost = null, ins = -1, insZone = null, lastX = 0, lastY = 0;
+            let autoRAF = 0, autoVel = 0;
+            const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            function cardsIn(zoneEl) { return Array.from(zoneEl.querySelectorAll('.pc-card[data-pc-id]')); }
+            function clearMarks() {
+                body.querySelectorAll('.pc-card.pc-drop-before,.pc-card.pc-drop-after').forEach(c => c.classList.remove('pc-drop-before', 'pc-drop-after'));
+                body.querySelectorAll('.pc-zone.pc-zone-target').forEach(z => z.classList.remove('pc-zone-target'));
+            }
+            function zoneAt(x, y) {
+                const el = document.elementFromPoint(x, y);
+                return el ? el.closest('.pc-zone[data-pc-zone]') : null;
+            }
+            // Insertion index (0..n) for the closest card, by its center + which half
+            // of it the pointer is on. Grid-aware via nearest-center.
+            function dropIndex(zoneEl, x, y) {
+                const cs = cardsIn(zoneEl);
+                if (!cs.length) return 0;
+                let bi = 0, bd = Infinity;
+                for (let i = 0; i < cs.length; i++) {
+                    const r = cs[i].getBoundingClientRect();
+                    const dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+                    const d = dx * dx + dy * dy;
+                    if (d < bd) { bd = d; bi = i; }
+                }
+                const r = cs[bi].getBoundingClientRect();
+                return (x > r.left + r.width / 2) ? bi + 1 : bi;
+            }
+            function paint(zoneEl, idx, sameZone) {
+                clearMarks();
+                if (!zoneEl) return;
+                zoneEl.classList.add('pc-zone-target');
+                const cs = cardsIn(zoneEl);
+                if (!cs.length) return;
+                // Same-zone no-op gaps (either side of the dragged card) show no line.
+                if (sameZone && (idx === dragFromIdx || idx === dragFromIdx + 1)) return;
+                if (idx < cs.length) cs[idx].classList.add('pc-drop-before');
+                else cs[cs.length - 1].classList.add('pc-drop-after');
+            }
+            function stopAuto() { if (autoRAF) cancelAnimationFrame(autoRAF); autoRAF = 0; autoVel = 0; }
+            function autoStep() {
+                autoRAF = 0;
+                if (!dragId || !autoVel) return;
+                body.scrollTop += autoVel;
+                onMoveCore(lastX, lastY);
+                autoRAF = requestAnimationFrame(autoStep);
+            }
+            function updateAuto(y) {
+                const r = body.getBoundingClientRect();
+                const EDGE = 42, MAX = 16;
+                let v = 0;
+                if (y < r.top + EDGE) v = -Math.ceil(MAX * Math.min(1, (r.top + EDGE - y) / EDGE));
+                else if (y > r.bottom - EDGE) v = Math.ceil(MAX * Math.min(1, (y - (r.bottom - EDGE)) / EDGE));
+                autoVel = v;
+                if (autoVel && !autoRAF) autoRAF = requestAnimationFrame(autoStep);
+                else if (!autoVel) stopAuto();
+            }
+            function onMoveCore(x, y) {
+                if (ghost) ghost.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)` + (reduceMotion() ? '' : ' scale(1.04)');
+                const z = zoneAt(x, y);
+                if (!z) { insZone = null; ins = -1; clearMarks(); return; }
+                const zname = z.getAttribute('data-pc-zone');
+                insZone = zname;
+                ins = dropIndex(z, x, y);
+                // Reorder within a non-manual box is a no-op: just highlight the zone.
+                if (zname === dragZone && zname === 'pc' && !_pcManualBoxOrder()) {
+                    clearMarks();
+                    z.classList.add('pc-zone-target');
+                    return;
+                }
+                paint(z, ins, zname === dragZone);
+            }
+            function onMove(ev) {
+                if (!dragId) return;
+                if (ev.cancelable) ev.preventDefault();
+                lastX = ev.clientX; lastY = ev.clientY;
+                onMoveCore(lastX, lastY);
+                updateAuto(lastY);
+            }
+            function cleanup() {
+                document.removeEventListener('pointermove', onMove, true);
+                document.removeEventListener('pointerup', onUp, true);
+                document.removeEventListener('pointercancel', onUp, true);
+                stopAuto();
+                if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+                ghost = null;
+                body.querySelectorAll('.pc-card.pc-dragging').forEach(c => c.classList.remove('pc-dragging'));
+                clearMarks();
+            }
+            function onUp() {
+                const id = dragId, fromZone = dragZone, nm = dragName;
+                const destZone = insZone, at = ins;
+                cleanup();
+                dragId = null; dragZone = null; insZone = null; ins = -1; dragFromIdx = -1;
+                if (!id || !destZone) return;
+                let landedZone = null, msg = '';
+                if (destZone === fromZone) {
+                    if (fromZone === 'pc' && !_pcManualBoxOrder()) {
+                        _pcAnnounce('Set the sort to “Order caught” to rearrange the box by dragging.');
+                        return;
+                    }
+                    const to = _pcReorderWithin(fromZone, id, at);
+                    if (to < 0) return;
+                    landedZone = fromZone;
+                    msg = `${nm} moved to slot ${to + 1}.`;
+                    save();
+                    _pcRefresh();
+                    try { window.StoryFx && window.StoryFx.playSfx('pbRel', 0.4); } catch (e) {}
+                } else {
+                    if (!_pcMoveAcross(id, destZone, at)) {
+                        _pcAnnounce(destZone === 'pc'
+                            ? 'Could not deposit — the PC is full, or that is your last Pokémon.'
+                            : 'Could not withdraw — your party is full.');
+                        return;
+                    }
+                    landedZone = destZone;
+                    msg = destZone === 'pc' ? `${nm} deposited to the PC.` : `${nm} withdrawn to your party.`;
+                    _pcRefresh();
+                }
+                _pcAnnounce(msg);
+                requestAnimationFrame(() => {
+                    const z = body.querySelector(`.pc-zone[data-pc-zone="${landedZone}"]`);
+                    if (!z) return;
+                    const card = Array.from(z.querySelectorAll('.pc-card[data-pc-id]')).find(c => c.getAttribute('data-pc-id') === id);
+                    if (card) { card.classList.add('pc-just-moved'); setTimeout(() => card.classList.remove('pc-just-moved'), 600); }
+                });
+            }
+            body.addEventListener('pointerdown', (ev) => {
+                const handle = ev.target.closest('.pc-drag-handle');
+                if (!handle) return;
+                const card = handle.closest('.pc-card[data-pc-id]');
+                if (!card) return;
+                ev.preventDefault();
+                dragId = handle.getAttribute('data-pc-drag-id') || card.getAttribute('data-pc-id');
+                dragZone = handle.getAttribute('data-pc-dragzone');
+                dragName = handle.getAttribute('data-pc-name') || '';
+                lastX = ev.clientX; lastY = ev.clientY;
+                ins = -1; insZone = null;
+                const zoneEl = card.closest('.pc-zone[data-pc-zone]');
+                dragFromIdx = zoneEl ? cardsIn(zoneEl).indexOf(card) : -1;
+                card.classList.add('pc-dragging');
+                // Floating ghost (pointer-events:none → it never blocks elementFromPoint).
+                ghost = card.cloneNode(true);
+                ghost.classList.add('pc-drag-ghost');
+                ghost.classList.remove('pc-dragging');
+                const r = card.getBoundingClientRect();
+                ghost.style.width = r.width + 'px';
+                ghost.style.transform = `translate(${lastX}px, ${lastY}px) translate(-50%, -50%)`;
+                document.body.appendChild(ghost);
+                document.addEventListener('pointermove', onMove, true);
+                document.addEventListener('pointerup', onUp, true);
+                document.addEventListener('pointercancel', onUp, true);
+            });
+            body.addEventListener('keydown', (ev) => {
+                const handle = ev.target.closest('.pc-drag-handle');
+                if (!handle) return;
+                let dir = 0;
+                if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') dir = -1;
+                else if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') dir = 1;
+                else return;
+                ev.preventDefault();
+                _pcHandleKeyReorder(handle, dir);
             });
         }
 
@@ -67195,6 +67533,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     npcStage: typeof _npcStage === 'function' ? (k) => _npcStage(k) : null,
                     setPcOpenId: (id) => { _storyEvoLabPcOpenId = id; },
                     safariGradeWeightsForBadges: typeof _safariGradeWeightsForBadges === 'function' ? () => _safariGradeWeightsForBadges() : null,
+                    pcReorderWithin: typeof _pcReorderWithin === 'function' ? (z, id, i) => _pcReorderWithin(z, id, i) : null,
+                    pcMoveAcross: typeof _pcMoveAcross === 'function' ? (id, z, i) => _pcMoveAcross(id, z, i) : null,
+                    pcManualBoxOrder: typeof _pcManualBoxOrder === 'function' ? () => _pcManualBoxOrder() : null,
                     get sm() { return sm; },
                     set sm(v) { sm = v; },
                 };
@@ -67216,7 +67557,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterStoneShop, buyStoneItem, redeemStoneToken,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
-            pcSetBoxSort, pcSetBoxFilterType, pcSetBoxSearch, pcToggleBoxShiny, pcClearBoxFilters, pcBoxView,
+            pcSetBoxSort, pcSetBoxFilterType, pcSetBoxSearch, pcToggleBoxShiny, pcClearBoxFilters, pcBoxView, pcReorderByInsertion,
             catchThrow, catchRun, catchContinue,
             catchResolveSendToPC, catchResolveSwap,
             safariBait, safariRock, safariLeaveEarly,
