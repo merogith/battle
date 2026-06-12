@@ -41579,15 +41579,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Grade ORDER follows the row's grade weights (strongest-weighted grade first), so a
             // trainer whose authored aces all filtered out fields a grade-APPROPRIATE roster
             // rather than the old fixed weak-first (G3/G4) order. A Mixed Champion in a narrow-gen
-            // run now backfills with G1/G2 "all-star" mons (matching the Champion's G1/G2 weights)
-            // instead of route fodder; a Basic Trainer still leans G4. We don't HARD-limit to the
-            // top grade — at least the top two populated grades are always included (and more if
-            // the pool is thin), so variety stays and "anything in-gen can still show up", just
-            // weighted to the trainer's tier. No weights → legacy weak-first order (G3·G4·G2·G1).
+            // run backfills with G1/G2 "all-star" mons (matching the Champion's G1/G2 weights);
+            // a Basic Trainer leans G4. CRUCIAL: a grade the trainer's profile FORBIDS (zero
+            // weight) is never pulled, even when the type pool is thin. Without this, a narrow-gen
+            // Dragon Gym Trainer (whose matrix'd profile sets g1=0) would "fill to 12" right past
+            // G3/G4/G2 into G1 and field a legendary (the Latias-on-Gym-2 bug) — the grade
+            // PROFILE, i.e. difficulty, decides whether G1 is reachable, not pool scarcity.
+            // No weights → legacy weak-first order (G3·G4·G2·G1).
             const gw = gradeWeights || {};
             const gwTotal = (gw.g1 || 0) + (gw.g2 || 0) + (gw.g3 || 0) + (gw.g4 || 0);
             const gradeOrder = gwTotal > 0
-                ? [1, 2, 3, 4].sort((a, b) => (gw['g' + b] || 0) - (gw['g' + a] || 0))
+                ? [1, 2, 3, 4].filter(g => (gw['g' + g] || 0) > 0).sort((a, b) => (gw['g' + b] || 0) - (gw['g' + a] || 0))
                 : [3, 4, 2, 1];
             const pool = [];
             let gradesIncluded = 0;
@@ -42530,10 +42532,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // ace reach G2 too keeps it the strongest mon on the team (never weaker
                 // than its own filler). Pre-city-6 the floor is 4, so this is a no-op.
                 const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                // Weaken (raise the number) when the early-game ceiling is the binding
-                // constraint; drop over-grade no-evo aces (Lapras) so the top-up replaces them.
+                // Drop (don't keep) an over-grade no-evo ace whenever the early-game ceiling is
+                // the binding constraint — INCLUDING when it ties the weights ceiling (>=, not >).
+                // The early ceiling is a hard "player can't match this yet" wall, so a G1 no-evo
+                // legendary that can't devolve to fit (Latias, Lapras) must be dropped and replaced
+                // by a ceiling-grade top-up, not kept. The old `>` let it survive on the tie case
+                // (e.g. a city-2 row with g2=0, where both ceilings land on G3).
                 const _ceiling = Math.max(_sigCeilBase, _earlyGradeCeiling);
-                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling > _sigCeilBase);
+                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling >= _sigCeilBase);
                 // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
                 // identity sig plus type-matched G2 partners.
                 if (/^Gym Leader\s*\d$/.test(_evtStr)) {
@@ -42552,7 +42558,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
                 const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling > _sigCeilBase2);
+                // Same `>=` drop rule as above: an un-devolvable over-ceiling mon that survived the
+                // synthetic backfill is dropped when the early ceiling is binding (tie included).
+                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling >= _sigCeilBase2);
             }
             // Evo-stage gate on the signature pool: pre-C2 even a leader's ace
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
