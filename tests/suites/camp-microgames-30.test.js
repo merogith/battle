@@ -131,6 +131,73 @@ test('end-to-end: a ranged game resolves to its easy bound at diff 0 and hard bo
     assert.ok(hold.green[1] > hold.green[0], 'green band floor rises (tighter) as difficulty climbs');
 });
 
+// ── Fix E — sequence (Combo!/Copy!): no back-to-back repeats ──────────────────
+// Two flashes of the same pad with a short gap read as ONE long flash → the player
+// taps once and loses unfairly. _campSeqGen must never emit a consecutive duplicate.
+test('sequence gen: correct length, in range, and NEVER two of the same pad in a row', () => {
+    const gen = ST.campSeqGen;
+    // deterministic LCG so the invariant is checked over a fixed, reproducible spread
+    let s = 0x2545f491;
+    const rng = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    for (let trial = 0; trial < 400; trial++) {
+        const len = 2 + (trial % 6);   // lengths 2..7 (covers combo 3-5 + copy 4-7)
+        const seq = gen(len, 4, rng);
+        assert.equal(seq.length, len, 'length honoured');
+        for (let i = 0; i < seq.length; i++) {
+            assert.ok(seq[i] >= 0 && seq[i] < 4 && Number.isInteger(seq[i]), 'pad index in [0,4)');
+            if (i > 0) assert.notEqual(seq[i], seq[i - 1], `no back-to-back repeat at ${i} (trial ${trial})`);
+        }
+    }
+});
+
+// ── Fix I — steady (Groom!/Plant!): drift amplitude is driven by the knob ──────
+// Regression: the X drift was hard-coded to 0.30·width (~108px) and ignored `driftAmp`,
+// so even the easy setting was an un-holdable chase. Amplitude must now track the knob.
+test('steady amp: tied 1:1 to driftAmp; easy setting is hold-still-viable, hard has teeth', () => {
+    const amp = ST.campSteadyAmp;
+    assert.equal(amp(8), 8, 'amp == driftAmp');
+    assert.equal(amp(26), 26, 'amp == driftAmp');
+    assert.ok(amp(8) < amp(26), 'monotonic with the knob');
+    assert.equal(amp(-3), 0, 'clamped non-negative');
+    assert.equal(amp('nope'), 16, 'non-number → sane default');
+    const G = ST.CAMP_MICROGAMES;
+    const R2 = Math.SQRT2;   // worst-case dev when the player holds dead-centre and the dot drifts
+    for (const id of ['groom', 'plant']) {
+        const g = G[id];
+        const easy = ST.campEffectiveGame(g, 0), hard = ST.campEffectiveGame(g, 1);
+        assert.ok(amp(easy.driftAmp) * R2 <= easy.limitPx, `${id}: easy is holdable without tracking`);
+        assert.ok(amp(hard.driftAmp) * R2 > hard.limitPx, `${id}: hard forces active tracking`);
+    }
+});
+
+// ── Fix J — track (Loom!/Sync!/Gaze!): winnable with perfect play ──────────────
+// Two regressions fixed: (1) the deadline now starts on first CONTACT (was: at mount,
+// so acquisition lag alone could doom a perfect run), making any needFrac<1 feasible;
+// (2) the mark was slowed so a human can stay glued within `tol`.
+test('track mark: slowed path stays within a human-trackable speed', () => {
+    const pos = ST.campTrackPos;
+    const W = 360, H = 240;   // jsdom field size (min(360,84vw) × 240)
+    let maxSpeed = 0;   // px/sec
+    let prev = pos(0);
+    for (let el = 1; el <= 6000; el++) {
+        const p = pos(el);
+        const dx = (p.fx - prev.fx) * W, dy = (p.fy - prev.fy) * H;
+        maxSpeed = Math.max(maxSpeed, Math.hypot(dx, dy) * 1000);   // per-ms → per-sec
+        prev = p;
+    }
+    assert.ok(maxSpeed < 240, `mark peak speed ${maxSpeed.toFixed(0)}px/s is trackable (was ~290)`);
+});
+test('track data: every track game tops out at a winnable required-fraction & radius', () => {
+    const G = ST.CAMP_MICROGAMES;
+    for (const id of ['loom', 'sync', 'gaze']) {
+        const hard = ST.campEffectiveGame(G[id], 1);
+        // contact-gated clock ⇒ a flawless tracker accrues on-time == budget, so needFrac<1 is
+        // always clearable; we still lock a sane ceiling so an impossible value can't creep back.
+        assert.ok(hard.needFrac < 0.80, `${id}: hard needFrac ${hard.needFrac} leaves slip room`);
+        assert.ok(hard.tol >= 22, `${id}: hard catch radius ${hard.tol}px stays human`);
+    }
+});
+
 test('run-routing: unknown primitive → freebie win; known primitives mount an interactive overlay', () => {
     let res = null;
     ST.campRunMicrogame({ primitive: 'totally-unknown', name: 'X' }, (won) => { res = won; });
