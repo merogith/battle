@@ -41,6 +41,62 @@ test('5b: gym-leader slots dedup — a used leader never fills the next leader s
   }
 });
 
+test('gen-agnostic: signature identities (Gym Leader / E4 / Champion) appear regardless of enabled gens', () => {
+  // Brock (charGen 1), Cynthia (Champion, charGen 4) and Drasna (E4, charGen 6) must all be
+  // candidates for their slot even in a Gen-2-ONLY run — the team-roll rules adapt their
+  // roster; the identity never vanishes from the pool. (Pre-fix the charGen gate filtered
+  // them out entirely.)
+  const GEN2 = [2];
+  const seen = (role, name, n = 300) => {
+    for (let s = 0; s < n; s++) {
+      eng.seedRng(40000 + s);
+      const t = E.selectTrainerForRole(role, GEN2, new Set());
+      if (t && t.name === name) return true;
+    }
+    return false;
+  };
+  assert.ok(seen('Gym Leader 1', 'Brock'), 'Brock (Gen 1) is a gym-leader candidate in a Gen-2-only run');
+  assert.ok(seen('Champion', 'Cynthia'), 'Cynthia (Gen 4) is a champion candidate in a Gen-2-only run');
+  assert.ok(seen('E4', 'Drasna'), 'Drasna (Gen 6) is an E4 candidate in a Gen-2-only run');
+});
+
+test('gen-agnostic: the Elite-Trainer FLAVOUR pool stays charGen-gated (only the 3 signature pools opt out)', () => {
+  // A non-rival, non-leader Elite Trainer whose charGen is off should NOT surface in a narrow
+  // run — proving the opt-out is scoped to Gym Leader / E4 / Champion, not the whole game.
+  const data = E.TRAINER_DATA;
+  const offGen = data.find(t => t.role === 'Elite Trainer' && !t.isRival && t.charGen >= 8);
+  assert.ok(offGen, 'there is a Gen-8+ named Elite Trainer to test with');
+  const GEN1 = [1];
+  let sawOffGen = false;
+  for (let s = 0; s < 400 && !sawOffGen; s++) {
+    eng.seedRng(41000 + s);
+    const t = E.selectTrainerForRole('Elite Trainer', GEN1, new Set());
+    if (t && t.name === offGen.name) sawOffGen = true;
+  }
+  assert.ok(!sawOffGen, `Gen-${offGen.charGen} Elite Trainer ${offGen.name} stays gen-gated in a Gen-1-only run`);
+});
+
+test('gen-agnostic: an off-gen leader still fields a TYPE-COHERENT roster (rules adapt the team)', () => {
+  // Brock in a Gen-2-only run: his Gen-1 aces fall back through their own line + the Rock-type
+  // top-up, so he arrives as a Rock leader with an adapted roster — not an empty/blank team.
+  const brock = E.TRAINER_DATA.find(t => t.name === 'Brock' && /^Gym Leader/.test(t.role));
+  const hasRock = (name) => {
+    const b = E.baseStats[name];
+    return !!(b && (b.t1 === 'Rock' || b.t2 === 'Rock'));
+  };
+  E.sm.active = true; E.sm.runSeed = 0;
+  let rockFrac = 0, rolls = 0;
+  for (let s = 0; s < 12; s++) {
+    E.sm.runSeed = (45000 + s) >>> 0; E.sm._strngState = null;
+    const team = E.rollTrainerTeam(brock, 6, { g1: 0, g2: 60, g3: 40, g4: 0 }, [2], 'Gym Leader 4', 24);
+    assert.equal(team.length, 6, 'off-gen leader still fields a full team');
+    rockFrac += team.filter(m => hasRock(m.name)).length / 6;
+    rolls++;
+  }
+  E.sm.active = false;
+  assert.ok(rockFrac / rolls >= 0.4, `Brock-in-Gen2 roster leans Rock (got ${(rockFrac / rolls).toFixed(2)})`);
+});
+
 test('5c-recur: leaders spent as leaders still appear in the Elite Trainer pool', () => {
   // Spend several leaders (as if assigned to gym slots), then confirm the Elite pool
   // still surfaces one of those spent leaders — i.e. leader-dedup is bypassed there.

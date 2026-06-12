@@ -43340,6 +43340,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // build-tier and sig-rate calculations key off the event type, not
             // the trainer's canonical role, so all existing curves still apply.
             const isGymLeaderSlot = /^gym leader\s*\d$/.test(rk);
+            // Signature identity pools (Gym Leaders / Elite Four / Champion) are GEN-AGNOSTIC
+            // in APPEARANCE: a named identity belongs in every run's pool regardless of the
+            // enabled gens, and the team-roll RULES (gen-legal sig fallback → grade ceiling →
+            // type-theme synthetic pool → grade filler) decide what that identity actually
+            // fields. So Brock is always a candidate for a gym slot; in a Gen-1-closed run his
+            // Onix-tier aces fall back through their own line and the Rock-type top-up, and he
+            // arrives as "a Rock leader with an adapted roster" instead of vanishing. The
+            // Signature Journal still gates the canonical ace behind its gen (Onix stays locked
+            // until Gen 1 is on), so identity ≠ team. charGen still themes the SPRITE/dialogue
+            // (intentionally era-flavoured) and still gates the Basic-Trainer regional grunts,
+            // the Elite-Trainer flavour pool, and the Rival identity — only the three signature
+            // pools opt out of the appearance gate.
+            const isEliteFourSlot = /^e[1-4]$/.test(rk);
+            const isChampionSlot = (rk === 'champion');
+            const isGenAgnosticNamed = isGymLeaderSlot || isEliteFourSlot || isChampionSlot;
             const roleAll = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
                 if (isBasicLike) {
@@ -43363,11 +43378,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let candidates = roleAll.slice();
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             // Gen filter: generic class trainers (Hiker, Bug Catcher, etc.) are gen-agnostic so any
-            // enabled-gen subset still rolls a diverse Basic Trainer pool. Regional team grunts and
-            // named NPCs (all other roles) keep the strict charGen gate.
+            // enabled-gen subset still rolls a diverse Basic Trainer pool. The signature identity
+            // pools (Gym Leaders / Elite Four / Champion) are gen-agnostic in appearance too — see
+            // isGenAgnosticNamed above; their team adapts via the roll rules, so they're never
+            // filtered out of their own slot. Regional grunts, the Elite-Trainer flavour pool and
+            // the Rival identity keep the strict charGen gate.
             const inRange = isBasicLike
                 ? candidates.filter(t => !_isRegionalBasicTrainer(t) || genSet.has(t.charGen))
-                : candidates.filter(t => genSet.has(t.charGen));
+                : isGenAgnosticNamed
+                    ? candidates
+                    : candidates.filter(t => genSet.has(t.charGen));
             if (inRange.length) candidates = inRange;
             // Type-coverage fallback: if a gym's preferredType yields zero trainers under
             // the active gen filter (e.g. Fairy or Ice in a G1-only run), broaden to the
