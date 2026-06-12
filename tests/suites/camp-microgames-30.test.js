@@ -18,12 +18,14 @@ const PRIMITIVES = [
     'tapTiming', 'holdRelease', 'mash', 'pickMatch', 'dragAim', 'swipeCover', 'track',
     'restraint', 'sequence', 'dodge', 'catch', 'lobAim', 'steady', 'block', 'balance',
     'gaugeStop', 'quickMath',
+    // toolkit expansion (17 → 22)
+    'tracePath', 'stack', 'breathBand', 'goNoGo', 'whack',
 ];
 
 test('roster: 6 actions × 5-game pools = 30 micro-games, all wired to a registered primitive', () => {
     const A = ST.CAMP_ACTIONS, G = ST.CAMP_MICROGAMES, P = ST.CAMP_PRIMITIVES;
     assert.equal(Object.keys(G).length, 30, '30 micro-games total');
-    assert.equal(Object.keys(P).length, 17, '17 input primitives');
+    assert.equal(Object.keys(P).length, 22, '22 input primitives');
     for (const p of PRIMITIVES) assert.ok(P[p], `primitive '${p}' is registered`);
     const referenced = new Set();
     for (const aid in A) {
@@ -35,6 +37,42 @@ test('roster: 6 actions × 5-game pools = 30 micro-games, all wired to a registe
         }
     }
     assert.equal(referenced.size, 30, 'every micro-game is referenced by exactly one action pool');
+});
+
+test('pool variety: each pool is 5 DISTINCT mechanics, and no mechanic is over-used', () => {
+    const A = ST.CAMP_ACTIONS, G = ST.CAMP_MICROGAMES;
+    const globalUse = {};
+    for (const aid in A) {
+        const prims = A[aid].games.map(g => G[g].primitive);
+        assert.equal(new Set(prims).size, 5, `${aid} pool: 5 DISTINCT mechanics (no repeat within a pool)`);
+        for (const p of prims) globalUse[p] = (globalUse[p] || 0) + 1;
+    }
+    for (const p in globalUse) assert.ok(globalUse[p] <= 2, `mechanic '${p}' used ${globalUse[p]}× (cap 2 — no over-representation)`);
+});
+
+test('shared tuning: a mechanic reused across pools has the SAME difficulty curve (skins only)', () => {
+    const G = ST.CAMP_MICROGAMES;
+    // combo & copy are both `sequence`; dontblink & holdclose are both `holdRelease`;
+    // loom & gaze are both `track`; flinch & react are both `goNoGo`. Same numbers, different names.
+    const sameCurve = (a, b, keys) => keys.every(k => JSON.stringify(G[a][k]) === JSON.stringify(G[b][k]));
+    assert.ok(sameCurve('combo', 'copy', ['len', 'flashMs', 'gapMs']), 'sequence skins share one curve');
+    assert.ok(sameCurve('dontblink', 'holdclose', ['green', 'overdoAt', 'durationMs']), 'holdRelease skins share one curve');
+    assert.ok(sameCurve('loom', 'gaze', ['needFrac', 'ms', 'tol']), 'track skins share one curve');
+    assert.ok(sameCurve('flinch', 'react', ['rounds', 'windowMs', 'goRatio']), 'goNoGo skins share one curve');
+    assert.notEqual(G.combo.name, G.copy.name, 'but the skins are named differently');
+});
+
+test('pure deciders (toolkit expansion: tracePath/stack/breathBand/goNoGo/whack)', () => {
+    assert.equal(ST.campScoreTrace(5, 5), true, 'hit every checkpoint');
+    assert.equal(ST.campScoreTrace(4, 5), false, 'one short');
+    assert.equal(ST.campScoreStack(4, 4), true);
+    assert.equal(ST.campScoreStack(3, 4), false, 'toppled before the last layer');
+    assert.equal(ST.campScoreBreath(1600, 1560), true);
+    assert.equal(ST.campScoreBreath(900, 1560), false);
+    assert.equal(ST.campScoreGoNoGo(4, 4), true, 'every round answered correctly');
+    assert.equal(ST.campScoreGoNoGo(3, 4), false, 'flinched / missed one');
+    assert.equal(ST.campScoreWhack(5, 5), true);
+    assert.equal(ST.campScoreWhack(4, 5), false);
 });
 
 test('campPickMicrogame: seeded, and over many seeds covers the whole 5-pool', () => {
@@ -124,8 +162,8 @@ test('difficulty curve: bond-progress only, floored, monotonic', () => {
 });
 
 test('end-to-end: a ranged game resolves to its easy bound at diff 0 and hard bound at diff 1', () => {
-    const hold = ST.CAMP_MICROGAMES.hold;
-    assert.ok(Array.isArray(hold.green), 'hold.green is a [easy,hard] range');
+    const hold = ST.CAMP_MICROGAMES.dontblink;
+    assert.ok(Array.isArray(hold.green), 'dontblink.green is a [easy,hard] range');
     assert.equal(ST.campEffectiveGame(hold, 0).green, hold.green[0], 'diff 0 → easy band edge');
     assert.equal(ST.campEffectiveGame(hold, 1).green, hold.green[1], 'diff 1 → hard band edge');
     assert.ok(hold.green[1] > hold.green[0], 'green band floor rises (tighter) as difficulty climbs');
@@ -189,7 +227,7 @@ test('track mark: slowed path stays within a human-trackable speed', () => {
 });
 test('track data: every track game tops out at a winnable required-fraction & radius', () => {
     const G = ST.CAMP_MICROGAMES;
-    for (const id of ['loom', 'sync', 'gaze']) {
+    for (const id of ['loom', 'gaze']) {
         const hard = ST.campEffectiveGame(G[id], 1);
         // contact-gated clock ⇒ a flawless tracker accrues on-time == budget, so needFrac<1 is
         // always clearable; we still lock a sane ceiling so an impossible value can't creep back.
@@ -211,11 +249,17 @@ test('run-routing: unknown primitive → freebie win; known primitives mount an 
     assert.ok(ov && ov.querySelector('[data-camp-pm]'), 'pickMatch overlay rendered with choices');
     if (ov) ov.remove();
 
-    // spot-check three new primitives mount with their expected widgets (no sync resolve).
+    // spot-check the interactive primitives mount with their expected widgets (no sync resolve).
     const cases = [
         { game: { primitive: 'quickMath', name: 'Snap!', optionCount: 4, ms: 5000, maxOperand: 9 }, sel: '[data-camp-qm]' },
         { game: { primitive: 'block', name: 'Brace!', hits: 3, telegraphMs: 800 }, sel: '[data-camp-bk]' },
         { game: { primitive: 'dodge', name: 'Quick Dodge!', windowMs: 700, feints: 1 }, sel: '[data-camp-dg]' },
+        // toolkit expansion (17 → 22)
+        { game: { primitive: 'tracePath', name: 'Soothe!', dots: 5, tol: 34, ms: 4200 }, sel: '#camp-tp-field' },
+        { game: { primitive: 'stack', name: 'Stack!', need: 4, tol: 26, slideMs: 1200 }, sel: '#camp-sk-drop' },
+        { game: { primitive: 'breathBand', name: 'Hold Nerve!', ms: 3200, needFrac: 0.6, bandHalf: 0.16 }, sel: '#camp-bb-field' },
+        { game: { primitive: 'goNoGo', name: 'Flinch?', rounds: 4, windowMs: 800, goRatio: 0.5 }, sel: '#camp-gn-tap' },
+        { game: { primitive: 'whack', name: 'Tag!', need: 5, lifeMs: 900, badRatio: 0.2 }, sel: '#camp-wk-field' },
     ];
     for (const c of cases) {
         let r = 'pending';

@@ -18,6 +18,20 @@
 > `CAMP_ACTIONS` in `battle.html` are the source of truth for the current 30.**
 > Guard: `tests/suites/camp-microgames-30.test.js`.
 
+> **UPDATE (2026-06, variety + parity pass):** the toolkit grew **17 → 22** —
+> five new mechanics (`tracePath` Soothe! · `stack` Stack! · `breathBand` Hold
+> Nerve! · `goNoGo` Flinch?/React! · `whack` Tag!) — and the 30 slots were
+> **re-gridded so every pool is 5 DISTINCT mechanics** (was: `tapTiming` ×4,
+> `holdRelease` ×4, `track` ×3 — repetitive). **No mechanic now appears more than
+> twice**, and a twice-used mechanic shares **one** `[easy,hard]` curve (`_CT.*`)
+> so both skins play identically — only name/flavor differ. Retired skins (in git
+> history): the duplicate `tapTiming` *Block!* + *Snag!*, the duplicate `restraint`
+> *Don't Move!*, and the duplicate `holdRelease` *Unmoved*. Three pre-existing
+> games were also de-bugged: **Sequence** (no back-to-back-same flash — was an
+> unfair loss), **Steady** (drift now tied to the difficulty knob — was a
+> hard-coded un-holdable chase), **Track** (clock starts on first contact + slower
+> mark — was unwinnable even with perfect play). New guards in the same test file.
+
 ---
 
 ## 1. Concept
@@ -196,10 +210,11 @@ The data shape (`actions.games[]`) already supports a pool of any size, so
 expansion is data + a primitive or two, never a refactor. (Reflected in the
 roadmap's PR D.)
 
-> **STATUS (shipped):** all **30** games + the full **17-primitive** toolkit
+> **STATUS (shipped):** all **30** games + the full **22-primitive** toolkit
 > (`_CAMP_PRIMITIVES`: tapTiming, holdRelease, mash, pickMatch, dragAim, swipeCover,
-> track, restraint, sequence, **dodge, catch, lobAim, steady, block, balance,
-> gaugeStop, quickMath**) are in `CAMP_MICROGAMES` / `CAMP_ACTIONS`. Win/lose for
+> track, restraint, sequence, dodge, catch, lobAim, steady, block, balance,
+> gaugeStop, quickMath, **tracePath, stack, breathBand, goNoGo, whack**) are in
+> `CAMP_MICROGAMES` / `CAMP_ACTIONS`, every pool 5 distinct mechanics. Win/lose for
 > each is a unit-tested pure `_campScore*` decider; difficulty ramps with bond
 > progress via `[easy,hard]` ranged params (`_campEffectiveGame` / `_campDifficultyFor`,
 > floored at `CAMP_DIFF_FLOOR=0.20`). The interactive *feel* (windows, bands,
