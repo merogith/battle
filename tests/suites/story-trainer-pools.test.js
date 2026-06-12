@@ -115,6 +115,24 @@ test('gen-agnostic: an off-gen leader still fields a TYPE-COHERENT roster (rules
   assert.ok(rockFrac / rolls >= 0.4, `Brock-in-Gen2 roster leans Rock (got ${(rockFrac / rolls).toFixed(2)})`);
 });
 
+test('gen-respecting evolve-up: an off-gen leader never promotes a sig into a disabled gen', () => {
+  // Brock at Gym 8 under floor pressure evolves Onix up to meet G2 — but in a Gen-1-only run
+  // Steelix (Gen 2) is disabled, so Onix must STAY Onix; the climb only takes gen-legal forms.
+  const brock = E.TRAINER_DATA.find(t => t.name === 'Brock' && /^Gym Leader/.test(t.role));
+  const genOf = (n) => { const b = E.baseStats[n]; return b ? b.gen : 0; };
+  E.sm.active = true;
+  let sawSteelix = false, sawOnix = false, offGen = 0, total = 0;
+  for (let s = 0; s < 20; s++) {
+    E.sm.runSeed = (48000 + s) >>> 0; E.sm._strngState = null;
+    const team = E.rollTrainerTeam(brock, 6, { g1: 0, g2: 100, g3: 0, g4: 0 }, [1], 'Gym Leader 8', 53);
+    for (const m of team) { total++; if (genOf(m.name) !== 1) offGen++; if (m.name === 'Steelix') sawSteelix = true; if (m.name === 'Onix') sawOnix = true; }
+  }
+  E.sm.active = false;
+  assert.equal(sawSteelix, false, 'Steelix (Gen 2) never leaks into a Gen-1-only run');
+  assert.equal(offGen, 0, `every mon is Gen 1 in a Gen-1-only run (got ${offGen}/${total} off-gen)`);
+  assert.ok(sawOnix, 'Brock keeps his Gen-1 Onix instead');
+});
+
 test('5c-recur: leaders spent as leaders still appear in the Elite Trainer pool', () => {
   // Spend several leaders (as if assigned to gym slots), then confirm the Elite pool
   // still surfaces one of those spent leaders — i.e. leader-dedup is bypassed there.

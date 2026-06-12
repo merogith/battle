@@ -41087,12 +41087,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // line's identity while removing the weak baby. Branching lines step to the
         // strongest reachable evo each hop. Returns the original if the line can't reach
         // the floor (a no-evo low final like Dewgong — the genuine sig exception).
-        function _evolveSigToGradeFloor(name, floorGrade) {
+        function _evolveSigToGradeFloor(name, floorGrade, genSet) {
             const f = floorGrade | 0;
             let cur = name, guard = 0;
             while (cur && getMonGrade(cur, getBST(cur)) > f && guard++ < 5) {
                 const b = baseStats[cur];
-                const evos = (b && Array.isArray(b.evos)) ? b.evos.filter(e => baseStats[e]) : [];
+                // Only climb into GEN-LEGAL evolutions: in a Gen-1-only run, Onix must NOT
+                // promote to its Gen-2 Steelix — the player excluded Gen 2, and the filler /
+                // gen-fallback paths already respect that, so the evolve-up has to as well or it
+                // leaks an out-of-gen species onto the team. When no genSet is supplied (legacy
+                // callers) every evolution is allowed, preserving prior behaviour.
+                const evos = (b && Array.isArray(b.evos))
+                    ? b.evos.filter(e => baseStats[e] && (!genSet || genSet.has(baseStats[e].gen)))
+                    : [];
                 if (!evos.length) break;
                 let best = evos[0];
                 for (const e of evos) if (getMonGrade(e, getBST(e)) < getMonGrade(best, getBST(best))) best = e;
@@ -42515,7 +42522,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // ceiling on the way up (Dratini → Dragonite past a G2 ceiling), the ceiling
             // devolve immediately below clamps it back down — deterministic, no oscillation.
             if (_fillerFloor < 4 && !_exemptFromSigCap && Array.isArray(S) && S.length) {
-                S = S.map(n => _evolveSigToGradeFloor(n, _fillerFloor));
+                S = S.map(n => _evolveSigToGradeFloor(n, _fillerFloor, sigGenSet));
             }
             if (!_exemptFromSigCap) {
                 // Clamp the sig ceiling no weaker than the filler floor: at GL6 the row
