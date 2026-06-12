@@ -42897,6 +42897,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campScoreTrack: (...a) => _campScoreTrack(...a),
                     campScoreRestraint: (...a) => _campScoreRestraint(...a),
                     campScoreSequence: (...a) => _campScoreSequence(...a),
+                    campSeqGen: (...a) => _campSeqGen(...a),
+                    campSteadyAmp: (...a) => _campSteadyAmp(...a),
+                    campTrackPos: (...a) => _campTrackPos(...a),
                     campEffectiveGame: (...a) => _campEffectiveGame(...a),
                     campDifficultyFor: (...a) => _campDifficultyFor(...a),
                     campScoreDodge: (...a) => _campScoreDodge(...a),
@@ -42907,6 +42910,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     campScoreBalance: (...a) => _campScoreBalance(...a),
                     campScoreGaugeStop: (...a) => _campScoreGaugeStop(...a),
                     campScoreQuickMath: (...a) => _campScoreQuickMath(...a),
+                    campScoreTrace: (...a) => _campScoreTrace(...a),
+                    campScoreStack: (...a) => _campScoreStack(...a),
+                    campScoreBreath: (...a) => _campScoreBreath(...a),
+                    campScoreGoNoGo: (...a) => _campScoreGoNoGo(...a),
+                    campScoreWhack: (...a) => _campScoreWhack(...a),
                     campRunMicrogame: (...a) => _campRunMicrogame(...a),
                     get CAMP_PRIMITIVES() { return _CAMP_PRIMITIVES; },
                     get CAMP_ACTIONS() { return CAMP_ACTIONS; },
@@ -52002,58 +52010,71 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // maintainer's copy pass before shipping.
         const CAMP_ACTIONS = {
             cheer:    { path: 'praise',     label: '😊 Cheer',         games: ['clap', 'pump', 'pose', 'combo', 'highfive'] },
-            feed:     { path: 'nurture',    label: '😊 Feed & Groom',  games: ['feed', 'brush', 'catch', 'groom', 'snag'] },
-            drill:    { path: 'discipline', label: '😠 Drill',         games: ['hold', 'block', 'brace', 'plant', 'march'] },
-            stare:    { path: 'intimidate', label: '😠 Cold Stare',    games: ['dontblink', 'loom', 'withhold', 'unmoved', 'dontmove'] },
-            mirror:   { path: 'mimicry',    label: '🤪 Mirror',        games: ['copy', 'tickle', 'sync', 'dodge', 'snap'] },
+            feed:     { path: 'nurture',    label: '😊 Feed & Groom',  games: ['feed', 'brush', 'catch', 'groom', 'soothe'] },
+            drill:    { path: 'discipline', label: '😠 Drill',         games: ['anchor', 'brace', 'plant', 'march', 'stack'] },
+            stare:    { path: 'intimidate', label: '😠 Cold Stare',    games: ['dontblink', 'loom', 'withhold', 'holdnerve', 'flinch'] },
+            mirror:   { path: 'mimicry',    label: '🤪 Mirror',        games: ['copy', 'tag', 'react', 'dodge', 'snap'] },
             stargaze: { path: 'devotion',   label: '💗 Stargaze',      games: ['holdclose', 'whisper', 'gaze', 'embrace', 'pulse'] },
         };
-        // 6 actions × 5 games = 30 micro-games on a 17-primitive toolkit. Tuning params
-        // written as [easyVal, hardVal] LERP with difficulty (rep N toward mastery on
-        // this path — see _campDifficultyFor); plain scalars are flat. Numbers below are
-        // [MAINTAINER]-owned defaults; pools/feel are a maintainer playtest knob.
+        // 6 actions × 5 games = 30 micro-games on a 22-primitive toolkit — every pool is 5
+        // DISTINCT mechanics (no over-representation). Tuning params written as [easyVal,
+        // hardVal] LERP with difficulty (rep N toward mastery on this path — see
+        // _campDifficultyFor); plain scalars are flat. Numbers below are [MAINTAINER]-owned
+        // defaults; pools/feel are a maintainer playtest knob.
+        // A mechanic reused across two pools shares ONE curve (_CT.*) so both skins play
+        // identically — only the name/flavor differ ("same game → same difficulty").
+        const _CT = {
+            mash:     { target: [15, 28], ms: [3400, 2700] },
+            sequence: { len: [3, 6], flashMs: [400, 200], gapMs: [160, 90] },
+            gauge:    { half: [0.15, 0.06], sweepMs: [1200, 760] },
+            steady:   { limitPx: [40, 15], ms: [1900, 2700], driftAmp: [10, 24] },
+            track:    { needFrac: [0.55, 0.72], ms: [2600, 2300], tol: [34, 24] },
+            hold:     { green: [0.50, 0.66], overdoAt: [0.94, 0.82], durationMs: [1600, 2200] },
+            balance:  { capAbs: [0.55, 0.30], ms: [2000, 3200], driftRate: [0.10, 0.22] },
+            goNoGo:   { rounds: [3, 5], windowMs: [950, 520], goRatio: [0.6, 0.45] },
+        };
         const CAMP_MICROGAMES = {
             // — Cheer / Praise → atk · burst, percussive strike —
             clap:      { primitive: 'tapTiming',   name: 'Clap!',        instr: 'Tap when the marker is in the green!',                 rounds: [2, 4], zoneHalf: [0.16, 0.07] },
-            pump:      { primitive: 'mash',        name: 'Pump!',        instr: 'Mash to fill the hype bar!',                          target: [16, 30], ms: [3400, 2600] },
+            pump:      { primitive: 'mash',        name: 'Pump!',        instr: 'Mash to fill the hype bar!',                          ..._CT.mash },
             pose:      { primitive: 'pickMatch',   name: 'Pose!',        instr: 'Strike the matching victory pose — quick!',           choiceCount: [3, 6], ms: [6000, 2600] },
-            combo:     { primitive: 'sequence',    name: 'Combo!',       instr: 'Land the hits in order — watch, then repeat.',        len: [2, 4], flashMs: [380, 210], gapMs: [160, 90] },
-            highfive:  { primitive: 'gaugeStop',   name: 'High Five!',   instr: 'Slap the paw — STOP the needle in the green!',        half: [0.16, 0.06], sweepMs: [1000, 620] },
+            combo:     { primitive: 'sequence',    name: 'Combo!',       instr: 'Land the hits in order — watch, then repeat.',        ..._CT.sequence },
+            highfive:  { primitive: 'gaugeStop',   name: 'High Five!',   instr: 'Slap the paw — STOP the needle in the green!',        ..._CT.gauge },
 
             // — Feed & Groom / Nurture → spa · controlled, ranged, tender —
             feed:      { primitive: 'lobAim',      name: 'Feed!',        instr: 'Time the toss — arc the treat into its mouth.',       tol: [60, 24], targetJitter: [0, 40] },
             brush:     { primitive: 'swipeCover',  name: 'Brush!',       instr: 'Swipe to groom every spot!',                          spots: [5, 9], ms: [5000, 3200] },
             catch:     { primitive: 'catch',       name: 'Berry Catch!', instr: 'Slide the basket — catch the berries, dodge the bombs.', need: [3, 7], fallMs: [1400, 800], badRatio: [0, 0.4] },
-            groom:     { primitive: 'steady',      name: 'Groom!',       instr: 'Hold on the spot — clean it without a slip.',         limitPx: [40, 16], ms: [1800, 2600], driftAmp: [8, 22] },
-            snag:      { primitive: 'tapTiming',   name: 'Snag!',        instr: 'Tap to snag the tossed berry in the green!',          rounds: [1, 3], zoneHalf: [0.17, 0.08] },
+            groom:     { primitive: 'steady',      name: 'Groom!',       instr: 'Hold on the spot — clean it without a slip.',         ..._CT.steady },
+            soothe:    { primitive: 'tracePath',   name: 'Soothe!',      instr: 'Trace the path — drag through every dot in order.',   dots: [4, 7], tol: [40, 22], ms: [5200, 3200] },
 
             // — Drill / Discipline → def · slow, brace, grueling —
-            hold:      { primitive: 'holdRelease', name: 'Hold!',        instr: 'Hold the stance — release in the green band.',        green: [0.50, 0.66], overdoAt: [0.94, 0.82], durationMs: [1400, 2000] },
-            block:     { primitive: 'tapTiming',   name: 'Block!',       instr: 'Tap to block each hit in the green!',                 rounds: [3, 5], zoneHalf: [0.14, 0.06] },
+            anchor:    { primitive: 'balance',     name: 'Anchor!',      instr: 'Brace! Counter the push — keep it centered.',         ..._CT.balance },
             brace:     { primitive: 'block',       name: 'Brace!',       instr: 'Put the shield where each hit lands.',                hits: [3, 6], telegraphMs: [1000, 520] },
-            plant:     { primitive: 'steady',      name: 'Plant!',       instr: "Hold your ground — don't break stance.",              limitPx: [36, 14], ms: [2000, 2800], driftAmp: [12, 26] },
-            march:     { primitive: 'mash',        name: 'March!',       instr: 'Keep the pace — tap to the beat!',                    target: [14, 26], ms: [3400, 2800] },
+            plant:     { primitive: 'steady',      name: 'Plant!',       instr: "Hold your ground — don't break stance.",              ..._CT.steady },
+            march:     { primitive: 'mash',        name: 'March!',       instr: 'Keep the pace — tap to the beat!',                    ..._CT.mash },
+            stack:     { primitive: 'stack',       name: 'Stack!',       instr: 'Drop the slab square on the stack — tap to release.', need: [4, 7], tol: [34, 16], slideMs: [1300, 800] },
 
             // — Cold Stare / Intimidate → spd · slow, mind, cold —
-            dontblink: { primitive: 'holdRelease', name: "Don't Blink!", instr: 'Hold the stare — release before it curdles.',         green: [0.52, 0.68], overdoAt: [0.95, 0.84] },
-            loom:      { primitive: 'track',       name: 'Loom!',        instr: 'Creep closer — keep the cursor on the mark.',         needFrac: [0.55, 0.80], ms: [2600, 2200], tol: [34, 22] },
+            dontblink: { primitive: 'holdRelease', name: "Don't Blink!", instr: 'Hold the stare — release before it curdles.',         ..._CT.hold },
+            loom:      { primitive: 'track',       name: 'Loom!',        instr: 'Creep closer — keep the cursor on the mark.',         ..._CT.track },
             withhold:  { primitive: 'restraint',   name: 'Withhold!',    instr: "Resist the puppy-eyes — DON'T tap the treat.",        ms: [2600, 4200], tempts: [1, 3] },
-            unmoved:   { primitive: 'holdRelease', name: 'Unmoved',      instr: 'Weather the tantrum — hold, release when it yields.', green: [0.55, 0.70], overdoAt: [0.96, 0.86], durationMs: [1800, 2600] },
-            dontmove:  { primitive: 'restraint',   name: "Don't Move!",  instr: 'A staring contest — do NOT flinch. Wait it out.',     ms: [2200, 3800], tempts: [2, 4] },
+            holdnerve: { primitive: 'breathBand',  name: 'Hold Nerve!',  instr: 'Hold to rise, release to sink — keep it in the band.', needFrac: [0.55, 0.72], ms: [3000, 3600], bandHalf: [0.18, 0.10] },
+            flinch:    { primitive: 'goNoGo',      name: 'Flinch?',      instr: 'Tap on the GO — never flinch at the STOP.',           ..._CT.goNoGo },
 
             // — Mirror / Mimicry → spe · fast, agility, mischievous —
-            copy:      { primitive: 'sequence',    name: 'Copy!',        instr: 'Watch, then repeat the sequence.',                    len: [3, 6], flashMs: [420, 200], gapMs: [170, 90] },
-            tickle:    { primitive: 'tapTiming',   name: 'Tickle!',      instr: 'Tap the wiggle in the green — keep up!',              rounds: [3, 5], zoneHalf: [0.15, 0.07] },
-            sync:      { primitive: 'track',       name: 'Sync!',        instr: 'Match its movement — stay on the mark.',              needFrac: [0.58, 0.82], ms: [2600, 2200], tol: [34, 20] },
+            copy:      { primitive: 'sequence',    name: 'Copy!',        instr: 'Watch, then repeat the sequence.',                    ..._CT.sequence },
+            tag:       { primitive: 'whack',       name: 'Tag!',         instr: 'Tag the critters as they pop — never the bomb!',      need: [4, 7], lifeMs: [1000, 620], badRatio: [0.1, 0.4] },
+            react:     { primitive: 'goNoGo',      name: 'React!',       instr: 'Tap the GO the instant it shows — hold on the STOP.', ..._CT.goNoGo },
             dodge:     { primitive: 'dodge',       name: 'Quick Dodge!', instr: 'Ignore the fakes — tap the way it really darts!',     windowMs: [900, 420], feints: [0, 2] },
             snap:      { primitive: 'quickMath',   name: 'Snap!',        instr: "Quick! Tap the right answer before time's up.",       optionCount: [3, 6], ms: [4500, 2400], maxOperand: [9, 20] },
 
             // — Stargaze / Devotion → hp · slow-sustained, vital, intimate —
-            holdclose: { primitive: 'holdRelease', name: 'Hold Close!',  instr: 'Linger close… release in the green, not a beat too long.', green: [0.48, 0.64], overdoAt: [0.92, 0.80], durationMs: [1600, 2400] },
+            holdclose: { primitive: 'holdRelease', name: 'Hold Close!',  instr: 'Linger close… release in the green, not a beat too long.', ..._CT.hold },
             whisper:   { primitive: 'dragAim',     name: 'Whisper!',     instr: 'Trace the heart — drag to the spot in time.',         radius: [50, 26], ms: [5200, 2600] },
-            gaze:      { primitive: 'track',       name: 'Gaze!',        instr: 'Hold eye contact as it drifts.',                      needFrac: [0.55, 0.78], ms: [2800, 2400], tol: [36, 24] },
-            embrace:   { primitive: 'balance',     name: 'Embrace',      instr: 'Counter its lean — keep the embrace upright.',        capAbs: [0.55, 0.30], ms: [2000, 3200], driftRate: [0.10, 0.22] },
-            pulse:     { primitive: 'gaugeStop',   name: 'Pulse',        instr: 'Keep the rhythm — STOP on the beat.',                 half: [0.14, 0.06], sweepMs: [1400, 900] },
+            gaze:      { primitive: 'track',       name: 'Gaze!',        instr: 'Hold eye contact as it drifts.',                      ..._CT.track },
+            embrace:   { primitive: 'balance',     name: 'Embrace',      instr: 'Counter its lean — keep the embrace upright.',        ..._CT.balance },
+            pulse:     { primitive: 'gaugeStop',   name: 'Pulse',        instr: 'Keep the rhythm — STOP on the beat.',                 ..._CT.gauge },
         };
         // Title rules — first match wins (most-specific first). Cosmetic, no mechanics.
         const CAMP_TITLES = [
@@ -52422,6 +52443,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             balance:    (g, d) => _campBalance(g, d),
             gaugeStop:  (g, d) => _campGaugeStop(g, d),
             quickMath:  (g, d) => _campQuickMath(g, d),
+            tracePath:  (g, d) => _campTracePath(g, d),
+            stack:      (g, d) => _campStack(g, d),
+            breathBand: (g, d) => _campBreathBand(g, d),
+            goNoGo:     (g, d) => _campGoNoGo(g, d),
+            whack:      (g, d) => _campWhack(g, d),
         };
         function _campRunMicrogame(game, onResult) {
             const done = (won) => { try { onResult(!!won); } catch (e) { console.warn('[Camp] microgame result', e); } };
@@ -52521,6 +52547,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _campScoreDragAim(x, y, tx, ty, radius) { return Math.hypot(x - tx, y - ty) <= radius; }
         function _campScoreSwipeCover(covered, total) { return (covered | 0) >= (total | 0); }
         function _campScoreTrack(onMs, needMs) { return (onMs || 0) >= (needMs || 0); }
+        // track mark path — fractional (0..1) position in the field at elapsed `el` ms. Slowed from
+        // the original 620/430ms periods so a human can actually stay glued within `tol`. Pure →
+        // the mark speed (vs the catch radius) is testable for feasibility.
+        function _campTrackPos(el) { return { fx: 0.5 + 0.38 * Math.sin(el / 880), fy: 0.5 + 0.34 * Math.sin(el / 610 + 1) }; }
         function _campScoreRestraint(tapped) { return !tapped; }
         function _campScoreSequence(input, target) {
             if (!Array.isArray(input) || !Array.isArray(target) || input.length !== target.length) return false;
@@ -52532,10 +52562,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _campScoreCatch(caught, need) { return (caught | 0) >= (need | 0); }
         function _campScoreLob(landX, targetX, tol) { return Math.abs((landX || 0) - (targetX || 0)) <= (tol || 0); }
         function _campScoreSteady(maxDevPx, limitPx) { return (maxDevPx || 0) <= (limitPx || 0); }
+        // steady drift amplitude (px), tied 1:1 to the `driftAmp` knob so the easy/hard knob
+        // actually controls the motion. Pure → the "knob drives the drift" invariant is testable.
+        function _campSteadyAmp(driftAmp) { return Math.max(0, (typeof driftAmp === 'number') ? driftAmp : 16); }
         function _campScoreBlock(blocked, total) { return (blocked | 0) >= (total | 0); }
         function _campScoreBalance(maxTiltAbs, capAbs) { return (maxTiltAbs || 0) <= (capAbs || 0); }
         function _campScoreGaugeStop(pos, center, half) { return Math.abs(pos - center) <= half; }
         function _campScoreQuickMath(picked, answer) { return picked === answer; }
+        // — pure deciders for the toolkit expansion (tracePath/stack/breathBand/goNoGo/whack) —
+        function _campScoreTrace(reached, need) { return (reached | 0) >= (need | 0); }   // hit every checkpoint in order
+        function _campScoreStack(stacked, need) { return (stacked | 0) >= (need | 0); }   // landed all layers
+        function _campScoreBreath(inMs, needMs) { return (inMs || 0) >= (needMs || 0); }  // kept inside the band long enough
+        function _campScoreGoNoGo(correct, rounds) { return (correct | 0) >= (rounds | 0); } // every GO hit, every NO-GO held
+        function _campScoreWhack(hits, need) { return (hits | 0) >= (need | 0); }          // tagged enough good targets
 
         // mash — tap `target` times before `ms` expires (pump, march).
         function _campMash(game, done) {
@@ -52667,21 +52706,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tol = Math.max(10, (typeof game.tol === 'number') ? game.tol : 30);   // hit radius (px) — tighter = harder
             const ov = _campMicrogameShell(game, `<div id="camp-tk-field" style="position:relative;width:min(360px,84vw);height:240px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;"><div id="camp-tk-mark" style="position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,213,79,0.25);border:2px solid #ffd54f;"></div></div><div style="position:relative;width:min(360px,84vw);height:6px;background:#10242a;border-radius:3px;overflow:hidden;"><div id="camp-tk-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:#aed581;"></div></div>`);
             const field = ov.querySelector('#camp-tk-field'), mk = ov.querySelector('#camp-tk-mark'), bar = ov.querySelector('#camp-tk-bar');
-            let onMs = 0, finished = false, raf = 0, last = _campNow(), px = -1, py = -1; const start = last;
+            let onMs = 0, finished = false, raf = 0, last = _campNow(), px = -1, py = -1;
+            const mountMs = last; let contacted = false, contactStart = 0;   // deadline starts on FIRST touch of the mark
             const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
             const settle = (won) => { if (finished) return; cleanup(); done(won); };
             const move = (e) => { const t = (e.touches && e.touches[0]) || e; const r = field.getBoundingClientRect(); px = t.clientX - r.left; py = t.clientY - r.top; };
             field.addEventListener('mousemove', move); field.addEventListener('touchmove', move, { passive: false });
             const loop = () => {
                 if (finished) return;
-                const now = _campNow(), dt = now - last, el = now - start; last = now;
+                const now = _campNow(), dt = now - last; last = now;
                 const r = field.getBoundingClientRect();
-                const mx = (0.5 + 0.38 * Math.sin(el / 620)) * r.width, my = (0.5 + 0.34 * Math.sin(el / 430 + 1)) * r.height;
+                const p = _campTrackPos(now - mountMs);   // mark animates free-running from mount (always visible & moving)
+                const mx = p.fx * r.width, my = p.fy * r.height;
                 mk.style.left = (mx - 23) + 'px'; mk.style.top = (my - 23) + 'px';
-                if (px >= 0 && Math.hypot(px - mx, py - my) <= tol) { onMs += dt; mk.style.background = 'rgba(174,213,129,0.42)'; } else mk.style.background = 'rgba(255,213,79,0.25)';
-                bar.style.width = Math.min(100, onMs / needMs * 100) + '%';
-                if (onMs >= needMs) { settle(true); return; }
-                if (el >= ms) { settle(_campScoreTrack(onMs, needMs)); return; }
+                const on = (px >= 0 && Math.hypot(px - mx, py - my) <= tol);
+                mk.style.background = on ? 'rgba(174,213,129,0.42)' : 'rgba(255,213,79,0.25)';
+                if (on && !contacted) { contacted = true; contactStart = now; }   // clock doesn't run until you reach it
+                if (contacted) {
+                    if (on) onMs += dt;
+                    bar.style.width = Math.min(100, onMs / needMs * 100) + '%';
+                    if (onMs >= needMs) { settle(true); return; }
+                    if (now - contactStart >= ms) { settle(_campScoreTrack(onMs, needMs)); return; }   // budget = ms AFTER contact
+                }
                 raf = _camp_raf(loop);
             };
             loop();
@@ -52709,6 +52755,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             loop();
         }
 
+        // sequence generator — no back-to-back repeats: two flashes of the SAME pad with a
+        // short gap read as ONE long flash, so the player taps once and loses unfairly. Pure
+        // (seeded rng in) so the no-duplicate invariant is lockable in a test.
+        function _campSeqGen(len, padCount, rng) {
+            const out = [];
+            for (let i = 0; i < len; i++) {
+                let v = Math.floor(rng() * padCount);
+                // if it matches the previous pad, rotate by a non-zero offset → guaranteed different
+                if (i > 0 && v === out[i - 1]) v = (v + 1 + Math.floor(rng() * (padCount - 1))) % padCount;
+                out.push(v);
+            }
+            return out;
+        }
         // sequence — Simon-says: watch the flashes, repeat them in order (copy).
         function _campSequence(game, done) {
             const len = Math.max(2, (game.len | 0) || 3);
@@ -52716,7 +52775,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gapMs = Math.max(60, (game.gapMs | 0) || 170);        // gap between flashes
             const pads = ['#ef9a9a', '#aed581', '#90caf9', '#ffd54f'];
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const target = []; for (let i = 0; i < len; i++) target.push(Math.floor(rng() * pads.length));
+            const target = _campSeqGen(len, pads.length, rng);
             const padHtml = pads.map((c, i) => `<button type="button" data-camp-sq="${i}" style="width:64px;height:64px;border-radius:10px;background:${c};opacity:0.35;border:2px solid #0a1417;cursor:pointer;"></button>`).join('');
             const ov = _campMicrogameShell(game, `<div id="camp-sq-msg" style="font-size:13px;color:#aed581;">Watch…</div><div style="display:grid;grid-template-columns:repeat(2,64px);gap:10px;">${padHtml}</div>`);
             const padEls = Array.from(ov.querySelectorAll('[data-camp-sq]')), msg = ov.querySelector('#camp-sq-msg');
@@ -52865,6 +52924,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const driftAmp = Math.max(0, (typeof game.driftAmp === 'number') ? game.driftAmp : 16);
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const sx = rng() < 0.5 ? 1 : -1, sy = rng() < 0.5 ? 1 : -1;   // drift directions (seeded)
+            const amp = _campSteadyAmp(driftAmp);   // px drift amplitude, BOTH axes — tied to the knob
             const ov = _campMicrogameShell(game, `
                 <div style="font-size:13px;color:#aed581;">Press &amp; hold on the spot — keep steady as it drifts.</div>
                 <div id="camp-st-field" style="position:relative;width:min(360px,84vw);height:200px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;">
@@ -52878,7 +52938,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Position relative to elapsed-since-grab: at elapsed 0 the spot is DEAD CENTER, then
             // it drifts. Before the grab we feed elapsed 0, so it sits centered and visible (the
             // player presses there to start) — not stranded in the corner.
-            const dotPos = (elapsed) => { const r = field.getBoundingClientRect(); return { x: (0.5 + sx * 0.30 * Math.sin(elapsed / 700)) * r.width, y: (0.5 + sy * (driftAmp / 100) * Math.sin(elapsed / 480)) * r.height }; };
+            // Drift as a px amplitude on BOTH axes (was: x hard-coded to 0.30·width — a ~108px
+            // swing that ignored `driftAmp` and made even the "easy" setting an un-holdable chase).
+            const dotPos = (elapsed) => { const r = field.getBoundingClientRect(); return { x: r.width * 0.5 + sx * amp * Math.sin(elapsed / 700), y: r.height * 0.5 + sy * amp * Math.sin(elapsed / 480) }; };
             const setPtr = (e) => { const tt = (e.touches && e.touches[0]) || e; const r = field.getBoundingClientRect(); px = tt.clientX - r.left; py = tt.clientY - r.top; };
             const loop = () => {
                 if (finished) return;
@@ -53026,6 +53088,191 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.querySelectorAll('[data-camp-qm]').forEach(b => { b.onclick = () => settle(_campScoreQuickMath(parseInt(b.getAttribute('data-camp-qm'), 10), answer)); });
             const tick = () => { if (finished) return; const left = ms - (_campNow() - start); if (timeEl) timeEl.textContent = Math.max(0, left / 1000).toFixed(1) + 's'; if (left <= 0) { settle(false); return; } raf = _camp_raf(tick); };
             tick();
+        }
+
+        // ── Toolkit expansion (17 → 22): tracePath / stack / breathBand / goNoGo / whack ──
+        // Same contract as the rest: overlay via _campMicrogameShell, run a _camp_raf loop or
+        // timed schedule, decide with a pure _campScore*, then done(won). Seeded RNG; the
+        // finished/cleanup/settle guards keep a torn-down overlay from resolving twice.
+
+        // tracePath — drag through every checkpoint along the winding path, in order (Soothe!).
+        function _campTracePath(game, done) {
+            const dots = Math.max(2, (game.dots | 0) || 5);
+            const tol = Math.max(12, (typeof game.tol === 'number') ? game.tol : 34);   // off-line tolerance (px)
+            const ms = Math.max(1500, (game.ms | 0) || 4200);
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const phase = rng() * Math.PI * 2;
+            const ov = _campMicrogameShell(game, `
+                <div id="camp-tp-field" style="position:relative;width:min(360px,84vw);height:220px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;"></div>
+                <div style="position:relative;width:min(360px,84vw);height:6px;background:#10242a;border-radius:3px;overflow:hidden;"><div id="camp-tp-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:#aed581;"></div></div>`);
+            const field = ov.querySelector('#camp-tp-field'), bar = ov.querySelector('#camp-tp-bar');
+            const fr = field.getBoundingClientRect(), fw = fr.width || 300, fh = fr.height || 220;
+            const pts = [];
+            for (let i = 0; i < dots; i++) pts.push({ x: (0.10 + 0.80 * (i / (dots - 1))) * fw, y: (0.5 + 0.34 * Math.sin(phase + i * 1.1)) * fh });
+            const nodes = pts.map((p, i) => { const d = document.createElement('div'); d.textContent = '•'; d.style.cssText = `position:absolute;left:${p.x}px;top:${p.y}px;transform:translate(-50%,-50%);font-size:26px;line-height:1;color:${i === 0 ? '#ffd54f' : '#3a7a86'};`; field.appendChild(d); return d; });
+            let next = 0, finished = false, raf = 0, px = -1, py = -1; const start = _campNow();
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const move = (e) => { const t = (e.touches && e.touches[0]) || e; const r = field.getBoundingClientRect(); px = t.clientX - r.left; py = t.clientY - r.top; };
+            field.addEventListener('mousemove', move); field.addEventListener('touchmove', move, { passive: false });
+            field.addEventListener('mousedown', move); field.addEventListener('touchstart', move, { passive: false });
+            const loop = () => {
+                if (finished) return;
+                const el = _campNow() - start;
+                if (px >= 0 && next < pts.length && Math.hypot(px - pts[next].x, py - pts[next].y) <= tol) {
+                    nodes[next].style.color = '#aed581'; next++;
+                    if (next < pts.length) nodes[next].style.color = '#ffd54f';
+                    bar.style.width = Math.min(100, next / pts.length * 100) + '%';
+                    if (next >= pts.length) { settle(true); return; }
+                }
+                if (el >= ms) { settle(_campScoreTrace(next, pts.length)); return; }
+                raf = _camp_raf(loop);
+            };
+            loop();
+        }
+
+        // stack — drop the sliding slab square on the tower; each landing becomes the new
+        // centre, so drift creeps and a miss topples it (Stack!).
+        function _campStack(game, done) {
+            const need = Math.max(1, (game.need | 0) || 4);
+            const tol = Math.max(8, (typeof game.tol === 'number') ? game.tol : 26);   // landing tolerance (px)
+            const slideMs = Math.max(500, (game.slideMs | 0) || 1200);                 // full L→R→L sweep
+            const ov = _campMicrogameShell(game, `
+                <div id="camp-sk-field" style="position:relative;width:min(360px,84vw);height:200px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;overflow:hidden;">
+                    <div id="camp-sk-base" style="position:absolute;left:50%;bottom:8px;width:84px;height:16px;background:#3a7a86;transform:translateX(-50%);border-radius:3px;"></div>
+                    <div id="camp-sk-slab" style="position:absolute;top:12px;width:84px;height:16px;background:#ffd54f;transform:translateX(-50%);border-radius:3px;"></div>
+                </div>
+                <div id="camp-sk-n" style="font-size:11px;color:#9fb;opacity:0.8;">0 / ${need}</div>
+                <button type="button" id="camp-sk-drop" style="padding:12px 32px;background:#ffd54f;color:#001b1e;border:none;font-weight:bold;font-size:15px;cursor:pointer;font-family:inherit;border-radius:6px;">DROP</button>`);
+            const field = ov.querySelector('#camp-sk-field'), slab = ov.querySelector('#camp-sk-slab'), nEl = ov.querySelector('#camp-sk-n');
+            const W = field.getBoundingClientRect().width || 300;
+            let finished = false, raf = 0, stacked = 0, centerPx = W / 2; const start = _campNow();
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const posAt = (tm) => { const p = ((tm - start) % slideMs) / slideMs, tri = p < 0.5 ? p * 2 : (1 - p) * 2; return 0.12 * W + tri * 0.76 * W; };
+            const loop = () => { if (finished) return; slab.style.left = posAt(_campNow()) + 'px'; raf = _camp_raf(loop); };
+            ov.querySelector('#camp-sk-drop').onclick = () => {
+                if (finished) return;
+                const at = posAt(_campNow());
+                if (Math.abs(at - centerPx) <= tol) {
+                    stacked++; centerPx = at; slab.style.left = at + 'px'; nEl.textContent = stacked + ' / ' + need;
+                    if (stacked >= need) { settle(true); return; }
+                } else { settle(_campScoreStack(stacked, need)); }   // missed the tower → topple
+            };
+            loop();
+        }
+
+        // breathBand — hold to rise, release to sink; keep the orb inside the drifting band
+        // long enough (paced-breathing willpower) (Hold Nerve!).
+        function _campBreathBand(game, done) {
+            const ms = Math.max(1500, (game.ms | 0) || 3200);
+            const needMs = Math.max(400, Math.round(ms * (typeof game.needFrac === 'number' ? game.needFrac : 0.6)));
+            const bandHalf = Math.max(0.05, (typeof game.bandHalf === 'number') ? game.bandHalf : 0.16);   // half-height fraction
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const phase = rng() * Math.PI * 2;
+            const ov = _campMicrogameShell(game, `
+                <div id="camp-bb-field" style="position:relative;width:min(220px,70vw);height:240px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;touch-action:none;overflow:hidden;cursor:pointer;">
+                    <div id="camp-bb-band" style="position:absolute;left:0;right:0;background:rgba(174,213,129,0.30);border-top:1px solid #aed581;border-bottom:1px solid #aed581;"></div>
+                    <div id="camp-bb-orb" style="position:absolute;left:50%;width:22px;height:22px;border-radius:50%;background:#ffd54f;transform:translate(-50%,-50%);"></div>
+                </div>
+                <div style="position:relative;width:min(220px,70vw);height:6px;background:#10242a;border-radius:3px;overflow:hidden;"><div id="camp-bb-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:#aed581;"></div></div>`);
+            const field = ov.querySelector('#camp-bb-field'), band = ov.querySelector('#camp-bb-band'), orb = ov.querySelector('#camp-bb-orb'), bar = ov.querySelector('#camp-bb-bar');
+            let finished = false, raf = 0, holding = false, y = 0.5, vel = 0, onMs = 0, last = _campNow(); const start = last;
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const press = (e) => { if (e && e.preventDefault) e.preventDefault(); holding = true; };
+            const lift = () => { holding = false; };
+            field.addEventListener('mousedown', press); field.addEventListener('touchstart', press, { passive: false });
+            field.addEventListener('mouseup', lift); field.addEventListener('touchend', lift); field.addEventListener('mouseleave', lift);
+            const loop = () => {
+                if (finished) return;
+                const now = _campNow(), dtMs = now - last, dt = Math.min(50, dtMs) / 16.67, el = now - start; last = now;
+                vel += (holding ? -0.0016 : 0.0016) * dt; vel *= 0.94;   // hold thrusts up, gravity pulls down
+                y = Math.max(0.05, Math.min(0.95, y + vel * dt)); if (y <= 0.05 || y >= 0.95) vel = 0;
+                const bandC = 0.5 + 0.32 * Math.sin(phase + el / 900);   // band drifts slowly
+                band.style.top = ((bandC - bandHalf) * 100) + '%'; band.style.height = (bandHalf * 2 * 100) + '%';
+                orb.style.top = (y * 100) + '%';
+                const inBand = Math.abs(y - bandC) <= bandHalf;
+                orb.style.background = inBand ? '#aed581' : '#ffd54f';
+                if (inBand) onMs += dtMs;
+                bar.style.width = Math.min(100, onMs / needMs * 100) + '%';
+                if (onMs >= needMs) { settle(true); return; }
+                if (el >= ms) { settle(_campScoreBreath(onMs, needMs)); return; }
+                raf = _camp_raf(loop);
+            };
+            loop();
+        }
+
+        // goNoGo — tap fast on the GO cue, but FREEZE on the NO-GO fake; survive every round
+        // (reaction + inhibition). Cold Stare reads it as nerve, Mirror as reflex (Flinch?/React!).
+        function _campGoNoGo(game, done) {
+            const rounds = Math.max(1, (game.rounds | 0) || 4);
+            const windowMs = Math.max(250, (game.windowMs | 0) || 800);   // GO reaction window / NO-GO hold
+            const goRatio = Math.max(0.1, Math.min(0.9, (typeof game.goRatio === 'number') ? game.goRatio : 0.5));
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const ov = _campMicrogameShell(game, `
+                <div id="camp-gn-cue" style="width:120px;height:120px;border-radius:16px;background:#10242a;border:2px solid #2e6e7a;display:flex;align-items:center;justify-content:center;font-size:52px;">…</div>
+                <button type="button" id="camp-gn-tap" style="padding:14px 40px;background:#ffd54f;color:#001b1e;border:none;font-weight:bold;font-size:16px;cursor:pointer;font-family:inherit;border-radius:8px;">TAP</button>
+                <div id="camp-gn-n" style="font-size:11px;color:#9fb;opacity:0.8;">0 / ${rounds}</div>`);
+            const cue = ov.querySelector('#camp-gn-cue'), nEl = ov.querySelector('#camp-gn-n');
+            let finished = false, correct = 0, phase = 'idle', isGo = false, cueStart = 0; const timers = [];
+            const cleanup = () => { finished = true; timers.forEach(t => clearTimeout(t)); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const advance = () => {
+                if (finished) return;
+                if (correct >= rounds) { settle(true); return; }
+                phase = 'idle'; cue.textContent = '…'; cue.style.background = '#10242a';
+                timers.push(setTimeout(() => {
+                    if (finished) return;
+                    isGo = rng() < goRatio; phase = 'cue'; cueStart = _campNow();
+                    cue.textContent = isGo ? '🟢' : '🔴'; cue.style.background = isGo ? '#1b3a1e' : '#3a1b1b';
+                    timers.push(setTimeout(() => {
+                        if (finished || phase !== 'cue') return;
+                        if (isGo) { settle(false); return; }   // missed a GO → fail
+                        correct++; nEl.textContent = correct + ' / ' + rounds; advance();   // held the NO-GO → pass
+                    }, windowMs));
+                }, 500 + rng() * 900));
+            };
+            ov.querySelector('#camp-gn-tap').onclick = () => {
+                if (finished) return;
+                if (phase === 'cue') {
+                    phase = 'done';
+                    if (isGo && (_campNow() - cueStart) <= windowMs) { correct++; nEl.textContent = correct + ' / ' + rounds; advance(); }
+                    else settle(false);   // tapped a NO-GO (flinched) or too slow
+                } else if (phase === 'idle') settle(false);   // jumped before the cue
+            };
+            advance();
+        }
+
+        // whack — tag the good critters as they pop up; one bomb-tap and it's over (Tag!).
+        function _campWhack(game, done) {
+            const need = Math.max(1, (game.need | 0) || 5);
+            const lifeMs = Math.max(400, (game.lifeMs | 0) || 900);   // how long each target lingers
+            const badRatio = Math.max(0, Math.min(0.6, (typeof game.badRatio === 'number') ? game.badRatio : 0.2));
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const ov = _campMicrogameShell(game, `
+                <div id="camp-wk-field" style="position:relative;width:min(360px,84vw);height:240px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;overflow:hidden;"></div>
+                <div id="camp-wk-n" style="font-size:11px;color:#9fb;opacity:0.8;">0 / ${need}</div>`);
+            const field = ov.querySelector('#camp-wk-field'), nEl = ov.querySelector('#camp-wk-n');
+            let finished = false, hits = 0; const timers = [];
+            const cleanup = () => { finished = true; timers.forEach(t => clearTimeout(t)); if (ov.parentNode) ov.remove(); };
+            const settle = (won) => { if (finished) return; cleanup(); done(won); };
+            const spawn = () => {
+                if (finished) return;
+                const good = rng() >= badRatio, el = document.createElement('button');
+                el.type = 'button'; el.textContent = good ? '😺' : '💣';
+                el.style.cssText = `position:absolute;left:${8 + rng() * 78}%;top:${8 + rng() * 74}%;font-size:34px;background:none;border:none;cursor:pointer;padding:0;line-height:1;`;
+                el.onclick = () => {
+                    if (finished) return;
+                    if (good) { hits++; nEl.textContent = Math.min(need, hits) + ' / ' + need; el.remove(); if (hits >= need) settle(true); }
+                    else settle(false);   // tagged a bomb
+                };
+                field.appendChild(el);
+                timers.push(setTimeout(() => { if (el.parentNode) el.remove(); }, lifeMs));
+                timers.push(setTimeout(spawn, Math.max(280, lifeMs * 0.55)));
+            };
+            timers.push(setTimeout(() => settle(_campScoreWhack(hits, need)), Math.round((need / Math.max(0.4, 1 - badRatio)) * lifeMs * 1.3 + 1500)));
+            spawn();
         }
 
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked, _routeChecked) {
