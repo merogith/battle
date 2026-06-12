@@ -102,9 +102,10 @@ test('migrateStoryPreV25: adds default bonds to party mons, skips eggs, sets cam
     ST.migrateStoryPreV25();
 
     // Spread normalizes jsdom-realm objects (built inside migrateStoryPreV25) for deepEqual.
-    assert.deepEqual({ ...sm.team[0].bonds }, { praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0 });
+    // Counters seed at CAMP_BOND_START (1) — a fresh relationship reads 1/5, never 0/5.
+    assert.deepEqual({ ...sm.team[0].bonds }, { praise:1, nurture:1, discipline:1, intimidate:1, mimicry:1, devotion:1 });
     assert.equal(sm.team[1].bonds, undefined, 'egg gets no bonds');
-    assert.deepEqual({ ...sm.pcBox[0].bonds }, { praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0 });
+    assert.deepEqual({ ...sm.pcBox[0].bonds }, { praise:1, nurture:1, discipline:1, intimidate:1, mimicry:1, devotion:1 });
     assert.deepEqual({ ...sm.campByEventIdx }, {});
     assert.equal(sm.campReturnPoint, null);
 });

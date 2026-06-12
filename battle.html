@@ -16025,25 +16025,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // docs/story-design/camp/BONDING_RELATIONSHIPS.md (decisions D1/D2/D4/D5b,
         // locked 2026-06-03; fishing→devotion added 2026-06-08). Six relationship
         // paths, clean 6-stat bijection; a path MASTERS (its +5% turns on) when the
-        // per-Pokémon counter slot.bonds[path] reaches a flat threshold (5). Nature
-        // variance is in the win value: the favoured path earns ×2 (campBondGain).
+        // per-Pokémon counter slot.bonds[path] reaches a flat threshold (5). Counters
+        // START at CAMP_BOND_START (1) — a fresh relationship reads 1/5, never 0/5 —
+        // so a neutral path masters in 4 wins (1→5) and a favoured ×2 path in 2 (1→5).
+        // Nature variance is in the win value: the favoured path earns ×2 (campBondGain).
         // The buff is a per-stat multiplier object stamped on
         // PLAYER builds at battle entry (launchBattle) and applied in buildPokemon,
-        // symmetric to the foe _storyStatMult. DORMANT until bonds rise (PR D): with
-        // every counter 0, relationshipStatMult() is all-1.0 ⇒ built stats are
-        // byte-identical to pre-feature.
+        // symmetric to the foe _storyStatMult. DORMANT until a path masters: with
+        // every counter below threshold, relationshipStatMult() is all-1.0 ⇒ built
+        // stats are byte-identical to pre-feature.
         // BALANCE NUMBERS ARE [MAINTAINER]-OWNED (buff %, base reps, temperament
         // mults). In-code for now; externalize to data/camp/relationship-paths.json
         // in a later PR per CLAUDE.md's data-driven preference.
         const CAMP_BOND_BUFF     = 0.05;   // +5% per mastered path             [MAINTAINER]
-        const CAMP_BASE_ACTIONS  = 5;      // reps to master — FLAT, every path [MAINTAINER]
+        const CAMP_BASE_ACTIONS  = 5;      // mastery threshold — FLAT, every path [MAINTAINER]
+        const CAMP_BOND_START    = 1;      // fresh counter value (1/5, never 0/5) [MAINTAINER]
         const CAMP_FAVORED_GAIN  = 2;      // ×N win value on the favoured path [MAINTAINER]
         // Threshold is a FLAT 5 for every path/Nature (the loved/resisted multipliers
         // below stay vestigial at 1.0 — a future threshold-based re-tune could revive them).
         // Nature variance lives in the GAIN instead, and only ever HELPS: the one path
         // whose stat the Pokémon's Nature RAISES is its "favourite" and earns CAMP_FAVORED_GAIN
-        // (×2) per win, so it masters in 3 wins (2·3=6 ≥ 5) instead of 5. Nothing is ever
-        // slower than 5; neutral natures have no favourite. Full team ≈ 6×6×5 = 180 actions.
+        // (×2) per win. Counters start at 1, so a favoured path masters in 2 wins (1→3→5)
+        // instead of 4 (1→2→3→4→5). Nothing is ever slower than 4 wins; neutral natures
+        // have no favourite. Full team ≈ 6 paths × 6 mons × 4 wins = 144 actions.
         const CAMP_TEMP_LOVED    = 1.0;    // (vestigial) Nature-raised stat    [MAINTAINER]
         const CAMP_TEMP_RESISTED = 1.0;    // (vestigial) Nature-lowered stat   [MAINTAINER]
         const CAMP_TEMP_NEUTRAL  = 1.0;    //                                   [MAINTAINER]
@@ -16062,6 +16066,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mimicry:    { stat:'spe', buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
             devotion:   { stat:'hp',  buff:CAMP_BOND_BUFF, baseActions:CAMP_BASE_ACTIONS },
         };
+        // A fresh bonds object — every path seeded at CAMP_BOND_START (1) so a brand-new
+        // relationship reads 1/5, not 0/5. Single source of truth for new mons + migration.
+        function defaultBonds() {
+            const o = {};
+            for (const pid in RELATIONSHIP_PATHS) o[pid] = CAMP_BOND_START;
+            return o;
+        }
+        // Effective counter for a slot+path: missing/legacy-0 values floor to CAMP_BOND_START
+        // so the 1/5 floor holds for fresh mons and pre-existing saves alike. Pure read.
+        function bondCount(slot, pid) {
+            const v = (slot && slot.bonds && (slot.bonds[pid] | 0)) || 0;
+            return Math.max(CAMP_BOND_START, v);
+        }
         // Temperament: the path whose stat the Pokémon's Nature RAISES is "loved"
         // (fewer reps), the one it LOWERS is "resisted" (more). HP/Devotion is always
         // neutral (no Nature touches HP); neutral natures → all neutral.
@@ -16090,7 +16107,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!bonds || typeof bonds !== 'object') return m;
             for (const pid in RELATIONSHIP_PATHS) {
                 const def = RELATIONSHIP_PATHS[pid];
-                if (def && (bonds[pid] | 0) >= bondThreshold(pid, slot)) m[def.stat] *= (1 + (def.buff || 0));
+                if (def && bondCount(slot, pid) >= bondThreshold(pid, slot)) m[def.stat] *= (1 + (def.buff || 0));
             }
             return m;
         }
@@ -39686,14 +39703,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** v25: Camp System — per-Pokémon bonding counters (slot.bonds) + camp-flow
          *  gate fields (sm.campByEventIdx, sm.campReturnPoint). Additive; mirrors the
          *  migrateStoryPreV21 egg-field loop. Eggs get no bonds until hatch. Old-save
-         *  bonds default to 0 ⇒ no buff yet (the feature ships dormant). */
+         *  bonds seed at CAMP_BOND_START (1/5) ⇒ no buff yet (mastery is 5; the feature
+         *  ships dormant), matching a fresh mon. */
         function migrateStoryPreV25() {
-            const D = () => ({ praise:0, nurture:0, discipline:0, intimidate:0, mimicry:0, devotion:0 });
             for (const arr of [sm.team, sm.pcBox]) {
                 if (!Array.isArray(arr)) continue;
                 for (const slot of arr) {
                     if (!slot || slot.isEgg) continue;
-                    if (!slot.bonds || typeof slot.bonds !== 'object') slot.bonds = D();
+                    if (!slot.bonds || typeof slot.bonds !== 'object') slot.bonds = defaultBonds();
                 }
             }
             if (!sm.campByEventIdx || typeof sm.campByEventIdx !== 'object') sm.campByEventIdx = {};
@@ -42831,6 +42848,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     relationshipStatMult: (...a) => relationshipStatMult(...a),
                     reapplyRelationshipBuff: (...a) => _reapplyRelationshipBuff(...a),
                     bondThreshold: (...a) => bondThreshold(...a),
+                    defaultBonds: () => defaultBonds(),
+                    bondCount: (...a) => bondCount(...a),
+                    campBondMeterHtml: (...a) => _campBondMeterHtml(...a),
                     migrateStoryPreV25: () => migrateStoryPreV25(),
                     enterCamp: (...a) => enterCamp(...a),
                     campIsDueForTransition: (...a) => _campIsDueForTransition(...a),
@@ -52067,9 +52087,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Mastered path ids for a slot (counter ≥ its Nature-shifted threshold).
         function campMasteredPaths(slot) {
             const out = [];
-            const bonds = (slot && slot.bonds) || {};
             for (const pid in RELATIONSHIP_PATHS) {
-                if ((bonds[pid] | 0) >= bondThreshold(pid, slot)) out.push(pid);
+                if (bondCount(slot, pid) >= bondThreshold(pid, slot)) out.push(pid);
             }
             return out;
         }
@@ -52114,9 +52133,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function campAwardBond(slot, path) {
             if (!slot || !RELATIONSHIP_PATHS[path]) return null;
-            if (!slot.bonds || typeof slot.bonds !== 'object') {
-                slot.bonds = { praise: 0, nurture: 0, discipline: 0, intimidate: 0, mimicry: 0, devotion: 0 };
-            }
+            if (!slot.bonds || typeof slot.bonds !== 'object') slot.bonds = defaultBonds();
             const masteredBefore = campMasteredPaths(slot);
             const gain = campBondGain(slot, path);
             slot.bonds[path] = (slot.bonds[path] | 0) + gain;
@@ -52156,12 +52173,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Difficulty 0..1 for this slot+path, derived ONLY from bond progress on THIS
         // path (counter / threshold), floored at CAMP_DIFF_FLOOR. No badge/story term
-        // (maintainer decision). Rep 1 (counter 0) → CAMP_DIFF_FLOOR; the rep that
-        // masters → ~1.0; fully-bonded mons clamp at 1.0. Pure (reads bonds; no writes).
+        // (maintainer decision). A fresh mon (counter 1/5 = CAMP_BOND_START) → CAMP_DIFF_FLOOR;
+        // the rep that masters → ~1.0; fully-bonded mons clamp at 1.0. Progress is measured
+        // from the 1 start, so the floor still maps to an unbonded mon. Pure (reads; no writes).
         function _campDifficultyFor(slot, path) {
             const thr = Math.max(1, bondThreshold(path, slot));
-            const cur = (slot && slot.bonds && (slot.bonds[path] | 0)) || 0;
-            const local = Math.max(0, Math.min(1, cur / thr));
+            const cur = bondCount(slot, path);
+            const span = Math.max(1, thr - CAMP_BOND_START);
+            const local = Math.max(0, Math.min(1, (cur - CAMP_BOND_START) / span));
             return Math.max(0, Math.min(1, CAMP_DIFF_FLOOR + (1 - CAMP_DIFF_FLOOR) * local));
         }
 
@@ -52297,7 +52316,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let rows = '';
             for (const aid in CAMP_ACTIONS) {
                 const pid = CAMP_ACTIONS[aid].path;
-                const cur = (slot.bonds && (slot.bonds[pid] | 0)) || 0;
+                const cur = bondCount(slot, pid);
                 const thr = bondThreshold(pid, slot);
                 const done = cur >= thr;
                 const filled = Math.max(0, Math.min(10, Math.round((cur / Math.max(1, thr)) * 10)));
@@ -52324,7 +52343,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const [gx, gy] = pt(i, R);
                 guide.push(`${gx.toFixed(1)},${gy.toFixed(1)}`);
                 spokes += `<line x1="${cx}" y1="${cy}" x2="${gx.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#2e4a52" stroke-width="1"/>`;
-                const v = Math.max(0, Math.min(1, (((slot.bonds && slot.bonds[pid]) | 0) || 0) / Math.max(1, bondThreshold(pid, slot))));
+                const v = Math.max(0, Math.min(1, bondCount(slot, pid) / Math.max(1, bondThreshold(pid, slot))));
                 const [vx, vy] = pt(i, R * v);
                 vals.push(`${vx.toFixed(1)},${vy.toFixed(1)}`);
                 const mastered = v >= 1;
@@ -52342,7 +52361,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const options = [];
             for (const aid in CAMP_ACTIONS) {
                 const pid = CAMP_ACTIONS[aid].path;
-                const done = (((slot.bonds && slot.bonds[pid]) | 0) || 0) >= bondThreshold(pid, slot);
+                const done = bondCount(slot, pid) >= bondThreshold(pid, slot);
                 const favMark = (pid === fav) ? '  ·×2' : '';
                 options.push({ label: `${CAMP_ACTIONS[aid].label}${favMark}${done ? '  ✓' : ''}`, onPick: () => _campDefer(() => _campRunAction(ctx, slotIndex, aid)) });
             }
