@@ -41482,10 +41482,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
         }
 
-        function buildSyntheticSignaturePool(trainer, genSet, rng) {
+        function buildSyntheticSignaturePool(trainer, genSet, rng, gradeWeights) {
             const types = parseTrainerTypes(trainer && trainer.type);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
-            function pullByGrade(gradeLo, gradeHi) {
+            function pullByGrade(grade) {
                 const arr = [];
                 for (const name of Object.keys(baseStats)) {
                     if (isStoryRollExcluded(name)) continue;
@@ -41495,15 +41495,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
                         if (!ok) continue;
                     }
-                    const g = getMonGrade(name, getBST(name));
-                    if (g < gradeLo || g > gradeHi) continue;
+                    if (getMonGrade(name, getBST(name)) !== grade) continue;
                     arr.push(name);
                 }
                 return arr;
             }
-            let pool = pullByGrade(3, 4);
-            if (pool.length < 6) pool = pool.concat(pullByGrade(2, 2));
-            if (pool.length < 6) pool = pool.concat(pullByGrade(1, 1));
+            // Grade ORDER follows the row's grade weights (strongest-weighted grade first), so a
+            // trainer whose authored aces all filtered out fields a grade-APPROPRIATE roster
+            // rather than the old fixed weak-first (G3/G4) order. A Mixed Champion in a narrow-gen
+            // run now backfills with G1/G2 "all-star" mons (matching the Champion's G1/G2 weights)
+            // instead of route fodder; a Basic Trainer still leans G4. We don't HARD-limit to the
+            // top grade — at least the top two populated grades are always included (and more if
+            // the pool is thin), so variety stays and "anything in-gen can still show up", just
+            // weighted to the trainer's tier. No weights → legacy weak-first order (G3·G4·G2·G1).
+            const gw = gradeWeights || {};
+            const gwTotal = (gw.g1 || 0) + (gw.g2 || 0) + (gw.g3 || 0) + (gw.g4 || 0);
+            const gradeOrder = gwTotal > 0
+                ? [1, 2, 3, 4].sort((a, b) => (gw['g' + b] || 0) - (gw['g' + a] || 0))
+                : [3, 4, 2, 1];
+            const pool = [];
+            let gradesIncluded = 0;
+            for (const g of gradeOrder) {
+                if (pool.length >= 12 && gradesIncluded >= 2) break;
+                const got = pullByGrade(g);
+                if (got.length) gradesIncluded++;
+                pool.push(...got);
+            }
             const uniq = [];
             const seen = new Set();
             for (const n of pool) {
@@ -42447,8 +42464,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     S = _topUpGymLeaderSigsForCeiling(trainer, S, _ceiling, genSet);
                 }
             }
-            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng);
-            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng);
+            // Pass the row's (ramped + matrix'd) grade weights so the synthetic backfill is
+            // grade-appropriate to the trainer's tier — a roster-less Champion fields G1/G2
+            // all-stars, a Basic Trainer stays G4-ish. Non-exempt trainers still get the ceiling
+            // re-clamp just below, so this can't over-power a gym leader.
+            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng, gwIn);
+            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng, gwIn);
             // Synthetic-pool fallback also respects the ceiling so a trainer whose
             // actual sigs filter to empty (e.g. Tea Aroma in a gen-1-only run, where
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
@@ -43268,21 +43289,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // build-tier and sig-rate calculations key off the event type, not
             // the trainer's canonical role, so all existing curves still apply.
             const isGymLeaderSlot = /^gym leader\s*\d$/.test(rk);
-            // Signature identity pools (Gym Leaders / Elite Four / Champion) are GEN-AGNOSTIC
-            // in APPEARANCE: a named identity belongs in every run's pool regardless of the
-            // enabled gens, and the team-roll RULES (gen-legal sig fallback → grade ceiling →
-            // type-theme synthetic pool → grade filler) decide what that identity actually
-            // fields. So Brock is always a candidate for a gym slot; in a Gen-1-closed run his
-            // Onix-tier aces fall back through their own line and the Rock-type top-up, and he
-            // arrives as "a Rock leader with an adapted roster" instead of vanishing. The
-            // Signature Journal still gates the canonical ace behind its gen (Onix stays locked
-            // until Gen 1 is on), so identity ≠ team. charGen still themes the SPRITE/dialogue
-            // (intentionally era-flavoured) and still gates the Basic-Trainer regional grunts,
-            // the Elite-Trainer flavour pool, and the Rival identity — only the three signature
-            // pools opt out of the appearance gate.
-            const isEliteFourSlot = /^e[1-4]$/.test(rk);
-            const isChampionSlot = (rk === 'champion');
-            const isGenAgnosticNamed = isGymLeaderSlot || isEliteFourSlot || isChampionSlot;
+            // GEN-AGNOSTIC APPEARANCE — applies to EVERY enemy trainer pool except the
+            // generated Basic/Gym-Trainer fodder: a named identity belongs in every run's pool
+            // regardless of the enabled gens, and the team-roll RULES (gen-legal sig fallback →
+            // grade ceiling → type-theme synthetic pool → grade filler) decide what that
+            // identity actually fields. So Brock is always a candidate for a gym slot; in a
+            // Gen-1-closed run his Onix-tier aces fall back through their own line and the
+            // Rock-type top-up, and he arrives as "a Rock leader with an adapted roster"
+            // instead of vanishing. The same now holds for the Elite Four, the Champion roster,
+            // the Elite-Trainer flavour pool (named villains + recurring leaders) and the Rival
+            // identity. The Signature Journal still gates the canonical ace behind its gen (Onix
+            // stays locked until Gen 1 is on), so identity ≠ team, and charGen still themes the
+            // SPRITE/dialogue (intentionally era-flavoured) — only the APPEARANCE gate is lifted.
+            // Basic/Gym fodder is generated on the fly (_generateBasicTrainer) so it isn't
+            // selected here; its regional-grunt charGen handling is moot for this path.
+            const isGenAgnosticNamed = !isBasicLike;
             const roleAll = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
                 if (isBasicLike) {
@@ -43306,16 +43327,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let candidates = roleAll.slice();
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             // Gen filter: generic class trainers (Hiker, Bug Catcher, etc.) are gen-agnostic so any
-            // enabled-gen subset still rolls a diverse Basic Trainer pool. The signature identity
-            // pools (Gym Leaders / Elite Four / Champion) are gen-agnostic in appearance too — see
-            // isGenAgnosticNamed above; their team adapts via the roll rules, so they're never
-            // filtered out of their own slot. Regional grunts, the Elite-Trainer flavour pool and
-            // the Rival identity keep the strict charGen gate.
+            // enabled-gen subset still rolls a diverse Basic Trainer pool. Every named pool is
+            // gen-agnostic in appearance too (isGenAgnosticNamed = !isBasicLike) — their team
+            // adapts via the roll rules, so a named identity is never filtered out of its own
+            // slot. Only the Basic-Trainer regional-grunt path keeps a charGen check.
             const inRange = isBasicLike
                 ? candidates.filter(t => !_isRegionalBasicTrainer(t) || genSet.has(t.charGen))
-                : isGenAgnosticNamed
-                    ? candidates
-                    : candidates.filter(t => genSet.has(t.charGen));
+                : candidates;
             if (inRange.length) candidates = inRange;
             // Type-coverage fallback: if a gym's preferredType yields zero trainers under
             // the active gen filter (e.g. Fairy or Ice in a G1-only run), broaden to the
