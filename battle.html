@@ -41582,7 +41582,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
         }
 
-        function buildSyntheticSignaturePool(trainer, genSet, rng, gradeWeights) {
+        function buildSyntheticSignaturePool(trainer, genSet, rng, gradeWeights, allowLegendary) {
             const types = parseTrainerTypes(trainer && trainer.type);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
             function pullByGrade(grade) {
@@ -41591,6 +41591,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
+                    // Legendaries/mythicals only backfill E4/Champion/eldritch rosters; everywhere
+                    // else they're stripped (incl. low-grade legendary pre-evos like Cosmog).
+                    if (!allowLegendary && b.legendary) continue;
                     if (!isMixed) {
                         const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
                         if (!ok) continue;
@@ -41603,15 +41606,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Grade ORDER follows the row's grade weights (strongest-weighted grade first), so a
             // trainer whose authored aces all filtered out fields a grade-APPROPRIATE roster
             // rather than the old fixed weak-first (G3/G4) order. A Mixed Champion in a narrow-gen
-            // run now backfills with G1/G2 "all-star" mons (matching the Champion's G1/G2 weights)
-            // instead of route fodder; a Basic Trainer still leans G4. We don't HARD-limit to the
-            // top grade — at least the top two populated grades are always included (and more if
-            // the pool is thin), so variety stays and "anything in-gen can still show up", just
-            // weighted to the trainer's tier. No weights → legacy weak-first order (G3·G4·G2·G1).
+            // run backfills with G1/G2 "all-star" mons (matching the Champion's G1/G2 weights);
+            // a Basic Trainer leans G4. CRUCIAL: a grade the trainer's profile FORBIDS (zero
+            // weight) is never pulled, even when the type pool is thin. Without this, a narrow-gen
+            // Dragon Gym Trainer (whose matrix'd profile sets g1=0) would "fill to 12" right past
+            // G3/G4/G2 into G1 and field a legendary (the Latias-on-Gym-2 bug) — the grade
+            // PROFILE, i.e. difficulty, decides whether G1 is reachable, not pool scarcity.
+            // No weights → legacy weak-first order (G3·G4·G2·G1).
             const gw = gradeWeights || {};
             const gwTotal = (gw.g1 || 0) + (gw.g2 || 0) + (gw.g3 || 0) + (gw.g4 || 0);
             const gradeOrder = gwTotal > 0
-                ? [1, 2, 3, 4].sort((a, b) => (gw['g' + b] || 0) - (gw['g' + a] || 0))
+                ? [1, 2, 3, 4].filter(g => (gw['g' + g] || 0) > 0).sort((a, b) => (gw['g' + b] || 0) - (gw['g' + a] || 0))
                 : [3, 4, 2, 1];
             const pool = [];
             let gradesIncluded = 0;
@@ -42471,7 +42476,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
             // include. Their pkmGens already covers all 9 gens; the tag is the green light.
-            const _isEldritch = !!(trainer && trainer.tag === 'eldritch');
             // The Rival is a PURE counter to the player's LIVE party (no signatures): its
             // species pool must span every enabled gen, NOT the rival NPC's narrow pkmGens
             // (Blue=Gen1, N=Gen5, May/Brendan=Gen3…). Honoring pkmGens here would leave whole
@@ -42482,14 +42486,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _isRivalEvent = String(battleEventType) === 'Rival';
             // Player's enabled-gens toggle — the ONLY legit gen gate for a trainer's
             // *signatures* (see sigGenSet below). pkmGens narrows the FILLER theme only.
-            const _playerGens = _isEldritch
-                ? [1,2,3,4,5,6,7,8,9]
-                : normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
-            let allowedGens;
-            if (_isEldritch) {
-                allowedGens = [1,2,3,4,5,6,7,8,9];
-            } else {
-                allowedGens = _playerGens.slice();
+            // NOTE: eldritch themed trainers ("Cursed Lance" etc.) used to bypass this and reach
+            // every gen ("out of this world"), but that ignored the player's explicit gen lock —
+            // they are NOT special, so they now follow the same gen rules as their role.
+            const _playerGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
+            let allowedGens = _playerGens.slice();
+            {
                 const pg = trainer && trainer.pkmGens;
                 if (!_isRivalEvent && pg && pg.length) {
                     const crossed = allowedGens.filter((g) => pg.includes(g));
@@ -42524,14 +42526,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // v19 sig-grade cap: drop any sig whose tier exceeds the row's
             // gradeWeights ceiling. Boss events (Rival/E1-E4/Champion/Mystery)
             // already roll into top tiers via their own gradeWeights, so they
-            // skip the cap. Eldritch trainers also skip — their "out of this
-            // world" lineup is the intent.
+            // skip the cap. (Eldritch themed trainers used to skip too — they no
+            // longer do; they are not special and follow their Elite-Trainer role.)
             const _evtStr = String(battleEventType || '');
-            const _exemptFromSigCap = (_isEldritch
-                || _evtStr === 'Mystery Figure'
+            const _exemptFromSigCap = (
+                _evtStr === 'Mystery Figure'
                 || _evtStr === 'Champion'
                 || /^E[1-4]$/.test(_evtStr)
                 || _evtStr === 'Rival');
+            // LEGENDARY filler gate: actual legendaries/mythicals (the `.legendary` flag — NOT
+            // pseudo-legendaries like Garchomp/Dragonite, which are unflagged G1 BST mons) only
+            // belong on the top-tier fights. Without this a legendary leaks onto a regular trainer
+            // as random filler/synthetic backfill — and because a legendary PRE-EVO (Cosmog,
+            // Cosmoem, Type: Null) is graded G3/G4 by BST, the grade profile + early ceiling never
+            // catch it, so a gym-3 Psychic trainer could field Cosmog. Gated to E1-E4 / Champion;
+            // every other pool — gym trainers, gym leaders, elite trainers, the Rival, AND the
+            // eldritch themed trainers (no longer special) — strips legendaries from filler.
+            // Authored sigs are unaffected (they never flow through the filler/synthetic pools this
+            // gate guards). This does NOT touch the G1 grade roll itself — difficulty still decides
+            // when a Champion fields a legendary; it only stops legendaries leaking DOWN.
+            const _allowLegendaryFiller = (_evtStr === 'Champion' || /^E[1-4]$/.test(_evtStr) || _evtStr === 'Mystery Figure');
+            const _legBlocked = (nm) => !_allowLegendaryFiller && !!(baseStats[nm] && baseStats[nm].legendary);
             // Late-game signature EVOLVE-UP (city 6+) — runs FIRST, before the grade-ceiling
             // devolve below, so the two transforms never fight. A trainer's authored
             // UNDER-grade ace climbs its own line to meet the late-game grade floor: Bug
@@ -42554,10 +42569,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // ace reach G2 too keeps it the strongest mon on the team (never weaker
                 // than its own filler). Pre-city-6 the floor is 4, so this is a no-op.
                 const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                // Weaken (raise the number) when the early-game ceiling is the binding
-                // constraint; drop over-grade no-evo aces (Lapras) so the top-up replaces them.
+                // Drop (don't keep) an over-grade no-evo ace whenever the early-game ceiling is
+                // the binding constraint — INCLUDING when it ties the weights ceiling (>=, not >).
+                // The early ceiling is a hard "player can't match this yet" wall, so a G1 no-evo
+                // legendary that can't devolve to fit (Latias, Lapras) must be dropped and replaced
+                // by a ceiling-grade top-up, not kept. The old `>` let it survive on the tie case
+                // (e.g. a city-2 row with g2=0, where both ceilings land on G3).
                 const _ceiling = Math.max(_sigCeilBase, _earlyGradeCeiling);
-                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling > _sigCeilBase);
+                S = _filterSigsByGradeCeiling(S, _ceiling, _earlyGradeCeiling >= _sigCeilBase);
                 // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
                 // identity sig plus type-matched G2 partners.
                 if (/^Gym Leader\s*\d$/.test(_evtStr)) {
@@ -42568,15 +42587,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // grade-appropriate to the trainer's tier — a roster-less Champion fields G1/G2
             // all-stars, a Basic Trainer stays G4-ish. Non-exempt trainers still get the ceiling
             // re-clamp just below, so this can't over-power a gym leader.
-            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng, gwIn);
-            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng, gwIn);
+            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng, gwIn, _allowLegendaryFiller);
+            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng, gwIn, _allowLegendaryFiller);
             // Synthetic-pool fallback also respects the ceiling so a trainer whose
             // actual sigs filter to empty (e.g. Tea Aroma in a gen-1-only run, where
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
             // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
                 const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
-                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling > _sigCeilBase2);
+                // Same `>=` drop rule as above: an un-devolvable over-ceiling mon that survived the
+                // synthetic backfill is dropped when the early ceiling is binding (tie included).
+                S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling >= _sigCeilBase2);
             }
             // Evo-stage gate on the signature pool: pre-C2 even a leader's ace
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
@@ -42631,6 +42652,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // or Rival counter-pick — out-grades the player's basic-tier team. Same
             // local-copy + fail-open discipline as the floor above.
             if (_earlyGradeCeiling > 1) T = _capGradePoolsByGradeCeiling(T, _earlyGradeCeiling);
+            // Strip legendaries/mythicals from the filler pool unless this is an E4/Champion/
+            // eldritch fight (see _allowLegendaryFiller). Done as a LOCAL copy — the shared
+            // _trainerPoolCache is keyed on (type,gens) only, so it must never hold an
+            // event-type-specific filter. Catches low-grade legendary PRE-EVOS (Cosmog/Cosmoem,
+            // graded G3/G4) that the grade ceiling can't, since they aren't G1. Fail-open if a
+            // type is entirely legendary (pathological) so a roll never breaks.
+            if (!_allowLegendaryFiller) {
+                const _noLeg = { 1: [], 2: [], 3: [], 4: [] };
+                let _kept = 0;
+                for (let g = 1; g <= 4; g++) { _noLeg[g] = (T[g] || []).filter(n => !(baseStats[n] && baseStats[n].legendary)); _kept += _noLeg[g].length; }
+                if (_kept > 0) T = _noLeg;
+            }
 
             // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
             // built fresh against your LIVE six (dynamic, never cached). Score every
@@ -42654,6 +42687,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const within = [], below = [];
                     for (const name of Object.keys(baseStats)) {
                         if (isStoryRollExcluded(name)) continue;
+                        if (_legBlocked(name)) continue; // Rival never fields a legendary, even as a deep fallback
                         const b = baseStats[name];
                         if (!b || !genSet.has(b.gen)) continue;
                         (getMonGrade(name, getBST(name)) > _fillerFloor ? below : within).push(name);
@@ -42798,6 +42832,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const within = [], below = [];
                 for (const name of Object.keys(baseStats)) {
                     if (isStoryRollExcluded(name)) continue;
+                    if (_legBlocked(name)) continue; // deep fallback also respects the legendary gate
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
                     const g = getMonGrade(name, getBST(name));
@@ -42806,7 +42841,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     within.push(name);
                 }
                 const pool = within.length ? within : below;
-                return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
+                if (!pool.length) return null;
+                // Prefer species not already on the team — this last-resort, type-blind picker is
+                // the one place a thin narrow-gen pool (e.g. Gen-1 Fairy, which has fewer than 6
+                // unique mons) used to hand back an already-used species and field it twice
+                // (Golem ×2 on a Gen-1 Valerie). Fail open to the full pool only when EVERY option
+                // is already taken (genuinely fewer unique species than slots), so a roll never
+                // breaks — but a duplicate now only appears when it's mathematically unavoidable.
+                const _fresh = pool.filter(n => _canUse(n));
+                const _pick = _fresh.length ? _fresh : pool;
+                return _pick[Math.floor(rng() * _pick.length)];
             }
 
             const team = [];
@@ -43002,6 +43046,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
                     cityIndexForStoryRow: (...a) => _cityIndexForStoryRow(...a),
+                    // Headless full-run team sweep (story-timeline-invariants test + the
+                    // story-team-sweep audit script) — see _simulateStoryRunTeams.
+                    simulateStoryRunTeams: (...a) => _simulateStoryRunTeams(...a),
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
                     devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
@@ -61555,45 +61602,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ts = document.getElementById('tester-seed');
             if (ss && ts && ss.value && /^\d+$/.test(String(ss.value).trim())) ts.value = ss.value;
         }
-        function runTeamTester() {
-            const out = document.getElementById('story-tester-out');
-            if (!out) return;
-            out.innerHTML = '<div style="color:#888;">Generating…</div>';
-            const rawSeed = (document.getElementById('tester-seed')?.value || '').trim();
-            let seed = (rawSeed && /^\d+$/.test(rawSeed)) ? (parseInt(rawSeed, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
-            const testerSeedEl = document.getElementById('tester-seed');
-            if (testerSeedEl && !rawSeed) testerSeedEl.value = String(seed);
-            const partySizeN = Math.max(1, Math.min(6, parseInt(document.getElementById('tester-party-size')?.value || '6', 10) || 6));
-            const filter = document.getElementById('tester-filter')?.value || 'all';
-            const diff = document.getElementById('tester-difficulty')?.value || 'normal';
-            const enabledGens = [];
-            for (let g = 1; g <= 9; g++) {
-                const el = document.getElementById(`tester-gen-cb-${g}`);
-                if (el && el.checked) enabledGens.push(g);
-            }
-            const ng = normalizeEnabledGens(enabledGens.length ? enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        // Pure, headless full-run team simulation — the shared engine behind the Story team
+        // tester UI AND the headless audit sweep (tests/suites/story-timeline-invariants +
+        // scripts/debug/story-team-sweep). Walks every Battle row in STORY_EVENTS_RAW through
+        // the REAL assignTrainers + rollTrainerTeam pipeline under a seeded run, snapshotting and
+        // restoring sm so it never disturbs a live game. Returns pure data (no DOM) so callers
+        // can render OR assert invariants. opts: { seed, enabledGens, difficulty, partySize,
+        // filter, mechanics:{megaOn,zOn,dynaOn,teraOn} }.
+        function _simulateStoryRunTeams(opts) {
+            opts = opts || {};
+            const ng = normalizeEnabledGens((opts.enabledGens && opts.enabledGens.length) ? opts.enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const seed = (opts.seed != null && opts.seed !== '') ? (opts.seed >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
+            const diff = opts.difficulty || 'normal';
+            const partySizeN = Math.max(1, Math.min(6, (opts.partySize | 0) || 6));
+            const filter = opts.filter || 'all';
+            const mech = opts.mechanics || {};
             const snap = {
-                runSeed: sm.runSeed, _strngState: sm._strngState, active: sm.active, badges: sm.badges|0, storyDifficulty: sm.storyDifficulty,
+                runSeed: sm.runSeed, _strngState: sm._strngState, active: sm.active, badges: sm.badges | 0, storyDifficulty: sm.storyDifficulty,
                 eventIndex: sm.eventIndex, trainerAssignments: (sm.trainerAssignments && { ...sm.trainerAssignments }) || {},
                 team: (sm.team && sm.team.length) ? sm.team.map(s => (typeof s === 'object' && s ? { ...s, build: s.build ? { ...s.build } : s.build } : s)) : [],
                 settings: sm.settings ? deepClone(sm.settings) : null
             };
+            const rows = [];
             let errMsg = null;
-            const rowsOut = [];
-            let lines = [];
             try {
                 sm.active = true;
                 sm.runSeed = seed;
                 sm._strngState = null;
                 sm.storyDifficulty = diff;
                 sm.settings = {
-                    enabledGens: ng,
-                    minGen: Math.min(...ng),
-                    maxGen: Math.max(...ng),
-                    megaOn: !!document.getElementById('tester-mech-mega')?.checked,
-                    zOn: !!document.getElementById('tester-mech-z')?.checked,
-                    dynaOn: !!document.getElementById('tester-mech-dyna')?.checked,
-                    teraOn: !!document.getElementById('tester-mech-tera')?.checked,
+                    enabledGens: ng, minGen: Math.min(...ng), maxGen: Math.max(...ng),
+                    megaOn: !!mech.megaOn, zOn: !!mech.zOn, dynaOn: !!mech.dynaOn, teraOn: !!mech.teraOn,
                     classicMode: true
                 };
                 sm.team = Array.from({ length: partySizeN }, () => ({ name: 'Tester', build: { gimmick: 'STANDARD' } }));
@@ -61618,20 +61657,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const isIntroRival = eventName === 'Rival' && (eid | 0) === STORY_RIVAL_ROW_INTRO;
                     const isLate = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(eventName);
                     const ps = isIntroRival ? 1 : (isLate ? 6 : Math.min(Math.max(sm.team.length, 1), 6));
-                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1:0, g2:0, g3: 50, g4: 50 }, sg, eventName, eid);
-                    rowsOut.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, team: enemyTeam });
-                    let line = `#${eid} row@${pos} ${eventName} | ${trainer.name} (${trainer.type}) | pre-fight badges=${sm.badges} | size=${ps} | g ${JSON.stringify(gw || {})}`;
-                    enemyTeam.forEach((slot, i) => {
-                        const b = slot && slot.build;
-                        const g = b && b.gimmick ? b.gimmick : 'STANDARD';
-                        const tt = b && b.teraType ? ' Tera:' + b.teraType : '';
-                        line += '\n  ' + (i + 1) + '. ' + slot.name + '  [' + g + ']' + tt;
-                    });
-                    lines.push(line);
+                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1: 0, g2: 0, g3: 50, g4: 50 }, sg, eventName, eid);
+                    let cityIndex = -1; try { cityIndex = _cityIndexForStoryRow(eid); } catch (e) {}
+                    rows.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, cityIndex, team: enemyTeam });
                 }
             } catch (e) {
                 errMsg = e && (e.message || String(e));
-                console.warn('[Story team tester]', e);
+                console.warn('[Story team sim]', e);
             } finally {
                 sm.runSeed = snap.runSeed;
                 sm._strngState = snap._strngState;
@@ -61644,6 +61676,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.team = snap.team;
                 try { applyMechanicsToSettings(); } catch (e2) {}
             }
+            return { seed, gens: ng, difficulty: diff, filter, partySize: partySizeN, rows, error: errMsg };
+        }
+        function runTeamTester() {
+            const out = document.getElementById('story-tester-out');
+            if (!out) return;
+            out.innerHTML = '<div style="color:#888;">Generating…</div>';
+            const rawSeed = (document.getElementById('tester-seed')?.value || '').trim();
+            let seed = (rawSeed && /^\d+$/.test(rawSeed)) ? (parseInt(rawSeed, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
+            const testerSeedEl = document.getElementById('tester-seed');
+            if (testerSeedEl && !rawSeed) testerSeedEl.value = String(seed);
+            const partySizeN = Math.max(1, Math.min(6, parseInt(document.getElementById('tester-party-size')?.value || '6', 10) || 6));
+            const filter = document.getElementById('tester-filter')?.value || 'all';
+            const diff = document.getElementById('tester-difficulty')?.value || 'normal';
+            const enabledGens = [];
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`tester-gen-cb-${g}`);
+                if (el && el.checked) enabledGens.push(g);
+            }
+            const ng = normalizeEnabledGens(enabledGens.length ? enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const res = _simulateStoryRunTeams({
+                seed, enabledGens: ng, difficulty: diff, partySize: partySizeN, filter,
+                mechanics: {
+                    megaOn: !!document.getElementById('tester-mech-mega')?.checked,
+                    zOn: !!document.getElementById('tester-mech-z')?.checked,
+                    dynaOn: !!document.getElementById('tester-mech-dyna')?.checked,
+                    teraOn: !!document.getElementById('tester-mech-tera')?.checked,
+                }
+            });
+            const rowsOut = res.rows;
+            const errMsg = res.error;
+            const lines = rowsOut.map(r => {
+                let line = `#${r.eid} row@${r.pos} ${r.eventName} | ${r.trainer} (${r.trainerType}) | pre-fight badges=${r.badges} | size=${r.partySize} | g ${JSON.stringify(r.gradeWeights || {})}`;
+                (r.team || []).forEach((slot, i) => {
+                    const b = slot && slot.build;
+                    const g = b && b.gimmick ? b.gimmick : 'STANDARD';
+                    const tt = b && b.teraType ? ' Tera:' + b.teraType : '';
+                    line += '\n  ' + (i + 1) + '. ' + slot.name + '  [' + g + ']' + tt;
+                });
+                return line;
+            });
             _lastTeamTesterPlain = [`Story team tester  seed=${seed}  filter=${filter}  difficulty=${diff}  gens=[${ng.join(',')}]`,
                 errMsg ? 'ERROR: ' + errMsg : 'OK',
                 '---', ...lines].join('\n');
@@ -67982,8 +68054,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }) : [];
                         const cappedSigs = (function(){
                             const evtStr = String(eventName || '');
-                            const isEldritch = !!(trainerData && trainerData.tag === 'eldritch');
-                            if (isEldritch || evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
+                            // Eldritch trainers are no longer exempt — they follow their role's cap.
+                            if (evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
                             // Pipeline order matches rollTrainerTeam: difficulty → progress → stripG4.
                             const adjusted = storyStripGrade4IfPartyMature(
                                 applyStoryProgressToGradeWeights(
@@ -68053,7 +68125,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     for (const r of out) {
                         const e = String(r.event || '');
                         if (e === 'Mystery Figure' || e === 'Champion' || /^E[1-4]$/.test(e) || e === 'Rival') continue;
-                        if (r.trainerTag === 'eldritch') continue;
                         const cap = r.sigCeiling | 0;
                         const sigs = r.cappedSigs ? r.cappedSigs.split(',').filter(Boolean) : [];
                         for (const n of sigs) {
