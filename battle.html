@@ -42452,7 +42452,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
             // include. Their pkmGens already covers all 9 gens; the tag is the green light.
-            const _isEldritch = !!(trainer && trainer.tag === 'eldritch');
             // The Rival is a PURE counter to the player's LIVE party (no signatures): its
             // species pool must span every enabled gen, NOT the rival NPC's narrow pkmGens
             // (Blue=Gen1, N=Gen5, May/Brendan=Gen3…). Honoring pkmGens here would leave whole
@@ -42463,14 +42462,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _isRivalEvent = String(battleEventType) === 'Rival';
             // Player's enabled-gens toggle — the ONLY legit gen gate for a trainer's
             // *signatures* (see sigGenSet below). pkmGens narrows the FILLER theme only.
-            const _playerGens = _isEldritch
-                ? [1,2,3,4,5,6,7,8,9]
-                : normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
-            let allowedGens;
-            if (_isEldritch) {
-                allowedGens = [1,2,3,4,5,6,7,8,9];
-            } else {
-                allowedGens = _playerGens.slice();
+            // NOTE: eldritch themed trainers ("Cursed Lance" etc.) used to bypass this and reach
+            // every gen ("out of this world"), but that ignored the player's explicit gen lock —
+            // they are NOT special, so they now follow the same gen rules as their role.
+            const _playerGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
+            let allowedGens = _playerGens.slice();
+            {
                 const pg = trainer && trainer.pkmGens;
                 if (!_isRivalEvent && pg && pg.length) {
                     const crossed = allowedGens.filter((g) => pg.includes(g));
@@ -42505,11 +42502,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // v19 sig-grade cap: drop any sig whose tier exceeds the row's
             // gradeWeights ceiling. Boss events (Rival/E1-E4/Champion/Mystery)
             // already roll into top tiers via their own gradeWeights, so they
-            // skip the cap. Eldritch trainers also skip — their "out of this
-            // world" lineup is the intent.
+            // skip the cap. (Eldritch themed trainers used to skip too — they no
+            // longer do; they are not special and follow their Elite-Trainer role.)
             const _evtStr = String(battleEventType || '');
-            const _exemptFromSigCap = (_isEldritch
-                || _evtStr === 'Mystery Figure'
+            const _exemptFromSigCap = (
+                _evtStr === 'Mystery Figure'
                 || _evtStr === 'Champion'
                 || /^E[1-4]$/.test(_evtStr)
                 || _evtStr === 'Rival');
@@ -42518,13 +42515,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // belong on the top-tier fights. Without this a legendary leaks onto a regular trainer
             // as random filler/synthetic backfill — and because a legendary PRE-EVO (Cosmog,
             // Cosmoem, Type: Null) is graded G3/G4 by BST, the grade profile + early ceiling never
-            // catch it, so a gym-3 Psychic trainer could field Cosmog. Gated to E1-E4 / Champion
-            // (and eldritch theme trainers); every other pool — gym trainers, gym leaders, elite
-            // trainers, the Rival — strips legendaries entirely. Authored sigs are unaffected
-            // (they never flow through the filler/synthetic pools this gate guards). This does NOT
-            // touch the G1 grade roll itself — difficulty still decides when a Champion fields a
-            // legendary; it only stops legendaries leaking DOWN onto trainers that can't roll G1.
-            const _allowLegendaryFiller = (_isEldritch || _evtStr === 'Champion' || /^E[1-4]$/.test(_evtStr) || _evtStr === 'Mystery Figure');
+            // catch it, so a gym-3 Psychic trainer could field Cosmog. Gated to E1-E4 / Champion;
+            // every other pool — gym trainers, gym leaders, elite trainers, the Rival, AND the
+            // eldritch themed trainers (no longer special) — strips legendaries from filler.
+            // Authored sigs are unaffected (they never flow through the filler/synthetic pools this
+            // gate guards). This does NOT touch the G1 grade roll itself — difficulty still decides
+            // when a Champion fields a legendary; it only stops legendaries leaking DOWN.
+            const _allowLegendaryFiller = (_evtStr === 'Champion' || /^E[1-4]$/.test(_evtStr) || _evtStr === 'Mystery Figure');
             const _legBlocked = (nm) => !_allowLegendaryFiller && !!(baseStats[nm] && baseStats[nm].legendary);
             // Late-game signature EVOLVE-UP (city 6+) — runs FIRST, before the grade-ceiling
             // devolve below, so the two transforms never fight. A trainer's authored
@@ -67786,8 +67783,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }) : [];
                         const cappedSigs = (function(){
                             const evtStr = String(eventName || '');
-                            const isEldritch = !!(trainerData && trainerData.tag === 'eldritch');
-                            if (isEldritch || evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
+                            // Eldritch trainers are no longer exempt — they follow their role's cap.
+                            if (evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
                             // Pipeline order matches rollTrainerTeam: difficulty → progress → stripG4.
                             const adjusted = storyStripGrade4IfPartyMature(
                                 applyStoryProgressToGradeWeights(
@@ -67857,7 +67854,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     for (const r of out) {
                         const e = String(r.event || '');
                         if (e === 'Mystery Figure' || e === 'Champion' || /^E[1-4]$/.test(e) || e === 'Rival') continue;
-                        if (r.trainerTag === 'eldritch') continue;
                         const cap = r.sigCeiling | 0;
                         const sigs = r.cappedSigs ? r.cappedSigs.split(',').filter(Boolean) : [];
                         for (const n of sigs) {
