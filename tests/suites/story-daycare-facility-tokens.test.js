@@ -34,18 +34,19 @@ test('--fac-recover is the green token daycare adopts', () => {
     '--fac-recover must be defined in :root');
 });
 
-test('the daycare overlay accent reads the --fac-recover token, not the #aed581 literal', () => {
+test('the daycare body accent reads the --fac-recover token, not the #aed581 literal', () => {
   assert.ok(HTML.includes("const accent = 'var(--fac-recover)';"),
-    "_daycareRenderHTML must set accent = var(--fac-recover)");
+    "_daycareRenderBody must set accent = var(--fac-recover)");
   assert.ok(!HTML.includes("const accent = '#aed581';"),
     "the bespoke #aed581 daycare accent literal must be gone");
 });
 
-test('the overlay header uses the registry egg icon, not a raw 🥚', () => {
-  assert.ok(HTML.includes("storyFacilityIconHtml('daycare', { size: 18, cls: '' })"),
-    'daycare header must render the registry icon via storyFacilityIconHtml');
-  assert.ok(HTML.includes('<span>Daycare Inn</span>'),
-    'daycare header text must sit beside the icon in its own span');
+test('the daycare screen header uses the fac-recover title + registry icon, not a raw 🥚', () => {
+  // The drop-off is now a real screen; its header is the shared scaffold title.
+  assert.ok(/<h3 class="story-screen-head-title fac-recover"[^>]*><img class="story-screen-head-ico" src="icons\/story\/story_daycare\.png/.test(HTML),
+    'daycare screen header must carry the fac-recover title + registry icon');
+  assert.ok(HTML.includes('<span class="story-screen-head-text">Daycare Inn</span>'),
+    'daycare header text sits in the shared head-text span');
   assert.ok(!HTML.includes('>🥚 Daycare Inn</div>'),
     'the raw 🥚 header literal must be gone');
 });

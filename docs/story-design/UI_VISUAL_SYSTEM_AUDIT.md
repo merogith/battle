@@ -198,3 +198,26 @@ See the chat message accompanying this doc — six decisions, each with a recomm
 **Verification:** each stage booted in the jsdom harness and was screenshotted in real headless Chromium (Crucible icon grid, Fan Club heart, category title colors, intact header/footer chrome) — no page errors, no visual regression.
 
 **Residual icon notes:** intentional battle-flow shares remain (`gym`=`tr`, `vr`=`crucible`); the egg PNG is a generated placeholder (swap for licensed art anytime — registry points at one file); the Casino interior swapped 🎰→Amulet Coin for cross-surface consistency (revertible). Relic *cards* stay purple-themed though the title is now gold — recoloring card internals belongs to 2d.
+
+---
+
+## Phase 3 — Facilities consistency + modernization pass (2026-06-13)
+
+Maintainer-approved full pass (story facilities only; **Crucible / Battle Frontier explicitly out of scope**). Each stage is locked by a source-level (and where useful, jsdom-DOM) guard test under `tests/suites/`. Delivered as one squashed commit. Previously-deferred items 2c-deferred / 2d-deferred are now resolved or consciously re-deferred below.
+
+| Stage | Scope | Guard test |
+|---|---|---|
+| **3.0** | Chrome token layer — `--shadow-bevel` / `--grad-panel` / `--shadow-glow-accent` in `:root`; the `.story-action-btn` family reads them (battle `.vs2-*` splash literal left as-is, out of scope). | `story-shadow-tokens` |
+| **3.1** | Unified button system — `.story-btn` base + `--sm/--md/--full/--active/--primary`; the two genuine near-duplicates `.story-tutor-btn` + `.story-link-btn` folded onto it; `.story-shop-buy-btn` (primary CTA) + `.story-action-btn` (city nav) kept as distinct roles. | `story-button-system` |
+| **3.2** | Canonical section header — `.story-section-header` (+`--grid`/`--divider`/`__count`) generalizing `.story-shop-section-head`; tutor field-label role kept distinct. | `story-section-header` |
+| **3.3** | Mon-card shared shell — BEM aliases `.story-mon-card` / `__head` / `__body` onto the existing chrome; dead `.story-link-mon-header*` (incl. stale 56px sprite rule) removed; Link frame = `--link` variant. **No** function merge (perf short-circuits + facility bodies preserved). | `story-mon-card-shell` |
+| **3.4** | Settings gear `⚙`→inline SVG (`uiSvgGear`) on the two story buttons; battle settings button left as battle chrome. | `story-settings-gear-svg` |
+| **3.5** | Inline-style cleanup — catch ball buttons → `.story-catch-ball` base (data-driven accent stays inline); shop card wrapper → `.story-shop-item-main`. | `story-inline-style-cleanup` |
+| **3.6** | **Shop buy-quantity** (functional) — `−/+` stepper on repeatable consumables; `buyItem(id,price,qty)` reuses every existing gate; featured one-per-city items stay single. | `story-shop-buy-quantity` |
+| **3.7** | **Bag sell-quantity** (functional) — `−/+` stepper on stackable bag items; `sellItem(id,price,qty)` clamps to held; Underground mon-selling untouched. | `story-bag-sell-quantity` |
+| **3.8** | **Gate-reason focus** (functional) — locked gym/route CTA pulses once + scrolls into view only when off-screen; respects reduced motion. | `story-gate-reason-focus` |
+| **3.9** | **Daycare overlay → real `screen-story-daycare`** (sensitive; maintainer-approved) — shares the `.story-shop-stack` scaffold + header ←/footer; `enterDaycare` dispatch branch order and the drop-off / egg-event flow preserved 1:1; **no `SAVE_VER` bump**. Idle / Fight-Club-secret / post-drop beats stay `_storyScene` cutscenes. | `story-daycare-screen` |
+
+**Decisions:** Heal button **dropped** (healing is automatic between battles — a manual heal would be nonsensical). Universal facility entry SFX **dropped** (risked feeling repetitive). The double `.type-badge` rule and the battle VS-splash bevel stay **untouched** (would alter out-of-scope battle visuals).
+
+**Re-deferred from 2d:** full six-header merge into `_txRenderCollapsedMonHtml` (would force `buildPokemon` on the collapsed perf path) and one-stat-bar unification (high churn, low payoff) remain flagged — the shared CSS shell (3.3) captures the visible consistency without the regression risk.

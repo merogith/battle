@@ -74,7 +74,8 @@ const MIGRATED = [
   ['height:100%;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;background:linear-gradient', null, '_showWanderScreen'],
   // overlay tier — formerly off-scale (z10000 / z9990), folded onto the scale here
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
-  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.92);z-index:9990', '_daycareOpenDropOff (was z9990)'],
+  // (_daycareOpenDropOff's overlay was retired in the daycare overlay→screen
+  //  conversion — the drop-off is now screen-story-daycare, not a z-index overlay.)
   // spotlight tier (9999)
   ['z-index:var(--sn-z-spotlight);pointer-events:none;opacity:0;', null, '_showBossBanner'],
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-spotlight);', null, '_showFirstSightingLoreOverlay'],

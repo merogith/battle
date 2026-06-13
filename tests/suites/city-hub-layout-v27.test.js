@@ -54,7 +54,9 @@ function renderButtons(i) {
   return [...host.querySelectorAll('button')].map(b => ({
     text: (b.textContent || '').replace(/\s+/g, ' ').trim(),
     onclick: b.getAttribute('onclick') || '',
-    cls: (b.className || '').replace(/\s+/g, ' ').trim(),
+    // story-gate-pulse is a transient one-shot animation hint added to a locked
+    // CTA after render — strip it so parity tracks structural classes only.
+    cls: (b.className || '').replace(/\bstory-gate-pulse\b/g, '').replace(/\s+/g, ' ').trim(),
   }));
 }
 

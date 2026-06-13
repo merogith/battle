@@ -90,9 +90,11 @@ test('Daycare drop-off: parent is gone for good and you receive a carryable egg'
   setupStory();
   const before = sm.team.length;
   SM.enterDaycare();
-  const ov = $('story-daycare-overlay');
-  assert.ok(ov, 'daycare drop-off overlay renders');
-  const dropBtns = ov.querySelectorAll('[data-daycare-drop]');
+  // Drop-off is now a real facility screen (screen-story-daycare), not a body overlay.
+  const screen = $('screen-story-daycare');
+  assert.ok(screen && !screen.classList.contains('hidden'), 'daycare drop-off screen renders');
+  const body = $('story-daycare-body');
+  const dropBtns = body.querySelectorAll('[data-daycare-drop]');
   assert.ok(dropBtns.length > 0, 'shows droppable mons');
   const snorlaxId = sm.team[3].id;
   const btn = Array.from(dropBtns).find(b => b.getAttribute('data-daycare-drop') === snorlaxId);
@@ -112,8 +114,10 @@ test('Daycare drop-off is one-time', () => {
   // continues from previous test: eggEventDone is true
   SM.enterDaycare();
   // With the egg done and badges<6-secret already satisfied (fightClubUnlocked true),
-  // enterDaycare routes to the idle scene, not the drop-off picker.
-  assert.ok(!$('story-daycare-overlay'), 'no second drop-off picker once the egg event is done');
+  // enterDaycare routes to the idle scene, not the drop-off screen.
+  const screen = $('screen-story-daycare');
+  assert.ok(!screen || screen.classList.contains('hidden'),
+    'no second drop-off picker once the egg event is done');
 });
 
 test('Egg hatches at laid-city + 2, not before', () => {

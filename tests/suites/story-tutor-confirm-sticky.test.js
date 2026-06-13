@@ -44,7 +44,9 @@ test('confirm/buy bar lives in the open mon body (so the sticky CSS applies)', a
 
 test('CSS keeps the buy bar reachable without scrolling', () => {
   // The open mon must not clip (overflow:hidden was defeating position:sticky).
-  assert.match(HTML, /\.story-tutor-mon:has\(\.story-tutor-mon-body\)\s*\{\s*overflow:\s*visible/,
+  // (Stage 3 folded this onto a shared .story-mon-card shell — the selector may now be
+  //  grouped, so allow the comma-joined form before the overflow:visible declaration.)
+  assert.match(HTML, /\.story-tutor-mon:has\(\.story-tutor-mon-body\)[^{]*\{\s*overflow:\s*visible/,
     'open mon is overflow:visible so the sticky bar pins to the scroller, not the card');
   // The bar itself stays sticky to the bottom and above the scrolling cards.
   assert.match(HTML, /\.tx-confirm-bar\s*\{[^}]*position:\s*sticky[^}]*bottom:\s*0[^}]*z-index/,

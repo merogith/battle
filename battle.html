@@ -51,6 +51,12 @@
             --fac-shop: var(--accent); /* shops — gold (mart/dept/stone/relics) */
             --fac-train: #ce93d8;      /* train & evolve (tutor/nature/dojo/EV/evo/colress) */
             --fac-utility: #29b6f6;    /* connect & misc (link/fan club) */
+            /* Story-facility chrome tokens — single source for the repeated neutral
+               bevel / panel gradient / accent glow on .story-action-btn & co. The
+               battle VS-splash (.vs2-*) keeps its own literal (out of story scope). */
+            --shadow-bevel: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050;
+            --grad-panel: linear-gradient(180deg, #1a1d2a 0%, #10121a 100%);
+            --shadow-glow-accent: 0 0 10px rgba(255,213,79,0.28);
             --battle-font: 'Press Start 2P', 'Courier New', Courier, monospace;
             --battle-chrome-bg: #050505;
             --battle-panel-bg: var(--surface);
@@ -718,18 +724,26 @@
             background-size: cover;
             background-position: center;
         }
-        .story-tutor-mon { border:1px solid #3f4352; border-radius:8px; background:linear-gradient(180deg, rgba(17,20,30,0.9), rgba(11,14,21,0.9)); overflow:hidden; }
+        /* === Mon-card shared shell ==================================================
+           The expandable Pokémon card (header toggle + editor body) is one shape used
+           by Tutor / Dojo / Nature / Evo / Colress / EV / FanClub / Link. They already
+           share storyMonTileMain() + .story-tutor-mon-toggle at 40px; this adds BEM
+           aliases (.story-mon-card / __head / __body) so the shell has one canonical
+           name. Link keeps its distinct frame via the .story-mon-card--link variant
+           (alias of .story-link-mon). Old class strings keep working unchanged. */
+        .story-tutor-mon, .story-mon-card { border:1px solid #3f4352; border-radius:8px; background:linear-gradient(180deg, rgba(17,20,30,0.9), rgba(11,14,21,0.9)); overflow:hidden; }
         /* The OPEN mon (the card that has an editor body) must NOT clip its contents:
            overflow:hidden here was defeating the confirm bar's position:sticky, forcing
            players to scroll down to reach the buy button on phones. Collapsed cards (no
            body) keep overflow:hidden so their rounded corners still clip cleanly. */
-        .story-tutor-mon:has(.story-tutor-mon-body) { overflow: visible; }
-        .story-tutor-mon-toggle {
+        .story-tutor-mon:has(.story-tutor-mon-body),
+        .story-mon-card:has(.story-mon-card__body) { overflow: visible; }
+        .story-tutor-mon-toggle, .story-mon-card__head {
             width:100%; border:0; background:transparent; color:inherit; cursor:pointer;
             display:flex; align-items:center; justify-content:space-between; gap:10px;
             padding:10px 12px; text-align:left;
         }
-        .story-tutor-mon-toggle:hover { background:rgba(255,255,255,0.03); }
+        .story-tutor-mon-toggle:hover, .story-mon-card__head:hover { background:rgba(255,255,255,0.03); }
         .story-tutor-mon-main { display:flex; align-items:center; gap:8px; min-width:0; }
         .story-tutor-mon-name { font-size:14px; font-weight:bold; color:var(--accent); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .story-tutor-mon-meta { font-size:10px; color:#9fa7b7; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50vw; }
@@ -755,14 +769,45 @@
         @media (max-width: 600px) {
             .story-mon-info-btn { width:34px; height:34px; min-width:34px; min-height:34px; font-size:15px; }
         }
-        .story-tutor-mon-body { border-top:1px solid #303646; padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; }
+        .story-tutor-mon-body, .story-mon-card__body { border-top:1px solid #303646; padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; }
         .story-tutor-section { margin-top:6px; }
         .story-tutor-section-title { font-size:10px; color:#8b92a4; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.06em; }
         .story-tutor-option-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:4px; }
         .story-tutor-option-row .current { font-size:11px; color:#aaa; min-width:80px; }
-        .story-tutor-btn { font-size:11px; padding:5px 9px; min-height:36px; border:1px solid #4f5668; border-radius:5px; background:rgba(0,0,0,0.18); color:#d2d7df; cursor:pointer; }
-        .story-tutor-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
-        .story-tutor-btn:disabled { opacity: 0.55; cursor: not-allowed; color: #9a9a9a; border-color: #444; }
+        /* === Unified story button system ===========================================
+           One secondary-button look for the whole story UI. The two genuine
+           near-duplicates (.story-tutor-btn, .story-link-btn) are folded onto this
+           base so they stop drifting (they previously differed only in border colour
+           / radius / background). The Buy CTA (.story-shop-buy-btn) deliberately keeps
+           its prominent treatment — it's a distinct primary role, not a duplicate, and
+           its inline data-driven colour assumes a dark face. New code should use
+           .story-btn + modifiers; --primary is the canonical prominent CTA. */
+        .story-btn, .story-tutor-btn, .story-link-btn {
+            font-family: var(--ui-font); cursor: pointer; min-height: 36px;
+            border: 1px solid #4f5668; border-radius: 5px;
+            background: rgba(0,0,0,0.18); color: #d2d7df;
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+        }
+        .story-btn:hover:not(:disabled),
+        .story-tutor-btn:hover:not(:disabled),
+        .story-link-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .story-btn:disabled, .story-tutor-btn:disabled, .story-link-btn:disabled {
+            opacity: 0.55; cursor: not-allowed; color: #9a9a9a; border-color: #444;
+        }
+        .story-btn { font-size: 11px; padding: 5px 9px; }
+        .story-btn--md { font-size: 11px; padding: 5px 9px; }
+        .story-btn--sm { font-size: 10px; padding: 4px 8px; }
+        .story-btn--full { width: 100%; text-align: left; }
+        .story-btn--active { border-color: #ce93d8; color: #ce93d8; background: rgba(206,147,216,0.1); }
+        /* Prominent CTA (confirm / proceed). Gold border + text on a dark face — the
+           same family as the shop Buy button, so primaries read consistently. */
+        .story-btn--primary {
+            font-size: 12px; font-weight: bold; letter-spacing: 0.4px; padding: 6px 14px; border-radius: 4px;
+            border-color: var(--accent); color: var(--accent); background: rgba(255,213,79,0.06);
+        }
+        .story-btn--primary:hover:not(:disabled) { background: rgba(255,213,79,0.14); border-color: var(--accent); color: var(--accent); }
+        /* Size delta only — base provides the look. */
+        .story-tutor-btn { font-size:11px; padding:5px 9px; }
         .story-tutor-apply-move:disabled {
             opacity: 1; cursor: not-allowed;
             background: rgba(35, 28, 28, 0.85); color: #e0c0b0; border-color: #5c4038;
@@ -2179,6 +2224,7 @@
         #screen-story-casino,
         #screen-story-pokemoncenter,
         #screen-story-catch,
+        #screen-story-daycare,
         #screen-story-crucible,
         #screen-story-frontier {
             font-family: var(--battle-font);
@@ -2630,6 +2676,18 @@
             font-style: italic; line-height: 1.55;
         }
         .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
+        .story-shop-item-main { flex: 1; min-width: 0; }
+        /* Buy-quantity stepper — the −/+ count beside the Buy button. */
+        .story-shop-buy-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .story-shop-qty { display: inline-flex; align-items: center; gap: 2px; }
+        .story-shop-qty-btn {
+            width: 26px; min-height: 30px; padding: 0; font-size: 14px; line-height: 1;
+            border: 1px solid #4f5668; border-radius: 4px; background: rgba(0,0,0,0.18);
+            color: #d2d7df; cursor: pointer; font-family: var(--ui-font);
+        }
+        .story-shop-qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .story-shop-qty-val { min-width: 22px; text-align: center; font-size: 12px; color: #e8e8e8; font-weight: bold; }
+        .story-bag-sell-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; align-self: center; }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
             border-radius: 6px; background: rgba(0,0,0,0.35); border: 1px solid #333;
@@ -2657,6 +2715,15 @@
            the Poké/Great/Ultra buttons before the player even clicks. Subtle
            purple glow pulse + brighter inner highlight. The base button colors
            are still set inline so this class only overlays the glow effect. */
+        /* Catch / Safari ball button — static chrome. The per-ball accent (border +
+           text) stays inline as color:${display.color}; border:1px solid currentColor
+           tracks it, so the rendered look is unchanged from the old all-inline button. */
+        .story-catch-ball {
+            display:flex; justify-content:space-between; align-items:center; gap:10px;
+            padding:8px 12px; background:rgba(20,28,40,0.6);
+            font-family:inherit; font-size:12px; cursor:pointer;
+            border:1px solid currentColor;
+        }
         .story-catch-ball--master {
             box-shadow: 0 0 14px rgba(206, 147, 216, 0.55), inset 0 0 14px rgba(206, 147, 216, 0.18) !important;
             animation: storyCatchMasterPulse 2.2s ease-in-out infinite;
@@ -2969,15 +3036,23 @@
         .story-action-btn {
             display:flex; align-items:center; gap:10px; padding:11px 14px;
             border: 2px solid #4a4f5e; border-radius: 0 !important;
-            background: linear-gradient(180deg, #1a1d2a 0%, #10121a 100%);
+            background: var(--grad-panel);
             cursor:pointer; transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
             font-size:12px; color:var(--text-color);
             font-family: var(--battle-font) !important; width:100%; text-align:left;
-            box-shadow: inset -2px -2px 0px 0px #1a1d28, inset 2px 2px 0px 0px #3a4050;
+            box-shadow: var(--shadow-bevel);
             letter-spacing: 0.4px;
             position: relative;
         }
         .story-action-btn:hover { border-color:#8a92a6; background:linear-gradient(180deg,#222637 0%,#161a26 100%); }
+        /* Gate-reason focus — a brief gold pulse on the locked gym/route CTA so the
+           "see facility X first" reason is noticed. Disabled under reduced motion. */
+        @keyframes storyGatePulse {
+            0%, 100% { box-shadow: var(--shadow-bevel); }
+            30%      { box-shadow: var(--shadow-bevel), 0 0 0 2px rgba(255,213,79,0.55), 0 0 14px rgba(255,213,79,0.40); }
+        }
+        .story-gate-pulse { animation: storyGatePulse 1.1s ease-in-out 2; }
+        @media (prefers-reduced-motion: reduce) { .story-gate-pulse { animation: none !important; } }
         .story-action-btn:active { transform: translateY(1px); }
         /* Primary (quest / call-to-action) — keeps its bold red to draw the eye to "what to do next". */
         .story-action-btn.primary { border-color:#e57373; color:#ffb4b4; background:linear-gradient(180deg,#2a1218 0%,#1a0808 100%); }
@@ -3214,7 +3289,7 @@
             min-height: 56px; height: 100%; box-sizing: border-box;
         }
         body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn:hover {
-            box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050, 0 6px 16px rgba(0,0,0,0.45);
+            box-shadow: var(--shadow-bevel), 0 6px 16px rgba(0,0,0,0.45);
         }
         /* Primary CTAs (professor / gym / route) read as full-width hero rows. */
         body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn.primary { grid-column: 1 / -1; min-height: 60px; }
@@ -3254,8 +3329,8 @@
         /* "Suggested" — softly outlined when the player has unfinished business this facility solves
            (empty move slots → Move Tutor, no items → Battle Dojo, free relic → Annex). One subtle glow,
            not a pulse, so multiple suggestions don't compete. */
-        .story-action-btn--suggested { border-color: #ffd54f !important; box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050, 0 0 0 1px rgba(255,213,79,0.18); }
-        .story-action-btn--suggested:hover { box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050, 0 0 10px rgba(255,213,79,0.28); }
+        .story-action-btn--suggested { border-color: #ffd54f !important; box-shadow: var(--shadow-bevel), 0 0 0 1px rgba(255,213,79,0.18); }
+        .story-action-btn--suggested:hover { box-shadow: var(--shadow-bevel), var(--shadow-glow-accent); }
         /* Soft variant — the base styles are already calm, so soft just nudges the stripe down a touch
            for secondary entries inside the same section (Relic Annex vs Dept Store, Bag vs Mart). */
         .story-action-btn.story-action-btn--soft::before { opacity: 0.55; }
@@ -3474,35 +3549,44 @@
         }
         /* Shop category headings: small uppercase strap, full-width across the grid.
            Keeps long item lists scannable without flooding the screen with chrome. */
-        .story-shop-section-head {
-            grid-column: 1 / -1;
+        /* === Canonical section header ===============================================
+           One uppercase category strap for every facility list. .story-shop-section-head
+           is kept as a legacy alias so existing shop markup keeps working; new code
+           (daycare screen, future facilities) uses .story-section-header + modifiers.
+              --grid     span the full width of a CSS grid row
+              --divider  trailing hairline rule
+              __count    the small count badge */
+        .story-section-header, .story-shop-section-head {
             font-size: 10px; letter-spacing: 1.3px; text-transform: uppercase;
             color: #b3c2d6; padding: 4px 0 2px;
             display: flex; align-items: center; gap: 8px;
             font-family: var(--battle-font) !important;
         }
+        .story-section-header--grid, .story-shop-section-head { grid-column: 1 / -1; }
+        .story-section-header:first-child,
         .story-shop-section-head:first-child { padding-top: 0; }
+        .story-section-header--divider::after,
         .story-shop-section-head::after {
             content:''; flex:1; height:1px;
             background: linear-gradient(90deg, rgba(138,160,188,0.32) 0%, rgba(138,160,188,0) 100%);
         }
+        .story-section-header__count,
         .story-shop-section-head .story-shop-section-count {
             font-size: 9px; color:#6e7a8e; font-weight: normal; letter-spacing: 0.6px; text-transform: none;
         }
-        .story-link-mon { border:1px solid #333; border-radius:5px; padding:10px; background:var(--surface); }
-        .story-link-mon-header { display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; width:100%; box-sizing:border-box; }
-        .story-link-mon-header > div:first-of-type { flex:1; min-width:0; }
-        .story-link-mon-header .draft-card-info-btn { flex-shrink:0; align-self:flex-start; }
-        .story-link-mon-header img { width:56px; height:56px; image-rendering:pixelated; border:none; background:transparent; }
+        /* Link card = the mon-card shell with its own frame (--link variant). The old
+           .story-link-mon-header* rules were dead (the card renders via storyMonTileMain
+           + .story-tutor-mon-toggle at 40px — no .story-link-mon-header element is emitted)
+           and were removed; that also retires the stale 56px sprite rule. */
+        .story-link-mon, .story-mon-card--link { border:1px solid #333; border-radius:5px; padding:10px; background:var(--surface); }
         .story-link-title-row { font-size:14px; font-weight:bold; line-height:1.25; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
         .story-link-build {
             display:flex; flex-direction:column; gap:6px; margin-bottom:8px; width:100%; box-sizing:border-box;
         }
         .story-link-build-stats { display:flex; flex-direction:column; gap:1px; font-size:11px; }
         .story-link-btns { display:flex; gap:6px; flex-wrap:wrap; }
-        .story-link-btn { font-size:10px; padding:4px 8px; min-height:36px; border:1px solid #444; border-radius:3px; cursor:pointer; background:var(--surface2); color:var(--text-color); font-family:inherit; transition:all 0.15s; }
-        .story-link-btn:hover:not(:disabled) { border-color:#888; color:var(--accent); }
-        .story-link-btn:disabled { opacity:0.35; cursor:not-allowed; }
+        /* Folded onto .story-btn (see ~777) — keeps only its compact size delta. */
+        .story-link-btn { font-size:10px; padding:4px 8px; }
         .story-artifact-card {
             border:1px solid #6e3a85; border-radius:6px; padding:12px;
             background: linear-gradient(180deg, rgba(28,12,38,0.92), rgba(16,8,22,0.92));
@@ -8894,7 +8978,7 @@
     <div id="desktop-scale-outer">
     <div id="app-root">
     <div id="game-stage">
-    <button class="icon-btn settings-btn" onclick="window.openSettings()">⚙</button>
+    <button class="icon-btn settings-btn" onclick="window.openSettings()" aria-label="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;display:inline-block;vertical-align:-0.14em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84a.49.49 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94 0 .32.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button>
 
     <div id="screen-menu" class="screen active" role="region" aria-label="menu">
         <div class="menu-hero">
@@ -9322,7 +9406,7 @@
                 <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Abandon and delete this run" aria-label="Abandon this run">Abandon</button>
                 <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics" aria-label="Run settings and info">Run Info</button>
                 <button type="button" class="story-hud-help" onclick="window.showHelp()" title="How to play Story Mode" aria-label="Help — story mode reference">?</button>
-                <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
+                <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;display:inline-block;vertical-align:-0.14em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84a.49.49 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94 0 .32.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button>
             </div>
         </div>
         <!-- CITY HUB V2: identity band — town name + badge pips over the bg layer.
@@ -9426,6 +9510,20 @@
         </div>
         <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Evolution Tutor next door. <strong style="color:#b39ddb;">500G each</strong>. The Tutor consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem it for one free pick — any item here, stone or trade item.</p>
         <div id="story-stone-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;min-height:0;"></div>
+        <div style="padding:10px;flex-shrink:0;">
+            <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
+    <div id="screen-story-daycare" class="screen hidden story-screen-root" role="region" aria-label="story daycare" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-daycare-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 class="story-screen-head-title fac-recover" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_daycare.png?v=20260604" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Daycare Inn</span></h3>
+        </div>
+        <div id="story-daycare-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,10,18,0.2);color:#e0f2f1;font-size:12px;line-height:1.55;"></div>
         <div style="padding:10px;flex-shrink:0;">
             <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
@@ -10574,6 +10672,10 @@
            so check/decline markers render identically across screens and devices. */
         window.uiSvgCheck = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 16 16" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.12em;flex-shrink:0;"><path d="M3 8.6l3.4 3.4L13 4.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';};
         window.uiSvgX = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 16 16" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.12em;flex-shrink:0;"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';};
+        /* Settings cog — replaces the raw ⚙ emoji on the story settings buttons so the
+           glyph renders identically across devices (same rationale as uiSvgCheck/uiSvgX).
+           The battle-screen settings button is battle chrome and keeps its own glyph. */
+        window.uiSvgGear = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.14em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84a.49.49 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94 0 .32.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>';};
         /* Pokémon Fan Club facility icon — an inline-SVG heart (no item sprite fits the
            "affection / friendship" theme). Same single-source-of-truth, device-independent
            approach as moveCatBadgeHtml; consumed via storyFacilityIconHtml('fanclub'). */
@@ -47849,6 +47951,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
+            // Gate-reason focus: when the gym/route CTA is locked ("see facility X
+            // first"), pulse it once and nudge it into view (only if off-screen) so the
+            // player notices WHY they can't advance instead of hunting for it.
+            // Presentation only — no gate logic, no RNG, self-limiting scroll.
+            try {
+                const _gated = btn.querySelector('.story-action-btn.primary[disabled]');
+                if (_gated) {
+                    const _reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                    if (!_reduce) {
+                        _gated.classList.remove('story-gate-pulse');
+                        void _gated.offsetWidth; // restart the animation on re-render
+                        _gated.classList.add('story-gate-pulse');
+                    }
+                    const _r = _gated.getBoundingClientRect();
+                    const _vh = window.innerHeight || 0;
+                    if (_vh && (_r.top < 0 || _r.bottom > _vh)) {
+                        try { _gated.scrollIntoView({ block: 'center', behavior: _reduce ? 'auto' : 'smooth' }); }
+                        catch (e) { _gated.scrollIntoView(); }
+                    }
+                }
+            } catch (e) {}
             // CITY HUB V2 identity band — presentation only (no gate logic):
             // mirror the resolved town name + badge pips into the static band.
             // The band is display:none on mobile; this write is inert there.
@@ -48626,42 +48749,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!dc.eggEventDone) { _daycareOpenDropOff(); return; }
             _daycareIdleScene(false);
         }
+        // Drop-off is now a real facility screen (screen-story-daycare) sharing the
+        // .story-shop-stack scaffold + header ← / footer "Back to City", instead of a
+        // bespoke body overlay. The enterDaycare dispatch + drop-off flow are unchanged;
+        // only the presentation surface moved onto the shared scaffold.
         function _daycareOpenDropOff() {
-            _daycareClose(); // never stack two daycare overlays on re-entry
-            const ov = document.createElement('div');
-            ov.id = 'story-daycare-overlay';
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
-            ov.innerHTML = _daycareRenderHTML();
-            document.body.appendChild(ov);
-            ov.addEventListener('click', e => { if (e.target === ov) _daycareClose(); });
-            _daycareBindEvents(ov);
+            const body = document.getElementById('story-daycare-body');
+            if (!body) return;
+            body.innerHTML = _daycareRenderBody();
+            _daycareBindEvents(body);
+            try { syncStorySceneBackground('story-daycare-bg-layer'); } catch (_) {}
+            showScreen('screen-story-daycare');
         }
+        // Leaving the drop-off screen returns to the city (back arrow / footer / after a
+        // drop-off). Kept as a named helper so _daycareDropOff reads the same as before.
         function _daycareClose() {
-            const ov = document.getElementById('story-daycare-overlay');
-            if (ov) ov.remove();
+            try { enterCity(); } catch (_) {}
         }
-        function _daycareRenderHTML() {
+        function _daycareRenderBody() {
             const accent = 'var(--fac-recover)';
             const partyCap = _storyMaxPartySize();
             const team = sm.team || [];
             const box = sm.pcBox || [];
             const teamHtml = team.map((s,i) => _daycareSlotRow(s, 'team', i, team.length, partyCap)).join('');
             const boxHtml = box.map((s,i) => _daycareSlotRow(s, 'pc', i, box.length, partyCap)).join('');
-            return `<div style="max-width:560px;width:100%;background:linear-gradient(180deg,rgba(28,40,40,0.98),rgba(12,18,18,0.98));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
-                <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:7px;">${storyFacilityIconHtml('daycare', { size: 18, cls: '' })}<span>Daycare Inn</span></div>
-                <div style="font-size:10px;color:#7a8a7a;margin-bottom:10px;letter-spacing:0.04em;">"We'll love 'em like our own." ❤</div>
+            return `<div style="font-size:10px;color:#7a8a7a;margin-bottom:10px;letter-spacing:0.04em;">"We'll love 'em like our own." ❤</div>
                 <div style="margin-bottom:10px;color:#b0bec5;font-size:11px;font-style:italic;">The matron beams a little too warmly. "Leave a partner with us, dearie — go win your badges. We'll take <em>real</em> good care of them. You won't go home empty-handed."</div>
                 <div style="padding:8px 10px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:6px;font-size:11px;line-height:1.6;">
                     <div><strong style="color:${accent};">The deal.</strong> Hand over one Pokémon, walk out with an <strong>egg</strong>. It hatches into something that shares their typing — one grade tier stronger — after your <strong>seventh badge</strong>.</div>
                     <div style="margin-top:6px;color:#80cbc4;font-size:10px;">⚠ You only get to do this once. Pick someone you can bear to part with — they'll be… <em>busy</em> for a good while.</div>
                 </div>
                 <div style="margin-bottom:12px;font-size:9px;color:#8d6e63;border:1px dashed #5d4037;padding:4px 7px;background:rgba(40,20,12,0.3);letter-spacing:0.03em;">📽 taped by the staff door, water-stained: <span style="font-style:italic;">"120 DAYS OF PIKA — private screening · members only"</span></div>
-                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From Party</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">${teamHtml || '<div style="color:#666;font-size:11px;padding:6px;">Empty — visit the Professor first.</div>'}</div>
-                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From PC</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:200px;overflow-y:auto;">${boxHtml || '<div style="color:#666;font-size:11px;padding:6px;">No stored Pokémon.</div>'}</div>
-                <div style="text-align:right;margin-top:6px;"><button type="button" id="daycare-close-btn" style="padding:8px 14px;background:#37474f;color:#e0f2f1;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Close</button></div>
-            </div>`;
+                <div class="story-section-header story-section-header--divider">From Party</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin:6px 0 12px;">${teamHtml || '<div style="color:#666;font-size:11px;padding:6px;">Empty — visit the Professor first.</div>'}</div>
+                <div class="story-section-header story-section-header--divider">From PC</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin:6px 0 12px;">${boxHtml || '<div style="color:#666;font-size:11px;padding:6px;">No stored Pokémon.</div>'}</div>`;
         }
         function _daycareSlotRow(slot, source, idx, totalInSource, partyCap) {
             if (!slot || !slot.name || !slot.id) return '';
@@ -48677,10 +48799,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <button type="button" data-daycare-drop="${_esc(slot.id)}" ${canDrop ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:4px 10px;background:transparent;color:${canDrop?'var(--fac-recover)':'#555'};border:1px solid ${canDrop?'var(--fac-recover)':'#444'};cursor:${canDrop?'pointer':'not-allowed'};">Drop Off</button>
             </div>`;
         }
-        function _daycareBindEvents(ov) {
-            const close = ov.querySelector('#daycare-close-btn');
-            if (close) close.onclick = _daycareClose;
-            ov.querySelectorAll('[data-daycare-drop]').forEach(btn => {
+        function _daycareBindEvents(root) {
+            root.querySelectorAll('[data-daycare-drop]').forEach(btn => {
                 btn.onclick = () => _daycareDropOff(btn.getAttribute('data-daycare-drop'));
             });
         }
@@ -56896,7 +57016,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const masterCls = (k === 'master' && canThrow) ? ' story-catch-ball--master' : '';
                     const masterMark = (k === 'master' && canThrow) ? '<span style="margin-left:6px;color:#ce93d8;text-shadow:0 0 6px rgba(206,147,216,0.85);">✨</span>' : '';
                     const rightLabel = `<span style="color:#fff;">${pct}%</span>`;
-                    return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} data-ball-type="${k}" class="story-catch-ball${masterCls}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
+                    return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} data-ball-type="${k}" class="story-catch-ball${masterCls}" style="color:${display.color};${canThrow ? '' : 'opacity:0.4;cursor:not-allowed;'}">
                         <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong>${masterMark} <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
                         ${rightLabel}
                     </button>`;
@@ -57494,17 +57614,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const claimedTag = alreadyBought ? '<span class="story-shop-item-claimed-tag">[Claimed]</span>' : '';
                 const featuredBorder = opts.featured ? `style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};"` : '';
                 const priceCls = canAfford ? 'price' : 'price cant-afford';
-                return `<div class="story-shop-item${alreadyBought ? ' is-claimed' : ''}" ${featuredBorder} data-item-id="${item.id}">
+                // Repeatable consumables get a −/+ quantity stepper; featured one-per-city
+                // items and already-claimed rows do not (they're a single copy).
+                const showStepper = !opts.featured && !alreadyBought;
+                const stepper = showStepper ? `<div class="story-shop-qty" role="group" aria-label="Quantity">
+                            <button type="button" class="story-shop-qty-btn" onclick="window.StoryMode.shopQtyStep(this,-1)" aria-label="One fewer">&#8722;</button>
+                            <span class="story-shop-qty-val" aria-live="polite">1</span>
+                            <button type="button" class="story-shop-qty-btn" onclick="window.StoryMode.shopQtyStep(this,1)" aria-label="One more">+</button>
+                        </div>` : '';
+                return `<div class="story-shop-item${alreadyBought ? ' is-claimed' : ''}" ${featuredBorder} data-item-id="${item.id}" data-unit-price="${item.price}">
                     <div class="story-shop-item-row">
                         ${icon}
-                        <div style="flex:1;min-width:0;">
+                        <div class="story-shop-item-main">
                             <h4>${item.name}${claimedTag}<span class="story-shop-item-qty">×${qty}</span></h4>
                             <div class="desc">${item.desc}</div>
                         </div>
                     </div>
                     <div class="story-shop-item-bottom">
                         <span class="${priceCls}">${storyGoldHtml(item.price.toLocaleString())}</span>
-                        <button class="story-shop-buy-btn" onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="${canBuy?`color:${buyColor};border-color:${buyColor};`:''}">${btnLabel}</button>
+                        <div class="story-shop-buy-wrap">${stepper}<button class="story-shop-buy-btn" onclick="window.StoryMode.shopBuyFromCard(this,'${item.id}',${item.price})" ${canBuy?'':'disabled'} style="${canBuy?`color:${buyColor};border-color:${buyColor};`:''}">${btnLabel}</button></div>
                     </div>
                 </div>`;
             };
@@ -57539,7 +57667,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const _cat of _categoryOrder) {
                 const _bucket = _grouped[_cat];
                 if (!_bucket || !_bucket.length) continue;
-                _gridParts.push(`<div class="story-shop-section-head">${_cat}<span class="story-shop-section-count">${_bucket.length}</span></div>`);
+                _gridParts.push(`<div class="story-section-header story-section-header--grid story-section-header--divider">${_cat}<span class="story-section-header__count">${_bucket.length}</span></div>`);
                 for (const item of _bucket) {
                     _gridParts.push(_renderShopCard(item));
                 }
@@ -57552,7 +57680,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             syncStoryShopBackground(type === 'dept' ? 'dept' : 'mart');
         }
 
-        async function buyItem(itemId, price) {
+        async function buyItem(itemId, price, qty) {
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
             if (sm.settings && sm.settings.noItemRun) {
                 if (st === 'dept') {
@@ -57580,6 +57708,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _isBall = !!(_itemRow && _itemRow.kind === 'ball' && _itemRow.ballKey);
             // Featured Mega/Ultra items use prefixed IDs and live outside POKEMART_ITEMS/DEPT_ITEMS.
             const _isFeatured = typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'));
+            // Buy-quantity (repeatable consumables only). Featured one-per-city items are
+            // always a single copy. Clamp to a sane 1..99 so a bad caller can't overspend.
+            const _qty = _isFeatured ? 1 : Math.max(1, Math.min(99, (qty | 0) || 1));
+            const _total = price * _qty;
             // Department store: featured items are one-per-city and persist across gym leader fights.
             // Regular shelves (potions, orbs, revives) are restockable and never lock.
             if (st === 'dept' && _isFeatured) {
@@ -57588,25 +57720,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.deptShopPurchasedByCity[_cKey]) sm.deptShopPurchasedByCity[_cKey] = {};
                 if (sm.deptShopPurchasedByCity[_cKey][itemId]) return;
             }
-            if (sm.gold < price) return;
+            if (sm.gold < _total) return;
             // Confirm only the high-stakes shop clicks. Mart consumables (potions, status
             // heals, regular balls) are repeatable and cheap — keep them direct-purchase.
             // Featured dept items lock per-city, so they always get the prompt.
-            // Any non-ball purchase ≥ 1500G also gets it.
-            const needsConfirm = (st === 'dept' && _isFeatured) || (!_isBall && price >= 1500);
+            // Any non-ball spend ≥ 1500G (now measured on the multiplied total) also gets it.
+            const needsConfirm = (st === 'dept' && _isFeatured) || (!_isBall && _total >= 1500);
             if (needsConfirm) {
                 const itemLabel = (_itemRow && _itemRow.name) ? _itemRow.name : String(itemId);
+                const qtyNote = _qty > 1 ? ` ×${_qty}` : '';
                 const lockNote = (st === 'dept' && _isFeatured) ? ' This is the only copy this city sells.' : '';
-                const ok = await _storyConfirmTutorChange(`Buy ${itemLabel}?${lockNote}`, price);
+                const ok = await _storyConfirmTutorChange(`Buy ${itemLabel}${qtyNote}?${lockNote}`, _total);
                 if (!ok) return;
             }
-            sm.gold -= price;
-            try { _storyTrackSpend(price); } catch (e) {}
+            sm.gold -= _total;
+            try { _storyTrackSpend(_total); } catch (e) {}
             if (_isBall) {
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
-                sm.balls[_itemRow.ballKey] = (sm.balls[_itemRow.ballKey] || 0) + 1;
+                sm.balls[_itemRow.ballKey] = (sm.balls[_itemRow.ballKey] || 0) + _qty;
             } else {
-                sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
+                sm.inventory[itemId] = (sm.inventory[itemId]||0) + _qty;
             }
             if (st === 'dept' && _isFeatured) {
                 const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
@@ -57622,10 +57755,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const row = document.querySelector(`#screen-story-shop [data-item-id="${itemId}"]`);
                     if (row && window.StoryFx) {
                         window.StoryFx.flashPulse(row, 'buy');
-                        window.StoryFx.floatCoin(row, '-' + price.toLocaleString() + 'G');
+                        window.StoryFx.floatCoin(row, '-' + _total.toLocaleString() + 'G');
                     }
                 }, 30);
             } catch (e) {}
+        }
+
+        // Shop quantity stepper — adjusts the row's count and live-updates the price
+        // readout (and its can't-afford state) so the total is visible before buying.
+        function shopQtyStep(btn, delta) {
+            const card = btn.closest && btn.closest('.story-shop-item');
+            if (!card) return;
+            const valEl = card.querySelector('.story-shop-qty-val');
+            if (!valEl) return;
+            const unit = parseInt(card.getAttribute('data-unit-price') || '0', 10) || 0;
+            let q = (parseInt(valEl.textContent, 10) || 1) + delta;
+            q = Math.max(1, Math.min(99, q));
+            valEl.textContent = String(q);
+            const priceEl = card.querySelector('.story-shop-item-bottom .price');
+            if (priceEl && unit) {
+                const total = unit * q;
+                priceEl.innerHTML = storyGoldHtml(total.toLocaleString());
+                priceEl.classList.toggle('cant-afford', ((sm && sm.gold) || 0) < total);
+            }
+        }
+        // Buy from a card — reads the stepper count (defaults to 1) and routes through
+        // the single-source buyItem so every purchase gate is reused, not duplicated.
+        function shopBuyFromCard(btn, itemId, price) {
+            const card = btn.closest && btn.closest('.story-shop-item');
+            const valEl = card && card.querySelector('.story-shop-qty-val');
+            const q = valEl ? (parseInt(valEl.textContent, 10) || 1) : 1;
+            return buyItem(itemId, price, q);
         }
 
         async function buyArtifact(artId, price) {
@@ -60423,6 +60583,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const div = document.createElement('div');
                 div.className = 'story-bag-item';
                 div.style.cursor = 'default';
+                div.dataset.have = String(qty);
+                div.dataset.unitSell = String(sellPrice);
                 // EV Reset Charm: city-bag "Use" button (opens a roster picker
                 // that wipes one mon's EVs). Treated as a one-shot consumable —
                 // not sellable to discourage farm-buy-reset loops.
@@ -60457,10 +60619,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="qty">×${qty}</div>
                     <div class="eff">${item.desc}</div>
                 </div>
-                <button onclick="window.StoryMode.sellItem('${item.id}',${sellPrice});event.stopPropagation();"
+                <div class="story-bag-sell-wrap">${qty > 1 ? `<div class="story-shop-qty story-bag-qty" role="group" aria-label="Quantity">
+                        <button class="story-shop-qty-btn" onclick="window.StoryMode.bagQtyStep(this,-1);event.stopPropagation();" aria-label="One fewer">&#8722;</button>
+                        <span class="story-shop-qty-val">1</span>
+                        <button class="story-shop-qty-btn" onclick="window.StoryMode.bagQtyStep(this,1);event.stopPropagation();" aria-label="One more">+</button>
+                    </div>` : ''}<button onclick="window.StoryMode.bagSellFromCard(this,'${item.id}',${sellPrice});event.stopPropagation();"
                     style="font-size:11px;padding:4px 10px;color:#ffd700;border-color:#ffd700;flex-shrink:0;align-self:center;line-height:1.4;">
-                    Sell<br><span style="font-size:10px;">${storyGoldHtml(sellPrice.toLocaleString())}</span>
-                </button>`;
+                    Sell<br><span class="story-bag-sell-total" style="font-size:10px;">${storyGoldHtml(sellPrice.toLocaleString())}</span>
+                </button></div>`;
                 bagEl.appendChild(div);
             });
             if (!hasAny) {
@@ -60475,20 +60641,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function sellItem(itemId, sellPrice) {
-            if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
+        function sellItem(itemId, sellPrice, qty) {
+            const have = sm.inventory[itemId] || 0;
+            if (have <= 0) return;
             // Perm-boost vitamins are earned-only and never sellable.
             if (PERM_BOOST_IDS.has(itemId)) return;
             // Featured Mega/Ultra stones are sell-locked progression items
             // (memo #10, 2026-06-11) — backstop for the hidden Sell button.
             if (typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'))) return;
-            sm.inventory[itemId]--;
+            // Sell N at once — never more than held. Underground mon-selling is a
+            // separate, deliberately-tuned system and is untouched here.
+            const n = Math.max(1, Math.min(have, (qty | 0) || 1));
+            sm.inventory[itemId] -= n;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
-            sm.gold += sellPrice;
+            sm.gold += sellPrice * n;
             save();
             updateHUD();
             // Re-render the city bag so qty and gold update instantly
             openCityBag();
+        }
+        // Bag sell-quantity stepper — clamps 1..held and live-updates the Sell total.
+        function bagQtyStep(btn, delta) {
+            const row = btn.closest && btn.closest('.story-bag-item');
+            if (!row) return;
+            const valEl = row.querySelector('.story-bag-qty .story-shop-qty-val');
+            if (!valEl) return;
+            const have = parseInt(row.dataset.have || '1', 10) || 1;
+            const unit = parseInt(row.dataset.unitSell || '0', 10) || 0;
+            let q = (parseInt(valEl.textContent, 10) || 1) + delta;
+            q = Math.max(1, Math.min(have, q));
+            valEl.textContent = String(q);
+            const totalEl = row.querySelector('.story-bag-sell-total');
+            if (totalEl && unit) totalEl.innerHTML = storyGoldHtml((unit * q).toLocaleString());
+        }
+        // Sell from a card — reads the stepper count (defaults to 1) and routes through
+        // the single-source sellItem so the sell gates are reused, not duplicated.
+        function bagSellFromCard(btn, itemId, sellPrice) {
+            const row = btn.closest && btn.closest('.story-bag-item');
+            const valEl = row && row.querySelector('.story-bag-qty .story-shop-qty-val');
+            const q = valEl ? (parseInt(valEl.textContent, 10) || 1) : 1;
+            return sellItem(itemId, sellPrice, q);
         }
 
         // ── PERMANENT STAT BOOST PICKER ──────────────────────────────────
@@ -67826,7 +68018,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
-            enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
+            enterShop, buyItem, shopQtyStep, shopBuyFromCard, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterStoneShop, buyStoneItem, redeemStoneToken,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             pcSetBoxSort, pcSetBoxFilterType, pcSetBoxSearch, pcToggleBoxShiny, pcClearBoxFilters, pcBoxView, pcReorderByInsertion,
@@ -67844,7 +68036,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casinoFlipPick, casinoFlipSpin,
             casinoSlotsCoins, casinoSlotsHoldToggle, casinoSlotsSpin,
             casinoRoulPlaceChip, casinoRoulClear, casinoRoulRepeat, casinoRoulSpin,
-            openBattleBag, useBagItemOn, openCityBag, sellItem, enterJournal,
+            openBattleBag, useBagItemOn, openCityBag, sellItem, bagQtyStep, bagSellFromCard, enterJournal,
             openPermBoostPicker, applyPermBoost, removePermBoost,
             openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,
