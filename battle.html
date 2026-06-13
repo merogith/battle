@@ -41558,7 +41558,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
         }
 
-        function buildSyntheticSignaturePool(trainer, genSet, rng, gradeWeights) {
+        function buildSyntheticSignaturePool(trainer, genSet, rng, gradeWeights, allowLegendary) {
             const types = parseTrainerTypes(trainer && trainer.type);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
             function pullByGrade(grade) {
@@ -41567,6 +41567,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
+                    // Legendaries/mythicals only backfill E4/Champion/eldritch rosters; everywhere
+                    // else they're stripped (incl. low-grade legendary pre-evos like Cosmog).
+                    if (!allowLegendary && b.legendary) continue;
                     if (!isMixed) {
                         const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
                         if (!ok) continue;
@@ -42510,6 +42513,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || _evtStr === 'Champion'
                 || /^E[1-4]$/.test(_evtStr)
                 || _evtStr === 'Rival');
+            // LEGENDARY filler gate: actual legendaries/mythicals (the `.legendary` flag — NOT
+            // pseudo-legendaries like Garchomp/Dragonite, which are unflagged G1 BST mons) only
+            // belong on the top-tier fights. Without this a legendary leaks onto a regular trainer
+            // as random filler/synthetic backfill — and because a legendary PRE-EVO (Cosmog,
+            // Cosmoem, Type: Null) is graded G3/G4 by BST, the grade profile + early ceiling never
+            // catch it, so a gym-3 Psychic trainer could field Cosmog. Gated to E1-E4 / Champion
+            // (and eldritch theme trainers); every other pool — gym trainers, gym leaders, elite
+            // trainers, the Rival — strips legendaries entirely. Authored sigs are unaffected
+            // (they never flow through the filler/synthetic pools this gate guards). This does NOT
+            // touch the G1 grade roll itself — difficulty still decides when a Champion fields a
+            // legendary; it only stops legendaries leaking DOWN onto trainers that can't roll G1.
+            const _allowLegendaryFiller = (_isEldritch || _evtStr === 'Champion' || /^E[1-4]$/.test(_evtStr) || _evtStr === 'Mystery Figure');
+            const _legBlocked = (nm) => !_allowLegendaryFiller && !!(baseStats[nm] && baseStats[nm].legendary);
             // Late-game signature EVOLVE-UP (city 6+) — runs FIRST, before the grade-ceiling
             // devolve below, so the two transforms never fight. A trainer's authored
             // UNDER-grade ace climbs its own line to meet the late-game grade floor: Bug
@@ -42550,8 +42566,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // grade-appropriate to the trainer's tier — a roster-less Champion fields G1/G2
             // all-stars, a Basic Trainer stays G4-ish. Non-exempt trainers still get the ceiling
             // re-clamp just below, so this can't over-power a gym leader.
-            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng, gwIn);
-            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng, gwIn);
+            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, sigGenSet, rng, gwIn, _allowLegendaryFiller);
+            else if (!S.length) S = buildSyntheticSignaturePool(trainer, sigGenSet, rng, gwIn, _allowLegendaryFiller);
             // Synthetic-pool fallback also respects the ceiling so a trainer whose
             // actual sigs filter to empty (e.g. Tea Aroma in a gen-1-only run, where
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
@@ -42615,6 +42631,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // or Rival counter-pick — out-grades the player's basic-tier team. Same
             // local-copy + fail-open discipline as the floor above.
             if (_earlyGradeCeiling > 1) T = _capGradePoolsByGradeCeiling(T, _earlyGradeCeiling);
+            // Strip legendaries/mythicals from the filler pool unless this is an E4/Champion/
+            // eldritch fight (see _allowLegendaryFiller). Done as a LOCAL copy — the shared
+            // _trainerPoolCache is keyed on (type,gens) only, so it must never hold an
+            // event-type-specific filter. Catches low-grade legendary PRE-EVOS (Cosmog/Cosmoem,
+            // graded G3/G4) that the grade ceiling can't, since they aren't G1. Fail-open if a
+            // type is entirely legendary (pathological) so a roll never breaks.
+            if (!_allowLegendaryFiller) {
+                const _noLeg = { 1: [], 2: [], 3: [], 4: [] };
+                let _kept = 0;
+                for (let g = 1; g <= 4; g++) { _noLeg[g] = (T[g] || []).filter(n => !(baseStats[n] && baseStats[n].legendary)); _kept += _noLeg[g].length; }
+                if (_kept > 0) T = _noLeg;
+            }
 
             // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
             // built fresh against your LIVE six (dynamic, never cached). Score every
@@ -42638,6 +42666,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const within = [], below = [];
                     for (const name of Object.keys(baseStats)) {
                         if (isStoryRollExcluded(name)) continue;
+                        if (_legBlocked(name)) continue; // Rival never fields a legendary, even as a deep fallback
                         const b = baseStats[name];
                         if (!b || !genSet.has(b.gen)) continue;
                         (getMonGrade(name, getBST(name)) > _fillerFloor ? below : within).push(name);
@@ -42782,6 +42811,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const within = [], below = [];
                 for (const name of Object.keys(baseStats)) {
                     if (isStoryRollExcluded(name)) continue;
+                    if (_legBlocked(name)) continue; // deep fallback also respects the legendary gate
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
                     const g = getMonGrade(name, getBST(name));
