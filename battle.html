@@ -14670,15 +14670,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isLocalSprite = /(^|\/)sprites\//.test(src) && !src.includes('githubusercontent') && !src.includes('pokemonshowdown');
 
             if (isLocalSprite) {
-                // Local 404 → Showdown gen5ani for this direction
+                // Local 404 → Showdown gen5ani for this direction (back-aware via dir)
                 newUrl = `https://play.pokemonshowdown.com/sprites/${dir}/${sid}.gif`;
             } else if (src.includes('gen5ani')) {
-                // Showdown gen5ani failed → try xy animated (Megas/Primals/Alola live here)
-                newUrl = `https://play.pokemonshowdown.com/sprites/xyani${shinyPart}/${sid}.gif`;
+                // Showdown gen5ani failed.
+                //  • Back sprites: Showdown has NO animated *back* XY set, so skip xyani and
+                //    jump straight to the modern animated "ani-back" set (Megas/Primals/Gmaxes
+                //    live there too). Going to xyani here would yield a FRONT-facing sprite on
+                //    the player's side — the long-standing "back sprites are buggy" symptom.
+                //  • Front sprites: try xy animated (Megas/Primals/Alola live here).
+                newUrl = isBack
+                    ? `https://play.pokemonshowdown.com/sprites/ani-back${shinyPart}/${sid}.gif`
+                    : `https://play.pokemonshowdown.com/sprites/xyani${shinyPart}/${sid}.gif`;
             } else if (src.includes('xyani')) {
-                // xy animated failed → try modern ani (Gen 8 Gmaxes live here)
+                // xy animated failed (front-only path) → try modern ani (Gen 8 Gmaxes live here)
                 newUrl = `https://play.pokemonshowdown.com/sprites/ani${shinyPart}/${sid}.gif`;
-            } else if (src.includes('/sprites/ani/') || src.includes('/sprites/ani-shiny/')) {
+            } else if (src.includes('/sprites/ani/') || src.includes('/sprites/ani-shiny/')
+                       || src.includes('/sprites/ani-back/') || src.includes('/sprites/ani-back-shiny/')) {
                 // ani failed → PokeAPI form-specific Showdown mirror
                 if (formDex) {
                     newUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${isBack ? 'back/' : ''}${isShiny ? 'shiny/' : ''}${formDex}.gif`;
@@ -16659,7 +16667,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let sprShiny = getBattleSpriteShiny(mon);
                 spriteEl.alt = sprName;
                 spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
-                spriteEl.src = getSprite(sprName, sprShiny);
+                spriteEl.src = getSprite(sprName, sprShiny, isPlayer);
                 if (settings.animations) {
                     gimmickAnimFlash(spriteEl, 'anim-dmax-deactivate', 'dmaxOut');
                 }
@@ -18432,6 +18440,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.revealedFoe = new Set();
             try { if (state.fActive && state.fActive.name) state.revealedFoe.add(state.fActive.name); } catch (e) {}
 
+            // Warm the sprite cache for the entire battle up front so bench switch-ins are
+            // instant instead of popping in late. getSprite() kicks an Image() preload and
+            // memoizes the resolved URL. Player team uses BACK sprites, foes use FRONT — match
+            // exactly what updateUI() will request so the same cache entry is reused.
+            try {
+                (state.playerParty || []).forEach(m => { if (m) getSprite(getBattleSpriteSpeciesName(m), getBattleSpriteShiny(m), true); });
+                (state.foeParty || []).forEach(m => { if (m) getSprite(getBattleSpriteSpeciesName(m), getBattleSpriteShiny(m), false); });
+            } catch (e) {}
+
             try { logMsg(`Battle started!`, 'info'); } catch (e) {}
             // Apply Story Mode artifact effects (Trick Room, Gravity, etc.) after field init
             if (state.mode === 'story' && typeof window._storyApplyArtifacts === 'function') {
@@ -19090,7 +19107,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let spriteEl = el.sprite;
                 let sprName = getBattleSpriteSpeciesName(mon);
                 let sprShiny = getBattleSpriteShiny(mon);
-                spriteEl.alt = sprName; spriteEl.dataset.shiny = sprShiny ? 'true' : 'false'; spriteEl.src = getSprite(sprName, sprShiny, s === 'p');
+                spriteEl.alt = sprName; spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
+                // Only touch .src when the resolved URL actually changes. updateUI() runs many
+                // times per turn (HP ticks, status, volatiles…); re-assigning the same src can
+                // restart an animated GIF from frame 0 in some browsers, making the battle sprite
+                // visibly stutter. handleSpriteError may also have advanced .src to a working
+                // fallback — guarding here keeps that fallback instead of clobbering it every tick.
+                let _wantSrc = getSprite(sprName, sprShiny, s === 'p');
+                if (spriteEl.dataset.curSprite !== _wantSrc) { spriteEl.dataset.curSprite = _wantSrc; spriteEl.src = _wantSrc; }
                 if (mon.dynamaxed) {
                     spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                 } else if (spriteEl.style.filter) {
@@ -27841,7 +27865,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (spriteEl) {
                         spriteEl.alt = foe.name;
                         spriteEl.dataset.shiny = mon.transformTargetShiny ? 'true' : 'false';
-                        spriteEl.src = getSprite(spriteDisplayName(foe), mon.transformTargetShiny);
+                        spriteEl.src = getSprite(spriteDisplayName(foe), mon.transformTargetShiny, isPlayerMon);
                     }
                 }
             }
@@ -28712,7 +28736,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (spriteEl) {
                     spriteEl.alt = target.name;
                     spriteEl.dataset.shiny = attacker.transformTargetShiny ? 'true' : 'false';
-                    spriteEl.src = getSprite(spriteDisplayName(target), attacker.transformTargetShiny);
+                    spriteEl.src = getSprite(spriteDisplayName(target), attacker.transformTargetShiny, isPlayer);
                     spriteEl.style.opacity = '1'; spriteEl.style.visibility = 'visible';
                 }
                 logMsg(`${attacker.name} transformed into ${target.name}!`, 'info');
