@@ -42844,7 +42844,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     within.push(name);
                 }
                 const pool = within.length ? within : below;
-                return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
+                if (!pool.length) return null;
+                // Prefer species not already on the team — this last-resort, type-blind picker is
+                // the one place a thin narrow-gen pool (e.g. Gen-1 Fairy, which has fewer than 6
+                // unique mons) used to hand back an already-used species and field it twice
+                // (Golem ×2 on a Gen-1 Valerie). Fail open to the full pool only when EVERY option
+                // is already taken (genuinely fewer unique species than slots), so a roll never
+                // breaks — but a duplicate now only appears when it's mathematically unavoidable.
+                const _fresh = pool.filter(n => _canUse(n));
+                const _pick = _fresh.length ? _fresh : pool;
+                return _pick[Math.floor(rng() * _pick.length)];
             }
 
             const team = [];
@@ -43040,6 +43049,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
                     cityIndexForStoryRow: (...a) => _cityIndexForStoryRow(...a),
+                    // Headless full-run team sweep (story-timeline-invariants test + the
+                    // story-team-sweep audit script) — see _simulateStoryRunTeams.
+                    simulateStoryRunTeams: (...a) => _simulateStoryRunTeams(...a),
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
                     devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
@@ -61593,45 +61605,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ts = document.getElementById('tester-seed');
             if (ss && ts && ss.value && /^\d+$/.test(String(ss.value).trim())) ts.value = ss.value;
         }
-        function runTeamTester() {
-            const out = document.getElementById('story-tester-out');
-            if (!out) return;
-            out.innerHTML = '<div style="color:#888;">Generating…</div>';
-            const rawSeed = (document.getElementById('tester-seed')?.value || '').trim();
-            let seed = (rawSeed && /^\d+$/.test(rawSeed)) ? (parseInt(rawSeed, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
-            const testerSeedEl = document.getElementById('tester-seed');
-            if (testerSeedEl && !rawSeed) testerSeedEl.value = String(seed);
-            const partySizeN = Math.max(1, Math.min(6, parseInt(document.getElementById('tester-party-size')?.value || '6', 10) || 6));
-            const filter = document.getElementById('tester-filter')?.value || 'all';
-            const diff = document.getElementById('tester-difficulty')?.value || 'normal';
-            const enabledGens = [];
-            for (let g = 1; g <= 9; g++) {
-                const el = document.getElementById(`tester-gen-cb-${g}`);
-                if (el && el.checked) enabledGens.push(g);
-            }
-            const ng = normalizeEnabledGens(enabledGens.length ? enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        // Pure, headless full-run team simulation — the shared engine behind the Story team
+        // tester UI AND the headless audit sweep (tests/suites/story-timeline-invariants +
+        // scripts/debug/story-team-sweep). Walks every Battle row in STORY_EVENTS_RAW through
+        // the REAL assignTrainers + rollTrainerTeam pipeline under a seeded run, snapshotting and
+        // restoring sm so it never disturbs a live game. Returns pure data (no DOM) so callers
+        // can render OR assert invariants. opts: { seed, enabledGens, difficulty, partySize,
+        // filter, mechanics:{megaOn,zOn,dynaOn,teraOn} }.
+        function _simulateStoryRunTeams(opts) {
+            opts = opts || {};
+            const ng = normalizeEnabledGens((opts.enabledGens && opts.enabledGens.length) ? opts.enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const seed = (opts.seed != null && opts.seed !== '') ? (opts.seed >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
+            const diff = opts.difficulty || 'normal';
+            const partySizeN = Math.max(1, Math.min(6, (opts.partySize | 0) || 6));
+            const filter = opts.filter || 'all';
+            const mech = opts.mechanics || {};
             const snap = {
-                runSeed: sm.runSeed, _strngState: sm._strngState, active: sm.active, badges: sm.badges|0, storyDifficulty: sm.storyDifficulty,
+                runSeed: sm.runSeed, _strngState: sm._strngState, active: sm.active, badges: sm.badges | 0, storyDifficulty: sm.storyDifficulty,
                 eventIndex: sm.eventIndex, trainerAssignments: (sm.trainerAssignments && { ...sm.trainerAssignments }) || {},
                 team: (sm.team && sm.team.length) ? sm.team.map(s => (typeof s === 'object' && s ? { ...s, build: s.build ? { ...s.build } : s.build } : s)) : [],
                 settings: sm.settings ? deepClone(sm.settings) : null
             };
+            const rows = [];
             let errMsg = null;
-            const rowsOut = [];
-            let lines = [];
             try {
                 sm.active = true;
                 sm.runSeed = seed;
                 sm._strngState = null;
                 sm.storyDifficulty = diff;
                 sm.settings = {
-                    enabledGens: ng,
-                    minGen: Math.min(...ng),
-                    maxGen: Math.max(...ng),
-                    megaOn: !!document.getElementById('tester-mech-mega')?.checked,
-                    zOn: !!document.getElementById('tester-mech-z')?.checked,
-                    dynaOn: !!document.getElementById('tester-mech-dyna')?.checked,
-                    teraOn: !!document.getElementById('tester-mech-tera')?.checked,
+                    enabledGens: ng, minGen: Math.min(...ng), maxGen: Math.max(...ng),
+                    megaOn: !!mech.megaOn, zOn: !!mech.zOn, dynaOn: !!mech.dynaOn, teraOn: !!mech.teraOn,
                     classicMode: true
                 };
                 sm.team = Array.from({ length: partySizeN }, () => ({ name: 'Tester', build: { gimmick: 'STANDARD' } }));
@@ -61656,20 +61660,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const isIntroRival = eventName === 'Rival' && (eid | 0) === STORY_RIVAL_ROW_INTRO;
                     const isLate = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(eventName);
                     const ps = isIntroRival ? 1 : (isLate ? 6 : Math.min(Math.max(sm.team.length, 1), 6));
-                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1:0, g2:0, g3: 50, g4: 50 }, sg, eventName, eid);
-                    rowsOut.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, team: enemyTeam });
-                    let line = `#${eid} row@${pos} ${eventName} | ${trainer.name} (${trainer.type}) | pre-fight badges=${sm.badges} | size=${ps} | g ${JSON.stringify(gw || {})}`;
-                    enemyTeam.forEach((slot, i) => {
-                        const b = slot && slot.build;
-                        const g = b && b.gimmick ? b.gimmick : 'STANDARD';
-                        const tt = b && b.teraType ? ' Tera:' + b.teraType : '';
-                        line += '\n  ' + (i + 1) + '. ' + slot.name + '  [' + g + ']' + tt;
-                    });
-                    lines.push(line);
+                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1: 0, g2: 0, g3: 50, g4: 50 }, sg, eventName, eid);
+                    let cityIndex = -1; try { cityIndex = _cityIndexForStoryRow(eid); } catch (e) {}
+                    rows.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, cityIndex, team: enemyTeam });
                 }
             } catch (e) {
                 errMsg = e && (e.message || String(e));
-                console.warn('[Story team tester]', e);
+                console.warn('[Story team sim]', e);
             } finally {
                 sm.runSeed = snap.runSeed;
                 sm._strngState = snap._strngState;
@@ -61682,6 +61679,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.team = snap.team;
                 try { applyMechanicsToSettings(); } catch (e2) {}
             }
+            return { seed, gens: ng, difficulty: diff, filter, partySize: partySizeN, rows, error: errMsg };
+        }
+        function runTeamTester() {
+            const out = document.getElementById('story-tester-out');
+            if (!out) return;
+            out.innerHTML = '<div style="color:#888;">Generating…</div>';
+            const rawSeed = (document.getElementById('tester-seed')?.value || '').trim();
+            let seed = (rawSeed && /^\d+$/.test(rawSeed)) ? (parseInt(rawSeed, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
+            const testerSeedEl = document.getElementById('tester-seed');
+            if (testerSeedEl && !rawSeed) testerSeedEl.value = String(seed);
+            const partySizeN = Math.max(1, Math.min(6, parseInt(document.getElementById('tester-party-size')?.value || '6', 10) || 6));
+            const filter = document.getElementById('tester-filter')?.value || 'all';
+            const diff = document.getElementById('tester-difficulty')?.value || 'normal';
+            const enabledGens = [];
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`tester-gen-cb-${g}`);
+                if (el && el.checked) enabledGens.push(g);
+            }
+            const ng = normalizeEnabledGens(enabledGens.length ? enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const res = _simulateStoryRunTeams({
+                seed, enabledGens: ng, difficulty: diff, partySize: partySizeN, filter,
+                mechanics: {
+                    megaOn: !!document.getElementById('tester-mech-mega')?.checked,
+                    zOn: !!document.getElementById('tester-mech-z')?.checked,
+                    dynaOn: !!document.getElementById('tester-mech-dyna')?.checked,
+                    teraOn: !!document.getElementById('tester-mech-tera')?.checked,
+                }
+            });
+            const rowsOut = res.rows;
+            const errMsg = res.error;
+            const lines = rowsOut.map(r => {
+                let line = `#${r.eid} row@${r.pos} ${r.eventName} | ${r.trainer} (${r.trainerType}) | pre-fight badges=${r.badges} | size=${r.partySize} | g ${JSON.stringify(r.gradeWeights || {})}`;
+                (r.team || []).forEach((slot, i) => {
+                    const b = slot && slot.build;
+                    const g = b && b.gimmick ? b.gimmick : 'STANDARD';
+                    const tt = b && b.teraType ? ' Tera:' + b.teraType : '';
+                    line += '\n  ' + (i + 1) + '. ' + slot.name + '  [' + g + ']' + tt;
+                });
+                return line;
+            });
             _lastTeamTesterPlain = [`Story team tester  seed=${seed}  filter=${filter}  difficulty=${diff}  gens=[${ng.join(',')}]`,
                 errMsg ? 'ERROR: ' + errMsg : 'OK',
                 '---', ...lines].join('\n');
