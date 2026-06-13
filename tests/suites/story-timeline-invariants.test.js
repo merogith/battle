@@ -32,23 +32,20 @@ const evoStage = (n) => S.storyEvoStageOf(n);
 // Legendaries are allowed ONLY on these top-tier fights (mirrors _allowLegendaryFiller).
 const legendaryAllowed = (ev) => /^E[1-4]$/.test(ev) || ev === 'Champion' || ev === 'Mystery Figure';
 
-// Per-trainer-NAME tag + authored-signature index (a name may span roles — e.g. "Brock" the
-// leader vs "Veteran Brock" — so we union by exact name). Two intentional carve-outs the
-// invariants must respect, distinct from a filler LEAK:
-//   • eldritch trainers ("Cursed Lance") deliberately bypass the gen filter and field
-//     legendaries — their "out of this world" roster is the authored intent;
-//   • an AUTHORED legendary signature (Veteran Lt. Surge's Zapdos, a Champion's ace) is the
-//     trainer's identity, not a random filler pull, so it's allowed wherever it's authored.
-// The filler/synthetic legendary strip only ever touched RANDOM picks, never authored sigs.
+// Per-trainer-NAME authored-signature index (a name may span roles — e.g. "Brock" the leader
+// vs "Veteran Brock" — so we union by exact name). One intentional carve-out the legendary
+// invariant must respect: an AUTHORED legendary signature (Veteran Lt. Surge's Zapdos, an
+// eldritch Cursed Lance's Giratina, a Champion's ace) is the trainer's IDENTITY, not a random
+// filler pull, so it's allowed wherever it's authored. The filler/synthetic legendary strip
+// only ever touches RANDOM picks. Eldritch trainers are NO LONGER special — they follow the
+// gen lock and filler rules of their role, so they get no blanket exemption here.
 const TRAINER_BY_NAME = new Map();
 for (const t of R.TRAINER_DATA) {
   if (!t || !t.name) continue;
-  const cur = TRAINER_BY_NAME.get(t.name) || { tags: new Set(), sigs: new Set() };
-  if (t.tag) cur.tags.add(t.tag);
+  const cur = TRAINER_BY_NAME.get(t.name) || { sigs: new Set() };
   for (const s of (t.sigs || [])) cur.sigs.add(s);
   TRAINER_BY_NAME.set(t.name, cur);
 }
-const isEldritchTrainer = (name) => !!(TRAINER_BY_NAME.get(name) && TRAINER_BY_NAME.get(name).tags.has('eldritch'));
 const isAuthoredSig = (name, mon) => !!(TRAINER_BY_NAME.get(name) && TRAINER_BY_NAME.get(name).sigs.has(mon));
 
 // A representative spread of generation locks: all-gens, three single-gen runs (each forces the
@@ -83,17 +80,16 @@ test('story timeline: every enemy mon obeys gen / legendary / grade-ceiling / ev
         }
         const ceiling = S.storyEnemyGradeCeilingForRow(r.eid); // strongest grade NUMBER allowed (1=G1…4=G4)
         const evoCap = S.storyEvoStageCapForRow(r.eid);
-        const eldritch = isEldritchTrainer(r.trainer);
-        const legOK = legendaryAllowed(r.eventName) || eldritch;
+        const legOK = legendaryAllowed(r.eventName);
         for (const slot of (r.team || [])) {
           monsChecked++;
           const n = slot && slot.name;
           const b = baseStats[n];
           if (!b) { violations.push(`${tag}: unknown species "${n}"`); continue; }
-          // eldritch rosters intentionally ignore the gen lock; everyone else must be gen-legal.
-          if (!genSet.has(b.gen) && !eldritch) violations.push(`${tag}: OFF-GEN ${n} (gen ${b.gen})`);
+          // EVERY trainer (eldritch included now) must be gen-legal.
+          if (!genSet.has(b.gen)) violations.push(`${tag}: OFF-GEN ${n} (gen ${b.gen})`);
           // legendary is a LEAK only when it's a random filler pick on a non-top-tier trainer —
-          // an authored ace (or any eldritch mon) is allowed.
+          // an authored ace is allowed wherever it's authored.
           if (!legOK && isLeg(n) && !isAuthoredSig(r.trainer, n)) violations.push(`${tag}: LEGENDARY ${n} leaked onto a non-E4/Champion trainer (not an authored ace)`);
           if (grade(n) < ceiling) violations.push(`${tag}: ${n} is G${grade(n)} — stronger than the city ceiling G${ceiling}`);
           if (evoStage(n) > evoCap) violations.push(`${tag}: ${n} evo-stage ${evoStage(n)} exceeds the city cap ${evoCap}`);
