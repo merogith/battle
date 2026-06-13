@@ -133,23 +133,32 @@ test('gen-respecting evolve-up: an off-gen leader never promotes a sig into a di
   assert.ok(sawOnix, 'Brock keeps his Gen-1 Onix instead');
 });
 
-test('grade-profile cap: a Gym Trainer never fields a G1/legendary, even in a thin narrow-gen type pool', () => {
-  // Regression for the Latias-on-Gym-2 bug: a Gym Trainer's grade profile forbids G1, but the
-  // synthetic backfill used to "fill to 12" past G2/G3/G4 into G1 when the type pool was thin
-  // (a narrow-gen Dragon gym), and the ceiling drop-guard let an un-devolvable G1 legendary
-  // survive. The synthetic now refuses zero-weight grades, so G1 is unreachable for a Gym
-  // Trainer at any city/gen.
+test('a Gym Trainer never fields a G1 OR a legendary (narrow-gen thin pool AND all-gen)', () => {
+  // Regression for two reports: (1) Latias on a Gym-2 trainer — the synthetic backfill "filled
+  // to 12" past G2/G3/G4 into G1 in a thin narrow-gen Dragon pool, and the ceiling drop-guard
+  // let an un-devolvable G1 legendary survive; (2) a legendary on a Gym-3 trainer in an ALL-GEN
+  // run — a legendary PRE-EVO (Cosmog/Cosmoem) is graded G3/G4 by BST, so the grade profile +
+  // ceiling never caught it. Fixes: the synthetic refuses zero-weight grades (no G1 for a Gym
+  // Trainer), the drop-guard is `>=`, and legendaries/mythicals are stripped from every
+  // non-E4/Champion filler + synthetic pool (catching low-grade legendary pre-evos too).
   const g = (n) => E.getMonGrade(n, E.getBST(n));
   const isLeg = (n) => { const b = E.baseStats[n]; return !!(b && b.legendary); };
   const gymTr = (type, gens) => ({ role: 'Basic Trainer', name: 'GymHelper', type, sigs: [], pkmGens: gens });
   const ST = eng.window.__storyTest; // city-row resolver lives on __storyTest
   const cityRow = (c) => { for (let r = 0; r < 80; r++) if (ST.cityIndexForStoryRow(r) === c) return r; return -1; };
   E.sm.active = true;
+  const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   const cases = [
     { type: 'Dragon', gens: [3, 7], row: cityRow(2), ev: 'Gym Trainer 2' },
     { type: 'Dragon', gens: [3], row: cityRow(2), ev: 'Gym Trainer 1' },
     { type: 'Dragon', gens: [3, 7], row: cityRow(6), ev: 'Gym Trainer 2' },
     { type: 'Ice', gens: [1], row: cityRow(2), ev: 'Gym Trainer 2' },
+    // ALL-GEN cases (the Arceus-on-gym-3 report): even with a full dex the grade PROFILE
+    // forbids G1 on a Gym Trainer, so no legendary may appear regardless of pool size.
+    { type: 'Normal', gens: ALL, row: cityRow(3), ev: 'Gym Trainer 2' },
+    { type: 'Ghost', gens: ALL, row: cityRow(3), ev: 'Gym Trainer 2' },
+    { type: 'Dragon', gens: ALL, row: cityRow(3), ev: 'Gym Trainer 1' },
+    { type: 'Psychic', gens: ALL, row: cityRow(3), ev: 'Gym Trainer 2' },
   ];
   for (const c of cases) {
     assert.ok(c.row >= 0, `found a city row for ${c.type}`);
