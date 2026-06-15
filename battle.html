@@ -32385,10 +32385,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [6,'City','City1',null,0,['Pokemart','Move Tutor','Nature Rater','Leave City']],
           [7,'Battle','Basic Trainer',{g1:0,g2:0,g3:25,g4:75},1200,null],
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:35,g4:65},1200,null],
-          [9,'City','City2',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Battle Dojo','Gym Battle','Leave City']],
+          [9,'City','City2',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Gym Battle','Leave City']],
           [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:45,g4:55},2100,null],
           [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:50,g4:50},2950,null],
-          [13,'City','City2',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Battle Dojo','Leave City']],
+          [13,'City','City2',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Leave City']],
           [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:65,g4:35},1500,null],
           [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:75,g4:25},1500,null],
           [16,'City','City3',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Gym Battle']],
@@ -32457,9 +32457,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
             mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
-            link: 2, stoneShop: 3, evolab: 2,
+            link: 2, stoneShop: 2, evolab: 2,
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
-            colress: 7,
+            colress: 7, daycare: 2, // Daycare Inn debuts at City 2 (first daycare city after the Gym-1 unlock)
             bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
@@ -39775,7 +39775,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
-                sm.daycare = { unlocked:false, eggEventDone:false };
+                sm.daycare = { unlocked:false, eggEventDone:false, freeEggClaimed:false };
             }
             if (!sm.pits || typeof sm.pits !== 'object') {
                 sm.pits = { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false };
@@ -40011,7 +40011,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
                    flags: {},
-                   daycare: { unlocked:false, eggEventDone:false },
+                   daycare: { unlocked:false, eggEventDone:false, freeEggClaimed:false },
                    pits: { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false },
                    rivalEncounterLog: [],
                    tracks: { main: 'classic_v2', villain: null, extra: null },
@@ -40371,7 +40371,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
-                    sm.daycare = { unlocked:false, eggEventDone:false };
+                    sm.daycare = { unlocked:false, eggEventDone:false, freeEggClaimed:false };
                 }
                 if (!sm.pits || typeof sm.pits !== 'object') {
                     sm.pits = { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false };
@@ -45023,11 +45023,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Items and abilities — the polish on the blade. A partner walks in here and walks out sharper."',
                     '"Most species know two or three abilities; here you choose which one is active — Hidden Abilities among them, where the species earns one."',
-                    '"Defensive gear, Leftovers and Eviolite. Offensive, Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals belong to Colress\'s battle forms — set those at his lab. The rest, swap freely; arm each mon for the fight it\'ll truly face. Take this Emblem of Honor — your first swap is on the house."'
+                    '"Defensive gear, Leftovers and Eviolite. Offensive, Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals belong to Colress\'s battle forms — set those at his lab. The rest, swap freely; arm each mon for the fight it\'ll truly face. Take these — an Emblem of Honor for your first item swap, and an Ability Capsule for your first ability swap. Both on the house."'
                 ],
                 onContinue: function () {
-                    try { _storyGrantBundle({ emblemHonor: 1 }); } catch (e) {}
-                    try { window.showGameAlert && window.showGameAlert('Received 1 Emblem of Honor — waives the gold on one Dojo item or ability swap.'); } catch (e) {}
+                    try { _storyGrantBundle({ emblemHonor: 1, abilityCapsule: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Emblem of Honor (free item swap) and 1 Ability Capsule (free ability swap) — your first of each is on the house.'); } catch (e) {}
                 }
             },
             firstEVTrainer: {
@@ -45051,6 +45051,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"Every Pokémon is born with hidden promise — Individual Values, we call them. Zero to thirty-one in each stat. Roll high and you\'ve a champion in the making; roll low and they\'ll want a little help along."',
                     '"Vitamins are that help — HP Up, Protein, Iron, Calcium, Zinc, Carbos — each lifting one stat\'s IV by three, up to that ceiling of thirty-one. Take five of each, with the Club\'s compliments. Any Fan Club will apply them, or simply check how your team\'s shaping up."'
                 ],
+            },
+            firstDaycare: {
+                metaKey: 'tutorial-first-daycare',
+                sprite: 'Pokemon_Breeder_f', name: 'Daycare Matron', nameplate: 'Daycare Inn',
+                lines: [
+                    '"Welcome to the Daycare Inn, dearie. We mind partners while you chase your badges — and we know a thing or two about eggs. More than the prim folk uptown, let\'s say."',
+                    '"Here\'s how it works. Leave a partner with us anytime and you\'ll walk out with an egg — it hatches a couple of towns down the road. But that\'s for later; you needn\'t part with anyone today."',
+                    '"For now — a little welcome. The hens out back laid one too many, and this one\'s yours, free of charge. No partner owed, no questions asked. Mind it warm; it\'ll hatch a couple of towns from here."'
+                ],
+                onContinue: function () {
+                    try { _daycareGrantFreeEgg(); } catch (e) { console.warn('[Daycare] free egg grant', e); }
+                }
             },
             firstColress: {
                 metaKey: 'tutorial-first-colress',
@@ -47771,11 +47783,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // one-time Fight Club secret (6+ badges). Hidden once it has no business
             // left, and shuttered entirely in the endgame.
             {
+                const dcFreeEgg = !(sm.daycare && sm.daycare.freeEggClaimed);
                 const dcEggDone = !!(sm.daycare && sm.daycare.eggEventDone);
                 const dcSecretReady = dcEggDone && (sm.badges | 0) >= 6 && !(sm.pits && sm.pits.fightClubUnlocked);
-                const dcHasBusiness = !dcEggDone || dcSecretReady;
+                const dcHasBusiness = dcFreeEgg || !dcEggDone || dcSecretReady;
                 if (_daycareIsUnlocked() && [2,4,6].includes(cityIdx) && !_pitsIsEndgame() && dcHasBusiness) {
-                    const dcMeta = dcSecretReady ? [{label:'A word…',tone:'info'}] : [{label:'Egg Quest',tone:'free'}];
+                    const dcMeta = dcFreeEgg ? [{label:'Free Egg',tone:'free'}]
+                        : dcSecretReady ? [{label:'A word…',tone:'info'}]
+                        : [{label:'Egg Quest',tone:'free'}];
                     _push('recover', makeActionBtn('🥚 Daycare Inn', 'daycare', 'window.StoryMode.enterDaycare()', 'center', _facOpts('daycare', dcMeta, { soft: true })));
                 }
             }
@@ -48109,6 +48124,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _isFacilityRequiredHere(cityIdx, key, actionList) {
             if (!sm || cityIdx < 0) return false;
+            // Daycare Inn is pushed dynamically in renderCityActions (not present in the
+            // raw STORY_EVENTS_RAW action array), so it can't be matched against
+            // actionList like the static facilities. It's "present" when unlocked in a
+            // daycare city; required once, on its debut city, until first introduced.
+            if (key === 'daycare') {
+                const present = (typeof _daycareIsUnlocked === 'function') && _daycareIsUnlocked()
+                    && [2, 4, 6].includes(cityIdx)
+                    && !((typeof _pitsIsEndgame === 'function') && _pitsIsEndgame());
+                if (!present) return false;
+                return !(sm.facilityIntros && sm.facilityIntros.daycare) && (FACILITY_DEBUT_CITY.daycare === cityIdx);
+            }
             if (!Array.isArray(actionList)) return false;
             // Map facility key → required action label so we only gate on actions
             // that are actually present in this city's action list.
@@ -48167,7 +48193,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             link: "Bill's Cable Link", stoneShop: 'Stones and Beyond', evolab: 'Evolution Tutor',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
-            bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club',
+            bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club', daycare: 'Daycare Inn',
         };
         // Facility key → the onclick that opens it, so the single objective line can
         // deep-link to a pending first-visit facility. Mirrors the button onclicks in
@@ -48678,6 +48704,50 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // First-visit free egg: roll a random Grade-3 species from the run's enabled
+        // gens (no parent, no typing tie — a clean mid-tier gift). Returns null only
+        // if the G3 pool is somehow empty, in which case the caller picks a fallback.
+        function _daycareRollFreeEggSpecies() {
+            try {
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const genSet = new Set(storySettingsGens());
+                const candidates = Object.keys(baseStats).filter(name => {
+                    if (isStoryRollExcluded(name)) return false;
+                    const bs = baseStats[name];
+                    if (!bs || !genSet.has(bs.gen)) return false;
+                    return getMonGrade(name, getBST(name)) === 3;
+                });
+                if (!candidates.length) return null;
+                return candidates[Math.floor(rng() * candidates.length)];
+            } catch (e) {
+                console.warn('[Daycare] free egg species roll', e);
+                return null;
+            }
+        }
+        // Hand over the one-time free egg (Grade-3 hatch), no sacrifice. Idempotent —
+        // guarded by sm.daycare.freeEggClaimed so a re-show can't double-grant. The egg
+        // goes to the party if there's room, else overflows to the PC, and hatches a
+        // couple of towns down the road like any other egg.
+        function _daycareGrantFreeEgg() {
+            const dc = sm.daycare || (sm.daycare = {});
+            if (dc.freeEggClaimed) { _daycareClose(); _daycareIdleScene(false); return; }
+            const sp = _daycareRollFreeEggSpecies() || 'Eevee';
+            const laidCity = cityIndexFromEventIndex(sm.eventIndex | 0);
+            const egg = _makeEggSlot(sp, laidCity);
+            let placed;
+            if (!Array.isArray(sm.team)) sm.team = [];
+            if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
+            if (sm.team.length < _storyMaxPartySize()) { sm.team.push(egg); placed = 'party'; }
+            else { sm.pcBox.push(egg); placed = 'PC'; }
+            dc.freeEggClaimed = true;
+            try { save(); } catch (_) {}
+            try { renderTeamPanel(); } catch (_) {}
+            _daycareClose();
+            _storyScene([
+                { accent:'var(--fac-recover)', title:'Daycare Inn', html:`The matron slides something warm across the counter — an <strong>egg</strong>, speckled and faintly humming. "There we are. On the house, no partner owed. Mind it warm."<br><br><span style="color:#80cbc4;font-size:11px;">🥚 You received a free Egg — it's in your ${placed === 'party' ? 'party' : 'PC'}. It will hatch a couple of towns from here.</span>` }
+            ], () => { try { _storyRefreshCityHubInPlace(); } catch (_) {} }, 'story-daycare-scene');
+        }
+
         // City facility entry. The Daycare Inn is the friendly face on a much darker
         // business. It routes through one of a few one-time beats:
         //   • egg event not done → drop a partner off (they don't come back; you get an egg)
@@ -48694,6 +48764,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Secret takes priority at 6+ badges so the Fight Club is never locked out,
             // even for a player who skipped the egg event entirely.
             if (badges >= 6 && !(sm.pits && sm.pits.fightClubUnlocked)) { _daycareRunSecret(); return; }
+            // First visit: must-see intro (firstDaycare) + a free Grade-3 egg, no
+            // sacrifice. The intro's onContinue calls _daycareGrantFreeEgg; if the scene
+            // was already shown this run (so onContinue won't fire), grant directly so
+            // the egg is never skipped.
+            if (!dc.freeEggClaimed) {
+                const shown = playStoryTutorial('firstDaycare');
+                if (!shown && !dc.freeEggClaimed) { try { _daycareGrantFreeEgg(); } catch (e) {} }
+                return;
+            }
             if (!dc.eggEventDone) { _daycareOpenDropOff(); return; }
             _daycareIdleScene(false);
         }
@@ -48723,7 +48802,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-size:10px;color:#7a8a7a;margin-bottom:10px;letter-spacing:0.04em;">"We'll love 'em like our own." ❤</div>
                 <div style="margin-bottom:10px;color:#b0bec5;font-size:11px;font-style:italic;">The matron beams a little too warmly. "Leave a partner with us, dearie — go win your badges. We'll take <em>real</em> good care of them. You won't go home empty-handed."</div>
                 <div style="padding:8px 10px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:6px;font-size:11px;line-height:1.6;">
-                    <div><strong style="color:${accent};">The deal.</strong> Hand over one Pokémon, walk out with an <strong>egg</strong>. It hatches into something that shares their typing — one grade tier stronger — after your <strong>seventh badge</strong>.</div>
+                    <div><strong style="color:${accent};">The deal.</strong> Hand over one Pokémon, walk out with an <strong>egg</strong>. It hatches into something that shares their typing — one grade tier stronger — <strong>a couple of towns down the road</strong>.</div>
                     <div style="margin-top:6px;color:#80cbc4;font-size:10px;">⚠ You only get to do this once. Pick someone you can bear to part with — they'll be… <em>busy</em> for a good while.</div>
                 </div>
                 <div style="margin-bottom:12px;font-size:9px;color:#8d6e63;border:1px dashed #5d4037;padding:4px 7px;background:rgba(40,20,12,0.3);letter-spacing:0.03em;">📽 taped by the staff door, water-stained: <span style="font-style:italic;">"120 DAYS OF PIKA — private screening · members only"</span></div>
@@ -50796,7 +50875,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const VOUCHER_DEBUT_CITY = {
             heartScale: 0, mint: 0,
             rareCandy: 2, linkDiscount50: 2, stoneToken: 2,
-            vitamin: 7, abilityCapsule: 4, emblemHonor: 4,
+            vitamin: 7, abilityCapsule: 1, emblemHonor: 1, // Battle Dojo debuts at City 1 (FACILITY_DEBUT_CITY.dojo); keep its vouchers giftable there
             casinoChip500: 5, wishingPiece: 6
         };
         const VOUCHER_DRAW_EXCLUDE = new Set(['rareCandy']); // scarce — never in the uniform pool
@@ -60376,6 +60455,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── CITY BAG — view inventory & sell items at 50% price ──────────────
+        // ── ITEM RESALE (scarcity-tiered) ───────────────────────────────
+        // Shop-bought items always resell at floor(price/2). Earned-only items
+        // (vouchers, IV vitamins, reward balls) have no buy price, so their resale
+        // is set here by scarcity tier — rarer / more powerful one-shots fetch more.
+        // These are user-owned balance numbers; tweak the tiers, not the call sites.
+        const STORY_SELL_TIER = { common: 150, uncommon: 400, rare: 800, premium: 2500 };
+        const STORY_EARNED_SELL_VALUE = {
+            // IV vitamins (Fan Club currency) — cheap to resell so they don't become a gold faucet
+            hpUp: STORY_SELL_TIER.common, protein: STORY_SELL_TIER.common, iron: STORY_SELL_TIER.common,
+            calcium: STORY_SELL_TIER.common, zinc: STORY_SELL_TIER.common, carbos: STORY_SELL_TIER.common,
+            // Facility vouchers
+            stoneToken: STORY_SELL_TIER.common, casinoChip500: STORY_SELL_TIER.common, heartScale: STORY_SELL_TIER.common,
+            mint: STORY_SELL_TIER.uncommon, emblemHonor: STORY_SELL_TIER.uncommon, abilityCapsule: STORY_SELL_TIER.uncommon,
+            vitamin: STORY_SELL_TIER.rare, linkDiscount50: STORY_SELL_TIER.rare, rareCandy: STORY_SELL_TIER.rare,
+            wishingPiece: STORY_SELL_TIER.rare, expShareVoucher: STORY_SELL_TIER.rare,
+        };
+        // Poké Balls live in sm.balls (not sm.inventory). Poké/Great mirror their
+        // shop price ÷2; Ultra is reward-only (rare); Master is 1-per-run (premium).
+        const STORY_BALL_SELL_VALUE = { poke: 250, great: 500, ultra: 800, master: STORY_SELL_TIER.premium };
+        // Resale price for any inventory item. Shop items → floor(price/2); earned-only
+        // items → the scarcity table; anything unmapped → a small floor so nothing in
+        // the bag is un-sellable dead weight.
+        function _storyItemSellValue(itemId, item) {
+            if (item && typeof item.price === 'number' && item.price > 0) return Math.floor(item.price / 2);
+            if (Object.prototype.hasOwnProperty.call(STORY_EARNED_SELL_VALUE, itemId)) return STORY_EARNED_SELL_VALUE[itemId];
+            return 100;
+        }
+        // Compact gold "Sell" button used across the city bag.
+        function _bagSellBtnHtml(call, sellPrice) {
+            return `<button onclick="event.stopPropagation();${call}"
+                    style="font-size:11px;padding:4px 10px;color:#ffd700;border-color:#ffd700;flex-shrink:0;align-self:center;line-height:1.4;">
+                    Sell<br><span style="font-size:10px;">${storyGoldHtml((sellPrice|0).toLocaleString())}</span>
+                </button>`;
+        }
+
         function openCityBag() {
             // First open satisfies the one-time Leave-City "introduce Bag" gate.
             const _bagIntroWasPending = !(sm && sm.facilityIntros && sm.facilityIntros.bag);
@@ -60402,9 +60516,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const div = document.createElement('div');
                 div.className = 'story-bag-item';
                 div.style.cursor = 'default';
+                const ballSell = (STORY_BALL_SELL_VALUE[b.k] | 0);
                 div.innerHTML = `<img src="sprites/pokesprite/balls/${b.k}.png" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;align-self:center;">
                     <div class="story-bag-item-text"><div class="name">${b.n}</div><div class="qty">×${qty}</div></div>
-                    <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;">catch</span>`;
+                    ${_bagSellBtnHtml(`window.StoryMode.sellBall('${b.k}',${ballSell})`, ballSell)}`;
                 bagEl.appendChild(div);
             });
             // Voucher items — earned, not bought, and not sellable. Surface them at
@@ -60430,12 +60545,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const div = document.createElement('div');
                 div.className = 'story-bag-item';
                 div.style.cursor = 'default';
+                const vSell = _storyItemSellValue(item.id, null);
                 div.innerHTML = `<div class="story-bag-item-text">
                     <div class="name">${item.name}</div>
                     <div class="qty">×${qty}</div>
                     <div class="eff">${String(item.desc).split(/\.\s|\s+—\s*same effect/i)[0]}.</div>
                 </div>
-                <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;border:1px solid #444;">Voucher</span>`;
+                ${_bagSellBtnHtml(`window.StoryMode.sellItem('${item.id}',${vSell})`, vSell)}`;
                 bagEl.appendChild(div);
             });
             // EXP Share — the dead trainer's gift from a flagship raid. Bounded
@@ -60453,10 +60569,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="qty">×${_expQty}</div>
                         <div class="eff">A grateful trainer's keepsake. Give a level-up to any party or PC Pokémon — raises every stat a little.</div>
                     </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-self:center;">
                     <button onclick="event.stopPropagation();window.StoryMode.openExpShareGift()"
-                        style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
+                        style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;">
                         Use
-                    </button>`;
+                    </button>
+                    ${_bagSellBtnHtml(`window.StoryMode.sellItem('expShareVoucher',${_storyItemSellValue('expShareVoucher', null)})`, _storyItemSellValue('expShareVoucher', null))}
+                    </div>`;
                     bagEl.appendChild(div);
                 }
             }
@@ -60479,46 +60598,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="qty">×${qty}</div>
                     <div class="eff">${String(v.desc).split(/\.\s|\s+—\s*same effect/i)[0]}.</div>
                 </div>
+                <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-self:center;">
                 <button onclick="event.stopPropagation();window.StoryMode.openPermBoostPicker('${v.id}')"
-                    style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
+                    style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;">
                     Use
-                </button>`;
+                </button>
+                ${_bagSellBtnHtml(`window.StoryMode.sellItem('${v.id}',${_storyItemSellValue(v.id, null)})`, _storyItemSellValue(v.id, null))}
+                </div>`;
                 bagEl.appendChild(div);
             });
             allItems.forEach(item => {
                 const qty = sm.inventory[item.id] || 0;
                 if (qty === 0) return;
                 hasAny = true;
-                const sellPrice = Math.floor(item.price / 2);
+                const sellPrice = _storyItemSellValue(item.id, item);
                 const icon = storyShopIconCellHtml(item.id);
                 const div = document.createElement('div');
                 div.className = 'story-bag-item';
                 div.style.cursor = 'default';
-                // EV Reset Charm: city-bag "Use" button (opens a roster picker
-                // that wipes one mon's EVs). Treated as a one-shot consumable —
-                // not sellable to discourage farm-buy-reset loops.
+                // EV Reset Charm: city-bag "Use" button (opens a roster picker that
+                // wipes one mon's EVs), now alongside a Sell button like everything else.
                 if (item.id === 'evResetCharm') {
                     div.innerHTML = icon + `<div class="story-bag-item-text">
                         <div class="name">${item.name}</div>
                         <div class="qty">×${qty}</div>
                         <div class="eff">${item.desc}</div>
                     </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-self:center;">
                     <button onclick="event.stopPropagation();window.StoryMode.openEvResetPicker()"
-                        style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
+                        style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;">
                         Use
-                    </button>`;
-                    bagEl.appendChild(div);
-                    return;
-                }
-                // Featured Mega/Ultra stones are progression items (one purchase
-                // per city, the city lock survives a sale) — sell-locked like
-                // PERM_BOOST_IDS so a needed stone can't be sold by accident.
-                // Maintainer decision 2026-06-11 (memo #10).
-                if (typeof item.id === 'string' && (item.id.startsWith('mega_') || item.id.startsWith('ultra_'))) {
-                    div.innerHTML = icon + `<div class="story-bag-item-text">
-                        <div class="name">${item.name}</div>
-                        <div class="qty">×${qty}</div>
-                        <div class="eff">${item.desc}</div>
+                    </button>
+                    ${_bagSellBtnHtml(`window.StoryMode.sellItem('${item.id}',${sellPrice})`, sellPrice)}
                     </div>`;
                     bagEl.appendChild(div);
                     return;
@@ -60528,10 +60639,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="qty">×${qty}</div>
                     <div class="eff">${item.desc}</div>
                 </div>
-                <button onclick="window.StoryMode.sellItem('${item.id}',${sellPrice});event.stopPropagation();"
-                    style="font-size:11px;padding:4px 10px;color:#ffd700;border-color:#ffd700;flex-shrink:0;align-self:center;line-height:1.4;">
-                    Sell<br><span style="font-size:10px;">${storyGoldHtml(sellPrice.toLocaleString())}</span>
-                </button>`;
+                ${_bagSellBtnHtml(`window.StoryMode.sellItem('${item.id}',${sellPrice})`, sellPrice)}`;
                 bagEl.appendChild(div);
             });
             if (!hasAny) {
@@ -60548,17 +60656,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function sellItem(itemId, sellPrice) {
             if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
-            // Perm-boost vitamins are earned-only and never sellable.
-            if (PERM_BOOST_IDS.has(itemId)) return;
-            // Featured Mega/Ultra stones are sell-locked progression items
-            // (memo #10, 2026-06-11) — backstop for the hidden Sell button.
-            if (typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'))) return;
             sm.inventory[itemId]--;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
-            sm.gold += sellPrice;
+            sm.gold += (sellPrice | 0);
             save();
             updateHUD();
             // Re-render the city bag so qty and gold update instantly
+            openCityBag();
+        }
+
+        // Poké Balls live in sm.balls (separate from sm.inventory). Selling the Master
+        // Ball is run-defining (it guarantees the roaming legendary), so that one sale
+        // asks for confirmation; every other ball sells freely.
+        function sellBall(ballKey, sellPrice) {
+            if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
+            if (ballKey === 'master') {
+                let ok = true;
+                try { ok = window.confirm('Sell your Master Ball for ' + ((sellPrice | 0).toLocaleString()) + 'G? It guarantees a catch on the roaming legendary — this cannot be undone.'); } catch (e) {}
+                if (!ok) return;
+            }
+            sm.balls[ballKey]--;
+            sm.gold += (sellPrice | 0);
+            save();
+            updateHUD();
             openCityBag();
         }
 
@@ -67389,24 +67509,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-fanclub');
             // Start all-closed; player taps a mon header / switcher pill to open one.
             _storyFanClubOpenIdx = -1;
-            // First-visit welcome gift: FANCLUB_WELCOME_VITAMINS_PER_STAT of each
-            // vitamin (HP Up / Protein / Iron / Calcium / Zinc / Carbos) to front-load
-            // early IV training. Set a save flag so re-entering doesn't double-tip.
             const firstVisit = !sm.fanClubGiftClaimed;
-            if (firstVisit) {
-                if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
-                for (const vit of PERM_BOOST_ITEMS) {
-                    sm.inventory[vit.id] = ((sm.inventory[vit.id] | 0) + FANCLUB_WELCOME_VITAMINS_PER_STAT);
-                }
-                sm.fanClubGiftClaimed = true;
-                try { save(); } catch (e) {}
-            }
             renderFanClubRoster();
             try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.35); } catch (e) {}
-            // Tutorial scene runs once per save; the gift fires regardless on
-            // first city visit since the flag is independent.
+            // Intro-before-reward: the Chairman's introduction plays FIRST, then the
+            // first-visit welcome vitamins (FANCLUB_WELCOME_VITAMINS_PER_STAT of each)
+            // are granted inside the dismiss callback. playStoryTutorial always invokes
+            // onDone (even when the scene was already shown this run), so the gift still
+            // lands on the first visit. The sm.fanClubGiftClaimed flag (per-run) guards
+            // against a double-grant on re-entry.
             try { playStoryTutorial('firstFanClub', function () {
-                if (firstVisit) {
+                if (firstVisit && !sm.fanClubGiftClaimed) {
+                    if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
+                    for (const vit of PERM_BOOST_ITEMS) {
+                        sm.inventory[vit.id] = ((sm.inventory[vit.id] | 0) + FANCLUB_WELCOME_VITAMINS_PER_STAT);
+                    }
+                    sm.fanClubGiftClaimed = true;
+                    try { save(); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('The Chairman hands you a sizable case — 5 of each vitamin (HP Up, Protein, Iron, Calcium, Zinc, Carbos) to kick-start your team.'); } catch (e) {}
                     try { renderFanClubRoster(); } catch (e) {}
                 }
@@ -67940,7 +68059,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casinoFlipPick, casinoFlipSpin,
             casinoSlotsCoins, casinoSlotsHoldToggle, casinoSlotsSpin,
             casinoRoulPlaceChip, casinoRoulClear, casinoRoulRepeat, casinoRoulSpin,
-            openBattleBag, useBagItemOn, openCityBag, sellItem, enterJournal,
+            openBattleBag, useBagItemOn, openCityBag, sellItem, sellBall, enterJournal,
             openPermBoostPicker, applyPermBoost, removePermBoost,
             openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,

@@ -624,7 +624,9 @@ uniformly within T4.
 
 ### Vitamins (`PERM_BOOST_ITEMS`)
 
-Six items, drop-only, never sold. Each application calls
+Six items, drop-only — not bought from any shop, but **sellable** from the City Bag
+since the 2026-06 "sell everything" pass (`STORY_EARNED_SELL_VALUE`, common tier =
+150G each; see §18). Each application calls
 `applyPermBoost(vitaminId, source, idx)` which:
 
 1. Reads the mon's current `ivs[stat]` (default 31 if missing).
@@ -1241,7 +1243,14 @@ the normal cap.
 ### Story arc
 
 * **Gym 1 clear** → `sm.daycare.unlocked = true`; a "Daycare" facility
-  chip appears in every city's `Heal & Team` section.
+  chip appears in cities 2 / 4 / 6 (`Heal & Team` section).
+* **First visit (City 2, must-see)** → the Daycare is a `FACILITY_DEBUT_CITY`
+  entry (debut city 2), so the Leave-City gate forces one visit. The
+  `firstDaycare` tutorial intro plays, and on Continue the matron hands over a
+  **free egg, no sacrifice** — `sm.daycare.freeEggClaimed` flips true (one-time).
+  The free egg's hatch species is a **random Grade-3** mon from the run's enabled
+  gens (`_daycareRollFreeEggSpecies`), hatching a couple of towns down the road
+  like any other egg. The drop-off loop below stays available afterward.
 * **Drop off any mon** (team or PC) → the parent is removed from the
   player's reach, the egg's species is locked in (one grade tier higher
   than the parent, ≥1 shared type), state flips to `incubating`.
@@ -1265,6 +1274,8 @@ the matron is *clearly winking about something*.
 ```js
 sm.daycare = {
   unlocked: false,
+  eggEventDone: false,    // the one-time sacrifice drop-off has been used
+  freeEggClaimed: false,  // the first-visit free egg has been claimed (one-time)
   state: 'idle' | 'incubating',
   parentMonId: null | string,
   egg: null | { species: string, rolledAt: badges },
@@ -1276,8 +1287,10 @@ sm.daycare = {
 ### Anchors
 
 - `enterDaycare` / `_daycareRenderHTML` / `_daycareDropOff` / `_daycareHatch`
-  / `_daycareRollHatchSpecies` — Story IIFE, just below the tiredness
-  intro modal.
+  / `_daycareRollHatchSpecies` / `_daycareRollFreeEggSpecies` /
+  `_daycareGrantFreeEgg` — Story IIFE, just below the tiredness intro modal.
+- `firstDaycare` tutorial scene — `STORY_TUTORIAL_SCENES`; grants the free egg
+  in its `onContinue`.
 - Unlock hook — `onBattleEnd` win path, immediately after `sm.badges++`,
   reads the `event` name and sets `sm.daycare.unlocked` / queues toast.
 
@@ -1416,3 +1429,44 @@ the full design. Quick reference:
   `_pendingFacilityIntrosHere` next to `_markFacilitySeen`; Bill /
   Granny / Emporium Keeper scenes in `STORY_TUTORIAL_SCENES`;
   half-price voucher UI in the link card render block.
+
+---
+
+## 18. Item resale — sell everything (2026-06)
+
+The City Bag's Sell flow was opened up so **no item piles up as dead weight**.
+Every bag entry now has a Sell button; the old sell-locks (vitamins, vouchers,
+EV Reset Charm, featured Mega/Ultra stones — memo #10) were removed, and Poké
+Balls (which live in `sm.balls`, not `sm.inventory`) gained a Sell button too.
+
+### Pricing model
+
+Two paths, both in `_storyItemSellValue(itemId, item)`:
+
+- **Shop-bought items** (anything with a buy `price`) resell at **`floor(price/2)`**
+  — unchanged. Featured Mega/Ultra stones fall here (price ÷ 2).
+- **Earned-only items** (no buy price: vouchers, IV vitamins, reward balls) resell
+  by **scarcity tier** (`STORY_SELL_TIER` / `STORY_EARNED_SELL_VALUE`):
+
+  | Tier | Value | Items |
+  |---|---|---|
+  | Common | 150G | IV vitamins (HP Up…Carbos), `stoneToken`, `casinoChip500`, `heartScale` |
+  | Uncommon | 400G | `mint`, `emblemHonor`, `abilityCapsule` |
+  | Rare | 800G | `vitamin` (EV voucher), `linkDiscount50`, `rareCandy`, `wishingPiece`, `expShareVoucher` |
+  | Premium | 2500G | Master Ball |
+
+  Poké Balls use `STORY_BALL_SELL_VALUE` (`poke 250 / great 500 / ultra 800 /
+  master 2500`). Unmapped items fall back to a 100G floor.
+
+### Safety
+
+The **Master Ball** sale (`sellBall('master', …)`) asks for a `confirm()` — it
+guarantees the roaming legendary and its loss is unrecoverable. Every other sale
+is frictionless. All numbers are user-owned balance (set 2026-06-15); tweak the
+tier constants, not the call sites.
+
+### Anchors
+
+- `STORY_SELL_TIER` / `STORY_EARNED_SELL_VALUE` / `STORY_BALL_SELL_VALUE` /
+  `_storyItemSellValue` / `_bagSellBtnHtml` — just above `openCityBag`.
+- `sellItem` / `sellBall` — below `openCityBag`; both exported on `window.StoryMode`.

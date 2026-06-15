@@ -64,7 +64,11 @@ function setupStory() {
   sm.team = freshTeam(['Garchomp', 'Gengar', 'Lapras', 'Snorlax', 'Gardevoir', 'Tyranitar']);
   sm.pcBox = [];
   sm.flags = sm.flags || {};
-  sm.daycare = { unlocked: true, eggEventDone: false };
+  // freeEggClaimed:true so enterDaycare skips the first-visit free-egg intro and
+  // routes to the drop-off / secret / idle beats these tests exercise. The free-egg
+  // first-visit flow has its own test below.
+  sm.daycare = { unlocked: true, eggEventDone: false, freeEggClaimed: true };
+  sm.scenesShown = {};
   sm.pits = {
     gym6Snapshot: { badges: 6, teamSummary: sm.team.map(t => ({ name: t.name, grade: 2, bst: 600 })), seed: 1, capturedAt: 0 },
     championSnapshot: null,
@@ -85,6 +89,24 @@ function sendInTrio() {
   draft.querySelector('#pits-draft-go').click();
   return draft;
 }
+
+test('Daycare first visit: must-see intro + free Grade-3 egg, no sacrifice', () => {
+  setupStory();
+  sm.daycare.freeEggClaimed = false; // first visit
+  sm.scenesShown = {};
+  const fightersBefore = SM._countFighters();
+  SM.enterDaycare();
+  const intro = doc.querySelector('.story-tutorial-overlay');
+  assert.ok(intro, 'the must-see Daycare intro tutorial renders on first visit');
+  intro.querySelector('.story-tutorial-continue').click(); // onContinue grants the free egg
+  const eggs = [...sm.team, ...sm.pcBox].filter(s => s && s.isEgg);
+  assert.equal(eggs.length, 1, 'exactly one free egg is granted');
+  assert.ok(eggs[0].eggSpecies, 'the free egg has a locked hatch species');
+  const grade = window.__engine.getMonGrade(eggs[0].eggSpecies, window.__engine.getBST(eggs[0].eggSpecies));
+  assert.equal(grade, 3, 'the free egg hatches a Grade-3 species');
+  assert.equal(SM._countFighters(), fightersBefore, 'no party member was sacrificed for the free egg');
+  assert.equal(sm.daycare.freeEggClaimed, true, 'freeEggClaimed flag is set so the gift is one-time');
+});
 
 test('Daycare drop-off: parent is gone for good and you receive a carryable egg', () => {
   setupStory();
