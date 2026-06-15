@@ -625,8 +625,8 @@ uniformly within T4.
 ### Vitamins (`PERM_BOOST_ITEMS`)
 
 Six items, drop-only — not bought from any shop, but **sellable** from the City Bag
-since the 2026-06 "sell everything" pass (`STORY_EARNED_SELL_VALUE`, uncommon tier =
-400G each; see §18). Each application calls
+since the 2026-06 "sell everything" pass (`STORY_EARNED_SELL_VALUE`, common tier =
+150G each; see §18). Each application calls
 `applyPermBoost(vitaminId, source, idx)` which:
 
 1. Reads the mon's current `ivs[stat]` (default 31 if missing).
@@ -1450,8 +1450,8 @@ Two paths, both in `_storyItemSellValue(itemId, item)`:
 
   | Tier | Value | Items |
   |---|---|---|
-  | Common | 150G | `stoneToken`, `casinoChip500`, `heartScale` |
-  | Uncommon | 400G | IV vitamins (HP Up…Carbos), `mint`, `emblemHonor`, `abilityCapsule` |
+  | Common | 150G | IV vitamins (HP Up…Carbos), `stoneToken`, `casinoChip500`, `heartScale` |
+  | Uncommon | 400G | `mint`, `emblemHonor`, `abilityCapsule` |
   | Rare | 800G | `vitamin` (EV voucher), `linkDiscount50`, `rareCandy`, `wishingPiece`, `expShareVoucher` |
   | Premium | 2500G | Master Ball |
 
