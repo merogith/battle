@@ -93,21 +93,34 @@ because it scales with max HP, and a *static flat* 1/16 would just clone Leftove
 (a held item).
 
 **The one mechanic — `bagRegen`:** each Potion restores a **fixed fraction of max HP
-at the end of every turn, equally, for 3 turns.** The *tiers* double:
+INSTANTLY on use, then that same fraction at the end of each of the next 2 turns**
+(3 portions total). The *tiers* double.
 
-| Item | Per-turn heal | 3-turn total | Effect string |
-|---|---|---|---|
-| **Potion** | 1/16 max HP | ~19% | `regen16` |
-| **Super Potion** | 1/8 max HP | ~37% | `regen8` |
-| **Hyper Potion** | 1/4 max HP | ~75% | `regen4` |
+Per-portion values live in one place — `BAG_REGEN_PCT` (battle.html) — read by BOTH the player
+(`applyBagItem`) and the foe item AI via the shared `applyBagRegen()` helper, so a given item
+heals identically on both sides. **2026-06: instant-heal + buffed to 12/24/48.** The original
+end-of-turn-only regen (1/16·1/8·1/4) was underpowered — you ate a hit with *no* upfront relief
+and had to survive a round just to get the first tick. The instant portion fixes that:
 
-- Stored as `mon.volatile.bagRegen = {pct, turns:3}`; set in `applyBagItem`; ticks in
-  `endOfTurnEffects` right after the Aqua Ring block; **clears on switch-out**
-  (`clearVolatileOnSwitch`) so it can't be banked. Ultra ⇒ `pct × 2` (effMul); Mega ⇒
-  apply without ending the turn. Status chip + summary pill mirror Aqua Ring's.
-- Hyper tops out at ~75% over 3 turns, so it never steps on Max Potion's instant-full.
+| Item | Per portion | Instant on use | Total (3 portions) | Effect string |
+|---|---|---|---|---|
+| **Potion** | 12% max HP | 12% | ~36% | `regen16` |
+| **Super Potion** | 24% max HP | 24% | ~72% | `regen8` |
+| **Hyper Potion** | 48% max HP | 48% | ~144% (clamped at full) | `regen4` |
+
+- `applyBagRegen` heals the **instant** portion immediately (front-loaded — lands the turn of use,
+  no surviving required), then stores `mon.volatile.bagRegen = {pct, turns:2}` for the lingering
+  ticks in `endOfTurnEffects` (right after the Aqua Ring block). **Clears on switch-out**
+  (`clearVolatileOnSwitch`) so the lingering part can't be banked. Ultra ⇒ `pct × 2` (effMul);
+  Mega ⇒ apply without ending the turn. Status chip + summary pill mirror Aqua Ring's.
+- **No stacking — one mist per mon.** The lingering slot keeps the **strongest** active pct (a
+  weaker potion can never downgrade a stronger active one) and any use refreshes the window. The
+  instant portion always uses the just-used potion's own pct. It stacks *alongside* other sources
+  (Leftovers, Aqua Ring, Grassy Terrain) since those tick from separate slots.
+- Hyper's instant 48% + 2 ticks is strong sustain, but Max Potion (same 1500G) still owns the
+  *guaranteed instant-full* burst — Hyper rewards surviving, Max Potion guarantees the heal.
 - Distinct from the held **Leftovers** (flat 1/16, permanent, passive): this is a bag
-  consumable that costs a turn, scales by tier, and lasts only 3 turns.
+  consumable that costs a turn, scales by tier, front-loads an instant heal, then lingers 2 turns.
 
 **Why this is enough (no filler):** regen (sustain — Potion line), instant-full burst
 (Max Potion), full + cure (Full Restore), cure (Full Heal), the revive ladder. The
@@ -154,9 +167,9 @@ force/increase-encounter items. The code says these don't fit:
 | Item | Effect string | Price | Change |
 |---|---|---|---|
 | Poké Ball | `ball` | **500** | ↑ from 300 (gold pressure) |
-| Potion | `regen16` (1/16 ×3) | **500** | effect changed (was `heal20`@200); repriced up for the stronger regen |
-| Super Potion | `regen8` (1/8 ×3) | **1000** | effect changed (was `heal60`@500) |
-| Hyper Potion | `regen4` (1/4 ×3) | **1500** | effect changed (was `heal120`@1000) |
+| Potion | `regen16` (12% instant + 2 ticks) | **500** | effect changed (was `heal20`@200); repriced up for the stronger regen |
+| Super Potion | `regen8` (24% instant + 2 ticks) | **1000** | effect changed (was `heal60`@500) |
+| Hyper Potion | `regen4` (48% instant + 2 ticks) | **1500** | effect changed (was `heal120`@1000) |
 | Max Potion | `healFull` | 1500 | kept |
 | Full Restore | `fullRestore` | 2000 | kept |
 | Full Heal | `cureStatus` | 300 | kept |
