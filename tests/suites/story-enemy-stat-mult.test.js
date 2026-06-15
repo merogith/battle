@@ -66,7 +66,7 @@ test('difficulty knob: the single multiplier layered on top of the curve', () =>
   assert.equal(ST.foeDifficultyMult('easy'), 0.85);
   assert.equal(ST.foeDifficultyMult('normal'), 1.00);
   assert.equal(ST.foeDifficultyMult('hard'), 1.15);
-  assert.equal(ST.foeDifficultyMult('challenge'), 1.30);
+  assert.equal(ST.foeDifficultyMult('challenge'), 1.40); // widened 1.30→1.40 (2026-06-15): Very Hard is a real test, not a half-step above Hard
   assert.equal(ST.foeDifficultyMult(undefined), 1.00, 'unknown → normal baseline');
   assert.equal(ST.foeDifficultyMult('garbage'), 1.00);
 });
