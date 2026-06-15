@@ -95,17 +95,28 @@ because it scales with max HP, and a *static flat* 1/16 would just clone Leftove
 **The one mechanic — `bagRegen`:** each Potion restores a **fixed fraction of max HP
 at the end of every turn, equally, for 3 turns.** The *tiers* double:
 
+Per-turn values live in one place — `BAG_REGEN_PCT` (battle.html) — read by BOTH the player
+(`applyBagItem`) and the foe item AI via the shared `applyBagRegen()` helper, so a given item
+heals identically on both sides. **2026-06: buffed +40%** over the original 1/16·1/8·1/4 (the
+old values felt underwhelming — a single tick lost to a turn of damage):
+
 | Item | Per-turn heal | 3-turn total | Effect string |
 |---|---|---|---|
-| **Potion** | 1/16 max HP | ~19% | `regen16` |
-| **Super Potion** | 1/8 max HP | ~37% | `regen8` |
-| **Hyper Potion** | 1/4 max HP | ~75% | `regen4` |
+| **Potion** | 8.75% max HP | ~26% | `regen16` |
+| **Super Potion** | 17.5% max HP | ~53% | `regen8` |
+| **Hyper Potion** | 35% max HP | ~105% (clamped at full) | `regen4` |
 
-- Stored as `mon.volatile.bagRegen = {pct, turns:3}`; set in `applyBagItem`; ticks in
-  `endOfTurnEffects` right after the Aqua Ring block; **clears on switch-out**
-  (`clearVolatileOnSwitch`) so it can't be banked. Ultra ⇒ `pct × 2` (effMul); Mega ⇒
-  apply without ending the turn. Status chip + summary pill mirror Aqua Ring's.
-- Hyper tops out at ~75% over 3 turns, so it never steps on Max Potion's instant-full.
+- Stored as `mon.volatile.bagRegen = {pct, turns:3}`; set via `applyBagRegen` from `applyBagItem`
+  (player) and the foe item AI; ticks in `endOfTurnEffects` right after the Aqua Ring block;
+  **clears on switch-out** (`clearVolatileOnSwitch`) so it can't be banked. Ultra ⇒ `pct × 2`
+  (effMul); Mega ⇒ apply without ending the turn. Status chip + summary pill mirror Aqua Ring's.
+- **No stacking — one mist per mon.** `applyBagRegen` keeps the **strongest** active pct (a
+  weaker potion can never downgrade a stronger active one) and refreshes the 3-turn window.
+  Re-applying the same/stronger tier just resets the duration. It stacks *alongside* other
+  sources (Leftovers, Aqua Ring, Grassy Terrain) since those tick from separate slots.
+- Hyper now tops the per-turn tick at 35% (≥ a full heal over 3 turns if the mon survives), but
+  it's spread over time and clears on switch, so it still doesn't step on Max Potion's
+  guaranteed instant-full burst.
 - Distinct from the held **Leftovers** (flat 1/16, permanent, passive): this is a bag
   consumable that costs a turn, scales by tier, and lasts only 3 turns.
 
@@ -154,9 +165,9 @@ force/increase-encounter items. The code says these don't fit:
 | Item | Effect string | Price | Change |
 |---|---|---|---|
 | Poké Ball | `ball` | **500** | ↑ from 300 (gold pressure) |
-| Potion | `regen16` (1/16 ×3) | **500** | effect changed (was `heal20`@200); repriced up for the stronger regen |
-| Super Potion | `regen8` (1/8 ×3) | **1000** | effect changed (was `heal60`@500) |
-| Hyper Potion | `regen4` (1/4 ×3) | **1500** | effect changed (was `heal120`@1000) |
+| Potion | `regen16` (8.75% ×3) | **500** | effect changed (was `heal20`@200); repriced up for the stronger regen |
+| Super Potion | `regen8` (17.5% ×3) | **1000** | effect changed (was `heal60`@500) |
+| Hyper Potion | `regen4` (35% ×3) | **1500** | effect changed (was `heal120`@1000) |
 | Max Potion | `healFull` | 1500 | kept |
 | Full Restore | `fullRestore` | 2000 | kept |
 | Full Heal | `cureStatus` | 300 | kept |

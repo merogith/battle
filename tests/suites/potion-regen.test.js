@@ -1,9 +1,13 @@
 // Repurposed Potion line — HP-regen over 3 turns (replaces the dead flat heals; Max Potion
 // and Full Restore already own the instant-full niche). Locks the behaviour so a future edit
 // can't silently regress it:
-//   - the static %-of-maxHP tick (Potion 1/16 · Super 1/8 · Hyper 1/4 — tiers double),
+//   - the static %-of-maxHP tick (Potion 8.75% · Super 17.5% · Hyper 35% — tiers double; the
+//     2026-06 +40% buff over the old 1/16·1/8·1/4 — values live in BAG_REGEN_PCT),
 //   - the 3-turn duration + clean expiry,
 //   - clear-on-switch (cannot be "banked" by switching out — mirrors Aqua Ring),
+//   - NO STACKING: one mist per mon, the STRONGEST active pct wins and re-applying refreshes
+//     the 3-turn window (a weaker potion can never downgrade a stronger active one),
+//   - player (applyBagItem) and foe item AI both heal off the SAME BAG_REGEN_PCT via applyBagRegen,
 //   - the catalog: regen effect strings, Ether/Elixir cut, Max Elixir kept,
 //   - Ultra Ball offered only in the dept featured pool (1500G), isolated from the battle/city bag.
 // Run: node --test tests/suites/potion-regen.test.js
@@ -39,9 +43,9 @@ function setup({ pSpecies = 'Snorlax', benchSpecies = 'Blissey', foeSpecies = 'P
 
 describe('Potion-line HP-regen (repurposed)', () => {
   for (const { tier, pct } of [
-    { tier: 'Potion (1/16)', pct: 1 / 16 },
-    { tier: 'Super Potion (1/8)', pct: 1 / 8 },
-    { tier: 'Hyper Potion (1/4)', pct: 1 / 4 },
+    { tier: 'Potion (8.75%)', pct: 0.0875 },
+    { tier: 'Super Potion (17.5%)', pct: 0.175 },
+    { tier: 'Hyper Potion (35%)', pct: 0.35 },
   ]) {
     it(`${tier} heals floor(maxHP * pct) each turn for 3 turns, then expires`, async () => {
       const { a } = setup();
@@ -78,6 +82,35 @@ describe('Potion-line HP-regen (repurposed)', () => {
     await E.window.playTurn(null, 1); // switch a -> bench
     assert.notEqual(E.engine.state.pActive.name, a.name, 'switch happened');
     assert.equal(a.volatile.bagRegen, null, 'bagRegen cleared on the benched mon');
+  });
+});
+
+describe('Buffed regen values + no-stacking rule (BAG_REGEN_PCT / applyBagRegen)', () => {
+  it('per-turn pcts are the +40% values and still double per tier', () => {
+    const P = E.window.BAG_REGEN_PCT;
+    assert.equal(P.potion, 0.0875, 'Potion 8.75%/turn');
+    assert.equal(P.super, 0.175, 'Super 17.5%/turn');
+    assert.equal(P.hyper, 0.35, 'Hyper 35%/turn');
+    assert.equal(P.super, P.potion * 2, 'Super doubles Potion');
+    assert.equal(P.hyper, P.super * 2, 'Hyper doubles Super');
+  });
+
+  it('does not stack: a weaker potion cannot downgrade a stronger active mist (strongest wins)', () => {
+    const mon = { volatile: {} };
+    E.window.applyBagRegen(mon, E.window.BAG_REGEN_PCT.hyper); // Hyper first
+    mon.volatile.bagRegen.turns = 1;                            // partially elapsed
+    const after = E.window.applyBagRegen(mon, E.window.BAG_REGEN_PCT.potion); // Potion over it
+    assert.equal(after, 0.35, 'kept the stronger Hyper pct');
+    assert.equal(mon.volatile.bagRegen.pct, 0.35, 'slot still on Hyper strength');
+    assert.equal(mon.volatile.bagRegen.turns, 3, 're-applying refreshed the 3-turn window');
+  });
+
+  it('a stronger potion upgrades a weaker active mist', () => {
+    const mon = { volatile: {} };
+    E.window.applyBagRegen(mon, E.window.BAG_REGEN_PCT.potion); // Potion first
+    const after = E.window.applyBagRegen(mon, E.window.BAG_REGEN_PCT.hyper); // Hyper over it
+    assert.equal(after, 0.35, 'upgraded to Hyper pct');
+    assert.equal(mon.volatile.bagRegen.turns, 3, 'fresh 3-turn window');
   });
 });
 
