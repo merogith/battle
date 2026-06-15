@@ -99,7 +99,7 @@ describe('Foe item-use AI', () => {
     assert.equal(ST().tryFoeStoryBattleItem(), true, 'heals at 30%');
     const br = E.engine.state.fActive.volatile.bagRegen;
     assert.ok(br, 'Super Potion set regen on the foe');
-    assert.equal(br.pct, E.window.BAG_REGEN_PCT.super, 'Super Potion = BAG_REGEN_PCT.super (17.5%) per turn');
+    assert.equal(br.pct, E.window.BAG_REGEN_PCT.super, 'Super Potion = BAG_REGEN_PCT.super (24%) per portion');
   });
 
   it('the probability roll can decline an item even below threshold', () => {

@@ -18717,22 +18717,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             regenChipMax: 0.20,  // heal-over-time used ONLY vs chip ≤20% maxHP/turn (kills the heal-stall loop)
             boostSurvive: 0.50,  // setup/boost only when incoming ≤50% of current HP (the mon eats ≥2 hits)
         };
-        // Repurposed Potion line — base %-of-maxHP healed PER TURN by the 3-turn regen mist.
+        // Repurposed Potion line — base %-of-maxHP per healing portion. Each potion heals this
+        // fraction INSTANTLY on use, then the SAME fraction at the end of each of the next 2 turns
+        // (3 portions total; the instant one means you don't have to survive a round to benefit).
         // Tiers double (Potion → Super → Hyper). Both the player (applyBagItem) and the foe item
-        // AI read these SAME numbers via applyBagRegen, so a given item heals identically on both
-        // sides. Maintainer owns these. [BALANCE]
-        const BAG_REGEN_PCT = { potion: 0.0875, super: 0.175, hyper: 0.35 };
-        // Apply / refresh the single bag-regen slot. NO STACKING: there is one mist per mon — the
-        // STRONGEST active pct persists (a weaker potion can never downgrade a stronger active one),
-        // and any application refreshes the duration to `turns`. Clears on switch-out
-        // (clearVolatileOnSwitch); ticks in endOfTurnEffects. Mirrors Aqua Ring.
-        function applyBagRegen(mon, pct, turns = 3) {
-            if (!mon) return 0;
+        // AI heal off these SAME numbers via applyBagRegen, so a given item heals identically on
+        // both sides. Maintainer owns these. [BALANCE]
+        const BAG_REGEN_PCT = { potion: 0.12, super: 0.24, hyper: 0.48 };
+        // Use a bag potion: heal `pct` of max HP INSTANTLY (front-loaded — lands the turn of use,
+        // no surviving required), then set/refresh the lingering regen that ticks at end-of-turn.
+        // NO STACKING on the regen slot: one mist per mon — the STRONGEST active pct persists (a
+        // weaker potion can never downgrade a stronger active one) and any use refreshes the
+        // duration to `turns`. The instant portion always uses the just-used potion's own `pct`.
+        // Clears on switch-out (clearVolatileOnSwitch); ticks in endOfTurnEffects. Mirrors Aqua Ring.
+        function applyBagRegen(mon, pct, turns = 2) {
+            if (!mon) return { pct: 0, instant: 0 };
             mon.volatile = mon.volatile || {};
+            pct = Math.min(1, pct);
+            // Instant first portion (from the potion just used). Clamped to max; skipped if fainted/full.
+            let instant = 0;
+            if (Number.isFinite(mon.maxHp) && Number.isFinite(mon.currentHp) && mon.currentHp > 0 && mon.currentHp < mon.maxHp) {
+                instant = Math.min(mon.maxHp - mon.currentHp, Math.max(1, Math.floor(mon.maxHp * pct)));
+                mon.currentHp += instant;
+            }
+            // Lingering regen slot: strongest active pct wins, duration refreshed.
             const cur = mon.volatile.bagRegen;
             const bestPct = Math.min(1, (cur && cur.pct > pct) ? cur.pct : pct);
             mon.volatile.bagRegen = { pct: bestPct, turns };
-            return bestPct;
+            return { pct: bestPct, instant };
         }
         try { window.applyBagRegen = applyBagRegen; window.BAG_REGEN_PCT = BAG_REGEN_PCT; } catch (e) {}
         // Fraction of foeMon's max HP the player's BEST move is expected to deal next hit.
@@ -18850,8 +18862,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (((inv.hyperPotion || 0) > 0 || (inv.superPotion || 0) > 0) && survives && inc <= FOE_ITEM_AI.regenChipMax) {
                     const isHyper = (inv.hyperPotion || 0) > 0;
                     if (isHyper) inv.hyperPotion--; else inv.superPotion--;
-                    applyBagRegen(mon, isHyper ? BAG_REGEN_PCT.hyper : BAG_REGEN_PCT.super);
-                    logMsg(`The foe used a ${isHyper ? 'Hyper' : 'Super'} Potion on ${mon.name}! A healing mist forms.`, 'heal');
+                    const _fr = applyBagRegen(mon, isHyper ? BAG_REGEN_PCT.hyper : BAG_REGEN_PCT.super);
+                    logMsg(`The foe used a ${isHyper ? 'Hyper' : 'Super'} Potion on ${mon.name}!${_fr.instant > 0 ? ` (+${_fr.instant} HP)` : ''} A healing mist lingers.`, 'heal');
                     return _consume(false);
                 }
                 if ((inv.fullRestore || 0) > 0 && inc < 1.0) {
@@ -60333,10 +60345,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // fraction (effMul); Mega applies it without ending the turn (instantUse). The per-turn
                 // tick lives in endOfTurnEffects and clears on switch (clearVolatileOnSwitch) — modeled on Aqua Ring.
                 const basePct = eff==='regen4' ? BAG_REGEN_PCT.hyper : (eff==='regen8' ? BAG_REGEN_PCT.super : BAG_REGEN_PCT.potion);
-                // No stacking: applyBagRegen keeps the strongest active mist and refreshes its 3 turns.
-                const activePct = applyBagRegen(mon, Math.min(1, basePct * effMul));
+                // Instant heal now + lingering regen for 2 more turns. No stacking: applyBagRegen keeps
+                // the strongest active mist and refreshes its duration; the instant heal lands immediately.
+                const { pct: activePct, instant } = applyBagRegen(mon, Math.min(1, basePct * effMul));
                 const pctTxt = Math.round(activePct * 100);
-                msg = `${mon.name} is cloaked in a soothing mist! (recovers ~${pctTxt}% HP each turn for 3 turns)`;
+                msg = instant > 0
+                    ? `${mon.name} recovered ${instant} HP, and a soothing mist will restore ~${pctTxt}% more at the end of the next 2 turns!`
+                    : `${mon.name} is cloaked in a soothing mist! (recovers ~${pctTxt}% HP at the end of the next 2 turns)`;
             }
             else if (eff==='healFull'&&mon&&mon.currentHp>0){ const h=mon.maxHp-mon.currentHp; mon.currentHp=mon.maxHp; msg=`${mon.name} fully healed! (+${h} HP)`; }
             else if (eff==='fullRestore'&&mon&&mon.currentHp>0){ const h=mon.maxHp-mon.currentHp; mon.currentHp=mon.maxHp; mon.status=null; msg=`${mon.name} fully restored!`; }
@@ -61458,9 +61473,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Bag by tier. Regen Potions heal OVER TIME (not instant-full walls), so even the
             // heal tiers stay fair; only tier-3 bosses get an instant Max Potion. [BALANCE]
             if (tier === 1) {
-                inv.superPotion = 1;                       // 17.5% maxHP per turn x3 (BAG_REGEN_PCT.super)
+                inv.superPotion = 1;                       // 24% maxHP: instant + 2 ticks (BAG_REGEN_PCT.super)
             } else if (tier === 2) {
-                inv.hyperPotion = 1;                       // 35% maxHP per turn x3 (BAG_REGEN_PCT.hyper)
+                inv.hyperPotion = 1;                       // 48% maxHP: instant + 2 ticks (BAG_REGEN_PCT.hyper)
                 inv.xItem = 1;                             // one X-item (stat chosen at use time)
             } else {                                       // tier 3
                 inv.maxPotion = 1;                         // instant full (threshold heal)
