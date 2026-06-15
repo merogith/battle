@@ -63,7 +63,9 @@
         if (!sb) return { error: 'not_configured' };
         const c = String(code || '').trim().toUpperCase();
         if (c.length < 4) return { error: 'bad_code' };
-        const { data, error } = await sb.from('pvp_rooms').select('*').eq('code', c).maybeSingle();
+        // Explicit columns (not '*'): the token columns added in migration 006
+        // are SELECT-revoked for anon, and the client never needs them.
+        const { data, error } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('code', c).maybeSingle();
         if (error) return { error: error.message };
         if (!data) return { error: 'not_found' };
         return { room: data };
@@ -231,20 +233,51 @@
     // a peer that flips a single character of html could inject script into the
     // host's DOM. We block the common script-injection vectors below; legitimate
     // battle-log content is plain text + <br> + a small set of <span class="...">.
+    // Allowlist sanitizer (replaces the old denylist of regex strips). The
+    // legitimate battle log is plain text + <br> + a small set of
+    // <span class="..."> / <div class="..."> / <b>/<i>/<strong>/<em>. We parse
+    // the untrusted HTML into an INERT <template> (its content is a detached
+    // DocumentFragment — scripts never run and <img>/<source> never fetch, so
+    // even building the tree can't fire an onerror payload), then walk it and
+    // keep only allowlisted tags, dropping every attribute except a class whose
+    // value is a safe token list. Anything else collapses to its text content.
+    const _LOG_ALLOWED_TAGS = { BR: 1, SPAN: 1, DIV: 1, B: 1, I: 1, STRONG: 1, EM: 1, SMALL: 1 };
+    const _LOG_CLASS_RE = /^[\w \-]{0,160}$/;
     function sanitizeBattleLogHtml(raw) {
         if (typeof raw !== 'string') return '';
-        let html = raw;
-        // Drop <script>, <style>, <iframe>, <object>, <embed>, <link>, <meta>,
-        // <form>, <input>, <textarea>, <button>, <svg> (script-bearing namespaces).
-        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
-        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*\/?>/gi, '');
-        // Drop on*= event handlers in any tag.
-        html = html.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-        // Drop javascript: / vbscript: / data: pseudo-URLs in href / src / xlink:href.
-        html = html.replace(/(href|src|xlink:href|action|formaction)\s*=\s*(?:"\s*(?:javascript|vbscript|data)\s*:[^"]*"|'\s*(?:javascript|vbscript|data)\s*:[^']*'|(?:javascript|vbscript|data)\s*:[^\s>]*)/gi, '$1=""');
-        // Drop style="" attributes — CSS can host expression() in old IE and url(javascript:) elsewhere.
-        html = html.replace(/\sstyle\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-        return html;
+        const doc = global.document;
+        // No DOM (defensive / non-browser): strip every tag, keep text.
+        if (!doc || typeof doc.createElement !== 'function') {
+            return raw.replace(/<[^>]*>/g, '');
+        }
+        let tpl;
+        try { tpl = doc.createElement('template'); tpl.innerHTML = raw; }
+        catch (e) { return raw.replace(/<[^>]*>/g, ''); }
+        const root = tpl.content || tpl;
+        const walk = (node) => {
+            const kids = Array.prototype.slice.call(node.childNodes || []);
+            for (const child of kids) {
+                if (child.nodeType === 3) continue; // text node — safe
+                if (child.nodeType === 1) {
+                    if (!_LOG_ALLOWED_TAGS[child.tagName]) {
+                        // Disallowed element → replace with its plain text.
+                        node.replaceChild(doc.createTextNode(child.textContent || ''), child);
+                        continue;
+                    }
+                    for (const attr of Array.prototype.slice.call(child.attributes || [])) {
+                        const name = (attr.name || '').toLowerCase();
+                        if (name === 'class' && _LOG_CLASS_RE.test(attr.value || '')) continue;
+                        child.removeAttribute(attr.name);
+                    }
+                    walk(child);
+                } else {
+                    // Comments, processing instructions, etc. → drop entirely.
+                    node.removeChild(child);
+                }
+            }
+        };
+        try { walk(root); } catch (e) { return raw.replace(/<[^>]*>/g, ''); }
+        return tpl.innerHTML !== undefined ? tpl.innerHTML : (root.innerHTML || '');
     }
 
     function applyBattleLogHtml(html) {
@@ -414,7 +447,7 @@
             roomToken = jr.guest_token || null;
             lastRemoteSeq = (jr.data && jr.data.seq) != null ? jr.data.seq : lastRemoteSeq;
             this._subscribe();
-            const { data: rowFresh, error: freshErr } = await sb.from('pvp_rooms').select('*').eq('id', roomId).single();
+            const { data: rowFresh, error: freshErr } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', roomId).single();
             if (freshErr) console.warn('[OnlinePvP] joinRoom refresh', freshErr);
             return rowFresh || r.room;
         },
@@ -857,6 +890,7 @@
         exportBattleSnapshot,
         applyBattleSnapshot,
         simpleHash,
+        sanitizeBattleLogHtml, // exposed for tests; pure allowlist sanitizer
         getDisplayName() {
             return (global.localStorage.getItem(STORAGE_KEY) || '').trim() || 'Trainer';
         },
