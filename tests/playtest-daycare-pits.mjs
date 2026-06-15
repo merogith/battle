@@ -54,12 +54,18 @@ function freshTeam(names) {
       bonus:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, tired:0 },
   }));
 }
-function fresh(badges, { eggDone = false, unlocked = true, fightClub = false, champion = false, clubDone = false } = {}) {
+function fresh(badges, { eggDone = false, unlocked = true, fightClub = false, champion = false, clubDone = false, freeEgg = true } = {}) {
   clearOverlays();
   sm.active = true; sm.badges = badges; sm.gold = 10000; sm.eventIndex = 38;
   sm.team = freshTeam(['Garchomp','Gengar','Lapras','Snorlax','Gardevoir','Tyranitar']);
   sm.pcBox = []; sm.flags = sm.flags || {};
-  sm.daycare = { unlocked, eggEventDone: eggDone };
+  // Re-arm one-time tutorial scenes (the free-egg intro is per-run deduped via
+  // sm.scenesShown) so each ACT starts clean.
+  sm.scenesShown = {};
+  // freeEgg=true ⇒ the first-visit free egg is already claimed, so enterDaycare
+  // routes straight to the drop-off / secret / idle beat under test. ACT 1 flips
+  // it false to exercise the must-see intro + free egg.
+  sm.daycare = { unlocked, eggEventDone: eggDone, freeEggClaimed: freeEgg };
   sm.pits = {
     gym6Snapshot: { badges:6, teamSummary: sm.team.map(t => ({ name:t.name, grade:2, bst:600 })), seed:1, capturedAt:0 },
     championSnapshot: champion ? { badges:8, teamSummary: sm.team.map(t => ({ name:t.name, grade:2, bst:600 })), seed:2, capturedAt:0 } : null,
@@ -71,9 +77,30 @@ function fresh(badges, { eggDone = false, unlocked = true, fightClub = false, ch
 // ───────────────────────────────────────────────────────────────────────────
 console.log('\n\n  P L A Y T E S T :  Daycare Inn → Egg → Fight Club  (full arc)\n');
 
-// ════ ACT 1 — Daycare unlock + the egg drop-off (full dark-comedy branch) ════
-act('ACT 1 — The Daycare Inn (Gym 1 unlock) → drop off a partner, walk out with an egg');
-fresh(1, { eggDone:false, fightClub:false });
+// ════ ACT 0 — first visit: must-see intro + free Grade-3 egg (no sacrifice) ════
+act('ACT 0 — First visit to the Daycare Inn → intro plays, free Grade-3 egg, no partner owed');
+fresh(1, { eggDone:false, freeEgg:false, fightClub:false });
+SM.enterDaycare();
+const introOv = doc.querySelector('.story-tutorial-overlay');
+check('first-visit Daycare intro overlay renders', !!introOv);
+beat('Matron intro (must-see tutorial)', introOv ? (introOv.textContent || '').replace(/\s+/g,' ').trim() : '(no overlay)');
+const fightersBefore = SM._countFighters();
+if (introOv) introOv.querySelector('.story-tutorial-continue').click(); // → onContinue grants the free egg
+check('free-egg reveal scene opens after the intro', !!$('story-daycare-scene'));
+beat('Free-egg reveal — "on the house, no partner owed"', '#story-daycare-scene');
+const freeEggs = [...sm.team, ...sm.pcBox].filter(s => s && s.isEgg);
+check('exactly one free egg now exists', freeEggs.length === 1);
+check('free egg has a locked hatch species', !!(freeEggs[0] && freeEggs[0].eggSpecies));
+const _grade = (n) => window.__engine.getMonGrade(n, window.__engine.getBST(n));
+check('free egg hatch species is Grade 3', !!(freeEggs[0] && _grade(freeEggs[0].eggSpecies) === 3));
+check('no partner was sacrificed for the free egg', SM._countFighters() === fightersBefore);
+check('freeEggClaimed flag is set', sm.daycare.freeEggClaimed === true);
+if ($('story-daycare-scene')) $('story-daycare-scene').querySelector('[data-scene-cont]').click();
+clearOverlays();
+
+// ════ ACT 1 — the optional drop-off loop still works (full dark-comedy branch) ════
+act('ACT 1 — The Daycare Inn → drop off a partner, walk out with an egg (loop still intact)');
+fresh(1, { eggDone:false, freeEgg:true, fightClub:false });
 SM.enterDaycare();
 check('drop-off picker renders at <6 badges with egg event pending', !!$('story-daycare-overlay'));
 beat('Matron / the deal / the poster (drop-off picker)', '#story-daycare-overlay');

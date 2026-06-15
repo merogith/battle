@@ -117,7 +117,11 @@ test('Boss heal phase (memo #7): the 0.50-HP heal fires exactly once per battle'
   assert.equal(boss.currentHp, 30, `no second heal: HP should stay 30, got ${boss.currentHp}`);
 });
 
-test('Featured stones (memo #10): sellItem refuses mega_*/ultra_* ids', async () => {
+// SUPERSEDED (2026-06-15): memo #10's blanket sell-lock on featured Mega/Ultra
+// stones was lifted by the "make every bag item sellable" decision. Featured
+// stones now resell like any other shop item (the bag computes price/2). sellItem
+// no longer refuses mega_*/ultra_* ids — this test now locks the new behavior.
+test('Featured stones: sellItem now sells mega_*/ultra_* ids (sell-everything policy)', async () => {
   const eng = await loadEngine();
   const W = eng.window;
   const SM = W.StoryMode;
@@ -127,9 +131,9 @@ test('Featured stones (memo #10): sellItem refuses mega_*/ultra_* ids', async ()
   sm.inventory['mega_charizarditex'] = 1;
   sm.inventory['ultra_beastball'] = 2;
   const gold = sm.gold | 0;
-  SM.sellItem('mega_charizarditex', 9999);
-  SM.sellItem('ultra_beastball', 9999);
-  assert.equal(sm.inventory['mega_charizarditex'], 1, 'mega stone quantity must not change');
-  assert.equal(sm.inventory['ultra_beastball'], 2, 'ultra stone quantity must not change');
-  assert.equal(sm.gold | 0, gold, 'gold must not change from a locked sale');
+  SM.sellItem('mega_charizarditex', 500);
+  SM.sellItem('ultra_beastball', 300);
+  assert.ok(!sm.inventory['mega_charizarditex'], 'mega stone is consumed by the sale');
+  assert.equal(sm.inventory['ultra_beastball'], 1, 'one ultra stone sold, one remains');
+  assert.equal(sm.gold | 0, gold + 800, 'gold increases by the two sale prices (500 + 300)');
 });
