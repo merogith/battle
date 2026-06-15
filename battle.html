@@ -9937,23 +9937,23 @@
                 <div class="story-create-diff-grid" role="radiogroup" aria-label="Difficulty">
                     <button type="button" class="story-create-diff-card" data-diff="veryeasy" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('veryeasy')">
                         <span class="story-create-diff-name">Very Easy</span>
-                        <span class="story-create-diff-sub">Foes &minus;30% &middot; gold to spare &middot; a gentle road</span>
+                        <span class="story-create-diff-sub">Foes &minus;30% &middot; pay &plus;60% &middot; a gentle road</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="easy" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('easy')">
                         <span class="story-create-diff-name">Easy</span>
-                        <span class="story-create-diff-sub">Foes &minus;15% &middot; extra gold &middot; forgiving</span>
+                        <span class="story-create-diff-sub">Foes &minus;15% &middot; pay &plus;50% &middot; forgiving</span>
                     </button>
                     <button type="button" class="story-create-diff-card story-create-diff-card--active" data-diff="normal" role="radio" aria-checked="true" onclick="window.StoryMode.trainerCreateSetDifficulty('normal')">
                         <span class="story-create-diff-name">Normal</span>
-                        <span class="story-create-diff-sub">The intended road &middot; recommended</span>
+                        <span class="story-create-diff-sub">Foes baseline &middot; pay &plus;30% &middot; the intended road, recommended</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="hard" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('hard')">
                         <span class="story-create-diff-name">Hard</span>
-                        <span class="story-create-diff-sub">Foes &plus;15% &middot; the road bites back</span>
+                        <span class="story-create-diff-sub">Foes &plus;15% &middot; pay standard (no bonus) &middot; the road bites back</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="challenge" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('challenge')">
                         <span class="story-create-diff-name">Very Hard</span>
-                        <span class="story-create-diff-sub">Foes &plus;30% &middot; no margin &middot; bragging rights</span>
+                        <span class="story-create-diff-sub">Foes &plus;40% &middot; pay &plus;10% &middot; no margin, bragging rights</span>
                     </button>
                 </div>
             </section>
@@ -16002,7 +16002,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'veryeasy') mult = 0.70;
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
-            else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
+            else if (d === 'challenge') mult = 1.40; // labeled "Very Hard" in UI — widened 1.30→1.40 (2026-06-15), kept in sync with _foeDifficultyMult
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -36784,7 +36784,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return -1;
         }
-        /** +15% coin at the first main-path battle, linearly down to +0% at the last (post-HoF Mystery). */
+        /**
+         * +15% coin at the first main-path battle. The FRONT half (early + mid,
+         * t<=0.5) keeps the original linear +15%→+7.5% taper byte-for-byte; the
+         * BACK half bends down to a 0.85 floor at the final battle so late-game
+         * gold stops over-accumulating without touching early-mid pay.
+         * Maintainer-ratified 2026-06-15 (late floor 0.85).
+         */
         function storyProgressCoinMultForEventIndex(eventIndexInRaw) {
             const rank = storyBattleZeroBasedRank(eventIndexInRaw);
             if (rank < 0) return 1;
@@ -36792,7 +36798,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (n <= 0) return 1;
             if (n === 1) return 1.15;
             const t = rank / (n - 1);
-            return 1 + 0.15 * (1 - t);
+            return 1 + 0.15 * (1 - t) - 0.30 * Math.max(0, t - 0.5);
         }
         function storyDifficultyCoinMult() {
             const diff = sm.storyDifficulty || 'normal';
@@ -37609,7 +37615,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 case 'veryeasy':  return 0.70;
                 case 'easy':      return 0.85;
                 case 'hard':      return 1.15;
-                case 'challenge': return 1.30; // "Very Hard" in the UI
+                case 'challenge': return 1.40; // "Very Hard" in the UI — widened 1.30→1.40 (2026-06-15) so the top tier is a real test, not a half-step above Hard
                 default:          return 1.00; // normal
             }
         }
@@ -41909,7 +41915,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // "last power phase" — promoted to T4 as the Stage 3 finale so
                 // the player feels a real cap before E4.
                 if (n >= 8) return STORY_BUILD_TIER.TOURNAMENT; // GL8 — last power phase, full polish
-                if (n >= 6) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 mid — T3 floor, G2 ace via composition
+                if (n >= 5) return STORY_BUILD_TIER.COMPETENT;  // GL5 onward — T3 floor (GL5 sharpened to break the GL4→GL6 mid-game plateau; ace pulled to G2 via the sig-ceiling exception below)
                 if (n >= 3) return STORY_BUILD_TIER.NOVICE;     // Stage 2 — T2 floor, G3 ace
                 return STORY_BUILD_TIER.UNTRAINED;              // Stage 1 — T1 floor, G3 ace
             }
@@ -42377,6 +42383,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
+                    // Gym-leader top-up is filler — it must honor the same legendary gate as the
+                    // main filler loop (_legBlocked). Legendaries (incl. low-BST legendary pre-evos
+                    // like Type: Null / Cosmog, which slip the grade profile) only belong on
+                    // E4/Champion/Mystery, never a gym leader, so exclude them unconditionally here.
+                    if (b.legendary) continue;
                     if (getMonGrade(name, getBST(name)) !== g) continue;
                     if (have.has(name)) continue;
                     if (!wantsMixed) {
@@ -42534,6 +42545,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || _evtStr === 'Champion'
                 || /^E[1-4]$/.test(_evtStr)
                 || _evtStr === 'Rival');
+            // GL5 plateau-breaker (2026-06-15): let GL5's signature ACE reach G2 a gym
+            // early. The filler pool + row weights ({g3:100}) are untouched, so the rest
+            // of the team stays G3 — it reads as GL6's "G3 team with a G2 ace" one gym
+            // sooner, breaking the mechanically-flat GL4→GL6 mid-game plateau. Folded into
+            // the Math.min for _sigCeilBase/_sigCeilBase2 below; 4 (weakest grade number)
+            // is a no-op for every other event.
+            const _sigCeilFloorOverride = (_evtStr === 'Gym Leader 5') ? 2 : 4;
             // LEGENDARY filler gate: actual legendaries/mythicals (the `.legendary` flag — NOT
             // pseudo-legendaries like Garchomp/Dragonite, which are unflagged G1 BST mons) only
             // belong on the top-tier fights. Without this a legendary leaks onto a regular trainer
@@ -42568,7 +42586,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // weights say G3, but the G2 floor wants G2 filler — letting the leader's
                 // ace reach G2 too keeps it the strongest mon on the team (never weaker
                 // than its own filler). Pre-city-6 the floor is 4, so this is a no-op.
-                const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                const _sigCeilBase = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor, _sigCeilFloorOverride);
                 // Drop (don't keep) an over-grade no-evo ace whenever the early-game ceiling is
                 // the binding constraint — INCLUDING when it ties the weights ceiling (>=, not >).
                 // The early ceiling is a hard "player can't match this yet" wall, so a G1 no-evo
@@ -42594,7 +42612,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
             // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
-                const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor);
+                const _sigCeilBase2 = Math.min(_storySigGradeCeiling(gwIn), _fillerFloor, _sigCeilFloorOverride);
                 // Same `>=` drop rule as above: an un-devolvable over-ceiling mon that survived the
                 // synthetic backfill is dropped when the early ceiling is binding (tie included).
                 S = _filterSigsByGradeCeiling(S, Math.max(_sigCeilBase2, _earlyGradeCeiling), _earlyGradeCeiling >= _sigCeilBase2);
@@ -44896,6 +44914,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Two teams, one road — that\'s a battle. Let me walk you through your first."',
                     '"No grinding here. What wins is how a partner is *built* — its nature, its training, its moves — and hitting where the foe is weak."',
+                    '"Every move has a type, and types beat types: Water douses Fire, Fire scorches Grass, Grass drinks Water — and so on across the chart. On each move you\'ll see ▲ super-effective (hits hard), ▼ resisted (barely scratches), ⊘ no effect. Chase the ▲ and you\'ll win fights you have no business winning."',
                     '"⚔ FIGHT picks a move. 🔴 POKÉMON swaps in a partner (costs a turn). 🎒 BAG, 🏃 RUN. Keep that HP bar green."'
                 ],
             },
@@ -48412,8 +48431,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || s === 'Crucible'
                 || s === 'Frontier';
         }
-        function _storyClearTirednessForIconic() { /* fatigue cut — no-op */ }
-        function _storyShowTirednessIntro() { /* fatigue cut — no-op */ }
 
         // ─────────────────────────────────────────────────────────────────────
         // STORY SCENE RUNNER — lightweight branching dialogue / choice overlay
@@ -49197,9 +49214,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.pits._fightsWon = 0;
             sm.pits._enemyRoster = _pitsRollEnemyRoster();
             sm.pits._pendingPicks = null;
-            // Pits = iconic; clear fatigue on the bracket party (and rest too — the iconic
-            // wipe is global per spec).
-            _storyClearTirednessForIconic();
             // Auto-heal everyone before the first fight.
             _storyFullHealPartySlots();
             try { save(); } catch (_) {}
@@ -49335,8 +49349,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 sm.pits.storyClubDone = true;
             }
-            // Iconic exit: heal + clear fatigue.
-            _storyClearTirednessForIconic();
+            // Iconic exit: full heal.
             _storyFullHealPartySlots();
             try { save(); } catch (_) {}
             // Battle screen tore down all screens — return to the city hub before the scene.
@@ -49454,7 +49467,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const forfeit = ov.querySelector('#pits-defeat-forfeit');
             if (retry) retry.onclick = () => { _pitsCloseDefeatOverlay(); _pitsRetryFight(); };
             if (forfeit) forfeit.onclick = () => {
-                if (!confirm("Crawl home? All three of your fighters die — you don't leave the Fight Club whole. This cannot be undone.")) return;
+                // Name the exact fighters who die BEFORE the irreversible confirm, so
+                // "crawl home" can never be misread as a safe give-up (the names were
+                // previously only revealed in the post-action alert).
+                const _team = sm.team || [];
+                const _box  = sm.pcBox || [];
+                const _ids  = (sm.pits && sm.pits._activePickIds) || [];
+                const _names = _ids
+                    .map(id => _team.find(s => s && s.id === id) || _box.find(s => s && s.id === id))
+                    .filter(Boolean)
+                    .map(s => s.nickname || s.name);
+                const _roster = _names.length ? _names.join(', ') : 'all three of your fighters';
+                if (!confirm(`Crawl home? These fighters DIE and cannot be recovered:\n\n    ${_roster}\n\nYou don't leave the Fight Club whole. This cannot be undone.`)) return;
                 _pitsCloseDefeatOverlay();
                 _pitsForfeitBracket();
             };
@@ -49501,8 +49525,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (bi >= 0) box.splice(bi, 1);
             }
             sm.pcBox = box;
-            // Iconic exit: heal + clear fatigue on whoever's left (the three who watched).
-            _storyClearTirednessForIconic();
+            // Iconic exit: full heal on whoever's left (the three who watched).
             _storyFullHealPartySlots();
             try { save(); } catch (_) {}
             const forfeitMsg = deadNames.length
@@ -53835,11 +53858,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             applyMechanicsToSettings();
             // Iconic fights start every mon fresh — wipe fatigue *before* the draft is
             // built so the in-battle stat snapshot reads zero stacks.
-            try {
-                const _ev = STORY_EVENTS_RAW[sm.eventIndex];
-                const _evName = _ev && _ev[1] === 'Battle' ? String(_ev[2] || '') : '';
-                if (_storyEventIsIconicFight(_evName)) _storyClearTirednessForIconic();
-            } catch (e) {}
             // Build player p1Draft and enemy p2Draft for state. Eggs occupy a party
             // slot but never fight — filter them out of the battle draft.
             // Stamp the camp-bonding relationship buff onto a SHALLOW-CLONED build per

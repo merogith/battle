@@ -242,7 +242,7 @@ Mystery, eldritch) keep their authored aces (the low-grade-signature exception).
   purse`) read these row values, so they **taper automatically**. (Older values for
   reference: GL6 5550 / GL8 5950 / E1–4 5000 / Champion 7500 / Mystery 12000.)
 - **Underground sell:** G1 1800 / G2 450 / G3 250 / G4 60 (`42553`).
-- **Shop prices:** Poké Ball 300, Great Ball 1000 (dept, C6+), Ultra/Master gift-only. Move Tutor 1500, Nature Rater 2000, Dojo 2000, **EV Trainer 5000**, **Colress 7500**, Stone Sage G3 1500/G2 6000/G1 16000, Cable Link 6000–22000. Safari entry 10000 (1st free). Artifacts 5000 (1st free).
+- **Shop prices:** Poké Ball 300, Great Ball 1000 (dept, C6+), Ultra/Master gift-only. Move Tutor 1500, Nature Rater 2000, Dojo 2000, **EV Trainer 5000** (`EVTRAINER_COST`), **Colress 5000** (`COLRESS_COST`), evolution-by-target G3 3000/G2 6000/G1 12000 (`EVOLVE_COST_BY_TARGET`), Cable Link 6000–22000. Safari entry 10000 (`SAFARI_ENTRY_COST`, 1st free). Artifacts 5000 (1st free). *(2026-06-15: reconciled Colress 7500→5000 and evolution 1500/16000→3000/12000 to live constants.)*
 
 ### 2h. Reward→mechanic alignment (prevention is structural)
 | Reward | First drop | Redeemer / mechanic | Aligned? |
