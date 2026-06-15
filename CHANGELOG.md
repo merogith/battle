@@ -3,6 +3,22 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story text reveal & per-speaker dialogue tones (branch claude/story-text-reveal-and-speaker-tones)
+
+Story-mode (normal) presentation polish, following the visual art-direction review. No
+mechanics, balance, saves, or out-of-scope modes touched — presentation only, all gated by
+reduced-motion.
+
+- **Story dialogue now reveals with reading tempo.** Narrative beats type out letter-by-letter
+  by default instead of dumping all text at once, giving the writing pacing. A new **Settings →
+  "Story text reveal"** toggle turns it off (full text instantly), and reduced-motion always
+  shows instant text. Tapping once completes the current line; tapping again advances.
+- **Characters now read in their own colour.** The dialogue nameplate tints by speaker — the
+  **Professor** warm gold (mentor), the **rival** burnt orange (matching their battle-intro
+  accent), villains oxblood, and the uncanny "anomaly" beats cold blue-grey — so you recognise
+  who's talking at a glance. Applies to both the full-screen story overlay and the city hub
+  quote box. Default gold-on-dark is unchanged where no speaker tone applies.
+
 ## Unreleased — Build-generation engine & early-game balance (branch claude/jolly-lovelace-gwa2b7)
 
 Story-mode (normal) balance pass focused on enemy/player build generation and the
