@@ -2362,12 +2362,16 @@
         }
         .narr-tone-warm { box-shadow: inset 0 0 190px 50px rgba(128, 86, 24, 0.20); }
 
+        /* Rival reads in burnt orange — matches the rival VS-splash accent (#ff9800)
+           so the character's colour is consistent across battle-intro and narration,
+           and stays distinct from the Professor's soft warm gold. */
         .narr-tone-rival .story-dialog-nameplate {
-            background: linear-gradient(180deg, #7fb2ff 0%, #3563b8 100%) !important;
-            box-shadow: inset -1px -1px 0 0 #234a86, inset 1px 1px 0 0 #bcd6ff;
-            color: #06101f !important;
+            background: linear-gradient(180deg, #ffb15a 0%, #e06a16 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #9c440a, inset 1px 1px 0 0 #ffd9a8;
+            color: #2a1003 !important;
         }
-        .narr-tone-rival .story-dialog-box { border-color: #3a5a8a !important; }
+        .narr-tone-rival .story-dialog-box { border-color: #b25a1c !important; }
+        .narr-tone-rival { box-shadow: inset 0 0 190px 50px rgba(150, 70, 12, 0.20); }
         #screen-story-shop > .story-shop-stack > div:last-child,
         #screen-story-artifact-shop > .story-shop-stack > div:last-child,
         #screen-story-tutor > .story-shop-stack > div:last-child,
@@ -9160,6 +9164,7 @@
                     <option value="stall">Stall-aware</option>
                 </select>
             </div>
+            <label class="settings-row" for="sw-story-typewriter" title="Reveal story dialogue letter-by-letter for reading tempo. Off shows full text instantly. Reduced-motion always shows instant."><span>Story text reveal</span><input type="checkbox" class="pbs-switch" id="sw-story-typewriter" role="switch" onchange="settings.storyTypewriter=!!this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-story-bag"><span>Story battle bag</span><input type="checkbox" class="pbs-switch" id="sw-story-bag" role="switch" onchange="settings.storyBattleItems=!!this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-pvp-bag" title="Reserved for future symmetric PvP items"><span style="font-size:11px;color:#888;">PvP battle items</span><input type="checkbox" class="pbs-switch" id="sw-pvp-bag" role="switch" onchange="settings.pvpBattleItems=this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-log-dock" title="Wide windows only"><span>Dock battle log (side)</span><input type="checkbox" class="pbs-switch" id="sw-log-dock" role="switch" onchange="settings.battleLogDock=this.checked; persistMiscSettings(); window.applyBattleLogDockClass&&window.applyBattleLogDockClass();"></label>
@@ -12458,7 +12463,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
@@ -12537,6 +12542,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.storyBattleItems === 'boolean') settings.storyBattleItems = _pbs.storyBattleItems;
             if (typeof _pbs.pvpBattleItems === 'boolean') settings.pvpBattleItems = _pbs.pvpBattleItems;
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
+            if (typeof _pbs.storyTypewriter === 'boolean') settings.storyTypewriter = _pbs.storyTypewriter;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
             if (typeof _pbs.gauntletProgressiveDifficulty === 'boolean') settings.gauntletProgressiveDifficulty = _pbs.gauntletProgressiveDifficulty;
             if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
@@ -12559,6 +12565,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyBattleItems: settings.storyBattleItems,
                     pvpBattleItems: settings.pvpBattleItems,
                     battleLogDock: settings.battleLogDock,
+                    storyTypewriter: settings.storyTypewriter,
                     smartDraftPool: settings.smartDraftPool,
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
                     csvBuildMix: settings.csvBuildMix,
@@ -14850,6 +14857,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-music', 'musicEnabled'],
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
+                ['sw-story-typewriter', 'storyTypewriter'],
                 ['sw-pvp-bag', 'pvpBattleItems'],
                 ['sw-log-dock', 'battleLogDock']
             ];
@@ -14857,6 +14865,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const el = document.getElementById(pair[0]);
                 if (!el) return;
                 if (pair[1] === 'storyBattleItems') el.checked = settings.storyBattleItems !== false;
+                else if (pair[1] === 'storyTypewriter') el.checked = settings.storyTypewriter !== false;
                 else el.checked = !!settings[pair[1]];
             });
         };
@@ -47585,6 +47594,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (npcNameEl) npcNameEl.textContent = speakerLabel;
             if (dialogNameEl) dialogNameEl.textContent = speakerLabel;
+            // Per-speaker tint on the city quote box (v29) — same vocabulary as the
+            // full-screen narrative overlay: the rival in their burnt-orange hue, the
+            // Professor warm, the masked '???' tease cold. City Guide / default keep
+            // the gold-on-dark look. Mirrors the speaker branches resolved above.
+            try {
+                const _cityHost = (dialogNameEl && dialogNameEl.closest) ? dialogNameEl.closest('.story-dialog-host') : null;
+                if (_cityHost) {
+                    _cityHost.classList.remove('narr-tone-warm', 'narr-tone-rival', 'narr-tone-anomaly');
+                    let _cityTone = '';
+                    if (_rivalCameoActive) _cityTone = 'narr-tone-rival';
+                    else if (hasProf && !profUsedHere && hasTeamRoom) _cityTone = 'narr-tone-warm';
+                    else if (hasProf && !profUsedHere && !hasTeamRoom) _cityTone = 'narr-tone-anomaly';
+                    if (_cityTone) _cityHost.classList.add(_cityTone);
+                }
+            } catch (e) {}
             // City quote: NPC dialogue ONLY. The city's identity banner sits on the first line,
             // the NPC's line follows. Everything that was previously stuffed in here (facility
             // barkers, milestone shout-outs, rival warnings) now lives in the tip rail or in a
@@ -51545,12 +51569,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Professor, a villain admin, and the uncanny "extra" arcs read
         // differently. Pure presentation — an empty return preserves the legacy
         // gold-on-dark look, and an explicit o.toneClass always wins.
-        function _toneClassForScene(sceneKey) {
-            if (!sceneKey) return '';
-            const k = String(sceneKey);
+        function _toneClassForScene(sceneKey, speaker) {
+            const k = String(sceneKey || '');
+            // Arc-scoped tones win first (the speaker in these is the narrator/admin).
             if (/^villain\./.test(k)) return 'narr-tone-villain';
             if (/^extra\./.test(k)) return 'narr-tone-anomaly';
             if (/mystery|mfReveal|^main\.loop|theFirst/i.test(k)) return 'narr-tone-anomaly';
+            // Speaker-keyed tones (v29): the Professor mentor reads warm, the rival in
+            // their own hue. The rival is surfaced generically ("Rival"/"your rival");
+            // the Professor as "Prof. <name>"/"Oak". Empty → legacy gold-on-dark.
+            const s = String(speaker || '');
+            if (/\boak\b|\bprof(?:\.|essor)?\b/i.test(s)) return 'narr-tone-warm';
+            if (/\brival\b/i.test(s)) return 'narr-tone-rival';
             return '';
         }
         window._toneClassForScene = _toneClassForScene;
@@ -51560,7 +51590,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sprite = o.sprite || null;
             const name = o.name || '';
             const nameplate = o.nameplate || name || 'Narrator';
-            const toneClass = o.toneClass || _toneClassForScene(o.sceneKey);
+            const toneClass = o.toneClass || _toneClassForScene(o.sceneKey, o.name || o.nameplate);
             const banner = o.banner || '';
             const accent = o.accent || '#ffd54f';
             const continueLabel = o.continueLabel || 'Continue →';
@@ -51673,7 +51703,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // so it clears+reveals before the first paint in a real browser (no
             // flash) while preserving the synchronous full-text DOM contract in
             // headless/jsdom, where rAF doesn't fire within a sync test task.
-            const _wantsTypewriter = !!o.typewriter && !choices.length
+            // Typewriter (v29): default-ON for narrative beats so prose has reading
+            // tempo. Caller opt-out via o.typewriter:false; an explicit
+            // o.typewriter:true always forces it. Never overrides staged revealLines,
+            // and is suppressed when choices are present, the Settings toggle
+            // (storyTypewriter) is off, or the user prefers reduced motion. jsdom keeps
+            // full text synchronously (rAF doesn't fire in a sync task) so the
+            // text-content DOM contract the tests assert is unchanged.
+            const _twSetting = !(typeof settings !== 'undefined' && settings && settings.storyTypewriter === false);
+            const _twPref = (o.typewriter === false) ? false
+                : (o.typewriter === true) ? true
+                : (_twSetting && !o.revealLines);
+            const _wantsTypewriter = _twPref && !choices.length && lines.length > 0
                 && !(window.StoryFx && typeof window.StoryFx.isReducedMotion === 'function' && window.StoryFx.isReducedMotion());
             ov.__startTypewriter = function () {
                 if (!_wantsTypewriter) return;
