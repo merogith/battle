@@ -9107,13 +9107,13 @@
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music volume</span>
-                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="music-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">45%</span>
             </div>
             <label class="settings-row" for="sw-sound"><span>Sound effects</span><input type="checkbox" class="pbs-switch" id="sw-sound" role="switch" onchange="window.applySettingSwitch('soundEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">SFX volume</span>
-                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
             </div>
             <div class="settings-section-title">Gameplay</div>
@@ -9127,7 +9127,6 @@
             </div>
             <label class="settings-row" for="sw-story-typewriter" title="Reveal story dialogue letter-by-letter for reading tempo. Off shows full text instantly. Reduced-motion always shows instant."><span>Story text reveal</span><input type="checkbox" class="pbs-switch" id="sw-story-typewriter" role="switch" onchange="settings.storyTypewriter=!!this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-story-bag"><span>Story battle bag</span><input type="checkbox" class="pbs-switch" id="sw-story-bag" role="switch" onchange="settings.storyBattleItems=!!this.checked; persistMiscSettings();"></label>
-            <label class="settings-row" for="sw-pvp-bag" title="Reserved for future symmetric PvP items"><span style="font-size:11px;color:#888;">PvP battle items</span><input type="checkbox" class="pbs-switch" id="sw-pvp-bag" role="switch" onchange="settings.pvpBattleItems=this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-log-dock" title="Wide windows only"><span>Dock battle log (side)</span><input type="checkbox" class="pbs-switch" id="sw-log-dock" role="switch" onchange="settings.battleLogDock=this.checked; persistMiscSettings(); window.applyBattleLogDockClass&&window.applyBattleLogDockClass();"></label>
             <div class="settings-row">
                 <span>Fullscreen</span>
@@ -9153,6 +9152,10 @@
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.previewHallOfFame();">Preview Hall of Fame</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.seedDebugPostHofClimax && window.StoryMode.seedDebugPostHofClimax();" title="localhost or ?debugPostHofClimax=1 — drops at HoF transition with climax flag unset; pressing Continue routes through the row-67 Mystery Figure climax.">Debug: Post-HoF Mystery climax</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__devAutoWinBattle==='function' && window.__devAutoWinBattle();" style="color:var(--hp-green);" title="Ends the current battle as a win (Story, PvE, local PvP, Gauntlet). Gauntlet opens the round swap screen. Disabled for online PvP. Console: __devAutoWinBattle()">Dev: Auto-win battle</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__devLoseBattle==='function' && window.__devLoseBattle();" style="color:var(--hp-red);" title="Ends the current battle as a loss — exercises the defeat / blackout flow (Story routes through onBattleEnd). Disabled for online PvP. Console: __devLoseBattle()">Dev: Auto-lose battle</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__devHealParty==='function' && window.__devHealParty();" title="Fully heals your whole party mid-battle — HP, status, and PP. Stays in the battle. Console: __devHealParty()">Dev: Heal party (full)</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__devRevealFoeTeam==='function' && window.__devRevealFoeTeam();" title="Logs the opponent's full team (species, types, item, ability, moves) to the battle log and console. Read-only. Console: __devRevealFoeTeam()">Dev: Reveal foe team</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.devStoryJump==='function' && window.StoryMode.devStoryJump();" title="Active story run only — set gold, badges, and the current story event row, then save and re-render. Console: StoryMode.devStoryJump()">Dev: Story jump (gold / badges / event)</button>
                     <button type="button" onclick="window.__exportStorySave && window.__exportStorySave();" title="Copy your current Story Mode save (pbs_story_save) to the clipboard as JSON for backup or manual recovery.">Export story save</button>
                     <button type="button" onclick="window.__recoverBrokenStorySave && window.__recoverBrokenStorySave();" title="Restore the most recent broken save backup (pbs_story_save.broken.latest) over your current save. Use after a corruption warning.">Recover broken save</button>
                 </div>
@@ -12427,7 +12430,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
-            pvpBattleItems: false,  /* reserved: symmetric items in PvP */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
             gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
@@ -12496,11 +12498,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             spriteEl.classList.add(animClass);
             setTimeout(() => spriteEl.classList.remove(animClass), ms);
         }
+        // Persisted audio volumes (0..1) hydrated from pbs_settings below and consumed
+        // when the AudioSystem IIFE initializes _musicVol / _soundVol. Declared in the
+        // outer scope so the closure can read them; defaults match the historic hard-codes.
+        let _initMusicVol = 0.45;
+        let _initSoundVol = 0.55;
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
             if (_pbs.aiProfile) settings.aiProfile = _pbs.aiProfile;
             if (typeof _pbs.storyBattleItems === 'boolean') settings.storyBattleItems = _pbs.storyBattleItems;
-            if (typeof _pbs.pvpBattleItems === 'boolean') settings.pvpBattleItems = _pbs.pvpBattleItems;
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.storyTypewriter === 'boolean') settings.storyTypewriter = _pbs.storyTypewriter;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
@@ -12510,13 +12516,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
             if (typeof _pbs.allowDoublesBuilds === 'boolean') settings.allowDoublesBuilds = _pbs.allowDoublesBuilds;
             if (typeof _pbs.allowExoticFormats === 'boolean') settings.allowExoticFormats = _pbs.allowExoticFormats;
+            // Audio + visual toggles now persist too (previously reset every reload).
+            if (typeof _pbs.animations === 'boolean') settings.animations = _pbs.animations;
+            if (typeof _pbs.musicEnabled === 'boolean') settings.musicEnabled = _pbs.musicEnabled;
+            if (typeof _pbs.soundEnabled === 'boolean') settings.soundEnabled = _pbs.soundEnabled;
+            if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
+            if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
+            if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
+            if (typeof _pbs.soundVol === 'number' && _pbs.soundVol >= 0 && _pbs.soundVol <= 1) _initSoundVol = _pbs.soundVol;
         } catch (e) {}
         function persistMiscSettings() {
             try {
                 localStorage.setItem('pbs_settings', JSON.stringify({
                     aiProfile: settings.aiProfile,
                     storyBattleItems: settings.storyBattleItems,
-                    pvpBattleItems: settings.pvpBattleItems,
                     battleLogDock: settings.battleLogDock,
                     storyTypewriter: settings.storyTypewriter,
                     smartDraftPool: settings.smartDraftPool,
@@ -12525,7 +12538,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     displayMode: settings.displayMode,
                     gimmickAnimSpeed: settings.gimmickAnimSpeed,
                     allowDoublesBuilds: settings.allowDoublesBuilds,
-                    allowExoticFormats: settings.allowExoticFormats
+                    allowExoticFormats: settings.allowExoticFormats,
+                    // Audio + visual prefs (persist so they survive a reload).
+                    animations: settings.animations,
+                    musicEnabled: settings.musicEnabled,
+                    soundEnabled: settings.soundEnabled,
+                    weatherAnimation: settings.weatherAnimation,
+                    terrainBackground: settings.terrainBackground,
+                    musicVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : _initMusicVol,
+                    soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol
                 }));
             } catch (e) {}
         }
@@ -12627,8 +12648,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _currentBgIdx = -1;
             let _nextBgAudio = null;
             let _nextBgIdx = -1;
-            let _musicVol = 0.45;
-            let _soundVol = 0.55;
+            let _musicVol = (typeof _initMusicVol === 'number') ? _initMusicVol : 0.45;
+            let _soundVol = (typeof _initSoundVol === 'number') ? _initSoundVol : 0.55;
             let _lastBgPersistAt = 0;
             let _bgStarted = false;
             let _bgConsecutiveErrors = 0;
@@ -12986,6 +13007,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 toggleMusic() {
                     settings.musicEnabled = !settings.musicEnabled;
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
+                    try { persistMiscSettings(); } catch (e) {}
                     if (settings.musicEnabled) {
                         if (_introAudio) { _introAudio.play().catch(() => {}); }
                         else if (_battleAudio) { _battleAudio.play().catch(() => {}); }
@@ -13004,6 +13026,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 toggleSound() {
                     settings.soundEnabled = !settings.soundEnabled;
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
+                    try { persistMiscSettings(); } catch (e) {}
                 },
 
                 setMusicVolume(val) {
@@ -14806,7 +14829,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
                 ['sw-story-typewriter', 'storyTypewriter'],
-                ['sw-pvp-bag', 'pvpBattleItems'],
                 ['sw-log-dock', 'battleLogDock']
             ];
             pairs.forEach(function(pair) {
@@ -14844,11 +14866,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.toggleAnimations = function() {
             settings.animations = !settings.animations;
             try { window.syncSettingsModalSwitches(); } catch (e) {}
+            try { persistMiscSettings(); } catch (e) {}
         }
 
         window.toggleWeatherAnimation = function() {
             settings.weatherAnimation = !settings.weatherAnimation;
             try { window.syncSettingsModalSwitches(); } catch (e) {}
+            try { persistMiscSettings(); } catch (e) {}
             let wOverlay = document.getElementById('weather-overlay');
             if (wOverlay) wOverlay.style.display = settings.weatherAnimation ? '' : 'none';
         }
@@ -14856,6 +14880,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.toggleTerrainBackground = function() {
             settings.terrainBackground = !settings.terrainBackground;
             try { window.syncSettingsModalSwitches(); } catch (e) {}
+            try { persistMiscSettings(); } catch (e) {}
             let tOverlay = document.getElementById('terrain-overlay');
             if (tOverlay) tOverlay.style.display = settings.terrainBackground ? '' : 'none';
             refreshBattleBg();
@@ -14949,6 +14974,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (dm) dm.value = settings.displayMode || 'auto';
             const gas = document.getElementById('setting-gimmick-anim-speed');
             if (gas) gas.value = settings.gimmickAnimSpeed || 'normal';
+            // Reflect the live (possibly persisted) volumes — the slider markup is hard-coded
+            // to 45/55, so without this it lies after a change+reopen or a reload.
+            try {
+                const mv = Math.round((AudioSystem.getMusicVolume() || 0) * 100);
+                const ms = document.getElementById('music-vol-slider');
+                const mp = document.getElementById('music-vol-pct');
+                if (ms) ms.value = mv;
+                if (mp) mp.innerText = mv + '%';
+                const sv = Math.round((AudioSystem.getSoundVolume() || 0) * 100);
+                const ss = document.getElementById('sound-vol-slider');
+                const sp = document.getElementById('sound-vol-pct');
+                if (ss) ss.value = sv;
+                if (sp) sp.innerText = sv + '%';
+            } catch (e) {}
             try { window.syncSettingsModalSwitches(); } catch (e) {}
             try { _updateFullscreenUI(); } catch (e) {}
             const srr = document.getElementById('settings-story-run-summary-row');
@@ -19675,6 +19714,99 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             } catch (e) {
                 console.warn('[__devAutoWinBattle]', e);
+                return false;
+            }
+        };
+
+        /**
+         * Developer: end the current fight as a LOSS — the mirror of __devAutoWinBattle.
+         * Useful for exercising the defeat / blackout handoff (Story → onBattleEnd(false)).
+         * Skips online PvP. Console: __devLoseBattle()
+         */
+        window.__devLoseBattle = function() {
+            try {
+                if (typeof state === 'undefined' || !state || !state.pActive || !state.fActive) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('No active battle — start a fight first.');
+                    return false;
+                }
+                if (state.isOver) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('This battle already ended.');
+                    return false;
+                }
+                if (state.mode === 'pvp' && window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function' && window.OnlineBattle.isActive()) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('Auto-lose is disabled for online PvP. Use local PvP or offline modes.');
+                    return false;
+                }
+                state.isLocked = false;
+                state.pendingEoT = false;
+                state.residualPhaseComplete = false;
+                try { document.getElementById('command-menu').classList.add('hidden'); } catch (e) {}
+                try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+                if (typeof logMsg === 'function') logMsg('[Dev] Auto-lose battle.', 'info');
+                state.isOver = true;
+                if (state.mode === 'gauntlet') {
+                    showEndScreen('GAUNTLET OVER!', `Auto-lose. You cleared ${state.score} round${state.score !== 1 ? 's' : ''}.`);
+                } else {
+                    showEndScreen('GAME OVER', 'The last of your team is down. The fight is over.', false);
+                }
+                return true;
+            } catch (e) {
+                console.warn('[__devLoseBattle]', e);
+                return false;
+            }
+        };
+
+        /**
+         * Developer: fully heal the player's whole party mid-battle — restores HP, clears
+         * status, and refills every move's PP. Refreshes the HUD. Console: __devHealParty()
+         */
+        window.__devHealParty = function() {
+            try {
+                if (typeof state === 'undefined' || !state || !Array.isArray(state.playerParty) || !state.playerParty.length) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('No active battle — start a fight first.');
+                    return false;
+                }
+                let healed = 0;
+                state.playerParty.forEach(mon => {
+                    if (!mon) return;
+                    mon.currentHp = mon.maxHp;
+                    mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
+                    if (Array.isArray(mon.moves)) mon.moves.forEach(mv => { if (mv && typeof mv.maxPp === 'number') mv.pp = mv.maxPp; });
+                    healed++;
+                });
+                try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
+                if (typeof logMsg === 'function') logMsg(`[Dev] Party fully healed (${healed} Pokémon).`, 'info');
+                return true;
+            } catch (e) {
+                console.warn('[__devHealParty]', e);
+                return false;
+            }
+        };
+
+        /**
+         * Developer: dump the opponent's full team (species, types, item, ability, moves) to
+         * the console and the battle log — for verifying matchups. Read-only. Console: __devRevealFoeTeam()
+         */
+        window.__devRevealFoeTeam = function() {
+            try {
+                if (typeof state === 'undefined' || !state || !Array.isArray(state.foeParty) || !state.foeParty.length) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('No active battle — start a fight first.');
+                    return false;
+                }
+                if (typeof logMsg === 'function') logMsg('[Dev] Opponent team:', 'info');
+                state.foeParty.forEach((mon, i) => {
+                    if (!mon) return;
+                    const types = [mon.type1, mon.type2].filter(Boolean).join('/');
+                    const moves = Array.isArray(mon.moves) ? mon.moves.map(mv => mv && mv.name).filter(Boolean).join(', ') : '';
+                    const hp = (typeof mon.currentHp === 'number' && typeof mon.maxHp === 'number') ? `${mon.currentHp}/${mon.maxHp}` : '?';
+                    const item = mon.item && mon.item !== 'No Item' ? mon.item : '—';
+                    const line = `${i + 1}. ${mon.name} [${types}] HP ${hp} · ${mon.ability || '—'} · @${item} · ${moves}`;
+                    console.log('[__devRevealFoeTeam]', line);
+                    if (typeof logMsg === 'function') logMsg(line, 'info');
+                });
+                return true;
+            } catch (e) {
+                console.warn('[__devRevealFoeTeam]', e);
                 return false;
             }
         };
@@ -47054,6 +47186,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Open Mystery Figure — Legendary Grade 1 Swap.');
         }
 
+        /**
+         * Dev: jump an ACTIVE story run to a chosen point — set gold, badge count, and the
+         * current story event row, then save and re-render. Prompts for each value (blank =
+         * keep current). Operates on the live save; does not seed a fresh run. Console:
+         * StoryMode.devStoryJump()
+         */
+        function devStoryJump() {
+            if (!sm || !sm.active) {
+                if (typeof window.showGameAlert === 'function') window.showGameAlert('Start or load a Story run first, then use Story jump.');
+                else console.warn('[Story debug] devStoryJump: no active story run.');
+                return false;
+            }
+            try {
+                const goldRaw = window.prompt('Gold (blank = keep current):', String(sm.gold | 0));
+                if (goldRaw !== null && goldRaw.trim() !== '') {
+                    const g = Math.max(0, Math.floor(Number(goldRaw)));
+                    if (Number.isFinite(g)) sm.gold = g;
+                }
+                const badgeRaw = window.prompt('Badges 0–8 (blank = keep current):', String(sm.badges | 0));
+                if (badgeRaw !== null && badgeRaw.trim() !== '') {
+                    const b = Math.max(0, Math.min(8, Math.floor(Number(badgeRaw))));
+                    if (Number.isFinite(b)) {
+                        sm.badges = b;
+                        // Keep gymCleared consistent so city/gym gating matches the badge count.
+                        if (!sm.gymCleared) sm.gymCleared = {};
+                        for (let i = 1; i <= 8; i++) sm.gymCleared[i] = (i <= b);
+                    }
+                }
+                const curRow = (STORY_EVENTS_RAW[sm.eventIndex] && STORY_EVENTS_RAW[sm.eventIndex][0]);
+                const rowRaw = window.prompt('Story event row id (blank = keep current):', curRow != null ? String(curRow) : '');
+                if (rowRaw !== null && rowRaw.trim() !== '') {
+                    const targetRow = Math.floor(Number(rowRaw));
+                    const idx = STORY_EVENTS_RAW.findIndex(row => row && row[0] === targetRow);
+                    if (idx >= 0) { sm.eventIndex = idx; try { _storyBackfillCitiesArrived(); } catch (e) {} }
+                    else { if (typeof window.showGameAlert === 'function') window.showGameAlert('No story event with row id ' + targetRow + ' — row left unchanged.'); }
+                }
+                save();
+                try { enterCity(); } catch (e) { try { updateHUD(); } catch (e2) {} }
+                console.log('[Story debug] devStoryJump → gold', sm.gold, 'badges', sm.badges, 'eventIndex', sm.eventIndex);
+                return true;
+            } catch (e) {
+                console.warn('[Story debug] devStoryJump', e);
+                return false;
+            }
+        }
+
         /** Dev: `battle.html?testmega=1` (or `#testmega`) — City7 with Power Up / Colress, all run gimmicks on, 50k G, party with Mega-capable mons. */
         function seedTestMegaFromUrl() {
             if (!sm.profUsed) sm.profUsed = {};
@@ -68293,7 +68471,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
             enterFanClub, renderFanClubRoster,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
-            previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
+            previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock, devStoryJump,
             openRunSummary,
             // Trainer creation + cross-run collection (Pokédex / achievements / HoF)
             openTrainerCreate, cancelTrainerCreate,
