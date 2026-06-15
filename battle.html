@@ -2330,6 +2330,44 @@
             color: var(--text-color) !important;
             font-style: normal;
         }
+        /* ── Narration tone treatments (v28) ──────────────────────────────────
+           Subtle per-register retint applied to the narrative overlay root via
+           toneClass (explicit, or derived from sceneKey by _toneClassForScene).
+           Nameplate gradient + frame + a faint inset vignette only — never the
+           body text colour, so legibility is unchanged. No motion (reduced-motion
+           safe). Default (no tone class) keeps the gold-on-dark look untouched.
+           `.story-anomaly` is the pre-existing hook (the "small wrongness" seed). */
+        .narr-tone-villain .story-dialog-nameplate {
+            background: linear-gradient(180deg, #e0574f 0%, #8c1f1a 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #5e1411, inset 1px 1px 0 0 #ff8a80;
+            color: #1a0605 !important;
+        }
+        .narr-tone-villain .story-dialog-box { border-color: #7a2a26 !important; }
+        .narr-tone-villain { box-shadow: inset 0 0 200px 50px rgba(120, 12, 12, 0.30); }
+
+        .narr-tone-anomaly .story-dialog-nameplate,
+        .story-anomaly .story-dialog-nameplate {
+            background: linear-gradient(180deg, #a6bacd 0%, #5b6b80 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #3b4756, inset 1px 1px 0 0 #cdd9e6;
+            color: #0c1118 !important;
+        }
+        .narr-tone-anomaly .story-dialog-box,
+        .story-anomaly .story-dialog-box { border-color: #56657a !important; }
+        .narr-tone-anomaly,
+        .story-anomaly { box-shadow: inset 0 0 220px 70px rgba(8, 14, 26, 0.52); filter: saturate(0.82); }
+
+        .narr-tone-warm .story-dialog-nameplate {
+            background: linear-gradient(180deg, #ffd98a 0%, #e8a23c 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #b06f1d, inset 1px 1px 0 0 #ffeec0;
+        }
+        .narr-tone-warm { box-shadow: inset 0 0 190px 50px rgba(128, 86, 24, 0.20); }
+
+        .narr-tone-rival .story-dialog-nameplate {
+            background: linear-gradient(180deg, #7fb2ff 0%, #3563b8 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #234a86, inset 1px 1px 0 0 #bcd6ff;
+            color: #06101f !important;
+        }
+        .narr-tone-rival .story-dialog-box { border-color: #3a5a8a !important; }
         #screen-story-shop > .story-shop-stack > div:last-child,
         #screen-story-artifact-shop > .story-shop-stack > div:last-child,
         #screen-story-tutor > .story-shop-stack > div:last-child,
@@ -2790,6 +2828,30 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
             filter: drop-shadow(0 4px 0 rgba(0,0,0,0.15));
+        }
+        /* Hall of Fame entrance (v28): the run's climax now *arrives* instead of
+           popping in — the panel rises + fades, then the six team sprites stagger
+           on like a roll call. The element mounts fresh each HoF reach, so the
+           one-shot animation replays every time. Reduced-motion disables it. */
+        .story-hof-gba-panel { animation: storyHofPanelIn 0.6s cubic-bezier(0.16, 0.84, 0.34, 1) both; }
+        @keyframes storyHofPanelIn {
+            0%   { opacity: 0; transform: translateY(26px) scale(0.985); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .story-hof-gba-cell img { animation: storyHofCellIn 0.5s ease-out both; animation-delay: 0.42s; }
+        .story-hof-gba-cell:nth-child(2) img { animation-delay: 0.52s; }
+        .story-hof-gba-cell:nth-child(3) img { animation-delay: 0.62s; }
+        .story-hof-gba-cell:nth-child(4) img { animation-delay: 0.72s; }
+        .story-hof-gba-cell:nth-child(5) img { animation-delay: 0.82s; }
+        .story-hof-gba-cell:nth-child(6) img { animation-delay: 0.92s; }
+        @keyframes storyHofCellIn {
+            0%   { opacity: 0; transform: translateY(10px) scale(0.6); }
+            60%  { opacity: 1; transform: translateY(0) scale(1.08); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .story-hof-gba-panel { animation: none; }
+            .story-hof-gba-cell img { animation: none; }
         }
         .story-hof-gba-lower {
             position: relative;
@@ -8894,7 +8956,7 @@
     <div id="desktop-scale-outer">
     <div id="app-root">
     <div id="game-stage">
-    <button class="icon-btn settings-btn" onclick="window.openSettings()">⚙</button>
+    <button class="icon-btn settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.25em;height:1.25em;display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg></button>
 
     <div id="screen-menu" class="screen active" role="region" aria-label="menu">
         <div class="menu-hero">
@@ -9322,7 +9384,7 @@
                 <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Abandon and delete this run" aria-label="Abandon this run">Abandon</button>
                 <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics" aria-label="Run settings and info">Run Info</button>
                 <button type="button" class="story-hud-help" onclick="window.showHelp()" title="How to play Story Mode" aria-label="Help — story mode reference">?</button>
-                <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
+                <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings" title="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.25em;height:1.25em;display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg></button>
             </div>
         </div>
         <!-- CITY HUB V2: identity band — town name + badge pips over the bg layer.
@@ -10040,7 +10102,7 @@
     <!-- ===== END STORY MODE SCREENS ===== -->
 
     <div id="screen-battle" class="screen hidden" role="region" aria-label="battle">
-        <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings">⚙</button>
+        <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.25em;height:1.25em;display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg></button>
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="terrain-overlay" class="terrain-overlay"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
@@ -10574,6 +10636,10 @@
            so check/decline markers render identically across screens and devices. */
         window.uiSvgCheck = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 16 16" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.12em;flex-shrink:0;"><path d="M3 8.6l3.4 3.4L13 4.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';};
         window.uiSvgX = function(size){var s=(typeof size==='number')?size+'px':(size||'1em');return '<svg class="ui-glyph" viewBox="0 0 16 16" aria-hidden="true" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.12em;flex-shrink:0;"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';};
+        // Settings gear (v28): replaces the OS-font ⚙ emoji on chrome buttons so it
+        // renders identically across devices and matches the pixel UI — same doctrine
+        // as uiSvgCheck/uiSvgX and moveCatBadgeHtml. Inherits currentColor.
+        window.uiSvgGear = function(size){var s=(typeof size==='number')?size+'px':(size||'1.25em');return '<svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:'+s+';height:'+s+';display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg>';};
         /* Pokémon Fan Club facility icon — an inline-SVG heart (no item sprite fits the
            "affection / friendship" theme). Same single-source-of-truth, device-independent
            approach as moveCatBadgeHtml; consumed via storyFacilityIconHtml('fanclub'). */
@@ -38968,7 +39034,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // extra (mystery/haunt) arcs:
             'extra.cubone.':'cavern', 'extra.yamask.':'cavern', 'extra.hypno.':'mansion',
             'extra.phantump.':'forest', 'extra.mimikyu.':'mansion', 'extra.drifloon.':'mansion',
-            'extra.parasect.':'forest', 'extra.mewtwo.':'lab'
+            'extra.parasect.':'forest', 'extra.mewtwo.':'lab',
+            // main spine — curate the milestone beats so the emotional spine stops
+            // reading as a flat fallback. The early open-road events (1-4) fall
+            // through to the 'forest' default below intentionally (journey feel);
+            // the dread escalates into mansion → league → the villain-toned reveal,
+            // and the loop closes back in Oak's lab where Run #1 began.
+            'main.event5':'cavern', 'main.event6':'mansion', 'main.event7':'mountain',
+            'main.event8':'league', 'main.event9':'league',
+            'main.battle1':'mountain', 'main.battle2':'cavern',
+            'main.mfBattle':'league', 'main.mfReveal':'villain', 'main.ending':'lab'
         };
         window.SCENE_BACKDROP_OVERRIDES = SCENE_BACKDROP_OVERRIDES;
         function _backdropKeyForScene(sceneKey, beat) {
@@ -51196,21 +51271,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _narrationLive = true;
             _narrationLiveEl = ov;
             try { document.body.appendChild(ov); } catch (e) {}
+            _narrFadeInOverlay(ov);
             try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
         }
+        // Narrative-overlay motion helpers (v28 polish): a soft cross-fade on
+        // mount and dismiss so story beats dissolve into one another instead of
+        // hard-cutting. Gated OFF under reduced motion, settings.animations:false,
+        // and the jsdom harness (window.__testHarness) — those paths keep the
+        // legacy instant mount/remove, so the synchronous DOM contract the tests
+        // assert ("overlay removed on dismiss") is preserved exactly.
+        function _narrMotionOff() {
+            try {
+                if (typeof window !== 'undefined' && window.__testHarness === true) return true;
+                if (typeof settings !== 'undefined' && settings && settings.animations === false) return true;
+                if (window.StoryFx && typeof window.StoryFx.isReducedMotion === 'function'
+                    && window.StoryFx.isReducedMotion()) return true;
+            } catch (e) {}
+            return false;
+        }
+        function _narrFadeInOverlay(el) {
+            if (!el) return;
+            if (_narrMotionOff()) { el.style.opacity = '1'; return; }
+            el.style.opacity = '0';
+            el.style.transition = 'opacity 0.24s ease';
+            // Double-rAF so the 0→1 flip lands a frame after the paint that first
+            // showed the element at 0 — guarantees the transition actually runs.
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () { el.style.opacity = '1'; });
+            });
+        }
+        // Per-register narration tone (v28 polish): derive a mood class from the
+        // beat's sceneKey when the caller didn't pass an explicit toneClass. CSS
+        // (.narr-tone-*) retints the nameplate/frame + a faint root wash so the
+        // Professor, a villain admin, and the uncanny "extra" arcs read
+        // differently. Pure presentation — an empty return preserves the legacy
+        // gold-on-dark look, and an explicit o.toneClass always wins.
+        function _toneClassForScene(sceneKey) {
+            if (!sceneKey) return '';
+            const k = String(sceneKey);
+            if (/^villain\./.test(k)) return 'narr-tone-villain';
+            if (/^extra\./.test(k)) return 'narr-tone-anomaly';
+            if (/mystery|mfReveal|^main\.loop|theFirst/i.test(k)) return 'narr-tone-anomaly';
+            return '';
+        }
+        window._toneClassForScene = _toneClassForScene;
         function _renderNarrativeOverlay(opts) {
             const o = opts || {};
             const lines = Array.isArray(o.lines) ? o.lines : [];
             const sprite = o.sprite || null;
             const name = o.name || '';
             const nameplate = o.nameplate || name || 'Narrator';
-            const toneClass = o.toneClass || '';
+            const toneClass = o.toneClass || _toneClassForScene(o.sceneKey);
             const banner = o.banner || '';
             const accent = o.accent || '#ffd54f';
             const continueLabel = o.continueLabel || 'Continue →';
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
-            if (toneClass) ov.classList.add(toneClass);
+            if (toneClass) String(toneClass).split(/\s+/).forEach(function (c) { if (c) ov.classList.add(c); });
             // Narration overhaul (v26): optional gen3 scene backdrop behind the
             // overlay. `backdropScene` is an explicit manifest.scenes key;
             // `sceneKey` is a raw beat key resolved through _backdropKeyForScene.
@@ -51383,7 +51500,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         window.StoryFx.playSfx(_sfx, 0.65);
                     }
                 } catch (e) {}
-                try { ov.remove(); } catch (e) {}
+                // Fade-out on dismiss (v28). The logical release below stays
+                // synchronous; only the visual node removal is deferred, and only
+                // in a real browser — the harness/reduced-motion path removes now.
+                if (_narrMotionOff()) {
+                    try { ov.remove(); } catch (e) {}
+                } else {
+                    try {
+                        ov.style.pointerEvents = 'none';
+                        ov.style.transition = 'opacity 0.2s ease';
+                        ov.style.opacity = '0';
+                        setTimeout(function () { try { ov.remove(); } catch (e2) {} }, 220);
+                    } catch (e) { try { ov.remove(); } catch (e2) {} }
+                }
                 // Release the queue lock BEFORE onDone so a sequential
                 // follow-up overlay (next act, chained cold-open) mounts
                 // immediately; then flush any genuinely-queued overlay that
@@ -51461,6 +51590,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _narrationLive = true;
                 _narrationLiveEl = ov;
                 document.body.appendChild(ov);
+                _narrFadeInOverlay(ov);
                 try { if (typeof ov.__startTypewriter === 'function') ov.__startTypewriter(); } catch (e) {}
             }
             return ov;
