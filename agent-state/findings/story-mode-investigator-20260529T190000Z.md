@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: af2dc4e3be42
 confidence: high
-status: open
+status: fixed-claude/full-debug-inconsistency-fclrlu
 ---
 
 **Title**: Casino Coin Flip outcome uses Math.random(), not seeded storyRngNext()
@@ -34,7 +34,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: cbeb827d7355
 confidence: high
-status: open
+status: fixed-claude/full-debug-inconsistency-fclrlu
 ---
 
 **Title**: Casino Slots reel symbols rolled with Math.random(), breaking seeded determinism
@@ -64,7 +64,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 2fd9ec729600
 confidence: high
-status: open
+status: fixed-claude/full-debug-inconsistency-fclrlu
 ---
 
 **Title**: Casino Roulette winning cell chosen with Math.random(), not seeded RNG
@@ -91,7 +91,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8e80374d06cc
 confidence: high
-status: open
+status: fixed-claude/full-debug-inconsistency-fclrlu
 ---
 
 **Title**: Casino prize roller (_casinoRollPrize / _randPick) uses Math.random for vitamin/voucher drops

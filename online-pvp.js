@@ -242,6 +242,11 @@
     // keep only allowlisted tags, dropping every attribute except a class whose
     // value is a safe token list. Anything else collapses to its text content.
     const _LOG_ALLOWED_TAGS = { BR: 1, SPAN: 1, DIV: 1, B: 1, I: 1, STRONG: 1, EM: 1, SMALL: 1 };
+    // Disallowed elements normally collapse to their plain text so a stray
+    // formatting tag still shows its words. These carry script/style/markup as
+    // their text content, so drop them (and their whole subtree) entirely
+    // rather than surfacing that text in the battle log.
+    const _LOG_DROP_SUBTREE = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, NOSCRIPT: 1, TEMPLATE: 1, LINK: 1, META: 1, TITLE: 1, HEAD: 1, SVG: 1, MATH: 1 };
     const _LOG_CLASS_RE = /^[\w \-]{0,160}$/;
     function sanitizeBattleLogHtml(raw) {
         if (typeof raw !== 'string') return '';
@@ -260,8 +265,13 @@
                 if (child.nodeType === 3) continue; // text node — safe
                 if (child.nodeType === 1) {
                     if (!_LOG_ALLOWED_TAGS[child.tagName]) {
-                        // Disallowed element → replace with its plain text.
-                        node.replaceChild(doc.createTextNode(child.textContent || ''), child);
+                        if (_LOG_DROP_SUBTREE[child.tagName]) {
+                            // Dangerous container → drop the element and its subtree.
+                            node.removeChild(child);
+                        } else {
+                            // Disallowed but benign → replace with its plain text.
+                            node.replaceChild(doc.createTextNode(child.textContent || ''), child);
+                        }
                         continue;
                     }
                     for (const attr of Array.prototype.slice.call(child.attributes || [])) {

@@ -9234,13 +9234,13 @@
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music volume</span>
-                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="music-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">45%</span>
             </div>
             <label class="settings-row" for="sw-sound"><span>Sound effects</span><input type="checkbox" class="pbs-switch" id="sw-sound" role="switch" onchange="window.applySettingSwitch('soundEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">SFX volume</span>
-                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
             </div>
             <div class="settings-section-title">Gameplay</div>
@@ -12795,6 +12795,68 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _bgConsecutiveErrors = 0;
             const BG_MAX_CONSECUTIVE_ERRORS = 4;
 
+            // ── Transition feel + reliability tunables (user-owned "feel" knobs) ──
+            // Cross-fades replace the old hard pause()/play() cuts that read as
+            // "fast skips". MIN_RESUME_REMAINING_SEC discards a persisted resume
+            // point too close to a track's end (a near-end seek used to fire
+            // `ended` instantly → an audible skip). The watchdog rescues a field
+            // track whose `playing` never fires (stall / silent autoplay block).
+            const MUSIC_FADE_MS = 450;
+            const MIN_RESUME_REMAINING_SEC = 12;
+            const BG_WATCHDOG_MS = 6000;
+            let _bgWatchdog = null;
+            let _gestureRetryArmed = false;
+
+            // Ramp an element's volume toward `toVol` over `ms`, then run `onDone`.
+            // Cancels any fade already in flight on the same element so a manual
+            // volume change / new transition always wins. Uses setInterval (not
+            // rAF) so it keeps ramping while the tab is backgrounded.
+            function _fade(el, toVol, ms, onDone) {
+                if (!el) { if (onDone) onDone(); return; }
+                if (el._fadeTimer) { clearInterval(el._fadeTimer); el._fadeTimer = null; }
+                const target = Math.max(0, Math.min(1, toVol));
+                const from = (typeof el.volume === 'number') ? el.volume : target;
+                const steps = Math.max(1, Math.round((ms || MUSIC_FADE_MS) / 40));
+                let i = 0;
+                el._fadeTimer = setInterval(() => {
+                    i++;
+                    const v = from + (target - from) * (i / steps);
+                    try { el.volume = Math.max(0, Math.min(1, v)); } catch (e) {}
+                    if (i >= steps) {
+                        clearInterval(el._fadeTimer);
+                        el._fadeTimer = null;
+                        if (onDone) onDone();
+                    }
+                }, 40);
+            }
+            function _cancelFade(el) {
+                if (el && el._fadeTimer) { clearInterval(el._fadeTimer); el._fadeTimer = null; }
+            }
+
+            // Re-arm a one-shot user-gesture listener that retries field BGM. Used
+            // both by init() and by the play()-rejection path (autoplay blocked),
+            // so a blocked first start recovers on the next real interaction
+            // instead of dead-ending into permanent silence.
+            function _armGestureRetry() {
+                if (_gestureRetryArmed) return;
+                _gestureRetryArmed = true;
+                const tryStart = () => {
+                    _gestureRetryArmed = false;
+                    document.removeEventListener('click', tryStart, true);
+                    document.removeEventListener('keydown', tryStart, true);
+                    document.removeEventListener('touchstart', tryStart, true);
+                    _resumeOrStartBg();
+                };
+                document.addEventListener('click', tryStart, true);
+                document.addEventListener('keydown', tryStart, true);
+                document.addEventListener('touchstart', tryStart, true);
+            }
+
+            // NOTE: music shuffle is DELIBERATELY non-seeded (bare Math.random,
+            // not storyRngNext). Seeding it would replay the identical field track
+            // / battle theme on every load of a seeded battle — the opposite of
+            // the variety we want here. This is an intentional exception to the
+            // "seeded RNG everywhere user-visible" house rule, not an oversight.
             function _pickRandomBgIdx(excludeIdx) {
                 const n = BACKGROUND_TRACKS.length;
                 if (n <= 0) return -1;
@@ -12832,10 +12894,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const now = Date.now();
                 if (!force && now - _lastBgPersistAt < BG_PERSIST_THROTTLE_MS) return;
                 _lastBgPersistAt = now;
+                // Clamp out a near-end resume point: persisting the last few
+                // seconds would make the next load seek straight to `ended`.
+                let t = Math.max(0, Number(bgAudio.currentTime) || 0);
+                const dur = Number(bgAudio.duration) || 0;
+                if (dur > 0 && dur - t < MIN_RESUME_REMAINING_SEC) t = 0;
                 try {
                     localStorage.setItem(BG_STATE_KEY, JSON.stringify({
                         src: BACKGROUND_TRACKS[_currentBgIdx],
-                        time: Math.max(0, Number(bgAudio.currentTime) || 0)
+                        time: t
                     }));
                 } catch (e) {}
             }
@@ -12874,7 +12941,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     audio = new Audio(BACKGROUND_TRACKS[idx]);
                     audio.preload = 'auto';
                 }
-                audio.volume = _musicVol;
+                // Start silent and fade up — no abrupt cut-in over whatever just stopped.
+                audio.volume = 0;
                 audio.loop = false;
                 audio.onended = _onBgEnded;
                 audio.onerror = _onBgError;
@@ -12883,6 +12951,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 if (bgAudio && bgAudio !== audio) {
                     try {
+                        _cancelFade(bgAudio);
                         bgAudio.onended = null;
                         bgAudio.onerror = null;
                         bgAudio.ontimeupdate = null;
@@ -12896,13 +12965,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Kick off playback synchronously so the user-gesture activation is
                 // consumed immediately — important for the resume-from-persisted path
                 // where the loadedmetadata seek would otherwise happen too late.
-                audio.play().catch(() => {});
+                // On rejection (autoplay blocked) re-arm a gesture retry so we
+                // recover instead of dead-ending into silence.
+                audio.play().then(() => { _fade(audio, _musicVol, MUSIC_FADE_MS); })
+                            .catch(() => { _fade(audio, _musicVol, MUSIC_FADE_MS); _armGestureRetry(); });
+                _armBgWatchdog();
                 _persistBgState(true);
                 _preloadNextBgTrack();
 
                 if (!startFromBeginning) {
                     const applySeek = () => {
-                        const maxStart = Math.max(0, (audio.duration || 0) - 0.25);
+                        const dur = audio.duration || 0;
+                        // Drop a resume point too close to the end — it would seek
+                        // straight to `ended` and read as an instant skip.
+                        if (dur > 0 && dur - startAtSec < MIN_RESUME_REMAINING_SEC) return;
+                        const maxStart = Math.max(0, dur - 0.25);
                         try { audio.currentTime = Math.max(0, Math.min(startAtSec, maxStart)); } catch (e) {}
                     };
                     if (audio.readyState >= 1 && audio.duration) applySeek();
@@ -12910,18 +12987,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // Watchdog: if the field track never reaches `playing` (stalled buffer
+            // or a silently-rejected play) within BG_WATCHDOG_MS, try the next one
+            // rather than sitting in silence.
+            function _armBgWatchdog() {
+                _clearBgWatchdog();
+                _bgWatchdog = setTimeout(() => {
+                    _bgWatchdog = null;
+                    if (!settings.musicEnabled) return;
+                    if (bgAudio && (bgAudio.paused || bgAudio.readyState < 3)) {
+                        _bgConsecutiveErrors++;
+                        if (_bgConsecutiveErrors <= BG_MAX_CONSECUTIVE_ERRORS) _advanceBgTrack();
+                        else _armGestureRetry();
+                    }
+                }, BG_WATCHDOG_MS);
+            }
+            function _clearBgWatchdog() {
+                if (_bgWatchdog) { clearTimeout(_bgWatchdog); _bgWatchdog = null; }
+            }
+
             function _onBgEnded() {
+                _clearBgWatchdog();
                 _bgConsecutiveErrors = 0;
                 _advanceBgTrack();
             }
 
             function _onBgPlaying() {
+                _clearBgWatchdog();
                 _bgConsecutiveErrors = 0;
             }
 
             function _onBgError() {
+                _clearBgWatchdog();
                 _bgConsecutiveErrors++;
-                if (_bgConsecutiveErrors > BG_MAX_CONSECUTIVE_ERRORS) return;
+                if (_bgConsecutiveErrors > BG_MAX_CONSECUTIVE_ERRORS) { _armGestureRetry(); return; }
                 _advanceBgTrack();
             }
 
@@ -12936,7 +13035,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             function _onBgVisibilityChange() {
-                if (document.hidden) _persistBgState(true);
+                if (document.hidden) { _persistBgState(true); return; }
+                // Back in view: clear a prior give-up so a stalled/blocked field
+                // track can recover, and nudge playback if it had gone silent.
+                _bgConsecutiveErrors = 0;
+                if (settings.musicEnabled && (!bgAudio || bgAudio.paused || bgAudio.ended)) _resumeOrStartBg();
             }
 
             function _onBgPageHide() { _persistBgState(true); }
@@ -12944,7 +13047,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function _resumeOrStartBg() {
                 if (!settings.musicEnabled) return;
                 if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) {
-                    bgAudio.play().catch(() => {});
+                    _cancelFade(bgAudio);
+                    bgAudio.play().then(() => { _fade(bgAudio, _musicVol, MUSIC_FADE_MS); })
+                                  .catch(() => { _armGestureRetry(); });
+                    return;
+                }
+                // Field track is mid-duck (fading toward 0 but not yet paused) — e.g. a
+                // battle that ended before the duck finished. Reclaim it and fade back
+                // up instead of letting the pending duck pause it into silence.
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended && bgAudio._fadeTimer && bgAudio.volume < _musicVol) {
+                    _cancelFade(bgAudio);
+                    _fade(bgAudio, _musicVol, MUSIC_FADE_MS);
                     return;
                 }
                 if (bgAudio && !bgAudio.paused && !bgAudio.ended) return;
@@ -12985,10 +13098,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const VICTORY_STING = 'music/themes/victory.mp3';
             let _battleAudio = null;
             let _battleMood = null;
+            let _battleThemeStarting = false;
+
+            // Fade the field track down, then pause it — a seamless duck instead of
+            // a hard cut. Position is persisted at the pre-fade point so it resumes
+            // exactly where the player was.
+            function _duckFieldBg() {
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
+                    _persistBgState(true);
+                    const ducking = bgAudio;
+                    _fade(ducking, 0, MUSIC_FADE_MS, () => { try { ducking.pause(); } catch (e) {} });
+                }
+            }
 
             function _stopBattleAudio() {
                 if (_battleAudio) {
-                    try { _battleAudio.onended = null; _battleAudio.onerror = null; _battleAudio.pause(); } catch (e) {}
+                    try { _cancelFade(_battleAudio); _battleAudio.onended = null; _battleAudio.onerror = null; _battleAudio.pause(); } catch (e) {}
                     _battleAudio = null;
                 }
                 _battleMood = null;
@@ -13000,31 +13125,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const list = BATTLE_THEMES[mood] || BATTLE_THEMES.trainer;
                 if (!list || !list.length) return;
                 if (_battleMood === mood && _battleAudio && !_battleAudio.paused) return;
+                // Re-entrancy guard: a second call in the same tick (e.g. an intro
+                // path that threw then fell through to the splash) is a no-op, not
+                // a stop+restart that would clip the theme — the old "fast skip".
+                if (_battleThemeStarting && _battleMood === mood) return;
+                _battleThemeStarting = true;
                 _stopBattleAudio();
-                // Duck the field track: persist position, then pause so it can
-                // resume seamlessly once the battle ends.
-                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
-                    _persistBgState(true);
-                    try { bgAudio.pause(); } catch (e) {}
-                }
+                _battleMood = mood;
+                _duckFieldBg(); // crossfade the field track out
                 const src = list[Math.floor(Math.random() * list.length)];
                 try {
                     const a = new Audio(src);
                     a.loop = true;
-                    a.volume = _musicVol;
+                    a.volume = 0; // fade up
                     a.onerror = () => { if (_battleAudio === a) { _battleAudio = null; _battleMood = null; _resumeOrStartBg(); } };
                     _battleAudio = a;
-                    _battleMood = mood;
-                    a.play().catch(() => {});
-                } catch (e) { _battleAudio = null; _battleMood = null; }
+                    const _up = () => { _battleThemeStarting = false; if (_battleAudio === a) _fade(a, _musicVol, MUSIC_FADE_MS); };
+                    a.play().then(_up).catch(() => { _up(); });
+                } catch (e) { _battleAudio = null; _battleMood = null; _battleThemeStarting = false; }
             }
 
             function _endBattleTheme(won) {
                 const wasActive = !!(_battleAudio || _battleMood);
-                _stopBattleAudio();
-                if (!wasActive) return; // intro-less / wild battle — field BGM was never ducked
+                _battleThemeStarting = false;
+                if (!wasActive) { _stopBattleAudio(); return; } // wild/casual — field BGM was never ducked
                 if (won && settings.musicEnabled) {
                     // Victory fanfare over the (still-paused) field; field resumes when it ends.
+                    // Fade the battle theme out under the sting, then hard-stop it.
+                    const dying = _battleAudio;
+                    if (dying) _fade(dying, 0, Math.min(250, MUSIC_FADE_MS), () => { try { dying.pause(); } catch (e) {} });
+                    _battleAudio = null;
+                    _battleMood = null;
                     try {
                         const a = new Audio(VICTORY_STING);
                         a.loop = false;
@@ -13038,10 +13169,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         return;
                     } catch (e) {}
                 }
-                if (settings.musicEnabled) {
-                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
-                    else _resumeOrStartBg();
-                }
+                _stopBattleAudio();
+                if (settings.musicEnabled) _resumeOrStartBg();
             }
 
             // ── Character-creation theme ─────────────────────────────────
@@ -13061,7 +13190,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             function _stopIntroAudio() {
                 if (_introAudio) {
-                    try { _introAudio.onended = null; _introAudio.onerror = null; _introAudio.pause(); } catch (e) {}
+                    try { _cancelFade(_introAudio); _introAudio.onended = null; _introAudio.onerror = null; _introAudio.pause(); } catch (e) {}
                     _introAudio = null;
                 }
             }
@@ -13070,47 +13199,76 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!settings.musicEnabled) return;
                 if (_introAudio && !_introAudio.paused) return; // already rolling
                 _stopIntroAudio();
-                // Duck the field track: persist position, then pause so it resumes
-                // seamlessly once the creation theme ends or the player leaves.
-                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
-                    _persistBgState(true);
-                    try { bgAudio.pause(); } catch (e) {}
-                }
+                _duckFieldBg(); // crossfade the field track out
                 const src = INTRO_THEMES[Math.floor(Math.random() * INTRO_THEMES.length)];
                 try {
                     const a = new Audio(src);
-                    a.loop = false;
-                    a.volume = _musicVol;
+                    a.loop = false; // play-once: a long cover never traps the player in title music
+                    a.volume = 0; // fade up
                     const _resume = () => { if (_introAudio === a) { _introAudio = null; _resumeOrStartBg(); } };
                     a.onended = _resume;
                     a.onerror = _resume;
                     _introAudio = a;
-                    a.play().catch(() => {});
+                    a.play().then(() => { if (_introAudio === a) _fade(a, _musicVol, MUSIC_FADE_MS); })
+                            .catch(() => { if (_introAudio === a) _fade(a, _musicVol, MUSIC_FADE_MS); });
                 } catch (e) { _introAudio = null; }
             }
 
             function _endIntroTheme() {
                 const was = !!_introAudio;
                 _stopIntroAudio();
-                if (was && settings.musicEnabled) {
-                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
-                    else _resumeOrStartBg();
+                if (was && settings.musicEnabled) _resumeOrStartBg();
+            }
+
+            // ── SFX bus ──────────────────────────────────────────────────
+            // One-shot cue player with a voice cap, a tiny same-source dedupe
+            // window, and onended cleanup so transient Audio elements don't pile
+            // up during a busy turn (move clip + hit + cries layered over BGM).
+            // Cries deliberately bypass this — their fallback chain owns its own
+            // elements (see playCry). SFX_LEVELS centralizes the per-category mix;
+            // these are user-owned "feel" numbers, lifted out of the scattered
+            // inline literals so they can be retuned in one place.
+            const SFX_LEVELS = {
+                move:       0.75, // per-move PRSFX clip
+                type:       1.0,  // type-based fallback whoosh
+                miss:       0.35,
+                hit:        0.8,  // hit / hitStrong / hitWeak share one level
+                cry:        0.5,  // default cry level (per-call override wins)
+                faintCry:   0.4,  // slowed faint cry
+                faint:      0.7,  // faint thud SFX
+            };
+            const SFX_MAX_VOICES = 12;
+            const SFX_DEDUPE_MS = 25;
+            const _sfxActive = new Set();
+            const _sfxLastAt = Object.create(null);
+            function _playOneShot(src, vol, opts) {
+                if (!src) return null;
+                opts = opts || {};
+                const now = Date.now();
+                if (!opts.noDedupe) {
+                    // Collapse an accidental same-tick double-fire of the identical
+                    // cue (well under normal cue spacing, so gameplay is untouched).
+                    if (now - (_sfxLastAt[src] || 0) < SFX_DEDUPE_MS) return null;
+                    _sfxLastAt[src] = now;
                 }
+                if (_sfxActive.size >= SFX_MAX_VOICES) return null; // cap: drop, don't pile up
+                let a;
+                try { a = new Audio(src); } catch (e) { return null; }
+                a.volume = Math.max(0, Math.min(1, vol));
+                if (opts.playbackRate) a.playbackRate = opts.playbackRate;
+                _sfxActive.add(a);
+                const _done = () => { _sfxActive.delete(a); };
+                a.onended = _done;
+                a.onerror = _done;
+                a.play().catch(() => {});
+                return a;
             }
 
             return {
                 init() {
                     if (_bgStarted) return;
                     _bgStarted = true;
-                    const tryStart = () => {
-                        document.removeEventListener('click', tryStart, true);
-                        document.removeEventListener('keydown', tryStart, true);
-                        document.removeEventListener('touchstart', tryStart, true);
-                        _resumeOrStartBg();
-                    };
-                    document.addEventListener('click', tryStart, true);
-                    document.addEventListener('keydown', tryStart, true);
-                    document.addEventListener('touchstart', tryStart, true);
+                    _armGestureRetry(); // first gesture starts/resumes field BGM
                     document.addEventListener('visibilitychange', _onBgVisibilityChange);
                     window.addEventListener('pagehide', _onBgPageHide);
                 },
@@ -13120,10 +13278,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // (if any) and make sure the field BGM is rolling again so the
                     // hand-off into the game is uninterrupted.
                     _stopIntroAudio();
-                    if (settings.musicEnabled) {
-                        if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
-                        else _resumeOrStartBg();
-                    }
+                    if (settings.musicEnabled) _resumeOrStartBg();
                     _persistBgState(true);
                 },
 
@@ -13149,16 +13304,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
                     try { persistMiscSettings(); } catch (e) {}
                     if (settings.musicEnabled) {
-                        if (_introAudio) { _introAudio.play().catch(() => {}); }
-                        else if (_battleAudio) { _battleAudio.play().catch(() => {}); }
+                        if (_introAudio) { const a = _introAudio; _cancelFade(a); a.play().then(() => _fade(a, _musicVol, MUSIC_FADE_MS)).catch(() => {}); }
+                        else if (_battleAudio) { const a = _battleAudio; _cancelFade(a); a.play().then(() => _fade(a, _musicVol, MUSIC_FADE_MS)).catch(() => {}); }
                         else if (_battleMood && BATTLE_THEMES[_battleMood] && BATTLE_THEMES[_battleMood].length) { _playBattleTheme(_battleMood); }
                         else { _resumeOrStartBg(); }
                     } else {
-                        if (_introAudio) { try { _introAudio.pause(); } catch (e) {} }
-                        if (_battleAudio) { try { _battleAudio.pause(); } catch (e) {} }
+                        _clearBgWatchdog();
+                        if (_introAudio) { try { _cancelFade(_introAudio); _introAudio.pause(); } catch (e) {} }
+                        if (_battleAudio) { try { _cancelFade(_battleAudio); _battleAudio.pause(); } catch (e) {} }
                         if (bgAudio) {
                             _persistBgState(true);
-                            try { bgAudio.pause(); } catch (e) {}
+                            try { _cancelFade(bgAudio); bgAudio.pause(); } catch (e) {}
                         }
                     }
                 },
@@ -13171,10 +13327,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 setMusicVolume(val) {
                     _musicVol = val;
-                    if (bgAudio) bgAudio.volume = _musicVol;
+                    // A manual change always wins: cancel any in-flight fade, then
+                    // hard-set the live elements to the new level.
+                    if (bgAudio) { _cancelFade(bgAudio); bgAudio.volume = _musicVol; }
                     if (_nextBgAudio) _nextBgAudio.volume = _musicVol;
-                    if (_battleAudio) _battleAudio.volume = _musicVol;
-                    if (_introAudio) _introAudio.volume = _musicVol;
+                    if (_battleAudio) { _cancelFade(_battleAudio); _battleAudio.volume = _musicVol; }
+                    if (_introAudio) { _cancelFade(_introAudio); _introAudio.volume = _musicVol; }
                 },
 
                 setSoundVolume(val) {
@@ -13189,34 +13347,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const moveSfxList = (typeof MOVE_SFX_MAP !== 'undefined') && MOVE_SFX_MAP[move.name];
                     if (moveSfxList && moveSfxList.length) {
                         const delay = moveSfxList.length > 1 ? 120 : 0;
+                        // Multi-clip moves are intentionally staggered — skip dedupe so
+                        // a repeated clip in the list still fires on schedule.
                         moveSfxList.forEach((src, i) => {
-                            setTimeout(() => {
-                                const sfx = new Audio(src);
-                                sfx.volume = _soundVol * 0.75;
-                                sfx.play().catch(() => {});
-                            }, i * delay);
+                            setTimeout(() => _playOneShot(src, _soundVol * SFX_LEVELS.move, { noDedupe: true }), i * delay);
                         });
                     } else {
                         const src = move.cat === 'Status' ? TYPE_SOUNDS['__status'] : (TYPE_SOUNDS[move.type] || TYPE_SOUNDS['Normal']);
-                        const sfx = new Audio(src);
-                        sfx.volume = _soundVol;
-                        sfx.play().catch(() => {});
+                        _playOneShot(src, _soundVol * SFX_LEVELS.type);
                     }
                 },
                 playMissSound() {
                     if (!settings.soundEnabled) return;
-                    const sfx = new Audio('music/moves/normal.mp3');
-                    sfx.volume = _soundVol * 0.35;
-                    sfx.play().catch(() => {});
+                    _playOneShot('music/moves/normal.mp3', _soundVol * SFX_LEVELS.miss);
                 },
 
                 playUiSfx(key, volMult) {
                     if (!settings.soundEnabled) return;
-                    const src = UI_SFX[key];
-                    if (!src) return;
-                    const sfx = new Audio(src);
-                    sfx.volume = _soundVol * (volMult || 1);
-                    sfx.play().catch(() => {});
+                    _playOneShot(UI_SFX[key], _soundVol * (volMult || 1));
                 },
 
                 playHitSound(effectiveness) {
@@ -13224,16 +13372,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let key = 'hit';
                     if (effectiveness >= 2) key = 'hitStrong';
                     else if (effectiveness <= 0.5) key = 'hitWeak';
-                    const src = UI_SFX[key];
-                    if (!src) return;
-                    const sfx = new Audio(src);
-                    sfx.volume = _soundVol * 0.8;
-                    sfx.play().catch(() => {});
+                    _playOneShot(UI_SFX[key], _soundVol * SFX_LEVELS.hit);
                 },
 
                 playCry(pokemonName, volume, playbackRate) {
                     if (!settings.soundEnabled || !pokemonName) return;
-                    const vol = _soundVol * (volume || 0.5);
+                    const vol = _soundVol * (volume || SFX_LEVELS.cry);
                     // Walk the local-first fallback chain (exact forme → base species → CDN),
                     // advancing on each load error. cryCandidates() guarantees a vendored
                     // base-species cry sits ahead of the CDN, so formes stay audible offline.
@@ -13256,11 +13400,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!settings.soundEnabled || !pokemonName) return;
                     // playbackRate is threaded through the fallback chain so the slowed faint
                     // cry applies to whichever candidate actually plays (not just the first).
-                    this.playCry(pokemonName, 0.4, 0.65);
-                    setTimeout(() => this.playUiSfx('faint', 0.7), 300);
+                    this.playCry(pokemonName, SFX_LEVELS.faintCry, 0.65);
+                    setTimeout(() => this.playUiSfx('faint', SFX_LEVELS.faint), 300);
+                },
+
+                // Test-only hook: exposes the audio internals the jsdom suite drives
+                // (real playback is impossible headlessly). Mirrors window.__storyTest.
+                __test: {
+                    fade: (el, to, ms, done) => _fade(el, to, ms, done),
+                    startBgTrack: (idx, at) => _startBgTrack(idx, at),
+                    playBattleTheme: (m) => _playBattleTheme(m),
+                    endBattleTheme: (w) => _endBattleTheme(w),
+                    playOneShot: (src, vol, opts) => _playOneShot(src, vol, opts),
+                    pickRandomBgIdx: (ex) => _pickRandomBgIdx(ex),
+                    state: () => ({
+                        currentBgIdx: _currentBgIdx,
+                        bgAudio, battleAudio: _battleAudio, battleMood: _battleMood,
+                        introAudio: _introAudio, musicVol: _musicVol, soundVol: _soundVol,
+                        sfxActive: _sfxActive.size, battleThemeStarting: _battleThemeStarting,
+                    }),
+                    consts: { MUSIC_FADE_MS, MIN_RESUME_REMAINING_SEC, SFX_MAX_VOICES, SFX_DEDUPE_MS, SFX_LEVELS, BACKGROUND_TRACKS },
                 }
             };
         })();
+        // Mirror to window so cross-script readers and the jsdom test harness can
+        // reach the audio API (a top-level `const` is not a window property).
+        try { window.AudioSystem = AudioSystem; } catch (e) {}
 
         // === GIMMICK DATA ===
         const MEGA_STONE_MAP = {
@@ -23244,10 +23409,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.pActive.volatile.custapReady) { pPri += 0.5; state.pActive.volatile.custapReady = false; }
                     if (state.fActive.volatile.custapReady) { fPri += 0.5; state.fActive.volatile.custapReady = false; }
                     // Quick Claw: ~20% chance to move first in priority bracket
+                    const _toRng = storyAwareRng();
                     const _pItemActiveQC = state.magicRoom === 0 && !(state.pActive.volatile.embargo > 0) && state.pActive.ability !== "Klutz";
                     const _fItemActiveQC = state.magicRoom === 0 && !(state.fActive.volatile.embargo > 0) && state.fActive.ability !== "Klutz";
-                    if (_pItemActiveQC && state.pActive.item === "Quick Claw" && Math.random() < 0.2) { pPri += 0.4; logMsg(`${state.pActive.name}'s Quick Claw lets it move first!`, 'info'); }
-                    if (_fItemActiveQC && state.fActive.item === "Quick Claw" && Math.random() < 0.2) { fPri += 0.4; logMsg(`${state.fActive.name}'s Quick Claw lets it move first!`, 'info'); }
+                    if (_pItemActiveQC && state.pActive.item === "Quick Claw" && _toRng() < 0.2) { pPri += 0.4; logMsg(`${state.pActive.name}'s Quick Claw lets it move first!`, 'info'); }
+                    if (_fItemActiveQC && state.fActive.item === "Quick Claw" && _toRng() < 0.2) { fPri += 0.4; logMsg(`${state.fActive.name}'s Quick Claw lets it move first!`, 'info'); }
                     // Lagging Tail / Full Incense: forces holder to move last in bracket
                     if (_pItemActiveQC && (state.pActive.item === "Lagging Tail" || state.pActive.item === "Full Incense")) pPri -= 0.5;
                     if (_fItemActiveQC && (state.fActive.item === "Lagging Tail" || state.fActive.item === "Full Incense")) fPri -= 0.5;
@@ -23267,7 +23433,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Trick Room reverses speed order within same priority bracket
                         let tr = state.trickRoom > 0;
                         if (tr ? (fSpe < pSpe) : (fSpe > pSpe)) pGoesFirst = false;
-                        else if (fSpe === pSpe) pGoesFirst = Math.random() > 0.5;
+                        else if (fSpe === pSpe) pGoesFirst = _toRng() > 0.5;
                     }
 
                     if (pGoesFirst) { 
@@ -27583,7 +27749,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
                 clearAllGimmickIntent();
+                // Double-KO: both sides fall on the same tick. Play the foe cry now and
+                // stagger the player's so both are audible instead of only the foe's.
                 AudioSystem.playFaintCry(state.fActive.name);
+                const _pFaintName = state.pActive.name;
+                setTimeout(() => { try { AudioSystem.playFaintCry(_pFaintName); } catch (e) {} }, 220);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
@@ -28885,8 +29055,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 logMsg(`${mon.name} is confused!`, 'status');
                 mon.volatile.confusion--;
+                const _confSelfRng = storyAwareRng();
                 if (mon.volatile.confusion === 0) logMsg(`${mon.name} snapped out of confusion!`, 'info');
-                else if (Math.random() < 0.3333) {
+                else if (_confSelfRng() < 0.3333) {
                     // Confusion self-hit: 33% chance (Gen 7+ / modern VGC rule), 40 BP typeless physical
                     let dmg = Math.floor((Math.floor(Math.floor(22 * 40 * (mon.stats.atk / mon.stats.def)) / 50) + 2));
                     let actualDmg = Math.min(mon.currentHp, dmg);
@@ -29686,8 +29857,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _sg = (chance) => sereneGrace ? Math.min(100, chance * 2) : chance;
 
             // Tri Attack: 3-way status split (custom logic not representable in standard secondary schema)
-            if (move.name === "Tri Attack" && Math.random() * 100 < _sg(20)) {
-                let _tr = Math.floor(Math.random() * 3);
+            const _triRng = storyAwareRng();
+            if (move.name === "Tri Attack" && _triRng() * 100 < _sg(20)) {
+                let _tr = Math.floor(_triRng() * 3);
                 if (_tr === 0) applyStatus(defender, "BRN"); else if (_tr === 1) applyStatus(defender, "FRZ"); else applyStatus(defender, "PAR");
             }
 
@@ -30780,12 +30952,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _tr = state.trickRoom > 0;
                 if (_tr ? (_fs < _ps) : (_fs > _ps)) pFirst = false;
             } catch (e) {}
+            // A throw inside one side's residuals (weather, item heal, status tick,
+            // Leech Seed drain, etc.) must not skip the other side's residuals or
+            // mask the whole turn as "skipped". Run each independently; log faults
+            // rather than swallowing them silently so they stay diagnosable.
+            const _runEoT = (a, b) => {
+                try { endOfTurnEffects(a, b); }
+                catch (e) { try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {} }
+            };
             if (pFirst) {
-                endOfTurnEffects(state.pActive, state.fActive);
-                endOfTurnEffects(state.fActive, state.pActive);
+                _runEoT(state.pActive, state.fActive);
+                _runEoT(state.fActive, state.pActive);
             } else {
-                endOfTurnEffects(state.fActive, state.pActive);
-                endOfTurnEffects(state.pActive, state.fActive);
+                _runEoT(state.fActive, state.pActive);
+                _runEoT(state.pActive, state.fActive);
             }
         }
 
@@ -30913,7 +31093,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.status = null; mon.statusTurns = 0;
             }
             // Shed Skin: 33% chance per turn to cure a non-volatile status
-            if (mon.ability === "Shed Skin" && mon.status && mon.currentHp > 0 && Math.random() < 1/3) {
+            if (mon.ability === "Shed Skin" && mon.status && mon.currentHp > 0 && storyAwareRng()() < 1/3) {
                 logMsg(`${mon.name}'s Shed Skin cured its ${mon.status}!`, 'heal');
                 mon.status = null; mon.statusTurns = 0;
             }
@@ -58941,7 +59121,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             stoneToken:     'sprites/pokesprite/items/hard-stone.png',
             casinoChip500:  'sprites/pokesprite/items/ability-capsule.png',
         };
-        function _randPick(arr) { return arr[(Math.random() * arr.length) | 0]; }
+        // Casino RNG must flow through the seeded story stream so payouts are
+        // part of the deterministic replay (CLAUDE.md: never bare Math.random()
+        // for user-visible rolls). Falls back to Math.random() outside a run.
+        function _casinoRng() { return (typeof window.storyRngNext === 'function') ? window.storyRngNext() : Math.random(); }
+        function _randPick(arr) { return arr[(_casinoRng() * arr.length) | 0]; }
 
         // Returns null (no drop) or a bundle like { hpUp:1, rareCandy:1, ... }
         // plus a `_tier` tag for the popup ('small' | 'big' | 'jackpot').
@@ -58952,14 +59136,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let tier = null;
             if (m <= 4) {
                 // SMALL — 20% chance, single common vitamin.
-                if (Math.random() > 0.20) return null;
+                if (_casinoRng() > 0.20) return null;
                 tier = 'small';
                 bundle[_randPick(_CASINO_VITAMINS)] = 1;
             } else if (m <= 75) {
                 // BIG — 65% chance, mix of vitamins + occasional voucher.
-                if (Math.random() > 0.65) return null;
+                if (_casinoRng() > 0.65) return null;
                 tier = 'big';
-                const subroll = Math.random();
+                const subroll = _casinoRng();
                 if (subroll < 0.55) {
                     // 55%: 2 random vitamins (can stack same key)
                     for (let i = 0; i < 2; i++) {
@@ -58980,7 +59164,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 tier = 'jackpot';
                 const rareVouchers = ['rareCandy', 'vitamin', 'abilityCapsule', 'emblemHonor'];
                 const weights      = [   0.35,        0.30,         0.20,            0.15      ];
-                let r = Math.random(), picked = rareVouchers[0];
+                let r = _casinoRng(), picked = rareVouchers[0];
                 for (let i = 0; i < rareVouchers.length; i++) {
                     if (r < weights[i]) { picked = rareVouchers[i]; break; }
                     r -= weights[i];
@@ -59159,7 +59343,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const bet  = betTry.bet;
                 const pick = _casinoUI.flip.pick;
-                const win  = Math.random() < CASINO_FLIP_WIN_P;
+                const win  = _casinoRng() < CASINO_FLIP_WIN_P;
                 const coin = document.getElementById('story-casino-flip-coin');
                 // Debit bet up front, refund + payout on win.
                 sm.gold = Math.max(0, (sm.gold | 0) - bet);
@@ -59283,7 +59467,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // distribution itself defines the weights).
         function _slotsPickSymbol(reelIdx) {
             const strip = CASINO_SLOTS_REEL_STRIPS[reelIdx];
-            return strip[(Math.random() * strip.length) | 0];
+            return strip[(_casinoRng() * strip.length) | 0];
         }
 
         function _casinoSlotsRenderReel(reelIdx, finalSymbol) {
@@ -59723,7 +59907,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.gold = Math.max(0, have - totalStake);
                 _refreshCasinoGoldPill('down');
                 // Roll a winning cell uniformly.
-                const winIdx = (Math.random() * cells.length) | 0;
+                const winIdx = (_casinoRng() * cells.length) | 0;
                 const winCell = cells[winIdx];
                 const wheel = document.getElementById('story-casino-roul-wheel');
                 if (window.StoryFx) {
