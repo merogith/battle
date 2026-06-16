@@ -60944,10 +60944,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Evolution preserves identity — the starter that just evolved is still
             // the starter, the nickname carries over, and the stable slot id stays so
             // PC/Underground/Subject-Zero bookkeeping keeps pointing at the same mon.
-            // Spreading `mon` first then overriding name/build keeps every metadata
-            // flag (starter, unsellable, nickname, id, caughtAt, …) attached.
+            // Spreading `mon` first then overriding name/build keeps every SLOT-level
+            // field (starter, unsellable, nickname, id, caughtAt, AND the camp
+            // relationship counters `mon.bonds`) attached — evolution is the same
+            // Pokémon in a new form, so its earned camp bond must NOT reset. (The
+            // build-level carry-overs above — IVs/EVs/item/… — are explicit because
+            // makeBuild() re-rolls those onto evoBuild; bonds live on the slot, so the
+            // spread is what carries them.) The explicit re-assert below makes that
+            // guarantee impossible to drop in a future "build the slot fresh" refactor
+            // — the sibling prof-gift / catch-swap paths construct bare {name,build,id}
+            // slots, and copying that shape here would silently wipe the camp bond.
+            // Locked by tests/suites/bond-evolution-persistence.test.js.
             const _arr = found.where === 'team' ? sm.team : sm.pcBox;
-            _arr[found.index] = { ...mon, name: evoName, build: evoBuild };
+            const _evolved = { ...mon, name: evoName, build: evoBuild };
+            if (mon.bonds && typeof mon.bonds === 'object') _evolved.bonds = mon.bonds;
+            _arr[found.index] = _evolved;
             // Pokédex — evolving into a new species means the player now owns
             // that species, so it's both seen and caught (mainline behavior).
             // Shiny carries from the pre-evo via the identity carry-over block
