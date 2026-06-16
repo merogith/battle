@@ -3,14 +3,24 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
-// Pull the sanitizeBattleLogHtml function out of online-pvp.js by stubbing the
-// IIFE's environment and running just the relevant chunk. We don't load the
-// whole battle.html engine — this is a focused unit test on the sanitizer.
+// The real sanitizer is a DOM-based allowlist (see online-pvp.js): it parses
+// the HTML into an inert <template>, keeps only allowlisted tags, and drops
+// dangerous subtrees. To unit-test it we need (a) the module-scope constants
+// it closes over (_LOG_ALLOWED_TAGS / _LOG_DROP_SUBTREE / _LOG_CLASS_RE) and
+// (b) a real `global.document`, or the function takes its no-DOM strip-all
+// fallback instead of the allowlist path we mean to test.
+const _sanitizerDom = new JSDOM('<!doctype html><body></body>');
+global.document = _sanitizerDom.window.document;
+
 function loadSanitizer() {
   const src = readFileSync('online-pvp.js', 'utf8');
-  const start = src.indexOf('function sanitizeBattleLogHtml');
-  assert.ok(start > 0, 'sanitizeBattleLogHtml function present in online-pvp.js');
-  const end = src.indexOf('\n    }\n', start) + 6;
+  // Slice from the constant block (which the function references) through the
+  // end of the function, so the extracted chunk is self-contained.
+  const start = src.indexOf('const _LOG_ALLOWED_TAGS');
+  assert.ok(start > 0, 'sanitizer allowlist block present in online-pvp.js');
+  const fnStart = src.indexOf('function sanitizeBattleLogHtml', start);
+  assert.ok(fnStart > 0, 'sanitizeBattleLogHtml function present in online-pvp.js');
+  const end = src.indexOf('\n    }\n', fnStart) + 6;
   const fnSrc = src.slice(start, end);
   // eslint-disable-next-line no-new-func
   return new Function(`${fnSrc}\nreturn sanitizeBattleLogHtml;`)();
