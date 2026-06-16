@@ -30954,11 +30954,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             // A throw inside one side's residuals (weather, item heal, status tick,
             // Leech Seed drain, etc.) must not skip the other side's residuals or
-            // mask the whole turn as "skipped". Run each independently; log faults
-            // rather than swallowing them silently so they stay diagnosable.
+            // mask the whole turn as "skipped". Run each independently; record the
+            // fault (so it surfaces via window._lastTurnError in bug reports / tests,
+            // matching the playTurn _eotStep contract) rather than swallowing it to
+            // the console alone. No rethrow — the other side's residuals + the turn
+            // tail still run. The call routes through window.endOfTurnEffects when
+            // present (identical to the local fn in production; lets tests observe
+            // a thrown residual) and falls back to the local declaration.
             const _runEoT = (a, b) => {
-                try { endOfTurnEffects(a, b); }
-                catch (e) { try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {} }
+                try { (window.endOfTurnEffects || endOfTurnEffects)(a, b); }
+                catch (e) {
+                    try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {}
+                    try { window._lastTurnError = { step: 'residuals(speed order)', message: String(e && e.message || e), stack: String(e && e.stack || ''), at: Date.now() }; } catch (_e) {}
+                }
             };
             if (pFirst) {
                 _runEoT(state.pActive, state.fActive);
