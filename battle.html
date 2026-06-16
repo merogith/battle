@@ -2372,6 +2372,77 @@
         }
         .narr-tone-rival .story-dialog-box { border-color: #b25a1c !important; }
         .narr-tone-rival { box-shadow: inset 0 0 190px 50px rgba(150, 70, 12, 0.20); }
+        /* ── Narration cinematics (v30) — life & depth for _renderNarrativeOverlay.
+           Pure presentation: every class below is added to nodes AFTER mount, so
+           the synchronous text-content DOM contract the jsdom tests assert is
+           untouched. All motion is reduced-motion-gated in the block right after.
+           Vocabulary deliberately mirrors the tutorial overlay (storyTutorial*) and
+           storyfxMonIdle so narration reads consistently with the rest of the game. */
+        .story-narr-root {
+            /* Faint base vignette so flat-black classic (no-tone) scenes gain depth
+               without altering body-text colour. Tone classes layer their own wash
+               on top — this stays subtle enough not to double-darken. */
+            box-shadow: inset 0 0 220px 60px rgba(0, 0, 0, 0.45);
+        }
+        .story-narr-sprite {
+            animation: storyNarrSpriteIn 0.5s cubic-bezier(0.18,0.9,0.32,1.18) both;
+        }
+        /* Idle bob swapped in by JS once the spring entrance has settled. The
+           compound selector outranks the entrance rule above, so it takes over. */
+        .story-narr-sprite.story-narr-sprite-idle {
+            animation: storyfxMonIdle 2.4s ease-in-out infinite;
+        }
+        @keyframes storyNarrSpriteIn {
+            0%   { opacity: 0; transform: translate(-24px, 16px) scale(0.78); }
+            60%  { opacity: 1; transform: translate(0, -4px)     scale(1.04); }
+            100% { opacity: 1; transform: translate(0, 0)        scale(1); }
+        }
+        .story-narr-dialog-rise {
+            animation: storyNarrDialogIn 0.45s ease-out 0.12s both;
+        }
+        @keyframes storyNarrDialogIn {
+            0%   { opacity: 0; transform: translateY(10px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0)    scale(1); }
+        }
+        /* Iconic "▾" advance cue — surfaced by JS (_showAdvanceCue) only once the
+           body text is fully revealed and a tap will advance/close. Hidden while
+           the typewriter is mid-reveal and while a choice prompt is unanswered. */
+        .story-narr-advance {
+            display: none;
+            margin-top: 4px;
+            font-size: 16px; line-height: 1;
+            color: var(--sn-gold);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            animation: storyNarrAdvanceBlink 0.9s ease-in-out infinite;
+        }
+        .story-narr-advance.show { display: block; }
+        @keyframes storyNarrAdvanceBlink {
+            0%, 100% { opacity: 1; transform: translateY(0); }
+            50%      { opacity: 0.25; transform: translateY(2px); }
+        }
+        /* Very slow ken-burns drift, added by JS only when a backdrop image is
+           applied (flat-black scenes skip it). Animates the image layer (2nd of
+           the two background layers); the dark gradient layer stays put. */
+        .story-narr-kenburns {
+            animation: storyNarrKenBurns 18s ease-in-out infinite alternate;
+        }
+        @keyframes storyNarrKenBurns {
+            0%   { background-size: cover, 102%; background-position: center, 48% 50%; }
+            100% { background-size: cover, 107%; background-position: center, 52% 47%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            /* End-state == the visible state: sprite/dialog fully shown, backdrop
+               unscaled, advance cue static-but-visible when .show is set. */
+            .story-narr-sprite,
+            .story-narr-sprite.story-narr-sprite-idle,
+            .story-narr-dialog-rise,
+            .story-narr-advance,
+            .story-narr-kenburns { animation: none !important; }
+            .story-narr-kenburns {
+                background-size: cover, cover !important;
+                background-position: center, center !important;
+            }
+        }
         #screen-story-shop > .story-shop-stack > div:last-child,
         #screen-story-artifact-shop > .story-shop-stack > div:last-child,
         #screen-story-tutor > .story-shop-stack > div:last-child,
@@ -2853,9 +2924,22 @@
             60%  { opacity: 1; transform: translateY(0) scale(1.08); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+        /* Cinematics (v30): a soft warm spotlight that fades up behind the team —
+           the hall "lights up" for the roll call. Sits under the grid (z 0). */
+        .story-hof-spotlight {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+            background: radial-gradient(ellipse 62% 52% at 50% 42%,
+                rgba(255,236,170,0.22) 0%, rgba(255,236,170,0.08) 38%, rgba(255,236,170,0) 70%);
+            animation: storyHofSpotlightIn 1.1s ease-out 0.3s both;
+        }
+        @keyframes storyHofSpotlightIn {
+            0%   { opacity: 0; }
+            100% { opacity: 1; }
+        }
         @media (prefers-reduced-motion: reduce) {
             .story-hof-gba-panel { animation: none; }
             .story-hof-gba-cell img { animation: none; }
+            .story-hof-spotlight { animation: none; opacity: 1; }
         }
         .story-hof-gba-lower {
             position: relative;
@@ -39504,16 +39588,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sep = pad ? ' ' : '';
             return '<span class="story-gold-inline">' + storyGoldIconHtml() + sep + sign + raw + 'G</span>';
         }
-        function storySpawnConfetti(container, count) {
+        function storySpawnConfetti(container, count, spreadSec) {
             if (!container) return;
             container.innerHTML = '';
             const colors = ['#e53935','#fdd835','#43a047','#1e88e5','#8e24aa','#ffb300','#ec407a','#26a69a'];
             const n = Math.min(48, Math.max(8, count | 0));
+            // Optional wider delay envelope (default 0.9s) so a hero moment can read
+            // as a cascading wave rather than a single burst. Older callers omit it.
+            const spread = (typeof spreadSec === 'number' && spreadSec > 0) ? spreadSec : 0.9;
             for (let i = 0; i < n; i++) {
                 const s = document.createElement('span');
                 s.style.left = (Math.random() * 100) + '%';
                 s.style.background = colors[i % colors.length];
-                s.style.animationDelay = (Math.random() * 0.9) + 's';
+                s.style.animationDelay = (Math.random() * spread) + 's';
                 s.style.animationDuration = (2.2 + Math.random() * 1.4) + 's';
                 container.appendChild(s);
             }
@@ -51751,7 +51838,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!el) return;
             if (_narrMotionOff()) { el.style.opacity = '1'; return; }
             el.style.opacity = '0';
-            el.style.transition = 'opacity 0.24s ease';
+            // Cinematics (v30): the "premium" curve (matches the HoF panel) plus a
+            // slightly longer dissolve so beats melt into one another, not snap.
+            el.style.transition = 'opacity 0.28s cubic-bezier(0.16,0.84,0.34,1)';
             // Double-rAF so the 0→1 flip lands a frame after the paint that first
             // showed the element at 0 — guarantees the transition actually runs.
             requestAnimationFrame(function () {
@@ -51791,6 +51880,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const continueLabel = o.continueLabel || 'Continue →';
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
+            // Cinematics (v30): a faint base vignette on every overlay for depth.
+            // Tone classes (added next) layer their own wash on top of this.
+            ov.classList.add('story-narr-root');
             if (toneClass) String(toneClass).split(/\s+/).forEach(function (c) { if (c) ov.classList.add(c); });
             // Narration overhaul (v26): optional gen3 scene backdrop behind the
             // overlay. `backdropScene` is an explicit manifest.scenes key;
@@ -51809,6 +51901,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ov.style.backgroundPosition = 'center, center';
                         ov.style.backgroundRepeat = 'no-repeat, no-repeat';
                         ov.style.imageRendering = 'pixelated';
+                        // Cinematics (v30): a very slow ken-burns drift on the scene
+                        // art so backdrop scenes feel alive. Reduced-motion-gated in
+                        // CSS; flat-black (no backdrop) scenes never get this class.
+                        ov.classList.add('story-narr-kenburns');
                     }
                 }
             } catch (e) {}
@@ -51820,9 +51916,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _monSrc = '';
             try { if (o.monSprite) _monSrc = getSprite(o.monSprite, !!o.monShiny); } catch (e) {}
             const _spriteSrc = o.spriteSrc || _monSrc || (sprite ? getTrainerSprite({ spriteFile: sprite }) : '');
-            const _spriteClass = o.spriteClass || '';
+            // Cinematics (v30): always tag the speaker with .story-narr-sprite for
+            // the spring entrance + idle bob; any caller spriteClass rides alongside.
+            const _spriteClass = ('story-narr-sprite' + (o.spriteClass ? ' ' + o.spriteClass : '')).trim();
             const spriteHtml = _spriteSrc
-                ? `<img${_spriteClass ? ` class="${_esc(_spriteClass)}"` : ''} src="${_esc(_spriteSrc)}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
+                ? `<img class="${_esc(_spriteClass)}" src="${_esc(_spriteSrc)}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
                 : '';
             const bannerClass = o.bannerClass || '';
             // bannerParts {location, tod, sigil} renders a context line:
@@ -51871,7 +51969,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // P3 spriteSide: optional side-by-side speaker framing — the sprite
             // sits beside the dialog ('left'/'right') instead of stacked above.
             // Absent → the legacy stacked column, unchanged.
-            const _dialogHostHtml = `<div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
+            const _dialogHostHtml = `<div class="story-dialog-host story-narr-dialog-rise" style="margin-top:4px;max-width:560px;">
                     <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
                     <div class="story-dialog-box" data-narr-body="1">${linesHtml}</div>
                 </div>`;
@@ -51884,7 +51982,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.innerHTML = `
                 ${bannerHtml}
                 ${_bodyHtml}
-                ${choices.length ? choiceBtnsHtml : continueBtnHtml}`;
+                ${choices.length ? choiceBtnsHtml : continueBtnHtml}
+                <span class="story-narr-advance" aria-hidden="true" data-narr-advance="1">▾</span>`;
+            // Cinematics (v30): the iconic "tap to continue" arrow. Hidden by
+            // default; _showAdvanceCue surfaces it only once the body text is
+            // fully revealed and a tap will advance/close (see wiring below).
+            function _showAdvanceCue() {
+                try {
+                    const cue = ov.querySelector('[data-narr-advance="1"]');
+                    if (cue) cue.classList.add('show');
+                } catch (e) {}
+            }
             // Narration overhaul (v26): typewriter reveal. Active only when
             // opts.typewriter is set, there are no choice buttons, and the user
             // has not requested reduced motion. While typing, the first tap
@@ -51912,6 +52020,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _wantsTypewriter = _twPref && !choices.length && lines.length > 0
                 && !(window.StoryFx && typeof window.StoryFx.isReducedMotion === 'function' && window.StoryFx.isReducedMotion());
             ov.__startTypewriter = function () {
+                // Cinematics (v30): once the spring entrance has settled (~0.5s),
+                // hand the speaker sprite over to a gentle idle bob. Motion-gated;
+                // a no-sprite overlay simply finds nothing to animate.
+                if (!_narrMotionOff()) {
+                    try {
+                        setTimeout(function () {
+                            if (dismissed) return;
+                            const _sp = ov.querySelector('.story-narr-sprite');
+                            if (_sp) _sp.classList.add('story-narr-sprite-idle');
+                        }, 560);
+                    } catch (e) {}
+                }
+                // Advance cue: when nothing is pending (no typewriter, no staged
+                // reveal, no choice prompt) the full text is already on screen, so
+                // surface the "tap to continue" arrow immediately.
+                if (!_wantsTypewriter && !_revealMode && !choices.length) _showAdvanceCue();
                 if (!_wantsTypewriter) return;
                 // Defer to rAF: fires before first paint in a real browser (so the
                 // clear+reveal is seamless), but does NOT run inside a synchronous
@@ -51933,6 +52057,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     full.forEach(f => { f.el.innerHTML = f.html; });
                     _twTyping = false;
                     _skipTypewriter = null;
+                    // Text is now fully on screen (natural completion or a skip
+                    // tap) — surface the advance cue. The next tap dismisses.
+                    _showAdvanceCue();
                 };
                 const tick = function () {
                     if (!_twTyping) return;
@@ -51960,7 +52087,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // can close — a tap never skips an unread beat.
                 if (_revealMode) {
                     const _nxt = ov.querySelector('.story-narr-line-hidden');
-                    if (_nxt) { _nxt.classList.remove('story-narr-line-hidden'); return; }
+                    if (_nxt) {
+                        _nxt.classList.remove('story-narr-line-hidden');
+                        // Once the final staged line is surfaced, the beat is fully
+                        // read — show the advance cue so the next tap can close it.
+                        if (!ov.querySelector('.story-narr-line-hidden')) _showAdvanceCue();
+                        return;
+                    }
                 }
                 dismissed = true;
                 if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
@@ -51983,9 +52116,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     try {
                         ov.style.pointerEvents = 'none';
-                        ov.style.transition = 'opacity 0.2s ease';
+                        ov.style.transition = 'opacity 0.26s cubic-bezier(0.16,0.84,0.34,1)';
                         ov.style.opacity = '0';
-                        setTimeout(function () { try { ov.remove(); } catch (e2) {} }, 220);
+                        setTimeout(function () { try { ov.remove(); } catch (e2) {} }, 280);
                     } catch (e) { try { ov.remove(); } catch (e2) {} }
                 }
                 // Release the queue lock BEFORE onDone so a sequential
@@ -52041,6 +52174,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             choiceWrap.outerHTML = continueBtnHtml;
                             const newBtn = ov.querySelector('button[data-narr-continue="1"]');
                             if (newBtn) newBtn.onclick = function (e2) { e2.stopPropagation(); dismiss(); };
+                            // The pick is made and its reply is on screen — the
+                            // single Continue is now the only action, so cue it.
+                            _showAdvanceCue();
                         }
                     };
                 });
@@ -61642,6 +61778,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             conf.className = 'story-fx-confetti';
             conf.setAttribute('aria-hidden', 'true');
             stage.appendChild(conf);
+            // Cinematics (v30): warm spotlight behind the team (under the grid).
+            const spotlight = document.createElement('div');
+            spotlight.className = 'story-hof-spotlight';
+            spotlight.setAttribute('aria-hidden', 'true');
+            stage.appendChild(spotlight);
             const stripe = document.createElement('div');
             stripe.className = 'story-hof-gba-stripe';
             stripe.setAttribute('aria-hidden', 'true');
@@ -61737,7 +61878,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.body.appendChild(ov);
 
             if (myTok === window._storyHofToken) {
-                try { storySpawnConfetti(conf, 40); } catch (e) { /* */ }
+                // Cinematics (v30): a wider delay envelope so the confetti reads as
+                // a cascading wave rather than a single burst.
+                try { storySpawnConfetti(conf, 40, 1.8); } catch (e) { /* */ }
+                // ...and one triumphant chime as the hall lights up. StoryFx.playSfx
+                // already respects the sound setting, so no extra guard is needed.
+                try {
+                    if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') {
+                        window.StoryFx.playSfx('achv', 0.7);
+                    }
+                } catch (e) { /* */ }
             }
 
             save();
