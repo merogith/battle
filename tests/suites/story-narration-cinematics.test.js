@@ -128,6 +128,14 @@ test('a reduced-motion block disables the narration cinematics animations', () =
   assert.match(SRC, /\.story-narr-advance\.show \{ display: block; \}/, 'cue remains visible when shown');
 });
 
+test('the advance arrow does not trap clicks (taps fall through to dismiss)', () => {
+  // The arrow is decorative; the overlay root dismisses only when e.target is the
+  // root, so the arrow must be pointer-events:none or a tap on it would dead-zone.
+  const rule = SRC.match(/\.story-narr-advance \{[\s\S]*?\}/);
+  assert.ok(rule, '.story-narr-advance rule present');
+  assert.match(rule[0], /pointer-events:\s*none/, 'arrow lets taps fall through to the overlay');
+});
+
 test('the new narration keyframes are defined', () => {
   ['storyNarrSpriteIn', 'storyNarrDialogIn', 'storyNarrAdvanceBlink', 'storyNarrKenBurns']
     .forEach(k => assert.ok(SRC.includes('@keyframes ' + k), `@keyframes ${k} defined`));
