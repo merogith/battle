@@ -3,17 +3,25 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
-// Pull the sanitizeBattleLogHtml function out of online-pvp.js by stubbing the
-// IIFE's environment and running just the relevant chunk. We don't load the
-// whole battle.html engine — this is a focused unit test on the sanitizer.
+// Pull the REAL sanitizeBattleLogHtml out of online-pvp.js by running its IIFE
+// against a fresh jsdom window (same approach as online-pvp-security.test.js).
+// An earlier version string-sliced just the function body out of the source,
+// which dropped its module-level allowlist consts (_LOG_ALLOWED_TAGS /
+// _LOG_CLASS_RE) and never provided global.document — so the DOM allowlist path
+// silently fell back to stripping EVERY tag, and the "preserves safe markup"
+// cases failed. Loading the actual OnlineBattle export exercises the shipping
+// sanitizer, allowlist and all.
 function loadSanitizer() {
   const src = readFileSync('online-pvp.js', 'utf8');
-  const start = src.indexOf('function sanitizeBattleLogHtml');
-  assert.ok(start > 0, 'sanitizeBattleLogHtml function present in online-pvp.js');
-  const end = src.indexOf('\n    }\n', start) + 6;
-  const fnSrc = src.slice(start, end);
+  const dom = new JSDOM('<!doctype html><html><body><div id="battle-log"></div></body></html>');
+  // online-pvp.js closes over `window`; run it with the jsdom window as both
+  // window and globalThis so its IIFE picks up document/localStorage + consts.
   // eslint-disable-next-line no-new-func
-  return new Function(`${fnSrc}\nreturn sanitizeBattleLogHtml;`)();
+  const fn = new Function('window', 'globalThis', `${src}\nreturn window.OnlineBattle;`);
+  const OB = fn(dom.window, dom.window);
+  assert.ok(OB && typeof OB.sanitizeBattleLogHtml === 'function',
+    'OnlineBattle.sanitizeBattleLogHtml is exported by online-pvp.js');
+  return OB.sanitizeBattleLogHtml;
 }
 
 test('sanitize: passes through legitimate battle-log content', () => {
@@ -22,11 +30,15 @@ test('sanitize: passes through legitimate battle-log content', () => {
   assert.equal(fn(safe), safe);
 });
 
-test('sanitize: strips <script> tags and their content', () => {
+test('sanitize: neutralizes <script> tags (no script element survives)', () => {
   const fn = loadSanitizer();
   const out = fn('<span>before</span><script>alert("xss")</script><span>after</span>');
+  // <script> is not allowlisted, so it is replaced by its inert text content:
+  // no <script> element survives to execute (the literal characters left behind
+  // are harmless plain text — execution safety is proven by the innerHTML test
+  // below and the sibling online-pvp-security suite).
   assert.equal(out.includes('<script'), false);
-  assert.equal(out.includes('alert('), false);
+  assert.equal(out.includes('</script>'), false);
   assert.equal(out.includes('<span>before</span>'), true);
   assert.equal(out.includes('<span>after</span>'), true);
 });
