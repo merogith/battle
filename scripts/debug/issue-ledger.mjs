@@ -60,6 +60,15 @@ function collectFindings() {
   return all;
 }
 
+// A finding is "retired" once its status transitions away from open/in-progress.
+// Retired findings are excluded from the active ledger counts and listed in a
+// separate section, so resolving an issue (fixed-/wontfix-/duplicate-/obsolete)
+// actually removes it from the headline P0..P3 totals.
+function isRetired(meta) {
+  const s = String(meta.status || 'open').toLowerCase().trim();
+  return /^(fixed|wontfix|duplicate|resolved|obsolete)/.test(s);
+}
+
 function dedupe(blocks) {
   const byPrint = new Map();
   for (const b of blocks) {
@@ -103,7 +112,7 @@ function renderYaml(meta) {
   return lines.join('\n');
 }
 
-function render(blocks) {
+function render(blocks, retired = []) {
   const ts = new Date().toISOString();
   const sevCounts = { P0: 0, P1: 0, P2: 0, P3: 0 };
   for (const b of blocks) sevCounts[b.meta.severity] = (sevCounts[b.meta.severity] || 0) + 1;
@@ -163,6 +172,19 @@ function render(blocks) {
     out.push('---');
     out.push('');
   }
+
+  if (retired.length) {
+    out.push('## Retired / Resolved');
+    out.push('');
+    out.push(`_${retired.length} finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._`);
+    out.push('');
+    const sorted = [...retired].sort((a, b) => String(a.meta.anchor_symbol || '').localeCompare(String(b.meta.anchor_symbol || '')));
+    for (const b of sorted) {
+      const title = extractTitle(b.body) || b.meta.anchor_symbol || '(no title)';
+      out.push(`- [${b.meta.status}] ${title} — \`${b.meta.anchor_symbol}\` (${b.meta.severity}/${b.meta.category})`);
+    }
+    out.push('');
+  }
   return out.join('\n');
 }
 
@@ -174,10 +196,12 @@ function extractTitle(body) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const blocks = collectFindings();
   const deduped = dedupe(blocks);
-  assignIds(deduped);
-  const md = render(deduped);
+  const active = deduped.filter(b => !isRetired(b.meta));
+  const retired = deduped.filter(b => isRetired(b.meta));
+  assignIds(active);
+  const md = render(active, retired);
   writeFileSync(LEDGER_PATH, md);
-  console.log(`[issue-ledger] wrote ${LEDGER_PATH} — ${deduped.length} unique findings (${blocks.length} raw)`);
+  console.log(`[issue-ledger] wrote ${LEDGER_PATH} — ${active.length} active findings, ${retired.length} retired (${blocks.length} raw)`);
 }
 
 export { collectFindings, dedupe, assignIds, render };
