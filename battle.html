@@ -23156,10 +23156,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.pActive.volatile.custapReady) { pPri += 0.5; state.pActive.volatile.custapReady = false; }
                     if (state.fActive.volatile.custapReady) { fPri += 0.5; state.fActive.volatile.custapReady = false; }
                     // Quick Claw: ~20% chance to move first in priority bracket
+                    const _toRng = storyAwareRng();
                     const _pItemActiveQC = state.magicRoom === 0 && !(state.pActive.volatile.embargo > 0) && state.pActive.ability !== "Klutz";
                     const _fItemActiveQC = state.magicRoom === 0 && !(state.fActive.volatile.embargo > 0) && state.fActive.ability !== "Klutz";
-                    if (_pItemActiveQC && state.pActive.item === "Quick Claw" && Math.random() < 0.2) { pPri += 0.4; logMsg(`${state.pActive.name}'s Quick Claw lets it move first!`, 'info'); }
-                    if (_fItemActiveQC && state.fActive.item === "Quick Claw" && Math.random() < 0.2) { fPri += 0.4; logMsg(`${state.fActive.name}'s Quick Claw lets it move first!`, 'info'); }
+                    if (_pItemActiveQC && state.pActive.item === "Quick Claw" && _toRng() < 0.2) { pPri += 0.4; logMsg(`${state.pActive.name}'s Quick Claw lets it move first!`, 'info'); }
+                    if (_fItemActiveQC && state.fActive.item === "Quick Claw" && _toRng() < 0.2) { fPri += 0.4; logMsg(`${state.fActive.name}'s Quick Claw lets it move first!`, 'info'); }
                     // Lagging Tail / Full Incense: forces holder to move last in bracket
                     if (_pItemActiveQC && (state.pActive.item === "Lagging Tail" || state.pActive.item === "Full Incense")) pPri -= 0.5;
                     if (_fItemActiveQC && (state.fActive.item === "Lagging Tail" || state.fActive.item === "Full Incense")) fPri -= 0.5;
@@ -23179,7 +23180,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Trick Room reverses speed order within same priority bracket
                         let tr = state.trickRoom > 0;
                         if (tr ? (fSpe < pSpe) : (fSpe > pSpe)) pGoesFirst = false;
-                        else if (fSpe === pSpe) pGoesFirst = Math.random() > 0.5;
+                        else if (fSpe === pSpe) pGoesFirst = _toRng() > 0.5;
                     }
 
                     if (pGoesFirst) { 
@@ -28797,8 +28798,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 logMsg(`${mon.name} is confused!`, 'status');
                 mon.volatile.confusion--;
+                const _confSelfRng = storyAwareRng();
                 if (mon.volatile.confusion === 0) logMsg(`${mon.name} snapped out of confusion!`, 'info');
-                else if (Math.random() < 0.3333) {
+                else if (_confSelfRng() < 0.3333) {
                     // Confusion self-hit: 33% chance (Gen 7+ / modern VGC rule), 40 BP typeless physical
                     let dmg = Math.floor((Math.floor(Math.floor(22 * 40 * (mon.stats.atk / mon.stats.def)) / 50) + 2));
                     let actualDmg = Math.min(mon.currentHp, dmg);
@@ -29598,8 +29600,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _sg = (chance) => sereneGrace ? Math.min(100, chance * 2) : chance;
 
             // Tri Attack: 3-way status split (custom logic not representable in standard secondary schema)
-            if (move.name === "Tri Attack" && Math.random() * 100 < _sg(20)) {
-                let _tr = Math.floor(Math.random() * 3);
+            const _triRng = storyAwareRng();
+            if (move.name === "Tri Attack" && _triRng() * 100 < _sg(20)) {
+                let _tr = Math.floor(_triRng() * 3);
                 if (_tr === 0) applyStatus(defender, "BRN"); else if (_tr === 1) applyStatus(defender, "FRZ"); else applyStatus(defender, "PAR");
             }
 
@@ -30692,12 +30695,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _tr = state.trickRoom > 0;
                 if (_tr ? (_fs < _ps) : (_fs > _ps)) pFirst = false;
             } catch (e) {}
+            // A throw inside one side's residuals (weather, item heal, status tick,
+            // Leech Seed drain, etc.) must not skip the other side's residuals or
+            // mask the whole turn as "skipped". Run each independently; log faults
+            // rather than swallowing them silently so they stay diagnosable.
+            const _runEoT = (a, b) => {
+                try { endOfTurnEffects(a, b); }
+                catch (e) { try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {} }
+            };
             if (pFirst) {
-                endOfTurnEffects(state.pActive, state.fActive);
-                endOfTurnEffects(state.fActive, state.pActive);
+                _runEoT(state.pActive, state.fActive);
+                _runEoT(state.fActive, state.pActive);
             } else {
-                endOfTurnEffects(state.fActive, state.pActive);
-                endOfTurnEffects(state.pActive, state.fActive);
+                _runEoT(state.fActive, state.pActive);
+                _runEoT(state.pActive, state.fActive);
             }
         }
 
@@ -30825,7 +30836,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.status = null; mon.statusTurns = 0;
             }
             // Shed Skin: 33% chance per turn to cure a non-volatile status
-            if (mon.ability === "Shed Skin" && mon.status && mon.currentHp > 0 && Math.random() < 1/3) {
+            if (mon.ability === "Shed Skin" && mon.status && mon.currentHp > 0 && storyAwareRng()() < 1/3) {
                 logMsg(`${mon.name}'s Shed Skin cured its ${mon.status}!`, 'heal');
                 mon.status = null; mon.statusTurns = 0;
             }
