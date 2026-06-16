@@ -11,10 +11,27 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { loadEngine } from '../helpers/load-engine.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const SRC = readFileSync(join(ROOT, 'battle.html'), 'utf8');
 
 const eng = await loadEngine();
 const W = eng.window;
+
+test('double-KO plays BOTH faint cries (foe immediately, player staggered)', () => {
+    // Source-level: the simultaneous-faint branch is deep in the battle loop and
+    // can't be driven headlessly, so lock the fix at the source.
+    const i = SRC.indexOf('if (foeFainted && playerFainted) {');
+    assert.ok(i >= 0, 'simultaneous-faint branch present');
+    const block = SRC.slice(i, i + 900);
+    assert.match(block, /playFaintCry\(state\.fActive\.name\)/, 'foe faint cry');
+    assert.match(block, /_pFaintName\s*=\s*state\.pActive\.name/, 'player name captured');
+    assert.match(block, /setTimeout\([^;]*playFaintCry\(_pFaintName\)/s, 'player faint cry staggered');
+});
 
 // ── Fake Audio ────────────────────────────────────────────────────────────────
 // Minimal HTMLAudioElement stand-in. play() resolves immediately and simulates the

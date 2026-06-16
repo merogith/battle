@@ -27552,7 +27552,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
                 clearAllGimmickIntent();
+                // Double-KO: both sides fall on the same tick. Play the foe cry now and
+                // stagger the player's so both are audible instead of only the foe's.
                 AudioSystem.playFaintCry(state.fActive.name);
+                const _pFaintName = state.pActive.name;
+                setTimeout(() => { try { AudioSystem.playFaintCry(_pFaintName); } catch (e) {} }, 220);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
