@@ -7521,9 +7521,19 @@
             cursor: pointer;
         }
         .menu-mode-btn--pve { border-color: var(--hp-green); color: #a5d6a7; }
+        .menu-mode-btn--gaunt { border-color: #ffd700; color: #ffd700; }
         .menu-mode-btn--pvp { border-color: #81d4fa; color: #81d4fa; }
         .menu-mode-btn--onlineh { border-color: #4fc3f7; color: #4fc3f7; }
         .menu-mode-btn--onlinej { border-color: #81d4fa; color: #b3e5fc; }
+        .menu-mode-btn--lb { border-color: #9e9e9e; color: #bdbdbd; }
+        .menu-mode-grid .menu-mode-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; line-height: 1.2; }
+        .menu-mode-title { font-size: 14px; font-weight: bold; }
+        .menu-mode-sub { font-size: 10px; font-weight: normal; opacity: 0.72; text-transform: none; letter-spacing: 0; }
+        .menu-secondary-head {
+            font-size: 12px; color: var(--accent); font-weight: bold;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            text-align: center; margin: 18px auto 6px; opacity: 0.85;
+        }
         .menu-story-row { width: 100%; max-width: 400px; margin: 12px auto 0; }
         .menu-story-row .menu-story-btn {
             width: 100%;
@@ -8971,14 +8981,32 @@
 
             <button type="button" class="menu-btn-quickplay menu-btn-quickplay--story" onclick="window.StoryMode && window.StoryMode.showMenu()">&#9670; Story Mode</button>
             <!-- Collection moved into the Story Mode page (removed from the home screen per spec). -->
-            <!-- Other play modes (vs AI / Local PvP / Online / Gauntlet) are paused for development.
-                 The reveal toggle below is hidden but kept in the DOM — un-hide it to bring them back. -->
-            <button type="button" class="menu-customize-toggle" id="menu-customize-toggle" aria-expanded="false" aria-controls="menu-customize-panel" onclick="window.menuToggleCustomize && window.menuToggleCustomize()" hidden style="display:none;">
-                <span>Other play modes &amp; draft rules</span><span class="chev" aria-hidden="true">▼</span>
-            </button>
         </div>
+
+        <!-- Quick Play & Multiplayer — secondary fast-play / vs-friend modes.
+             Story Mode (above) stays the headline mode; everything here is quick play + multiplayer. -->
+        <div class="menu-secondary-head">Quick Play &amp; Multiplayer</div>
+        <button type="button" class="menu-customize-toggle" id="menu-customize-toggle" aria-expanded="false" aria-controls="menu-customize-panel" onclick="window.menuToggleCustomize && window.menuToggleCustomize()">
+            <span>&#9881; Battle Options — teams, rules &amp; bot difficulty</span><span class="chev" aria-hidden="true">▼</span>
+        </button>
         <div id="menu-customize-panel" class="menu-customize-panel white-outline" hidden>
-            <div class="menu-section-title">Generations in pool</div>
+            <div class="menu-section-title">Quick Battle</div>
+            <div class="menu-filter-row" style="font-size:11px; gap:16px; justify-content:center;">
+                <label style="display:flex; align-items:center; gap:6px;"><span style="color:#aaa;">Teams</span>
+                    <select id="quick-team-source" onchange="window.persistQuickBattlePrefs && window.persistQuickBattlePrefs()" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:12px; cursor:pointer;">
+                        <option value="random" selected>Random (instant)</option>
+                        <option value="draft">Draft my own</option>
+                    </select>
+                </label>
+                <label style="display:flex; align-items:center; gap:6px;"><span style="color:#aaa;">Bot</span>
+                    <select id="menu-ai-profile" onchange="window.setMenuAiProfile && window.setMenuAiProfile(this.value)" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:12px; cursor:pointer;">
+                        <option value="balanced">Balanced</option>
+                        <option value="aggro">Aggressive</option>
+                        <option value="stall">Stall-aware</option>
+                    </select>
+                </label>
+            </div>
+            <div class="menu-section-title" style="margin-top:14px;">Generations in pool</div>
             <div class="menu-filter-row">
                 <label><input type="checkbox" id="draft-gen-cb-1" checked onchange="window.updatePoolCount()"><span>G1</span></label>
                 <label><input type="checkbox" id="draft-gen-cb-2" checked onchange="window.updatePoolCount()"><span>G2</span></label>
@@ -8994,7 +9022,8 @@
                 <button type="button" onclick="window.toggleDraftGenAll(true)">All gens</button>
                 <button type="button" onclick="window.toggleDraftGenClear()">Gen 1 only</button>
             </div>
-            <p id="gen-range-note" style="font-size:10px; color:#666; margin:8px 0 0; text-align:center;">Pokémon from Gen 1–2 in pool</p>
+            <p id="pool-count-display" style="font-size:11px; color:#9ccc65; margin:8px 0 0; text-align:center; font-weight:bold;"></p>
+            <p id="gen-range-note" style="font-size:10px; color:#666; margin:4px 0 0; text-align:center;">Pokémon from Gen 1–2 in pool</p>
             <div class="grade-filter-row menu-filter-row" style="margin-top:12px;">
                 <span style="font-size:11px; color:#aaa;">Grades:</span>
                 <label><input type="checkbox" id="grade-1-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-1">G1</span></label>
@@ -9008,6 +9037,13 @@
                 <label><input type="checkbox" id="smart-draft-cb" checked onchange="window.updateMechanics()"><span style="color:#4db6ac;">&#x1F9E0; Smart Pool</span></label>
                 <label title="Gauntlet rounds get progressively harder"><input type="checkbox" id="gauntlet-scaling-cb" checked onchange="window.updateMechanics()"><span style="color:#ffb74d;">&#x1F525; Gauntlet Scaling</span></label>
             </div>
+            <div class="menu-filter-row" style="margin-top:10px;">
+                <span style="font-size:11px; color:#aaa;">Gimmicks:</span>
+                <label><input type="checkbox" id="mech-mega-cb" checked onchange="window.updateMechanics()"><span style="color:#ce93d8;">Mega</span></label>
+                <label><input type="checkbox" id="mech-z-cb" checked onchange="window.updateMechanics()"><span style="color:#fff176;">Z</span></label>
+                <label><input type="checkbox" id="mech-dyna-cb" checked onchange="window.updateMechanics()"><span style="color:#ef5350;">Dyna</span></label>
+                <label><input type="checkbox" id="mech-tera-cb" checked onchange="window.updateMechanics()"><span style="color:#4dd0e1;">Tera</span></label>
+            </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
                 <span style="color:#aaa;">Party:</span>
                 <select id="party-size-select" onchange="window.updateMechanics()" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:12px; cursor:pointer;">
@@ -9020,31 +9056,34 @@
                 </select>
             </div>
         </div>
-        <div class="menu-options menu-mode-wrap" id="menu-other-modes-wrap" hidden style="flex-direction:column; align-items:center; gap:12px; margin-top:8px; padding-bottom:24px;">
+        <div class="menu-options menu-mode-wrap" id="menu-other-modes-wrap" style="flex-direction:column; align-items:center; gap:12px; margin-top:10px; padding-bottom:24px;">
             <div class="menu-mode-grid">
-                <button type="button" class="menu-mode-btn menu-mode-btn--pve" onclick="window.initDraft('pve')">vs AI</button>
-                <button type="button" class="menu-mode-btn menu-mode-btn--pvp" onclick="window.initDraft('pvp')">Local PvP</button>
-                <button type="button" class="menu-mode-btn menu-mode-btn--onlineh" onclick="window.openOnlineHostModal && window.openOnlineHostModal()">Online Host</button>
-                <button type="button" class="menu-mode-btn menu-mode-btn--onlinej" onclick="window.openOnlineJoinModal && window.openOnlineJoinModal()">Online Join</button>
+                <button type="button" class="menu-mode-btn menu-mode-btn--pve" onclick="window.startQuickBattle && window.startQuickBattle()">
+                    <span class="menu-mode-title">Quick Battle</span><span class="menu-mode-sub">Fast match vs a bot</span>
+                </button>
+                <button type="button" class="menu-mode-btn menu-mode-btn--gaunt" onclick="window.initDraft('gauntlet')">
+                    <span class="menu-mode-title">Gauntlet</span><span class="menu-mode-sub">Endless survival ladder</span>
+                </button>
+                <button type="button" class="menu-mode-btn menu-mode-btn--pvp" onclick="window.initDraft('pvp')">
+                    <span class="menu-mode-title">Local PvP</span><span class="menu-mode-sub">Two players, one device</span>
+                </button>
+                <button type="button" class="menu-mode-btn menu-mode-btn--onlineh" onclick="window.openOnlineHostModal && window.openOnlineHostModal()">
+                    <span class="menu-mode-title">Online Host</span><span class="menu-mode-sub">Create a room</span>
+                </button>
+                <button type="button" class="menu-mode-btn menu-mode-btn--onlinej" onclick="window.openOnlineJoinModal && window.openOnlineJoinModal()">
+                    <span class="menu-mode-title">Online Join</span><span class="menu-mode-sub">Enter a room code</span>
+                </button>
+                <button type="button" class="menu-mode-btn menu-mode-btn--lb" onclick="window.openGauntletLeaderboardModal && window.openGauntletLeaderboardModal()">
+                    <span class="menu-mode-title">Leaderboard</span><span class="menu-mode-sub">Top Gauntlet runs</span>
+                </button>
             </div>
             <p id="online-setup-hint" class="hidden" style="max-width:340px;margin:0 12px;padding:10px 12px;font-size:11px;line-height:1.45;color:#aaa;text-align:center;border:1px solid #444;border-radius:6px;background:#121212;">
                 <strong style="color:#4fc3f7;">Online PvP is off</strong> until you add a free Supabase backend (GitHub Pages cannot host it). Steps:
                 (1) Create a project at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color:#81d4fa;">supabase.com</a>
-                (2) SQL Editor → run <code style="font-size:10px;color:#ccc;">supabase/migrations/001_online_pvp.sql</code> then <code style="font-size:10px;color:#ccc;">002_gauntlet_leaderboard.sql</code>
+                (2) SQL Editor → run <code style="font-size:10px;color:#ccc;">001_online_pvp.sql</code>, <code style="font-size:10px;color:#ccc;">002</code>…<code style="font-size:10px;color:#ccc;">006_online_pvp_rls_harden.sql</code> in order
                 (3) Database → Publications → <code style="font-size:10px;">supabase_realtime</code> → enable table <code style="font-size:10px;">pvp_rooms</code>
                 (4) Project Settings → API → copy URL + <code style="font-size:10px;">anon</code> key into <code style="font-size:10px;">online-config.js</code> in your repo → push to GitHub. Then reload this page.
             </p>
-            <div class="menu-gauntlet-row" style="width:100%;max-width:400px;">
-                <button type="button" class="menu-gauntlet-main" onclick="window.initDraft('gauntlet')" style="border-color: #ffd700; color: #ffd700;">Gauntlet Mode</button>
-                <button type="button" class="menu-gauntlet-lb" onclick="window.openGauntletLeaderboardModal && window.openGauntletLeaderboardModal()" title="Leaderboard" aria-label="Open Gauntlet leaderboard">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-                        <rect x="4" y="11" width="5" height="11" rx="1" fill="currentColor"/>
-                        <rect x="9.5" y="7" width="5" height="15" rx="1" fill="currentColor"/>
-                        <rect x="15" y="3" width="5" height="19" rx="1" fill="currentColor"/>
-                        <rect x="2" y="22" width="20" height="2" rx="0.5" fill="currentColor" fill-opacity="0.4"/>
-                    </svg>
-                </button>
-            </div>
         </div>
     </div>
 
@@ -9119,7 +9158,7 @@
             <div class="settings-section-title">Gameplay</div>
             <div class="settings-row" style="border-bottom:1px solid #444;">
                 <span>vs AI style</span>
-                <select id="setting-ai-profile" onchange="settings.aiProfile=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-ai-profile" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="balanced">Balanced</option>
                     <option value="aggro">Aggressive</option>
                     <option value="stall">Stall-aware</option>
@@ -10347,18 +10386,18 @@
             }, 320);
         };
         window.menuToggleCustomize = function() {
+            // Modes are always visible now; this toggle only expands/collapses the
+            // Battle Options panel (teams, rules, bot difficulty).
             const p = document.getElementById('menu-customize-panel');
             const t = document.getElementById('menu-customize-toggle');
-            const m = document.getElementById('menu-other-modes-wrap');
             if (!p || !t) return;
             const open = p.hasAttribute('hidden');
             if (open) {
                 p.removeAttribute('hidden');
-                if (m) { m.removeAttribute('hidden'); m.style.display = 'flex'; }
                 t.setAttribute('aria-expanded', 'true');
+                try { window.updatePoolCount && window.updatePoolCount(); } catch (e) {}
             } else {
                 p.setAttribute('hidden', '');
-                if (m) { m.setAttribute('hidden', ''); m.style.display = 'none'; }
                 t.setAttribute('aria-expanded', 'false');
             }
         };
@@ -12428,6 +12467,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         });
 
         let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+            quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
@@ -12516,6 +12556,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
             if (typeof _pbs.allowDoublesBuilds === 'boolean') settings.allowDoublesBuilds = _pbs.allowDoublesBuilds;
             if (typeof _pbs.allowExoticFormats === 'boolean') settings.allowExoticFormats = _pbs.allowExoticFormats;
+            if (_pbs.quickTeamSource === 'random' || _pbs.quickTeamSource === 'draft') settings.quickTeamSource = _pbs.quickTeamSource;
+            if (_pbs.mechanics && typeof _pbs.mechanics === 'object') {
+                if (typeof _pbs.mechanics.mega === 'boolean') settings.mechanics.mega = _pbs.mechanics.mega;
+                if (typeof _pbs.mechanics.zmove === 'boolean') settings.mechanics.zmove = _pbs.mechanics.zmove;
+                if (typeof _pbs.mechanics.dynamax === 'boolean') settings.mechanics.dynamax = _pbs.mechanics.dynamax;
+                if (typeof _pbs.mechanics.tera === 'boolean') settings.mechanics.tera = _pbs.mechanics.tera;
+            }
             // Audio + visual toggles now persist too (previously reset every reload).
             if (typeof _pbs.animations === 'boolean') settings.animations = _pbs.animations;
             if (typeof _pbs.musicEnabled === 'boolean') settings.musicEnabled = _pbs.musicEnabled;
@@ -12539,6 +12586,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     gimmickAnimSpeed: settings.gimmickAnimSpeed,
                     allowDoublesBuilds: settings.allowDoublesBuilds,
                     allowExoticFormats: settings.allowExoticFormats,
+                    quickTeamSource: settings.quickTeamSource,
+                    mechanics: {
+                        mega: settings.mechanics.mega, zmove: settings.mechanics.zmove,
+                        dynamax: settings.mechanics.dynamax, tera: settings.mechanics.tera
+                    },
                     // Audio + visual prefs (persist so they survive a reload).
                     animations: settings.animations,
                     musicEnabled: settings.musicEnabled,
@@ -17142,16 +17194,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sdCb) settings.smartDraftPool = sdCb.checked;
             const gsCb = document.getElementById('gauntlet-scaling-cb');
             if (gsCb) settings.gauntletProgressiveDifficulty = gsCb.checked;
+            const mmCb = document.getElementById('mech-mega-cb');   if (mmCb) settings.mechanics.mega    = mmCb.checked;
+            const mzCb = document.getElementById('mech-z-cb');      if (mzCb) settings.mechanics.zmove   = mzCb.checked;
+            const mdCb = document.getElementById('mech-dyna-cb');   if (mdCb) settings.mechanics.dynamax = mdCb.checked;
+            const mtCb = document.getElementById('mech-tera-cb');   if (mtCb) settings.mechanics.tera    = mtCb.checked;
             settings.partySize         = parseInt(document.getElementById('party-size-select')?.value) || 3;
             persistMiscSettings();
+            try { window.updatePoolCount && window.updatePoolCount(); } catch (e) {}
             try { applyBattleLayoutMode(); } catch (e) {}
         };
-        // Restore smart-draft checkbox from persisted setting
+        // Quick Battle prefs: team source select (+ mirror to settings).
+        window.persistQuickBattlePrefs = function() {
+            const ts = document.getElementById('quick-team-source');
+            if (ts && (ts.value === 'random' || ts.value === 'draft')) settings.quickTeamSource = ts.value;
+            persistMiscSettings();
+        };
+        // Bot-difficulty select shared between the menu Battle Options and the in-game settings sheet.
+        window.setMenuAiProfile = function(val) {
+            if (val === 'aggro' || val === 'balanced' || val === 'stall') settings.aiProfile = val;
+            persistMiscSettings();
+            const a = document.getElementById('setting-ai-profile'); if (a) a.value = settings.aiProfile;
+            const b = document.getElementById('menu-ai-profile');    if (b) b.value = settings.aiProfile;
+        };
+        // Restore Battle Options controls from persisted settings
         (function() {
             const cb = document.getElementById('smart-draft-cb');
             if (cb) cb.checked = settings.smartDraftPool !== false;
             const gs = document.getElementById('gauntlet-scaling-cb');
             if (gs) gs.checked = settings.gauntletProgressiveDifficulty !== false;
+            const mm = document.getElementById('mech-mega-cb');  if (mm) mm.checked = settings.mechanics.mega !== false;
+            const mz = document.getElementById('mech-z-cb');     if (mz) mz.checked = settings.mechanics.zmove !== false;
+            const md = document.getElementById('mech-dyna-cb');  if (md) md.checked = settings.mechanics.dynamax !== false;
+            const mt = document.getElementById('mech-tera-cb');  if (mt) mt.checked = settings.mechanics.tera !== false;
+            const ts = document.getElementById('quick-team-source'); if (ts) ts.value = settings.quickTeamSource || 'random';
+            const ap = document.getElementById('menu-ai-profile');   if (ap) ap.value = settings.aiProfile || 'balanced';
+            const ps = document.getElementById('party-size-select'); if (ps && settings.partySize) ps.value = String(settings.partySize);
         })();
 
         // Run once after data loads
@@ -17376,6 +17453,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let { enabledGens, minGen, maxGen, p1Pool, p2Pool } = pools;
             state = { mode: mode, draftTurn: 1, score: 0, enabledGens, minGen, maxGen, p1Pool, p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
             renderDraft();
+        };
+
+        // Quick Battle: a fast single match vs the bot. Honours the "Teams" option in
+        // Battle Options — 'draft' falls through to the normal draft screen, 'random'
+        // (default) auto-builds legal random teams for both sides and jumps straight to
+        // the battle, skipping the draft entirely. Reuses the same pool builder as initDraft.
+        window.startQuickBattle = async function() {
+            if (settings.quickTeamSource === 'draft') { return window.initDraft('pve'); }
+            document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+            const draftScreen = document.getElementById('screen-draft');
+            if (draftScreen) { draftScreen.classList.remove('hidden'); showDraftSkeleton(); }
+            try { window.runScreenTransition('slide'); } catch (e) {}
+            const pools = await buildDraftPoolsForCurrentSettings('pve');
+            const { enabledGens, minGen, maxGen, p1Pool, p2Pool } = pools;
+            const n = Math.max(1, settings.partySize | 0) || 3;
+            const p1Draft = shuffleInPlace([...p1Pool]).slice(0, n);
+            const p2Draft = shuffleInPlace([...p2Pool]).slice(0, n);
+            state = {
+                mode: 'pve', draftTurn: 1, score: 0,
+                enabledGens, minGen, maxGen,
+                p1Pool: p1Pool.filter(i => !p1Draft.includes(i)),
+                p2Pool: p2Pool.filter(i => !p2Draft.includes(i)),
+                p1Draft, p2Draft, playerParty: [], foeParty: [],
+                pActive: null, fActive: null,
+                isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false,
+                weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null,
+                pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
+                fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
+                currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0
+            };
+            await startBattle();
         };
 
         function mergeOnlineDraftFromPayload(d) {
