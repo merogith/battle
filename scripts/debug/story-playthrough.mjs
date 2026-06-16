@@ -41,7 +41,6 @@ const flag = (name, def) => {
 };
 const REAL_BATTLES = Number(flag('real-battles', '0'));
 const MAX_ITERS = Number(flag('max-iters', '400'));
-const SHOT_EVERY = argv.includes('--shot-every');
 
 mkdirSync(SHOTS, { recursive: true });
 mkdirSync(OUTDIR, { recursive: true });
@@ -198,7 +197,7 @@ async function main() {
       for (const a of anomalies) {
         record('bug', `dom.${a.kind}`, `"${a.text}" in <${a.where}>`, { label, ...(ctx || {}) });
       }
-      if (SHOT_EVERY || true) await shot(label);
+      await shot(label);
     };
 
     // Evaluate-based click: matches the first VISIBLE button/clickable whose text

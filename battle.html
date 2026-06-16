@@ -23590,7 +23590,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!attacker.volatile.lockMove) {
                     const nm = lockingMovesSet.has(baseNm) ? baseNm : move.name;
                     attacker.volatile.lockMove = nm;
-                    attacker.volatile.lockTurns = 1 + Math.floor(Math.random() * 2);
+                    const _lockRng = storyAwareRng();
+                    attacker.volatile.lockTurns = 1 + Math.floor(_lockRng() * 2);
                 } else if (lockingMovesSet.has(attacker.volatile.lockMove)) {
                     attacker.volatile.lockTurns--;
                     if (attacker.volatile.lockTurns <= 0) {
@@ -23703,6 +23704,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
             if (attacker.currentHp <= 0) return;
+            // Seeded RNG for this action's NON-damage rolls (protect chains, contact-ability
+            // procs, phazing target picks, infatuation/secondary procs). Damage/crit/accuracy
+            // rolls deliberately still use Math.random() pending a separate review. storyAwareRng
+            // returns storyRngNext in a seeded story battle, else Math.random (quick play / PvP).
+            const _fxRng = storyAwareRng();
             // Per-turn safety net for the item-effect / ability-effect drift that bit story-mode
             // mons after Dojo / catch / evolve flows: keep the attacker's item + ability locked
             // to the saved build whenever no in-battle effect has mutated them. Without this an
@@ -24012,7 +24018,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _stBanned = new Set(["Sleep Talk","Assist","Beak Blast","Belch","Bide","Celebrate","Chatter","Copycat","Dig","Dive","Dynamax Cannon","Electro Shot","Fly","Bounce","Phantom Force","Shadow Force","Focus Punch","Freeze Shock","Geomancy","Hold Hands","Ice Burn","Me First","Meteor Beam","Metronome","Mimic","Mirror Move","Nature Power","Razor Wind","Shell Trap","Sketch","Skull Bash","Sky Attack","Sky Drop","Solar Beam","Solar Blade"]);
                 let validMoves = attacker.moves.filter(m => !_stBanned.has(m.name));
                 if (validMoves.length === 0) { logMsg("But it failed!"); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
-                let sleepTalkPick = validMoves[Math.floor(Math.random() * validMoves.length)];
+                let sleepTalkPick = validMoves[Math.floor(_fxRng() * validMoves.length)];
                 logMsg(`${attacker.name} used Sleep Talk and called ${sleepTalkPick.name}!`);
                 // Sleep Talk: deduct PP from Sleep Talk itself, NOT from the called move
                 let sleepTalkMove = attacker.moves.find(m => m.name === "Sleep Talk");
@@ -24217,7 +24223,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let bannedMetronome = new Set(["Metronome","Struggle","After You","Assist","Baneful Bunker","Beak Blast","Belch","Bestow","Chatter","Cobweb","Copycat","Counter","Covet","Destiny Bond","Detect","Endure","Feint","Focus Punch","Follow Me","Helping Hand","Hold Hands","King's Shield","Mat Block","Me First","Mimic","Mirror Coat","Mirror Move","Nature Power","Protect","Rage Powder","Sketch","Sleep Talk","Snatch","Spiky Shield","Silk Trap","Obstruct","Burning Bulwark","Spotlight","Thief","Transform"]);
                 let metronomePool = Object.keys(movesDB).filter(mn => !bannedMetronome.has(mn));
                 if (metronomePool.length > 0) {
-                    let chosenName = metronomePool[Math.floor(Math.random() * metronomePool.length)];
+                    let chosenName = metronomePool[Math.floor(_fxRng() * metronomePool.length)];
                     let chosenMove = { ...ensureMoveData(chosenName), name: chosenName };
                     logMsg(`${attacker.name} waggled a finger... and called ${chosenName}!`, 'info');
                     await sleep(600);
@@ -24262,7 +24268,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === INFATUATION CHECK (Attract / Cute Charm) — 50% chance to skip ===
             if (attacker.volatile.infatuated) {
                 logMsg(`${attacker.name} is in love and can't move!`, 'info');
-                if (Math.random() < 0.5) {
+                if (_fxRng() < 0.5) {
                     logMsg(`${attacker.name} is immobilized by love!`, 'info');
                     abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
@@ -24418,7 +24424,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Max Guard: functions like Protect (same 1/3^n chain rate as other protect variants)
             if (move.isMaxGuard) {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount || 0);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true;
                     attacker.volatile.maxGuard = true; // Max Guard blocks Max Moves; regular Protect does not
                     attacker.volatile.protectCount = (attacker.volatile.protectCount || 0) + 1;
@@ -24432,7 +24438,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Protect" || move.name === "Detect") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected itself!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24443,7 +24449,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Endure") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.endure = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} braced itself!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24454,7 +24460,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Spiky Shield") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.spikyShield = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected itself with Spiky Shield!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24465,7 +24471,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "King's Shield") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.kingShield = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} took a defensive stance!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24476,7 +24482,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Baneful Bunker") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.banefulBunker = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} hunkered down!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24487,7 +24493,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Silk Trap") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.silkTrap = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected itself with a silk trap!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24498,7 +24504,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Obstruct") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.obstruct = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} obstructed the attack!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24509,7 +24515,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Burning Bulwark") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.burningBulwark = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} raised a burning bulwark!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24521,7 +24527,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Wide Guard: blocks spread damaging moves only (not generic Protect)
             if (move.name === "Wide Guard") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.wideGuard = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected its team with Wide Guard!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -24533,7 +24539,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Quick Guard: blocks incoming increased-priority damaging moves
             if (move.name === "Quick Guard") {
                 let successRate = Math.pow(1/3, attacker.volatile.protectCount);
-                if (Math.random() < successRate) {
+                if (_fxRng() < successRate) {
                     attacker.volatile.quickGuard = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected its team with Quick Guard!`); AudioSystem.playMoveSound(move);
                 } else {
@@ -26240,7 +26246,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${defender.name} hung on using its Focus Sash!`, 'info');
                 }
                 // Focus Band: 10% chance to survive any KO hit at 1 HP (not consumed)
-                else if (defender.item === "Focus Band" && damage >= defender.currentHp && _sashHitsRealHp && Math.random() < 0.1 && state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz") {
+                else if (defender.item === "Focus Band" && damage >= defender.currentHp && _sashHitsRealHp && _fxRng() < 0.1 && state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz") {
                     damage = defender.currentHp - 1;
                     logMsg(`${defender.name} hung on using its Focus Band!`, 'info');
                 }
@@ -26369,7 +26375,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Data-driven self stat-stage changes (same handler as single-hit path).
                     if (move.self && move.self.boosts && !sheerForceActive) {
                         const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
-                        if (Math.random() * 100 < _selfChance) {
+                        if (_fxRng() * 100 < _selfChance) {
                             Object.entries(move.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
                             updateUI();
                         }
@@ -26388,17 +26394,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _mhContactStatus = _mhContact && !(attacker.ability === "Sheer Force" && move._sheerForceBoosted);
                         for (let _ch = 0; _ch < hitsLanded && !hitSub && defender.currentHp > 0 && attacker.currentHp > 0; _ch++) {
                             if (_mhContactStatus) {
-                                if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
-                                if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
-                                if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
-                                if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious" && attacker.ability !== "Aroma Veil" && defender.ability !== "Aroma Veil") {
+                                if (defender.ability === "Static" && _fxRng() < 0.3) applyStatus(attacker, "PAR");
+                                if (defender.ability === "Poison Point" && _fxRng() < 0.3) applyStatus(attacker, "PSN");
+                                if (defender.ability === "Flame Body" && _fxRng() < 0.3) applyStatus(attacker, "BRN");
+                                if (defender.ability === "Cute Charm" && _fxRng() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious" && attacker.ability !== "Aroma Veil" && defender.ability !== "Aroma Veil") {
                                     attacker.volatile.infatuated = true; logMsg(`${attacker.name} fell in love from Cute Charm!`, 'status');
                                 }
                                 if (defender.ability === "Effect Spore" && attacker.type1 !== "Grass" && attacker.type2 !== "Grass" && attacker.ability !== "Overcoat" && attacker.item !== "Safety Goggles") {
-                                    let _es = Math.random() * 100;
+                                    let _es = _fxRng() * 100;
                                     if (_es < 9) applyStatus(attacker, "PSN"); else if (_es < 19) applyStatus(attacker, "PAR"); else if (_es < 30) applyStatus(attacker, "SLP");
                                 }
-                                if (attacker.ability === "Poison Touch" && Math.random() < 0.3) applyStatus(defender, "PSN");
+                                if (attacker.ability === "Poison Touch" && _fxRng() < 0.3) applyStatus(defender, "PSN");
                             }
                             if (_mhContact && attacker.currentHp > 0) {
                                 if ((defender.ability === "Gooey" || defender.ability === "Tangling Hair")) {
@@ -26416,7 +26422,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             }
                             // King's Rock / Razor Fang: 10% flinch per damaging hit
                             if (_mhAtkIA && (attacker.item === "King's Rock" || attacker.item === "Razor Fang") && defender.currentHp > 0
-                                && defender.ability !== "Shield Dust" && defender.ability !== "Inner Focus" && defender.item !== "Covert Cloak" && Math.random() < 0.1) {
+                                && defender.ability !== "Shield Dust" && defender.ability !== "Inner Focus" && defender.item !== "Covert Cloak" && _fxRng() < 0.1) {
                                 defender.volatile.flinch = true;
                             }
                         }
@@ -26755,31 +26761,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     && attacker.ability !== "Long Reach"
                     && attacker.item !== "Protective Pads"
                     && !(attacker.ability === "Sheer Force" && move._sheerForceBoosted)) {
-                    if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
-                    if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
-                    if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
-                    if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious" && attacker.ability !== "Aroma Veil" && defender.ability !== "Aroma Veil") {
+                    if (defender.ability === "Static" && _fxRng() < 0.3) applyStatus(attacker, "PAR");
+                    if (defender.ability === "Poison Point" && _fxRng() < 0.3) applyStatus(attacker, "PSN");
+                    if (defender.ability === "Flame Body" && _fxRng() < 0.3) applyStatus(attacker, "BRN");
+                    if (defender.ability === "Cute Charm" && _fxRng() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious" && attacker.ability !== "Aroma Veil" && defender.ability !== "Aroma Veil") {
                         attacker.volatile.infatuated = true;
                         logMsg(`${attacker.name} fell in love from Cute Charm!`, 'status');
                     }
                     // Effect Spore: 9% poison / 10% paralyze / 11% sleep (Gen 5+ canonical distribution).
                     // Grass types, Overcoat, and Safety Goggles are immune.
                     if (defender.ability === "Effect Spore" && attacker.type1 !== "Grass" && attacker.type2 !== "Grass" && attacker.ability !== "Overcoat" && attacker.item !== "Safety Goggles") {
-                        let roll = Math.random() * 100;
+                        let roll = _fxRng() * 100;
                         if (roll < 9) applyStatus(attacker, "PSN");
                         else if (roll < 19) applyStatus(attacker, "PAR");
                         else if (roll < 30) applyStatus(attacker, "SLP");
                     }
-                    if (attacker.ability === "Poison Touch" && Math.random() < 0.3) applyStatus(defender, "PSN");
+                    if (attacker.ability === "Poison Touch" && _fxRng() < 0.3) applyStatus(defender, "PSN");
                 }
                 // Toxic Chain: 30% chance to badly poison on any damaging hit (not just contact); blocked by Sub/Shield Dust
-                if (attacker.ability === "Toxic Chain" && move.cat !== "Status" && !hitSub && defender.currentHp > 0 && !defender.status && defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak" && Math.random() < 0.3) {
+                if (attacker.ability === "Toxic Chain" && move.cat !== "Status" && !hitSub && defender.currentHp > 0 && !defender.status && defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak" && _fxRng() < 0.3) {
                     applyStatus(defender, "TOX");
                 }
                 // On-hit defender reactive abilities: gated on any damaging move (not just Physical).
                 // Inner clauses still gate themselves on contact / type / crit / HP-cross as appropriate.
                 if (move.cat !== "Status" && !hitSub && defender.currentHp > 0) {
-                    if (defender.ability === "Cursed Body" && Math.random() < 0.3 && move.name) {
+                    if (defender.ability === "Cursed Body" && _fxRng() < 0.3 && move.name) {
                         attacker.volatile.disabled = move.name; attacker.volatile.disabledTurns = 4;
                         logMsg(`${attacker.name}'s ${move.name} was disabled by Cursed Body!`, 'status');
                     }
@@ -26832,7 +26838,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         && move.cat !== "Status" && defender.currentHp > 0
                         && defender.ability !== "Shield Dust" && defender.ability !== "Inner Focus"
                         && defender.item !== "Covert Cloak"
-                        && Math.random() < 0.1) {
+                        && _fxRng() < 0.1) {
                         defender.volatile.flinch = true;
                     }
                     // Justified (defender): Dark-type hit raises Atk +1
@@ -26917,7 +26923,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             let _woParty = isPlayer ? state.foeParty : state.playerParty;
                             let _woBench = _woParty.filter(m => m.currentHp > 0 && m !== defender);
                             if (_woBench.length > 0) {
-                                let _woNew = _woBench[Math.floor(Math.random() * _woBench.length)];
+                                let _woNew = _woBench[Math.floor(_fxRng() * _woBench.length)];
                                 logMsg(`${defender.name}'s ${defender.ability} activated! It fled to safety!`, 'info');
                                 if (isPlayer) { clearVolatileOnSwitch(state.fActive); state.fActive = _woNew; state.fActive.turnCount = 0; applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); }
                                 else { clearVolatileOnSwitch(state.pActive); state.pActive = _woNew; state.pActive.turnCount = 0; applySwitchInAbilities(state.pActive, state.fActive); applyEntryHazards(state.pActive, true); }
@@ -27069,7 +27075,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         attacker.volatile.focusEnergy = (attacker.volatile.focusEnergy || 0) + _ripen(attacker, 2);
                     } else if (_stolen === "Starf Berry") {
                         const _ss = ['atk','def','spa','spd','spe'];
-                        changeStage(attacker, _ss[Math.floor(Math.random()*_ss.length)], _ripen(attacker, 2));
+                        changeStage(attacker, _ss[Math.floor(_fxRng()*_ss.length)], _ripen(attacker, 2));
                     } else if (_stolen === "Lum Berry" && attacker.status) { attacker.status = null; attacker.statusTurns = 0; logMsg(`${attacker.name}'s status was cured!`, 'heal'); }
                     else if (_stolen === "Cheri Berry" && attacker.status === "PAR") { attacker.status = null; logMsg(`${attacker.name}'s paralysis was cured!`, 'heal'); }
                     else if (_stolen === "Chesto Berry" && attacker.status === "SLP") { attacker.status = null; attacker.statusTurns = 0; logMsg(`${attacker.name} woke up!`, 'heal'); }
@@ -27211,7 +27217,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let party = isPlayer ? state.playerParty : state.foeParty;
                     let bench = party.filter(m => m.currentHp > 0 && m !== attacker);
                     if (bench.length > 0) {
-                        let newMon = bench[Math.floor(Math.random() * bench.length)];
+                        let newMon = bench[Math.floor(_fxRng() * bench.length)];
                         logMsg(`${defender.name}'s Red Card ejected ${attacker.name}!`, 'info');
                         if (isPlayer) { clearVolatileOnSwitch(state.pActive); state.pActive = newMon; state.pActive.turnCount = 0; applySwitchInAbilities(state.pActive, state.fActive); applyEntryHazards(state.pActive, true); }
                         else { clearVolatileOnSwitch(state.fActive); state.fActive = newMon; state.fActive.turnCount = 0; applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); }
@@ -27223,7 +27229,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let party = isPlayer ? state.foeParty : state.playerParty;
                     let bench = party.filter(m => m.currentHp > 0 && m !== defender);
                     if (bench.length > 0) {
-                        let newMon = bench[Math.floor(Math.random() * bench.length)];
+                        let newMon = bench[Math.floor(_fxRng() * bench.length)];
                         logMsg(`${defender.name}'s Eject Button activated!`, 'info');
                         if (isPlayer) { clearVolatileOnSwitch(state.fActive); state.fActive = newMon; state.fActive.turnCount = 0; applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); }
                         else { clearVolatileOnSwitch(state.pActive); state.pActive = newMon; state.pActive.turnCount = 0; applySwitchInAbilities(state.pActive, state.fActive); applyEntryHazards(state.pActive, true); }
@@ -27275,7 +27281,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _foeParty = isPlayer ? state.foeParty : state.playerParty;
                         const _foeBench = _foeParty.filter(m => m.currentHp > 0 && m !== defender);
                         if (_foeBench.length > 0) {
-                            const _newMon = _foeBench[Math.floor(Math.random() * _foeBench.length)];
+                            const _newMon = _foeBench[Math.floor(_fxRng() * _foeBench.length)];
                             clearVolatileOnSwitch(defender);
                             logMsg(`${defender.name} was forced out!`, 'info');
                             if (isPlayer) {
@@ -27329,7 +27335,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.cat !== "Status" && move.self && move.self.boosts
                 && !(typeof sheerForceActive !== 'undefined' && sheerForceActive)) {
                 const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
-                if (Math.random() * 100 < _selfChance) {
+                if (_fxRng() * 100 < _selfChance) {
                     Object.entries(move.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
                     updateUI();
                 }
@@ -27380,7 +27386,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (defender.currentHp > 0 && !defender.status) applyStatus(defender, "PAR");
                         break;
                     case "G-Max Stun Shock":
-                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, Math.random() < 0.5 ? "PAR" : "PSN");
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, _fxRng() < 0.5 ? "PAR" : "PSN");
                         break;
                     case "G-Max Malodor":
                         if (defender.currentHp > 0 && !defender.status) applyStatus(defender, "PSN");
@@ -27908,7 +27914,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
                 const _ss = ['atk','def','spa','spd','spe'];
-                changeStage(mon, _ss[Math.floor(Math.random()*_ss.length)], _ripen(mon, 2), false, { bypassStagnation: true });
+                changeStage(mon, _ss[Math.floor(storyAwareRng()()*_ss.length)], _ripen(mon, 2), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Starf Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Starf Berry"); return;
             }
@@ -28258,7 +28264,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (bp === bestBp) { ties.push(m); }
                 }
                 if (ties.length) {
-                    const pick = ties[Math.floor(Math.random() * ties.length)];
+                    const pick = ties[Math.floor(storyAwareRng()() * ties.length)];
                     logMsg(`${mon.name}'s Forewarn revealed ${foe.name}'s ${pick.name}!`, 'info');
                 }
             }
@@ -28774,7 +28780,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_thawRng() < 0.2) { mon.status = null; logMsg(`${mon.name} thawed out!`, 'info'); return true; }
                 logMsg(`${mon.name} is frozen solid!`, 'status'); return false;
             }
-            if (mon.status === "PAR" && Math.random() < 0.25) { logMsg(`${mon.name} is paralyzed! It can't move!`, 'status'); return false; }
+            if (mon.status === "PAR" && storyAwareRng()() < 0.25) { logMsg(`${mon.name} is paralyzed! It can't move!`, 'status'); return false; }
             if (mon.volatile.flinch && mon.ability !== "Inner Focus" && !mon.dynamaxed) {
                 logMsg(`${mon.name} flinched!`, 'info');
                 if (settings.animations) {
@@ -28814,6 +28820,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         async function parseMoveEffects(attacker, defender, move, isPlayer, _bouncedDepth) {
             let eff = (move.effectStr || move.eff || "").toLowerCase();
+            // Seeded RNG for this move's secondary-effect / status / phazing rolls (see
+            // performAction for the same pattern). storyRngNext in a seeded story battle,
+            // else Math.random (quick play / PvP). Damage rolls are computed in performAction.
+            const _fxRng = storyAwareRng();
             // Serene Grace: double secondary effect chance
             let sereneGrace = attacker.ability === "Serene Grace";
 
@@ -28933,7 +28943,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 return;
             }
-            if (move.name === "Bounce" && Math.random() < 0.3) { applyStatus(defender, "PAR"); return; }
+            if (move.name === "Bounce" && _fxRng() < 0.3) { applyStatus(defender, "PAR"); return; }
             if (move.name === "Fly" || move.name === "Dive" || move.name === "Dig" || move.name === "Phantom Force" || move.name === "Shadow Force") { return; } // no secondary effect
             // Trick Room: toggles state, priority ∆7 (handled separately before this)
             if (move.name === "Trick Room") {
@@ -29021,7 +29031,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return eff < 1 && t !== attacker.type1 && t !== attacker.type2;
                 });
                 if (resistTypes.length > 0) {
-                    let newType = resistTypes[Math.floor(Math.random() * resistTypes.length)];
+                    let newType = resistTypes[Math.floor(_fxRng() * resistTypes.length)];
                     attacker.type1 = newType; attacker.type2 = '';
                     logMsg(`${attacker.name} transformed into the ${newType} type!`, 'info');
                 } else { logMsg(`But it failed!`, 'info'); }
@@ -29055,7 +29065,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let chance = parseFloat(segs[2]) / 100 || 1.0;
                         let statusMap = {sleep:"SLP", burn:"BRN", paralyze:"PAR", paralyzes:"PAR", poison:"PSN", toxic:"TOX", freeze:"FRZ"};
                         let statusCode = statusMap[statusType];
-                        if (statusCode && Math.random() < (sereneGrace ? Math.min(1, chance * 2) : chance)) {
+                        if (statusCode && _fxRng() < (sereneGrace ? Math.min(1, chance * 2) : chance)) {
                             applyStatus(defender, statusCode);
                         }
                     }
@@ -29330,7 +29340,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let activeMon = isPlayer ? state.fActive : state.pActive;
                     let bench = target.filter(m => m.currentHp > 0 && m !== activeMon);
                     if (bench.length > 0) {
-                        let newMon = bench[Math.floor(Math.random() * bench.length)];
+                        let newMon = bench[Math.floor(_fxRng() * bench.length)];
                         if (isPlayer) {
                             clearVolatileOnSwitch(state.fActive);
                             logMsg(`${state.fActive.name} was forced out!`, 'info');
@@ -29494,7 +29504,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _acuStats = ['atk','def','spa','spd','spe','acc','eva'];
                 let _acuAvail = _acuStats.filter(s => attacker.stages[s] < 6);
                 if (_acuAvail.length === 0) { logMsg(`But it failed! All stats are maxed!`, 'info'); return; }
-                let _acuStat = _acuAvail[Math.floor(Math.random() * _acuAvail.length)];
+                let _acuStat = _acuAvail[Math.floor(_fxRng() * _acuAvail.length)];
                 changeStage(attacker, _acuStat, 2);
                 logMsg(`${attacker.name}'s ${_acuStat.toUpperCase()} sharply rose via Acupressure!`, 'info'); return;
             }
@@ -29629,7 +29639,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_sec) continue;
                     if (move.name === "Tri Attack") continue; // handled explicitly above
                     const _secChance = (_sec.chance != null) ? _sec.chance : 100;
-                    if (Math.random() * 100 >= _sg(_secChance)) continue; // RNG failed
+                    if (_fxRng() * 100 >= _sg(_secChance)) continue; // RNG failed
 
                     // Flinch (Inner Focus / Dynamax exemption checked in canMove)
                     if (_sec.volatileStatus === 'flinch' && defender.volatile) defender.volatile.flinch = true;
@@ -29648,7 +29658,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Stench ability: adds 10% flinch chance to all damaging moves (any category, regardless of contact)
-            if (attacker.ability === "Stench" && move.cat !== "Status" && defender.volatile && !defender.volatile.flinch && Math.random() < 0.1) {
+            if (attacker.ability === "Stench" && move.cat !== "Status" && defender.volatile && !defender.volatile.flinch && _fxRng() < 0.1) {
                 defender.volatile.flinch = true;
             }
             // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic
@@ -30531,7 +30541,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             mon.status = status; mon.statusTurns = 0;
-            if (status === "SLP") mon.sleepDuration = Math.floor(Math.random() * 3) + 1;
+            if (status === "SLP") mon.sleepDuration = Math.floor(storyAwareRng()() * 3) + 1;
             let msgs = {"PSN":"was poisoned!","TOX":"was badly poisoned!","BRN":"was burned!","PAR":"was paralyzed!","SLP":"fell asleep!","FRZ":"was frozen solid!"};
             logMsg(`${mon.name} ${msgs[status]}`, 'status');
             // Punctuate the (previously log-only) status: refresh the badge immediately and
@@ -30674,7 +30684,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _bench = Array.isArray(_party) ? _party.filter(p => p && p !== mon && p.currentHp > 0) : [];
                 if (_bench.length > 0) {
                     mon.item = null; mon.itemConsumed = true;
-                    let newMon = _bench[Math.floor(Math.random() * _bench.length)];
+                    let newMon = _bench[Math.floor(storyAwareRng()() * _bench.length)];
                     logMsg(`${mon.name}'s Eject Pack switched it out!`, 'info');
                     if (_isPlayerEP) { clearVolatileOnSwitch(state.pActive); state.pActive = newMon; state.pActive.turnCount = 0; applySwitchInAbilities(state.pActive, state.fActive); applyEntryHazards(state.pActive, true); }
                     else { clearVolatileOnSwitch(state.fActive); state.fActive = newMon; state.fActive.turnCount = 0; applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); }
@@ -30695,20 +30705,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _tr = state.trickRoom > 0;
                 if (_tr ? (_fs < _ps) : (_fs > _ps)) pFirst = false;
             } catch (e) {}
-            // A throw inside one side's residuals (weather, item heal, status tick,
-            // Leech Seed drain, etc.) must not skip the other side's residuals or
-            // mask the whole turn as "skipped". Run each independently; log faults
-            // rather than swallowing them silently so they stay diagnosable.
-            const _runEoT = (a, b) => {
-                try { endOfTurnEffects(a, b); }
-                catch (e) { try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {} }
-            };
+            // NOTE: the caller wraps runResidualsBySpeed() in `_eotStep('residuals...')`
+            // (see playTurn) which catches any throw here, records window._lastTurnError,
+            // and lets the turn tail continue — so a throwing residual must propagate up
+            // to that wrapper, NOT be swallowed here.
             if (pFirst) {
-                _runEoT(state.pActive, state.fActive);
-                _runEoT(state.fActive, state.pActive);
+                endOfTurnEffects(state.pActive, state.fActive);
+                endOfTurnEffects(state.fActive, state.pActive);
             } else {
-                _runEoT(state.fActive, state.pActive);
-                _runEoT(state.pActive, state.fActive);
+                endOfTurnEffects(state.fActive, state.pActive);
+                endOfTurnEffects(state.pActive, state.fActive);
             }
         }
 
