@@ -52,6 +52,35 @@ test('D2 — main.mfReveal names the four anomaly breadcrumbs, additively', () =
     'main.mfReveal signature line still present');
 });
 
+test('M1 — main.mfReveal recasts the loop as world-generating (reruns make the multiverse)', () => {
+  const b = sceneBlock('main.mfReveal');
+  // the thesis: each loss/rerun seeds a world; the loops GENERATE the multiverse.
+  assert.ok(b.includes('seed it with universes') || b.includes('a world is born'),
+    'mfReveal frames the loop as generative — each rerun makes a world');
+  assert.ok(b.includes('It goes into another world'),
+    'mfReveal corrects the old "going nowhere" framing into world-generation');
+  assert.ok(b.includes('the hand that keeps making it'),
+    'mfReveal names the player (from outside the road) as the multiverse-making force');
+  // the authorless/inescapable nature is preserved, not contradicted (R4 still holds).
+  assert.ok(b.includes('Nobody built this') && b.includes('There is no door'),
+    'authorless + no-escape preserved alongside the generative thesis');
+});
+
+test('M2 — main.ending capstone replies seed a new world either way (no escape)', () => {
+  // main.ending is the LAST STORY_SCENES entry (no next scene key), so bound it to
+  // the object's closing brace rather than the sceneBlock fallback window.
+  const start = HTML.indexOf('"main.ending": {');
+  assert.ok(start >= 0, 'main.ending must exist');
+  const b = HTML.slice(start, HTML.indexOf('\n        };', start));
+  assert.ok(b.includes('a new world you will never see finishes assembling'),
+    'forget still spawns a world (blank, beginning without you)');
+  assert.ok(b.includes('a world ignites behind your first step'),
+    'remember still spawns a world (carried forward)');
+  // the capstone choice contract is unchanged.
+  assert.ok(b.includes('"persistKey": "main.loop.remember"'),
+    'the capstone persistKey is preserved');
+});
+
 test('D3 — main.battle2 no longer promises a literal slot-for-slot mirror', () => {
   const b = sceneBlock('main.battle2');
   assert.ok(!b.includes('Slot for slot'), 'the unkept slot-for-slot promise is gone');

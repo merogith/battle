@@ -14,15 +14,28 @@ Plus a **Battle Frontier / Gauntlet** ladder reachable from the Story flow.
 
 ## Active scope (mid-2026)
 
-**Story mode (normal difficulty)** is the only active scope.
+**Story mode (normal difficulty)** is the **primary / headline mode** — it gets the lion's
+share of design attention and is the default the home screen leads with.
 
-### Permanently OUT OF SCOPE — do not flag findings here as actionable
+As of 2026-06 the three "fast play + multiplayer" modes were **brought back into active
+scope** (they were previously hidden behind a "paused for development" menu panel). They are
+secondary to Story, but they are now supported, tested, and shippable:
 
-- `online-pvp.js` and all PvP UI / Supabase code
-- Quick Play screens and code paths
-- Battle Frontier / Gauntlet (post-game ladder)
+- **Quick Battle** (`'pve'`) — instant or draft-your-own match vs the bot. Entry:
+  `window.startQuickBattle()` (honours the "Teams" option: `settings.quickTeamSource`
+  = `random` → skip draft / `draft` → normal draft). Settings live in the home-screen
+  **Battle Options** panel (team source, bot difficulty `settings.aiProfile`, party size,
+  gens, grades, smart pool, weather/terrain, per-gimmick toggles).
+- **Gauntlet** (`'gauntlet'`) — endless survival ladder; shares the same Battle Options.
+- **Online PvP** (`online-pvp.js`) — Supabase-mediated 1v1. Host-authoritative turn sync.
+  Security model: writes go through token-validated SECURITY DEFINER RPCs; tokens live in
+  SELECT-revoked columns (migration `006_online_pvp_rls_harden.sql`); the synced battle log
+  is run through an **allowlist** sanitizer (`OnlineBattle.sanitizeBattleLogHtml`).
 
-Auditors may still scan these for awareness, but findings must be tagged **out-of-scope** in status and never proposed as work items in the main backlog.
+Tests: `tests/suites/quickplay-modes.test.js`, `tests/suites/online-pvp-security.test.js`.
+
+Still treat these carefully — Story flow/saves remain the most sensitive area. The Battle
+Frontier / Crucible post-game ladder remains part of the Story flow.
 
 ### De-scoped permanently (cut, not retired)
 
