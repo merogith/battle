@@ -2372,6 +2372,81 @@
         }
         .narr-tone-rival .story-dialog-box { border-color: #b25a1c !important; }
         .narr-tone-rival { box-shadow: inset 0 0 190px 50px rgba(150, 70, 12, 0.20); }
+        /* ── Narration cinematics (v30) — life & depth for _renderNarrativeOverlay.
+           Pure presentation: every class below is added to nodes AFTER mount, so
+           the synchronous text-content DOM contract the jsdom tests assert is
+           untouched. All motion is reduced-motion-gated in the block right after.
+           Vocabulary deliberately mirrors the tutorial overlay (storyTutorial*) and
+           storyfxMonIdle so narration reads consistently with the rest of the game. */
+        .story-narr-root {
+            /* Faint base vignette so flat-black classic (no-tone) scenes gain depth
+               without altering body-text colour. Tone classes layer their own wash
+               on top — this stays subtle enough not to double-darken. */
+            box-shadow: inset 0 0 220px 60px rgba(0, 0, 0, 0.45);
+        }
+        .story-narr-sprite {
+            animation: storyNarrSpriteIn 0.5s cubic-bezier(0.18,0.9,0.32,1.18) both;
+        }
+        /* Idle bob swapped in by JS once the spring entrance has settled. The
+           compound selector outranks the entrance rule above, so it takes over. */
+        .story-narr-sprite.story-narr-sprite-idle {
+            animation: storyfxMonIdle 2.4s ease-in-out infinite;
+        }
+        @keyframes storyNarrSpriteIn {
+            0%   { opacity: 0; transform: translate(-24px, 16px) scale(0.78); }
+            60%  { opacity: 1; transform: translate(0, -4px)     scale(1.04); }
+            100% { opacity: 1; transform: translate(0, 0)        scale(1); }
+        }
+        .story-narr-dialog-rise {
+            animation: storyNarrDialogIn 0.45s ease-out 0.12s both;
+        }
+        @keyframes storyNarrDialogIn {
+            0%   { opacity: 0; transform: translateY(10px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0)    scale(1); }
+        }
+        /* Iconic "▾" advance cue — surfaced by JS (_showAdvanceCue) only once the
+           body text is fully revealed and a tap will advance/close. Hidden while
+           the typewriter is mid-reveal and while a choice prompt is unanswered. */
+        .story-narr-advance {
+            display: none;
+            margin-top: 4px;
+            font-size: 16px; line-height: 1;
+            color: var(--sn-gold);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            /* Decorative indicator: let taps fall through to the overlay root so a
+               tap ON the arrow still advances (root's click handler dismisses only
+               when e.target === the root). */
+            pointer-events: none;
+            animation: storyNarrAdvanceBlink 0.9s ease-in-out infinite;
+        }
+        .story-narr-advance.show { display: block; }
+        @keyframes storyNarrAdvanceBlink {
+            0%, 100% { opacity: 1; transform: translateY(0); }
+            50%      { opacity: 0.25; transform: translateY(2px); }
+        }
+        /* Very slow ken-burns drift, added by JS only when a backdrop image is
+           applied (flat-black scenes skip it). Animates the image layer (2nd of
+           the two background layers); the dark gradient layer stays put. */
+        .story-narr-kenburns {
+            animation: storyNarrKenBurns 18s ease-in-out infinite alternate;
+        }
+        @keyframes storyNarrKenBurns {
+            0%   { background-size: cover, 102%; background-position: center, 48% 50%; }
+            100% { background-size: cover, 107%; background-position: center, 52% 47%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            /* End-state == the visible state: sprite/dialog fully shown, backdrop
+               unscaled, advance cue static-but-visible when .show is set. */
+            .story-narr-sprite,
+            .story-narr-sprite.story-narr-sprite-idle,
+            .story-narr-dialog-rise,
+            .story-narr-advance,
+            .story-narr-kenburns { animation: none !important; }
+            .story-narr-kenburns {
+                background-size: cover, cover !important;
+                background-position: center, center !important;
+            }
+        }
         #screen-story-shop > .story-shop-stack > div:last-child,
         #screen-story-artifact-shop > .story-shop-stack > div:last-child,
         #screen-story-tutor > .story-shop-stack > div:last-child,
@@ -2853,9 +2928,22 @@
             60%  { opacity: 1; transform: translateY(0) scale(1.08); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+        /* Cinematics (v30): a soft warm spotlight that fades up behind the team —
+           the hall "lights up" for the roll call. Sits under the grid (z 0). */
+        .story-hof-spotlight {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+            background: radial-gradient(ellipse 62% 52% at 50% 42%,
+                rgba(255,236,170,0.22) 0%, rgba(255,236,170,0.08) 38%, rgba(255,236,170,0) 70%);
+            animation: storyHofSpotlightIn 1.1s ease-out 0.3s both;
+        }
+        @keyframes storyHofSpotlightIn {
+            0%   { opacity: 0; }
+            100% { opacity: 1; }
+        }
         @media (prefers-reduced-motion: reduce) {
             .story-hof-gba-panel { animation: none; }
             .story-hof-gba-cell img { animation: none; }
+            .story-hof-spotlight { animation: none; opacity: 1; }
         }
         .story-hof-gba-lower {
             position: relative;
@@ -9146,13 +9234,13 @@
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music volume</span>
-                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="music-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">45%</span>
             </div>
             <label class="settings-row" for="sw-sound"><span>Sound effects</span><input type="checkbox" class="pbs-switch" id="sw-sound" role="switch" onchange="window.applySettingSwitch('soundEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">SFX volume</span>
-                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
             </div>
             <div class="settings-section-title">Gameplay</div>
@@ -12707,6 +12795,68 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _bgConsecutiveErrors = 0;
             const BG_MAX_CONSECUTIVE_ERRORS = 4;
 
+            // ── Transition feel + reliability tunables (user-owned "feel" knobs) ──
+            // Cross-fades replace the old hard pause()/play() cuts that read as
+            // "fast skips". MIN_RESUME_REMAINING_SEC discards a persisted resume
+            // point too close to a track's end (a near-end seek used to fire
+            // `ended` instantly → an audible skip). The watchdog rescues a field
+            // track whose `playing` never fires (stall / silent autoplay block).
+            const MUSIC_FADE_MS = 450;
+            const MIN_RESUME_REMAINING_SEC = 12;
+            const BG_WATCHDOG_MS = 6000;
+            let _bgWatchdog = null;
+            let _gestureRetryArmed = false;
+
+            // Ramp an element's volume toward `toVol` over `ms`, then run `onDone`.
+            // Cancels any fade already in flight on the same element so a manual
+            // volume change / new transition always wins. Uses setInterval (not
+            // rAF) so it keeps ramping while the tab is backgrounded.
+            function _fade(el, toVol, ms, onDone) {
+                if (!el) { if (onDone) onDone(); return; }
+                if (el._fadeTimer) { clearInterval(el._fadeTimer); el._fadeTimer = null; }
+                const target = Math.max(0, Math.min(1, toVol));
+                const from = (typeof el.volume === 'number') ? el.volume : target;
+                const steps = Math.max(1, Math.round((ms || MUSIC_FADE_MS) / 40));
+                let i = 0;
+                el._fadeTimer = setInterval(() => {
+                    i++;
+                    const v = from + (target - from) * (i / steps);
+                    try { el.volume = Math.max(0, Math.min(1, v)); } catch (e) {}
+                    if (i >= steps) {
+                        clearInterval(el._fadeTimer);
+                        el._fadeTimer = null;
+                        if (onDone) onDone();
+                    }
+                }, 40);
+            }
+            function _cancelFade(el) {
+                if (el && el._fadeTimer) { clearInterval(el._fadeTimer); el._fadeTimer = null; }
+            }
+
+            // Re-arm a one-shot user-gesture listener that retries field BGM. Used
+            // both by init() and by the play()-rejection path (autoplay blocked),
+            // so a blocked first start recovers on the next real interaction
+            // instead of dead-ending into permanent silence.
+            function _armGestureRetry() {
+                if (_gestureRetryArmed) return;
+                _gestureRetryArmed = true;
+                const tryStart = () => {
+                    _gestureRetryArmed = false;
+                    document.removeEventListener('click', tryStart, true);
+                    document.removeEventListener('keydown', tryStart, true);
+                    document.removeEventListener('touchstart', tryStart, true);
+                    _resumeOrStartBg();
+                };
+                document.addEventListener('click', tryStart, true);
+                document.addEventListener('keydown', tryStart, true);
+                document.addEventListener('touchstart', tryStart, true);
+            }
+
+            // NOTE: music shuffle is DELIBERATELY non-seeded (bare Math.random,
+            // not storyRngNext). Seeding it would replay the identical field track
+            // / battle theme on every load of a seeded battle — the opposite of
+            // the variety we want here. This is an intentional exception to the
+            // "seeded RNG everywhere user-visible" house rule, not an oversight.
             function _pickRandomBgIdx(excludeIdx) {
                 const n = BACKGROUND_TRACKS.length;
                 if (n <= 0) return -1;
@@ -12744,10 +12894,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const now = Date.now();
                 if (!force && now - _lastBgPersistAt < BG_PERSIST_THROTTLE_MS) return;
                 _lastBgPersistAt = now;
+                // Clamp out a near-end resume point: persisting the last few
+                // seconds would make the next load seek straight to `ended`.
+                let t = Math.max(0, Number(bgAudio.currentTime) || 0);
+                const dur = Number(bgAudio.duration) || 0;
+                if (dur > 0 && dur - t < MIN_RESUME_REMAINING_SEC) t = 0;
                 try {
                     localStorage.setItem(BG_STATE_KEY, JSON.stringify({
                         src: BACKGROUND_TRACKS[_currentBgIdx],
-                        time: Math.max(0, Number(bgAudio.currentTime) || 0)
+                        time: t
                     }));
                 } catch (e) {}
             }
@@ -12786,7 +12941,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     audio = new Audio(BACKGROUND_TRACKS[idx]);
                     audio.preload = 'auto';
                 }
-                audio.volume = _musicVol;
+                // Start silent and fade up — no abrupt cut-in over whatever just stopped.
+                audio.volume = 0;
                 audio.loop = false;
                 audio.onended = _onBgEnded;
                 audio.onerror = _onBgError;
@@ -12795,6 +12951,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 if (bgAudio && bgAudio !== audio) {
                     try {
+                        _cancelFade(bgAudio);
                         bgAudio.onended = null;
                         bgAudio.onerror = null;
                         bgAudio.ontimeupdate = null;
@@ -12808,13 +12965,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Kick off playback synchronously so the user-gesture activation is
                 // consumed immediately — important for the resume-from-persisted path
                 // where the loadedmetadata seek would otherwise happen too late.
-                audio.play().catch(() => {});
+                // On rejection (autoplay blocked) re-arm a gesture retry so we
+                // recover instead of dead-ending into silence.
+                audio.play().then(() => { _fade(audio, _musicVol, MUSIC_FADE_MS); })
+                            .catch(() => { _fade(audio, _musicVol, MUSIC_FADE_MS); _armGestureRetry(); });
+                _armBgWatchdog();
                 _persistBgState(true);
                 _preloadNextBgTrack();
 
                 if (!startFromBeginning) {
                     const applySeek = () => {
-                        const maxStart = Math.max(0, (audio.duration || 0) - 0.25);
+                        const dur = audio.duration || 0;
+                        // Drop a resume point too close to the end — it would seek
+                        // straight to `ended` and read as an instant skip.
+                        if (dur > 0 && dur - startAtSec < MIN_RESUME_REMAINING_SEC) return;
+                        const maxStart = Math.max(0, dur - 0.25);
                         try { audio.currentTime = Math.max(0, Math.min(startAtSec, maxStart)); } catch (e) {}
                     };
                     if (audio.readyState >= 1 && audio.duration) applySeek();
@@ -12822,18 +12987,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // Watchdog: if the field track never reaches `playing` (stalled buffer
+            // or a silently-rejected play) within BG_WATCHDOG_MS, try the next one
+            // rather than sitting in silence.
+            function _armBgWatchdog() {
+                _clearBgWatchdog();
+                _bgWatchdog = setTimeout(() => {
+                    _bgWatchdog = null;
+                    if (!settings.musicEnabled) return;
+                    if (bgAudio && (bgAudio.paused || bgAudio.readyState < 3)) {
+                        _bgConsecutiveErrors++;
+                        if (_bgConsecutiveErrors <= BG_MAX_CONSECUTIVE_ERRORS) _advanceBgTrack();
+                        else _armGestureRetry();
+                    }
+                }, BG_WATCHDOG_MS);
+            }
+            function _clearBgWatchdog() {
+                if (_bgWatchdog) { clearTimeout(_bgWatchdog); _bgWatchdog = null; }
+            }
+
             function _onBgEnded() {
+                _clearBgWatchdog();
                 _bgConsecutiveErrors = 0;
                 _advanceBgTrack();
             }
 
             function _onBgPlaying() {
+                _clearBgWatchdog();
                 _bgConsecutiveErrors = 0;
             }
 
             function _onBgError() {
+                _clearBgWatchdog();
                 _bgConsecutiveErrors++;
-                if (_bgConsecutiveErrors > BG_MAX_CONSECUTIVE_ERRORS) return;
+                if (_bgConsecutiveErrors > BG_MAX_CONSECUTIVE_ERRORS) { _armGestureRetry(); return; }
                 _advanceBgTrack();
             }
 
@@ -12848,7 +13035,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             function _onBgVisibilityChange() {
-                if (document.hidden) _persistBgState(true);
+                if (document.hidden) { _persistBgState(true); return; }
+                // Back in view: clear a prior give-up so a stalled/blocked field
+                // track can recover, and nudge playback if it had gone silent.
+                _bgConsecutiveErrors = 0;
+                if (settings.musicEnabled && (!bgAudio || bgAudio.paused || bgAudio.ended)) _resumeOrStartBg();
             }
 
             function _onBgPageHide() { _persistBgState(true); }
@@ -12856,7 +13047,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function _resumeOrStartBg() {
                 if (!settings.musicEnabled) return;
                 if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) {
-                    bgAudio.play().catch(() => {});
+                    _cancelFade(bgAudio);
+                    bgAudio.play().then(() => { _fade(bgAudio, _musicVol, MUSIC_FADE_MS); })
+                                  .catch(() => { _armGestureRetry(); });
+                    return;
+                }
+                // Field track is mid-duck (fading toward 0 but not yet paused) — e.g. a
+                // battle that ended before the duck finished. Reclaim it and fade back
+                // up instead of letting the pending duck pause it into silence.
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended && bgAudio._fadeTimer && bgAudio.volume < _musicVol) {
+                    _cancelFade(bgAudio);
+                    _fade(bgAudio, _musicVol, MUSIC_FADE_MS);
                     return;
                 }
                 if (bgAudio && !bgAudio.paused && !bgAudio.ended) return;
@@ -12897,10 +13098,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const VICTORY_STING = 'music/themes/victory.mp3';
             let _battleAudio = null;
             let _battleMood = null;
+            let _battleThemeStarting = false;
+
+            // Fade the field track down, then pause it — a seamless duck instead of
+            // a hard cut. Position is persisted at the pre-fade point so it resumes
+            // exactly where the player was.
+            function _duckFieldBg() {
+                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
+                    _persistBgState(true);
+                    const ducking = bgAudio;
+                    _fade(ducking, 0, MUSIC_FADE_MS, () => { try { ducking.pause(); } catch (e) {} });
+                }
+            }
 
             function _stopBattleAudio() {
                 if (_battleAudio) {
-                    try { _battleAudio.onended = null; _battleAudio.onerror = null; _battleAudio.pause(); } catch (e) {}
+                    try { _cancelFade(_battleAudio); _battleAudio.onended = null; _battleAudio.onerror = null; _battleAudio.pause(); } catch (e) {}
                     _battleAudio = null;
                 }
                 _battleMood = null;
@@ -12912,31 +13125,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const list = BATTLE_THEMES[mood] || BATTLE_THEMES.trainer;
                 if (!list || !list.length) return;
                 if (_battleMood === mood && _battleAudio && !_battleAudio.paused) return;
+                // Re-entrancy guard: a second call in the same tick (e.g. an intro
+                // path that threw then fell through to the splash) is a no-op, not
+                // a stop+restart that would clip the theme — the old "fast skip".
+                if (_battleThemeStarting && _battleMood === mood) return;
+                _battleThemeStarting = true;
                 _stopBattleAudio();
-                // Duck the field track: persist position, then pause so it can
-                // resume seamlessly once the battle ends.
-                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
-                    _persistBgState(true);
-                    try { bgAudio.pause(); } catch (e) {}
-                }
+                _battleMood = mood;
+                _duckFieldBg(); // crossfade the field track out
                 const src = list[Math.floor(Math.random() * list.length)];
                 try {
                     const a = new Audio(src);
                     a.loop = true;
-                    a.volume = _musicVol;
+                    a.volume = 0; // fade up
                     a.onerror = () => { if (_battleAudio === a) { _battleAudio = null; _battleMood = null; _resumeOrStartBg(); } };
                     _battleAudio = a;
-                    _battleMood = mood;
-                    a.play().catch(() => {});
-                } catch (e) { _battleAudio = null; _battleMood = null; }
+                    const _up = () => { _battleThemeStarting = false; if (_battleAudio === a) _fade(a, _musicVol, MUSIC_FADE_MS); };
+                    a.play().then(_up).catch(() => { _up(); });
+                } catch (e) { _battleAudio = null; _battleMood = null; _battleThemeStarting = false; }
             }
 
             function _endBattleTheme(won) {
                 const wasActive = !!(_battleAudio || _battleMood);
-                _stopBattleAudio();
-                if (!wasActive) return; // intro-less / wild battle — field BGM was never ducked
+                _battleThemeStarting = false;
+                if (!wasActive) { _stopBattleAudio(); return; } // wild/casual — field BGM was never ducked
                 if (won && settings.musicEnabled) {
                     // Victory fanfare over the (still-paused) field; field resumes when it ends.
+                    // Fade the battle theme out under the sting, then hard-stop it.
+                    const dying = _battleAudio;
+                    if (dying) _fade(dying, 0, Math.min(250, MUSIC_FADE_MS), () => { try { dying.pause(); } catch (e) {} });
+                    _battleAudio = null;
+                    _battleMood = null;
                     try {
                         const a = new Audio(VICTORY_STING);
                         a.loop = false;
@@ -12950,10 +13169,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         return;
                     } catch (e) {}
                 }
-                if (settings.musicEnabled) {
-                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
-                    else _resumeOrStartBg();
-                }
+                _stopBattleAudio();
+                if (settings.musicEnabled) _resumeOrStartBg();
             }
 
             // ── Character-creation theme ─────────────────────────────────
@@ -12973,7 +13190,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             function _stopIntroAudio() {
                 if (_introAudio) {
-                    try { _introAudio.onended = null; _introAudio.onerror = null; _introAudio.pause(); } catch (e) {}
+                    try { _cancelFade(_introAudio); _introAudio.onended = null; _introAudio.onerror = null; _introAudio.pause(); } catch (e) {}
                     _introAudio = null;
                 }
             }
@@ -12982,47 +13199,76 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!settings.musicEnabled) return;
                 if (_introAudio && !_introAudio.paused) return; // already rolling
                 _stopIntroAudio();
-                // Duck the field track: persist position, then pause so it resumes
-                // seamlessly once the creation theme ends or the player leaves.
-                if (bgAudio && !bgAudio.paused && !bgAudio.ended) {
-                    _persistBgState(true);
-                    try { bgAudio.pause(); } catch (e) {}
-                }
+                _duckFieldBg(); // crossfade the field track out
                 const src = INTRO_THEMES[Math.floor(Math.random() * INTRO_THEMES.length)];
                 try {
                     const a = new Audio(src);
-                    a.loop = false;
-                    a.volume = _musicVol;
+                    a.loop = false; // play-once: a long cover never traps the player in title music
+                    a.volume = 0; // fade up
                     const _resume = () => { if (_introAudio === a) { _introAudio = null; _resumeOrStartBg(); } };
                     a.onended = _resume;
                     a.onerror = _resume;
                     _introAudio = a;
-                    a.play().catch(() => {});
+                    a.play().then(() => { if (_introAudio === a) _fade(a, _musicVol, MUSIC_FADE_MS); })
+                            .catch(() => { if (_introAudio === a) _fade(a, _musicVol, MUSIC_FADE_MS); });
                 } catch (e) { _introAudio = null; }
             }
 
             function _endIntroTheme() {
                 const was = !!_introAudio;
                 _stopIntroAudio();
-                if (was && settings.musicEnabled) {
-                    if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
-                    else _resumeOrStartBg();
+                if (was && settings.musicEnabled) _resumeOrStartBg();
+            }
+
+            // ── SFX bus ──────────────────────────────────────────────────
+            // One-shot cue player with a voice cap, a tiny same-source dedupe
+            // window, and onended cleanup so transient Audio elements don't pile
+            // up during a busy turn (move clip + hit + cries layered over BGM).
+            // Cries deliberately bypass this — their fallback chain owns its own
+            // elements (see playCry). SFX_LEVELS centralizes the per-category mix;
+            // these are user-owned "feel" numbers, lifted out of the scattered
+            // inline literals so they can be retuned in one place.
+            const SFX_LEVELS = {
+                move:       0.75, // per-move PRSFX clip
+                type:       1.0,  // type-based fallback whoosh
+                miss:       0.35,
+                hit:        0.8,  // hit / hitStrong / hitWeak share one level
+                cry:        0.5,  // default cry level (per-call override wins)
+                faintCry:   0.4,  // slowed faint cry
+                faint:      0.7,  // faint thud SFX
+            };
+            const SFX_MAX_VOICES = 12;
+            const SFX_DEDUPE_MS = 25;
+            const _sfxActive = new Set();
+            const _sfxLastAt = Object.create(null);
+            function _playOneShot(src, vol, opts) {
+                if (!src) return null;
+                opts = opts || {};
+                const now = Date.now();
+                if (!opts.noDedupe) {
+                    // Collapse an accidental same-tick double-fire of the identical
+                    // cue (well under normal cue spacing, so gameplay is untouched).
+                    if (now - (_sfxLastAt[src] || 0) < SFX_DEDUPE_MS) return null;
+                    _sfxLastAt[src] = now;
                 }
+                if (_sfxActive.size >= SFX_MAX_VOICES) return null; // cap: drop, don't pile up
+                let a;
+                try { a = new Audio(src); } catch (e) { return null; }
+                a.volume = Math.max(0, Math.min(1, vol));
+                if (opts.playbackRate) a.playbackRate = opts.playbackRate;
+                _sfxActive.add(a);
+                const _done = () => { _sfxActive.delete(a); };
+                a.onended = _done;
+                a.onerror = _done;
+                a.play().catch(() => {});
+                return a;
             }
 
             return {
                 init() {
                     if (_bgStarted) return;
                     _bgStarted = true;
-                    const tryStart = () => {
-                        document.removeEventListener('click', tryStart, true);
-                        document.removeEventListener('keydown', tryStart, true);
-                        document.removeEventListener('touchstart', tryStart, true);
-                        _resumeOrStartBg();
-                    };
-                    document.addEventListener('click', tryStart, true);
-                    document.addEventListener('keydown', tryStart, true);
-                    document.addEventListener('touchstart', tryStart, true);
+                    _armGestureRetry(); // first gesture starts/resumes field BGM
                     document.addEventListener('visibilitychange', _onBgVisibilityChange);
                     window.addEventListener('pagehide', _onBgPageHide);
                 },
@@ -13032,10 +13278,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // (if any) and make sure the field BGM is rolling again so the
                     // hand-off into the game is uninterrupted.
                     _stopIntroAudio();
-                    if (settings.musicEnabled) {
-                        if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) bgAudio.play().catch(() => {});
-                        else _resumeOrStartBg();
-                    }
+                    if (settings.musicEnabled) _resumeOrStartBg();
                     _persistBgState(true);
                 },
 
@@ -13061,16 +13304,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.syncSettingsModalSwitches(); } catch (e) {}
                     try { persistMiscSettings(); } catch (e) {}
                     if (settings.musicEnabled) {
-                        if (_introAudio) { _introAudio.play().catch(() => {}); }
-                        else if (_battleAudio) { _battleAudio.play().catch(() => {}); }
+                        if (_introAudio) { const a = _introAudio; _cancelFade(a); a.play().then(() => _fade(a, _musicVol, MUSIC_FADE_MS)).catch(() => {}); }
+                        else if (_battleAudio) { const a = _battleAudio; _cancelFade(a); a.play().then(() => _fade(a, _musicVol, MUSIC_FADE_MS)).catch(() => {}); }
                         else if (_battleMood && BATTLE_THEMES[_battleMood] && BATTLE_THEMES[_battleMood].length) { _playBattleTheme(_battleMood); }
                         else { _resumeOrStartBg(); }
                     } else {
-                        if (_introAudio) { try { _introAudio.pause(); } catch (e) {} }
-                        if (_battleAudio) { try { _battleAudio.pause(); } catch (e) {} }
+                        _clearBgWatchdog();
+                        if (_introAudio) { try { _cancelFade(_introAudio); _introAudio.pause(); } catch (e) {} }
+                        if (_battleAudio) { try { _cancelFade(_battleAudio); _battleAudio.pause(); } catch (e) {} }
                         if (bgAudio) {
                             _persistBgState(true);
-                            try { bgAudio.pause(); } catch (e) {}
+                            try { _cancelFade(bgAudio); bgAudio.pause(); } catch (e) {}
                         }
                     }
                 },
@@ -13083,10 +13327,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 setMusicVolume(val) {
                     _musicVol = val;
-                    if (bgAudio) bgAudio.volume = _musicVol;
+                    // A manual change always wins: cancel any in-flight fade, then
+                    // hard-set the live elements to the new level.
+                    if (bgAudio) { _cancelFade(bgAudio); bgAudio.volume = _musicVol; }
                     if (_nextBgAudio) _nextBgAudio.volume = _musicVol;
-                    if (_battleAudio) _battleAudio.volume = _musicVol;
-                    if (_introAudio) _introAudio.volume = _musicVol;
+                    if (_battleAudio) { _cancelFade(_battleAudio); _battleAudio.volume = _musicVol; }
+                    if (_introAudio) { _cancelFade(_introAudio); _introAudio.volume = _musicVol; }
                 },
 
                 setSoundVolume(val) {
@@ -13101,34 +13347,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const moveSfxList = (typeof MOVE_SFX_MAP !== 'undefined') && MOVE_SFX_MAP[move.name];
                     if (moveSfxList && moveSfxList.length) {
                         const delay = moveSfxList.length > 1 ? 120 : 0;
+                        // Multi-clip moves are intentionally staggered — skip dedupe so
+                        // a repeated clip in the list still fires on schedule.
                         moveSfxList.forEach((src, i) => {
-                            setTimeout(() => {
-                                const sfx = new Audio(src);
-                                sfx.volume = _soundVol * 0.75;
-                                sfx.play().catch(() => {});
-                            }, i * delay);
+                            setTimeout(() => _playOneShot(src, _soundVol * SFX_LEVELS.move, { noDedupe: true }), i * delay);
                         });
                     } else {
                         const src = move.cat === 'Status' ? TYPE_SOUNDS['__status'] : (TYPE_SOUNDS[move.type] || TYPE_SOUNDS['Normal']);
-                        const sfx = new Audio(src);
-                        sfx.volume = _soundVol;
-                        sfx.play().catch(() => {});
+                        _playOneShot(src, _soundVol * SFX_LEVELS.type);
                     }
                 },
                 playMissSound() {
                     if (!settings.soundEnabled) return;
-                    const sfx = new Audio('music/moves/normal.mp3');
-                    sfx.volume = _soundVol * 0.35;
-                    sfx.play().catch(() => {});
+                    _playOneShot('music/moves/normal.mp3', _soundVol * SFX_LEVELS.miss);
                 },
 
                 playUiSfx(key, volMult) {
                     if (!settings.soundEnabled) return;
-                    const src = UI_SFX[key];
-                    if (!src) return;
-                    const sfx = new Audio(src);
-                    sfx.volume = _soundVol * (volMult || 1);
-                    sfx.play().catch(() => {});
+                    _playOneShot(UI_SFX[key], _soundVol * (volMult || 1));
                 },
 
                 playHitSound(effectiveness) {
@@ -13136,16 +13372,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let key = 'hit';
                     if (effectiveness >= 2) key = 'hitStrong';
                     else if (effectiveness <= 0.5) key = 'hitWeak';
-                    const src = UI_SFX[key];
-                    if (!src) return;
-                    const sfx = new Audio(src);
-                    sfx.volume = _soundVol * 0.8;
-                    sfx.play().catch(() => {});
+                    _playOneShot(UI_SFX[key], _soundVol * SFX_LEVELS.hit);
                 },
 
                 playCry(pokemonName, volume, playbackRate) {
                     if (!settings.soundEnabled || !pokemonName) return;
-                    const vol = _soundVol * (volume || 0.5);
+                    const vol = _soundVol * (volume || SFX_LEVELS.cry);
                     // Walk the local-first fallback chain (exact forme → base species → CDN),
                     // advancing on each load error. cryCandidates() guarantees a vendored
                     // base-species cry sits ahead of the CDN, so formes stay audible offline.
@@ -13168,11 +13400,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!settings.soundEnabled || !pokemonName) return;
                     // playbackRate is threaded through the fallback chain so the slowed faint
                     // cry applies to whichever candidate actually plays (not just the first).
-                    this.playCry(pokemonName, 0.4, 0.65);
-                    setTimeout(() => this.playUiSfx('faint', 0.7), 300);
+                    this.playCry(pokemonName, SFX_LEVELS.faintCry, 0.65);
+                    setTimeout(() => this.playUiSfx('faint', SFX_LEVELS.faint), 300);
+                },
+
+                // Test-only hook: exposes the audio internals the jsdom suite drives
+                // (real playback is impossible headlessly). Mirrors window.__storyTest.
+                __test: {
+                    fade: (el, to, ms, done) => _fade(el, to, ms, done),
+                    startBgTrack: (idx, at) => _startBgTrack(idx, at),
+                    playBattleTheme: (m) => _playBattleTheme(m),
+                    endBattleTheme: (w) => _endBattleTheme(w),
+                    playOneShot: (src, vol, opts) => _playOneShot(src, vol, opts),
+                    pickRandomBgIdx: (ex) => _pickRandomBgIdx(ex),
+                    state: () => ({
+                        currentBgIdx: _currentBgIdx,
+                        bgAudio, battleAudio: _battleAudio, battleMood: _battleMood,
+                        introAudio: _introAudio, musicVol: _musicVol, soundVol: _soundVol,
+                        sfxActive: _sfxActive.size, battleThemeStarting: _battleThemeStarting,
+                    }),
+                    consts: { MUSIC_FADE_MS, MIN_RESUME_REMAINING_SEC, SFX_MAX_VOICES, SFX_DEDUPE_MS, SFX_LEVELS, BACKGROUND_TRACKS },
                 }
             };
         })();
+        // Mirror to window so cross-script readers and the jsdom test harness can
+        // reach the audio API (a top-level `const` is not a window property).
+        try { window.AudioSystem = AudioSystem; } catch (e) {}
 
         // === GIMMICK DATA ===
         const MEGA_STONE_MAP = {
@@ -27502,7 +27755,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
                 clearAllGimmickIntent();
+                // Double-KO: both sides fall on the same tick. Play the foe cry now and
+                // stagger the player's so both are audible instead of only the foe's.
                 AudioSystem.playFaintCry(state.fActive.name);
+                const _pFaintName = state.pActive.name;
+                setTimeout(() => { try { AudioSystem.playFaintCry(_pFaintName); } catch (e) {} }, 220);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
@@ -30705,16 +30962,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _tr = state.trickRoom > 0;
                 if (_tr ? (_fs < _ps) : (_fs > _ps)) pFirst = false;
             } catch (e) {}
-            // NOTE: the caller wraps runResidualsBySpeed() in `_eotStep('residuals...')`
-            // (see playTurn) which catches any throw here, records window._lastTurnError,
-            // and lets the turn tail continue — so a throwing residual must propagate up
-            // to that wrapper, NOT be swallowed here.
+            // A throw inside one side's residuals (weather, item heal, status tick,
+            // Leech Seed drain, etc.) must not skip the other side's residuals or
+            // mask the whole turn as "skipped". Run each independently; record the
+            // fault (so it surfaces via window._lastTurnError in bug reports / tests,
+            // matching the playTurn _eotStep contract) rather than swallowing it to
+            // the console alone. No rethrow — the other side's residuals + the turn
+            // tail still run. The call routes through window.endOfTurnEffects when
+            // present (identical to the local fn in production; lets tests observe
+            // a thrown residual) and falls back to the local declaration.
+            const _runEoT = (a, b) => {
+                try { (window.endOfTurnEffects || endOfTurnEffects)(a, b); }
+                catch (e) {
+                    try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {}
+                    try { window._lastTurnError = { step: 'residuals(speed order)', message: String(e && e.message || e), stack: String(e && e.stack || ''), at: Date.now() }; } catch (_e) {}
+                }
+            };
             if (pFirst) {
-                endOfTurnEffects(state.pActive, state.fActive);
-                endOfTurnEffects(state.fActive, state.pActive);
+                _runEoT(state.pActive, state.fActive);
+                _runEoT(state.fActive, state.pActive);
             } else {
-                endOfTurnEffects(state.fActive, state.pActive);
-                endOfTurnEffects(state.pActive, state.fActive);
+                _runEoT(state.fActive, state.pActive);
+                _runEoT(state.pActive, state.fActive);
             }
         }
 
@@ -39521,16 +39790,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sep = pad ? ' ' : '';
             return '<span class="story-gold-inline">' + storyGoldIconHtml() + sep + sign + raw + 'G</span>';
         }
-        function storySpawnConfetti(container, count) {
+        function storySpawnConfetti(container, count, spreadSec) {
             if (!container) return;
             container.innerHTML = '';
             const colors = ['#e53935','#fdd835','#43a047','#1e88e5','#8e24aa','#ffb300','#ec407a','#26a69a'];
             const n = Math.min(48, Math.max(8, count | 0));
+            // Optional wider delay envelope (default 0.9s) so a hero moment can read
+            // as a cascading wave rather than a single burst. Older callers omit it.
+            const spread = (typeof spreadSec === 'number' && spreadSec > 0) ? spreadSec : 0.9;
             for (let i = 0; i < n; i++) {
                 const s = document.createElement('span');
                 s.style.left = (Math.random() * 100) + '%';
                 s.style.background = colors[i % colors.length];
-                s.style.animationDelay = (Math.random() * 0.9) + 's';
+                s.style.animationDelay = (Math.random() * spread) + 's';
                 s.style.animationDuration = (2.2 + Math.random() * 1.4) + 's';
                 container.appendChild(s);
             }
@@ -51768,7 +52040,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!el) return;
             if (_narrMotionOff()) { el.style.opacity = '1'; return; }
             el.style.opacity = '0';
-            el.style.transition = 'opacity 0.24s ease';
+            // Cinematics (v30): the "premium" curve (matches the HoF panel) plus a
+            // slightly longer dissolve so beats melt into one another, not snap.
+            el.style.transition = 'opacity 0.28s cubic-bezier(0.16,0.84,0.34,1)';
             // Double-rAF so the 0→1 flip lands a frame after the paint that first
             // showed the element at 0 — guarantees the transition actually runs.
             requestAnimationFrame(function () {
@@ -51808,6 +52082,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const continueLabel = o.continueLabel || 'Continue →';
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
+            // Cinematics (v30): a faint base vignette on every overlay for depth.
+            // Tone classes (added next) layer their own wash on top of this.
+            ov.classList.add('story-narr-root');
             if (toneClass) String(toneClass).split(/\s+/).forEach(function (c) { if (c) ov.classList.add(c); });
             // Narration overhaul (v26): optional gen3 scene backdrop behind the
             // overlay. `backdropScene` is an explicit manifest.scenes key;
@@ -51826,6 +52103,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ov.style.backgroundPosition = 'center, center';
                         ov.style.backgroundRepeat = 'no-repeat, no-repeat';
                         ov.style.imageRendering = 'pixelated';
+                        // Cinematics (v30): a very slow ken-burns drift on the scene
+                        // art so backdrop scenes feel alive. Reduced-motion-gated in
+                        // CSS; flat-black (no backdrop) scenes never get this class.
+                        ov.classList.add('story-narr-kenburns');
                     }
                 }
             } catch (e) {}
@@ -51837,9 +52118,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _monSrc = '';
             try { if (o.monSprite) _monSrc = getSprite(o.monSprite, !!o.monShiny); } catch (e) {}
             const _spriteSrc = o.spriteSrc || _monSrc || (sprite ? getTrainerSprite({ spriteFile: sprite }) : '');
-            const _spriteClass = o.spriteClass || '';
+            // Cinematics (v30): always tag the speaker with .story-narr-sprite for
+            // the spring entrance + idle bob; any caller spriteClass rides alongside.
+            const _spriteClass = ('story-narr-sprite' + (o.spriteClass ? ' ' + o.spriteClass : '')).trim();
             const spriteHtml = _spriteSrc
-                ? `<img${_spriteClass ? ` class="${_esc(_spriteClass)}"` : ''} src="${_esc(_spriteSrc)}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
+                ? `<img class="${_esc(_spriteClass)}" src="${_esc(_spriteSrc)}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
                 : '';
             const bannerClass = o.bannerClass || '';
             // bannerParts {location, tod, sigil} renders a context line:
@@ -51888,7 +52171,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // P3 spriteSide: optional side-by-side speaker framing — the sprite
             // sits beside the dialog ('left'/'right') instead of stacked above.
             // Absent → the legacy stacked column, unchanged.
-            const _dialogHostHtml = `<div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
+            const _dialogHostHtml = `<div class="story-dialog-host story-narr-dialog-rise" style="margin-top:4px;max-width:560px;">
                     <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
                     <div class="story-dialog-box" data-narr-body="1">${linesHtml}</div>
                 </div>`;
@@ -51901,7 +52184,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.innerHTML = `
                 ${bannerHtml}
                 ${_bodyHtml}
-                ${choices.length ? choiceBtnsHtml : continueBtnHtml}`;
+                ${choices.length ? choiceBtnsHtml : continueBtnHtml}
+                <span class="story-narr-advance" aria-hidden="true" data-narr-advance="1">▾</span>`;
+            // Cinematics (v30): the iconic "tap to continue" arrow. Hidden by
+            // default; _showAdvanceCue surfaces it only once the body text is
+            // fully revealed and a tap will advance/close (see wiring below).
+            function _showAdvanceCue() {
+                try {
+                    const cue = ov.querySelector('[data-narr-advance="1"]');
+                    if (cue) cue.classList.add('show');
+                } catch (e) {}
+            }
             // Narration overhaul (v26): typewriter reveal. Active only when
             // opts.typewriter is set, there are no choice buttons, and the user
             // has not requested reduced motion. While typing, the first tap
@@ -51929,6 +52222,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _wantsTypewriter = _twPref && !choices.length && lines.length > 0
                 && !(window.StoryFx && typeof window.StoryFx.isReducedMotion === 'function' && window.StoryFx.isReducedMotion());
             ov.__startTypewriter = function () {
+                // Cinematics (v30): once the spring entrance has settled (~0.5s),
+                // hand the speaker sprite over to a gentle idle bob. Motion-gated;
+                // a no-sprite overlay simply finds nothing to animate.
+                if (!_narrMotionOff()) {
+                    try {
+                        setTimeout(function () {
+                            if (dismissed) return;
+                            const _sp = ov.querySelector('.story-narr-sprite');
+                            if (_sp) _sp.classList.add('story-narr-sprite-idle');
+                        }, 560);
+                    } catch (e) {}
+                }
+                // Advance cue: when nothing is pending (no typewriter, no staged
+                // reveal, no choice prompt) the full text is already on screen, so
+                // surface the "tap to continue" arrow immediately.
+                if (!_wantsTypewriter && !_revealMode && !choices.length) _showAdvanceCue();
                 if (!_wantsTypewriter) return;
                 // Defer to rAF: fires before first paint in a real browser (so the
                 // clear+reveal is seamless), but does NOT run inside a synchronous
@@ -51950,6 +52259,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     full.forEach(f => { f.el.innerHTML = f.html; });
                     _twTyping = false;
                     _skipTypewriter = null;
+                    // Text is now fully on screen (natural completion or a skip
+                    // tap) — surface the advance cue. The next tap dismisses.
+                    _showAdvanceCue();
                 };
                 const tick = function () {
                     if (!_twTyping) return;
@@ -51977,7 +52289,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // can close — a tap never skips an unread beat.
                 if (_revealMode) {
                     const _nxt = ov.querySelector('.story-narr-line-hidden');
-                    if (_nxt) { _nxt.classList.remove('story-narr-line-hidden'); return; }
+                    if (_nxt) {
+                        _nxt.classList.remove('story-narr-line-hidden');
+                        // Once the final staged line is surfaced, the beat is fully
+                        // read — show the advance cue so the next tap can close it.
+                        if (!ov.querySelector('.story-narr-line-hidden')) _showAdvanceCue();
+                        return;
+                    }
                 }
                 dismissed = true;
                 if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
@@ -52000,9 +52318,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     try {
                         ov.style.pointerEvents = 'none';
-                        ov.style.transition = 'opacity 0.2s ease';
+                        ov.style.transition = 'opacity 0.26s cubic-bezier(0.16,0.84,0.34,1)';
                         ov.style.opacity = '0';
-                        setTimeout(function () { try { ov.remove(); } catch (e2) {} }, 220);
+                        setTimeout(function () { try { ov.remove(); } catch (e2) {} }, 280);
                     } catch (e) { try { ov.remove(); } catch (e2) {} }
                 }
                 // Release the queue lock BEFORE onDone so a sequential
@@ -52058,6 +52376,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             choiceWrap.outerHTML = continueBtnHtml;
                             const newBtn = ov.querySelector('button[data-narr-continue="1"]');
                             if (newBtn) newBtn.onclick = function (e2) { e2.stopPropagation(); dismiss(); };
+                            // The pick is made and its reply is on screen — the
+                            // single Continue is now the only action, so cue it.
+                            _showAdvanceCue();
                         }
                     };
                 });
@@ -61663,6 +61984,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             conf.className = 'story-fx-confetti';
             conf.setAttribute('aria-hidden', 'true');
             stage.appendChild(conf);
+            // Cinematics (v30): warm spotlight behind the team (under the grid).
+            const spotlight = document.createElement('div');
+            spotlight.className = 'story-hof-spotlight';
+            spotlight.setAttribute('aria-hidden', 'true');
+            stage.appendChild(spotlight);
             const stripe = document.createElement('div');
             stripe.className = 'story-hof-gba-stripe';
             stripe.setAttribute('aria-hidden', 'true');
@@ -61758,7 +62084,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.body.appendChild(ov);
 
             if (myTok === window._storyHofToken) {
-                try { storySpawnConfetti(conf, 40); } catch (e) { /* */ }
+                // Cinematics (v30): a wider delay envelope so the confetti reads as
+                // a cascading wave rather than a single burst.
+                try { storySpawnConfetti(conf, 40, 1.8); } catch (e) { /* */ }
+                // ...and one triumphant chime as the hall lights up. StoryFx.playSfx
+                // already respects the sound setting, so no extra guard is needed.
+                try {
+                    if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') {
+                        window.StoryFx.playSfx('achv', 0.7);
+                    }
+                } catch (e) { /* */ }
             }
 
             save();
