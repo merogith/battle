@@ -43109,8 +43109,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // pipeline order: FOE_POWER_CURVE, STORY_IV_CITY_TRAINER,
         // STORY_EV_CITY_TOTAL, NPC_STAGE_CITY, _T2_TYPE_BOOST_ITEM, etc.
         // ──────────────────────────────────────────────────────────────────────────
-        function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
+        function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx, avoidSpecies) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Cross-encounter diversity: species the OTHER trainers in this city/gym already
+            // fielded. A SOFT, fail-open nudge — a filler pick that lands an already-seen
+            // species re-rolls a bounded number of times (see the loop below), so a one-type
+            // gym stops looking identical. Never blocks (a thin pool still fills) and never
+            // touches authored signatures, so gym-leader aces stay intact and on-theme.
+            // Accept a Set or any iterable of names; new Set(...) is realm-agnostic
+            // (a cross-realm `instanceof Set` would silently empty it) and tolerates
+            // null/undefined → empty.
+            const _avoid = new Set(avoidSpecies || []);
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
@@ -43551,6 +43560,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!chosen || !_canUse(chosen)) chosen = pickFromUnionExcluding();
                 if (!chosen || !_canUse(chosen)) chosen = pickRandomInGenWindow();
                 if (!chosen) chosen = 'Rattata';
+                // Cross-encounter nudge: a non-authored pick (synthetic-sig or filler) that
+                // another trainer in this city/gym already fielded re-rolls a bounded number of
+                // times for an unused, not-yet-seen alternative. AUTHORED signatures (gym-leader
+                // aces, in _origMult) are exempt so a leader's identity is never diluted, and it
+                // only fires when a fresh option actually exists — a thin pool still fills.
+                if (!_origMult.has(chosen) && _avoid.size && chosen && _avoid.has(chosen)) {
+                    for (let r = 0; r < 6; r++) {
+                        const alt = pickThematic();
+                        if (alt && _canUse(alt) && !_avoid.has(alt)) { chosen = alt; break; }
+                    }
+                }
                 if (isMixed && partySize >= 3 && chosen) {
                     const t1c = (baseStats[chosen] || {}).t1 || '';
                     const othersSame = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1c).length;
@@ -44298,13 +44318,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 const types = Object.keys(typeChart).filter(t => t !== '???');
                 const basics = TRAINER_DATA.filter(t => t.role === 'Basic Trainer' && !t.tag);
-                const flavor = basics.length ? basics[Math.floor(rng() * basics.length)] : { name: 'Trainer', spriteFile: 'Youngster' };
+                // Roll the PRIMARY type first (gym trainers inherit the gym's type via
+                // preferredType), then pick the sprite/name to MATCH it — a "Bug Catcher"
+                // never fields a Fire team. Prefer a class whose own type covers the rolled
+                // primary; fail open to any basic so the sprite always resolves. Placeholder
+                // (Mixed-fodder) classes are kept out of the typed match so a typed roll
+                // doesn't land a generic-team sprite over an on-type one.
                 const primary = preferredType || types[Math.floor(rng() * types.length)];
                 let type = primary;
                 if (rng() < 0.33) {
                     const t2 = types[Math.floor(rng() * types.length)];
                     if (t2 !== primary) type = primary + '/' + t2;
                 }
+                const onType = basics.filter(t => !isPlaceholderSignatureList(t.sigs || []) && parseTrainerTypes(t.type).includes(primary));
+                const flavorPool = onType.length ? onType : basics;
+                const flavor = flavorPool.length ? flavorPool[Math.floor(rng() * flavorPool.length)] : { name: 'Trainer', spriteFile: 'Youngster' };
                 return {
                     role: 'Basic Trainer',
                     name: flavor.name || 'Trainer',
@@ -49083,6 +49111,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (row && (row[0] | 0) === r) return cityIndexFromEventIndex(i);
             }
             return -1;
+        }
+
+        // ── Per-city foe-species memory (cross-encounter diversity nudge) ──────
+        // Transient run state keyed to ONE city at a time: when the resolved city
+        // changes, the set resets, so it only ever holds species fielded by EARLIER
+        // trainers in the city the player is currently clearing. Feeds rollTrainerTeam's
+        // soft `avoidSpecies` nudge so a one-type gym (leader + gym trainers) stops
+        // looking identical. Fail-open everywhere; NOT part of the save schema — on
+        // reload it rebuilds as the player fights through the city (already-rolled teams
+        // stay frozen in currentEnemyLock and never re-roll, so determinism holds).
+        let _storyCityFoeSeenCity = -1;
+        let _storyCityFoeSeenSet = new Set();
+        function _storyCityFoeSeen(rowId) {
+            let city = -1;
+            try { city = _cityIndexForStoryRow(rowId); } catch (_e) {}
+            if (_storyCityFoeSeenCity !== city || !(_storyCityFoeSeenSet instanceof Set)) {
+                _storyCityFoeSeenCity = city;
+                _storyCityFoeSeenSet = new Set();
+            }
+            return _storyCityFoeSeenSet;
+        }
+        function _storyCityFoeRecord(rowId, team) {
+            if (!Array.isArray(team)) return;
+            const seen = _storyCityFoeSeen(rowId);
+            for (const s of team) { if (s && s.name) seen.add(s.name); }
         }
 
         function lastStoryCityEventIndexAtOrBefore(ei) {
@@ -54533,6 +54586,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         save();
                     } catch (e) { console.warn('[Story] enemy lock refresh save', e); }
                     try { _storyRecordSignatureEncounter(trainer, team); } catch (e) {}
+                    try { _storyCityFoeRecord(idx, team); } catch (e) {}
                     startFight(team);
                 });
                 return;
@@ -54545,7 +54599,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Pokémon, not a rolled trainer team.
                     const _raidTeam = _rollExtraRaidBossTeam(sm._activeBeatBattleKey);
                     if (_raidTeam) return _raidTeam;
-                    return rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                    // Soft cross-encounter diversity: avoid species the earlier trainers in
+                    // THIS city already fielded (gym leaders' authored aces stay exempt inside
+                    // rollTrainerTeam). Non-rival only — the rival is a dynamic counter-team.
+                    const _avoid = (String(event) === 'Rival') ? null : _storyCityFoeSeen(idx);
+                    return rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx, _avoid);
                 };
                 // Static-roll spec: every non-rival fight is a pure function of
                 // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
@@ -54581,6 +54639,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     save();
                 } catch (e) { console.warn('[Story] enemy lock save', e); }
                 try { _storyRecordSignatureEncounter(trainer, frozenTeam); } catch (e) {}
+                try { _storyCityFoeRecord(idx, frozenTeam); } catch (e) {}
                 startFight(frozenTeam);
             });
         }
