@@ -33166,8 +33166,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 3-track story-mode pools (v22+). One villain + one extra is rolled at
         // run start (and back-filled on save migration). Tracks stay hidden until
         // the first beat fires organically — Road 1 = first extra beat, Road 2 =
-        // first villain beat — so the reveal lands inside the first ~10 minutes
-        // of a run. See docs/story-design/STORY_3TRACK_IMPL_PLAN.md.
+        // first villain beat (a post-Gym-2 route node) — so the reveal lands on
+        // each track's first early-game road node, not at run start.
+        // See docs/story-design/STORY_3TRACK_IMPL_PLAN.md.
         const VILLAIN_TRACKS = ['rocket','magma','aqua','galactic','plasma',
                                 'flare','skull','yell','macroCosmos','star'];
         const EXTRA_TRACKS   = ['cubone','yamask','hypno','phantump',
@@ -41885,10 +41886,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _storyEnemyMechKeys(ctx) {
             // Enemy trainers are gated to the player's story-mode mechanic unlocks:
-            // GL1-5 enemies are STANDARD only, GL6 boss (the unlock-reveal fight) is
-            // also STANDARD, and from GL7 onwards each newly unlocked mechanic enters
-            // the enemy candidate pool. Mirrors the player-side _withStoryPlayerGimmickGate
-            // rule so no mechanic appears anywhere before it becomes globally available.
+            // below 6 badges enemies are STANDARD only; once the player reaches 6
+            // badges (after the GL6 reveal fight) all four enabled mechanics unlock
+            // together (`slots = badges < 6 ? 0 : 4`) and enter the enemy candidate
+            // pool at once. Mirrors the player-side _withStoryPlayerGimmickGate rule
+            // so no mechanic appears anywhere before it becomes globally available.
             // An optional ctx.settings override lets a caller force the gimmick flags on
             // (the post-HoF Mystery Figure rolls from every unlocked mechanic) without
             // mutating the shared sm.settings; default reads the live story settings.
