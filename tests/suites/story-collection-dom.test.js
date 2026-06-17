@@ -29,6 +29,39 @@ test('every collection tab renders a non-empty body without throwing', () => {
   }
 });
 
+test('Achievements tab renders the new Endgame Grind category', () => {
+  SM.openCollection('achievements');
+  const html = (doc.getElementById('collection-body').innerHTML) || '';
+  assert.match(html, /Endgame Grind/, 'grind category section heading present');
+  assert.match(html, /Replayability Trophies/, 'replay category still present');
+});
+
+test('collection a11y: tablist roving tabindex + live panel + pokedex strip live', () => {
+  SM.openCollection('pokedex');
+  const active = doc.getElementById('collection-tab-pokedex');
+  const inactive = doc.getElementById('collection-tab-ach');
+  assert.equal(active.getAttribute('tabindex'), '0', 'active tab is in the tab order');
+  assert.equal(inactive.getAttribute('tabindex'), '-1', 'inactive tab is removed from the tab order');
+  const body = doc.getElementById('collection-body');
+  assert.equal(body.getAttribute('aria-live'), 'polite', 'panel announces tab content changes');
+  assert.match(body.getAttribute('aria-label') || '', /pokedex/i, 'panel labels the active tab');
+  // ISSUE-126: the Pokédex seen/caught strip in the PC screen is now a live region.
+  const strip = doc.getElementById('story-pc-pokedex-strip');
+  assert.ok(strip, 'pokedex strip exists');
+  assert.equal(strip.getAttribute('aria-live'), 'polite', 'pokedex counts strip is aria-live');
+});
+
+test('keyboard nav cycles the collection tablist', () => {
+  SM.openCollection('pokedex');
+  assert.ok(typeof SM._collectionTabsKeydown === 'function', 'keydown handler exposed');
+  SM._collectionTabsKeydown({ key: 'ArrowRight', preventDefault() {} });
+  assert.equal(doc.getElementById('collection-tab-ach').getAttribute('aria-selected'), 'true', 'ArrowRight moves to next tab');
+  SM._collectionTabsKeydown({ key: 'ArrowLeft', preventDefault() {} });
+  assert.equal(doc.getElementById('collection-tab-pokedex').getAttribute('aria-selected'), 'true', 'ArrowLeft moves back');
+  SM._collectionTabsKeydown({ key: 'End', preventDefault() {} });
+  assert.equal(doc.getElementById('collection-tab-memorial').getAttribute('aria-selected'), 'true', 'End jumps to last tab');
+});
+
 test('Signatures tab shows the registry summary + trainer blocks', () => {
   SM.openCollection('signatures');
   const html = (doc.getElementById('collection-body').innerHTML) || '';

@@ -193,7 +193,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 375f7f36e4de
 confidence: medium
-status: open
+status: fixed-claude/collection-ui-achievements-update-4j31fc
 ---
 
 **Title**: Pokédex counts strip updates live (seen/caught) but is not an aria-live region
