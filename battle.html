@@ -33159,12 +33159,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "sceneKey": "main.event1"
                   },
                   "event2": {
-                            "roadAnchor": "road3",
+                            "roadAnchor": "road2",
                             "kind": "event",
                             "sceneKey": "main.event2"
                   },
                   "event3": {
-                            "roadAnchor": "road5",
+                            "roadAnchor": "road4",
                             "kind": "event",
                             "sceneKey": "main.event3"
                   },
@@ -33174,7 +33174,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             "sceneKey": "main.battle1"
                   },
                   "event4": {
-                            "roadAnchor": "road7",
+                            "roadAnchor": "road6",
                             "kind": "event",
                             "sceneKey": "main.event4"
                   },
@@ -33284,7 +33284,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.rocket.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.rocket.ending"
                             }
@@ -33341,7 +33341,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.magma.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.magma.ending"
                             }
@@ -33398,7 +33398,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.aqua.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.aqua.ending"
                             }
@@ -33455,7 +33455,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.galactic.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.galactic.ending"
                             }
@@ -33512,7 +33512,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.plasma.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.plasma.ending"
                             }
@@ -33569,7 +33569,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.flare.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.flare.ending"
                             }
@@ -33626,7 +33626,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.skull.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.skull.ending"
                             }
@@ -33683,7 +33683,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.yell.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.yell.ending"
                             }
@@ -33740,7 +33740,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.macroCosmos.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.macroCosmos.ending"
                             }
@@ -33797,7 +33797,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                       "sceneKey": "villain.star.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.star.ending"
                             }
@@ -39108,10 +39108,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!id) return '';
             return _THREAD_LABELS[id] || (String(id).charAt(0).toUpperCase() + String(id).slice(1));
         }
-        // Count an arc's unfired event beats → a one-word felt status.
-        function _threadStatusWord(table, trackId) {
-            if (!trackId || !table[trackId]) return null;
-            const beats = table[trackId];
+        // Count an arc's unfired event beats → a one-word felt status. Takes a
+        // resolved beats map so it works for the flat MAIN_STORY_BEATS as well as
+        // the per-track VILLAIN_/EXTRA_STORY_BEATS[trackId] maps.
+        function _threadStatusWord(beats) {
+            if (!beats) return null;
             const fired = (sm && sm.storyEventsFired) || {};
             let total = 0, done = 0;
             for (const k in beats) {
@@ -39130,6 +39131,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // mysteries (Cubone / Hypno / …), phrased as rumors → a deepening case.
         function _threadStatusPhrase(kind, label, word) {
             if (!label || !word) return '';
+            if (kind === 'main') {
+                if (word === 'stirring') return 'The story is just beginning';
+                if (word === 'unfolding') return 'The story is unfolding';
+                return 'The story is told';
+            }
             if (kind === 'villain') {
                 // Canon: every villain crew is "Team X" except Macro Cosmos.
                 const team = label === 'Macro Cosmos' ? label : 'Team ' + label;
@@ -39147,9 +39153,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyThreadObjectiveLine() {
             if (!sm) return '';
             const parts = ['Badge ' + (sm.badges | 0) + '/8'];
-            const vs = _threadStatusWord(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain);
+            const ms = _threadStatusWord(MAIN_STORY_BEATS);
+            if (ms) parts.push('★ ' + _threadStatusPhrase('main', 'Main Story', ms));
+            const vs = _threadStatusWord(sm.tracks && VILLAIN_STORY_BEATS[sm.tracks.villain]);
             if (vs) parts.push('⚔ ' + _threadStatusPhrase('villain', _threadLabel(sm.tracks.villain), vs));
-            const xs = _threadStatusWord(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra);
+            const xs = _threadStatusWord(sm.tracks && EXTRA_STORY_BEATS[sm.tracks.extra]);
             if (xs) parts.push('👁 ' + _threadStatusPhrase('extra', _threadLabel(sm.tracks.extra), xs));
             // Active errand (one shown — the soonest payoff).
             try {
@@ -39316,23 +39324,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let h = '';
             h += '<div class="story-journal-section"><h3>🏅 Badges</h3><p>' + (sm.badges | 0) + ' / 8 earned.</p></div>';
             const fired = sm.storyEventsFired || {};
-            const threadBlock = (table, trackId, label, sigil) => {
-                if (!trackId || !table[trackId]) return '';
-                const beats = table[trackId];
-                let items = '';
+            // Renders one story track from a resolved beats map (works for the flat
+            // MAIN_STORY_BEATS and the per-track VILLAIN_/EXTRA_STORY_BEATS[id]).
+            // Header carries a "done / total chapters" count so the player can see
+            // progress through each of the three stories at a glance.
+            const threadBlock = (beats, label, sigil) => {
+                if (!beats) return '';
+                let items = '', done = 0, total = 0;
                 for (const k in beats) {
                     const b = beats[k];
                     if (!b || b.kind !== 'event') continue;
                     const sc = (typeof STORY_SCENES === 'object' && STORY_SCENES[b.sceneKey]) ? STORY_SCENES[b.sceneKey] : null;
                     const title = sc && sc.title ? sc.title : b.sceneKey;
-                    const done = !!fired[b.sceneKey];
-                    items += '<li style="opacity:' + (done ? '1' : '0.4') + ';">' + (done ? '✓ ' : '• ') + esc(title) + '</li>';
+                    const isDone = !!fired[b.sceneKey];
+                    total++; if (isDone) done++;
+                    items += '<li style="opacity:' + (isDone ? '1' : '0.4') + ';">' + (isDone ? '✓ ' : '• ') + esc(title) + '</li>';
                 }
                 if (!items) return '';
-                return '<div class="story-journal-section"><h3>' + sigil + ' ' + esc(label) + ' thread</h3><ul>' + items + '</ul></div>';
+                const count = ' <span style="opacity:0.7;font-weight:normal;">(' + done + ' / ' + total + ' chapters)</span>';
+                return '<div class="story-journal-section"><h3>' + sigil + ' ' + esc(label) + count + '</h3><ul>' + items + '</ul></div>';
             };
-            h += threadBlock(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain, _threadLabel(sm.tracks && sm.tracks.villain), '⚔');
-            h += threadBlock(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra, _threadLabel(sm.tracks && sm.tracks.extra), '👁');
+            // The three stories, grouped and labelled: the static Main spine, the
+            // run's Villain arc, the run's Extra/Mystery arc.
+            h += threadBlock(MAIN_STORY_BEATS, 'Main Story', '★');
+            h += threadBlock(sm.tracks && VILLAIN_STORY_BEATS[sm.tracks.villain], 'Villain · ' + _threadLabel(sm.tracks && sm.tracks.villain), '⚔');
+            h += threadBlock(sm.tracks && EXTRA_STORY_BEATS[sm.tracks.extra], 'Mystery · ' + _threadLabel(sm.tracks && sm.tracks.extra), '👁');
             const active = [], doneE = [];
             for (const id in (sm.errands || {})) {
                 const st = sm.errands[id]; if (!st) continue;
@@ -39399,9 +39415,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm) return [];
             const fired = sm.storyEventsFired || {};
             const lines = [];
-            const threadRecap = (table, trackId, label, sigil) => {
-                if (!trackId || !table[trackId]) return;
-                const beats = table[trackId];
+            const threadRecap = (beats, label, sigil) => {
+                if (!beats) return;
                 let total = 0, done = 0, lastTitle = '';
                 for (const k in beats) {
                     const b = beats[k];
@@ -39416,8 +39431,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!done) return;
                 lines.push(sigil + ' ' + label + ' — ' + done + ' of ' + total + ' beats seen.' + (lastTitle ? ' Last: "' + lastTitle + '".' : ''));
             };
-            threadRecap(VILLAIN_STORY_BEATS, sm.tracks && sm.tracks.villain, _threadLabel(sm.tracks && sm.tracks.villain), '⚔');
-            threadRecap(EXTRA_STORY_BEATS, sm.tracks && sm.tracks.extra, _threadLabel(sm.tracks && sm.tracks.extra), '👁');
+            threadRecap(MAIN_STORY_BEATS, 'Main Story', '★');
+            threadRecap(sm.tracks && VILLAIN_STORY_BEATS[sm.tracks.villain], 'Villain · ' + _threadLabel(sm.tracks && sm.tracks.villain), '⚔');
+            threadRecap(sm.tracks && EXTRA_STORY_BEATS[sm.tracks.extra], 'Mystery · ' + _threadLabel(sm.tracks && sm.tracks.extra), '👁');
             return lines;
         }
         window._storyRecapLines = _storyRecapLines;
@@ -46716,11 +46732,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { onDone && onDone(); } catch (e2) {}
             }
         }
-        // Fires the one-time Mystery Figure reveal (the cap comes off) then the
-        // ending, in order, then calls onDone. Deduped via storyEventsFired so
-        // a lost post-HoF climax that's later avenged from the Crucible's
-        // Mystery button still delivers the reveal — exactly once. If the
-        // reveal already played, this is a no-op that calls onDone immediately.
+        // Fires the one-time Mystery Figure reveal (the cap comes off), then
+        // calls onDone. Deduped via storyEventsFired so a lost post-HoF climax
+        // that's later avenged from the Crucible's Mystery button still delivers
+        // the reveal — exactly once. If the reveal already played, this is a
+        // no-op that calls onDone immediately. The `main.ending` finale is NO
+        // LONGER played back-to-back here — it is deferred past the Oak post-HoF
+        // epilogue (see continuePostGame) so the ending breathes; the Crucible
+        // rematch branch plays it explicitly after this reveal for the same one-
+        // shot result. Both ending sites guard on !storyEventsFired['main.ending'].
         function _fireMysteryRevealThenEnding(onDone) {
             if (!sm) { try { onDone && onDone(); } catch (e) {} return; }
             if (!sm.storyEventsFired) sm.storyEventsFired = {};
@@ -46738,11 +46758,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _playStoryBeatScene('main.mfReveal', () => {
                 sm.storyEventsFired['main.mfReveal'] = true;
                 try { save(); } catch (e) {}
-                _playStoryBeatScene('main.ending', () => {
-                    sm.storyEventsFired['main.ending'] = true;
-                    try { save(); } catch (e) {}
-                    try { onDone && onDone(); } catch (e) {}
-                });
+                try { onDone && onDone(); } catch (e) {}
+            });
+        }
+        // The deferred `main.ending` finale. Plays once — only after the mask has
+        // come off (main.mfReveal fired) and only if the ending hasn't already
+        // played. One-shot via storyEventsFired so a tab-close mid-closure replays
+        // cleanly. If the gate isn't met, calls onDone immediately (no-op). Shared
+        // by both ending sites (post-Oak-epilogue closure + Crucible rematch).
+        function _playDeferredMainEnding(onDone) {
+            if (!sm || !sm.storyEventsFired
+                || !sm.storyEventsFired['main.mfReveal']
+                || sm.storyEventsFired['main.ending']) {
+                try { onDone && onDone(); } catch (e) {} return;
+            }
+            _playStoryBeatScene('main.ending', () => {
+                sm.storyEventsFired['main.ending'] = true;
+                try { save(); } catch (e) {}
+                try { onDone && onDone(); } catch (e) {}
             });
         }
         function _playStoryBeatQueue(queue, i, onDone) {
@@ -56851,9 +56884,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // a win after the reveal already played just shows a plain
                 // victory toast and returns to the hub).
                 if (won) {
+                    // Reveal, then the deferred finale (this branch never re-enters
+                    // continuePostGame, so it plays the ending itself — once, guarded
+                    // by storyEventsFired), then back to the Crucible hub.
                     _fireMysteryRevealThenEnding(function () {
-                        try { window.showGameAlert && window.showGameAlert('Victory!'); } catch (e) {}
-                        enterCrucible();
+                        _playDeferredMainEnding(function () {
+                            try { window.showGameAlert && window.showGameAlert('Victory!'); } catch (e) {}
+                            enterCrucible();
+                        });
                     });
                 } else {
                     try { window.showGameAlert && window.showGameAlert('The mask stays on. Try again.'); } catch (e) {}
@@ -62221,12 +62259,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     'The wall is yours — but the road keeps going. Two doors open from any city now:\n\n🧨 The Crucible — every facility you used, under one roof, with the endless Battle Frontier ladder out back.\n\n🚪 The Mystery Figure — summon one last masked challenger from the Crucible. The mask stays on until you beat them.'); } catch (e) {}
                 enterCity();
             };
+            // Order: Oak epilogue → main.ending (the finale, deferred so it no
+            // longer dumps back-to-back with mfReveal) → orientation tip → city.
+            // The epilogue is the breath between the reveal and the ending.
+            const _afterEpilogue = function () {
+                _playDeferredMainEnding(_showOrientationTipThenCity);
+            };
             try {
-                const fired = _showVariantPostHofEpilogue(_showOrientationTipThenCity);
-                if (!fired) _showOrientationTipThenCity();
+                const fired = _showVariantPostHofEpilogue(_afterEpilogue);
+                if (!fired) _afterEpilogue();
             } catch (e) {
                 console.warn('[Story] post-HoF epilogue dispatch failed:', e);
-                _showOrientationTipThenCity();
+                _afterEpilogue();
             }
         }
 

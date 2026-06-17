@@ -9,12 +9,12 @@
                             "sceneKey": "main.event1"
                   },
                   "event2": {
-                            "roadAnchor": "road3",
+                            "roadAnchor": "road2",
                             "kind": "event",
                             "sceneKey": "main.event2"
                   },
                   "event3": {
-                            "roadAnchor": "road5",
+                            "roadAnchor": "road4",
                             "kind": "event",
                             "sceneKey": "main.event3"
                   },
@@ -24,7 +24,7 @@
                             "sceneKey": "main.battle1"
                   },
                   "event4": {
-                            "roadAnchor": "road7",
+                            "roadAnchor": "road6",
                             "kind": "event",
                             "sceneKey": "main.event4"
                   },
@@ -134,7 +134,7 @@
                                       "sceneKey": "villain.rocket.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.rocket.ending"
                             }
@@ -191,7 +191,7 @@
                                       "sceneKey": "villain.magma.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.magma.ending"
                             }
@@ -248,7 +248,7 @@
                                       "sceneKey": "villain.aqua.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.aqua.ending"
                             }
@@ -305,7 +305,7 @@
                                       "sceneKey": "villain.galactic.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.galactic.ending"
                             }
@@ -362,7 +362,7 @@
                                       "sceneKey": "villain.plasma.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.plasma.ending"
                             }
@@ -419,7 +419,7 @@
                                       "sceneKey": "villain.flare.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.flare.ending"
                             }
@@ -476,7 +476,7 @@
                                       "sceneKey": "villain.skull.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.skull.ending"
                             }
@@ -533,7 +533,7 @@
                                       "sceneKey": "villain.yell.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.yell.ending"
                             }
@@ -590,7 +590,7 @@
                                       "sceneKey": "villain.macroCosmos.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.macroCosmos.ending"
                             }
@@ -647,7 +647,7 @@
                                       "sceneKey": "villain.star.boss"
                             },
                             "ending": {
-                                      "roadAnchor": "road7",
+                                      "roadAnchor": "road8",
                                       "kind": "event",
                                       "sceneKey": "villain.star.ending"
                             }

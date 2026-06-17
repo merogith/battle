@@ -188,7 +188,10 @@ test('_journalRenderHTML lists badges + threads without mutating sm', () => {
     const html = ST.journalRenderHTML();
     assert.match(html, /Badges/);
     assert.match(html, /2 \/ 8/);
-    assert.match(html, /thread/i);
+    // The 2026-06 3-track redesign labels the stories Main / Villain · / Mystery ·
+    // (replacing the old "<arc> thread" heading). The Main spine is static, so it
+    // always renders.
+    assert.match(html, /Main Story/);
     assert.equal(JSON.stringify({ e: sm.errands, n: sm.npcsMet, f: sm.storyEventsFired }), before, 'journal render did not mutate sm');
 });
 
