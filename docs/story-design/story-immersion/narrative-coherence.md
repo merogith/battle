@@ -154,7 +154,7 @@ player-controlled moments where attention can spread out) and **bottlenecks**
 
 | Role | Is | In code | Properties |
 |---|---|---|---|
-| **Diamond (camp)** | the **city hub** + the between-city **route-node / "rest stop"** space | `enterCity`, `_showCityArrivalScreen`, `_cityBlurbFor`, NPC quotes, `proceedToNextBattle` wild interrupt | wide, safe, player-paced, repeatable, has a *face* (City Guide / Professor) |
+| **Diamond (camp)** | the **city hub** + the between-city **route-node / "rest stop"** space | `enterCity`, `_showCityArrivalScreen`, `_cityBlurbFor`, NPC quotes, `proceedToNextBattle` wild interrupt | wide, safe, player-paced, repeatable, has a *face* (City Guide; the Professor only at City 0) |
 | **Bottleneck (event)** | the **forced battle** or **forced scene** | `enterBattleEvent`, `_tryFireRoadStoryBeats` → `_playStoryBeatScene` | narrow, mandatory, sequential, one-shot, high-attention |
 
 The prose already *knows* this — most road scenes are explicitly set "at the Road N
