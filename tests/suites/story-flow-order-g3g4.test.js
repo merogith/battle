@@ -1,11 +1,13 @@
 // G3 + G4 — story dispatch-ordering flow-bugs (design-pass fixes, Stream 1).
 //
-// G3: a villain arc's `ending` (kind "event", road7) was DUMPED before the arc's
-//     `boss` (kind "boss", injected, road7) — both anchor road7, but events dump
-//     at the road's first battle while the boss injects at its own row, so the
+// G3: a villain arc's `ending` (kind "event") was DUMPED before the arc's `boss`
+//     (kind "boss", injected, road7) — they used to both anchor road7, but events
+//     dump at the road's first battle while the boss injects at its own row, so the
 //     aftermath played before the climax. Fix: defer the villain ending until the
 //     arc boss is fired. (Extra-arc endings need no gate — their raid climax is on
-//     an earlier road.)
+//     an earlier road.) The 2026-06 pacing pass also re-anchored the villain ending
+//     to road8 (relieving the road7 clump / road8 drought); the boss-fired gate
+//     still holds, so these tests now check eligibility on road8.
 //
 // G4: `_activeBattleBeatForCurrentRow` injected the next boss/raid onto whatever
 //     the road's first battle row was — including the road6 Rival (→ Proton), with
@@ -49,10 +51,10 @@ test('G3: once the arc boss is fired, the ending becomes eligible', () => {
     ST.sm = Object.assign({}, ST.sm, {
         tracks: { main: 'classic_v2', villain: 'rocket', extra: 'cubone' },
         storyEventsFired: { 'villain.rocket.boss': true },
-        eventIndex: firstRowOnRoad('road7'),
+        eventIndex: firstRowOnRoad('road8'),
     });
-    const after = ST.resolveActiveRoadBeats('road7').map(b => b.sceneKey);
-    assert.ok(after.includes('villain.rocket.ending'), 'after the climax, the ending dumps (next road7 row)');
+    const after = ST.resolveActiveRoadBeats('road8').map(b => b.sceneKey);
+    assert.ok(after.includes('villain.rocket.ending'), 'after the climax, the ending dumps (road8 row)');
 });
 
 test('G3: gate applies to every villain arc (not just rocket)', () => {
@@ -60,13 +62,13 @@ test('G3: gate applies to every villain arc (not just rocket)', () => {
         ST.sm = Object.assign({}, ST.sm, {
             tracks: { main: 'classic_v2', villain: arc, extra: 'cubone' },
             storyEventsFired: {},
-            eventIndex: firstRowOnRoad('road7'),
+            eventIndex: firstRowOnRoad('road8'),
         });
-        const keys = ST.resolveActiveRoadBeats('road7').map(b => b.sceneKey);
+        const keys = ST.resolveActiveRoadBeats('road8').map(b => b.sceneKey);
         assert.ok(!keys.includes('villain.' + arc + '.ending'),
             arc + ' ending must be gated while its boss is un-fired');
         ST.sm.storyEventsFired = { ['villain.' + arc + '.boss']: true };
-        const keys2 = ST.resolveActiveRoadBeats('road7').map(b => b.sceneKey);
+        const keys2 = ST.resolveActiveRoadBeats('road8').map(b => b.sceneKey);
         assert.ok(keys2.includes('villain.' + arc + '.ending'),
             arc + ' ending must fire once its boss is done');
     }
