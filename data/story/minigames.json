@@ -1,0 +1,45 @@
+{
+  "_meta": {
+    "version": 1,
+    "purpose": "Story micro-game DEFINITIONS, keyed by id. Renderers live in battle.html (StoryMiniGames); these are the tunable numbers the maintainer owns (rounds, tell odds, prompts, win/lose flavour). Attach a game to a scene via data/story/interactions.json (act-level) or via a STORY_BATTLE_INTERRUPTS challenge (battle-level). A micro-game is a SPICE, never a gate: losing never blocks progress. type ∈ 'rps' | 'tell' | 'memory'. BALANCE NOTE: any game-affecting effect (gold/item/flag/skipBattle/softenBattle) wired into a live scene needs maintainer sign-off — these defaults are demo/POC values.",
+    "schema": {
+      "rps": "{ type:'rps', rounds:int(best-of), tell:0..1(chance CPU plays tellThrow), tellThrow:0|1|2(rock|paper|scissors), title, prompt, winLine, loseLine, drawLine }",
+      "tell": "{ type:'tell', title, tell:'NPC tell line', options:[{label, reply:[...]}], answer:int(correct index), winLine, loseLine }",
+      "memory": "{ type:'memory', length:int, symbols:[emoji...], title, winLine, loseLine }"
+    }
+  },
+  "games": {
+    "rps_route_punk": {
+      "type": "rps",
+      "rounds": 3,
+      "tell": 0.5,
+      "tellThrow": 0,
+      "title": "Rock · Paper · Scissors",
+      "prompt": "\"Beat me two outta three and you walk. Lose, and we battle. Throw.\"",
+      "winLine": "He spits, grins, and waves you past. No battle today.",
+      "loseLine": "\"Heh. Then we do this the hard way.\"",
+      "drawLine": "\"Tch. Stalemate. Fine — let's just battle.\""
+    },
+    "tell_rocket_grunt": {
+      "type": "tell",
+      "title": "Read the Tell",
+      "tell": "The grunt's eyes flick left toward the warehouse door before he answers. \"Boss ain't here. Nothin' to see.\"",
+      "options": [
+        { "label": "\"Then you won't mind me checking that door.\"", "reply": ["He freezes. You called it — he was guarding it.", "\"...Fine. But you didn't hear it from me.\""] },
+        { "label": "\"Sure. I'll be on my way.\"", "reply": ["He relaxes. You let the lead slip."] },
+        { "label": "\"Where's your boss, really?\"", "reply": ["\"Like I'd tell you,\" he sneers. The moment's gone."] }
+      ],
+      "answer": 0,
+      "winLine": "He cracks.",
+      "loseLine": "He clams up."
+    },
+    "memory_hypno_trance": {
+      "type": "memory",
+      "length": 4,
+      "symbols": ["🔴", "🔵", "🟡", "🟢"],
+      "title": "Hold the Pattern",
+      "winLine": "The pendulum swings — and you hold your mind together. The trance breaks.",
+      "loseLine": "The lights blur. For a moment you forget where you are..."
+    }
+  }
+}
