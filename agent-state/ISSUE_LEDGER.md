@@ -1,7 +1,7 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-06-16T04:48:45.996Z
-> **Source**: `agent-state/findings/*.md` (137 unique findings after dedup)
+> **Generated**: 2026-06-17T20:06:10.588Z
+> **Source**: `agent-state/findings/*.md` (136 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
 
@@ -16,12 +16,12 @@ status, edit the corresponding finding file and re-run.
 | P0 | 0 |
 | P1 | 5 |
 | P2 | 50 |
-| P3 | 78 |
-| **Total** | **137** |
+| P3 | 77 |
+| **Total** | **136** |
 
 | Category | Count |
 |---|---|
-| a11y | 9 |
+| a11y | 8 |
 | balance | 1 |
 | bug | 16 |
 | contrast | 2 |
@@ -160,18 +160,17 @@ status, edit the corresponding finding file and re-run.
 - [ISSUE-123] [P3] Doc line anchors stale across 4 specs (still drifting post-v24; cluster) — `STORY_NARRATIVE_VARIANTS` (dx)
 - [ISSUE-124] [P3] Tutorial scenes are text-only walls of 60-120 words — no audio, no progressive reveal, no skip-to-end affordance — `STORY_TUTORIAL_SCENES` (dx)
 - [ISSUE-125] [P3] Catch ball buttons lack accessible name reading the success %; bare-icon img alt empty — `story-catch-ball` (a11y)
-- [ISSUE-126] [P3] Pokédex counts strip updates live (seen/caught) but is not an aria-live region — `story-pc-pokedex-strip` (a11y)
-- [ISSUE-127] [P3] Dead CSS selector for a #story-pc-tab-journal-btn that has no markup or handler — `story-pc-tab-journal-btn` (refactor)
-- [ISSUE-128] [P3] Pokémon Center tab buttons not exposed as a tablist (no role=tab/tabpanel) — `story-pc-tab-storage-btn` (a11y)
-- [ISSUE-129] [P3] Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope — `storyAwareRng` (inconsistency)
-- [ISSUE-130] [P3] `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites — `storyAwareRng` (dx)
-- [ISSUE-131] [P3] `storyRngNext` / per-engine-entry `rng` ternary accessor is **0.0003 ms (300 ns) per call** — no closure allocation penalty, accessor pattern is clean — `storyRngNext` (perf)
-- [ISSUE-132] [P3] Status indicator toggles role="status" + aria-label onto a <div> at content-mutation time — `updateUI` (a11y)
-- [ISSUE-133] [P3] `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block — `wildSeenByEventIdx` (dx)
-- [ISSUE-134] [P4] VERIFIED OK — boss/raid reward double-grant across the two call sites is structurally prevented — `_activeBattleBeatForCurrentRow` (bug)
-- [ISSUE-135] [P4] `_bossWeatherLocked` / `_bossTerrainLocked` flags are set but never read — field "lock" is opening-state only — `_storyBossMechanicsBattleInit` (refactor)
-- [ISSUE-136] [P4] VERIFIED OK — extra-arc raid "laid to rest, no catch" lock is enforced structurally — `enterCatchEncounter` (bug)
-- [ISSUE-137] [P4] Three redundant RNG-routing mechanisms; confusion self-hit relies solely on the global Math.random patch while siblings use storyAwareRng() — `storyAwareRng` (inconsistency)
+- [ISSUE-126] [P3] Dead CSS selector for a #story-pc-tab-journal-btn that has no markup or handler — `story-pc-tab-journal-btn` (refactor)
+- [ISSUE-127] [P3] Pokémon Center tab buttons not exposed as a tablist (no role=tab/tabpanel) — `story-pc-tab-storage-btn` (a11y)
+- [ISSUE-128] [P3] Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope — `storyAwareRng` (inconsistency)
+- [ISSUE-129] [P3] `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites — `storyAwareRng` (dx)
+- [ISSUE-130] [P3] `storyRngNext` / per-engine-entry `rng` ternary accessor is **0.0003 ms (300 ns) per call** — no closure allocation penalty, accessor pattern is clean — `storyRngNext` (perf)
+- [ISSUE-131] [P3] Status indicator toggles role="status" + aria-label onto a <div> at content-mutation time — `updateUI` (a11y)
+- [ISSUE-132] [P3] `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block — `wildSeenByEventIdx` (dx)
+- [ISSUE-133] [P4] VERIFIED OK — boss/raid reward double-grant across the two call sites is structurally prevented — `_activeBattleBeatForCurrentRow` (bug)
+- [ISSUE-134] [P4] `_bossWeatherLocked` / `_bossTerrainLocked` flags are set but never read — field "lock" is opening-state only — `_storyBossMechanicsBattleInit` (refactor)
+- [ISSUE-135] [P4] VERIFIED OK — extra-arc raid "laid to rest, no catch" lock is enforced structurally — `enterCatchEncounter` (bug)
+- [ISSUE-136] [P4] Three redundant RNG-routing mechanisms; confusion self-hit relies solely on the global Math.random patch while siblings use storyAwareRng() — `storyAwareRng` (inconsistency)
 
 ---
 
@@ -4885,46 +4884,10 @@ The ball buttons are real `<button>`s (good) and the % is text (good, not color-
 
 ---
 
-## <a id="ISSUE-126"></a> ISSUE-126: Pokédex counts strip updates live (seen/caught) but is not an aria-live region
+## <a id="ISSUE-126"></a> ISSUE-126: Dead CSS selector for a #story-pc-tab-journal-btn that has no markup or handler
 
 ---
 id: ISSUE-126
-severity: P3
-category: a11y
-anchor_symbol: story-pc-pokedex-strip
-current_line_hint: ~9026
-file: battle.html
-agents: [accessibility-ux-auditor]
-fingerprint: 375f7f36e4de
-confidence: medium
-status: open
----
-
-**Title**: Pokédex counts strip updates live (seen/caught) but is not an aria-live region
-
-**Evidence**:
-```html
-<div id="story-pc-pokedex-strip" ...>
-  <span>📖 Pokédex — Seen <strong id="story-pc-pokedex-seen">0</strong> · Caught <strong id="story-pc-pokedex-count">0</strong></span>
-  <span id="story-pc-balls-summary" ...></span>
-</div>
-```
-These counters change after deposits/withdrawals/releases inside the same screen, but the strip is a static `<div>` — no announcement. Low priority (informational, not action-critical), but inconsistent with the casino/menu live-region treatment.
-
-**Repro**: PC release a Pokémon; the Caught count silently changes for SR users.
-
-**Blast radius**: `screen-story-pokemoncenter` header strip.
-
-**Fix sketch**: Add `aria-live="polite"` to `#story-pc-pokedex-strip` (or leave as-is — counters are ambient, not primary feedback).
-
-**Verification**: Count change is announced once after a release.
-
----
-
-## <a id="ISSUE-127"></a> ISSUE-127: Dead CSS selector for a #story-pc-tab-journal-btn that has no markup or handler
-
----
-id: ISSUE-127
 severity: P3
 category: refactor
 anchor_symbol: story-pc-tab-journal-btn
@@ -4953,10 +4916,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-128"></a> ISSUE-128: Pokémon Center tab buttons not exposed as a tablist (no role=tab/tabpanel)
+## <a id="ISSUE-127"></a> ISSUE-127: Pokémon Center tab buttons not exposed as a tablist (no role=tab/tabpanel)
 
 ---
-id: ISSUE-128
+id: ISSUE-127
 severity: P3
 category: a11y
 anchor_symbol: story-pc-tab-storage-btn
@@ -4990,10 +4953,10 @@ These are real focusable buttons (keyboard-OK) but the active tab is signalled o
 
 ---
 
-## <a id="ISSUE-129"></a> ISSUE-129: Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope
+## <a id="ISSUE-128"></a> ISSUE-128: Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope
 
 ---
-id: ISSUE-129
+id: ISSUE-128
 severity: P3
 category: inconsistency
 anchor_symbol: storyAwareRng
@@ -5028,10 +4991,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-130"></a> ISSUE-130: `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites
+## <a id="ISSUE-129"></a> ISSUE-129: `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites
 
 ---
-id: ISSUE-130
+id: ISSUE-129
 severity: P3
 category: dx
 anchor_symbol: storyAwareRng
@@ -5069,10 +5032,10 @@ if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(…); // s
 
 ---
 
-## <a id="ISSUE-131"></a> ISSUE-131: `storyRngNext` / per-engine-entry `rng` ternary accessor is **0.0003 ms (300 ns) per call** — no closure allocation penalty, accessor pattern is clean
+## <a id="ISSUE-130"></a> ISSUE-130: `storyRngNext` / per-engine-entry `rng` ternary accessor is **0.0003 ms (300 ns) per call** — no closure allocation penalty, accessor pattern is clean
 
 ---
-id: ISSUE-131
+id: ISSUE-130
 severity: P3
 category: perf
 anchor_symbol: storyRngNext
@@ -5098,10 +5061,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-132"></a> ISSUE-132: Status indicator toggles role="status" + aria-label onto a <div> at content-mutation time
+## <a id="ISSUE-131"></a> ISSUE-131: Status indicator toggles role="status" + aria-label onto a <div> at content-mutation time
 
 ---
-id: ISSUE-132
+id: ISSUE-131
 severity: P3
 category: a11y
 anchor_symbol: updateUI
@@ -5133,10 +5096,10 @@ else { statBox.removeAttribute('aria-label'); statBox.removeAttribute('role'); }
 
 ---
 
-## <a id="ISSUE-133"></a> ISSUE-133: `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block
+## <a id="ISSUE-132"></a> ISSUE-132: `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block
 
 ---
-id: ISSUE-133
+id: ISSUE-132
 severity: P3
 category: dx
 anchor_symbol: wildSeenByEventIdx
@@ -5180,10 +5143,10 @@ Most save fields are declared in the `sm` literal (~30654) and `newStoryRun` (~3
 
 ---
 
-## <a id="ISSUE-134"></a> ISSUE-134: VERIFIED OK — boss/raid reward double-grant across the two call sites is structurally prevented
+## <a id="ISSUE-133"></a> ISSUE-133: VERIFIED OK — boss/raid reward double-grant across the two call sites is structurally prevented
 
 ---
-id: ISSUE-134
+id: ISSUE-133
 severity: P4
 category: bug
 anchor_symbol: _activeBattleBeatForCurrentRow
@@ -5217,10 +5180,10 @@ A single boss/raid victory flows through ONLY the battle path. `storyEventsFired
 
 ---
 
-## <a id="ISSUE-135"></a> ISSUE-135: `_bossWeatherLocked` / `_bossTerrainLocked` flags are set but never read — field "lock" is opening-state only
+## <a id="ISSUE-134"></a> ISSUE-134: `_bossWeatherLocked` / `_bossTerrainLocked` flags are set but never read — field "lock" is opening-state only
 
 ---
-id: ISSUE-135
+id: ISSUE-134
 severity: P4
 category: refactor
 anchor_symbol: _storyBossMechanicsBattleInit
@@ -5253,10 +5216,10 @@ Grep: both flags appear ONLY at these write sites. No read gates any subsequent 
 
 ---
 
-## <a id="ISSUE-136"></a> ISSUE-136: VERIFIED OK — extra-arc raid "laid to rest, no catch" lock is enforced structurally
+## <a id="ISSUE-135"></a> ISSUE-135: VERIFIED OK — extra-arc raid "laid to rest, no catch" lock is enforced structurally
 
 ---
-id: ISSUE-136
+id: ISSUE-135
 severity: P4
 category: bug
 anchor_symbol: enterCatchEncounter
@@ -5289,10 +5252,10 @@ The raid never sets `wild:true`, never tags `safari`/`bossArc`, and never calls 
 
 ---
 
-## <a id="ISSUE-137"></a> ISSUE-137: Three redundant RNG-routing mechanisms; confusion self-hit relies solely on the global Math.random patch while siblings use storyAwareRng()
+## <a id="ISSUE-136"></a> ISSUE-136: Three redundant RNG-routing mechanisms; confusion self-hit relies solely on the global Math.random patch while siblings use storyAwareRng()
 
 ---
-id: ISSUE-137
+id: ISSUE-136
 severity: P4
 category: inconsistency
 anchor_symbol: storyAwareRng
@@ -5326,7 +5289,7 @@ const _thawRng = storyAwareRng(); if (_thawRng() < 0.2) ...
 
 ## Retired / Resolved
 
-_308 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
+_311 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
 
 - [fixed-claude/relaxed-bell-2X3Ys] Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog — `__pbsGlobalEscBound` (P3/a11y)
 - [fixed-claude/gifted-fermat-yfnqq5] Turn-resolution catch masks any in-loop throw as "[Error: …. Turn skipped.]" — both moves abandoned, real bugs hidden (PT-001) — `__runLockedPvPTurnResolution` (P2/bug)
@@ -5602,6 +5565,7 @@ _308 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-main] Fresh run starts with 0 Poké Balls; skipping the optional City-0 Mart silently no-ops the catch tutorial — `startNewRun` (P2/bug)
 - [fixed-main] Fresh run starts with 0 PokéBalls (spec says 5 at run start); 5 are gifted at first Mart instead — `startNewRun` (P1/inconsistency)
 - [fixed-main] Mystery Figure identity is rolled at run start before sm.active/runSeed are live — not reproducible under fixed debug seeds — `startNewRun` (P3/bug)
+- [fixed-claude/collection-ui-achievements-update-4j31fc] 8 "Replayability" achievements were defined but never unlocked (dead trophies) — `STORY_ACHIEVEMENTS` (P2/bug)
 - [fixed-claude/cagedgod-excision] Achievements `caged_god` / `r_caged_god` are permanently unobtainable (dead arc) — `STORY_ACHIEVEMENTS` (P2/inconsistency)
 - [fixed-claude/gracious-goodall-QFuQF] Caged God achievements (caged_god, r_caged_god) are permanently unearnable after v24 arc cut — `STORY_ACHIEVEMENTS` (P2/inconsistency)
 - [fixed-claude/cagedgod-excision] Row-67 `STORY_BEATS` still tags `'cagedGod'` + coldOpen `mystery67` — stale cut-arc residue in the live beat map — `STORY_BEATS` (P3/dx)
@@ -5621,6 +5585,7 @@ _308 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-main] Spec/mandate says timeline is "68 rows"; STORY_EVENTS_RAW has 67 (array idx 0–66), and rowId 68 is the intro Rival at array idx 1 — `STORY_RIVAL_ROW_INTRO` (P3/inconsistency)
 - [wontfix-out-of-scope-crucible] Crucible & Catch headers use empty spacer spans instead of a back control; no escape from Crucible header — `story-crucible-header` (P3/a11y)
 - [wontfix-descoped] Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast — `story-dialog-nameplate` (P2/a11y)
+- [fixed-claude/collection-ui-achievements-update-4j31fc] Pokédex counts strip updates live (seen/caught) but is not an aria-live region — `story-pc-pokedex-strip` (P3/a11y)
 - [fixed-claude/sharp-keller-eZEDN] Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline — `story-shop-buy-btn` (P3/a11y)
 - [fixed-claude/sharp-keller-eZEDN] Tutorial overlay's four-stage entrance animation has no reduced-motion fallback — `story-tutorial-overlay` (P3/a11y)
 - [fixed-claude/sharp-keller-eZEDN] Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile — `storyCatchMasterPulse` (P3/a11y)
@@ -5631,6 +5596,7 @@ _308 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-main] Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays — `storyRngNext` (P1/inconsistency)
 - [fixed-main] Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded — `storyRngNext` (P2/inconsistency)
 - [wontfix-DE-SCOPED-permanent] Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing — `traderOfferByCity` (P1/inconsistency)
+- [fixed-claude/collection-ui-achievements-update-4j31fc] E4 Lance and Champion Lance shared a byte-identical signature roster (copy-paste dup) — `TRAINER_DATA` (P2/data)
 - [fixed-main] Trick / Switcheroo swap is one-directional — the user's item is destroyed — `Trick` (P2/bug)
 - [fixed-claude/sharp-keller-eZEDN] Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop — `turn-resolution` (P1/bug)
 - [fixed-claude/sharp-keller-eZEDN] `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart` — `typeChart` (P1/data)

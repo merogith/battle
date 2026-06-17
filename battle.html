@@ -8761,14 +8761,16 @@
         }
         .story-collection-tabs {
             display: flex; gap: 4px;
+            flex-wrap: wrap;
             border-bottom: 2px solid #333;
             margin-bottom: 0;
         }
         .story-collection-tab {
-            flex: 1;
+            flex: 1 1 auto;
+            min-width: 92px;
             font-family: var(--battle-font) !important;
             background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
-            color: #888;
+            color: #9aa3b2;
             border: 2px solid #333;
             border-bottom: none;
             padding: 10px 8px;
@@ -8776,6 +8778,7 @@
             cursor: pointer;
             min-height: 42px;
             border-radius: 0;
+            white-space: nowrap;
         }
         .story-collection-tab:hover { color: #b3e5fc; border-color: #4fc3f7; }
         .story-collection-tab--active {
@@ -8820,7 +8823,7 @@
             border-bottom: 1px dashed #333;
         }
         .pdex-summary-stat { display: flex; flex-direction: column; gap: 2px; }
-        .pdex-summary-stat-label { font-size: 9px; color: #777; text-transform: uppercase; letter-spacing: 0.8px; }
+        .pdex-summary-stat-label { font-size: 9px; color: #8c97a4; text-transform: uppercase; letter-spacing: 0.8px; }
         .pdex-summary-stat-value { font-family: var(--battle-font) !important; font-size: 14px; color: #b3e5fc; }
         .pdex-gen-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
         .pdex-gen-tab {
@@ -8875,7 +8878,7 @@
         }
 
         /* Achievements tab */
-        .ach-empty { text-align: center; padding: 30px 20px; color: #666; font-size: 11px; }
+        .ach-empty { text-align: center; padding: 30px 20px; color: #8c97a4; font-size: 11px; }
         .ach-cat-section { margin-bottom: 18px; }
         .ach-cat-title {
             font-family: var(--battle-font) !important;
@@ -8919,7 +8922,7 @@
         .ach-row--rank4 .ach-row-name { color: #ffd54f; }
         .ach-row-rank {
             grid-area: rank;
-            font-size: 10px; color: #888;
+            font-size: 10px; color: #9aa3b2;
             letter-spacing: 0.5px;
             font-family: var(--battle-font) !important;
         }
@@ -8947,10 +8950,10 @@
             transition: width 0.3s ease;
         }
         .ach-row--rank4 .ach-prog-bar-fill { background: linear-gradient(90deg, #ffd54f 0%, #fff59d 100%); }
-        .ach-prog-text { font-size: 9px; color: #888; }
+        .ach-prog-text { font-size: 9px; color: #9aa3b2; }
 
         /* HoF records tab */
-        .hof-empty { text-align: center; padding: 30px 20px; color: #666; font-size: 11px; }
+        .hof-empty { text-align: center; padding: 30px 20px; color: #8c97a4; font-size: 11px; }
         .hof-list { display: flex; flex-direction: column; gap: 8px; }
         .hof-rec {
             background: rgba(15,18,26,0.7);
@@ -9018,7 +9021,33 @@
             .story-create-portrait { align-self: center; max-width: 200px; margin: 0 auto; }
             .ach-row { grid-template-columns: 36px 1fr; grid-template-areas: "icon name" "icon desc" "prog prog" "rank rank"; gap: 4px 10px; }
             .ach-row-rank { text-align: right; }
-            .ach-row-prog { align-items: flex-start; }
+            .ach-row-prog { align-items: flex-start; width: 100%; }
+            .ach-prog-bar { width: 100%; }
+            /* HoF cards get tighter so the portrait + meta don't crowd on phones. */
+            .hof-rec-head { grid-template-columns: 40px 1fr auto; gap: 8px; padding: 8px 10px; }
+            .hof-rec-portrait { width: 40px; height: 40px; }
+            .hof-team-grid { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); }
+        }
+        /* Small phones: shrink the dex/signature grids and let summary chips wrap. */
+        @media (max-width: 480px) {
+            .story-collection-body { padding: 8px; }
+            .story-collection-tab { font-size: 10px; padding: 8px 6px; min-width: 84px; }
+            .story-collection-title { font-size: 16px; letter-spacing: 1px; }
+            .pdex-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+            .pdex-cell { min-height: 86px; padding: 4px 3px; }
+            .pdex-cell-img { width: 52px; height: 52px; }
+            .pdex-summary { gap: 10px; }
+            .hof-team-cell-img { width: 48px; height: 48px; }
+        }
+        /* Wide desktop: use the extra width instead of leaving dead margin. */
+        @media (min-width: 1100px) {
+            .story-collection-shell { max-width: 1040px; }
+            .pdex-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+        }
+        /* Respect reduced-motion: drop the progress-bar fill + chevron animations. */
+        @media (prefers-reduced-motion: reduce) {
+            .ach-prog-bar-fill { transition: none; }
+            .hof-rec-chev { transition: none; }
         }
 
     </style>
@@ -9723,7 +9752,7 @@
                 <h3 class="story-screen-head-title fac-recover" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_center.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémon Center</span></h3>
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
-            <div id="story-pc-pokedex-strip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
+            <div id="story-pc-pokedex-strip" aria-live="polite" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
                 <span>📖 Pokédex — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
                 <span id="story-pc-balls-summary" style="color:#888;display:inline-flex;align-items:center;gap:0;"></span>
             </div>
@@ -10220,15 +10249,15 @@
                 <h1 class="story-collection-title">Collection</h1>
                 <span class="story-create-head-spacer" aria-hidden="true"></span>
             </header>
-            <div class="story-collection-tabs" role="tablist">
-                <button type="button" class="story-collection-tab story-collection-tab--active" id="collection-tab-pokedex" role="tab" aria-selected="true" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Pokédex</button>
-                <button type="button" class="story-collection-tab" id="collection-tab-ach" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('achievements')">&#127941; Achievements</button>
-                <button type="button" class="story-collection-tab" id="collection-tab-hof" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('hof')">&#127942; Hall of Fame</button>
-                <button type="button" class="story-collection-tab" id="collection-tab-rival" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('rival')">&#9876;&#65039; Rivalry</button>
-                <button type="button" class="story-collection-tab" id="collection-tab-sig" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('signatures')">&#11088; Signatures</button>
-                <button type="button" class="story-collection-tab" id="collection-tab-memorial" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('memorial')">&#128369;&#65039; Memorial</button>
+            <div class="story-collection-tabs" role="tablist" aria-label="Collection sections" onkeydown="window.StoryMode._collectionTabsKeydown(event)">
+                <button type="button" class="story-collection-tab story-collection-tab--active" id="collection-tab-pokedex" role="tab" aria-selected="true" tabindex="0" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Pokédex</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-ach" role="tab" aria-selected="false" tabindex="-1" onclick="window.StoryMode.openCollection('achievements')">&#127941; Achievements</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-hof" role="tab" aria-selected="false" tabindex="-1" onclick="window.StoryMode.openCollection('hof')">&#127942; Hall of Fame</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-rival" role="tab" aria-selected="false" tabindex="-1" onclick="window.StoryMode.openCollection('rival')">&#9876;&#65039; Rivalry</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-sig" role="tab" aria-selected="false" tabindex="-1" onclick="window.StoryMode.openCollection('signatures')">&#11088; Signatures</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-memorial" role="tab" aria-selected="false" tabindex="-1" onclick="window.StoryMode.openCollection('memorial')">&#128369;&#65039; Memorial</button>
             </div>
-            <div class="story-collection-body" id="collection-body" role="tabpanel">
+            <div class="story-collection-body" id="collection-body" role="tabpanel" tabindex="0" aria-live="polite">
                 Loading&hellip;
             </div>
         </div>
@@ -32644,7 +32673,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'E3', name:'Acerola',  type:'Ghost',    sigs:['Palossand','Sableye','Drifblim','Dhelmise','Froslass'],               charGen:7, pkmGens:[3,4,7] },
           { role:'E3', name:'Larry',    type:'Flying',   sigs:['Flamigo','Tropius','Altaria','Oricorio','Staraptor'],                 charGen:9, pkmGens:[3,4,7,9] },
           // Elite Four E4
-          { role:'E4', name:'Lance',    type:'Dragon',   sigs:['Dragonite','Dragonite','Dragonite','Aerodactyl','Gyarados','Charizard'],charGen:1, pkmGens:[1,2] },
+          { role:'E4', name:'Lance',    type:'Dragon',   sigs:['Gyarados','Dragonair','Dragonair','Aerodactyl','Dragonite'],            charGen:1, pkmGens:[1] },
           { role:'E4', name:'Karen',    type:'Dark',     sigs:['Houndoom','Umbreon','Murkrow','Vileplume','Gengar','Weavile'],         charGen:2, pkmGens:[1,2,4] },
           { role:'E4', name:'Drake',    type:'Dragon',   sigs:['Salamence','Altaria','Flygon','Kingdra','Dragonite'],                   charGen:3, pkmGens:[2,3,5] },
           { role:'E4', name:'Lucian',   type:'Psychic',  sigs:['Bronzong','Gallade','Alakazam','Mr. Mime','Espeon'],                  charGen:4, pkmGens:[1,2,3,4] },
@@ -40089,12 +40118,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'mystery',        cat: 'milestone',  name: 'Mask Removed',    desc: 'Defeat the post-game Mystery Figure.',            icon: '🥷' },
             { id: 'first_hof',      cat: 'milestone',  name: 'Hall of Fame',    desc: 'Reach the Hall of Fame for the first time.',      icon: '🏆' },
             // Lifetime counters (4 ranks)
-            { id: 'trainers_won',   cat: 'count',      name: 'Battle Veteran',  desc: 'Win trainer battles (lifetime total).',           icon: '⚔', ranks: [20, 100, 500, 1000] },
-            { id: 'wilds_caught',   cat: 'count',      name: 'Net Caster',      desc: 'Catch wild Pokémon (lifetime total).',            icon: '🌿', ranks: [10, 50, 200, 500] },
+            { id: 'trainers_won',   cat: 'count',      name: 'Battle Veteran',  desc: 'Win trainer battles (lifetime total).',           icon: '⚔', ranks: [20, 100, 500, 1000, 2500] },
+            { id: 'wilds_caught',   cat: 'count',      name: 'Net Caster',      desc: 'Catch wild Pokémon (lifetime total).',            icon: '🌿', ranks: [10, 50, 200, 500, 1500] },
             { id: 'rival_wins',     cat: 'count',      name: 'Rival Crusher',   desc: 'Defeat your rival in story battles.',             icon: '💪', ranks: [3, 10, 25, 50] },
-            { id: 'gym_clears',     cat: 'count',      name: 'Gym Conqueror',   desc: 'Defeat Gym Leaders (lifetime total).',            icon: '🥇', ranks: [8, 32, 80, 160] },
-            { id: 'shinies',        cat: 'count',      name: 'Shiny Hunter',    desc: 'Catch shiny Pokémon (lifetime total).',           icon: '✨', ranks: [1, 5, 15, 50] },
-            { id: 'runs_cleared',   cat: 'count',      name: 'Champion Career', desc: 'Clear the league multiple times.',                icon: '🏵', ranks: [1, 5, 15, 50] },
+            { id: 'gym_clears',     cat: 'count',      name: 'Gym Conqueror',   desc: 'Defeat Gym Leaders (lifetime total).',            icon: '🥇', ranks: [8, 32, 80, 160, 320] },
+            { id: 'shinies',        cat: 'count',      name: 'Shiny Hunter',    desc: 'Catch shiny Pokémon (lifetime total).',           icon: '✨', ranks: [1, 5, 15, 50, 150] },
+            { id: 'runs_cleared',   cat: 'count',      name: 'Champion Career', desc: 'Clear the league multiple times.',                icon: '🏵', ranks: [1, 5, 15, 50, 100] },
             // Collection (derived from meta.pokedex)
             { id: 'dex_seen',       cat: 'collection', name: 'Researcher',      desc: 'See unique Pokémon species.',                     icon: '👁', ranks: [50, 200, 500, 800] },
             { id: 'dex_caught',     cat: 'collection', name: 'Pokémaster',      desc: 'Catch unique Pokémon species.',                   icon: '📖', ranks: [25, 100, 250, 500] },
@@ -40117,6 +40146,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'r_safari',         cat: 'replay', name: 'Safari Saga',        desc: 'Catch a Pokémon inside the Safari Zone.',                           icon: '🦒' },
             { id: 'r_mystery',        cat: 'replay', name: 'Mystery Solved',     desc: 'Defeat the post-Hall-of-Fame Mystery Figure.',                      icon: '🎭' },
             { id: 'r_three_runs',     cat: 'replay', name: 'Three Runs',         desc: 'Clear three full story runs.',                                      icon: '🌟' },
+            // Endgame grind — multi-tier lifetime goals that keep rewarding repeat
+            // runs and deep post-game farming. Each is driven by its own persisted
+            // slot.progress counter (bumped at the hook site via
+            // _storyAchievementBumpCount), so no extra cross-run meta schema is
+            // needed — the achievement slot IS the lifetime counter.
+            { id: 'frontier_rounds', cat: 'grind', name: 'Frontier Climber', desc: 'Clear Battle Frontier rounds (lifetime total).',         icon: '🗼', ranks: [10, 25, 50, 100, 250] },
+            { id: 'gold_spent',      cat: 'grind', name: 'Tycoon',           desc: 'Spend gold across all runs (lifetime total).',           icon: '💰', ranks: [50000, 250000, 1000000, 5000000] },
+            { id: 'perfect_runs',    cat: 'grind', name: 'Flawless',         desc: 'Clear the league without losing a battle (run count).',  icon: '🛡', ranks: [1, 3, 10, 25] },
+            { id: 'monotype_runs',   cat: 'grind', name: 'Type Purist',      desc: 'Clear the league with a single-type party (run count).', icon: '🎨', ranks: [1, 3, 10] },
+            { id: 'mystery_defeats', cat: 'grind', name: 'Unmasker',         desc: 'Defeat the post-game Mystery Figure (lifetime total).',  icon: '🎭', ranks: [1, 5, 15] },
         ];
         const STORY_ACHIEVEMENTS_BY_ID = (() => { const m = {}; for (const a of STORY_ACHIEVEMENTS) m[a.id] = a; return m; })();
 
@@ -40138,6 +40177,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.totalGoldSpentThisRun >= 50000) {
                 try { _storyAchievementUnlock('r_big_spender'); } catch (e) {}
             }
+            // Tycoon (grind): lifetime gold spent accumulates in the achievement
+            // slot's own progress counter.
+            try { _storyAchievementBumpCount('gold_spent', n); } catch (e) {}
         }
         function _storyAchRankFor(def, progress) {
             if (!def) return 0;
@@ -40296,6 +40338,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ev === 'Champion') return 'champion';
             if (ev === 'Mystery Figure') return 'mystery';
             return '';
+        }
+
+        /** Returns the single type shared by an entire (non-egg) party, or null
+         *  when the party isn't a clean monotype. Reads baseStats[name].t1/.t2 (the
+         *  same type source used by the HoF snapshot). A dual-type mon qualifies as
+         *  long as ONE of its types is common to every party member — so a party of
+         *  all Water mons counts even if some are Water/Flying. Used by the Monotype
+         *  Master / Type Purist trophies. */
+        function _storyPartyMonotype(team) {
+            const mons = (Array.isArray(team) ? team : []).filter(t => t && t.name && !t.isEgg);
+            if (!mons.length) return null;
+            const typesOf = (t) => {
+                const bs = (typeof baseStats !== 'undefined' && baseStats[t.name]) || {};
+                return [bs.t1, bs.t2].filter(Boolean);
+            };
+            for (const cand of typesOf(mons[0])) {
+                if (mons.every(m => typesOf(m).includes(cand))) return cand;
+            }
+            return null;
         }
 
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
@@ -40697,7 +40758,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    rivalEncounterLog: [],
                    tracks: { main: 'classic_v2', villain: null, extra: null },
                    storyEventsFired: {},
-                   stats: { battlesLost: 0 },
+                   stats: { battlesLost: 0, rivalBattlesLost: 0 },
                    errands: {},
                    npcsMet: {},
                    journalSeen: {},
@@ -43666,6 +43727,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 window.__storyTest = {
                     rollTrainerTeam,
+                    // Achievements (Collection update): pure helpers + catalog for tests.
+                    storyPartyMonotype: (...a) => _storyPartyMonotype(...a),
+                    storyAchRankFor: (...a) => _storyAchRankFor(...a),
+                    storyAchievements: () => STORY_ACHIEVEMENTS,
+                    storyAchievementsById: () => STORY_ACHIEVEMENTS_BY_ID,
                     _getEvoChainForward: (...a) => _getEvoChainForward(...a),
                     relationshipStatMult: (...a) => relationshipStatMult(...a),
                     reapplyRelationshipBuff: (...a) => _reapplyRelationshipBuff(...a),
@@ -44777,13 +44843,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (k === okTab) {
                     t.classList.add('story-collection-tab--active');
                     t.setAttribute('aria-selected', 'true');
+                    t.setAttribute('tabindex', '0'); // roving tabindex: only the active tab is in the tab order
                 } else {
                     t.classList.remove('story-collection-tab--active');
                     t.setAttribute('aria-selected', 'false');
+                    t.setAttribute('tabindex', '-1');
                 }
             }
+            // Reflect the active tab on the shared panel for screen readers.
+            const _body = document.getElementById('collection-body');
+            if (_body) _body.setAttribute('aria-label', okTab + ' panel');
             showScreen('screen-collection');
             _renderCollectionBody();
+        }
+        // Roving-tabindex keyboard nav across the collection tablist (WAI-ARIA
+        // Authoring Practices: Left/Right cycle, Home/End jump to the ends).
+        const _COLLECTION_TAB_ORDER = ['pokedex', 'achievements', 'hof', 'rival', 'signatures', 'memorial'];
+        function _collectionTabsKeydown(e) {
+            const key = e && e.key;
+            if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return;
+            const order = _COLLECTION_TAB_ORDER;
+            const cur = Math.max(0, order.indexOf(_collectionTab));
+            let next = cur;
+            if (key === 'ArrowLeft') next = (cur - 1 + order.length) % order.length;
+            else if (key === 'ArrowRight') next = (cur + 1) % order.length;
+            else if (key === 'Home') next = 0;
+            else if (key === 'End') next = order.length - 1;
+            e.preventDefault();
+            openCollection(order[next]);
+            const ids = { pokedex: 'collection-tab-pokedex', achievements: 'collection-tab-ach', hof: 'collection-tab-hof', rival: 'collection-tab-rival', signatures: 'collection-tab-sig', memorial: 'collection-tab-memorial' };
+            const btn = document.getElementById(ids[order[next]]);
+            if (btn) { try { btn.focus(); } catch (e2) {} }
         }
         function closeCollection() {
             const target = _collectionPrevScreen || 'screen-menu';
@@ -45067,13 +45157,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _renderAchievementsTab() {
             const meta = readStoryMeta();
             const ach = meta.achievements || {};
-            const groups = { milestone: [], count: [], collection: [], replay: [] };
+            const groups = { milestone: [], count: [], collection: [], replay: [], grind: [] };
             for (const def of STORY_ACHIEVEMENTS) {
                 groups[def.cat] = groups[def.cat] || [];
                 groups[def.cat].push(def);
             }
-            const labels = { milestone: 'Story Milestones', count: 'Battle & Catch Counters', collection: 'Pokédex Collection', replay: 'Replayability Trophies' };
-            const order = ['replay', 'milestone', 'count', 'collection'];
+            const labels = { milestone: 'Story Milestones', count: 'Battle & Catch Counters', collection: 'Pokédex Collection', replay: 'Replayability Trophies', grind: 'Endgame Grind' };
+            const order = ['replay', 'milestone', 'count', 'collection', 'grind'];
             let unlockedTotal = 0, total = 0;
             for (const def of STORY_ACHIEVEMENTS) {
                 total++;
@@ -45327,7 +45417,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // beat (Road 1) reveal the rolled tracks organically in-game.
                 tracks: { main: 'classic_v2', villain: _pickTrack(VILLAIN_TRACKS), extra: _pickTrack(EXTRA_TRACKS) },
                 storyEventsFired: {},
-                stats: { battlesLost: 0 },
+                stats: { battlesLost: 0, rivalBattlesLost: 0 },
                 // Vibe Exchange (v27): per-row exchange records + per-style pick
                 // counters + the derived persona. Fresh runs start unwritten.
                 banterByRow: {},
@@ -55166,8 +55256,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // sourced losses (Frontier / Pits) bypass this hook; they're off
                 // the main run and don't gate the achievement. PR-4a v22.
                 try {
-                    if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
+                    if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0, rivalBattlesLost: 0 };
                     sm.stats.battlesLost = ((sm.stats.battlesLost | 0) + 1);
+                    // Perfect Rival tracking — a lost Rival battle disqualifies the
+                    // run. event isn't in scope on the loss branch, so re-read it.
+                    const _lev = STORY_EVENTS_RAW[sm.eventIndex];
+                    if (_lev && String(_lev[2] || '') === 'Rival') {
+                        sm.stats.rivalBattlesLost = ((sm.stats.rivalBattlesLost | 0) + 1);
+                    }
                 } catch (e) {}
                 // 3-track battle-beat retry hook (PR-4c): clear the in-flight
                 // beat key so the pre-battle scene re-fires on retry. The
@@ -56792,6 +56888,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     meta.frontierRoundsTotal = (meta.frontierRoundsTotal | 0) + 1;
                     writeStoryMeta(meta);
                     if (meta.frontierRoundsTotal >= 10) _storyAchievementUnlock('r_frontier_vet');
+                    // Frontier Climber (grind): tiered lifetime round count.
+                    _storyAchievementBumpCount('frontier_rounds', 1);
                 } catch (e) {}
                 try { save(); } catch (e) {}
                 return;
@@ -56854,7 +56952,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         hpUp:3, protein:3, iron:3, calcium:3, zinc:3, carbos:3, gold:5000 });
                     sm.staticDrops.rwdPostHofMystery = true;
                 }
-                if (won) { try { _storyAchievementUnlock('r_mystery'); } catch (e) {} }
+                if (won) {
+                    try { _storyAchievementUnlock('r_mystery'); } catch (e) {}
+                    // Unmasker (grind): tiered lifetime Mystery-Figure defeats.
+                    try { _storyAchievementBumpCount('mystery_defeats', 1); } catch (e) {}
+                }
                 sm.postHofMysteryClimaxDone = true;
                 try { save(); } catch (e) {}
                 if (won) {
@@ -62038,6 +62140,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (sm.stats && (sm.stats.battlesLost | 0) === 0) {
                         _storyAchievementUnlock('r_no_death');
                     }
+                } catch (e) {}
+                // Replayability + endgame-grind unlocks — all gated on this fresh
+                // league clear. metaForDisplay already reflects this run's
+                // completedRuns increment (from recordStoryClearInMeta above).
+                try {
+                    const _runs = metaForDisplay.completedRuns | 0;
+                    const _party = (Array.isArray(sm.team) ? sm.team : []).filter(t => t && t.name && !t.isEgg);
+                    const _noDeath = !!(sm.stats && (sm.stats.battlesLost | 0) === 0);
+                    const _mono = _storyPartyMonotype(_party);
+                    const _isMonoClear = (_party.length >= 6 && !!_mono);
+                    _storyAchievementUnlock('r_hall_of_fame');
+                    if (_runs >= 2) _storyAchievementUnlock('r_champion_twice');
+                    if (_runs >= 3) _storyAchievementUnlock('r_three_runs');
+                    if (sm.storyDifficulty === 'challenge') _storyAchievementUnlock('r_challenge_clr');
+                    if (sm.noItemThisRun) _storyAchievementUnlock('r_no_item');
+                    if (_party.length === 1) _storyAchievementUnlock('r_solo');
+                    if (_isMonoClear) _storyAchievementUnlock('r_monotype');
+                    if ((sm.rivalWinsThisRun | 0) > 0 && sm.stats && (sm.stats.rivalBattlesLost | 0) === 0) {
+                        _storyAchievementUnlock('r_perfect_rival');
+                    }
+                    // Endgame-grind lifetime tallies — one bump per qualifying clear.
+                    if (_noDeath) _storyAchievementBumpCount('perfect_runs', 1);
+                    if (_isMonoClear) _storyAchievementBumpCount('monotype_runs', 1);
                 } catch (e) {}
             }
             // Per-variant Hall-of-Fame card — fires once per variant per run,
@@ -69066,6 +69191,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             trainerCreateSetDifficulty, trainerCreateSetGenPreset,
             confirmTrainerAndStart,
             openCollection, closeCollection, pokedexSetGen, pokedexSetShinyView,
+            _collectionTabsKeydown,
             _markDexSeen: _storyMarkDexSeen,
             _markDexCaught: _storyMarkDexCaught,
             showOneTimeTip: _storyShowOneTimeTip,

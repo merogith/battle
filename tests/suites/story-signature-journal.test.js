@@ -55,6 +55,24 @@ test('recording an encounter marks the trainer + the sigs that actually appeared
   assert.equal(after.sigs.filter((s) => s.species !== shown).every((s) => !s.seen), true, 'others still locked');
 });
 
+test('E4 Lance and Champion Lance have distinct, non-duplicate rosters', () => {
+  // Collection update: the two Lance entries previously shared a byte-identical
+  // Dragonite×3 roster (a copy-paste). E4 Lance is now the gen-1 Kanto-authentic
+  // ace line; Champion Lance keeps the HGSS Dragonite×3 team.
+  const trainers = eng.window.__storyTest.getTrainerData();
+  assert.ok(Array.isArray(trainers), 'TRAINER_DATA reachable');
+  const e4 = trainers.find(t => t.role === 'E4' && t.name === 'Lance');
+  const champ = trainers.find(t => t.role === 'Champion' && t.name === 'Lance');
+  assert.ok(e4 && champ, 'both Lance entries exist');
+  assert.notDeepEqual(e4.sigs, champ.sigs, 'the two Lance rosters now differ');
+  assert.ok(e4.sigs.includes('Dragonair'), 'E4 Lance fields the gen-1 Dragonair line');
+  // The merged journal registry unions both Lance variants under one base name.
+  const lance = E.storyBuildSignatureRegistry({}).find(t => t.name === 'Lance');
+  assert.ok(lance, 'Lance present in the registry');
+  const species = lance.sigs.map(s => s.species);
+  assert.ok(species.includes('Dragonair') && species.includes('Dragonite'), 'union of both rosters');
+});
+
 test('non-signature roles and empty teams are ignored by the recorder', () => {
   let journal = {};
   journal = E.storyApplySigEncounter(journal, { role: 'Basic Trainer', name: 'Hiker', sigs: ['Geodude'] }, [{ name: 'Geodude' }]);
