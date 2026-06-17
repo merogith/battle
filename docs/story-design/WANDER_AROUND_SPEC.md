@@ -1,9 +1,9 @@
 # Wander Around — route exploration spec (pasteur hand-off)
 
-> **Status:** Design spec — **not yet implemented.** No `battle.html` / save-schema
-> code has been touched on the originating branch (`claude/fervent-bohr-U8HXW`,
-> general session). This document is a hand-off for the **pasteur** line, which
-> owns story flow + save schema.
+> **Status (updated 2026-06-17):** ✅ **SHIPPED.** Wander Around is live in
+> `battle.html` (`_showWanderScreen` and related, save schema at `SAVE_VER 23`).
+> The "not yet implemented / pasteur hand-off" framing below is historical — this
+> doc is now a design record, not a pending hand-off.
 >
 > **Provenance:** Designed from the user's `Design_Brainstormflowofstorymode.csv`
 > (the per-road "Wander Around (max 3 times)" beat) plus a 2026-05-30 design Q&A.

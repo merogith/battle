@@ -26,7 +26,11 @@ function activeSeed(seed) {
 }
 
 const lanceE4 = () => ST.getTrainerData().find((t) => t.name === 'Lance' && t.role === 'E4');
+// The canonical triple-Dragonite squad is the GSC *Champion* Lance; the E4 Lance
+// carries the RBY team (Gyarados / Dragonair ×2 / Aerodactyl / Dragonite).
+const lanceChampion = () => ST.getTrainerData().find((t) => t.name === 'Lance' && t.role === 'Champion');
 const E4_GW = { g1: 70, g2: 30, g3: 0, g4: 0 };
+const CHAMP_GW = { g1: 80, g2: 20, g3: 0, g4: 0 }; // STORY_EVENTS_RAW row 64 (Champion)
 const IV_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
 
 test('__storyTest hook is exposed by the harness', () => {
@@ -92,8 +96,8 @@ test('enforceItemClause: no-lock callers behave as before (first wins, later dem
 });
 
 test('rollTrainerTeam: duplicate sigs field multiple copies (Lance triple-Dragonite)', () => {
-  const lance = lanceE4();
-  assert.ok(lance, 'Lance E4 trainer exists');
+  const lance = lanceChampion();
+  assert.ok(lance, 'Lance Champion trainer exists');
   assert.equal(lance.sigs.filter((n) => n === 'Dragonite').length, 3, 'data declares 3 Dragonites');
   let sawThree = false;
   let maxD = 0;
@@ -101,8 +105,8 @@ test('rollTrainerTeam: duplicate sigs field multiple copies (Lance triple-Dragon
   for (let i = 0; i < 40; i++) {
     ST.sm.runSeed = (1000 + i) >>> 0;
     ST.sm._strngState = null;
-    const team = ST.rollTrainerTeam(lance, 6, E4_GW, [1, 2], 'E4', 63);
-    assert.equal(team.length, 6, 'E4 fields 6');
+    const team = ST.rollTrainerTeam(lance, 6, CHAMP_GW, [1, 2], 'Champion', 64);
+    assert.equal(team.length, 6, 'Champion fields 6');
     const d = team.filter((s) => s.name === 'Dragonite').length;
     maxD = Math.max(maxD, d);
     if (d === 3) sawThree = true;

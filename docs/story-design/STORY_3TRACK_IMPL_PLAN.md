@@ -1,5 +1,13 @@
 # Story Mode 3-Track Implementation Plan
 
+> **Status (updated 2026-06-17):** ✅ **Largely SHIPPED.** The 3-track system is
+> live in `battle.html` (`sm.tracks`, `VILLAIN_STORY_BEATS`, the v22 save bump +
+> migration, random assignment, and the road-node reveals). The per-PR checklist
+> below reads as a forward plan but only PR-1 is marked done; treat the structural
+> PRs (track assignment, road reveals, boss scaffolding) as implemented. This doc
+> is now mostly a design record — verify against code before assuming any item is
+> still pending.
+
 > Bone-structure pass. Wires the 3-track design (Main / Villain / Extra) into
 > the existing 67-row `STORY_EVENTS_RAW` timeline. Random track assignment at
 > run start, no picker UI. Content lives in the CSVs in this folder; this plan
