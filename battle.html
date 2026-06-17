@@ -45659,15 +45659,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémon Center! Your team\'s already healed — the road sees to that before you reach my counter."',
                     '"Upstairs is the PC: cold storage for every partner you\'ve caught but can\'t carry today. Deposit, withdraw, or release — whenever you like."',
-                    '"And downstairs… the Underground. Quieter folk down there, happy to buy any Pokémon you\'ll never field — though they\'ll never take your last party member. Here, a Potion for the road. Do take care out there."'
+                    '"And downstairs… the Underground. Quieter folk down there, happy to buy any Pokémon you\'ll never field — though they\'ll never take your last party member. Here, a Full Restore for the road. Do take care out there."'
                 ],
                 onContinue: function () {
-                    try {
-                        _storyEnsureInventory();
-                        sm.inventory.potion = (sm.inventory.potion | 0) + 1;
-                        save();
-                    } catch (e) {}
-                    try { window.showGameAlert && window.showGameAlert('Received 1 Potion — keep them at full HP out there!'); } catch (e) {}
+                    try { _storyGrantBundle({ fullRestore: 1 }); save(); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Full Restore — keep your team battle-ready out there!'); } catch (e) {}
                 }
             },
             firstMoveTutor: {
@@ -51760,6 +51756,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Heal-item consumable grant — Revive is the first *gifted* one (Dept first-visit);
             // lands in the same sm.inventory.revive slot a bought one uses.
             if (r.revive)     sm.inventory.revive   = (sm.inventory.revive   | 0) + r.revive;
+            if (r.fullRestore) sm.inventory.fullRestore = (sm.inventory.fullRestore | 0) + r.fullRestore;
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
             try { _storyRefreshInventoryScreens(); } catch (e) {}
             return _rolled;
@@ -55546,15 +55543,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 _markFacilitySeen('center');
-                // First Poké Center visit: a one-time Full Restore for the bag.
-                if (!sm.flags) sm.flags = {};
-                if (!sm.flags._centerRestoreGift) {
-                    sm.flags._centerRestoreGift = true;
-                    if (!sm.inventory) sm.inventory = {};
-                    sm.inventory.fullRestore = (sm.inventory.fullRestore | 0) + 1;
-                    try { save(); } catch (e) {}
-                    try { window.showToast && window.showToast('🏥 Nurse Joy tucks a Full Restore into your bag — for the road.', 4500); } catch (e) {}
-                }
+                // First-visit welcome gift (a Full Restore) is granted once, through
+                // the firstPokemonCenter tutorial scene below — same single-gift
+                // pattern every other facility uses.
                 _pcEnsureBoxArray();
                 _pcCurrentTab = 'storage';
                 document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
@@ -56544,7 +56535,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Catch, Store &amp; Trade</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     ${btn(fico('center'), 'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
-                    ${btn(fico('safari'), 'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
+                    ${btn(fico('safari'), 'Safari Zone', 'window.StoryMode.enterSafariZone()', null, `Bait/rock catch loop. Safari Balls only; ${SAFARI_BALLS_PER_SESSION} balls per session.`)}
                     ${btn(fico('link'),   'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
                 </div>
             `;
