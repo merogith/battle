@@ -7243,7 +7243,7 @@
             .story-tutor-choice { padding: 10px 12px !important; }
             .story-tutor-btn { min-height: 42px !important; padding: 8px 14px !important; font-size: 13px !important; }
             /* Pokémon Center: tab buttons get a real 44px tap height. */
-            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn, #story-pc-tab-journal-btn {
+            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn {
                 min-height: 44px !important;
                 font-size: 13px !important;
                 padding: 10px 8px !important;
@@ -15498,6 +15498,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.showGameConfirm = function(message) {
             dismissTextTooltipForModal();
             return new Promise(function(resolve) {
+                // A prior confirm still pending? Resolve it false so its awaiter
+                // isn't orphaned when this call overwrites the resolver.
+                if (window._gameConfirmResolve) { try { window._gameConfirmResolve(false); } catch (e) {} }
                 window._gameConfirmResolve = resolve;
                 const t = document.getElementById('modal-game-confirm-text');
                 if (t) t.textContent = message != null ? String(message) : '';
@@ -35130,10 +35133,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.yamask.event3": {
                             "title": "You Recognize It",
-                            "body": "A folded photograph in a Pokéball box you found in the route grass. The photograph is of a smiling face. The Pokéball is empty. The face in the photograph is not yours, but you recognize it.",
+                            "body": "A folded photograph in a Poké Ball box you found in the route grass. The photograph is of a smiling face. The Poké Ball is empty. The face in the photograph is not yours, but you recognize it.",
                             "acts": [
                                 { "phase": "intro", "lines": [
-                                    "A folded photograph inside a Pokéball box, dropped in the route grass - the kind of box you keep a partner's small things in." ] },
+                                    "A folded photograph inside a Poké Ball box, dropped in the route grass - the kind of box you keep a partner's small things in." ] },
                                 { "phase": "development", "lines": [
                                     "The photograph is of a smiling face. The ball is empty." ] },
                                 { "phase": "climax", "lines": [
@@ -35232,10 +35235,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.mewtwo.event3": {
                             "title": "I Will Not Write It Down",
-                            "body": "A diary on the route, locked in a Pokéball case. You can read three pages. The handwriting is rushed, then panicked, then very, very calm - 'if it speaks today, I will not write it down.'",
+                            "body": "A diary on the route, locked in a Poké Ball case. You can read three pages. The handwriting is rushed, then panicked, then very, very calm - 'if it speaks today, I will not write it down.'",
                             "acts": [
                                 { "phase": "intro", "lines": [
-                                    "A diary on the route, locked inside a Pokéball case - the good kind, the kind you use for something you can't replace and can't bear to hold." ] },
+                                    "A diary on the route, locked inside a Poké Ball case - the good kind, the kind you use for something you can't replace and can't bear to hold." ] },
                                 { "phase": "development", "lines": [
                                     "You can read three pages through the scratched window. The handwriting starts rushed. Goes panicked. Then, on the third page, very, very calm." ] },
                                 { "phase": "climax", "lines": [
@@ -43795,7 +43798,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 const errs = issues.filter(m => /not a known species/.test(m));
                 if (errs.length) console.warn(`[TRAINER_DATA] ${errs.length} hard error(s) — unknown signature species:`);
-                else console.log('[TRAINER_DATA] validation: all signatures resolve to known species.');
+                else if (window.__DEBUG_LOADS) console.log('[TRAINER_DATA] validation: all signatures resolve to known species.');
                 for (const m of issues) (/not a known species/.test(m) ? console.warn : console.info)('  • ' + m);
                 return issues;
             } catch (e) {
@@ -48237,7 +48240,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = getCityIndex(ev);
             const hasBaseProf = actions.includes('Professor');
             const _partyCap = _storyMaxPartySize();
-            const hasTeamRoom = sm.team.length < _partyCap;
+            const hasTeamRoom = !_storyPartyFullForCatch();
             // Professor hides once the active party is at the current badge cap
             // (`_storyMaxPartySize` returns `2 + badges` clamped 2..6). Each
             // gym badge bumps the cap by one, reopening Professor at the next
@@ -49549,6 +49552,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Count battle-eligible (non-egg) party members — the real "do I have a
         // fightable team" number that the deposit / sell / Fight-Club guards use.
         function _storyCountFighters() { return (sm.team || []).filter(s => s && !s.isEgg).length; }
+        // True when the active party can't accept another *fighter* — either the
+        // fightable cap (2 + badges, clamped 2..6) is reached, or all 6 physical
+        // slots are occupied. Eggs hold a physical slot but never count toward the
+        // fighter cap, so an incubating egg never shrinks your catchable roster
+        // (the `length >= 6` guard still prevents the array growing past 6 slots).
+        function _storyPartyFullForCatch() {
+            return _storyCountFighters() >= _storyMaxPartySize() || (sm.team || []).length >= 6;
+        }
         function _makeEggSlot(species, laidCity) {
             return {
                 id: 'egg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -51236,7 +51247,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // their starter is "full" for Professor purposes — they get the
             // lab-companion swap flow, not an overflow into a non-existent
             // 3rd slot.
-            const isFull = sm.team.length >= _storyMaxPartySize();
+            const isFull = _storyPartyFullForCatch();
             _profMysteryMode = isFull;
             // Once per save — explain how the Professor and wild catching differ,
             // so the player doesn't read both as "free Pokémon" and ignore one.
@@ -56129,7 +56140,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pcRenderBoxGridInner() {
             const box = sm.pcBox || [];
             const partyCap = _storyMaxPartySize();
-            const ctx = { partyFull: (sm.team || []).length >= partyCap, partyCap };
+            const ctx = { partyFull: _storyPartyFullForCatch(), partyCap };
             const view = _pcBoxView(box, { sort: _pcBoxSort, type: _pcBoxFilterType, shiny: _pcBoxShinyOnly, search: _pcBoxSearch });
             if (!view.length) {
                 return `<div class="pc-empty">No Pokémon match this filter. <button type="button" class="pc-clear-filter" onclick="window.StoryMode.pcClearBoxFilters()">Clear filters</button></div>`;
@@ -56157,7 +56168,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const team = sm.team || [];
             const box = sm.pcBox || [];
             const partyCap = _storyMaxPartySize();
-            const partyFull = team.length >= partyCap;
+            const partyFull = _storyPartyFullForCatch();
             const partyLastOne = team.filter(s => s && !s.isEgg).length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
             // Warn at 80% of the cap (spec: 8/10 = 80%, applies whatever cap is).
@@ -56554,7 +56565,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             box.forEach((s) => { if (s && !s.isEgg) rows.push({ slot: s, source: 'pc' }); });
 
             if (!rows.length) {
-                html += `<div class="pc-empty">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
+                html += `<div class="pc-empty">Nothing on the table tonight. Bonded partners and your last remaining Pokémon stay off the table.</div>`;
                 return html;
             }
             html += `<div class="pc-grid">`;
@@ -56811,7 +56822,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Shop</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                    ${btn(fico('mart'),   'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(fico('mart'),   'Pokémart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
                     ${btn(fico('dept'),   'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
                     ${btn(fico('relic'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
                     ${btn(fico('casino'), 'Poké Game Corner', 'window.StoryMode.enterCasino()', null, 'Coin Flip · Slots · Roulette. Big wins drop Vitamins + Vouchers.')}
@@ -58196,7 +58207,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _totalThrowable = ['poke', 'great', 'ultra', 'master']
                     .reduce((n, k) => n + ((sm.balls && (sm.balls[k] | 0)) || 0), 0);
                 if (_totalThrowable <= 0) {
-                    ballRows = `<div style="padding:8px 12px;background:rgba(40,16,12,0.6);border:1px solid #ff7043;color:#ffab91;font-size:12px;">You're out of Poké Balls — flee for now and restock at any city PokéMart.</div>` + ballRows;
+                    ballRows = `<div style="padding:8px 12px;background:rgba(40,16,12,0.6);border:1px solid #ff7043;color:#ffab91;font-size:12px;">You're out of Poké Balls — flee for now and restock at any city Pokémart.</div>` + ballRows;
                 }
             }
             // Shiny encounters get a sparkle on the name, a friendlier header
@@ -58369,7 +58380,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // player can always catch — they just can't field more than the unlocked
             // active size at once. This keeps foe-scaling vs player-team balance honest.
             const maxParty = _storyMaxPartySize();
-            const partyFull = (sm.team || []).length >= maxParty;
+            const partyFull = _storyPartyFullForCatch();
             const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
             if (partyFull && pcFull) {
                 _catchFinishWithMessage(`Your party (${(sm.team||[]).length}/${maxParty}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Free a slot at the Pokémon Center, then try again.`);
@@ -61812,11 +61823,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Resolve a sellable item's catalog entry so the sell value can be
+        // re-derived authoritatively (never trust the caller-supplied price,
+        // which is baked into the rendered onclick and could be stale/tampered).
+        function _storyCatalogItemById(itemId) {
+            try {
+                const all = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
+                return all.find(it => it && it.id === itemId) || null;
+            } catch (e) { return null; }
+        }
+
         function sellItem(itemId, sellPrice) {
             if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
+            // Re-derive the price authoritatively when the item is resolvable — a
+            // catalog entry (shop/dept/currently-featured) or an earned-value id.
+            // Otherwise (e.g. a featured stone that has rotated out of the current
+            // catalog snapshot) fall back to the caller-supplied bag-computed price
+            // rather than silently collapsing to the 100G floor.
+            const _item = _storyCatalogItemById(itemId);
+            const price = (_item || Object.prototype.hasOwnProperty.call(STORY_EARNED_SELL_VALUE, itemId))
+                ? (_storyItemSellValue(itemId, _item) | 0)
+                : (sellPrice | 0);
             sm.inventory[itemId]--;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
-            sm.gold += (sellPrice | 0);
+            sm.gold += price;
             save();
             updateHUD();
             // Re-render the city bag so qty and gold update instantly
@@ -61826,15 +61856,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Poké Balls live in sm.balls (separate from sm.inventory). Selling the Master
         // Ball is run-defining (it guarantees the roaming legendary), so that one sale
         // asks for confirmation; every other ball sells freely.
-        function sellBall(ballKey, sellPrice) {
+        function sellBall(ballKey, _sellPriceIgnored) {
             if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
+            // Re-derive from the canonical table; the caller-supplied value is ignored.
+            const price = (STORY_BALL_SELL_VALUE[ballKey] | 0);
             if (ballKey === 'master') {
                 let ok = true;
-                try { ok = window.confirm('Sell your Master Ball for ' + ((sellPrice | 0).toLocaleString()) + 'G? It guarantees a catch on the roaming legendary — this cannot be undone.'); } catch (e) {}
+                try { ok = window.confirm('Sell your Master Ball for ' + (price.toLocaleString()) + 'G? It guarantees a catch on the roaming legendary — this cannot be undone.'); } catch (e) {}
                 if (!ok) return;
             }
             sm.balls[ballKey]--;
-            sm.gold += (sellPrice | 0);
+            sm.gold += price;
             save();
             updateHUD();
             openCityBag();
