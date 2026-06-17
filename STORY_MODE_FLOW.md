@@ -16,6 +16,32 @@ Conflicts are noted inline so old context isn't silently contradicted.
 >
 > Canonical status: `CLAUDE.md` → "Excised vs retired (mid-2026 cleanup)".
 
+> **⚠️ Shipped-vs-spec reconciliation (2026-06-17 QC pass).** Several subsystem
+> tables below drifted from the shipped code. The code is authoritative; treat the
+> following spec passages as **stale** until rewritten, and prefer the named symbol:
+> - **`SAVE_VER`** — §10/§17 cite 15/17. Shipped value is **`SAVE_VER = 27`**
+>   (`battle.html:39874`). The migration chain runs through `migrateStoryPreV27`.
+> - **Early-game softening (§8, §15f).** The named per-event constants
+>   (`PRE_GYM1_FOE_STAT_MULT`, `EARLY_GL_FOE_STAT_MULT`, `EARLY_GAME_FOE_STAT_MULT`,
+>   `STAGE2_GL_FOE_STAT_MULT`) were **removed**. Foe stat scaling now lives in one
+>   unified per-**city** table: **`FOE_POWER_CURVE`** (`battle.html:38265`,
+>   `[0.80, 0.85, 0.90, 0.95, 1.00, 1.03, 1.05, 1.08, 1.10, 1.15]`, index = city 0–9).
+> - **Wild grade curve (§3, §15f).** Keyed on **city**, not badges:
+>   **`STORY_WILD_GRADE_BY_CITY`** + `_wildGradeWeightsForCity` (`battle.html:57505`).
+>   `_WILD_GRADE_CURVE_BY_BADGES` does **not** exist in shipped code.
+> - **Safari grade weights (§4).** The flat `g1:3/g2:22/g3:50/g4:25` table is retired;
+>   Safari uses the badge-keyed **`_SAFARI_GRADE_CURVE_BY_BADGES`** (`battle.html:56506`),
+>   already documented correctly in **§15g**.
+> - **`catchUnlocked` (§10).** Written but never read; the live catch gate is
+>   `sm.catchTutorialDone`. Do not branch new logic on `catchUnlocked`.
+> - **`_seedFanClubAcrossCities` (§15b).** This function does **not** exist. The Fan
+>   Club button is injected at render time in `renderCityActions`, not seeded into
+>   `STORY_EVENTS_RAW` at module init.
+> - **`_EARLY_ROUTE_FODDER_CLASSES` (§8).** The pre-Gym-1 Basic-Trainer "fodder class"
+>   allowlist was **removed** as dead code; early-route fairness now rests on the
+>   UNTRAINED build tier + the City 0–1 G4 grade ceiling. (The §8 anchor "event idx 2"
+>   is also stale — the timeline row ids jump 1→3.)
+
 **Code anchors** below use `battle.html:LINE` so each subsystem can be jumped to
 directly. All line numbers are against the current main file at the time of
 writing — they will drift as work proceeds.
