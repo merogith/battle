@@ -50374,11 +50374,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Sync team state from the battle snapshot so HP/PP/state carries between bracket fights.
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
-                    sm.team = state.playerParty.map(m => ({
-                        name: m._baseName || m.name,
-                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
-                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
-                    })).filter(t => t.build);
+                    sm.team = _storyTeamSlotsFromBattle(sm.team, state.playerParty);
                 }
             } catch (e) {}
             // Memorial: the three the house fielded this round fell to your trio.
@@ -50626,11 +50622,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyApplyRetreatToCity() {
             try {
                 if (typeof state !== 'undefined' && state && state.mode === 'story' && state.playerParty && state.playerParty.length && sm.team) {
-                    sm.team = state.playerParty.map(m => ({
-                        name: m._baseName || m.name,
-                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
-                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
-                    })).filter(t => t.build);
+                    sm.team = _storyTeamSlotsFromBattle(sm.team, state.playerParty);
                 }
             } catch (e) { console.warn('[Story] retreat team sync', e); }
             _storyFullHealPartySlots();
@@ -55440,6 +55432,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
+        // Rebuild story team slots from a just-ended battle's `state.playerParty`.
+        // A battle only mutates BUILD-level state (HP / PP / status live on
+        // `buildData`, which is the SAME object reference as the slot's `build` —
+        // see the item/ability re-sync note ~28259). Every SLOT-level field —
+        // the stable `id`, `nickname`, `starter` / `unsellable` flags, `caughtAt`,
+        // `isShiny`, AND the camp relationship counters `bonds` — belongs to the
+        // individual, not the battle, so it must ride through the rebuild UNCHANGED.
+        // The old `{ name, build, id }` shape silently dropped all of those: every
+        // story battle reset a fully-bonded partner back to the 1/5 floor and wiped
+        // its nickname / starter star (reported as "bonds reset, sometimes"). We carry
+        // the whole pre-battle slot over via spread, matching it by build identity
+        // (`buildData === slot.build`, exact even with duplicate species) and falling
+        // back to species name. Eggs never battle (not in playerParty); callers that
+        // keep eggs concat them back after. Locked by bond-battle-persistence.test.js.
+        function _storyTeamSlotsFromBattle(prevTeam, playerParty) {
+            const prev = Array.isArray(prevTeam) ? prevTeam.filter(s => s && !s.isEgg) : [];
+            return (playerParty || []).map(m => {
+                const base = m._baseName || m.name;
+                const src = (m.buildData && prev.find(t => t.build === m.buildData))
+                         || prev.find(t => t.name === base) || {};
+                const build = m.buildData ? deepClone(m.buildData) : src.build;
+                return { ...src, name: base, build, id: src.id };
+            }).filter(t => t.build);
+        }
+
         function afterBattleReturn() {
             // Defensive: ensure any battle theme is cleared and field BGM resumes
             // on the return-to-map path (covers forfeit / error-recovery returns
@@ -55457,11 +55474,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
                     // Eggs never entered battle — preserve them across the rebuild.
                     const _keepEggs = (sm.team || []).filter(s => s && s.isEgg);
-                    sm.team = state.playerParty.map(m => ({
-                        name: m._baseName || m.name,
-                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
-                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
-                    })).filter(t => t.build).concat(_keepEggs);
+                    sm.team = _storyTeamSlotsFromBattle(sm.team, state.playerParty).concat(_keepEggs);
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
@@ -56916,13 +56929,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
                     const _keepEggs = (sm.team || []).filter(function (s) { return s && s.isEgg; });
-                    sm.team = state.playerParty.map(function (m) {
-                        return {
-                            name: m._baseName || m.name,
-                            build: m.buildData ? deepClone(m.buildData) : (sm.team.find(function (t) { return t.name === (m._baseName || m.name); }) || {}).build,
-                            id: (sm.team.find(function (t) { return t.name === (m._baseName || m.name); }) || {}).id
-                        };
-                    }).filter(function (t) { return t.build; }).concat(_keepEggs);
+                    sm.team = _storyTeamSlotsFromBattle(sm.team, state.playerParty).concat(_keepEggs);
                 }
             } catch (e) {}
             sm.crucibleBattleSource = null;
