@@ -68,6 +68,15 @@
             --battle-btn-gap: var(--battle-space-1);
             /* Single UI typeface everywhere (menus, story, battle, inputs). */
             --ui-font: var(--battle-font);
+            /* Text-on-dark grays — all meet WCAG AA (≥4.5:1) on the #0a0a0a/#161616/#1e1e1e
+               surfaces. Use these for body copy instead of bare #666/#777/#888 (which fail AA). */
+            --text-muted: #9aa0aa;   /* secondary copy — blurbs, hints, captions */
+            --text-dim: #c0c4cc;     /* slightly brighter secondary (labels, values) */
+            --border-soft: #555;     /* inputs/selects — lighter than --border-color #444 */
+            /* Radius scale — one ramp for all chrome (selects, cards, modals, toasts). */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 10px;
         }
         /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
         html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
@@ -666,7 +675,7 @@
         @media screen and (max-width: 768px) and (orientation: portrait) {
             #modal-summary .sum-tab { min-height: 44px; }
             #modal-summary .sum-mode-btn { min-height: 44px; }
-            #modal-summary .sum-nav-btn { min-height: 36px; width: 36px; }
+            #modal-summary .sum-nav-btn { min-height: 44px; width: 44px; }
             #modal-summary .sum-reorder-row > button,
             #modal-summary .sum-close-btn { min-height: 44px; }
         }
@@ -798,14 +807,14 @@
             padding: 8px 12px; font-size: 11px; font-weight: 600;
         }
         .story-tutor-moves-hint {
-            font-size: 10px; color: #777; margin: 0 0 8px; line-height: 1.35;
+            font-size: 10px; color: var(--text-muted); margin: 0 0 8px; line-height: 1.35;
         }
         .story-tutor-move-detail {
             margin-top: 4px; padding: 8px 0 0; border-top: 1px solid #3a3a3a;
             font-size: 11px; color: #c8c8c8; line-height: 1.4;
         }
         .story-tutor-move-slot--locked .story-tutor-move-detail { margin-top: 6px; padding-top: 8px; }
-        .story-tutor-move-detail--empty { color: #666; font-style: italic; }
+        .story-tutor-move-detail--empty { color: var(--text-muted); font-style: italic; }
         .story-tutor-move-detail-head { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
         .story-tutor-move-detail-name { font-size: 12px; color: var(--hp-yellow, #ffeb3b); }
         .story-tutor-move-detail-grid {
@@ -862,7 +871,7 @@
             .tx-search-input { min-height: 44px; font-size: 14px; }
         }
         .tx-search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(206,147,216,0.2); }
-        .tx-search-input::placeholder { color: #6b7184; }
+        .tx-search-input::placeholder { color: #8089a0; }
         .tx-sort-select {
             padding: 8px 10px; font-size: 12px;
             background: rgba(0,0,0,0.35); color: #d2d7df;
@@ -3616,7 +3625,7 @@
         .story-shop-item .price { color:#ffd54f; font-size:12px; font-weight:bold; letter-spacing:0.3px; }
         .story-shop-item .price.cant-afford { color:#ef5350; }
         .story-shop-item .desc { color:#9aa0b0; font-size:11px; line-height:1.4; }
-        .story-shop-item-qty { color:#666; font-size:10px; font-weight:normal; margin-left:4px; }
+        .story-shop-item-qty { color:var(--text-muted); font-size:10px; font-weight:normal; margin-left:4px; }
         .story-shop-item-claimed-tag { color:#ffb74d; font-size:10px; margin-left:4px; }
         .story-shop-item-bottom {
             display:flex; justify-content:space-between; align-items:center;
@@ -4831,6 +4840,9 @@
             #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-main { flex: 1 1 auto; width: auto; min-width: 0; }
             #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-lb { flex: 0 0 52px; width: 52px; min-width: 52px; max-width: 52px; }
             #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-lb svg { width: 24px; height: 24px; }
+            /* Battle Options toggles — give the native checkboxes a ≥44px tap target on phones. */
+            #screen-menu .menu-filter-row label { min-height: 44px; padding: 4px 6px; gap: 8px; }
+            #screen-menu .menu-filter-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
             #screen-draft:not(.hidden) { display: flex; flex-direction: column; padding: 0; overflow: hidden; height: 100dvh; max-height: 100dvh; box-sizing: border-box; }
             #draft-header { padding: 6px 88px 6px 10px; margin-bottom: 0; flex-shrink: 0; border-bottom: 1px solid #222; }
             #draft-header h2 { font-size: 14px; margin: 0; }
@@ -6214,7 +6226,7 @@
             border: 2px solid var(--gc-trim-deep);
             border-radius: 0;
         }
-        .casino-input:focus { outline: none; border-color: var(--gc-brass); }
+        .casino-input:focus-visible { outline: none; border-color: var(--gc-brass); box-shadow: 0 0 0 2px var(--accent); }
         .casino-bet-chip {
             padding: 6px 10px;
             font-family: var(--battle-font);
@@ -7589,6 +7601,8 @@
             text-transform: uppercase;
             letter-spacing: 0.06em;
         }
+        /* Shared select styling for the Battle Options panel (was inline-duplicated 3×). */
+        .menu-select { background: var(--surface2); color: var(--text-color); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 4px 8px; font-family: inherit; font-size: 12px; cursor: pointer; }
         .menu-filter-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; max-width: 360px; margin: 0 auto; }
         .menu-filter-row label { display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; }
         .menu-mode-grid {
@@ -7876,7 +7890,7 @@
             font-size: 13px; padding: 13px 16px;
         }
         .story-menu-btn--continue:hover { box-shadow: inset -4px -4px 0px 0px #1a3a1c, inset 4px 4px 0px 0px #2a5a2c, 0 0 16px rgba(76,175,80,0.2); }
-        .story-menu-btn--abandon { border-color: #666 !important; color: #888; font-size: 11px; padding: 10px 16px; }
+        .story-menu-btn--abandon { border-color: #666 !important; color: var(--text-muted); font-size: 11px; padding: 10px 16px; }
         .story-menu-btn--back { border-color: #444 !important; color: #888; font-size: 11px; padding: 10px 16px; background: rgba(255,255,255,0.02); box-shadow: none; }
         .story-menu-btn--back:hover { color: #bbb; border-color: #666 !important; background: rgba(255,255,255,0.06); }
         .story-settings-gen-row { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
@@ -9110,13 +9124,13 @@
             <div class="menu-section-title">Quick Battle</div>
             <div class="menu-filter-row" style="font-size:11px; gap:16px; justify-content:center;">
                 <label style="display:flex; align-items:center; gap:6px;"><span style="color:#aaa;">Teams</span>
-                    <select id="quick-team-source" onchange="window.persistQuickBattlePrefs && window.persistQuickBattlePrefs()" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:12px; cursor:pointer;">
+                    <select id="quick-team-source" class="menu-select" onchange="window.persistQuickBattlePrefs && window.persistQuickBattlePrefs()">
                         <option value="random" selected>Random (instant)</option>
                         <option value="draft">Draft my own</option>
                     </select>
                 </label>
                 <label style="display:flex; align-items:center; gap:6px;"><span style="color:#aaa;">Bot</span>
-                    <select id="menu-ai-profile" onchange="window.setMenuAiProfile && window.setMenuAiProfile(this.value)" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:12px; cursor:pointer;">
+                    <select id="menu-ai-profile" class="menu-select" onchange="window.setMenuAiProfile && window.setMenuAiProfile(this.value)">
                         <option value="balanced">Balanced</option>
                         <option value="aggro">Aggressive</option>
                         <option value="stall">Stall-aware</option>
@@ -9140,7 +9154,7 @@
                 <button type="button" onclick="window.toggleDraftGenClear()">Gen 1 only</button>
             </div>
             <p id="pool-count-display" style="font-size:11px; color:#9ccc65; margin:8px 0 0; text-align:center; font-weight:bold;"></p>
-            <p id="gen-range-note" style="font-size:10px; color:#666; margin:4px 0 0; text-align:center;">Pokémon from Gen 1–2 in pool</p>
+            <p id="gen-range-note" style="font-size:10px; color:var(--text-muted); margin:4px 0 0; text-align:center;">Pokémon from Gen 1–2 in pool</p>
             <div class="grade-filter-row menu-filter-row" style="margin-top:12px;">
                 <span style="font-size:11px; color:#aaa;">Grades:</span>
                 <label><input type="checkbox" id="grade-1-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-1">G1</span></label>
@@ -9163,7 +9177,7 @@
             </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
                 <span style="color:#aaa;">Party:</span>
-                <select id="party-size-select" onchange="window.updateMechanics()" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:12px; cursor:pointer;">
+                <select id="party-size-select" class="menu-select" onchange="window.updateMechanics()">
                     <option value="1">1v1</option>
                     <option value="2">2v2</option>
                     <option value="3" selected>3v3</option>
@@ -10018,7 +10032,7 @@
             <p id="story-gameover-banter" style="display:none;color:#b0bec5;font-size:12px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
             <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
             <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
-            <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
+            <div id="story-gameover-seed" style="font-size:11px;color:var(--text-muted);text-align:center;max-width:420px;display:none;"></div>
             <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
                 <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
                 <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
@@ -15604,7 +15618,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let key = decodeURIComponent(el.getAttribute('data-tip-key') || '');
             let tt = getTextTooltipEl();
             tt.classList.add('tooltip-tap-mode');
-            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button>';
+            tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button>';
             let body = document.createElement('div');
             body.style.cssText = 'clear:both;font-size:12px;color:#ffd700;padding:6px 4px 2px 0;max-width:min(88vw,300px);';
             body.textContent = window._resolveTooltipText(key) || key;
@@ -15665,7 +15679,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = decodeURIComponent(el.getAttribute('data-tip') || '');
             let tt = getTextTooltipEl();
             tt.classList.add('tooltip-tap-mode');
-            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="font-size:12px;clear:both;color:#e8e8e8;padding-top:4px;">' + html + '</div>';
+            tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button><div style="font-size:12px;clear:both;color:#e8e8e8;padding-top:4px;">' + html + '</div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.closeStickyMoveTooltip = function() {
@@ -15676,7 +15690,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         window.openStickyMoveTooltip = function(htmlInner) {
             let tt = getMoveTooltipEl();
-            tt.innerHTML = '<button type="button" class="move-tip-close" onclick="window.closeStickyMoveTooltip()">×</button>' + htmlInner;
+            tt.innerHTML = '<button type="button" class="move-tip-close" aria-label="Close" onclick="window.closeStickyMoveTooltip()">×</button>' + htmlInner;
             tt.classList.remove('hidden');
             tt.classList.add('sticky-open');
         };
@@ -15740,7 +15754,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let tt = getTextTooltipEl();
             if (tapMode) {
                 tt.classList.add('tooltip-tap-mode');
-                tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both">' + html + '</div>';
+                tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button><div style="clear:both">' + html + '</div>';
             } else {
                 tt.classList.remove('tooltip-tap-mode');
                 tt.innerHTML = html;
@@ -15862,7 +15876,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let pri = formatMovePriority(move.pri);
             tt.classList.add('tooltip-tap-mode');
             const _adaptTap = window._adaptiveTypeBadge(moveName, move, window._activeViewerMon());
-            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both"><div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span>' + _adaptTap + '</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: ' + moveCategoryTooltipHtml(move.cat) + '</div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '') + '</div>';
+            tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button><div style="clear:both"><div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span>' + _adaptTap + '</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: ' + moveCategoryTooltipHtml(move.cat) + '</div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '') + '</div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         // Tooltip for Max Moves / Z-Moves not in movesDB
@@ -15930,7 +15944,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let desc = _rawGimmickMoveDescription(moveName);
             let tt = getTextTooltipEl();
             tt.classList.add('tooltip-tap-mode');
-            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both;font-size:12px;color:#ccc;padding-top:4px;"><strong style="color:var(--hp-yellow)">' + moveName + '</strong><br><span style="font-size:11px;">' + desc + '</span></div>';
+            tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button><div style="clear:both;font-size:12px;color:#ccc;padding-top:4px;"><strong style="color:var(--hp-yellow)">' + moveName + '</strong><br><span style="font-size:11px;">' + desc + '</span></div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         function getStatColorClass(val) {
@@ -54013,8 +54027,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-size:13px;color:#aed581;">Ignore the fakes — tap the way it really darts!</div>
                 <div id="camp-dg-mon" style="font-size:52px;line-height:1;transition:transform 0.08s;">😼</div>
                 <div style="display:flex;gap:18px;">
-                    <button type="button" data-camp-dg="L" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">◀</button>
-                    <button type="button" data-camp-dg="R" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">▶</button>
+                    <button type="button" data-camp-dg="L" aria-label="Previous" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">◀</button>
+                    <button type="button" data-camp-dg="R" aria-label="Next" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">▶</button>
                 </div>`);
             const mon = ov.querySelector('#camp-dg-mon');
             let finished = false, phase = 'wait', realDir = DIRS[Math.floor(rng() * 2)], realStart = 0; const timers = [];
@@ -54184,9 +54198,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div id="camp-bk-shield" style="position:absolute;bottom:8px;font-size:30px;transform:translateX(-50%);transition:left 0.08s;">🛡️</div>
                 </div>
                 <div style="display:flex;gap:14px;">
-                    <button type="button" data-camp-bk="L" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">◀</button>
-                    <button type="button" data-camp-bk="C" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▲</button>
-                    <button type="button" data-camp-bk="R" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▶</button>
+                    <button type="button" data-camp-bk="L" aria-label="Previous" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">◀</button>
+                    <button type="button" data-camp-bk="C" aria-label="Up" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▲</button>
+                    <button type="button" data-camp-bk="R" aria-label="Next" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▶</button>
                 </div>
                 <div id="camp-bk-n" style="font-size:11px;color:#9fb;opacity:0.8;">0 / ${hits}</div>`);
             const hitEl = ov.querySelector('#camp-bk-hit'), shieldEl = ov.querySelector('#camp-bk-shield'), nEl = ov.querySelector('#camp-bk-n');
