@@ -13,6 +13,11 @@ Conflicts are noted inline so old context isn't silently contradicted.
 >   Figure climax → Crucible; "Subject Zero" is no longer granted, and the Master Ball is a
 >   1-per-run villain-track reward.
 > - The **8-tone storyline layer** was **RETIRED to `classic`** (kept dormant in code, reversible).
+> - The **multi-city Professor** was **CUT (2026-06)**. The Professor now appears **only in
+>   City 0** and gives **just the starter**; later cities have no Professor. Team growth after
+>   the starter comes from **wild catches / tall grass** (routes, camp, Safari), and the
+>   end-game **Mystery Figure** (City-8 legendary gate) is the one remaining gifted Pokémon.
+>   Sections below that describe a "Professor in each city / next city's Pro" are historical.
 >
 > Canonical status: `CLAUDE.md` → "Excised vs retired (mid-2026 cleanup)".
 
@@ -71,9 +76,9 @@ writing — they will drift as work proceeds.
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
 | Foe sizing | **Badge curve**: `min(6, 2 + badges)` for everyone except story finales (always 6) and the intro rival (pure player-match for a 1v1 starter duel). So foes = 2 pre-Gym-1, 3 post-Gym-1, …, 6 from post-Gym-4 on. |
-| Player party cap | **Same badge curve**: `min(6, 2 + badges)`. Catch tutorial fills slot 2 right after intro rival (cap = 2). Each gym victory unlocks one more slot up to 6 at four badges. Catches and Professor gifts above the cap overflow to PC — the player can always *catch*, they just can't *field* past the cap until the next badge unlocks. |
-| Expected sequence (non-catcher) | Intro rival 1v1 → catch tutorial → cap 2 (2v2) → GL1 2v2 → **(badge 1, cap 3)** → leave the post-gym hub → route wild → arrive at next city → Pro available → GL2 3v3 → **(badge 2, cap 4)** → next route wild → next city's Pro → GL3 4v4 → **(badge 3, cap 5)** → GL4 5v5 → **(badge 4, cap 6)** → GL5+ / E4 / Champion 6v6. A wild-catcher fills the cap immediately on the route; foes still follow the badge curve, so over-catching means PC overflow, never a foe mismatch. |
-| Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only at pre-gym hubs, and only while the player's active party is below the current cap**. So pre-Gym-1 with a full 2/2 party, no Pro button. After Gym 1 (cap → 3), the post-gym hub of City 1 is intentionally Pro-less — the badge unlocks the slot, but the player walks the route (with its wild-encounter beat) and meets the next Professor at City 2's pre-gym hub. Post-gym hubs still keep the Pokémon Center (PC swap-in for any mon already stored) so the new slot isn't dead until the route. Lone exception: City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6 because the swap is required to enter Victory Road. |
+| Player party cap | **Same badge curve**: `min(6, 2 + badges)`. Catch tutorial fills slot 2 right after intro rival (cap = 2). Each gym victory unlocks one more slot up to 6 at four badges. Catches above the cap overflow to PC — the player can always *catch*, they just can't *field* past the cap until the next badge unlocks. |
+| Expected sequence (non-catcher) | Intro rival 1v1 → catch tutorial → cap 2 (2v2) → GL1 2v2 → **(badge 1, cap 3)** → leave the post-gym hub → route wild → arrive at next city → GL2 3v3 → **(badge 2, cap 4)** → next route wild → GL3 4v4 → **(badge 3, cap 5)** → GL4 5v5 → **(badge 4, cap 6)** → GL5+ / E4 / Champion 6v6. After the City-0 starter, slots are filled by catching wilds on the routes / camp / Safari; foes follow the badge curve, so over-catching means PC overflow, never a foe mismatch. |
+| Professor visibility | The Professor appears **only in City 0** and gives **just the starter** (`'Professor'` action on the City-0 row; `hasTeamRoom` hides it once a slot is filled). No Professor appears in later cities — team growth from City 1 on is wild catching. The one remaining forced lab-style visit is the **City-8 post-Gym-8 legendary gate (Mystery Figure)**, surfaced via `shouldForceCityProfessor` → `isPreLeagueLegendaryMysteryGate`, which stays visible even at 6/6 because the legendary swap is required to enter Victory Road. |
 | Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons. |
 | Intro rival | Special-cased to pure player-match (1v1 starter duel). The catch tutorial fires *after* this fight. |
 | Catch tutorial | After the intro rival victory, a one-time static event fires before the next battle: a random Grade-4 wild from the player's enabled gens (`buildGradePool(gens, 4)`, excluding species already on the team) appears, 100% catch on first throw, no flee, with a tutorial overlay (FireRed/Emerald-style). Same Grade-4 pool the next route wild will draw from, so the tutorial mon tiers with the route. Marked done via `sm.catchTutorialDone`. Fills the 2nd slot exactly at the 0-badge cap of 2. |
@@ -112,7 +117,7 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 |---|---|
 | When | **`STORY_WILDS_PER_ROUTE_NODE` (= 2)** wilds per route node, fired back-to-back between consecutive Battles that cross a city boundary. Each wild rolls independently from the grade curve below, so the pair is usually two different species. Forced — no skip (Run still ends the current encounter; the next one fires after). |
 | Where | Virtual screen, not a timeline row. The same `screen-story-catch` screen renders both wilds; on resolution of the first, the interrupt chain re-runs and the second slides in. |
-| Pool grade | Driven by a dedicated **wild grade curve keyed on `sm.badges`** (0–8, see `_WILD_GRADE_CURVE_BY_BADGES`). Independent of the upcoming trainer's `gradeWeights` — wilds reflect the route's biology, not the next fight's lineup. Each tier sits one step behind the contemporaneous trainer roll, so wilds are intentionally inferior to Professor picks and to the foe ahead. |
+| Pool grade | Driven by a dedicated **wild grade curve keyed on `sm.badges`** (0–8, see `_WILD_GRADE_CURVE_BY_BADGES`). Independent of the upcoming trainer's `gradeWeights` — wilds reflect the route's biology, not the next fight's lineup. Each tier sits one step behind the contemporaneous trainer roll, so wilds are intentionally inferior to the foe ahead. |
 | Pool species | Filtered by `sm.settings.enabledGens`, same as trainer rolls. The two toggles (grade curve + enabled gens) are the **only** inputs to the wild roll. |
 | Build | Rough build per the prior audit's A4 — 4 random level-up moves, no held item, default ability, neutral nature, no EVs. Tagged `wild: true`. |
 | Player options | Throw (any ball type from inventory) or Run. |
@@ -526,15 +531,13 @@ and `processNextEvent` does not advance the main timeline.
 
 ## 14d. Mystery Figure vs Professor (post-v16)
 
-After wild catching arrived, the old "team is full → Mystery Figure swap"
-branch turned the Professor's lab visits into Mystery encounters too
-often, blurring two distinct mechanics. The split is now:
+After wild catching arrived, the Professor's recurring lab visits were cut
+(2026-06): the Professor now gives **only the City-0 starter**, and team growth
+from City 1 on is wild catching. The two remaining roles are kept mentally
+distinct:
 
-- **Professor** — every city's curated lab visit. Always the Professor
-  flow (button label "Professor — Lab Companion"). When the player's
-  active party is at the badge-based cap, the Professor still gives a
-  gift, but framed as a "swap with a party member" (the displaced mon
-  goes to PC). No Mystery Figure branding in this path.
+- **Professor** — the City-0 lab visit only. Hands the player their starter
+  (button label "Professor — Pick Your Starter"), then never reappears.
 - **Mystery Figure** — reserved for actual story-mystery events:
   - **City 8 post-Gym 8 legendary gate** (`isPreLeagueLegendaryMysteryGate`)
     — required swap-in legendary before Victory Road.
@@ -616,14 +619,14 @@ tier-scaled identity for enemy trainers.
 
 ### Player IV rolls
 
-Every player-side Pokémon — starter, professor gift, wild catch, Crucible
-mystery offer — calls `_rollRandomIVs()` to populate `build.ivs` with six
-independent 0-31 rolls. Hook points:
+Every player-side Pokémon — starter, wild catch, Mystery Figure legendary,
+Crucible mystery offer — calls `_rollRandomIVs()` to populate `build.ivs` with
+six independent 0-31 rolls. Hook points:
 
 - `makeWildBuild` (`battle.html:34883` area) — wild catches and the
   starter partner.
-- Professor pick loop in `enterProfessor` — calls `_ensureBuildIVs` after
-  `makeBuild` for each rolled choice.
+- Starter / Mystery Figure pick loop in `enterProfessor` — calls
+  `_ensureBuildIVs` after `makeBuild` for each rolled choice.
 - Subject Zero (boss-arc catch) — overrides to perfect `{31,31,31,31,31,31}`
   before commit, since the lore is "synthetic apex specimen".
 
@@ -805,20 +808,19 @@ from the gym leader's curated `sigs` list at the canonical grade,
 filler grades drop one tier via `gwForFiller`. So GL6 reads as
 "G3 team with a G2 ace" without an ad-hoc weight override.
 
-### Starter and Professor gifts — "match the era"
+### Starter gift — "match the era"
 
 - Starter (City 0) is rolled from `PROF_ROLLS[0] = {g4:100}` — G4
   basics only. Player gets a Bulbasaur, not an Ivysaur; investing in
   Evolution Sage and EV/Move Tutors is the *only* path to G3+ on the
   starter line.
-- Per-city Professor gifts (`PROF_ROLLS`) now match the contemporary
-  era exactly (no longer one tier above). The match-era table:
-  City 0–1 pure G4; City 2 transition (30/70 G3/G4); Cities 3–5 pure
-  G3; City 6 transition (30/70 G2/G3); Cities 7–8 climbing G2; City 9
-  legendary pool.
-- `_storyBuildTierForProfessor` matches the gym tier curve (UNTRAINED
-  pre-G2, NOVICE in G3 era, COMPETENT in G2 era, TOURNAMENT in G1
-  era).
+- Per-city Professor gifts were **cut (2026-06)** — the Professor only
+  gives the City-0 starter now, so only `PROF_ROLLS[0]` is live (rows
+  1–9 are vestigial, kept for `cityIdx` index safety). Later-city team
+  growth is wild catching; the end-game **Mystery Figure** legendary
+  (City-8 gate) rolls from `mysteryFigureRollsForBadges`, not `PROF_ROLLS`.
+- `_storyBuildTierForProfessor` still sets the City-0 starter's build
+  tier (UNTRAINED at the G4 floor).
 
 ### Wild route encounters — strict G3 cap
 
@@ -870,7 +872,7 @@ their own stat-boost stacks don't double-dip.
 
 | NPC | Was | Now |
 |---|---|---|
-| Professor | All cities, era + 1 tier | All cities, **match era exactly** |
+| Professor | All cities, era + 1 tier | **City 0 only — gives the starter** (per-city gifts cut 2026-06) |
 | Starter pool | G3-leaning | **G4 basics only** |
 | Move Tutor | All cities, full pool | unchanged |
 | Nature Rater | All cities | unchanged |
@@ -883,7 +885,7 @@ their own stat-boost stacks don't double-dip.
 EV Trainer + Battle Dojo cluster at City 4 so the player crossing into
 Stage 2 has a single "now you're optimizing" hub. Earlier cities
 intentionally have *no* held-item or EV-shaping facility — the team
-fights with what the Professor gave them and what wilds they caught.
+fights with the starter and whatever wilds the player caught.
 
 ### Enemy build tier — stage-aligned
 
