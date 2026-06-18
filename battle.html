@@ -55426,6 +55426,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             spawn();
         }
 
+        // Resolve a battle beat WITHOUT a fight — the rare pacifist / ransom
+        // outcome of a signature interaction (skipBattle). Mirrors the win-path
+        // TAIL in onBattleEnd (mark beat fired → advance eventIndex → aftermath
+        // scene → processNextEvent) but grants no combat reward: peace costs you
+        // the loot, by design. Never fires for boss/raid/mysteryBoss (gated by
+        // the caller). A flow-sensitive helper — kept deliberately minimal.
+        function _storyResolveBeatBySkip(beatKey, ev, _onDone) {
+            const _done = (typeof _onDone === 'function') ? _onDone : function () { processNextEvent(); };
+            try {
+                const row = sm.eventIndex | 0;
+                // Consume the skip flag so it can't replay or leak to another row.
+                try { if (sm.flags) delete sm.flags['mgSkipBattle:' + row]; } catch (e) {}
+                // Undo any canon-trainer swap stamped on the way in — there was no fight.
+                try {
+                    if (sm._priorTrainerAssignment) {
+                        const r = sm._priorTrainerAssignment;
+                        if (sm.trainerAssignments) {
+                            if (r.prev != null) sm.trainerAssignments[r.rowId] = r.prev;
+                            else delete sm.trainerAssignments[r.rowId];
+                        }
+                        delete sm._priorTrainerAssignment;
+                    }
+                } catch (e) {}
+                // Mark the beat fired (mirrors the onBattleEnd victory hook) so the
+                // arc doesn't re-offer this battle, and clear the in-flight key.
+                if (beatKey) {
+                    try { delete sm._activeBeatBattleKey; } catch (e) {}
+                    if (!sm.storyEventsFired) sm.storyEventsFired = {};
+                    sm.storyEventsFired[beatKey] = true;
+                }
+                // Advance the timeline exactly as the win tail does (clamped).
+                sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
+                try { save(); } catch (e) { console.warn('[Story] skip-beat save', e); }
+                // Hide battle/menu surfaces, then play the beat's aftermath (if any)
+                // and continue the run — no victory overlay, no combat loot.
+                try { document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden')); } catch (e) {}
+                if (typeof _playPostBattleScene === 'function' && beatKey) {
+                    _playPostBattleScene(beatKey, _done);
+                } else {
+                    _done();
+                }
+            } catch (e) {
+                _storyRecoverFromEntryFailure('pacifist beat resolution', e);
+            }
+        }
+        window._storyResolveBeatBySkip = _storyResolveBeatBySkip;
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked, _routeChecked) {
             if (!ev) return;
             if (ev[1] !== 'Battle') {
@@ -55521,7 +55567,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } catch (e) { console.warn('[Story] canon trainer override:', e); }
                 const _runBeatScene = () => _playStoryBeatScene(_beatBattle.sceneKey, () => {
-                    try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
+                    try {
+                        // Pacifist / ransom route (rare): the beat scene just played,
+                        // and a signature interaction inside it may have stamped a
+                        // skip flag for this row (onWin:{ skipBattle:true } or a choice
+                        // option with that effect). If so — and the beat is a lower
+                        // tier, never a boss/raid/mysteryBoss climax — resolve the beat
+                        // WITHOUT a fight: mark it fired, advance, play its aftermath.
+                        const _mod = (typeof _mgBattleModForRow === 'function') ? _mgBattleModForRow(sm.eventIndex) : null;
+                        const _k = _beatBattle.kind;
+                        const _skippable = _k !== 'boss' && _k !== 'raid' && _k !== 'mysteryBoss';
+                        if (_mod && _mod.skip && _skippable) {
+                            _storyResolveBeatBySkip(_beatBattle.sceneKey, ev);
+                            return;
+                        }
+                        // A skip flag on a non-skippable (climax) beat is ignored and
+                        // cleared so it can't leak forward onto a later row.
+                        if (_mod && _mod.skip && !_skippable && sm.flags) {
+                            try { delete sm.flags['mgSkipBattle:' + (sm.eventIndex | 0)]; } catch (e2) {}
+                        }
+                        enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked);
+                    }
                     catch (e) { _storyRecoverFromEntryFailure('beat-battle scene continuation', e); }
                 });
                 // H2-3 substitution bridge: when this beat swapped a scheduled road battle
