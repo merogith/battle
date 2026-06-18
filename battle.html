@@ -7243,7 +7243,7 @@
             .story-tutor-choice { padding: 10px 12px !important; }
             .story-tutor-btn { min-height: 42px !important; padding: 8px 14px !important; font-size: 13px !important; }
             /* Pokémon Center: tab buttons get a real 44px tap height. */
-            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn, #story-pc-tab-journal-btn {
+            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn {
                 min-height: 44px !important;
                 font-size: 13px !important;
                 padding: 10px 8px !important;
@@ -15498,6 +15498,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.showGameConfirm = function(message) {
             dismissTextTooltipForModal();
             return new Promise(function(resolve) {
+                // A prior confirm still pending? Resolve it false so its awaiter
+                // isn't orphaned when this call overwrites the resolver.
+                if (window._gameConfirmResolve) { try { window._gameConfirmResolve(false); } catch (e) {} }
                 window._gameConfirmResolve = resolve;
                 const t = document.getElementById('modal-game-confirm-text');
                 if (t) t.textContent = message != null ? String(message) : '';
@@ -22027,6 +22030,60 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return null;
         }
 
+        // === Enemy-bot difficulty → decision-QUALITY coupling (2026-06) ===
+        // Historically difficulty only scaled foe STATS (see _foeMultApplied). These helpers add a
+        // decision-quality axis: the band drives (a) the softmax TEMPERATURE used to select among
+        // scored moves — higher temp = more human-like sub-optimal picks, T=0 = perfect argmax — and
+        // (b) how strongly the AI PREDICTS the player's action. All numbers are maintainer-owned
+        // (see CLAUDE.md "balance numbers are user-owned").
+        const AI_DIFFICULTY_PARAMS = {
+            veryeasy:  { temp: 1.6,  predict: 0.0 },
+            easy:      { temp: 0.9,  predict: 0.25 },
+            normal:    { temp: 0.45, predict: 0.55 },
+            hard:      { temp: 0.15, predict: 0.85 },
+            challenge: { temp: 0.0,  predict: 1.0 }, // "Very Hard" in UI — perfect selection
+        };
+        // Resolve the active difficulty band. Story uses sm.storyDifficulty; every other mode
+        // (Quick Battle / Gauntlet / PvP-vs-bot) has no difficulty knob today, so they get a fixed
+        // strong band — good play without being a perfect solver.
+        function aiResolveDifficulty() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (sm && sm.active && sm.storyDifficulty && AI_DIFFICULTY_PARAMS[sm.storyDifficulty]) return sm.storyDifficulty;
+            return 'hard';
+        }
+        function aiDifficultyParams() { return AI_DIFFICULTY_PARAMS[aiResolveDifficulty()] || AI_DIFFICULTY_PARAMS.normal; }
+
+        // Select a move from scored {move,score} candidates using a difficulty-driven softmax.
+        // T<=0 (or forceBest) → strict argmax with seeded random tie-break (perfect play); higher T
+        // → progressively more human-like sub-optimal picks. Hard floors: never sample a 0/negative
+        // move when a positive one exists, and never pass up a guaranteed KO (forceBest). Sampling
+        // uses the seeded story RNG so AI move choice is part of the deterministic replay (this
+        // replaces the old bare Math.random() tie-breaks).
+        function aiSelectScoredMove(scored, opts) {
+            opts = opts || {};
+            if (!scored || !scored.length) return null;
+            const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            let maxScore = -Infinity;
+            scored.forEach(s => { if (s.score > maxScore) maxScore = s.score; });
+            const EPS = 1e-6;
+            const top = scored.filter(s => s.score >= maxScore - EPS);
+            const T = (typeof opts.temp === 'number') ? opts.temp : 0;
+            // Perfect-play / guaranteed-KO floor: pick (randomly) among the best-scored moves.
+            if (T <= 0 || opts.forceBest) return top[Math.floor(rng() * top.length)].move;
+            // Candidate pool: drop non-positive scores when any positive move exists, best-first so a
+            // low RNG roll maps to the strongest move (inverse-CDF sampling over a sorted pool).
+            let pool = scored.filter(s => s.score > 0);
+            if (!pool.length) pool = scored.slice();
+            pool.sort((a, b) => b.score - a.score);
+            // Softmax over the score gap normalized by the best score (dimensionless temperature).
+            const denom = Math.max(1, Math.abs(maxScore));
+            let total = 0;
+            const weights = pool.map(s => { const wgt = Math.exp(-((maxScore - s.score) / denom) / T); total += wgt; return wgt; });
+            let r = rng() * total;
+            for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i].move; }
+            return pool[pool.length - 1].move;
+        }
+
         window.getBestMove = function(attacker, defender) {
     let validMoves = attacker.moves.filter(m => {
         if (m.pp <= 0) return false;
@@ -22089,17 +22146,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let playerBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0).length;
     let isEndgame = foeBench === 0 || playerBench === 0;
 
-    // Switch-in prediction: only when the player is clearly losing this matchup (we can KO it, or
-    // 2HKO it while it can't meaningfully hurt us) AND has a bench to bring in. Computed once per
-    // turn; feeds a small per-move nudge below so the AI loads the move that punishes the likely
-    // counter. Skipped against substitutes (no clean read) and in PvP (mirror match, no edge).
+    // Player-action prediction (difficulty-scaled). When the player's active is clearly losing this
+    // matchup and has a bench, a decent player will pivot — so predict the likely switch-in and load
+    // coverage that punishes it. Strength scales with difficulty (Very Easy never predicts; Very Hard
+    // full read) via _predictConf, applied to the per-move nudge below. Enabled in ALL modes now (was
+    // Story-only) and degrades vs Substitute (lower confidence) instead of skipping entirely.
+    const _aiDiff = aiDifficultyParams();
     let predictedSwitchIn = null;
-    if (playerBench > 0 && state.mode !== 'pvp' && !defHasSub) {
+    let _predictConf = 0;
+    if (playerBench > 0 && _aiDiff.predict > 0) {
         const _playerLosing = canKO || (can2HKO && threat < attacker.currentHp * 0.5);
-        if (_playerLosing) { try { predictedSwitchIn = aiPredictPlayerSwitchIn(attacker); } catch (e) { predictedSwitchIn = null; } }
+        if (_playerLosing) {
+            try { predictedSwitchIn = aiPredictPlayerSwitchIn(attacker); } catch (e) { predictedSwitchIn = null; }
+            _predictConf = _aiDiff.predict * (canKO ? 1 : 0.6) * (defHasSub ? 0.5 : 1);
+        }
     }
 
-    let bestMove = validMoves[0]; let maxScore = -Infinity;
+    // Collect every scored candidate, then select via seeded softmax (see aiSelectScoredMove).
+    let scored = [];
     validMoves.forEach(move => {
         let score = 0;
 
@@ -22108,8 +22172,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let foEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             score = foEff > 0 ? 130 : 0;
             if (defender.ability === "Inner Focus" || defHasSub) score = 0;
-            score += Math.random() * 4;
-            if (score > maxScore) { maxScore = score; bestMove = move; }
+            scored.push({ move, score });
             return;
         }
 
@@ -22186,8 +22249,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability-absorbed status (Lightning Rod + Thunder Wave, Flash Fire + Will-O-Wisp, …)
             if (aiAbilityBlocksMoveForAi(attacker, defender, move)) {
                 score = 0;
-                score += Math.random() * 2;
-                if (score > maxScore) { maxScore = score; bestMove = move; }
+                scored.push({ move, score });
                 return;
             }
 
@@ -22198,8 +22260,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (["Roost","Recover","Soft-Boiled","Synthesis","Morning Sun","Slack Off","Rest","Wish","Milk Drink"].includes(move.name)) {
                     score = outsped ? 5 : 85; // Can heal if we move first
                 } else { score = 1; }
-                score += Math.random() * 4;
-                if (score > maxScore) { maxScore = score; bestMove = move; }
+                scored.push({ move, score });
                 return;
             }
 
@@ -22518,19 +22579,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Switch-in prediction nudge: prefer coverage that also pressures the counter the player
             // is likely to bring in. Small magnitude (±8) so it only breaks ties between comparable
             // moves — it never overrides a KO or a clear damage lead.
-            if (predictedSwitchIn) {
+            if (predictedSwitchIn && _predictConf > 0) {
                 const siEff = getMoveEffectiveness(move.type, predictedSwitchIn.type1, predictedSwitchIn.type2);
-                if (siEff === 0 || abilityImmunity(move, predictedSwitchIn, attacker)) score -= 8;
-                else if (siEff >= 2) score += 8;
-                else if (siEff < 1) score -= 4;
+                if (siEff === 0 || abilityImmunity(move, predictedSwitchIn, attacker)) score -= 8 * _predictConf;
+                else if (siEff >= 2) score += 8 * _predictConf;
+                else if (siEff < 1) score -= 4 * _predictConf;
             }
         }
 
-        // Small random factor (kept tiny so the scoring system dominates)
-        score += Math.random() * 6;
-        if (score > maxScore) { maxScore = score; bestMove = move; }
+        scored.push({ move, score });
     });
-    return bestMove;
+    // Selection: seeded softmax over scored candidates. The difficulty temperature controls how
+    // often a sub-optimal move is taken (human-likeness); T=0 (Very Hard) = strict argmax. A
+    // guaranteed KO is never passed up regardless of difficulty (forceBest).
+    const _sel = aiSelectScoredMove(scored, { temp: _aiDiff.temp, forceBest: canGuaranteeKO });
+    return _sel || validMoves[0];
 };
 
         // AI decision: should we switch or attack?
@@ -22605,7 +22668,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     // Switch when we're losing the current matchup: either outsped+KO'd, or walled while still healthy enough
     // to come back later. The earlier "predicted-switch-into-bench-counter" clause caused over-switching when
     // the AI was actually winning — a bench resist isn't a reason to abandon a position you're ahead in.
-    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35) || allImmune;
+    // aiProfile now shifts the switch threshold (not just the score nudge in getBestMove):
+    // aggressive holds a walled matchup longer (keeps pressuring), stall-aware pivots out earlier.
+    const _pf = settings.aiProfile || 'balanced';
+    let _walledHpFloor = 0.35;
+    if (_pf === 'aggro') _walledHpFloor = 0.50;
+    else if (_pf === 'stall') _walledHpFloor = 0.20;
+    // Anti-panic-switch hysteresis (cf. PokéLLMon "panic switching"): don't pivot two turns running
+    // on a soft (walled) trigger — only a hard trigger (about to be KO'd / all-immune) overrides it.
+    const _justSwitched = (state._aiLastSwitchTurn === state.turnNumber - 1);
+    let shouldSwitch = willDieFirst || (walled && hpPct > _walledHpFloor && !_justSwitched) || allImmune;
 
     if (shouldSwitch) {
         let switchTo = aiBestSwitch(bench, defender);
@@ -22630,7 +22702,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (walled && switchTargetWalled && !willDieFirst && !(allImmune && newBestDmg > 0)) return null;
 
             // Switch if the new mon is meaningfully better, or if we're dying anyway
-            if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) return switchIdx;
+            if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) { state._aiLastSwitchTurn = state.turnNumber; return switchIdx; }
         }
     }
     return null;
@@ -33177,8 +33249,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 3-track story-mode pools (v22+). One villain + one extra is rolled at
         // run start (and back-filled on save migration). Tracks stay hidden until
         // the first beat fires organically — Road 1 = first extra beat, Road 2 =
-        // first villain beat — so the reveal lands inside the first ~10 minutes
-        // of a run. See docs/story-design/STORY_3TRACK_IMPL_PLAN.md.
+        // first villain beat (a post-Gym-2 route node) — so the reveal lands on
+        // each track's first early-game road node, not at run start.
+        // See docs/story-design/STORY_3TRACK_IMPL_PLAN.md.
         const VILLAIN_TRACKS = ['rocket','magma','aqua','galactic','plasma',
                                 'flare','skull','yell','macroCosmos','star'];
         const EXTRA_TRACKS   = ['cubone','yamask','hypno','phantump',
@@ -35061,10 +35134,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.yamask.event3": {
                             "title": "You Recognize It",
-                            "body": "A folded photograph in a Pokéball box you found in the route grass. The photograph is of a smiling face. The Pokéball is empty. The face in the photograph is not yours, but you recognize it.",
+                            "body": "A folded photograph in a Poké Ball box you found in the route grass. The photograph is of a smiling face. The Poké Ball is empty. The face in the photograph is not yours, but you recognize it.",
                             "acts": [
                                 { "phase": "intro", "lines": [
-                                    "A folded photograph inside a Pokéball box, dropped in the route grass - the kind of box you keep a partner's small things in." ] },
+                                    "A folded photograph inside a Poké Ball box, dropped in the route grass - the kind of box you keep a partner's small things in." ] },
                                 { "phase": "development", "lines": [
                                     "The photograph is of a smiling face. The ball is empty." ] },
                                 { "phase": "climax", "lines": [
@@ -35163,10 +35236,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                   },
                   "extra.mewtwo.event3": {
                             "title": "I Will Not Write It Down",
-                            "body": "A diary on the route, locked in a Pokéball case. You can read three pages. The handwriting is rushed, then panicked, then very, very calm - 'if it speaks today, I will not write it down.'",
+                            "body": "A diary on the route, locked in a Poké Ball case. You can read three pages. The handwriting is rushed, then panicked, then very, very calm - 'if it speaks today, I will not write it down.'",
                             "acts": [
                                 { "phase": "intro", "lines": [
-                                    "A diary on the route, locked inside a Pokéball case - the good kind, the kind you use for something you can't replace and can't bear to hold." ] },
+                                    "A diary on the route, locked inside a Poké Ball case - the good kind, the kind you use for something you can't replace and can't bear to hold." ] },
                                 { "phase": "development", "lines": [
                                     "You can read three pages through the scratched window. The handwriting starts rushed. Goes panicked. Then, on the third page, very, very calm." ] },
                                 { "phase": "climax", "lines": [
@@ -41854,10 +41927,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _storyEnemyMechKeys(ctx) {
             // Enemy trainers are gated to the player's story-mode mechanic unlocks:
-            // GL1-5 enemies are STANDARD only, GL6 boss (the unlock-reveal fight) is
-            // also STANDARD, and from GL7 onwards each newly unlocked mechanic enters
-            // the enemy candidate pool. Mirrors the player-side _withStoryPlayerGimmickGate
-            // rule so no mechanic appears anywhere before it becomes globally available.
+            // below 6 badges enemies are STANDARD only; once the player reaches 6
+            // badges (after the GL6 reveal fight) all four enabled mechanics unlock
+            // together (`slots = badges < 6 ? 0 : 4`) and enter the enemy candidate
+            // pool at once. Mirrors the player-side _withStoryPlayerGimmickGate rule
+            // so no mechanic appears anywhere before it becomes globally available.
             // An optional ctx.settings override lets a caller force the gimmick flags on
             // (the post-HoF Mystery Figure rolls from every unlocked mechanic) without
             // mutating the shared sm.settings; default reads the live story settings.
@@ -43684,7 +43758,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 const errs = issues.filter(m => /not a known species/.test(m));
                 if (errs.length) console.warn(`[TRAINER_DATA] ${errs.length} hard error(s) — unknown signature species:`);
-                else console.log('[TRAINER_DATA] validation: all signatures resolve to known species.');
+                else if (window.__DEBUG_LOADS) console.log('[TRAINER_DATA] validation: all signatures resolve to known species.');
                 for (const m of issues) (/not a known species/.test(m) ? console.warn : console.info)('  • ' + m);
                 return issues;
             } catch (e) {
@@ -48128,7 +48202,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = getCityIndex(ev);
             const hasBaseProf = actions.includes('Professor');
             const _partyCap = _storyMaxPartySize();
-            const hasTeamRoom = sm.team.length < _partyCap;
+            const hasTeamRoom = !_storyPartyFullForCatch();
             // The Professor only hands out the City-0 starter (`hasBaseProf` from the
             // City-0 'Professor' action); later cities grow the team via wild catches
             // / tall grass instead. The lone forced visit left is the City-8 post-Gym-8
@@ -49440,6 +49514,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Count battle-eligible (non-egg) party members — the real "do I have a
         // fightable team" number that the deposit / sell / Fight-Club guards use.
         function _storyCountFighters() { return (sm.team || []).filter(s => s && !s.isEgg).length; }
+        // True when the active party can't accept another *fighter* — either the
+        // fightable cap (2 + badges, clamped 2..6) is reached, or all 6 physical
+        // slots are occupied. Eggs hold a physical slot but never count toward the
+        // fighter cap, so an incubating egg never shrinks your catchable roster
+        // (the `length >= 6` guard still prevents the array growing past 6 slots).
+        function _storyPartyFullForCatch() {
+            return _storyCountFighters() >= _storyMaxPartySize() || (sm.team || []).length >= 6;
+        }
         function _makeEggSlot(species, laidCity) {
             return {
                 id: 'egg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -51127,7 +51209,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // their starter is "full" for Professor purposes — they get the
             // lab-companion swap flow, not an overflow into a non-existent
             // 3rd slot.
-            const isFull = sm.team.length >= _storyMaxPartySize();
+            const isFull = _storyPartyFullForCatch();
             _profMysteryMode = isFull;
             // Once per save — at the City-0 starter pick, explain how the team grows
             // from here, so the player knows to lean on wild catching afterward.
@@ -56013,7 +56095,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pcRenderBoxGridInner() {
             const box = sm.pcBox || [];
             const partyCap = _storyMaxPartySize();
-            const ctx = { partyFull: (sm.team || []).length >= partyCap, partyCap };
+            const ctx = { partyFull: _storyPartyFullForCatch(), partyCap };
             const view = _pcBoxView(box, { sort: _pcBoxSort, type: _pcBoxFilterType, shiny: _pcBoxShinyOnly, search: _pcBoxSearch });
             if (!view.length) {
                 return `<div class="pc-empty">No Pokémon match this filter. <button type="button" class="pc-clear-filter" onclick="window.StoryMode.pcClearBoxFilters()">Clear filters</button></div>`;
@@ -56041,7 +56123,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const team = sm.team || [];
             const box = sm.pcBox || [];
             const partyCap = _storyMaxPartySize();
-            const partyFull = team.length >= partyCap;
+            const partyFull = _storyPartyFullForCatch();
             const partyLastOne = team.filter(s => s && !s.isEgg).length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
             // Warn at 80% of the cap (spec: 8/10 = 80%, applies whatever cap is).
@@ -56438,7 +56520,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             box.forEach((s) => { if (s && !s.isEgg) rows.push({ slot: s, source: 'pc' }); });
 
             if (!rows.length) {
-                html += `<div class="pc-empty">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
+                html += `<div class="pc-empty">Nothing on the table tonight. Bonded partners and your last remaining Pokémon stay off the table.</div>`;
                 return html;
             }
             html += `<div class="pc-grid">`;
@@ -56695,7 +56777,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <div style="font-size:10px;color:#7a8aa0;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Shop</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                    ${btn(fico('mart'),   'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(fico('mart'),   'Pokémart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
                     ${btn(fico('dept'),   'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
                     ${btn(fico('relic'),  'Relics', 'window.StoryMode.enterArtifactShop()', null, 'Run-wide battle rules. Browse to acquire (one per shop), Manage to toggle.')}
                     ${btn(fico('casino'), 'Poké Game Corner', 'window.StoryMode.enterCasino()', null, 'Coin Flip · Slots · Roulette. Big wins drop Vitamins + Vouchers.')}
@@ -58080,7 +58162,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _totalThrowable = ['poke', 'great', 'ultra', 'master']
                     .reduce((n, k) => n + ((sm.balls && (sm.balls[k] | 0)) || 0), 0);
                 if (_totalThrowable <= 0) {
-                    ballRows = `<div style="padding:8px 12px;background:rgba(40,16,12,0.6);border:1px solid #ff7043;color:#ffab91;font-size:12px;">You're out of Poké Balls — flee for now and restock at any city PokéMart.</div>` + ballRows;
+                    ballRows = `<div style="padding:8px 12px;background:rgba(40,16,12,0.6);border:1px solid #ff7043;color:#ffab91;font-size:12px;">You're out of Poké Balls — flee for now and restock at any city Pokémart.</div>` + ballRows;
                 }
             }
             // Shiny encounters get a sparkle on the name, a friendlier header
@@ -58253,7 +58335,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // player can always catch — they just can't field more than the unlocked
             // active size at once. This keeps foe-scaling vs player-team balance honest.
             const maxParty = _storyMaxPartySize();
-            const partyFull = (sm.team || []).length >= maxParty;
+            const partyFull = _storyPartyFullForCatch();
             const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
             if (partyFull && pcFull) {
                 _catchFinishWithMessage(`Your party (${(sm.team||[]).length}/${maxParty}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Free a slot at the Pokémon Center, then try again.`);
@@ -61696,11 +61778,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Resolve a sellable item's catalog entry so the sell value can be
+        // re-derived authoritatively (never trust the caller-supplied price,
+        // which is baked into the rendered onclick and could be stale/tampered).
+        function _storyCatalogItemById(itemId) {
+            try {
+                const all = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
+                return all.find(it => it && it.id === itemId) || null;
+            } catch (e) { return null; }
+        }
+
         function sellItem(itemId, sellPrice) {
             if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
+            // Re-derive the price authoritatively when the item is resolvable — a
+            // catalog entry (shop/dept/currently-featured) or an earned-value id.
+            // Otherwise (e.g. a featured stone that has rotated out of the current
+            // catalog snapshot) fall back to the caller-supplied bag-computed price
+            // rather than silently collapsing to the 100G floor.
+            const _item = _storyCatalogItemById(itemId);
+            const price = (_item || Object.prototype.hasOwnProperty.call(STORY_EARNED_SELL_VALUE, itemId))
+                ? (_storyItemSellValue(itemId, _item) | 0)
+                : (sellPrice | 0);
             sm.inventory[itemId]--;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
-            sm.gold += (sellPrice | 0);
+            sm.gold += price;
             save();
             updateHUD();
             // Re-render the city bag so qty and gold update instantly
@@ -61710,15 +61811,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Poké Balls live in sm.balls (separate from sm.inventory). Selling the Master
         // Ball is run-defining (it guarantees the roaming legendary), so that one sale
         // asks for confirmation; every other ball sells freely.
-        function sellBall(ballKey, sellPrice) {
+        function sellBall(ballKey, _sellPriceIgnored) {
             if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
+            // Re-derive from the canonical table; the caller-supplied value is ignored.
+            const price = (STORY_BALL_SELL_VALUE[ballKey] | 0);
             if (ballKey === 'master') {
                 let ok = true;
-                try { ok = window.confirm('Sell your Master Ball for ' + ((sellPrice | 0).toLocaleString()) + 'G? It guarantees a catch on the roaming legendary — this cannot be undone.'); } catch (e) {}
+                try { ok = window.confirm('Sell your Master Ball for ' + (price.toLocaleString()) + 'G? It guarantees a catch on the roaming legendary — this cannot be undone.'); } catch (e) {}
                 if (!ok) return;
             }
             sm.balls[ballKey]--;
-            sm.gold += (sellPrice | 0);
+            sm.gold += price;
             save();
             updateHUD();
             openCityBag();
