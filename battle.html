@@ -39333,8 +39333,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // existing sm.gold / sm.inventory / sm.flags (no SAVE_VER bump). Battle
         // modifiers stamp a per-row flag the battle setup reads — they do not move
         // the timeline. Returns a summary of what was applied (for tests + toasts).
+        // Add a specific species to the player's roster as a story gift (party if
+        // there's room, else PC). Mirrors the professor/egg slot shape exactly
+        // ({ name, build, id }) and marks the dex. Returns the placement or null.
+        function _storyGiftSpecies(species) {
+            try {
+                if (!species || typeof makeBuild !== 'function' || typeof sm !== 'object' || !sm) return null;
+                if (!Array.isArray(sm.team)) sm.team = [];
+                if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
+                const build = makeBuild(species);
+                const slot = { name: species, build: build, id: 'm_' + Math.random().toString(36).slice(2, 10) };
+                let placed;
+                const cap = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                if (sm.team.length < cap) { sm.team.push(slot); placed = 'party'; }
+                else { sm.pcBox.push(slot); placed = 'PC'; }
+                try { _storyMarkDexCaught(species, !!(build && build._isShiny)); } catch (e) {}
+                try { renderTeamPanel(); } catch (e) {}
+                return placed;
+            } catch (e) { console.warn('[Story] gift species failed', species, e); return null; }
+        }
         function _applyStoryInteractionOutcome(effect) {
-            const applied = { gold: 0, items: [], flags: [], battle: null };
+            const applied = { gold: 0, items: [], flags: [], battle: null, gift: null };
             if (!effect || typeof effect !== 'object') return applied;
             try {
                 if (typeof effect.gold === 'number' && effect.gold !== 0 && typeof sm === 'object' && sm) {
@@ -39352,6 +39371,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.flags[effect.flag.key] = (effect.flag.val !== undefined) ? effect.flag.val : true;
                     applied.flags.push(effect.flag.key);
                 }
+                // Gift a specific Pokémon (signature reward — e.g. a recruited
+                // partner). Non-economy, non-battle-stat: it simply joins the roster.
+                if (effect.giftPokemon) {
+                    const _sp = (typeof effect.giftPokemon === 'string') ? effect.giftPokemon
+                        : (effect.giftPokemon && effect.giftPokemon.species);
+                    const _placed = _storyGiftSpecies(_sp);
+                    if (_placed) applied.gift = { species: _sp, placed: _placed };
+                }
+                // NOTE: softenBattle is DEPRECATED by design — per CLAUDE.md a story
+                // interaction must not change battle MECHANICS. It is retained only so
+                // the existing flag round-trip test keeps passing; no shipped content
+                // authors it. skipBattle (the rare pacifist/ransom "no fight" route) is
+                // the only sanctioned battle-level outcome.
                 if ((effect.skipBattle || effect.softenBattle) && typeof sm === 'object' && sm) {
                     sm.flags = sm.flags || {};
                     const row = (effect.row != null) ? (effect.row | 0) : (sm.eventIndex | 0);
@@ -39445,6 +39477,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const seq = _mgMemorySequence(rng, len, cfg.symbols);
                 return { outcome: (opts && opts.forceMistake) ? 'lose' : 'win', detail: { sequence: seq } };
             }
+            if (type === 'riddle') {
+                const steps = (Array.isArray(cfg.steps) && cfg.steps.length) ? cfg.steps
+                    : [{ answer: cfg.answer | 0 }];
+                const passN = (cfg.passN != null) ? (cfg.passN | 0) : steps.length;
+                const picks = (opts && Array.isArray(opts.picks)) ? opts.picks : null;
+                let correctN = 0;
+                steps.forEach(function (st, i) {
+                    const p = picks ? (picks[i] | 0) : (st.answer | 0);
+                    if (p === (st.answer | 0)) correctN++;
+                });
+                return { outcome: correctN >= passN ? 'win' : 'lose', detail: { correct: correctN } };
+            }
+            if (type === 'cipher') {
+                const answer = Array.isArray(cfg.answer) ? cfg.answer : [];
+                const entry = (opts && Array.isArray(opts.entry)) ? opts.entry : answer;
+                const ok = entry.length === answer.length && entry.every(function (e, k) { return (e | 0) === (answer[k] | 0); });
+                return { outcome: ok ? 'win' : 'lose', detail: { entry: entry } };
+            }
+            if (type === 'craft') {
+                if (opts && opts.forceMistake) return { outcome: 'lose', detail: null };
+                return { outcome: 'win', detail: null };
+            }
+            // tell / spot — single labelled pick against cfg.answer
             const correct = cfg.answer | 0;
             const pick = (opts && typeof opts.pick === 'number') ? opts.pick : correct;
             return { outcome: pick === correct ? 'win' : 'lose', detail: { pick: pick, correct: correct } };
@@ -39600,6 +39655,218 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showSequence();
         }
 
+        // ── Riddle: a dialogue that is itself the puzzle. A short clue lead-in,
+        // then 1..N question steps (each a labelled multiple-choice). Win when the
+        // number correct meets cfg.passN (default: all steps). A spice, never a
+        // gate — losing still advances. Deterministic (no RNG; authored order).
+        function _mgRunRiddle(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'A Riddle';
+            const steps = (Array.isArray(cfg.steps) && cfg.steps.length) ? cfg.steps
+                : [{ q: cfg.tell || cfg.prompt || '', options: cfg.options || [], answer: cfg.answer | 0 }];
+            const passN = (cfg.passN != null) ? (cfg.passN | 0) : steps.length;
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            let si = 0, correct = 0; const picks = [];
+            function renderIntro(after) {
+                const intro = Array.isArray(cfg.intro) ? cfg.intro : (cfg.intro ? [cfg.intro] : []);
+                if (!intro.length) { after(); return; }
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '540px';
+                box.innerHTML = intro.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(box);
+                ov.appendChild(_mgContinueBtn(function () { after(); }));
+            }
+            function renderStep() {
+                if (si >= steps.length) { finish(); return; }
+                const st = steps[si] || {};
+                const options = Array.isArray(st.options) ? st.options : [];
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '540px';
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(st.q || '') + '</p>';
+                const col = document.createElement('div'); col.style.cssText = 'display:flex;flex-direction:column;gap:6px;max-width:540px;width:100%;margin-top:8px;';
+                options.forEach(function (opt, i) {
+                    const label = (typeof opt === 'string') ? opt : (opt && opt.label) || '';
+                    const b = _mgBtn('▸ ' + _mgEsc(label), false); b.style.textAlign = 'left';
+                    b.addEventListener('click', function () { pick(i); });
+                    col.appendChild(b);
+                });
+                ov.appendChild(h); ov.appendChild(box); ov.appendChild(col);
+            }
+            function pick(i) {
+                const st = steps[si] || {}; const options = Array.isArray(st.options) ? st.options : [];
+                const ok = (i === (st.answer | 0)); if (ok) correct++; picks.push(i);
+                const opt = options[i];
+                const reply = (opt && opt.reply) ? (Array.isArray(opt.reply) ? opt.reply : [opt.reply])
+                    : [ok ? (st.winLine || 'Right.') : (st.loseLine || 'Not quite.')];
+                ov.innerHTML = '';
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '540px';
+                rb.innerHTML = reply.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { si++; renderStep(); }));
+            }
+            function finish() {
+                const outcome = (correct >= passN) ? 'win' : 'lose';
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'The answer settles into place.') : (cfg.loseLine || 'The thread slips away.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '540px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { correct: correct, picks: picks }); }));
+            }
+            renderIntro(renderStep);
+        }
+
+        // ── Spot the tell: an observation beat. A prompt + a row of cards; one is
+        // the "off" one (cfg.answer). Pick it to win. Optional reveal lines after.
+        function _mgRunSpot(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'What Doesn’t Fit';
+            const items = Array.isArray(cfg.items) ? cfg.items : [];
+            const correct = cfg.answer | 0;
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '560px';
+            box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.prompt || 'Something here is wrong. Find it.') + '</p>';
+            const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center;max-width:600px;';
+            items.forEach(function (it, i) {
+                const label = (typeof it === 'string') ? it : (it && it.label) || '';
+                const b = _mgBtn(_mgEsc(label), false);
+                b.style.cssText += 'max-width:170px;white-space:normal;';
+                b.addEventListener('click', function () { pick(i); });
+                grid.appendChild(b);
+            });
+            function pick(i) {
+                const outcome = (i === correct) ? 'win' : 'lose';
+                const it = items[i];
+                const reply = (it && it.reply) ? (Array.isArray(it.reply) ? it.reply : [it.reply])
+                    : [outcome === 'win' ? (cfg.winLine || 'There it is. You saw it.') : (cfg.loseLine || 'It looked right. It wasn’t the one.')];
+                ov.innerHTML = '';
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '560px';
+                rb.innerHTML = reply.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { pick: i, correct: correct }); }));
+            }
+            ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+        }
+
+        // ── Cipher: a code-lock. A clue + a keypad of symbols; enter a sequence of
+        // cfg.length. Match cfg.answer (array of symbol indices) within cfg.attempts.
+        function _mgRunCipher(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'The Lock';
+            const SYMS = (Array.isArray(cfg.symbols) && cfg.symbols.length) ? cfg.symbols : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+            const answer = Array.isArray(cfg.answer) ? cfg.answer.map(function (x) { return x | 0; }) : [];
+            const len = (cfg.length | 0) || answer.length || 3;
+            const maxAtt = Math.max(1, (cfg.attempts | 0) || 3);
+            let att = 0, entry = [];
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '520px';
+            const readout = document.createElement('div'); readout.style.cssText = 'font-size:26px;letter-spacing:8px;margin-top:8px;min-height:32px;color:#ffd54f;';
+            const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center;max-width:420px;';
+            function refresh() {
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.clue || cfg.prompt || 'Enter the code.') + '</p>'
+                    + '<p class="story-dialog-text" style="font-size:11px;letter-spacing:0.14em;color:#cfd8e6;">ATTEMPT ' + (att + 1) + ' / ' + maxAtt + '</p>';
+                readout.textContent = entry.map(function (e) { return SYMS[e]; }).join(' ') || '·'.repeat(len).split('').join(' ');
+            }
+            SYMS.forEach(function (s, i) {
+                const b = _mgBtn(_mgEsc(s), false);
+                b.addEventListener('click', function () {
+                    if (entry.length >= len) return;
+                    entry.push(i); refresh();
+                    if (entry.length === len) setTimeout(submit, 220);
+                });
+                grid.appendChild(b);
+            });
+            function submit() {
+                const ok = entry.length === answer.length && entry.every(function (e, k) { return e === answer[k]; });
+                if (ok) { finish('win'); return; }
+                att++;
+                if (att >= maxAtt) { finish('lose'); return; }
+                entry = []; refresh();
+                box.innerHTML += '<p class="story-dialog-text" style="color:#ef9a9a;">' + _mgEsc(cfg.wrongLine || 'It doesn’t turn. Try again.') + '</p>';
+            }
+            function finish(outcome) {
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'The lock gives.') : (cfg.loseLine || 'The lock holds. You step back.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '520px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { attempts: att + 1 }); }));
+            }
+            ov.appendChild(h); ov.appendChild(box); ov.appendChild(readout); ov.appendChild(grid); refresh();
+        }
+
+        // ── Gather → craft: a two-phase make-something beat. Phase 1: select the
+        // correct ingredients (cfg.correct, order-insensitive). Phase 2: tap the
+        // steps in the right order (cfg.stepOrder). Win when both are right. Mirrors
+        // a story task (brew medicine, build a lure) without touching battle stats.
+        function _mgRunCraft(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'Make It';
+            const ingredients = Array.isArray(cfg.ingredients) ? cfg.ingredients : [];
+            const correct = (Array.isArray(cfg.correct) ? cfg.correct : []).map(function (x) { return x | 0; });
+            const steps = Array.isArray(cfg.steps) ? cfg.steps : [];
+            const stepOrder = (Array.isArray(cfg.stepOrder) ? cfg.stepOrder : steps.map(function (_, i) { return i; })).map(function (x) { return x | 0; });
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            let chosen = [];
+            function phaseGather() {
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '560px';
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.gatherPrompt || 'Gather what you need.') + '</p>';
+                const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center;max-width:600px;';
+                const btns = [];
+                ingredients.forEach(function (it, i) {
+                    const label = (typeof it === 'string') ? it : (it && it.label) || '';
+                    const b = _mgBtn(_mgEsc(label), false); b.style.cssText += 'max-width:170px;white-space:normal;';
+                    b.addEventListener('click', function () {
+                        const at = chosen.indexOf(i);
+                        if (at >= 0) { chosen.splice(at, 1); b.style.borderColor = '#ffd54f'; b.style.background = '#1a2a4a'; }
+                        else { chosen.push(i); b.style.borderColor = '#7ee787'; b.style.background = '#1d3a26'; }
+                    });
+                    btns.push(b); grid.appendChild(b);
+                });
+                ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+                ov.appendChild(_mgContinueBtn(function () {
+                    const a = chosen.slice().sort(function (x, y) { return x - y; });
+                    const b = correct.slice().sort(function (x, y) { return x - y; });
+                    const gOk = a.length === b.length && a.every(function (v, k) { return v === b[k]; });
+                    if (!steps.length) { finish(gOk ? 'win' : 'lose'); return; }
+                    if (!gOk) { finish('lose'); return; }
+                    phaseSteps();
+                }));
+            }
+            function phaseSteps() {
+                let input = [];
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '560px';
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.stepsPrompt || 'Now do it in the right order.') + '</p>';
+                const grid = document.createElement('div'); grid.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px;max-width:540px;width:100%;';
+                const btns = [];
+                steps.forEach(function (it, i) {
+                    const label = (typeof it === 'string') ? it : (it && it.label) || '';
+                    const b = _mgBtn('▸ ' + _mgEsc(label), false); b.style.textAlign = 'left';
+                    b.addEventListener('click', function () {
+                        if (b.disabled) return;
+                        b.disabled = true; b.style.opacity = '0.5'; input.push(i);
+                        if (input.length === stepOrder.length) {
+                            const ok = input.every(function (v, k) { return v === stepOrder[k]; });
+                            setTimeout(function () { finish(ok ? 'win' : 'lose'); }, 200);
+                        }
+                    });
+                    btns.push(b); grid.appendChild(b);
+                });
+                ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+            }
+            function finish(outcome) {
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'It comes together in your hands.') : (cfg.loseLine || 'It doesn’t set right. Close, but not it.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '560px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { chosen: chosen.slice() }); }));
+            }
+            phaseGather();
+        }
+
         // ── Public entry: play a micro-game, resolve { outcome, detail, gameId } ──
         // outcome ∈ 'win' | 'lose' | 'draw' | 'skip'. Never throws; never advances
         // the timeline. Tests / reduced-motion auto-play bypass the DOM.
@@ -39618,6 +39885,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const type = cfg.type || 'tell';
                 if (type === 'rps') _mgRunRps(cfg, rng, finish, opts);
                 else if (type === 'memory') _mgRunMemory(cfg, rng, finish, opts);
+                else if (type === 'riddle') _mgRunRiddle(cfg, rng, finish, opts);
+                else if (type === 'spot') _mgRunSpot(cfg, rng, finish, opts);
+                else if (type === 'cipher') _mgRunCipher(cfg, rng, finish, opts);
+                else if (type === 'craft') _mgRunCraft(cfg, rng, finish, opts);
                 else _mgRunTell(cfg, rng, finish, opts);
             });
         }
@@ -47150,6 +47421,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 reply: Array.isArray(o.reply) ? o.reply : (o.reply ? [o.reply] : []),
                 persistKey: pk,
                 value: (o.value != null ? o.value : o.label),
+                // v28+ signature branches: an option may carry a light effect
+                // (gold / item / flag / giftPokemon / skipBattle) applied on pick,
+                // optionally gated by affordability. When the gate fails the effect
+                // is NOT applied and `lockedReply` (if any) is shown instead.
+                effect: (o.effect && typeof o.effect === 'object') ? o.effect : null,
+                requireGold: (o.requireGold != null) ? (o.requireGold | 0) : null,
+                requireItem: (o.requireItem && o.requireItem.id) ? o.requireItem : null,
+                lockedReply: Array.isArray(o.lockedReply) ? o.lockedReply : (o.lockedReply ? [o.lockedReply] : null),
             }));
         }
         // Subtle filled/empty dot row signalling arc position (act i of total)
@@ -47207,6 +47486,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sigil: _trackSigilForSceneKey(sceneKey),
             };
         }
+        // Per-act TONE → name-accent colour for the regular modernization pass.
+        // A scene's acts can each carry a `tone` so the speaker plate / accent
+        // shifts with the beat (warm intro → dread climax) instead of one flat
+        // colour. Unknown / absent tone falls back to the overlay default gold.
+        const _TONE_ACCENTS = {
+            warm: '#ffd54f', gold: '#ffd54f',
+            villain: '#ff5252', anger: '#ff7043',
+            dread: '#9c8cff', eerie: '#9c8cff', horror: '#b388ff',
+            mystery: '#b39ddb',
+            rival: '#4fc3f7', cold: '#4fc3f7',
+            grief: '#90a4ae', sorrow: '#90a4ae',
+            hope: '#aed581', calm: '#80cbc4', tender: '#80cbc4'
+        };
+        function _actAccentForTone(tone) {
+            if (!tone) return undefined;
+            return _TONE_ACCENTS[String(tone).toLowerCase()] || undefined;
+        }
         function _playSceneActs(scene, baseMeta, onDone, ctx) {
             const acts = (scene && Array.isArray(scene.acts)) ? scene.acts.filter(Boolean) : [];
             if (!acts.length) { try { onDone && onDone(); } catch (e) {} return; }
@@ -47217,6 +47513,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const step = (i) => {
                 if (i >= total) { try { onDone && onDone(); } catch (e) {} return; }
                 const act = acts[i];
+                // Per-act regular-pass framing: speaker plate, portrait, side, tone.
+                // All optional — absent fields fall back to the scene-level values,
+                // so legacy scenes render byte-identically to before.
+                const _spk  = (act && act.speaker) || '';
+                const _np   = (act && act.nameplate) || scene.title || '';
+                const _spr  = (act && act.sprite) || scene.sprite || null;
+                const _mon  = (act && act.mon) || scene.mon || null;
+                const _side = (act && act.spriteSide) || scene.spriteSide || undefined;
+                const _acc  = (act && act.tone) ? _actAccentForTone(act.tone) : undefined;
+                const _rev  = (act && act.revealLines) || undefined;
                 // Interactive act (v28): play a micro-game, apply its light effect,
                 // remember the outcome in sm.storyChoices (so a later branch act can
                 // react via _branchMatches), then advance. Optional lead-in lines
@@ -47231,8 +47537,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_leadLines && _leadLines.length) {
                         _renderNarrativeOverlay({
                             metaKey: baseMeta ? (baseMeta + '-' + i) : null,
-                            sprite: scene.sprite || null, monSprite: scene.mon || null, monShiny: !!scene.monShiny,
-                            name: '', nameplate: scene.title || '', sceneKey: _sceneKey || null,
+                            sprite: _spr, monSprite: _mon, monShiny: !!scene.monShiny,
+                            name: _spk, nameplate: _np, sceneKey: _sceneKey || null,
+                            spriteSide: _side, accent: _acc, revealLines: _rev,
                             bannerParts: (i === 0) ? _bannerParts : null,
                             banner: _sceneProgressDots(i, total), bannerClass: 'story-narr-progress',
                             typewriter: true, lines: _leadLines, continueLabel: 'Begin →',
@@ -47243,12 +47550,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 _renderNarrativeOverlay({
                     metaKey: baseMeta ? (baseMeta + '-' + i) : null,
-                    sprite: scene.sprite || null,
-                    monSprite: scene.mon || null,
+                    sprite: _spr,
+                    monSprite: _mon,
                     monShiny: !!scene.monShiny,
-                    name: '',
-                    nameplate: scene.title || '',
+                    name: _spk,
+                    nameplate: _np,
                     sceneKey: _sceneKey || null,
+                    spriteSide: _side,
+                    accent: _acc,
+                    revealLines: _rev,
                     bannerParts: (i === 0) ? _bannerParts : null, // context line on the opening act only
                     banner: _sceneProgressDots(i, total),
                     bannerClass: 'story-narr-progress',
@@ -53064,6 +53374,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const idx = +btn.getAttribute('data-narr-choice-idx');
                         const pick = choices[idx];
                         if (!pick) { dismiss(); return; }
+                        // Affordability gate (ransom / sacrifice / toll): when an
+                        // option requires gold or an item the player lacks, the
+                        // effect is skipped and the lockedReply (if authored) shows.
+                        let _afford = true;
+                        try {
+                            if (pick.requireGold != null && sm && (sm.gold | 0) < pick.requireGold) _afford = false;
+                            if (pick.requireItem && pick.requireItem.id) {
+                                const _have = (sm && sm.inventory) ? (sm.inventory[pick.requireItem.id] | 0) : 0;
+                                if (_have < ((pick.requireItem.qty | 0) || 1)) _afford = false;
+                            }
+                        } catch (e2) {}
+                        // Apply the option's light effect (only when affordable) via
+                        // the single sanctioned state-touch helper.
+                        try {
+                            if (_afford && pick.effect && typeof window._applyStoryInteractionOutcome === 'function') {
+                                window._applyStoryInteractionOutcome(pick.effect);
+                            }
+                        } catch (e2) {}
                         // Persist the pick keyed by either an explicit
                         // persistKey on the option, or the scene's metaKey.
                         try {
@@ -53089,7 +53417,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // with a single Continue. No second choice tier.
                         const body = ov.querySelector('[data-narr-body="1"]');
                         const choiceWrap = ov.querySelector('[data-narr-choices="1"]');
-                        const reply = Array.isArray(pick.reply) ? pick.reply : [pick.reply || ''];
+                        const reply = (!_afford && pick.lockedReply)
+                            ? pick.lockedReply
+                            : (Array.isArray(pick.reply) ? pick.reply : [pick.reply || '']);
                         if (body) {
                             body.innerHTML = reply.filter(Boolean).map((l, i) =>
                                 `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`

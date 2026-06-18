@@ -1,11 +1,15 @@
 {
   "_meta": {
     "version": 1,
-    "purpose": "Story micro-game DEFINITIONS, keyed by id. Renderers live in battle.html (StoryMiniGames); these are the tunable numbers the maintainer owns (rounds, tell odds, prompts, win/lose flavour). Attach a game to a scene via data/story/interactions.json (act-level) or via a STORY_BATTLE_INTERRUPTS challenge (battle-level). A micro-game is a SPICE, never a gate: losing never blocks progress. type ∈ 'rps' | 'tell' | 'memory'. BALANCE NOTE: any game-affecting effect (gold/item/flag/skipBattle/softenBattle) wired into a live scene needs maintainer sign-off — these defaults are demo/POC values.",
+    "purpose": "Story micro-game DEFINITIONS, keyed by id. Renderers live in battle.html (StoryMiniGames); these are the tunable numbers the maintainer owns (rounds, tell odds, prompts, win/lose flavour). Attach a game to a scene via data/story/interactions.json (act-level) or via a STORY_BATTLE_INTERRUPTS challenge (battle-level). A micro-game is a SPICE, never a gate: losing never blocks progress. type ∈ 'rps' | 'tell' | 'memory' | 'riddle' | 'spot' | 'cipher' | 'craft'. DESIGN LAW: a signature is high interactivity, little/no mechanical effect — never a battle-MECHANIC change (softenBattle is deprecated/unused). Sanctioned effects: gold / item / flag / giftPokemon, and the RARE skipBattle (pacifist/ransom 'no fight' route). Balance numbers (gold, gift species) are maintainer-owned.",
     "schema": {
       "rps": "{ type:'rps', rounds:int(best-of), tell:0..1(chance CPU plays tellThrow), tellThrow:0|1|2(rock|paper|scissors), title, prompt, winLine, loseLine, drawLine }",
       "tell": "{ type:'tell', title, tell:'NPC tell line', options:[{label, reply:[...]}], answer:int(correct index), winLine, loseLine }",
-      "memory": "{ type:'memory', length:int, symbols:[emoji...], title, winLine, loseLine }"
+      "memory": "{ type:'memory', length:int, symbols:[emoji...], title, winLine, loseLine }",
+      "riddle": "{ type:'riddle', title, intro:[lines], steps:[{ q, options:[{label, reply:[...]}], answer:int }], passN:int(default=all steps), winLine, loseLine }",
+      "spot": "{ type:'spot', title, prompt, items:[{label, reply:[...]}|str], answer:int(the 'off' one), winLine, loseLine }",
+      "cipher": "{ type:'cipher', title, clue, symbols:[str...], length:int, answer:[idx...], attempts:int(default 3), wrongLine, winLine, loseLine }",
+      "craft": "{ type:'craft', title, gatherPrompt, ingredients:[str...], correct:[idx...], stepsPrompt, steps:[str...], stepOrder:[idx...], winLine, loseLine }"
     }
   },
   "games": {

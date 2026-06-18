@@ -153,6 +153,52 @@ test('play() resolves "skip" gracefully when no config exists', async () => {
     assert.equal(res.outcome, 'skip');
 });
 
+test('autoResolve handles the new game types (riddle/spot/cipher/craft)', () => {
+    // riddle: win iff #correct >= passN
+    const riddle = { type: 'riddle', steps: [{ answer: 1 }, { answer: 0 }], passN: 2 };
+    assert.equal(MG.autoResolve(riddle, MG.mkRng(1), { picks: [1, 0] }).outcome, 'win');
+    assert.equal(MG.autoResolve(riddle, MG.mkRng(1), { picks: [1, 1] }).outcome, 'lose');
+    assert.equal(MG.autoResolve(riddle, MG.mkRng(1), {}).outcome, 'win', 'no picks → assumes correct answers');
+
+    // spot: a single labelled pick against the "off" index
+    const spot = { type: 'spot', answer: 2, items: [{}, {}, {}, {}] };
+    assert.equal(MG.autoResolve(spot, MG.mkRng(1), { pick: 2 }).outcome, 'win');
+    assert.equal(MG.autoResolve(spot, MG.mkRng(1), { pick: 0 }).outcome, 'lose');
+
+    // cipher: entered sequence must equal the answer
+    const cipher = { type: 'cipher', answer: [1, 2, 3] };
+    assert.equal(MG.autoResolve(cipher, MG.mkRng(1), { entry: [1, 2, 3] }).outcome, 'win');
+    assert.equal(MG.autoResolve(cipher, MG.mkRng(1), { entry: [1, 2, 0] }).outcome, 'lose');
+    assert.equal(MG.autoResolve(cipher, MG.mkRng(1), {}).outcome, 'win', 'no entry → assumes solved');
+
+    // craft: deterministic win unless forced to fail
+    const craft = { type: 'craft', correct: [0, 2], steps: ['a', 'b'] };
+    assert.equal(MG.autoResolve(craft, MG.mkRng(1), {}).outcome, 'win');
+    assert.equal(MG.autoResolve(craft, MG.mkRng(1), { forceMistake: true }).outcome, 'lose');
+});
+
+test('new game types resolve through play() in headless mode', async () => {
+    for (const cfg of [
+        { type: 'riddle', steps: [{ answer: 0, options: [{}, {}] }], passN: 1 },
+        { type: 'spot', answer: 0, items: [{}, {}] },
+        { type: 'cipher', answer: [0, 1] },
+        { type: 'craft', correct: [0], steps: [] },
+    ]) {
+        const res = await W.StoryMiniGames.play('_t_' + cfg.type, { config: cfg });
+        assert.ok(['win', 'lose'].includes(res.outcome), cfg.type + ' resolves to a real outcome');
+    }
+});
+
+test('giftPokemon effect adds a species to the roster (no battle-stat touch)', () => {
+    const sm = ST.sm;
+    sm.team = []; sm.pcBox = [];
+    const applied = MG.applyOutcome({ giftPokemon: 'Pikachu' });
+    const inTeam = (sm.team || []).some(s => s && s.name === 'Pikachu');
+    const inPc = (sm.pcBox || []).some(s => s && s.name === 'Pikachu');
+    assert.ok(inTeam || inPc, 'gifted species lands in party or PC');
+    assert.ok(applied.gift && applied.gift.species === 'Pikachu', 'applied report names the gift');
+});
+
 test('battle-modifier flags survive save/load', () => {
     LS.setItem('pbs_story_save', JSON.stringify({
         version: W.__STORY_SAVE_VER,
