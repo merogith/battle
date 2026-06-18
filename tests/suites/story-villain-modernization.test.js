@@ -21,17 +21,21 @@ const W = eng.window;
 const SS = (W.__narrationTest && W.__narrationTest.STORY_SCENES) || W.STORY_SCENES;
 
 const VILLAIN = IX.inject.filter(i => i.sceneKey.startsWith('villain.'));
+// The arc "signatures" are the cosmetic event-beat interactions; the rare
+// pacifist "no-fight" routes (on battle1 beats) are validated separately in
+// story-pacifist-routes.test.js because they legitimately carry skipBattle.
+const SIGNATURES = VILLAIN.filter(i => /\.event\d+$/.test(i.sceneKey));
 
 test('every villain arc has exactly one signature inject', () => {
-    const arcs = new Set(VILLAIN.map(i => i.sceneKey.split('.')[1]));
+    const arcs = new Set(SIGNATURES.map(i => i.sceneKey.split('.')[1]));
     for (const arc of ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull', 'yell', 'macroCosmos', 'star']) {
         assert.ok(arcs.has(arc), 'missing signature for villain.' + arc);
     }
-    assert.equal(VILLAIN.length, 10, 'expected 10 villain signatures');
+    assert.equal(SIGNATURES.length, 10, 'expected 10 villain event-beat signatures');
 });
 
 test('each villain signature names a defined game and a cosmetic-only effect', () => {
-    for (const inj of VILLAIN) {
+    for (const inj of SIGNATURES) {
         const gid = inj.interaction.gameId;
         assert.ok(MG.games[gid], inj.sceneKey + ' references undefined game ' + gid);
         // Effect must be flag/gold/item/gift only — never a battle-mechanic change.
