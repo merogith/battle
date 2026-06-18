@@ -11066,7 +11066,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _framing, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -11084,6 +11084,7 @@
                         fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/minigames.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/interactions.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/framing.json').then(r => r.json()).catch(() => null),
                         fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null),
                         fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
                         fetch('data/move-synergies.json').then(r => r.json()).catch(() => null),
@@ -11184,6 +11185,14 @@
                         STORY_INTERACTIONS.length = 0;
                         STORY_INTERACTIONS.push(..._interactions.inject);
                         _applyStoryInteractions();
+                    }
+                    // Regular-pass framing overlay (speaker / tone / sensory line /
+                    // flavor choice) — applied after interactions so it only fills
+                    // gaps (it never overrides an attached interaction or choice).
+                    if (_framing && Array.isArray(_framing.inject) && _framing.inject.length) {
+                        STORY_FRAMING.length = 0;
+                        STORY_FRAMING.push(..._framing.inject);
+                        _applyStoryFraming();
                     }
                 } catch (e) {
                     console.error('[dialogue/type-chart/ball-math/shops] load failed:', e && (e.message || e));
@@ -39342,6 +39351,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { console.warn('[Story] interaction inject failed', e); }
         }
         window._applyStoryInteractions = _applyStoryInteractions;
+
+        // ── Regular-pass FRAMING overlay (v28) ───────────────────────────────
+        // The "every beat gets modernized" layer: per-act speaker plate, tone
+        // (→ accent), an optional appended sensory/atmosphere line, and an
+        // optional pure-flavor choice — all as DATA in data/story/framing.json,
+        // so the modernization pass never touches the 4 MB STORY_SCENES literal
+        // and stays fully reviewable/revertible. Mirrors branches/interactions:
+        // matched by sceneKey + phase (else last act); ships EMPTY by default.
+        // A framing entry never overrides an existing interaction/branches/choice
+        // on the act — it only fills gaps — so it can't fight an authored beat.
+        const DEFAULT_STORY_FRAMING = [];
+        const STORY_FRAMING = [];
+        STORY_FRAMING.push(...DEFAULT_STORY_FRAMING);
+        window.STORY_FRAMING = STORY_FRAMING;
+        function _applyStoryFraming() {
+            try {
+                for (const f of STORY_FRAMING) {
+                    if (!f || !f.sceneKey) continue;
+                    const sc = (typeof STORY_SCENES === 'object') ? STORY_SCENES[f.sceneKey] : null;
+                    if (!sc || !Array.isArray(sc.acts)) continue;
+                    const act = f.phase ? sc.acts.find(a => a && a.phase === f.phase) : sc.acts[sc.acts.length - 1];
+                    if (!act) continue;
+                    if (f.speaker != null) act.speaker = f.speaker;
+                    if (f.tone != null) act.tone = f.tone;
+                    if (f.spriteSide != null) act.spriteSide = f.spriteSide;
+                    // Append an atmosphere line only to a plain `lines` act (never a
+                    // branch act, whose lines are chosen at runtime).
+                    if (Array.isArray(f.appendLines) && f.appendLines.length && Array.isArray(act.lines)) {
+                        act.lines = act.lines.concat(f.appendLines);
+                    }
+                    // Attach a flavor choice only when the act is otherwise inert —
+                    // never clobber an authored choice / interaction / branch set.
+                    if (f.choice && f.choice.persistKey && !act.choice && !act.interaction && !act.branches) {
+                        act.choice = f.choice;
+                        try { _registerStoryChoiceLabel(f.choice.persistKey, f.label || sc.title || f.sceneKey, f.choice.options); } catch (e) {}
+                    }
+                }
+            } catch (e) { console.warn('[Story] framing inject failed', e); }
+        }
+        window._applyStoryFraming = _applyStoryFraming;
+        _applyStoryFraming(); // apply DEFAULT (empty) framing; load() re-applies JSON
 
         // Local HTML escaper — _esc lives far downstream; keep the module self-contained.
         function _mgEsc(s) {

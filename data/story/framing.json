@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "version": 1,
+    "purpose": "Regular-pass MODERNIZATION overlay — the 'every beat gets dressed up' layer. Each entry names a STORY_SCENES sceneKey + act phase and adds cosmetic narration: a speaker nameplate, a tone (drives the speaker-plate accent colour via _actAccentForTone), an optional appended sensory/atmosphere line, and an optional pure-FLAVOR choice (no mechanical effect). Applied at load by _applyStoryFraming AFTER interactions, and it only fills gaps — it never overrides an act that already has an interaction / branches / authored choice. Ships here as data so the modernization pass never edits the 4MB STORY_SCENES literal and stays fully reviewable + revertible.",
+    "shape": "{ sceneKey, phase, speaker?:'Name', tone?:'cold|villain|dread|grief|mystery|rival|warm|hope|calm|eerie|tender', spriteSide?:'left|right', appendLines?:[..], choice?:{ persistKey, options:[{label,value,reply:[..]}] }, label? }",
+    "tones": "warm gold · villain/anger red · dread/eerie/horror violet · mystery lilac · rival/cold blue · grief/sorrow slate · hope green · calm/tender teal"
+  },
+  "inject": [
+    { "sceneKey": "villain.rocket.event1", "phase": "intro", "tone": "cold" },
+    { "sceneKey": "villain.rocket.event1", "phase": "development", "tone": "cold" },
+    { "sceneKey": "villain.rocket.event1", "phase": "climax", "speaker": "Rocket Grunt", "tone": "villain" },
+    { "sceneKey": "villain.rocket.event1", "phase": "outro", "tone": "cold",
+      "choice": { "persistKey": "rocket.lane.react", "options": [
+        { "label": "Memorize the plate. File it for later.", "value": "filed", "reply": ["You hold the numbers in your head until they're yours. The lane he means is the one they drew for you — and you've started reading the map they drew it on."] },
+        { "label": "Say nothing. Just keep walking.", "value": "walked", "reply": ["You let it go, for now. Not forgiveness — arithmetic. You haven't earned the right to make it your business yet. Yet."] }
+      ] } },
+
+    { "sceneKey": "villain.rocket.event2", "phase": "intro", "tone": "grief" },
+    { "sceneKey": "villain.rocket.event2", "phase": "development", "speaker": "The Driver", "tone": "grief" },
+    { "sceneKey": "villain.rocket.event2", "phase": "outro", "tone": "cold" },
+
+    { "sceneKey": "villain.rocket.event3", "phase": "intro", "speaker": "Retired Worker", "tone": "grief" },
+    { "sceneKey": "villain.rocket.event3", "phase": "development", "tone": "dread" },
+    { "sceneKey": "villain.rocket.event3", "phase": "climax", "speaker": "Retired Worker", "tone": "grief" },
+    { "sceneKey": "villain.rocket.event3", "phase": "outro", "tone": "cold" },
+
+    { "sceneKey": "villain.rocket.battle1", "phase": "intro", "tone": "villain" },
+    { "sceneKey": "villain.rocket.battle1", "phase": "climax", "tone": "villain" },
+
+    { "sceneKey": "villain.rocket.event4", "phase": "intro", "tone": "grief" },
+    { "sceneKey": "villain.rocket.event4", "phase": "development", "speaker": "Cart Driver", "tone": "grief" },
+    { "sceneKey": "villain.rocket.event4", "phase": "climax", "tone": "grief",
+      "choice": { "persistKey": "rocket.cart.walk", "options": [
+        { "label": "Walk beside the cart a little way.", "value": "walked", "reply": ["You match its slow pace for a stretch. The Marowak doesn't acknowledge you. But for a few hundred steps the grief has company it didn't ask for and doesn't refuse."] },
+        { "label": "Let it pass. Keep your own road.", "value": "passed", "reply": ["You stand aside and let the cart go by. On this road, grief this common stops getting looked at. You make yourself look until it's out of sight. It's the only thing you have to give."] }
+      ] } },
+
+    { "sceneKey": "villain.rocket.event5", "phase": "intro", "speaker": "Silph Engineer", "tone": "dread" },
+    { "sceneKey": "villain.rocket.event5", "phase": "development", "tone": "dread" },
+    { "sceneKey": "villain.rocket.event5", "phase": "climax", "speaker": "Silph Engineer", "tone": "grief",
+      "choice": { "persistKey": "rocket.names.carry", "options": [
+        { "label": "Memorize the page of first names.", "value": "memorized", "reply": ["You read the under-twelve column until it's burned in. He watches you do it, then looks away — he's carried it longer, and it never got lighter with the knowing."] },
+        { "label": "You've seen enough. Close the ledger.", "value": "closed", "reply": ["You shut it. Some pages you don't need twice to never forget. He nods, like he understands the not-looking better than most."] }
+      ] } },
+
+    { "sceneKey": "villain.rocket.miniBoss", "phase": "intro", "speaker": "Proton", "tone": "villain" },
+    { "sceneKey": "villain.rocket.miniBoss", "phase": "climax", "speaker": "Proton", "tone": "villain" },
+
+    { "sceneKey": "villain.rocket.event6", "phase": "intro", "tone": "cold" },
+    { "sceneKey": "villain.rocket.event6", "phase": "development", "tone": "dread" },
+    { "sceneKey": "villain.rocket.event6", "phase": "climax", "tone": "dread",
+      "choice": { "persistKey": "rocket.belt.handle", "options": [
+        { "label": "Set the child's belt back exactly as it was.", "value": "left", "reply": ["You replace it to the millimetre. Let him think the room is still his. You've read it now — that's enough to carry out the door."] },
+        { "label": "Turn it over, look for the scratched-out name.", "value": "looked", "reply": ["You tilt it to the light. The label's been rubbed to nothing by a thumbnail, slowly, over years. A man who keeps nothing kept this — then spent a long time un-naming it. You put it back. Some things aren't yours to know."] }
+      ] } },
+    { "sceneKey": "villain.rocket.event6", "phase": "outro", "tone": "cold" },
+
+    { "sceneKey": "villain.rocket.boss", "phase": "intro", "speaker": "Giovanni", "tone": "villain" },
+    { "sceneKey": "villain.rocket.boss", "phase": "development", "speaker": "Giovanni", "tone": "villain" },
+    { "sceneKey": "villain.rocket.boss", "phase": "climax", "speaker": "Giovanni", "tone": "villain" },
+
+    { "sceneKey": "villain.rocket.ending", "phase": "intro", "tone": "cold" },
+    { "sceneKey": "villain.rocket.ending", "phase": "development", "tone": "grief" },
+    { "sceneKey": "villain.rocket.ending", "phase": "climax", "tone": "grief" },
+    { "sceneKey": "villain.rocket.ending", "phase": "outro", "tone": "cold" }
+  ]
+}
