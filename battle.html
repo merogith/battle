@@ -39401,8 +39401,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // Attach a flavor choice only when the act is otherwise inert —
                     // never clobber an authored choice / interaction / branch set.
+                    // Tagged `flavor:true` so it's distinguishable from the one
+                    // canonical, payoff-driving choice an arc carries (guards count
+                    // only non-flavor choices). Renders identically in the overlay.
                     if (f.choice && f.choice.persistKey && !act.choice && !act.interaction && !act.branches) {
-                        act.choice = f.choice;
+                        act.choice = Object.assign({ flavor: true }, f.choice);
                         try { _registerStoryChoiceLabel(f.choice.persistKey, f.label || sc.title || f.sceneKey, f.choice.options); } catch (e) {}
                     }
                 }

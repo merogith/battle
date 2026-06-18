@@ -81,7 +81,7 @@ test("each arc's original authored choice is preserved somewhere in the arc", ()
 });
 
 test('every villain signature game resolves to a real outcome through play()', async () => {
-    for (const inj of VILLAIN) {
+    for (const inj of SIGNATURES) {
         const res = await W.StoryMiniGames.play(inj.interaction.gameId, {});
         assert.ok(['win', 'lose'].includes(res.outcome), inj.interaction.gameId + ' did not resolve');
     }
