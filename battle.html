@@ -13265,6 +13265,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             function _resumeOrStartBg() {
                 if (!settings.musicEnabled) return;
+                // An override layer (battle theme, victory sting, or char-creation
+                // jingle) owns the foreground — it restores the field track itself
+                // when it ends. Resuming the (ducked, paused) field track here would
+                // stack a second song under it: the "music mixing" bug. Every legit
+                // field-resume caller clears these before calling, so this only
+                // blocks the leak paths (visibility-change resume, gesture retry).
+                if (_battleAudio || _battleMood || _introAudio) return;
                 if (bgAudio && bgAudio.paused && _currentBgIdx >= 0) {
                     _cancelFade(bgAudio);
                     bgAudio.play().then(() => { _fade(bgAudio, _musicVol, MUSIC_FADE_MS); })
@@ -13351,6 +13358,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _battleThemeStarting = true;
                 _stopBattleAudio();
                 _battleMood = mood;
+                _stopIntroAudio(); // never layer a battle theme over a lingering char-creation jingle
                 _duckFieldBg(); // crossfade the field track out
                 const src = list[Math.floor(Math.random() * list.length)];
                 try {
@@ -13418,6 +13426,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!settings.musicEnabled) return;
                 if (_introAudio && !_introAudio.paused) return; // already rolling
                 _stopIntroAudio();
+                _stopBattleAudio(); // never layer the jingle over a stray battle theme
                 _duckFieldBg(); // crossfade the field track out
                 const src = INTRO_THEMES[Math.floor(Math.random() * INTRO_THEMES.length)];
                 try {
@@ -13630,6 +13639,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     startBgTrack: (idx, at) => _startBgTrack(idx, at),
                     playBattleTheme: (m) => _playBattleTheme(m),
                     endBattleTheme: (w) => _endBattleTheme(w),
+                    playIntroTheme: () => _playIntroTheme(),
+                    resumeOrStartBg: () => _resumeOrStartBg(),
                     playOneShot: (src, vol, opts) => _playOneShot(src, vol, opts),
                     pickRandomBgIdx: (ex) => _pickRandomBgIdx(ex),
                     state: () => ({
