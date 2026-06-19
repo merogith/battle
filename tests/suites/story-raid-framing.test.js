@@ -70,8 +70,18 @@ test('rollExtraRaidBossTeam fields a 1-mon solo boss for all 24 beats', () => {
             const team = ST.rollExtraRaidBossTeam(key(arc, suffix));
             assert.ok(Array.isArray(team) && team.length === 1, `${key(arc, suffix)} → single foe`);
             assert.equal(team[0].name, BY_TIER[arc][suffix], `${key(arc, suffix)} foe is ${BY_TIER[arc][suffix]}`);
-            assert.equal(team[0].build._bossStatMult, 1.3, 'legendary-tier stat mult applied');
-            assert.ok(team[0].build._bossHpScale >= 1, 'party-scaled HP applied');
+            // "Bulky, not fast" split stats (2026-06 redesign) — replaced the single
+            // all-stat _bossStatMult=1.3. Bulk ≥ offense, and Speed capped ≤1 so the boss
+            // doesn't outspeed-OHKO. Knob values are maintainer-owned; assert the shape.
+            const b = team[0].build;
+            assert.equal(typeof b._bossOffMult, 'number', 'offense mult present');
+            assert.equal(typeof b._bossBulkMult, 'number', 'bulk mult present');
+            assert.equal(typeof b._bossSpeMult, 'number', 'speed mult present');
+            assert.ok(b._bossBulkMult >= b._bossOffMult, 'bulky, not glassy: bulk ≥ offense');
+            assert.ok(b._bossSpeMult <= 1, 'speed capped ≤1 (no outspeed-OHKO)');
+            assert.ok(b._bossHpScale >= 1, 'party-scaled HP applied');
+            // Curated held item — survivability allowlist only (no Life Orb / Choice).
+            assert.ok(ST.RAID_ITEM_ALLOWLIST.includes(b.i), `curated item (${b.i}) is allowlisted`);
         }
     }
 });
