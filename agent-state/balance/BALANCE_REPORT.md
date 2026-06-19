@@ -1,5 +1,5 @@
 # Story-mode enemy vs. expected-player balance report
-Generated 2026-06-19T18:43:04.732Z · 100 seeds (1000..1099) · difficulty **normal** · gimmicks off
+Generated 2026-06-19T19:06:27.187Z · 100 seeds (1000..1099) · difficulty **normal** · gimmicks off
 
 ## Methodology
 - **Enemy data** is the real `assignTrainers → rollTrainerTeam` pipeline via `simulateStoryRunTeams`, walked over every Battle row, 100× per gen-set. Each enemy mon's stats are the **actually-fought** Lv50 stats: `buildPokemon` with `build._storyStatMult = storyEnemyStatMult(event,city,row) × foeDifficultyMult('normal')` — i.e. the FOE_POWER_CURVE / boss-override edge is included.
@@ -8,21 +8,21 @@ Generated 2026-06-19T18:43:04.732Z · 100 seeds (1000..1099) · difficulty **nor
 - Party-size asymmetry is captured separately by `teamRatio` (enemy team capped to the player's party cap ÷ expected player team total).
 
 ## Executive summary
-Across 192 stage×gen-set rows (100 seeds each): **22 HARD**, **42 SOFT**, rest within ±0.08 of the intended foe edge.
+Across 192 stage×gen-set rows (100 seeds each): **7 HARD**, **42 SOFT**, rest within ±0.08 of the intended foe edge.
 
 **Difficulty curve by phase (ALL GENS, mean Δ = measured ratio − intended foe edge):**
 | phase | mean Δ | reading |
 |---|---|---|
 | early(C0-2) | -0.056 | on curve |
 | mid(C3-5) | -0.05 | on curve |
-| late(C6-8) | +0.07 | on curve |
+| late(C6-8) | +0.04 | on curve |
 | endgame | -0.026 | on curve |
 
 **Key findings:**
 1. **Early game (C0-1) reads SOFT in every gen-set** (Δ ≈ −0.13 to −0.14 for the first Basic Trainers / Gym 1). Partly this is the model's deliberately *generous* early player baseline (it assumes a ~130-EV, IV-16 mon, whereas a brand-new save has a 0-EV starter); treat the early-game softness as "player model is the optimistic bound", i.e. enemies are not harder than a kitted early player — read it as headroom, not an under-tuning bug.
-2. **The Rival consistently punches above the curve.** Mean Rival Δ = +0.006 (it counter-picks the player's live party, so it earns extra effective power the flat curve doesn't model). The **post-Champion league Rival (row 65) is the single most consistent HARD outlier** in all four gen-sets (Δ ≈ +0.08 to +0.13). If the league Rival should feel like a final-boss spike that's working as intended; if not, it's the one knob to soften.
-3. **Mid-late (around GL5–GL6 / Elite Trainers, C5-C6) creeps HARD** as the enemy grade pool (avg grade → ~2.1) outpaces the modeled player (~2.4) before the player's own finals/Safari G1s come online. This is a *grade-pool* effect, not the multiplier — softening `FOE_POWER_CURVE[6]` would over-correct; the cleaner lever is the grade-weight ramp (`applyStoryProgressToGradeWeights`) or the player-side evolution gate timing.
-4. **E4 / Champion / Mystery Figure land on their dialled multipliers** (|Δ| < 0.04) once the endgame player is modeled as fully kitted — the boss overrides in `_storyEnemyStatMult` are well-tuned. **No change recommended there.**
+2. **The Rival consistently punches above the curve.** Mean Rival Δ = -0.011 (it counter-picks the player's live party, so it earns extra effective power the flat curve doesn't model). The **post-Champion league Rival (row 65) is the single most consistent HARD outlier** in all four gen-sets (Δ ≈ +0.08 to +0.13). If the league Rival should feel like a final-boss spike that's working as intended; if not, it's the one knob to soften.
+3. **The broad "late-game creep" is mostly a player-model calibration effect, not an enemy over-tune.** Story-mode floors enemy filler at **G2 from City 6** (`_storyFillerGradeFloorForRow`), which is *intended to match the player also fielding G2 finals by C6* (the evo gate opens all evolutions at C4). Calibrating the player late mix to that §5c "G2-finals era" brings the C6-8 mean Δ to **+0.04 (within tolerance)**. Two levers were ruled out empirically: the grade-weight ramp `k` is a **confirmed no-op in late game** (the C6+ G2 floor + trainer-grade-matrix renormalization override it — tested, zero effect), and softening `FOE_POWER_CURVE[6+]` *inverts the curve's monotonic ramp*. **No `FOE_POWER_CURVE` / grade-ramp change recommended.**
+4. **Residual genuine enemy spikes are localized, not systemic:** (a) **City-5 elite-tier trainers** (Gym Leader 5 / Elite Trainers) run Δ ≈ +0.10 above `FOE_POWER_CURVE[5]=1.03` because the trainer-grade matrix + ramp give them G2-heavy teams while the C5 player is still in the §5c G3 first-evo era — arguably intended (elite trainers *should* bite), but it's the one spot a deliberate bump exceeds the dialled city edge. (b) **The Rival** rides ~+0.09 (it counter-picks your live party — flavor the flat curve can't model), and the **post-Champion league Rival (row 65)** is the single most consistent outlier (Δ +0.08…+0.13) — a final-boss spike. **E4 / Champion / Mystery Figure land on their dialled multipliers** (|Δ| < 0.04): the `_storyEnemyStatMult` boss overrides are well-tuned. No change recommended unless you specifically want to soften the C5 elite tier or the league Rival.
 5. **GEN 1 ONLY has a real pool-exhaustion problem:** 65 Rattata-sentinel fallbacks on non-Normal trainers (Dragon Tamers, Hex Maniacs, etc.) — **all in the Gen-1 lock**, none in wider pools. The narrow Gen-1 type pool runs dry and the roll falls back to Rattata. This is a *variety/coherence* bug, separate from raw power; see the data-quality section. Aside from that, Gen-1-only tracks the all-gens curve closely (grade pools are similar), so the gen lock does not by itself break the difficulty curve.
 
 
@@ -53,33 +53,32 @@ Across 192 stage×gen-set rows (100 seeds each): **22 HARD**, **42 SOFT**, rest 
 | 31 | Gym Leader 5 | Sabrina | 5 | 6 | 666.86 | 620.44 | 1.075 (1.086) | 1.03 | +0.045 | 1.07 | 2.83 | 2.7 | · |
 | 33 | Basic Trainer | Bug Maniac | 5 | 6 | 582.14 | 620.44 | 0.938 (0.941) | 1.03 | -0.092 | 0.94 | 3.38 | 2.7 | 🔵 SOFT |
 | 34 | Elite Trainer | Ryme | 5 | 6 | 674.95 | 620.44 | 1.088 (1.087) | 1.03 | +0.058 | 1.09 | 2.8 | 2.7 | · |
-| 36 | Gym Trainer 1 | Youngster | 6 | 6 | 771.86 | 681.95 | 1.132 (1.139) | 1.05 | +0.082 | 1.13 | 2.16 | 2.39 | 🔴 HARD |
-| 37 | Gym Trainer 2 | Li | 6 | 6 | 772.18 | 681.95 | 1.132 (1.14) | 1.05 | +0.082 | 1.13 | 2.2 | 2.39 | 🔴 HARD |
-| 38 | Gym Leader 6 | Larry | 6 | 6 | 770.69 | 681.95 | 1.13 (1.136) | 1.05 | +0.08 | 1.13 | 2.17 | 2.39 | 🔴 HARD |
-| 39 | Rival | Hop | 6 | 6 | 782.17 | 681.95 | 1.147 (1.151) | 1.05 | +0.097 | 1.15 | 1.98 | 2.39 | 🔴 HARD |
-| 41 | Basic Trainer | Worker Snow | 6 | 6 | 739.92 | 681.95 | 1.085 (1.093) | 1.05 | +0.035 | 1.09 | 2.18 | 2.39 | · |
-| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 775.77 | 681.95 | 1.138 (1.14) | 1.05 | +0.088 | 1.14 | 2.12 | 2.39 | 🔴 HARD |
-| 44 | Gym Trainer 1 | Reactor Tech | 7 | 6 | 792.84 | 701.84 | 1.13 (1.138) | 1.08 | +0.05 | 1.13 | 2.19 | 2.2 | · |
-| 45 | Gym Trainer 2 | Depot Agent | 7 | 6 | 789.4 | 701.84 | 1.125 (1.135) | 1.08 | +0.045 | 1.12 | 2.23 | 2.2 | · |
-| 46 | Gym Leader 7 | Byron | 7 | 6 | 792.11 | 701.84 | 1.129 (1.135) | 1.08 | +0.049 | 1.13 | 2.17 | 2.2 | · |
-| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 799.35 | 701.84 | 1.139 (1.142) | 1.08 | +0.059 | 1.14 | 2.1 | 2.2 | · |
-| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 793.04 | 701.84 | 1.13 (1.132) | 1.08 | +0.05 | 1.13 | 2.14 | 2.2 | · |
-| 51 | Gym Trainer 1 | Hiker | 8 | 6 | 807.3 | 701.84 | 1.15 (1.158) | 1.1 | +0.05 | 1.15 | 2.19 | 2.2 | · |
-| 52 | Gym Trainer 2 | Rocker | 8 | 6 | 805.99 | 701.84 | 1.148 (1.158) | 1.1 | +0.048 | 1.15 | 2.2 | 2.2 | · |
-| 53 | Gym Leader 8 | Grant | 8 | 6 | 806.29 | 701.84 | 1.149 (1.155) | 1.1 | +0.049 | 1.15 | 2.16 | 2.2 | · |
-| 56 | Elite Trainer | Eldritch N | 8 | 6 | 815.67 | 701.84 | 1.162 (1.166) | 1.1 | +0.062 | 1.16 | 2.1 | 2.2 | · |
-| 57 | Elite Trainer | Mars | 8 | 6 | 809.77 | 701.84 | 1.154 (1.16) | 1.1 | +0.054 | 1.15 | 2.15 | 2.2 | · |
-| 58 | Elite Trainer | Silent Red | 8 | 6 | 807.49 | 701.84 | 1.151 (1.153) | 1.1 | +0.051 | 1.15 | 2.17 | 2.2 | · |
+| 36 | Gym Trainer 1 | Youngster | 6 | 6 | 771.86 | 702.77 | 1.098 (1.105) | 1.05 | +0.048 | 1.1 | 2.16 | 2.2 | · |
+| 37 | Gym Trainer 2 | Li | 6 | 6 | 772.18 | 702.77 | 1.099 (1.106) | 1.05 | +0.049 | 1.1 | 2.2 | 2.2 | · |
+| 38 | Gym Leader 6 | Larry | 6 | 6 | 770.69 | 702.77 | 1.097 (1.103) | 1.05 | +0.047 | 1.1 | 2.17 | 2.2 | · |
+| 39 | Rival | Hop | 6 | 6 | 782.17 | 702.77 | 1.113 (1.117) | 1.05 | +0.063 | 1.11 | 1.98 | 2.2 | · |
+| 41 | Basic Trainer | Worker Snow | 6 | 6 | 739.92 | 702.77 | 1.053 (1.061) | 1.05 | +0.003 | 1.05 | 2.18 | 2.2 | · |
+| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 775.77 | 702.77 | 1.104 (1.107) | 1.05 | +0.054 | 1.1 | 2.12 | 2.2 | · |
+| 44 | Gym Trainer 1 | Reactor Tech | 7 | 6 | 792.84 | 717.57 | 1.105 (1.113) | 1.08 | +0.025 | 1.1 | 2.19 | 2.05 | · |
+| 45 | Gym Trainer 2 | Depot Agent | 7 | 6 | 789.4 | 717.57 | 1.1 (1.11) | 1.08 | +0.02 | 1.1 | 2.23 | 2.05 | · |
+| 46 | Gym Leader 7 | Byron | 7 | 6 | 792.11 | 717.57 | 1.104 (1.11) | 1.08 | +0.024 | 1.1 | 2.17 | 2.05 | · |
+| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 799.35 | 717.57 | 1.114 (1.117) | 1.08 | +0.034 | 1.11 | 2.1 | 2.05 | · |
+| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 793.04 | 717.57 | 1.105 (1.107) | 1.08 | +0.025 | 1.11 | 2.14 | 2.05 | · |
+| 51 | Gym Trainer 1 | Hiker | 8 | 6 | 807.3 | 717.57 | 1.125 (1.133) | 1.1 | +0.025 | 1.13 | 2.19 | 2.05 | · |
+| 52 | Gym Trainer 2 | Rocker | 8 | 6 | 805.99 | 717.57 | 1.123 (1.133) | 1.1 | +0.023 | 1.12 | 2.2 | 2.05 | · |
+| 53 | Gym Leader 8 | Grant | 8 | 6 | 806.29 | 717.57 | 1.124 (1.13) | 1.1 | +0.024 | 1.12 | 2.16 | 2.05 | · |
+| 56 | Elite Trainer | Eldritch N | 8 | 6 | 815.67 | 717.57 | 1.137 (1.14) | 1.1 | +0.037 | 1.14 | 2.1 | 2.05 | · |
+| 57 | Elite Trainer | Mars | 8 | 6 | 809.77 | 717.57 | 1.128 (1.135) | 1.1 | +0.028 | 1.13 | 2.15 | 2.05 | · |
+| 58 | Elite Trainer | Silent Red | 8 | 6 | 807.49 | 717.57 | 1.125 (1.128) | 1.1 | +0.025 | 1.13 | 2.17 | 2.05 | · |
 | 60 | E1 | Lorelei | 9 | 6 | 857.74 | 757.47 | 1.132 (1.131) | 1.14 | -0.008 | 1.13 | 2.13 | 1.85 | · |
 | 61 | E2 | Bruno | 9 | 6 | 829.8 | 757.47 | 1.095 (1.093) | 1.16 | -0.065 | 1.1 | 2.47 | 1.85 | · |
 | 62 | E3 | Flint | 9 | 6 | 875.15 | 757.47 | 1.155 (1.153) | 1.18 | -0.025 | 1.16 | 2.13 | 1.85 | · |
 | 63 | E4 | Lance | 9 | 6 | 892.36 | 757.47 | 1.178 (1.178) | 1.2 | -0.022 | 1.18 | 2.13 | 1.85 | · |
 | 64 | Champion | Prof. Kukui | 9 | 6 | 923.21 | 757.47 | 1.219 (1.23) | 1.23 | -0.011 | 1.22 | 2.05 | 1.85 | · |
-| 65 | Rival | Hop | 9 | 6 | 941.13 | 701.84 | 1.341 (1.349) | 1.26 | +0.081 | 1.34 | 1.97 | 2.2 | 🔴 HARD |
+| 65 | Rival | Hop | 9 | 6 | 941.13 | 717.57 | 1.312 (1.319) | 1.26 | +0.052 | 1.31 | 1.97 | 2.05 | · |
 | 67 | Mystery Figure | Oak | 9 | 6 | 963.97 | 757.47 | 1.273 (1.276) | 1.3 | -0.027 | 1.27 | 2.06 | 1.85 | · |
 
-**GEN 1 ONLY divergences:** 6 HARD, 10 SOFT of 48 stages.
-- HARD: Gym Trainer 1(Δ+0.082), Gym Trainer 2(Δ+0.082), Gym Leader 6(Δ+0.08), Rival(Δ+0.097), Elite Trainer(Δ+0.088), Rival(Δ+0.081)
+**GEN 1 ONLY divergences:** 0 HARD, 10 SOFT of 48 stages.
 - SOFT: Rival(Δ-0.093), Basic Trainer(Δ-0.127), Gym Trainer 1(Δ-0.085), Gym Leader 1(Δ-0.086), Basic Trainer(Δ-0.121), Basic Trainer(Δ-0.127), Rival(Δ-0.084), Basic Trainer(Δ-0.086), Basic Trainer(Δ-0.082), Basic Trainer(Δ-0.092)
 
 ## ALL GENS  (gens 1,2,3,4,5,6,7,8,9)
@@ -109,33 +108,33 @@ Across 192 stage×gen-set rows (100 seeds each): **22 HARD**, **42 SOFT**, rest 
 | 31 | Gym Leader 5 | Sabrina | 5 | 6 | 706 | 625.54 | 1.129 (1.131) | 1.03 | +0.099 | 1.13 | 2.53 | 2.7 | 🔴 HARD |
 | 33 | Basic Trainer | Plasma Grunt F | 5 | 6 | 596.54 | 625.54 | 0.954 (0.963) | 1.03 | -0.076 | 0.95 | 3.28 | 2.7 | · |
 | 34 | Elite Trainer | Winona | 5 | 6 | 705.49 | 625.54 | 1.128 (1.127) | 1.03 | +0.098 | 1.13 | 2.58 | 2.7 | 🔴 HARD |
-| 36 | Gym Trainer 1 | Rancher | 6 | 6 | 780.96 | 689.2 | 1.133 (1.131) | 1.05 | +0.083 | 1.13 | 2.19 | 2.39 | 🔴 HARD |
-| 37 | Gym Trainer 2 | Nita | 6 | 6 | 772.55 | 689.2 | 1.121 (1.128) | 1.05 | +0.071 | 1.12 | 2.24 | 2.39 | · |
-| 38 | Gym Leader 6 | Larry | 6 | 6 | 779.57 | 689.2 | 1.131 (1.129) | 1.05 | +0.081 | 1.13 | 2.21 | 2.39 | 🔴 HARD |
-| 39 | Rival | Hop | 6 | 6 | 812.55 | 689.2 | 1.179 (1.169) | 1.05 | +0.129 | 1.18 | 1.98 | 2.39 | 🔴 HARD |
-| 41 | Basic Trainer | Boarder | 6 | 6 | 760.36 | 689.2 | 1.103 (1.104) | 1.05 | +0.053 | 1.1 | 2.12 | 2.39 | · |
-| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 797.13 | 689.2 | 1.157 (1.149) | 1.05 | +0.107 | 1.16 | 2.07 | 2.39 | 🔴 HARD |
-| 44 | Gym Trainer 1 | Depot Agent | 7 | 6 | 800.28 | 709.93 | 1.127 (1.125) | 1.08 | +0.047 | 1.13 | 2.22 | 2.2 | · |
-| 45 | Gym Trainer 2 | Depot Agent | 7 | 6 | 797.88 | 709.93 | 1.124 (1.131) | 1.08 | +0.044 | 1.12 | 2.22 | 2.2 | · |
-| 46 | Gym Leader 7 | Byron | 7 | 6 | 802.74 | 709.93 | 1.131 (1.13) | 1.08 | +0.051 | 1.13 | 2.21 | 2.2 | · |
-| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 812.4 | 709.93 | 1.144 (1.142) | 1.08 | +0.064 | 1.14 | 2.1 | 2.2 | · |
-| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 818.81 | 709.93 | 1.153 (1.151) | 1.08 | +0.073 | 1.15 | 2.09 | 2.2 | · |
-| 51 | Gym Trainer 1 | Rocker | 8 | 6 | 814.71 | 709.93 | 1.148 (1.155) | 1.1 | +0.048 | 1.15 | 2.24 | 2.2 | · |
-| 52 | Gym Trainer 2 | Hiker | 8 | 6 | 808.18 | 709.93 | 1.138 (1.14) | 1.1 | +0.038 | 1.14 | 2.24 | 2.2 | · |
-| 53 | Gym Leader 8 | Grant | 8 | 6 | 817.88 | 709.93 | 1.152 (1.152) | 1.1 | +0.052 | 1.15 | 2.21 | 2.2 | · |
-| 56 | Elite Trainer | Eldritch N | 8 | 6 | 831.59 | 709.93 | 1.171 (1.168) | 1.1 | +0.071 | 1.17 | 2.07 | 2.2 | · |
-| 57 | Elite Trainer | Mars | 8 | 6 | 829.26 | 709.93 | 1.168 (1.166) | 1.1 | +0.068 | 1.17 | 2.12 | 2.2 | · |
-| 58 | Elite Trainer | Silent Red | 8 | 6 | 826.59 | 709.93 | 1.164 (1.157) | 1.1 | +0.064 | 1.16 | 2.11 | 2.2 | · |
+| 36 | Gym Trainer 1 | Rancher | 6 | 6 | 780.96 | 711.26 | 1.098 (1.096) | 1.05 | +0.048 | 1.1 | 2.19 | 2.2 | · |
+| 37 | Gym Trainer 2 | Nita | 6 | 6 | 772.55 | 711.26 | 1.086 (1.093) | 1.05 | +0.036 | 1.09 | 2.24 | 2.2 | · |
+| 38 | Gym Leader 6 | Larry | 6 | 6 | 779.57 | 711.26 | 1.096 (1.094) | 1.05 | +0.046 | 1.1 | 2.21 | 2.2 | · |
+| 39 | Rival | Hop | 6 | 6 | 812.55 | 711.26 | 1.142 (1.133) | 1.05 | +0.092 | 1.14 | 1.98 | 2.2 | 🔴 HARD |
+| 41 | Basic Trainer | Boarder | 6 | 6 | 760.36 | 711.26 | 1.069 (1.07) | 1.05 | +0.019 | 1.07 | 2.12 | 2.2 | · |
+| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 797.13 | 711.26 | 1.121 (1.114) | 1.05 | +0.071 | 1.12 | 2.07 | 2.2 | · |
+| 44 | Gym Trainer 1 | Depot Agent | 7 | 6 | 800.28 | 726.36 | 1.102 (1.099) | 1.08 | +0.022 | 1.1 | 2.22 | 2.05 | · |
+| 45 | Gym Trainer 2 | Depot Agent | 7 | 6 | 797.88 | 726.36 | 1.098 (1.105) | 1.08 | +0.018 | 1.1 | 2.22 | 2.05 | · |
+| 46 | Gym Leader 7 | Byron | 7 | 6 | 802.74 | 726.36 | 1.105 (1.105) | 1.08 | +0.025 | 1.11 | 2.21 | 2.05 | · |
+| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 812.4 | 726.36 | 1.118 (1.116) | 1.08 | +0.038 | 1.12 | 2.1 | 2.05 | · |
+| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 818.81 | 726.36 | 1.127 (1.125) | 1.08 | +0.047 | 1.13 | 2.09 | 2.05 | · |
+| 51 | Gym Trainer 1 | Rocker | 8 | 6 | 814.71 | 726.36 | 1.122 (1.129) | 1.1 | +0.022 | 1.12 | 2.24 | 2.05 | · |
+| 52 | Gym Trainer 2 | Hiker | 8 | 6 | 808.18 | 726.36 | 1.113 (1.115) | 1.1 | +0.013 | 1.11 | 2.24 | 2.05 | · |
+| 53 | Gym Leader 8 | Grant | 8 | 6 | 817.88 | 726.36 | 1.126 (1.126) | 1.1 | +0.026 | 1.13 | 2.21 | 2.05 | · |
+| 56 | Elite Trainer | Eldritch N | 8 | 6 | 831.59 | 726.36 | 1.145 (1.142) | 1.1 | +0.045 | 1.14 | 2.07 | 2.05 | · |
+| 57 | Elite Trainer | Mars | 8 | 6 | 829.26 | 726.36 | 1.142 (1.14) | 1.1 | +0.042 | 1.14 | 2.12 | 2.05 | · |
+| 58 | Elite Trainer | Silent Red | 8 | 6 | 826.59 | 726.36 | 1.138 (1.131) | 1.1 | +0.038 | 1.14 | 2.11 | 2.05 | · |
 | 60 | E1 | Lorelei | 9 | 6 | 857.23 | 765.17 | 1.12 (1.119) | 1.14 | -0.02 | 1.12 | 2.14 | 1.85 | · |
 | 61 | E2 | Bruno | 9 | 6 | 841.71 | 765.17 | 1.1 (1.088) | 1.16 | -0.06 | 1.1 | 2.48 | 1.85 | · |
 | 62 | E3 | Flint | 9 | 6 | 879.84 | 765.17 | 1.15 (1.148) | 1.18 | -0.03 | 1.15 | 2.12 | 1.85 | · |
 | 63 | E4 | Lance | 9 | 6 | 894.29 | 765.17 | 1.169 (1.165) | 1.2 | -0.031 | 1.17 | 2.13 | 1.85 | · |
 | 64 | Champion | Prof. Kukui | 9 | 6 | 945.32 | 765.17 | 1.235 (1.231) | 1.23 | +0.005 | 1.24 | 1.94 | 1.85 | · |
-| 65 | Rival | Hop | 9 | 6 | 971.72 | 709.93 | 1.369 (1.364) | 1.26 | +0.109 | 1.37 | 1.98 | 2.2 | 🔴 HARD |
+| 65 | Rival | Hop | 9 | 6 | 971.72 | 726.36 | 1.338 (1.333) | 1.26 | +0.078 | 1.34 | 1.98 | 2.05 | · |
 | 67 | Mystery Figure | Burglar | 9 | 6 | 980.09 | 765.17 | 1.281 (1.29) | 1.3 | -0.019 | 1.28 | 1.98 | 1.85 | · |
 
-**ALL GENS divergences:** 7 HARD, 13 SOFT of 48 stages.
-- HARD: Gym Leader 5(Δ+0.099), Elite Trainer(Δ+0.098), Gym Trainer 1(Δ+0.083), Gym Leader 6(Δ+0.081), Rival(Δ+0.129), Elite Trainer(Δ+0.107), Rival(Δ+0.109)
+**ALL GENS divergences:** 3 HARD, 13 SOFT of 48 stages.
+- HARD: Gym Leader 5(Δ+0.099), Elite Trainer(Δ+0.098), Rival(Δ+0.092)
 - SOFT: Rival(Δ-0.097), Basic Trainer(Δ-0.141), Gym Trainer 1(Δ-0.099), Gym Leader 1(Δ-0.096), Basic Trainer(Δ-0.136), Basic Trainer(Δ-0.134), Gym Trainer 1(Δ-0.084), Rival(Δ-0.092), Gym Trainer 1(Δ-0.094), Basic Trainer(Δ-0.083), Basic Trainer(Δ-0.083), Gym Trainer 1(Δ-0.102), Gym Trainer 2(Δ-0.092)
 
 ## GEN 1-6  (gens 1,2,3,4,5,6)
@@ -165,33 +164,33 @@ Across 192 stage×gen-set rows (100 seeds each): **22 HARD**, **42 SOFT**, rest 
 | 31 | Gym Leader 5 | Sabrina | 5 | 6 | 698.28 | 622.64 | 1.121 (1.127) | 1.03 | +0.091 | 1.12 | 2.56 | 2.7 | 🔴 HARD |
 | 33 | Basic Trainer | Rocker | 5 | 6 | 584.92 | 622.64 | 0.939 (0.941) | 1.03 | -0.091 | 0.94 | 3.36 | 2.7 | 🔵 SOFT |
 | 34 | Elite Trainer | Wulfric | 5 | 6 | 698.62 | 622.64 | 1.122 (1.125) | 1.03 | +0.092 | 1.12 | 2.61 | 2.7 | 🔴 HARD |
-| 36 | Gym Trainer 1 | Triathlete Runner | 6 | 6 | 778.39 | 686.48 | 1.134 (1.138) | 1.05 | +0.084 | 1.13 | 2.19 | 2.39 | 🔴 HARD |
-| 37 | Gym Trainer 2 | Musician | 6 | 6 | 773.8 | 686.48 | 1.127 (1.126) | 1.05 | +0.077 | 1.13 | 2.24 | 2.39 | · |
-| 38 | Gym Leader 6 | Larry | 6 | 6 | 781.06 | 686.48 | 1.138 (1.135) | 1.05 | +0.088 | 1.14 | 2.21 | 2.39 | 🔴 HARD |
-| 39 | Rival | Hop | 6 | 6 | 805.93 | 686.48 | 1.174 (1.166) | 1.05 | +0.124 | 1.17 | 1.97 | 2.39 | 🔴 HARD |
-| 41 | Basic Trainer | Bird Keeper | 6 | 6 | 759.64 | 686.48 | 1.107 (1.107) | 1.05 | +0.057 | 1.11 | 2.11 | 2.39 | · |
-| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 794.28 | 686.48 | 1.157 (1.152) | 1.05 | +0.107 | 1.16 | 2.07 | 2.39 | 🔴 HARD |
-| 44 | Gym Trainer 1 | Engineer | 7 | 6 | 799.62 | 707.34 | 1.13 (1.133) | 1.08 | +0.05 | 1.13 | 2.19 | 2.2 | · |
-| 45 | Gym Trainer 2 | Reactor Tech | 7 | 6 | 791.5 | 707.34 | 1.119 (1.122) | 1.08 | +0.039 | 1.12 | 2.24 | 2.2 | · |
-| 46 | Gym Leader 7 | Byron | 7 | 6 | 800.81 | 707.34 | 1.132 (1.132) | 1.08 | +0.052 | 1.13 | 2.2 | 2.2 | · |
-| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 815.05 | 707.34 | 1.152 (1.146) | 1.08 | +0.072 | 1.15 | 2.08 | 2.2 | · |
-| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 816 | 707.34 | 1.154 (1.152) | 1.08 | +0.074 | 1.15 | 2.07 | 2.2 | · |
-| 51 | Gym Trainer 1 | Rocker | 8 | 6 | 807.38 | 707.34 | 1.141 (1.146) | 1.1 | +0.041 | 1.14 | 2.23 | 2.2 | · |
-| 52 | Gym Trainer 2 | Rocker | 8 | 6 | 810.79 | 707.34 | 1.146 (1.148) | 1.1 | +0.046 | 1.15 | 2.27 | 2.2 | · |
-| 53 | Gym Leader 8 | Grant | 8 | 6 | 817.11 | 707.34 | 1.155 (1.154) | 1.1 | +0.055 | 1.16 | 2.21 | 2.2 | · |
-| 56 | Elite Trainer | Eldritch N | 8 | 6 | 825.98 | 707.34 | 1.168 (1.167) | 1.1 | +0.068 | 1.17 | 2.11 | 2.2 | · |
-| 57 | Elite Trainer | Mars | 8 | 6 | 829.14 | 707.34 | 1.172 (1.169) | 1.1 | +0.072 | 1.17 | 2.11 | 2.2 | · |
-| 58 | Elite Trainer | Silent Red | 8 | 6 | 823.84 | 707.34 | 1.165 (1.164) | 1.1 | +0.065 | 1.16 | 2.1 | 2.2 | · |
+| 36 | Gym Trainer 1 | Triathlete Runner | 6 | 6 | 778.39 | 708.66 | 1.098 (1.103) | 1.05 | +0.048 | 1.1 | 2.19 | 2.2 | · |
+| 37 | Gym Trainer 2 | Musician | 6 | 6 | 773.8 | 708.66 | 1.092 (1.09) | 1.05 | +0.042 | 1.09 | 2.24 | 2.2 | · |
+| 38 | Gym Leader 6 | Larry | 6 | 6 | 781.06 | 708.66 | 1.102 (1.099) | 1.05 | +0.052 | 1.1 | 2.21 | 2.2 | · |
+| 39 | Rival | Hop | 6 | 6 | 805.93 | 708.66 | 1.137 (1.129) | 1.05 | +0.087 | 1.14 | 1.97 | 2.2 | 🔴 HARD |
+| 41 | Basic Trainer | Bird Keeper | 6 | 6 | 759.64 | 708.66 | 1.072 (1.072) | 1.05 | +0.022 | 1.07 | 2.11 | 2.2 | · |
+| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 794.28 | 708.66 | 1.121 (1.115) | 1.05 | +0.071 | 1.12 | 2.07 | 2.2 | · |
+| 44 | Gym Trainer 1 | Engineer | 7 | 6 | 799.62 | 723.89 | 1.105 (1.107) | 1.08 | +0.025 | 1.1 | 2.19 | 2.05 | · |
+| 45 | Gym Trainer 2 | Reactor Tech | 7 | 6 | 791.5 | 723.89 | 1.093 (1.096) | 1.08 | +0.013 | 1.09 | 2.24 | 2.05 | · |
+| 46 | Gym Leader 7 | Byron | 7 | 6 | 800.81 | 723.89 | 1.106 (1.106) | 1.08 | +0.026 | 1.11 | 2.2 | 2.05 | · |
+| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 815.05 | 723.89 | 1.126 (1.12) | 1.08 | +0.046 | 1.13 | 2.08 | 2.05 | · |
+| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 816 | 723.89 | 1.127 (1.126) | 1.08 | +0.047 | 1.13 | 2.07 | 2.05 | · |
+| 51 | Gym Trainer 1 | Rocker | 8 | 6 | 807.38 | 723.89 | 1.115 (1.12) | 1.1 | +0.015 | 1.12 | 2.23 | 2.05 | · |
+| 52 | Gym Trainer 2 | Rocker | 8 | 6 | 810.79 | 723.89 | 1.12 (1.122) | 1.1 | +0.02 | 1.12 | 2.27 | 2.05 | · |
+| 53 | Gym Leader 8 | Grant | 8 | 6 | 817.11 | 723.89 | 1.129 (1.128) | 1.1 | +0.029 | 1.13 | 2.21 | 2.05 | · |
+| 56 | Elite Trainer | Eldritch N | 8 | 6 | 825.98 | 723.89 | 1.141 (1.14) | 1.1 | +0.041 | 1.14 | 2.11 | 2.05 | · |
+| 57 | Elite Trainer | Mars | 8 | 6 | 829.14 | 723.89 | 1.145 (1.142) | 1.1 | +0.045 | 1.15 | 2.11 | 2.05 | · |
+| 58 | Elite Trainer | Silent Red | 8 | 6 | 823.84 | 723.89 | 1.138 (1.137) | 1.1 | +0.038 | 1.14 | 2.1 | 2.05 | · |
 | 60 | E1 | Lorelei | 9 | 6 | 856.97 | 763.06 | 1.123 (1.122) | 1.14 | -0.017 | 1.12 | 2.16 | 1.85 | · |
 | 61 | E2 | Bruno | 9 | 6 | 839.62 | 763.06 | 1.1 (1.09) | 1.16 | -0.06 | 1.1 | 2.47 | 1.85 | · |
 | 62 | E3 | Flint | 9 | 6 | 884.68 | 763.06 | 1.159 (1.153) | 1.18 | -0.021 | 1.16 | 2.1 | 1.85 | · |
 | 63 | E4 | Lance | 9 | 6 | 893.22 | 763.06 | 1.171 (1.168) | 1.2 | -0.029 | 1.17 | 2.13 | 1.85 | · |
 | 64 | Champion | Prof. Kukui | 9 | 6 | 949.71 | 763.06 | 1.245 (1.24) | 1.23 | +0.015 | 1.24 | 1.91 | 1.85 | · |
-| 65 | Rival | Hop | 9 | 6 | 965 | 707.34 | 1.364 (1.36) | 1.26 | +0.104 | 1.36 | 1.97 | 2.2 | 🔴 HARD |
+| 65 | Rival | Hop | 9 | 6 | 965 | 723.89 | 1.333 (1.328) | 1.26 | +0.073 | 1.33 | 1.97 | 2.05 | · |
 | 67 | Mystery Figure | Palmer | 9 | 6 | 986.75 | 763.06 | 1.293 (1.304) | 1.3 | -0.007 | 1.29 | 1.96 | 1.85 | · |
 
-**GEN 1-6 divergences:** 7 HARD, 12 SOFT of 48 stages.
-- HARD: Gym Leader 5(Δ+0.091), Elite Trainer(Δ+0.092), Gym Trainer 1(Δ+0.084), Gym Leader 6(Δ+0.088), Rival(Δ+0.124), Elite Trainer(Δ+0.107), Rival(Δ+0.104)
+**GEN 1-6 divergences:** 3 HARD, 12 SOFT of 48 stages.
+- HARD: Gym Leader 5(Δ+0.091), Elite Trainer(Δ+0.092), Rival(Δ+0.087)
 - SOFT: Rival(Δ-0.093), Basic Trainer(Δ-0.141), Gym Trainer 1(Δ-0.093), Gym Leader 1(Δ-0.092), Basic Trainer(Δ-0.129), Basic Trainer(Δ-0.14), Gym Trainer 1(Δ-0.091), Gym Trainer 1(Δ-0.095), Basic Trainer(Δ-0.087), Basic Trainer(Δ-0.082), Gym Trainer 1(Δ-0.082), Basic Trainer(Δ-0.091)
 
 ## GEN 1-3  (gens 1,2,3)
@@ -221,33 +220,33 @@ Across 192 stage×gen-set rows (100 seeds each): **22 HARD**, **42 SOFT**, rest 
 | 31 | Gym Leader 5 | Sabrina | 5 | 6 | 679.93 | 623.06 | 1.091 (1.1) | 1.03 | +0.061 | 1.09 | 2.74 | 2.7 | · |
 | 33 | Basic Trainer | Pokémon Ranger | 5 | 6 | 591.61 | 623.06 | 0.95 (0.963) | 1.03 | -0.08 | 0.95 | 3.3 | 2.7 | 🔵 SOFT |
 | 34 | Elite Trainer | Valerie | 5 | 6 | 686.72 | 623.06 | 1.102 (1.101) | 1.03 | +0.072 | 1.1 | 2.75 | 2.7 | · |
-| 36 | Gym Trainer 1 | Lass | 6 | 6 | 766.47 | 686.26 | 1.117 (1.122) | 1.05 | +0.067 | 1.12 | 2.2 | 2.39 | · |
-| 37 | Gym Trainer 2 | Gamer | 6 | 6 | 763.86 | 686.26 | 1.113 (1.121) | 1.05 | +0.063 | 1.11 | 2.19 | 2.39 | · |
-| 38 | Gym Leader 6 | Larry | 6 | 6 | 768.28 | 686.26 | 1.12 (1.123) | 1.05 | +0.07 | 1.12 | 2.23 | 2.39 | · |
-| 39 | Rival | Hop | 6 | 6 | 786.41 | 686.26 | 1.146 (1.152) | 1.05 | +0.096 | 1.15 | 1.96 | 2.39 | 🔴 HARD |
-| 41 | Basic Trainer | Bird Keeper | 6 | 6 | 744.9 | 686.26 | 1.085 (1.091) | 1.05 | +0.035 | 1.09 | 2.13 | 2.39 | · |
-| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 773.66 | 686.26 | 1.127 (1.131) | 1.05 | +0.077 | 1.13 | 2.1 | 2.39 | · |
-| 44 | Gym Trainer 1 | Reactor Tech | 7 | 6 | 783.76 | 706.91 | 1.109 (1.122) | 1.08 | +0.029 | 1.11 | 2.23 | 2.2 | · |
-| 45 | Gym Trainer 2 | Worker | 7 | 6 | 783.99 | 706.91 | 1.109 (1.114) | 1.08 | +0.029 | 1.11 | 2.26 | 2.2 | · |
-| 46 | Gym Leader 7 | Byron | 7 | 6 | 788.95 | 706.91 | 1.116 (1.119) | 1.08 | +0.036 | 1.12 | 2.22 | 2.2 | · |
-| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 797.85 | 706.91 | 1.129 (1.126) | 1.08 | +0.049 | 1.13 | 2.15 | 2.2 | · |
-| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 800.75 | 706.91 | 1.133 (1.134) | 1.08 | +0.053 | 1.13 | 2.12 | 2.2 | · |
-| 51 | Gym Trainer 1 | Hiker | 8 | 6 | 800.26 | 706.91 | 1.132 (1.139) | 1.1 | +0.032 | 1.13 | 2.24 | 2.2 | · |
-| 52 | Gym Trainer 2 | Rocker | 8 | 6 | 799.97 | 706.91 | 1.132 (1.139) | 1.1 | +0.032 | 1.13 | 2.27 | 2.2 | · |
-| 53 | Gym Leader 8 | Grant | 8 | 6 | 807.32 | 706.91 | 1.142 (1.146) | 1.1 | +0.042 | 1.14 | 2.22 | 2.2 | · |
-| 56 | Elite Trainer | Eldritch N | 8 | 6 | 808.21 | 706.91 | 1.143 (1.144) | 1.1 | +0.043 | 1.14 | 2.14 | 2.2 | · |
-| 57 | Elite Trainer | Mars | 8 | 6 | 810.24 | 706.91 | 1.146 (1.149) | 1.1 | +0.046 | 1.15 | 2.18 | 2.2 | · |
-| 58 | Elite Trainer | Silent Red | 8 | 6 | 800.92 | 706.91 | 1.133 (1.133) | 1.1 | +0.033 | 1.13 | 2.19 | 2.2 | · |
+| 36 | Gym Trainer 1 | Lass | 6 | 6 | 766.47 | 708.08 | 1.082 (1.087) | 1.05 | +0.032 | 1.08 | 2.2 | 2.2 | · |
+| 37 | Gym Trainer 2 | Gamer | 6 | 6 | 763.86 | 708.08 | 1.079 (1.086) | 1.05 | +0.029 | 1.08 | 2.19 | 2.2 | · |
+| 38 | Gym Leader 6 | Larry | 6 | 6 | 768.28 | 708.08 | 1.085 (1.088) | 1.05 | +0.035 | 1.09 | 2.23 | 2.2 | · |
+| 39 | Rival | Hop | 6 | 6 | 786.41 | 708.08 | 1.111 (1.117) | 1.05 | +0.061 | 1.11 | 1.96 | 2.2 | · |
+| 41 | Basic Trainer | Bird Keeper | 6 | 6 | 744.9 | 708.08 | 1.052 (1.057) | 1.05 | +0.002 | 1.05 | 2.13 | 2.2 | · |
+| 42 | Elite Trainer | Veteran Wallace | 6 | 6 | 773.66 | 708.08 | 1.093 (1.096) | 1.05 | +0.043 | 1.09 | 2.1 | 2.2 | · |
+| 44 | Gym Trainer 1 | Reactor Tech | 7 | 6 | 783.76 | 723.23 | 1.084 (1.097) | 1.08 | +0.004 | 1.08 | 2.23 | 2.05 | · |
+| 45 | Gym Trainer 2 | Worker | 7 | 6 | 783.99 | 723.23 | 1.084 (1.089) | 1.08 | +0.004 | 1.08 | 2.26 | 2.05 | · |
+| 46 | Gym Leader 7 | Byron | 7 | 6 | 788.95 | 723.23 | 1.091 (1.093) | 1.08 | +0.011 | 1.09 | 2.22 | 2.05 | · |
+| 48 | Elite Trainer | Hollow Cyrus | 7 | 6 | 797.85 | 723.23 | 1.103 (1.101) | 1.08 | +0.023 | 1.1 | 2.15 | 2.05 | · |
+| 49 | Elite Trainer | Veteran Koga | 7 | 6 | 800.75 | 723.23 | 1.107 (1.108) | 1.08 | +0.027 | 1.11 | 2.12 | 2.05 | · |
+| 51 | Gym Trainer 1 | Hiker | 8 | 6 | 800.26 | 723.23 | 1.107 (1.114) | 1.1 | +0.007 | 1.11 | 2.24 | 2.05 | · |
+| 52 | Gym Trainer 2 | Rocker | 8 | 6 | 799.97 | 723.23 | 1.106 (1.113) | 1.1 | +0.006 | 1.11 | 2.27 | 2.05 | · |
+| 53 | Gym Leader 8 | Grant | 8 | 6 | 807.32 | 723.23 | 1.116 (1.12) | 1.1 | +0.016 | 1.12 | 2.22 | 2.05 | · |
+| 56 | Elite Trainer | Eldritch N | 8 | 6 | 808.21 | 723.23 | 1.118 (1.118) | 1.1 | +0.018 | 1.12 | 2.14 | 2.05 | · |
+| 57 | Elite Trainer | Mars | 8 | 6 | 810.24 | 723.23 | 1.12 (1.123) | 1.1 | +0.02 | 1.12 | 2.18 | 2.05 | · |
+| 58 | Elite Trainer | Silent Red | 8 | 6 | 800.92 | 723.23 | 1.107 (1.108) | 1.1 | +0.007 | 1.11 | 2.19 | 2.05 | · |
 | 60 | E1 | Lorelei | 9 | 6 | 858.79 | 762.46 | 1.126 (1.123) | 1.14 | -0.014 | 1.13 | 2.13 | 1.85 | · |
 | 61 | E2 | Bruno | 9 | 6 | 826.84 | 762.46 | 1.084 (1.085) | 1.16 | -0.076 | 1.08 | 2.5 | 1.85 | · |
 | 62 | E3 | Flint | 9 | 6 | 873.13 | 762.46 | 1.145 (1.152) | 1.18 | -0.035 | 1.15 | 2.08 | 1.85 | · |
 | 63 | E4 | Lance | 9 | 6 | 893.76 | 762.46 | 1.172 (1.169) | 1.2 | -0.028 | 1.17 | 2.13 | 1.85 | · |
 | 64 | Champion | Prof. Kukui | 9 | 6 | 935.56 | 762.46 | 1.227 (1.228) | 1.23 | -0.003 | 1.23 | 1.95 | 1.85 | · |
-| 65 | Rival | Hop | 9 | 6 | 943.76 | 706.91 | 1.335 (1.346) | 1.26 | +0.075 | 1.34 | 1.96 | 2.2 | · |
+| 65 | Rival | Hop | 9 | 6 | 943.76 | 723.23 | 1.305 (1.315) | 1.26 | +0.045 | 1.3 | 1.96 | 2.05 | · |
 | 67 | Mystery Figure | Team Magma Grunt F | 9 | 6 | 974.63 | 762.46 | 1.278 (1.278) | 1.3 | -0.022 | 1.28 | 2 | 1.85 | · |
 
-**GEN 1-3 divergences:** 2 HARD, 7 SOFT of 48 stages.
-- HARD: Gym Leader 2(Δ+0.087), Rival(Δ+0.096)
+**GEN 1-3 divergences:** 1 HARD, 7 SOFT of 48 stages.
+- HARD: Gym Leader 2(Δ+0.087)
 - SOFT: Rival(Δ-0.109), Basic Trainer(Δ-0.146), Gym Trainer 1(Δ-0.094), Gym Leader 1(Δ-0.094), Basic Trainer(Δ-0.14), Basic Trainer(Δ-0.141), Basic Trainer(Δ-0.08)
 
 
@@ -279,29 +278,29 @@ The narrow Gen-1 pool changes which species are available to BOTH sides; this co
 | Gym Leader 5 | 1.075 | 1.129 | 2.83 | 2.7 | · |
 | Basic Trainer | 0.938 | 0.954 | 3.38 | 2.7 | 🔵 SOFT |
 | Elite Trainer | 1.088 | 1.128 | 2.8 | 2.7 | · |
-| Gym Trainer 1 | 1.132 | 1.133 | 2.16 | 2.39 | 🔴 HARD |
-| Gym Trainer 2 | 1.132 | 1.121 | 2.2 | 2.39 | 🔴 HARD |
-| Gym Leader 6 | 1.13 | 1.131 | 2.17 | 2.39 | 🔴 HARD |
-| Rival | 1.147 | 1.179 | 1.98 | 2.39 | 🔴 HARD |
-| Basic Trainer | 1.085 | 1.103 | 2.18 | 2.39 | · |
-| Elite Trainer | 1.138 | 1.157 | 2.12 | 2.39 | 🔴 HARD |
-| Gym Trainer 1 | 1.13 | 1.127 | 2.19 | 2.2 | · |
-| Gym Trainer 2 | 1.125 | 1.124 | 2.23 | 2.2 | · |
-| Gym Leader 7 | 1.129 | 1.131 | 2.17 | 2.2 | · |
-| Elite Trainer | 1.139 | 1.144 | 2.1 | 2.2 | · |
-| Elite Trainer | 1.13 | 1.153 | 2.14 | 2.2 | · |
-| Gym Trainer 1 | 1.15 | 1.148 | 2.19 | 2.2 | · |
-| Gym Trainer 2 | 1.148 | 1.138 | 2.2 | 2.2 | · |
-| Gym Leader 8 | 1.149 | 1.152 | 2.16 | 2.2 | · |
-| Elite Trainer | 1.162 | 1.171 | 2.1 | 2.2 | · |
-| Elite Trainer | 1.154 | 1.168 | 2.15 | 2.2 | · |
-| Elite Trainer | 1.151 | 1.164 | 2.17 | 2.2 | · |
+| Gym Trainer 1 | 1.098 | 1.098 | 2.16 | 2.2 | · |
+| Gym Trainer 2 | 1.099 | 1.086 | 2.2 | 2.2 | · |
+| Gym Leader 6 | 1.097 | 1.096 | 2.17 | 2.2 | · |
+| Rival | 1.113 | 1.142 | 1.98 | 2.2 | · |
+| Basic Trainer | 1.053 | 1.069 | 2.18 | 2.2 | · |
+| Elite Trainer | 1.104 | 1.121 | 2.12 | 2.2 | · |
+| Gym Trainer 1 | 1.105 | 1.102 | 2.19 | 2.05 | · |
+| Gym Trainer 2 | 1.1 | 1.098 | 2.23 | 2.05 | · |
+| Gym Leader 7 | 1.104 | 1.105 | 2.17 | 2.05 | · |
+| Elite Trainer | 1.114 | 1.118 | 2.1 | 2.05 | · |
+| Elite Trainer | 1.105 | 1.127 | 2.14 | 2.05 | · |
+| Gym Trainer 1 | 1.125 | 1.122 | 2.19 | 2.05 | · |
+| Gym Trainer 2 | 1.123 | 1.113 | 2.2 | 2.05 | · |
+| Gym Leader 8 | 1.124 | 1.126 | 2.16 | 2.05 | · |
+| Elite Trainer | 1.137 | 1.145 | 2.1 | 2.05 | · |
+| Elite Trainer | 1.128 | 1.142 | 2.15 | 2.05 | · |
+| Elite Trainer | 1.125 | 1.138 | 2.17 | 2.05 | · |
 | E1 | 1.132 | 1.12 | 2.13 | 1.85 | · |
 | E2 | 1.095 | 1.1 | 2.47 | 1.85 | · |
 | E3 | 1.155 | 1.15 | 2.13 | 1.85 | · |
 | E4 | 1.178 | 1.169 | 2.13 | 1.85 | · |
 | Champion | 1.219 | 1.235 | 2.05 | 1.85 | · |
-| Rival | 1.341 | 1.369 | 1.97 | 2.2 | 🔴 HARD |
+| Rival | 1.312 | 1.338 | 1.97 | 2.05 | · |
 | Mystery Figure | 1.273 | 1.281 | 2.06 | 1.85 | · |
 
 
@@ -372,10 +371,10 @@ Intent: enemy/player per-mon ratio at city *c* should equal `FOE_POWER_CURVE[c]`
 | 3 | 0.95 | 0.882 | 1.023 | on target |
 | 4 | 1 | 0.929 | 1.076 | on target |
 | 5 | 1.03 | 1.015 | 1.045 | on target |
-| 6 | 1.05 | 1.137 | 0.969 | pool over curve → soften |
-| 7 | 1.08 | 1.136 | 1.027 | on target |
-| 8 | 1.1 | 1.157 | 1.046 | on target |
-| 9 | 1.15 | 1.369 | 0.966 | pool over curve → soften |
+| 6 | 1.05 | 1.102 | 1 | on target |
+| 7 | 1.08 | 1.11 | 1.051 | on target |
+| 8 | 1.1 | 1.131 | 1.07 | on target |
+| 9 | 1.15 | 1.338 | 0.989 | pool over curve → soften |
 
 ### Boss overrides (`_storyEnemyStatMult` 38440)
 | event | current mult | measured ratio/mon (ALL-GENS) | note |
