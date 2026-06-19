@@ -218,7 +218,7 @@ for (const setting of GEN_SETTINGS) {
         // data-quality flags
         const topTier = /^E[1-4]$/.test(eventName) || eventName === 'Champion' || eventName === 'Mystery Figure';
         if (isLeg(name) && !topTier && !isEldritch(trainer) && !authored(trainer, name)) dq.legFiller.add(`${setting.label} ${eventName} ${trainer}: ${name}`);
-        if (name === 'Rattata' && !String(trainerType).includes('Normal')) dq.rattata.add(`${setting.label} ${eventName} ${trainer}`);
+        if (name === 'Rattata' && !String(trainerType).includes('Normal') && !authored(trainer, 'Rattata')) dq.rattata.add(`${setting.label} ${eventName} ${trainer}`);
         if (WRITE_PER_MON_SEEDS.has(seed)) {
           const evs = build.evs || {}; const ivs = build.ivs || {};
           const evTotal = STAT_KEYS.reduce((a, k) => a + (evs[k] || 0), 0);

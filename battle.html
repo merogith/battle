@@ -44320,9 +44320,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // type is entirely legendary (pathological) so a roll never breaks.
             if (!_allowLegendaryFiller) {
                 const _noLeg = { 1: [], 2: [], 3: [], 4: [] };
-                let _kept = 0;
-                for (let g = 1; g <= 4; g++) { _noLeg[g] = (T[g] || []).filter(n => !(baseStats[n] && baseStats[n].legendary)); _kept += _noLeg[g].length; }
-                if (_kept > 0) T = _noLeg;
+                for (let g = 1; g <= 4; g++) _noLeg[g] = (T[g] || []).filter(n => !(baseStats[n] && baseStats[n].legendary));
+                // Always apply — never fail open. If a type's whole allowed grade band is
+                // legendary-only (e.g. Gen-3+7 Psychic G4 basics = just Cosmog), KEEPING it would
+                // leak that legendary onto a non-E4/Champion trainer via pickThematic. Leaving the
+                // bucket empty instead routes the slot to the type-blind fallback (itself
+                // legendary-gated via _legBlocked), yielding a legal — if type-incoherent — filler.
+                // A roll still never breaks: pickRandomInGenWindow + the final sentinel guarantee a fill.
+                T = _noLeg;
             }
 
             // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
@@ -44350,11 +44355,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_legBlocked(name)) continue; // Rival never fields a legendary, even as a deep fallback
                         const b = baseStats[name];
                         if (!b || !genSet.has(b.gen)) continue;
+                        if (b.legendary) continue; // also strip low-BST legendary pre-evos _legBlocked misses (Rival never fields any legendary)
                         (getMonGrade(name, getBST(name)) > _fillerFloor ? below : within).push(name);
                     }
                     const base = within.length ? within : below;
                     const avail = base.filter((n) => !usedNames.has(n));
-                    return avail.length ? avail[Math.floor(rng() * avail.length)] : null;
+                    // Same quality floor as pickRandomInGenWindow: a "Mixed" Rival whose counter
+                    // pool runs dry in a narrow gen lock used to fall back to a uniform-random
+                    // in-gen mon (a wild Rattata). Field a respectable mon instead.
+                    return avail.length ? _bstQualityPick(avail, rng) : null;
                 }
                 // Per-slot counter types: intro type leads, then the scored list cycled to
                 // fill every slot (distinct first; repeats only once the list is exhausted).
@@ -44485,6 +44494,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 return all.length ? all[Math.floor(rng() * all.length)] : null;
             }
+            // Quality-floored uniform pick: drop the weakest BST quartile, then pick uniformly
+            // from the respectable remainder. Used by the two type-BLIND last-resort pickers so a
+            // narrow-gen+type exhaustion never fields a bottom-tier sentinel (a wild Rattata on an
+            // elite trainer). Pools of ≤2 pass through untouched so a roll never breaks.
+            function _bstQualityPick(arr, rngFn) {
+                if (!arr || !arr.length) return null;
+                let pool = arr;
+                if (arr.length > 2) {
+                    const byBst = arr.slice().sort((a, b) => getBST(b) - getBST(a));
+                    pool = byBst.slice(0, Math.max(1, Math.ceil(byBst.length * 0.75)));
+                }
+                return pool[Math.floor(rngFn() * pool.length)];
+            }
             function pickRandomInGenWindow() {
                 // Last-resort scan over the whole dex (bypasses the floored T), so it
                 // applies the floor itself: prefer species within [ceiling..floor], and
@@ -44492,7 +44514,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const within = [], below = [];
                 for (const name of Object.keys(baseStats)) {
                     if (isStoryRollExcluded(name)) continue;
-                    if (_legBlocked(name)) continue; // deep fallback also respects the legendary gate
+                    if (_legBlocked(name)) continue; // deep fallback respects the legendary gate (incl. low-BST leg pre-evos)
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
                     const g = getMonGrade(name, getBST(name));
@@ -44509,8 +44531,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // is already taken (genuinely fewer unique species than slots), so a roll never
                 // breaks — but a duplicate now only appears when it's mathematically unavoidable.
                 const _fresh = pool.filter(n => _canUse(n));
-                const _pick = _fresh.length ? _fresh : pool;
-                return _pick[Math.floor(rng() * _pick.length)];
+                const _pickBase = _fresh.length ? _fresh : pool;
+                // Quality floor: this type-blind escape hatch fires when a thin narrow-gen+type
+                // pool exhausts its type bucket (Gen-1 Ghost/Dark/Ice/Steel/Dragon, etc.). It used
+                // to return a UNIFORM-random in-gen mon — including bottom-tier sentinels, so a
+                // Gen-1-lock Ghost Gym Leader could field a wild Rattata. Drop the weakest BST
+                // quartile so the fallback fields a mon whose POWER fits the team tier even when its
+                // TYPE can't; variety is preserved among the respectable remainder. Tiny pools
+                // (≤2 options) pass through unchanged so a roll never breaks.
+                return _bstQualityPick(_pickBase, rng);
             }
 
             const team = [];
