@@ -125,6 +125,52 @@ test('endBattleTheme(true) plays the victory sting', () => {
     assert.equal(T.state().battleMood, 'victory');
 });
 
+// ── No "music mixing": the field track never resumes under an override layer ──
+// _resumeOrStartBg() is reached by event-driven paths (tab visibility change,
+// the first-gesture autoplay retry) that previously saw the *ducked* (paused)
+// field track and resumed it ON TOP OF a still-looping battle/intro theme.
+test('resumeOrStartBg is a no-op while a battle theme owns the foreground', () => {
+    built.length = 0;
+    T.startBgTrack(0, 0);                 // field BGM rolling
+    T.playBattleTheme('boss');           // ducks field, boss theme is the foreground
+    const boss = T.state().battleAudio;
+    assert.ok(boss, 'boss theme is the active battle audio');
+    const fieldBefore = builtWith(C.BACKGROUND_TRACKS[0]).length;
+
+    T.resumeOrStartBg();                  // simulates visibility-change / gesture retry
+
+    assert.equal(T.state().battleAudio, boss, 'battle theme is untouched (no swap)');
+    assert.equal(T.state().battleMood, 'boss', 'mood unchanged');
+    assert.equal(builtWith(C.BACKGROUND_TRACKS[0]).length, fieldBefore,
+        'no new field track started under the battle theme');
+    T.endBattleTheme(false);             // clean up for later tests
+});
+
+test('resumeOrStartBg is a no-op while the char-creation jingle owns the foreground', () => {
+    built.length = 0;
+    T.startBgTrack(0, 0);                 // field BGM rolling
+    T.playIntroTheme();                   // ducks field, intro jingle is the foreground
+    const intro = T.state().introAudio;
+    assert.ok(intro, 'intro jingle is the active intro audio');
+    const fieldBefore = builtWith(C.BACKGROUND_TRACKS[0]).length;
+
+    T.resumeOrStartBg();
+
+    assert.equal(T.state().introAudio, intro, 'intro jingle is untouched');
+    assert.equal(builtWith(C.BACKGROUND_TRACKS[0]).length, fieldBefore,
+        'no new field track started under the jingle');
+    AS.stopIntroTheme();                  // clean up
+});
+
+test('starting a battle theme stops a lingering char-creation jingle', () => {
+    built.length = 0;
+    T.playIntroTheme();
+    assert.ok(T.state().introAudio, 'intro jingle active');
+    T.playBattleTheme('boss');
+    assert.equal(T.state().introAudio, null, 'jingle stopped — no overlap with battle theme');
+    T.endBattleTheme(false);
+});
+
 test('SFX bus dedupes the same source within the dedupe window', () => {
     built.length = 0;
     const a = T.playOneShot('music/ui_sfx/buy.wav', 0.5);
