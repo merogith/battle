@@ -241,6 +241,125 @@ test('BOSS_CONFIGS data ties into real beat sceneKeys', () => {
     assert.ok(hasRain, 'aqua boss should field-lock Rain');
 });
 
+// ── 2026-06 redesign: new effect vocabulary, dynamic field, pools, raid rebalance ──
+
+// Drive a hpThresholdPhase to activation: telegraph turn 1, activate turn 2.
+function activatePhase(effect, magnitude, foe) {
+    const state = mkBossState([{ type: 'hpThresholdPhase', at: 0.50, effect, magnitude, banner: 'X' }]);
+    foe = foe || mkFoe(200, 80); // 40% HP — below the 50% threshold
+    state.turnNumber = 1; ST.bossMechanicsTurnTick(state, foe); // telegraph
+    state.turnNumber = 2; ST.bossMechanicsTurnTick(state, foe); // activate
+    return { state, foe };
+}
+
+test('stabBoost effect sets the boss STAB-amp timer on activation', () => {
+    const { state } = activatePhase('stabBoost');
+    assert.equal(state._bossStabBoostTurns, 3, 'default 3-turn STAB amp');
+    // Decrements one per subsequent tick (and survives the activation tick).
+    state.turnNumber = 3; ST.bossMechanicsTurnTick(state, mkFoe(200, 80));
+    assert.equal(state._bossStabBoostTurns, 2, 'decrements after the activation turn');
+});
+
+test('ward effect sets the boss damage-reduction timer on activation', () => {
+    const { state } = activatePhase('ward');
+    assert.equal(state._bossWardTurns, 3, 'default 3-turn ward');
+    state.turnNumber = 3; ST.bossMechanicsTurnTick(state, mkFoe(200, 80));
+    assert.equal(state._bossWardTurns, 2, 'ward decrements per turn');
+});
+
+test('shield effect builds a barrier pool = maxHp × BOSS_SHIELD_FRAC', () => {
+    const knobs = ST.bossBalanceKnobs();
+    const { state, foe } = activatePhase('shield');
+    assert.equal(state._bossShieldHp, Math.floor(foe.maxHp * knobs.BOSS_SHIELD_FRAC), 'barrier pool sized off maxHp');
+    assert.ok(state._bossShieldHp > 0);
+});
+
+test('regen effect arms a heal-per-turn window on activation', () => {
+    const knobs = ST.bossBalanceKnobs();
+    const { state } = activatePhase('regen');
+    assert.ok(state._bossRegen && state._bossRegen.turns === knobs.BOSS_REGEN_TURNS, 'regen turns set');
+    assert.equal(state._bossRegen.pct, knobs.BOSS_REGEN_PCT, 'regen pct set');
+});
+
+test('cleanse effect strips Toxic / Leech-Seed / trap off the boss (anti-cheese)', () => {
+    const state = mkBossState([]);
+    const foe = mkFoe(100, 100);
+    foe.status = 'TOX'; foe.statusTurns = 4;
+    foe.volatile = { leechSeed: true, partialTrap: 2, partialTrapSrc: 'Bind' };
+    ST.applyBossPhaseEffect(state, foe, 'cleanse');
+    assert.equal(foe.status, null, 'status cured');
+    assert.equal(foe.volatile.leechSeed, false, 'leech seed removed');
+    assert.equal(foe.volatile.partialTrap, 0, 'trap cleared');
+});
+
+test('fieldLock value:auto resolves the boss type → advantageous field', () => {
+    // Psychic → Psychic Terrain (Mewtwo).
+    let state = mkBossState([{ type: 'fieldLock', value: 'auto', turns: 99, banner: 'X' }]);
+    state.fActive = { type1: 'Psychic' };
+    ST.bossMechanicsBattleInit(state);
+    assert.equal(state.terrain, 'Psychic', 'Psychic boss locks Psychic Terrain');
+    // Fire → Sun.
+    state = mkBossState([{ type: 'fieldLock', value: 'auto', turns: 99, banner: 'X' }]);
+    state.fActive = { type1: 'Fire' };
+    ST.bossMechanicsBattleInit(state);
+    assert.equal(state.weather, 'Sun', 'Fire boss locks Sun');
+    // Unmapped type → no lock (graceful).
+    state = mkBossState([{ type: 'fieldLock', value: 'auto', turns: 99, banner: 'X' }]);
+    state.fActive = { type1: 'Normal' };
+    ST.bossMechanicsBattleInit(state);
+    assert.equal(state.weather, null, 'Normal boss → no weather');
+    assert.equal(state.terrain, null, 'Normal boss → no terrain');
+});
+
+test('effect pools: every authored boss effect is in its family pool (villain ≠ mystery)', () => {
+    assert.equal(ST.bossEffectPoolViolations().length, 0, 'no boss config draws outside its family pool: ' + ST.bossEffectPoolViolations().join(', '));
+    const pools = ST.BOSS_EFFECT_POOLS;
+    const v = new Set(pools.villain), m = new Set(pools.mystery);
+    const identical = v.size === m.size && [...v].every(x => m.has(x));
+    assert.ok(!identical, 'villain and mystery pools must not be the identical set');
+});
+
+test('raid phase roller: deterministic per seed, draws from raid pool, keeps thresholds', () => {
+    const pool = ST.BOSS_EFFECT_POOLS.raid;
+    const mech = () => ([
+        { type: 'hpThresholdPhase', at: 0.75, effect: 'surge', banner: 'X' },
+        { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', banner: 'X' },
+        { type: 'hpThresholdPhase', at: 0.25, effect: 'immunity', banner: 'X' },
+    ]);
+    function seeded(seed) { let s = (seed >>> 0) ^ 0x9E3779B9; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+    const orig = W.storyRngNext;
+    try {
+        W.storyRngNext = seeded(12345);
+        const a = ST.rollRaidPhaseEffects('extra.mewtwo.raid', mech());
+        W.storyRngNext = seeded(12345);
+        const b = ST.rollRaidPhaseEffects('extra.mewtwo.raid', mech());
+        assert.equal(a.map(m => m.effect).join(','), b.map(m => m.effect).join(','), 'same seed → same effects');
+        for (const m of a) assert.ok(pool.includes(m.effect), `rolled effect ${m.effect} is in the raid pool`);
+        assert.equal(a.map(m => m.at).join(','), '0.75,0.5,0.25', 'thresholds (cadence) preserved');
+    } finally { W.storyRngNext = orig; }
+    // Non-raid beats pass through untouched.
+    const passthru = ST.rollRaidPhaseEffects('villain.rocket.boss', [{ type: 'faintPhase', afterFaints: 0, effect: 'surge' }]);
+    assert.equal(passthru[0].effect, 'surge', 'non-raid beat is not remapped');
+});
+
+test('raid stat split is bulky-not-fast: speed capped, bulk on def/HP, offense on atk', () => {
+    const mk = ST.makeBuild || W.makeBuild;
+    const buildPokemon = W.buildPokemon;
+    const base = mk('Marowak');
+    const plainBuild = JSON.parse(JSON.stringify(base));
+    const bossBuild = JSON.parse(JSON.stringify(base));
+    const knobs = ST.bossBalanceKnobs();
+    bossBuild._bossOffMult = knobs.RAID_OFF_MULT;
+    bossBuild._bossBulkMult = knobs.RAID_BULK_MULT;
+    bossBuild._bossSpeMult = knobs.RAID_SPE_MULT;
+    const plain = buildPokemon('Marowak', plainBuild);
+    const boss = buildPokemon('Marowak', bossBuild);
+    assert.equal(boss.stats.atk, Math.max(1, Math.floor(plain.stats.atk * knobs.RAID_OFF_MULT)), 'atk uses offense mult');
+    assert.equal(boss.stats.def, Math.max(1, Math.floor(plain.stats.def * knobs.RAID_BULK_MULT)), 'def uses bulk mult');
+    assert.equal(boss.maxHp, Math.floor(plain.maxHp * knobs.RAID_BULK_MULT), 'HP uses bulk mult');
+    assert.ok(boss.stats.spe <= plain.stats.spe, 'speed not increased — no outspeed-OHKO');
+});
+
 test('showBossBanner creates and removes a DOM banner', async () => {
     ST.showBossBanner('TEST BANNER', '#ff0000');
     // The banner inserts immediately + fades; check existence then wait.
