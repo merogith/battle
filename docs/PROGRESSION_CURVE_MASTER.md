@@ -189,7 +189,7 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 | Professor gift | matches floor: b≥8→T4, b≥5→T3, b≥2→T2, else T1 (`_storyBuildTierForProfessor` `33540`) | |
 
 ### 2c. gradeWeights transforms (applied in order before use)
-1. **Difficulty** `applyDifficultyToGradeWeights` (`32689`): easy g1×0.88/g4×1.12; hard g1×1.1/g4×0.9; challenge g1×1.18/g4×0.82. **Universal nerf:** 8% g1 + 4% g2 → g3.
+1. **Difficulty** `applyDifficultyToGradeWeights`: **veryeasy g1×0.80/g4×1.20** (its own gentler skew, distinct from easy); easy g1×0.88/g4×1.12; hard g1×1.12/g4×0.88; challenge g1×1.20/g4×0.80. **Universal nerf:** 8% g1 + 4% g2 → g3. *(2026-06 retune: VE split off from easy; kaizo tiers nudged one notch harder.)*
 2. **Progress** `applyStoryProgressToGradeWeights` (`32728`): bias `k` = 0.20 (post-GL2), 0.30 (GL4+), 0.40 (GL6+), +0.0048/row capped +0.14. Shifts mass toward G1.
 3. **G4 strip** `storyStripGrade4IfPartyMature` (`32708`): once party ever ≥2 mons, **all g4→g3** (monotonic).
 
@@ -214,7 +214,7 @@ Mystery, eldritch) keep their authored aces (the low-grade-signature exception).
 | GL3 | `STAGE2_GL_FOE_STAT_MULT` | 0.97 |
 | ≥3 badges | (softening ends) | 1.00 |
 | Stage-gated | `_stageGatedFoeStatMult` (`~13199`) | 1.00 (st1–2) → 1.05 (G6) → 1.10 (G8) → 1.15 (E4) → 1.20 (Champ/Myst) |
-| Difficulty mode | `applyFoeDifficultyScaling` | VE 0.70 / E 0.85 / N 1.00 / H 1.15 / C 1.30 |
+| Difficulty mode | `_foeDifficultyMult` / `applyFoeDifficultyScaling` | VE 0.70 / E 0.85 / N 1.00 / H 1.15 / **C 1.40** (Very Hard, widened 1.30→1.40) |
 | League boost | `applyStoryLeagueFoeStatBoost` | E1–4 ×1.22, Champ/Rival ×1.40, Mystery ×1.50 |
 
 ### 2e. Gimmick gate — single shared, badge-keyed (`onBattleEnd`, battle.html ~42749) ✅ verified live
@@ -231,8 +231,8 @@ Mystery, eldritch) keep their authored aces (the low-grade-signature exception).
 - Foe size `_storyEnemyPartySize` (`41058`): `min(6, 2+badges)` + role floors; finales force 6; intro rival = player-match.
 
 ### 2g. Economy
-- **Start gold:** 2000 + diff bonus (VE +19000, E +4000, N +2500, H +1000, C +1500).
-- **Per-battle:** `floor(baseCoins × diffMult × cursedMult × progressMult)`. Coin mults: VE 1.60 / E 1.50 / N 1.30 / H 1.00 / C 1.10. Progress taper +15%→+0% across main path. Basic-Trainer rows also ×`STORY_BASE_TRAINER_GOLD_MULT` (0.82). **Wild routes & Frontier pay 0.**
+- **Start gold:** 2000 + diff bonus, `_storyStartingGoldBonus` (**monotonic non-increasing**, no inversion): VE +8000, E +4000, N +2500, H +1000, **C +0** (hardcore Kaizo gets zero head-start). *(2026-06: VE trimmed 19000→8000; C 1500→0.)*
+- **Per-battle:** `floor(baseCoins × diffMult × cursedMult × progressMult)`. Coin mults `storyDifficultyCoinMult` (**monotonic non-increasing**): VE 1.60 / E 1.50 / N 1.30 / H 1.00 / **C 0.90** (Very Hard taxed *below* Hard). Progress taper +15%→+0% across main path. Basic-Trainer rows also ×`STORY_BASE_TRAINER_GOLD_MULT` (0.82). **Wild routes & Frontier pay 0.** *(2026-06: C 1.10→0.90 — fixed the inversion where the hardest tier out-paid Hard.)*
 - **Base coins (2026-06 flatten — pre-Gym-4 unchanged):** the late curve was too steep
   and gold piled up post-game. From Gym 5 on, purses now climb in small monotonic steps
   (later/harder = more, but gently): **GL5 3900 · GL6 4000 · GL7 4100 · GL8 4200**;
@@ -294,7 +294,7 @@ demanding late → real challenge at league/post-league; tools & money track pow
 ### 3.4 Progression & Pacing Designer
 - **P1 — Macro shape today: easy-early → flat-mid → hard-late.** Softened start (player ahead), dead plateau GL4→GL6, then a clean ramp GL6→Mystery. The North-Star shape is **slightly-behind-early → parity → demanding-late**. The late half already matches; the **early and mid thirds do not**.
 - **P2 — "Learn → enjoy the power → move on" is half-built.** Each facility/mechanic is introduced once (good), but there's rarely a *stage to enjoy it before the next thing*: gimmicks unlock at GL6 but can't be equipped till C7; the plateau (B1) is enjoy-time with nothing new to enjoy. The rhythm stalls exactly where it should crescendo.
-- **P3 — Difficulty spread is narrow (= BUG-013).** Challenge is only +30% over Normal; a player who bricks on Hard drops to Easy (0.85) and trivializes everything. No middle ground, and difficulty changes *only* stats (not AI), so "Hard" is opaque.
+- **P3 — Difficulty spread is narrow (= BUG-013).** ~~Challenge is only +30% over Normal~~ — **mostly RESOLVED:** Very Hard is now +40% stats *and* skews team grade up (`applyDifficultyToGradeWeights`) *and* couples to AI (`AI_DIFFICULTY_PARAMS`: temp/predict per tier), so "Hard" (semi-Kaizo) and "Very Hard" (hardcore Kaizo) are genuinely distinct, not stat-only. The 2026-06 retune also separated Very Easy from Easy on grade skew and stripped Very Hard's economic aids.
 - **P4 — Parity point is undefined/implicit.** Today the player crosses from "ahead" (softened) to "behind" (boosted) somewhere around GL4–GL6 by accident of two unrelated curves meeting. The brief wants this to be a **deliberate, named threshold** (Decision 1).
 
 ### 3.5 QA / Test Agent (read-only baseline)
@@ -348,10 +348,10 @@ Each is brought as multiple-choice + recommendation. **No gameplay change happen
 - (b) *Tier step* — bump GL5 from T2→T3 so the leader visibly sharpens.
 - (c) *Both* — stat nudge + GL5 T3.
 
-**D3b — Difficulty spread (BUG-013).**
-- (a) **[REC]** *Widen Challenge 1.30→1.40* + restore its coin bonus; leave others.
-- (b) *Couple difficulty to AI depth* (1/2/3-ply) — bigger, needs PR-B first.
-- (c) *Leave as-is.*
+**D3b — Difficulty spread (BUG-013).** ✅ **DONE (2026-06).**
+- (a) **[REC, SHIPPED]** *Widen Challenge 1.30→1.40* — done. The coin bonus was **NOT** restored; instead Very Hard was **taxed below Hard** (coin 0.90, zero start-gold) for a deliberate hardcore-Kaizo economy.
+- (b) *Couple difficulty to AI depth* — effectively shipped via `AI_DIFFICULTY_PARAMS` (per-tier softmax temperature + switch-prediction), not n-ply search.
+- (c) *Leave as-is.* — superseded.
 
 **D3c — Late economy (BUG-014).**
 - (a) **[REC]** *Bump purses* — Champion 7500→~12000, E1–4 5000→~7000, post-HoF rematches ~10000.
