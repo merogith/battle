@@ -8670,6 +8670,7 @@
             gap: 8px;
         }
         .story-create-diff-card {
+            position: relative;
             display: flex; flex-direction: column; align-items: center; gap: 4px;
             padding: 10px 8px;
             background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
@@ -8680,18 +8681,49 @@
             min-height: 64px;
             font-family: var(--battle-font) !important;
             box-shadow: inset -2px -2px 0px 0px #212529, inset 2px 2px 0px 0px #495057;
-            transition: border-color 0.12s, color 0.12s, background 0.12s;
+            transition: border-color 0.12s, color 0.12s, background 0.12s, transform 0.12s;
         }
         .story-create-diff-card:hover { border-color: #ffd54f; }
+        .story-create-diff-card:focus-visible { outline: 2px solid #ffd54f; outline-offset: 2px; }
         .story-create-diff-card--active {
             border-color: #4caf50;
             color: #aed581;
-            background: linear-gradient(180deg, #142a18 0%, #0a1a0c 100%);
-            box-shadow: inset -2px -2px 0px 0px #0a1a0c, inset 2px 2px 0px 0px #2a5a2c;
+            background: linear-gradient(180deg, #163218 0%, #0a1a0c 100%);
+            box-shadow: inset -2px -2px 0px 0px #0a1a0c, inset 2px 2px 0px 0px #2a5a2c, 0 0 0 1px #4caf50, 0 0 10px rgba(76,175,80,0.35);
+            transform: translateY(-1px);
         }
+        /* Hard / Very Hard carry a warning-toned active glow so the kaizo tiers read as "danger". */
+        .story-create-diff-card[data-diff="hard"].story-create-diff-card--active,
+        .story-create-diff-card[data-diff="challenge"].story-create-diff-card--active {
+            border-color: #ef5350; color: #ffab91;
+            background: linear-gradient(180deg, #2e1413 0%, #1a0a0a 100%);
+            box-shadow: inset -2px -2px 0px 0px #1a0a0a, inset 2px 2px 0px 0px #5a2a2a, 0 0 0 1px #ef5350, 0 0 10px rgba(239,83,80,0.35);
+        }
+        .story-create-diff-card[data-diff="hard"].story-create-diff-card--active .story-create-diff-sub,
+        .story-create-diff-card[data-diff="challenge"].story-create-diff-card--active .story-create-diff-sub { color: #ffccbc; }
         .story-create-diff-name { font-size: 11px; letter-spacing: 1px; }
-        .story-create-diff-sub { font-size: 8px; color: #8c97a4; text-align: center; letter-spacing: 0.5px; font-family: var(--ui-font) !important; }
+        .story-create-diff-sub { font-size: 8px; color: #8c97a4; text-align: center; letter-spacing: 0.5px; font-family: var(--ui-font) !important; line-height: 1.35; }
         .story-create-diff-card--active .story-create-diff-sub { color: #c5e1a5; }
+        .story-create-diff-badge {
+            position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+            background: #4caf50; color: #0a1a0c;
+            font-family: var(--ui-font) !important; font-size: 8px; font-weight: bold;
+            letter-spacing: 0.5px; white-space: nowrap;
+            padding: 2px 7px; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .story-create-diff-hint {
+            margin: 10px 0 0; padding: 8px 10px;
+            background: rgba(239,83,80,0.10); border-left: 3px solid #ef5350;
+            color: #ffccbc; font-size: 10px; line-height: 1.4;
+            font-family: var(--ui-font) !important;
+        }
+        .story-create-diff-hint strong { color: #ffab91; }
+        @media (max-width: 420px) {
+            .story-create-diff-grid { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; }
+            .story-create-diff-card { padding: 14px 6px 8px; min-height: 72px; }
+            .story-create-diff-sub { font-size: 7.5px; }
+        }
         .story-create-gen-presets { display: flex; gap: 8px; flex-wrap: wrap; }
         .story-create-gen-preset {
             flex: 1; min-width: 88px; padding: 10px;
@@ -10200,25 +10232,29 @@
                 <div class="story-create-diff-grid" role="radiogroup" aria-label="Difficulty">
                     <button type="button" class="story-create-diff-card" data-diff="veryeasy" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('veryeasy')">
                         <span class="story-create-diff-name">Very Easy</span>
-                        <span class="story-create-diff-sub">Foes &minus;30% &middot; pay &plus;60% &middot; a gentle road</span>
+                        <span class="story-create-diff-sub">Foes −30% • weakest teams • pay +60% • very beatable</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="easy" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('easy')">
                         <span class="story-create-diff-name">Easy</span>
-                        <span class="story-create-diff-sub">Foes &minus;15% &middot; pay &plus;50% &middot; forgiving</span>
+                        <span class="story-create-diff-sub">Foes −15% • pay +50% • a chill, forgiving road</span>
                     </button>
                     <button type="button" class="story-create-diff-card story-create-diff-card--active" data-diff="normal" role="radio" aria-checked="true" onclick="window.StoryMode.trainerCreateSetDifficulty('normal')">
+                        <span class="story-create-diff-badge">★ Recommended</span>
                         <span class="story-create-diff-name">Normal</span>
-                        <span class="story-create-diff-sub">Foes baseline &middot; pay &plus;30% &middot; the intended road, recommended</span>
+                        <span class="story-create-diff-sub">Foes baseline • pay +30% • the intended road</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="hard" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('hard')">
                         <span class="story-create-diff-name">Hard</span>
-                        <span class="story-create-diff-sub">Foes &plus;15% &middot; pay standard (no bonus) &middot; the road bites back</span>
+                        <span class="story-create-diff-sub">Foes +15% • tougher teams • pay standard • semi-Kaizo: the road bites back</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="challenge" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('challenge')">
                         <span class="story-create-diff-name">Very Hard</span>
-                        <span class="story-create-diff-sub">Foes &plus;40% &middot; pay &plus;10% &middot; no margin, bragging rights</span>
+                        <span class="story-create-diff-sub">Foes +40% • elite teams • no head-start • pay −10% • hardcore Kaizo: no margin, no mercy</span>
                     </button>
                 </div>
+                <p id="story-create-diff-kaizo-hint" class="story-create-diff-hint" hidden aria-live="polite">
+                    🔥 <strong>Kaizo tip:</strong> for the full challenge, enable <strong>No Item Run</strong> under <em>Advanced</em> below — empties your battle bag so every fight is won on play alone.
+                </p>
             </section>
 
 
@@ -37689,11 +37725,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'normal') return 1.30;
             if (diff === 'easy') return 1.50;
             if (diff === 'veryeasy') return 1.60;
-            // Hard/Challenge used to pay below parity while late-game prices spike; floored at parity so the coin curve stops fighting the difficulty curve.
-            // Maintainer-ratified 2026-06-11 (memo #1): hard stays at 1.00.
+            // Hard pays at parity (1.00) — no bonus, no penalty.
             if (diff === 'hard') return 1.00;
-            if (diff === 'challenge') return 1.10;
+            // Very Hard (hardcore Kaizo) pays BELOW parity: a deliberate hardcore tax so
+            // the kaizo tier squeezes the shop economy on top of the tougher fights.
+            if (diff === 'challenge') return 0.90;
             return 1;
+        }
+        // Flat starting-gold bonus added on top of the 2000 base at run creation.
+        // Monotonic NON-INCREASING across difficulty: gentler tiers get more breathing
+        // room, Very Hard (hardcore Kaizo) gets ZERO head-start. Hard keeps a small bump
+        // so the pre-Gym-1 ball/heal cost can't immediately empty the wallet.
+        function _storyStartingGoldBonus(diff) {
+            switch (diff) {
+                case 'veryeasy':  return 8000;
+                case 'easy':      return 4000;
+                case 'normal':    return 2500;
+                case 'hard':      return 1000;
+                case 'challenge': return 0;
+                default:          return 0;
+            }
         }
 
         // Professor grade rolls per city (0-based city index)
@@ -42411,9 +42462,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!gw) return gw;
             const d = sm.storyDifficulty || 'normal';
             let o = { g1: gw.g1 || 0, g2: gw.g2 || 0, g3: gw.g3 || 0, g4: gw.g4 || 0 };
-            if (d === 'easy' || d === 'veryeasy') { o.g1 *= 0.88; o.g4 *= 1.12; }
-            else if (d === 'hard') { o.g1 *= 1.1; o.g4 *= 0.9; }
-            else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
+            // Very Easy gets its own (gentler) skew than Easy so the two tiers feel
+            // distinct — "very beatable" pushes more mass to the weakest grades.
+            if (d === 'veryeasy') { o.g1 *= 0.80; o.g4 *= 1.20; }
+            else if (d === 'easy') { o.g1 *= 0.88; o.g4 *= 1.12; }
+            // Hard = semi-Kaizo, Very Hard = hardcore Kaizo: lean the foe pool one notch
+            // harder toward top-tier mons (the raw-stat knob stays put; this is the team-
+            // quality lever).
+            else if (d === 'hard') { o.g1 *= 1.12; o.g4 *= 0.88; }
+            else if (d === 'challenge') { o.g1 *= 1.20; o.g4 *= 0.80; }
             // Universal slight nerf on opponent team-generation grade rolls — moves a
             // small fraction of g1/g2 mass down to g3 so RNG can't hand the foe a
             // clutch top-tier mon on a battle whose tier weights barely allow it.
@@ -44711,6 +44768,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ensureMoveData: (...a) => ensureMoveData(...a),
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
                     foeDifficultyMult: (...a) => _foeDifficultyMult(...a),
+                    storyDifficultyCoinMult: () => storyDifficultyCoinMult(),
+                    storyStartingGoldBonus: (...a) => _storyStartingGoldBonus(...a),
+                    applyDifficultyToGradeWeights: (...a) => applyDifficultyToGradeWeights(...a),
                     buildPokemon: (...a) => buildPokemon(...a),
                     getStatTooltipHTML: (...a) => getStatTooltipHTML(...a),
                     findTrainerDataByName,
@@ -45544,6 +45604,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 c.classList.toggle('story-create-diff-card--active', on);
                 c.setAttribute('aria-checked', on ? 'true' : 'false');
             });
+            // Surface the No-Item-Run "Kaizo tip" only on the two kaizo tiers.
+            const hint = document.getElementById('story-create-diff-kaizo-hint');
+            if (hint) {
+                const kaizo = (_tcState.difficulty === 'hard' || _tcState.difficulty === 'challenge');
+                hint.hidden = !kaizo;
+            }
         }
         function _tcSyncGenPresetButtons() {
             const btns = document.querySelectorAll('#screen-story-trainercreate .story-create-gen-preset');
@@ -46230,16 +46296,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _storyDiff = (_pending && _pending.difficulty) ? _pending.difficulty
                 : (_diffEl && _diffEl.value) ? _diffEl.value
                 : 'normal';
-            // 2000 base + bonus; tier totals: VeryEasy 21K / Easy 6K / Normal 4.5K / Hard 3K / Challenge 3.5K.
-            // Hard and Challenge previously got no starting bonus despite the tougher stat curve,
-            // which paired badly with the pre-Gym-1 ball cost — first heal or two PokéBalls ate
-            // the entire wallet. Small bumps keep the relative difficulty ordering intact.
-            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000
-                : _storyDiff === 'easy' ? 4000
-                : _storyDiff === 'normal' ? 2500
-                : _storyDiff === 'hard' ? 1000
-                : _storyDiff === 'challenge' ? 1500
-                : 0;
+            // 2000 base + bonus (see _storyStartingGoldBonus). Tier totals: VeryEasy 10K /
+            // Easy 6K / Normal 4.5K / Hard 3K / Very Hard 2K (no bonus).
+            const _startingGoldBonus = _storyStartingGoldBonus(_storyDiff);
             sm = {
                 active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, casinoStats:{}, team:[],
                 inventory: {
