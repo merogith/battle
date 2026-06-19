@@ -756,3 +756,50 @@ testable against the jsdom harness, smallest blast radius first):
 
 Per `CLAUDE.md`, story-flow-adjacent edits (3, 4) change carefully and ship behind a deterministic
 test; steps 1–2 are safe data/UI changes. Each step is its own diff for review.
+
+---
+
+## 12. Anti-AI voice rubric (2026-06 pass)
+
+> Added after an "anti-AI tone" review. The prose here is line-by-line strong; the *machine
+> smell* came from **template uniformity** and a **single monotone narrator voice**, not from
+> hype words. This rubric exists so the pools don't drift back into one skeleton. **Spirit is
+> protected:** the deliberate adult / realistic / fan-theory-creepypasta edge and the story
+> beats are NOT the target — only the AI tells are.
+
+**The two tells we fixed (watch for their return):**
+
+1. **One skeleton, swapped nouns.** The worst case was `leader-badge-reflections.json`: ~70
+   entries all shaped `"[City]'s [landmark] [does X]. [wry twist]."` Clever once; across a whole
+   pool it reads generated. `leader-victory-lines.json` had the same in the badge handoff
+   (`"…Badge—[trailing]"`), and `elite-victory-lines.json` ended nearly every line on
+   "Onward / Press on / the next gate awaits."
+2. **One voice for everyone.** Quarry local, Elite gatekeeper, streamer gym leader (Iono),
+   and a child all spoke in the same wry/portentous register with the same tics.
+
+**Kill-list (these are the AI fingerprints):**
+- A single repeated sentence shape across a pool. Vary opening word, length, and structure.
+- Trailing-qualifier tic: "…Most days.", "…this once.", "…probably.", "…usually."
+- The em-dash as default joint. Prefer periods, commas, real subordination. (Em-dash is fine
+  *occasionally*, for a genuine aside — not as every line's hinge.)
+- Reflexive rule-of-three and balanced antithesis ("badges, not legacies"; "bought the room —
+  nothing in it").
+- Hollow hype ("best", "ultimate", "epic", "seamless") and motivational padding on system
+  toasts ("…out there!", "…battle-ready!", "welcome to the X!"). A grant toast is a receipt:
+  `Received 1 Full Restore.`
+
+**Keep / strengthen:**
+- One concrete, specific image per line beats abstract profundity.
+- Distinct character registers — diversify wherever a pool spans many named characters
+  (gym leaders, the Elite Four); keep a steady house voice only for the ambient narrator
+  (`barks.json`).
+- **Pokémon-style opacity:** stay terse and curiosity-provoking on lore (don't explain the
+  mystery figure / the second footsteps / the broker); stay clear and modern on *mechanics*
+  and *what to do next*. Curiosity in the world, clarity in the UI.
+- The rationed loop-line per bark pool (last entry of `playerLastFaint`/`foeLastFaint`/
+  `fledRoad`) stays — it's design, not slop (§8).
+
+**Out of scope (do not "fix"):** the visual/CSS layer (intentional retro: Press Start 2P,
+gold-on-dark, beveled NES.css — not AI slop); `moves.json`/`abilities.json` mechanical effect
+strings (clarity is correct there); story beats, flow ordering, the creepypasta reframes, and
+the named-villain swap bridges (`substitution-bridges.json`).
