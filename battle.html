@@ -5349,6 +5349,29 @@
             45%  { opacity: 1; transform: translate(-50%,-50%) scale(2.2); }
             100% { opacity: 0; transform: translate(-50%,-50%) scale(3.6); }
         }
+        /* ── Story micro-games (RPS / read-the-tell / memory). Retro idiom:
+           sharp borders, gold accents, CSS-only motion gated by reduced-motion. */
+        .story-minigame-overlay { animation: storyNarrDialogIn 0.32s cubic-bezier(0.16,0.84,0.34,1); }
+        .story-mg-btn { transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease; }
+        .story-mg-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 0 rgba(255,213,79,0.35); }
+        .story-mg-btn:active { transform: translateY(1px); }
+        .story-mg-btn:disabled { opacity: 0.45; cursor: default; }
+        .story-mg-flip { display: inline-block; animation: storyMgFlip 0.42s cubic-bezier(0.34,1.4,0.5,1); }
+        @keyframes storyMgFlip {
+            0%   { transform: rotateY(90deg) scale(0.6); opacity: 0; }
+            55%  { transform: rotateY(-12deg) scale(1.15); opacity: 1; }
+            100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+        }
+        .story-mg-pad { transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease; }
+        .story-mg-pad.flash { transform: scale(1.12); filter: brightness(2.1) saturate(1.4); box-shadow: 0 0 18px 4px currentColor; }
+        .story-mg-pad.correct { animation: storyMgPadOk 0.3s ease; }
+        .story-mg-pad.wrong { animation: storyMgPadBad 0.4s ease; }
+        @keyframes storyMgPadOk  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+        @keyframes storyMgPadBad { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+        @media (prefers-reduced-motion: reduce) {
+            .story-minigame-overlay, .story-mg-flip,
+            .story-mg-pad.flash, .story-mg-pad.correct, .story-mg-pad.wrong { animation: none !important; transition: none !important; }
+        }
         /* Floating message bubble. */
         .storyfx-stage-banner {
             position: absolute; left: 50%; top: 6%;
@@ -11043,7 +11066,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _framing, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -11059,6 +11082,9 @@
                         fetch('data/story/routes.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/errands.json').then(r => r.json()).catch(() => null),
                         fetch('data/story/branches.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/minigames.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/interactions.json').then(r => r.json()).catch(() => null),
+                        fetch('data/story/framing.json').then(r => r.json()).catch(() => null),
                         fetch('data/dialogue/substitution-bridges.json').then(r => r.json()).catch(() => null),
                         fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
                         fetch('data/move-synergies.json').then(r => r.json()).catch(() => null),
@@ -11148,6 +11174,25 @@
                         STORY_BRANCH_INJECTS.push(..._branches.inject);
                         _indexStoryChoiceLabels(); // re-register existing authored choices
                         _applyStoryBranchInjects(); // then layer the JSON injects on top
+                    }
+                    // Story micro-games: merge game definitions into the registry,
+                    // then attach any interaction injects onto their scene acts.
+                    // Mutate in place (sloppy-mode safe) so captured refs see the data.
+                    if (_minigames && _minigames.games && typeof _minigames.games === 'object') {
+                        Object.assign(STORY_MINIGAMES, _minigames.games);
+                    }
+                    if (_interactions && Array.isArray(_interactions.inject) && _interactions.inject.length) {
+                        STORY_INTERACTIONS.length = 0;
+                        STORY_INTERACTIONS.push(..._interactions.inject);
+                        _applyStoryInteractions();
+                    }
+                    // Regular-pass framing overlay (speaker / tone / sensory line /
+                    // flavor choice) — applied after interactions so it only fills
+                    // gaps (it never overrides an attached interaction or choice).
+                    if (_framing && Array.isArray(_framing.inject) && _framing.inject.length) {
+                        STORY_FRAMING.length = 0;
+                        STORY_FRAMING.push(..._framing.inject);
+                        _applyStoryFraming();
                     }
                 } catch (e) {
                     console.error('[dialogue/type-chart/ball-math/shops] load failed:', e && (e.message || e));
@@ -34646,9 +34691,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "Somewhere mid-journey the world starts to feel small - routes you've never walked arranging themselves like you have." ] },
                                 { "phase": "development", "lines": [
                                     "A Pokémart radio at the Road 3 rest stop is playing a song you have absolutely heard before, all the way through, before it plays. The clerk doesn't react. To him it's just on." ] },
-                                { "phase": "climax", "lines": [
+                                { "phase": "climax", "tone": "mystery", "lines": [
                                     "Your map has a 'Welcome Back' sticker on it that wasn't there yesterday.",
-                                    "Back from where. You don't remember leaving. You fold the map so the sticker's on the inside and keep moving." ] }
+                                    "Back from where. You don't remember leaving. You fold the map so the sticker's on the inside and keep moving." ] },
+                                { "phase": "interaction", "tone": "mystery", "lines": [
+                                    "The rest-stop radio is playing a song you have absolutely heard before — all the way through, before it plays. The clerk doesn't react. To him it's just on.",
+                                    "You catch yourself humming a half-beat ahead of it. Hum it back, then. Prove you remember a thing you were never here to learn." ],
+                                  "interaction": { "gameId": "main_song_memory", "persistKey": "main.echo", "onWin": { "flag": { "key": "main.echo.heard" } }, "onLose": {} } }
                             ]
                   },
                   "villain.rocket.event2": {
@@ -34942,9 +34991,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The road gets long in the way a road does when it's been walked too many times by the same feet - familiar past the point of comfort." ] },
                                 { "phase": "development", "lines": [
                                     "A traveling stranger presses a beat-up Lucky Egg into your hand and says your starter's name. Warmly. Correctly. You never told him." ] },
-                                { "phase": "climax", "lines": [
-                                    "He waves you on without explanation. You don't ask.",
-                                    "Asking would mean admitting you noticed, and noticing, lately, has started to feel like a door you don't want to open standing this close to." ] }
+                                { "phase": "climax", "tone": "mystery", "speaker": "Traveling Stranger", "lines": [
+                                    "He waves you on without explanation. He knew your starter's name — warmly, correctly — and you never told him." ],
+                                  "choice": {
+                                    "persistKey": "main.stranger.ask",
+                                    "options": [
+                                      { "label": "\"How do you know that name?\"", "value": "asked", "reply": [
+                                        "He smiles, not unkindly. 'Same way I know you'll ask me that.' He's already walking. He doesn't look back.",
+                                        "Asking meant admitting you noticed. Noticing, lately, feels like a door you don't want to open standing this close to." ] },
+                                      { "label": "Pocket the Lucky Egg. Don't ask.", "value": "silent", "reply": [
+                                        "You don't ask. Asking would mean admitting you noticed, and noticing, lately, has started to feel like a door you don't want to open standing this close to." ] }
+                                    ]
+                                  }
+                                }
                             ]
                   },
                   "villain.rocket.event3": {
@@ -35271,7 +35330,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "Two Rocket grunts block the road, splitting the morning's take between them without looking up. Bills, not banter." ] },
                                 { "phase": "climax", "lines": [
                                     "They fight in lockstep - cover, rotate, close. No wasted motion, no villain speech.",
-                                    "These aren't kids playing dress-up. This is a shift, and you're standing in the middle of it." ] }
+                                    "These aren't kids playing dress-up. This is a shift. And a shift, you realize, can be bought a few minutes of looking the other way." ],
+                                  "choice": {
+                                    "persistKey": "rocket.battle1.toll",
+                                    "options": [
+                                        { "label": "Pay them their cut. Walk past. (300₲)", "value": "paid",
+                                          "requireGold": 300,
+                                          "effect": { "gold": -300, "skipBattle": true, "flag": { "key": "rocket.battle1.bought" } },
+                                          "reply": [
+                                            "You peel off the notes without a word. The nearer grunt counts them twice, pockets them, and steps aside like a turnstile.",
+                                            "'Smart kid,' he says, already bored of you. No fight - just a road that costs money, the way it always has." ],
+                                          "lockedReply": [
+                                            "You reach for your wallet and come up short. The grunt watches you do the math and grins. 'Then we do it the other way.'" ] },
+                                        { "label": "You don't pay Rocket. Anything.", "value": "fought",
+                                          "reply": [
+                                            "You put your wallet away. Some tolls you refuse on principle, even when principle is the expensive option.",
+                                            "They settle into their stances, almost relieved. This part, they know how to do." ] }
+                                    ]
+                                  }
+                                }
                             ]
                   },
                   "villain.magma.battle1": {
@@ -35518,9 +35595,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The closer you get to the League, the quieter the world goes - like a room holding its breath for something it's seen coming a long way off." ] },
                                 { "phase": "development", "lines": [
                                     "A Pokédex entry on your starter updates itself while you're looking at it. A sentence surfaces that was not there a second ago." ] },
-                                { "phase": "climax", "lines": [
+                                { "phase": "climax", "tone": "dread", "lines": [
                                     "It reads in your handwriting.",
-                                    "You have never written in your Pokédex. You'd remember writing that. You are beginning to understand that you might not - that remembering is the thing that's been getting taken." ] }
+                                    "You have never written in your Pokédex. You'd remember writing that. You are beginning to understand that you might not - that remembering is the thing that's been getting taken." ] },
+                                { "phase": "interaction", "tone": "dread", "lines": [
+                                    "The entry is still open. Most of it is the dry printed boilerplate the Dex says about everything.",
+                                    "One line surfaced while you were looking. Find the sentence that's yours." ],
+                                  "interaction": { "gameId": "main_dex_spot", "persistKey": "main.dex", "onWin": { "flag": { "key": "main.dex.seen" } }, "onLose": {} } }
                             ]
                   },
                   "villain.rocket.event4": {
@@ -36049,9 +36130,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "A wind picks up the higher you climb, the kind that's been over this peak a thousand times and remembers the shape of you better than you remember the climb." ] },
                                 { "phase": "development", "lines": [
                                     "A trainer at the foot of the ascent looks at you and says it softly, not a threat, almost fond: 'Tell The First we said hi.'" ] },
-                                { "phase": "climax", "lines": [
+                                { "phase": "climax", "tone": "mystery", "lines": [
                                     "You don't get to ask who that is. The wind takes them before you can.",
-                                    "But the name sits down in you like you've said it before - in your own voice, to someone smaller than you, on a peak just like this one." ] }
+                                    "But the name sits down in you like you've said it before - in your own voice, to someone smaller than you, on a peak just like this one." ] },
+                                { "phase": "interaction", "tone": "mystery",
+                                  "interaction": { "gameId": "main_first_riddle", "persistKey": "main.first", "onWin": { "flag": { "key": "main.first.named" } }, "onLose": {} } }
                             ]
                   },
                   "villain.rocket.event5": {
@@ -36319,9 +36402,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The League city hall keeps a wall of past Champions - faces going back further than the region's own records should allow, each behind glass, each named in brass." ] },
                                 { "phase": "development", "lines": [
                                     "The one at the end of the row is empty. Clean glass. A brass nameplate with no name on it yet, polished like it's expecting one." ] },
-                                { "phase": "climax", "lines": [
-                                    "You don't recognize the empty space. You recognize that you don't recognize it, which is worse.",
-                                    "Something is supposed to be there. Something that hasn't happened yet - or has happened, too many times to keep counting." ] }
+                                { "phase": "climax", "tone": "dread", "lines": [
+                                    "You don't recognize the empty space. You recognize that you don't recognize it, which is worse." ],
+                                  "choice": {
+                                    "persistKey": "main.portrait.measure",
+                                    "options": [
+                                      { "label": "Step up. Measure yourself against the empty frame.", "value": "measured", "reply": [
+                                        "You stand where a portrait would hang. The frame fits you. You notice this without deciding to, and wish you hadn't.",
+                                        "Something is supposed to be there. Something that hasn't happened yet — or has happened, too many times to keep counting." ] },
+                                      { "label": "Look away. You don't want to know your size yet.", "value": "away", "reply": [
+                                        "You make yourself look at the floor, the exits, anything with a name already on it.",
+                                        "Something is supposed to be there. You decline, for now, to learn what." ] }
+                                    ]
+                                  }
+                                }
                             ]
                   },
                   "villain.rocket.miniBoss": {
@@ -36562,9 +36656,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "Past the Elite Four, in the long hallway before the Champion's chamber, the light goes thin and the air goes ceremonial." ] },
                                 { "phase": "development", "lines": [
                                     "A staffer whispers as you pass, without looking up from her clipboard - 'He's tired.'" ] },
-                                { "phase": "climax", "lines": [
-                                    "You assume she means the Champion. You're not sure.",
-                                    "There was too much history in the way she said 'he' for a man you're about to meet for the very first time." ] }
+                                { "phase": "climax", "tone": "mystery", "speaker": "League Staffer", "lines": [
+                                    "You assume she means the Champion. You're not sure." ],
+                                  "choice": {
+                                    "persistKey": "main.champ.overhear",
+                                    "options": [
+                                      { "label": "Slow your step. Overhear the rest.", "value": "listened", "effect": { "flag": { "key": "main.champ.knew" } }, "reply": [
+                                        "You catch the next of it, not meant for you: '...third time this season. Same moves, different faces. He's tired of winning the way you'd be tired of breathing.'",
+                                        "There was too much history in the way she said 'he' for a man you're about to meet for the very first time." ] },
+                                      { "label": "Keep walking. Let her have her shorthand.", "value": "passed", "reply": [
+                                        "You let it go. Some sentences are doors, and you've opened enough doors this week.",
+                                        "Still — there was too much history in the way she said 'he' for a man you're about to meet for the very first time." ] }
+                                    ]
+                                  }
+                                }
                             ]
                   },
                   "villain.rocket.event6": {
@@ -36852,9 +36957,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The Champion congratulates you - genuinely, warmly, the handshake of someone glad to finally hand the weight to somebody else." ] },
                                 { "phase": "development", "lines": [
                                     "Then he pauses, still holding your hand, and says it quietly enough that the cameras don't catch it: 'The crown isn't the last fight.'" ] },
-                                { "phase": "climax", "lines": [
-                                    "Your rival is waiting outside. They look smaller than you remember - or smaller than the role needs them to be.",
-                                    "The story isn't over. Somehow you already knew the story is never over, and that, more than any of it, is the thing that's started to frighten you." ] }
+                                { "phase": "climax", "tone": "rival", "lines": [
+                                    "Your rival is waiting outside. They look smaller than you remember - or smaller than the role needs them to be." ],
+                                  "choice": {
+                                    "persistKey": "main.reflect",
+                                    "options": [
+                                      { "label": "\"I finally won. This is mine.\"", "value": "proud", "reply": [
+                                        "You let yourself have it — the whole bright weight of it — for exactly as long as it lasts.",
+                                        "Then: the story isn't over. It's never over. That, more than any of it, is the thing that's started to frighten you." ] },
+                                      { "label": "\"Nothing feels finished.\"", "value": "uneasy", "reply": [
+                                        "The crown sits on you like a borrowed coat, and you can't say why.",
+                                        "The story isn't over. Somehow you already knew it never is — and the knowing is the thing that frightens you." ] },
+                                      { "label": "\"I'm afraid of what I've become.\"", "value": "afraid", "reply": [
+                                        "You don't say it aloud. You just feel it — a title, a smaller rival, a cold certainty in the doorway.",
+                                        "The story isn't over. It's never over. You're beginning to understand that you're the reason." ] }
+                                    ]
+                                  }
+                                }
                             ]
                   },
                   "villain.rocket.boss": {
@@ -37223,9 +37342,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The Hall of Fame doors close behind you with a sound like a held breath let go. In the museum hallway, the lights flicker - once, deliberate, a cue." ] },
                                 { "phase": "development", "lines": [
                                     "A figure stands by the empty portrait at the end of the wall, in your trainer outfit, cap pulled low. They've been waiting for you to be done." ] },
-                                { "phase": "climax", "lines": [
+                                { "phase": "climax", "tone": "dread", "lines": [
                                     "They turn around. The brass nameplate beside them isn't empty anymore - it reads your name.",
-                                    "Your name, with an extra digit at the end you don't remember entering. A number. A count. You read it twice and your skin goes cold around it." ] }
+                                    "Your name, with an extra digit at the end you don't remember entering. A number. A count. You read it twice and your skin goes cold around it." ] },
+                                { "phase": "interaction", "tone": "dread",
+                                  "interaction": { "gameId": "main_count_cipher", "persistKey": "main.count", "onWin": { "flag": { "key": "main.count.read" } }, "onLose": {} } }
                             ]
                   },
                   "villain.rocket.ending": {
@@ -39171,6 +39292,736 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window._indexStoryChoiceLabels = _indexStoryChoiceLabels;
         _indexStoryChoiceLabels();   // register existing authored choices
         _applyStoryBranchInjects();  // apply DEFAULT (empty) injects; load() re-applies JSON
+
+        // ════════════════════════════════════════════════════════════════════
+        // STORY MICRO-GAMES (v28) — interactive story beats: rock-paper-scissors,
+        // read-the-tell, and memory/sequence. Design law: a micro-game is a SPICE,
+        // never a gate. Its outcome adjusts flavor + a LIGHT effect (gold / item /
+        // flag, or skip/soften the *next single* battle). It NEVER forks which
+        // beat/battle fires — sm.eventIndex is untouched on every path.
+        //
+        // Definitions live in data/story/minigames.json (keyed by id); attachments
+        // in data/story/interactions.json. Both ship EMPTY by default so no live
+        // story content activates without maintainer sign-off — mirroring the
+        // branches.json stance. The renderers + effect engine are code here; the
+        // tunable numbers (rounds, odds/tell, rewards) are data the maintainer owns.
+        // Seeded throughout via window.storyRngNext for byte-identical replays.
+        // ────────────────────────────────────────────────────────────────────
+        const DEFAULT_STORY_MINIGAMES = {};
+        const STORY_MINIGAMES = {};
+        Object.assign(STORY_MINIGAMES, DEFAULT_STORY_MINIGAMES);
+        window.STORY_MINIGAMES = STORY_MINIGAMES;
+        const DEFAULT_STORY_INTERACTIONS = [];
+        const STORY_INTERACTIONS = [];
+        STORY_INTERACTIONS.push(...DEFAULT_STORY_INTERACTIONS);
+        window.STORY_INTERACTIONS = STORY_INTERACTIONS;
+        // Attach each inject's `interaction` spec onto the named STORY_SCENES act
+        // (matched by phase, else the last act) — idempotent, mirrors
+        // _applyStoryBranchInjects. Ships inert (STORY_INTERACTIONS empty by default).
+        function _applyStoryInteractions() {
+            try {
+                for (const inj of STORY_INTERACTIONS) {
+                    if (!inj || !inj.sceneKey || !inj.interaction) continue;
+                    const sc = (typeof STORY_SCENES === 'object') ? STORY_SCENES[inj.sceneKey] : null;
+                    if (!sc || !Array.isArray(sc.acts)) continue;
+                    const act = inj.phase ? sc.acts.find(a => a && a.phase === inj.phase) : sc.acts[sc.acts.length - 1];
+                    if (!act) continue;
+                    act.interaction = inj.interaction;
+                }
+            } catch (e) { console.warn('[Story] interaction inject failed', e); }
+        }
+        window._applyStoryInteractions = _applyStoryInteractions;
+
+        // ── Regular-pass FRAMING overlay (v28) ───────────────────────────────
+        // The "every beat gets modernized" layer: per-act speaker plate, tone
+        // (→ accent), an optional appended sensory/atmosphere line, and an
+        // optional pure-flavor choice — all as DATA in data/story/framing.json,
+        // so the modernization pass never touches the 4 MB STORY_SCENES literal
+        // and stays fully reviewable/revertible. Mirrors branches/interactions:
+        // matched by sceneKey + phase (else last act); ships EMPTY by default.
+        // A framing entry never overrides an existing interaction/branches/choice
+        // on the act — it only fills gaps — so it can't fight an authored beat.
+        const DEFAULT_STORY_FRAMING = [];
+        const STORY_FRAMING = [];
+        STORY_FRAMING.push(...DEFAULT_STORY_FRAMING);
+        window.STORY_FRAMING = STORY_FRAMING;
+        function _applyStoryFraming() {
+            try {
+                for (const f of STORY_FRAMING) {
+                    if (!f || !f.sceneKey) continue;
+                    const sc = (typeof STORY_SCENES === 'object') ? STORY_SCENES[f.sceneKey] : null;
+                    if (!sc || !Array.isArray(sc.acts)) continue;
+                    const act = f.phase ? sc.acts.find(a => a && a.phase === f.phase) : sc.acts[sc.acts.length - 1];
+                    if (!act) continue;
+                    if (f.speaker != null) act.speaker = f.speaker;
+                    if (f.tone != null) act.tone = f.tone;
+                    if (f.spriteSide != null) act.spriteSide = f.spriteSide;
+                    // Append an atmosphere line only to a plain `lines` act (never a
+                    // branch act, whose lines are chosen at runtime).
+                    if (Array.isArray(f.appendLines) && f.appendLines.length && Array.isArray(act.lines)) {
+                        act.lines = act.lines.concat(f.appendLines);
+                    }
+                    // Attach a flavor choice only when the act is otherwise inert —
+                    // never clobber an authored choice / interaction / branch set.
+                    // Tagged `flavor:true` so it's distinguishable from the one
+                    // canonical, payoff-driving choice an arc carries (guards count
+                    // only non-flavor choices). Renders identically in the overlay.
+                    if (f.choice && f.choice.persistKey && !act.choice && !act.interaction && !act.branches) {
+                        act.choice = Object.assign({ flavor: true }, f.choice);
+                        try { _registerStoryChoiceLabel(f.choice.persistKey, f.label || sc.title || f.sceneKey, f.choice.options); } catch (e) {}
+                    }
+                }
+            } catch (e) { console.warn('[Story] framing inject failed', e); }
+        }
+        window._applyStoryFraming = _applyStoryFraming;
+        _applyStoryFraming(); // apply DEFAULT (empty) framing; load() re-applies JSON
+
+        // Local HTML escaper — _esc lives far downstream; keep the module self-contained.
+        function _mgEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+            });
+        }
+        // mulberry32 LCG — matches storyRngNext's algorithm so test seeds line up
+        // with production replays. Returns a 0..1 generator from an integer seed.
+        function _mgMulberry(seed) {
+            let s = (seed >>> 0) || 1;
+            return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+        }
+        // Resolve the RNG for a game: an explicit opts.rng (tests), else the seeded
+        // story RNG when a run is live, else a time-seeded fallback (free-play demo).
+        function _mgResolveRng(opts) {
+            if (opts && typeof opts.rng === 'function') return opts.rng;
+            try { if (typeof window.storyRngNext === 'function' && sm && sm.runSeed != null) return window.storyRngNext; } catch (e) {}
+            return _mgMulberry((Date.now() & 0xffffffff) >>> 0);
+        }
+
+        // ── Pure adjudication primitives (deterministic, DOM-free, unit-tested) ──
+        const _MG_THROWS = ['rock', 'paper', 'scissors'];
+        // 1 if a beats b, -1 if a loses, 0 tie. rock=0 paper=1 scissors=2:
+        // a beats b when b is the throw a counters, i.e. (b+1)%3 === a
+        // (rock>scissors, paper>rock, scissors>paper).
+        function _mgRpsBeats(a, b) { if (a === b) return 0; return (((b + 1) % 3) === a) ? 1 : -1; }
+        // Deterministic CPU throw. cfg.tell (0..1) is the chance the CPU plays its
+        // telegraphed throw cfg.tellThrow — the exploitable pattern an observant
+        // player can read (the only way RPS carries skill). Single rng draw.
+        function _mgRpsCpuThrow(rng, cfg) {
+            const tell = (cfg && typeof cfg.tell === 'number') ? Math.max(0, Math.min(1, cfg.tell)) : 0;
+            const r = rng();
+            if (tell > 0 && cfg && cfg.tellThrow != null && r < tell) return (((cfg.tellThrow | 0) % 3) + 3) % 3;
+            return Math.floor(r * 3) % 3;
+        }
+        // Seeded symbol sequence for the memory game (indices into a symbol set).
+        function _mgMemorySequence(rng, len, symbols) {
+            const n = (symbols && symbols.length) ? symbols.length : 4;
+            const out = [];
+            for (let i = 0; i < (len | 0); i++) out.push(Math.floor(rng() * n) % n);
+            return out;
+        }
+
+        // ── Light-effect engine ─────────────────────────────────────────────
+        // The ONLY sanctioned way a micro-game touches game state. Mutates the
+        // existing sm.gold / sm.inventory / sm.flags (no SAVE_VER bump). Battle
+        // modifiers stamp a per-row flag the battle setup reads — they do not move
+        // the timeline. Returns a summary of what was applied (for tests + toasts).
+        // Add a specific species to the player's roster as a story gift (party if
+        // there's room, else PC). Mirrors the professor/egg slot shape exactly
+        // ({ name, build, id }) and marks the dex. Returns the placement or null.
+        function _storyGiftSpecies(species) {
+            try {
+                if (!species || typeof makeBuild !== 'function' || typeof sm !== 'object' || !sm) return null;
+                if (!Array.isArray(sm.team)) sm.team = [];
+                if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
+                const build = makeBuild(species);
+                const slot = { name: species, build: build, id: 'm_' + Math.random().toString(36).slice(2, 10) };
+                let placed;
+                const cap = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                if (sm.team.length < cap) { sm.team.push(slot); placed = 'party'; }
+                else { sm.pcBox.push(slot); placed = 'PC'; }
+                try { _storyMarkDexCaught(species, !!(build && build._isShiny)); } catch (e) {}
+                try { renderTeamPanel(); } catch (e) {}
+                return placed;
+            } catch (e) { console.warn('[Story] gift species failed', species, e); return null; }
+        }
+        function _applyStoryInteractionOutcome(effect) {
+            const applied = { gold: 0, items: [], flags: [], battle: null, gift: null };
+            if (!effect || typeof effect !== 'object') return applied;
+            try {
+                if (typeof effect.gold === 'number' && effect.gold !== 0 && typeof sm === 'object' && sm) {
+                    sm.gold = Math.max(0, (sm.gold | 0) + (effect.gold | 0));
+                    applied.gold = effect.gold | 0;
+                }
+                if (effect.item && effect.item.id && typeof sm === 'object' && sm) {
+                    const qty = Math.max(1, (effect.item.qty | 0) || 1);
+                    sm.inventory = sm.inventory || {};
+                    sm.inventory[effect.item.id] = (sm.inventory[effect.item.id] | 0) + qty;
+                    applied.items.push({ id: effect.item.id, qty: qty });
+                }
+                if (effect.flag && effect.flag.key && typeof sm === 'object' && sm) {
+                    sm.flags = sm.flags || {};
+                    sm.flags[effect.flag.key] = (effect.flag.val !== undefined) ? effect.flag.val : true;
+                    applied.flags.push(effect.flag.key);
+                }
+                // Gift a specific Pokémon (signature reward — e.g. a recruited
+                // partner). Non-economy, non-battle-stat: it simply joins the roster.
+                if (effect.giftPokemon) {
+                    const _sp = (typeof effect.giftPokemon === 'string') ? effect.giftPokemon
+                        : (effect.giftPokemon && effect.giftPokemon.species);
+                    const _placed = _storyGiftSpecies(_sp);
+                    if (_placed) applied.gift = { species: _sp, placed: _placed };
+                }
+                // NOTE: softenBattle is DEPRECATED by design — per CLAUDE.md a story
+                // interaction must not change battle MECHANICS. It is retained only so
+                // the existing flag round-trip test keeps passing; no shipped content
+                // authors it. skipBattle (the rare pacifist/ransom "no fight" route) is
+                // the only sanctioned battle-level outcome.
+                if ((effect.skipBattle || effect.softenBattle) && typeof sm === 'object' && sm) {
+                    sm.flags = sm.flags || {};
+                    const row = (effect.row != null) ? (effect.row | 0) : (sm.eventIndex | 0);
+                    if (effect.skipBattle) {
+                        sm.flags['mgSkipBattle:' + row] = true;
+                        applied.battle = { row: row, skip: true };
+                    } else {
+                        const mod = {
+                            hpMult: Number(effect.softenBattle.hpMult) || 1,
+                            levelDelta: effect.softenBattle.levelDelta | 0
+                        };
+                        sm.flags['mgSoftenBattle:' + row] = mod;
+                        applied.battle = { row: row, soften: mod };
+                    }
+                }
+            } catch (e) { console.warn('[Story] interaction outcome apply failed', e); }
+            return applied;
+        }
+        window._applyStoryInteractionOutcome = _applyStoryInteractionOutcome;
+        // Read back any battle modifier a prior micro-game stamped for a given
+        // timeline row. Returns null / { skip } / { soften:{hpMult,levelDelta} }.
+        // NOTE: the call site in enterBattleEvent is added in the content-rollout
+        // phase (it is a story-flow edit needing its own sign-off); until then this
+        // is inert — no flag is ever set without a live interaction, which ships off.
+        function _mgBattleModForRow(row) {
+            try {
+                const f = (typeof sm === 'object' && sm && sm.flags) ? sm.flags : null;
+                if (!f) return null;
+                const r = row | 0;
+                if (f['mgSkipBattle:' + r]) return { skip: true };
+                if (f['mgSoftenBattle:' + r]) return { soften: f['mgSoftenBattle:' + r] };
+            } catch (e) {}
+            return null;
+        }
+        window._mgBattleModForRow = _mgBattleModForRow;
+
+        // ── Overlay scaffold ─────────────────────────────────────────────────
+        function _mgMountOverlay(toneClass) {
+            const ov = document.createElement('div');
+            ov.className = 'story-minigame-overlay' + (toneClass ? (' ' + toneClass) : '');
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;box-sizing:border-box;background:linear-gradient(180deg,rgba(4,6,12,0.92),rgba(4,6,12,0.97));color:#e8e8e8;font-family:inherit;text-align:center;';
+            try { document.body.appendChild(ov); } catch (e) {}
+            return ov;
+        }
+        function _mgTeardown(ov) { try { ov && ov.remove(); } catch (e) {} }
+        function _mgBtn(label, big) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'story-mg-btn';
+            b.style.cssText = 'padding:' + (big ? '14px 18px' : '9px 16px') + ';background:#1a2a4a;color:#fff;border:2px solid #ffd54f;border-radius:6px;cursor:pointer;font-family:inherit;line-height:1.4;' + (big ? 'font-size:30px;' : 'font-size:13px;');
+            b.innerHTML = label;
+            return b;
+        }
+        function _mgContinueBtn(onClick) {
+            const c = document.createElement('button');
+            c.type = 'button'; c.textContent = 'Continue →';
+            c.style.cssText = 'margin-top:10px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;font-family:inherit;';
+            c.addEventListener('click', onClick);
+            return c;
+        }
+        function _mgReducedMotion() {
+            try {
+                if (typeof window !== 'undefined' && window.__testHarness === true) return true;
+                if (typeof settings !== 'undefined' && settings && settings.animations === false) return true;
+                if (window.StoryFx && typeof window.StoryFx.isReducedMotion === 'function' && window.StoryFx.isReducedMotion()) return true;
+            } catch (e) {}
+            return false;
+        }
+
+        // ── Headless / forced resolver (tests, reduced-motion auto-play) ─────
+        function _mgAutoResolve(cfg, rng, opts) {
+            const type = cfg.type || 'tell';
+            if (type === 'rps') {
+                const rounds = Math.max(1, (cfg.rounds | 0) || 3);
+                const need = Math.floor(rounds / 2) + 1;
+                const pStrat = (opts && Array.isArray(opts.playerThrows)) ? opts.playerThrows : null;
+                let pw = 0, cw = 0, i = 0; const log = [];
+                while (pw < need && cw < need && i < rounds) {
+                    const cpu = _mgRpsCpuThrow(rng, cfg);
+                    const ply = pStrat ? ((((pStrat[i % pStrat.length]) | 0) % 3) + 3) % 3 : 1;
+                    const r = _mgRpsBeats(ply, cpu);
+                    if (r > 0) pw++; else if (r < 0) cw++;
+                    log.push({ ply: ply, cpu: cpu, r: r }); i++;
+                }
+                return { outcome: pw > cw ? 'win' : (cw > pw ? 'lose' : 'draw'), detail: { pw: pw, cw: cw, log: log } };
+            }
+            if (type === 'memory') {
+                const len = Math.max(2, (cfg.length | 0) || 4);
+                const seq = _mgMemorySequence(rng, len, cfg.symbols);
+                return { outcome: (opts && opts.forceMistake) ? 'lose' : 'win', detail: { sequence: seq } };
+            }
+            if (type === 'riddle') {
+                const steps = (Array.isArray(cfg.steps) && cfg.steps.length) ? cfg.steps
+                    : [{ answer: cfg.answer | 0 }];
+                const passN = (cfg.passN != null) ? (cfg.passN | 0) : steps.length;
+                const picks = (opts && Array.isArray(opts.picks)) ? opts.picks : null;
+                let correctN = 0;
+                steps.forEach(function (st, i) {
+                    const p = picks ? (picks[i] | 0) : (st.answer | 0);
+                    if (p === (st.answer | 0)) correctN++;
+                });
+                return { outcome: correctN >= passN ? 'win' : 'lose', detail: { correct: correctN } };
+            }
+            if (type === 'cipher') {
+                const answer = Array.isArray(cfg.answer) ? cfg.answer : [];
+                const entry = (opts && Array.isArray(opts.entry)) ? opts.entry : answer;
+                const ok = entry.length === answer.length && entry.every(function (e, k) { return (e | 0) === (answer[k] | 0); });
+                return { outcome: ok ? 'win' : 'lose', detail: { entry: entry } };
+            }
+            if (type === 'craft') {
+                if (opts && opts.forceMistake) return { outcome: 'lose', detail: null };
+                return { outcome: 'win', detail: null };
+            }
+            // tell / spot — single labelled pick against cfg.answer
+            const correct = cfg.answer | 0;
+            const pick = (opts && typeof opts.pick === 'number') ? opts.pick : correct;
+            return { outcome: pick === correct ? 'win' : 'lose', detail: { pick: pick, correct: correct } };
+        }
+
+        // ── DOM renderers ────────────────────────────────────────────────────
+        function _mgRunRps(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const rounds = Math.max(1, (cfg.rounds | 0) || 3);
+            const need = Math.floor(rounds / 2) + 1;
+            const ICONS = ['✊', '✋', '✌️'], NAMES = ['Rock', 'Paper', 'Scissors'];
+            const title = cfg.title || 'Rock · Paper · Scissors';
+            const prompt = cfg.prompt || ('Best of ' + rounds + ' — make your throw.');
+            let pw = 0, cw = 0, played = 0;
+            function head() {
+                const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title; return h;
+            }
+            function scoreEl() {
+                const s = document.createElement('div');
+                s.style.cssText = 'font-size:12px;letter-spacing:0.14em;color:#cfd8e6;';
+                s.textContent = 'YOU ' + pw + ' — ' + cw + ' THEM   (first to ' + need + ')';
+                return s;
+            }
+            function render(resultHtml) {
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box';
+                box.style.cssText = 'max-width:520px;min-height:46px;';
+                box.innerHTML = resultHtml || ('<p class="story-dialog-text">' + _mgEsc(prompt) + '</p>');
+                const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;justify-content:center;';
+                for (let t = 0; t < 3; t++) {
+                    const b = _mgBtn(ICONS[t] + '<div style="font-size:10px;margin-top:6px;letter-spacing:0.1em;">' + NAMES[t].toUpperCase() + '</div>', true);
+                    (function (throwIdx) { b.addEventListener('click', function () { playRound(throwIdx); }); })(t);
+                    row.appendChild(b);
+                }
+                ov.appendChild(head()); ov.appendChild(scoreEl()); ov.appendChild(box); ov.appendChild(row);
+            }
+            function playRound(ply) {
+                const cpu = _mgRpsCpuThrow(rng, cfg);
+                const r = _mgRpsBeats(ply, cpu);
+                if (r > 0) pw++; else if (r < 0) cw++;
+                played++;
+                const verdict = r > 0 ? 'You win the round.' : (r < 0 ? 'They take it.' : 'A draw — no score.');
+                const flipCls = _mgReducedMotion() ? '' : ' class="story-mg-flip"';
+                const html = '<p class="story-dialog-text">You: ' + ICONS[ply] + ' ' + NAMES[ply] + '   ·   Them: <span' + flipCls + '>' + ICONS[cpu] + '</span> ' + NAMES[cpu] + '</p>' +
+                    '<p class="story-dialog-text" style="margin-top:8px;">' + verdict + '</p>';
+                if (pw >= need || cw >= need || played >= rounds) finish(html); else render(html);
+            }
+            function finish(lastHtml) {
+                ov.innerHTML = '';
+                const outcome = pw > cw ? 'win' : (cw > pw ? 'lose' : 'draw');
+                const endLine = outcome === 'win' ? (cfg.winLine || 'You read them. The match is yours.')
+                    : (outcome === 'lose' ? (cfg.loseLine || 'Not your day.') : (cfg.drawLine || 'Dead even.'));
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '520px';
+                box.innerHTML = lastHtml + '<p class="story-dialog-text" style="margin-top:8px;color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(head()); ov.appendChild(box);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { pw: pw, cw: cw }); }));
+            }
+            render(null);
+        }
+
+        function _mgRunTell(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'Read the Tell';
+            const options = Array.isArray(cfg.options) ? cfg.options : [];
+            const correct = cfg.answer | 0;
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '540px';
+            box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.tell || cfg.prompt || '') + '</p>';
+            const col = document.createElement('div'); col.style.cssText = 'display:flex;flex-direction:column;gap:6px;max-width:540px;width:100%;margin-top:8px;';
+            options.forEach(function (opt, i) {
+                const label = (typeof opt === 'string') ? opt : (opt && opt.label) || '';
+                const b = _mgBtn('▸ ' + _mgEsc(label), false);
+                b.style.textAlign = 'left';
+                b.addEventListener('click', function () { pick(i); });
+                col.appendChild(b);
+            });
+            function pick(i) {
+                const outcome = (i === correct) ? 'win' : 'lose';
+                const opt = options[i];
+                const reply = (opt && opt.reply) ? (Array.isArray(opt.reply) ? opt.reply : [opt.reply])
+                    : [outcome === 'win' ? (cfg.winLine || 'You called it.') : (cfg.loseLine || 'You misread them.')];
+                ov.innerHTML = '';
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '540px';
+                rb.innerHTML = reply.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { pick: i, correct: correct }); }));
+            }
+            ov.appendChild(h); ov.appendChild(box); ov.appendChild(col);
+        }
+
+        function _mgRunMemory(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'Hold the Pattern';
+            const SYMS = (Array.isArray(cfg.symbols) && cfg.symbols.length) ? cfg.symbols : ['🔴', '🔵', '🟡', '🟢'];
+            const COLORS = ['#f44336', '#29b6f6', '#ffc107', '#4caf50', '#ce93d8', '#ff8a65'];
+            const len = Math.max(2, (cfg.length | 0) || 4);
+            const seq = _mgMemorySequence(rng, len, SYMS);
+            let input = [];
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '520px';
+            const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center;';
+            const pads = [];
+            for (let i = 0; i < SYMS.length; i++) {
+                const p = document.createElement('button');
+                p.type = 'button'; p.className = 'story-mg-btn story-mg-pad';
+                p.style.cssText = 'font-size:30px;padding:16px 20px;background:#11151f;border:2px solid ' + COLORS[i % COLORS.length] + ';color:' + COLORS[i % COLORS.length] + ';border-radius:8px;cursor:pointer;';
+                p.innerHTML = SYMS[i];
+                pads.push(p); grid.appendChild(p);
+                (function (idx) { p.addEventListener('click', function () { onPad(idx); }); })(i);
+            }
+            ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+            function setPadsEnabled(on) { pads.forEach(function (p) { p.disabled = !on; }); }
+            function flashPad(idx, cb) {
+                const p = pads[idx]; if (!p) { cb && cb(); return; }
+                p.classList.add('flash');
+                setTimeout(function () { p.classList.remove('flash'); cb && cb(); }, 320);
+            }
+            function showSequence() {
+                box.innerHTML = '<p class="story-dialog-text">Watch — then repeat the pattern.</p>';
+                setPadsEnabled(false);
+                if (_mgReducedMotion()) {
+                    // Reduced-motion / headless: list the order as text, then accept input.
+                    box.innerHTML = '<p class="story-dialog-text">Repeat this order:</p><p class="story-dialog-text" style="font-size:24px;letter-spacing:6px;">' + seq.map(function (s) { return SYMS[s]; }).join(' ') + '</p>';
+                    setPadsEnabled(true); return;
+                }
+                let i = 0;
+                (function step() {
+                    if (i >= seq.length) { box.innerHTML = '<p class="story-dialog-text">Your turn.</p>'; setPadsEnabled(true); return; }
+                    flashPad(seq[i], function () { i++; setTimeout(step, 180); });
+                })();
+            }
+            function finish(outcome) {
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'Held it. Clean.') : (cfg.loseLine || 'The pattern slipped.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '520px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { sequence: seq }); }));
+            }
+            function onPad(idx) {
+                const pos = input.length;
+                if (seq[pos] !== idx) {
+                    pads[idx].classList.add('wrong');
+                    setPadsEnabled(false);
+                    setTimeout(function () { finish('lose'); }, 420);
+                    return;
+                }
+                pads[idx].classList.add('correct');
+                setTimeout(function () { pads[idx].classList.remove('correct'); }, 300);
+                input.push(idx);
+                if (input.length >= seq.length) { setPadsEnabled(false); setTimeout(function () { finish('win'); }, 320); }
+            }
+            showSequence();
+        }
+
+        // ── Riddle: a dialogue that is itself the puzzle. A short clue lead-in,
+        // then 1..N question steps (each a labelled multiple-choice). Win when the
+        // number correct meets cfg.passN (default: all steps). A spice, never a
+        // gate — losing still advances. Deterministic (no RNG; authored order).
+        function _mgRunRiddle(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'A Riddle';
+            const steps = (Array.isArray(cfg.steps) && cfg.steps.length) ? cfg.steps
+                : [{ q: cfg.tell || cfg.prompt || '', options: cfg.options || [], answer: cfg.answer | 0 }];
+            const passN = (cfg.passN != null) ? (cfg.passN | 0) : steps.length;
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            let si = 0, correct = 0; const picks = [];
+            function renderIntro(after) {
+                const intro = Array.isArray(cfg.intro) ? cfg.intro : (cfg.intro ? [cfg.intro] : []);
+                if (!intro.length) { after(); return; }
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '540px';
+                box.innerHTML = intro.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(box);
+                ov.appendChild(_mgContinueBtn(function () { after(); }));
+            }
+            function renderStep() {
+                if (si >= steps.length) { finish(); return; }
+                const st = steps[si] || {};
+                const options = Array.isArray(st.options) ? st.options : [];
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '540px';
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(st.q || '') + '</p>';
+                const col = document.createElement('div'); col.style.cssText = 'display:flex;flex-direction:column;gap:6px;max-width:540px;width:100%;margin-top:8px;';
+                options.forEach(function (opt, i) {
+                    const label = (typeof opt === 'string') ? opt : (opt && opt.label) || '';
+                    const b = _mgBtn('▸ ' + _mgEsc(label), false); b.style.textAlign = 'left';
+                    b.addEventListener('click', function () { pick(i); });
+                    col.appendChild(b);
+                });
+                ov.appendChild(h); ov.appendChild(box); ov.appendChild(col);
+            }
+            function pick(i) {
+                const st = steps[si] || {}; const options = Array.isArray(st.options) ? st.options : [];
+                const ok = (i === (st.answer | 0)); if (ok) correct++; picks.push(i);
+                const opt = options[i];
+                const reply = (opt && opt.reply) ? (Array.isArray(opt.reply) ? opt.reply : [opt.reply])
+                    : [ok ? (st.winLine || 'Right.') : (st.loseLine || 'Not quite.')];
+                ov.innerHTML = '';
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '540px';
+                rb.innerHTML = reply.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { si++; renderStep(); }));
+            }
+            function finish() {
+                const outcome = (correct >= passN) ? 'win' : 'lose';
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'The answer settles into place.') : (cfg.loseLine || 'The thread slips away.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '540px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { correct: correct, picks: picks }); }));
+            }
+            renderIntro(renderStep);
+        }
+
+        // ── Spot the tell: an observation beat. A prompt + a row of cards; one is
+        // the "off" one (cfg.answer). Pick it to win. Optional reveal lines after.
+        function _mgRunSpot(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'What Doesn’t Fit';
+            const items = Array.isArray(cfg.items) ? cfg.items : [];
+            const correct = cfg.answer | 0;
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '560px';
+            box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.prompt || 'Something here is wrong. Find it.') + '</p>';
+            const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center;max-width:600px;';
+            items.forEach(function (it, i) {
+                const label = (typeof it === 'string') ? it : (it && it.label) || '';
+                const b = _mgBtn(_mgEsc(label), false);
+                b.style.cssText += 'max-width:170px;white-space:normal;';
+                b.addEventListener('click', function () { pick(i); });
+                grid.appendChild(b);
+            });
+            function pick(i) {
+                const outcome = (i === correct) ? 'win' : 'lose';
+                const it = items[i];
+                const reply = (it && it.reply) ? (Array.isArray(it.reply) ? it.reply : [it.reply])
+                    : [outcome === 'win' ? (cfg.winLine || 'There it is. You saw it.') : (cfg.loseLine || 'It looked right. It wasn’t the one.')];
+                ov.innerHTML = '';
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '560px';
+                rb.innerHTML = reply.map(function (l) { return '<p class="story-dialog-text">' + _mgEsc(l) + '</p>'; }).join('');
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { pick: i, correct: correct }); }));
+            }
+            ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+        }
+
+        // ── Cipher: a code-lock. A clue + a keypad of symbols; enter a sequence of
+        // cfg.length. Match cfg.answer (array of symbol indices) within cfg.attempts.
+        function _mgRunCipher(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'The Lock';
+            const SYMS = (Array.isArray(cfg.symbols) && cfg.symbols.length) ? cfg.symbols : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+            const answer = Array.isArray(cfg.answer) ? cfg.answer.map(function (x) { return x | 0; }) : [];
+            const len = (cfg.length | 0) || answer.length || 3;
+            const maxAtt = Math.max(1, (cfg.attempts | 0) || 3);
+            let att = 0, entry = [];
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '520px';
+            const readout = document.createElement('div'); readout.style.cssText = 'font-size:26px;letter-spacing:8px;margin-top:8px;min-height:32px;color:#ffd54f;';
+            const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center;max-width:420px;';
+            function refresh() {
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.clue || cfg.prompt || 'Enter the code.') + '</p>'
+                    + '<p class="story-dialog-text" style="font-size:11px;letter-spacing:0.14em;color:#cfd8e6;">ATTEMPT ' + (att + 1) + ' / ' + maxAtt + '</p>';
+                readout.textContent = entry.map(function (e) { return SYMS[e]; }).join(' ') || '·'.repeat(len).split('').join(' ');
+            }
+            SYMS.forEach(function (s, i) {
+                const b = _mgBtn(_mgEsc(s), false);
+                b.addEventListener('click', function () {
+                    if (entry.length >= len) return;
+                    entry.push(i); refresh();
+                    if (entry.length === len) setTimeout(submit, 220);
+                });
+                grid.appendChild(b);
+            });
+            function submit() {
+                const ok = entry.length === answer.length && entry.every(function (e, k) { return e === answer[k]; });
+                if (ok) { finish('win'); return; }
+                att++;
+                if (att >= maxAtt) { finish('lose'); return; }
+                entry = []; refresh();
+                box.innerHTML += '<p class="story-dialog-text" style="color:#ef9a9a;">' + _mgEsc(cfg.wrongLine || 'It doesn’t turn. Try again.') + '</p>';
+            }
+            function finish(outcome) {
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'The lock gives.') : (cfg.loseLine || 'The lock holds. You step back.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '520px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { attempts: att + 1 }); }));
+            }
+            ov.appendChild(h); ov.appendChild(box); ov.appendChild(readout); ov.appendChild(grid); refresh();
+        }
+
+        // ── Gather → craft: a two-phase make-something beat. Phase 1: select the
+        // correct ingredients (cfg.correct, order-insensitive). Phase 2: tap the
+        // steps in the right order (cfg.stepOrder). Win when both are right. Mirrors
+        // a story task (brew medicine, build a lure) without touching battle stats.
+        function _mgRunCraft(cfg, rng, done, opts) {
+            const ov = _mgMountOverlay(opts && opts.toneClass);
+            const title = cfg.title || 'Make It';
+            const ingredients = Array.isArray(cfg.ingredients) ? cfg.ingredients : [];
+            const correct = (Array.isArray(cfg.correct) ? cfg.correct : []).map(function (x) { return x | 0; });
+            const steps = Array.isArray(cfg.steps) ? cfg.steps : [];
+            const stepOrder = (Array.isArray(cfg.stepOrder) ? cfg.stepOrder : steps.map(function (_, i) { return i; })).map(function (x) { return x | 0; });
+            const h = document.createElement('div'); h.className = 'story-dialog-nameplate'; h.textContent = title;
+            let chosen = [];
+            function phaseGather() {
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '560px';
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.gatherPrompt || 'Gather what you need.') + '</p>';
+                const grid = document.createElement('div'); grid.style.cssText = 'display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center;max-width:600px;';
+                const btns = [];
+                ingredients.forEach(function (it, i) {
+                    const label = (typeof it === 'string') ? it : (it && it.label) || '';
+                    const b = _mgBtn(_mgEsc(label), false); b.style.cssText += 'max-width:170px;white-space:normal;';
+                    b.addEventListener('click', function () {
+                        const at = chosen.indexOf(i);
+                        if (at >= 0) { chosen.splice(at, 1); b.style.borderColor = '#ffd54f'; b.style.background = '#1a2a4a'; }
+                        else { chosen.push(i); b.style.borderColor = '#7ee787'; b.style.background = '#1d3a26'; }
+                    });
+                    btns.push(b); grid.appendChild(b);
+                });
+                ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+                ov.appendChild(_mgContinueBtn(function () {
+                    const a = chosen.slice().sort(function (x, y) { return x - y; });
+                    const b = correct.slice().sort(function (x, y) { return x - y; });
+                    const gOk = a.length === b.length && a.every(function (v, k) { return v === b[k]; });
+                    if (!steps.length) { finish(gOk ? 'win' : 'lose'); return; }
+                    if (!gOk) { finish('lose'); return; }
+                    phaseSteps();
+                }));
+            }
+            function phaseSteps() {
+                let input = [];
+                ov.innerHTML = '';
+                const box = document.createElement('div'); box.className = 'story-dialog-box'; box.style.maxWidth = '560px';
+                box.innerHTML = '<p class="story-dialog-text">' + _mgEsc(cfg.stepsPrompt || 'Now do it in the right order.') + '</p>';
+                const grid = document.createElement('div'); grid.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px;max-width:540px;width:100%;';
+                const btns = [];
+                steps.forEach(function (it, i) {
+                    const label = (typeof it === 'string') ? it : (it && it.label) || '';
+                    const b = _mgBtn('▸ ' + _mgEsc(label), false); b.style.textAlign = 'left';
+                    b.addEventListener('click', function () {
+                        if (b.disabled) return;
+                        b.disabled = true; b.style.opacity = '0.5'; input.push(i);
+                        if (input.length === stepOrder.length) {
+                            const ok = input.every(function (v, k) { return v === stepOrder[k]; });
+                            setTimeout(function () { finish(ok ? 'win' : 'lose'); }, 200);
+                        }
+                    });
+                    btns.push(b); grid.appendChild(b);
+                });
+                ov.appendChild(h); ov.appendChild(box); ov.appendChild(grid);
+            }
+            function finish(outcome) {
+                ov.innerHTML = '';
+                const endLine = outcome === 'win' ? (cfg.winLine || 'It comes together in your hands.') : (cfg.loseLine || 'It doesn’t set right. Close, but not it.');
+                const rb = document.createElement('div'); rb.className = 'story-dialog-box'; rb.style.maxWidth = '560px';
+                rb.innerHTML = '<p class="story-dialog-text" style="color:#ffd54f;">' + _mgEsc(endLine) + '</p>';
+                ov.appendChild(h); ov.appendChild(rb);
+                ov.appendChild(_mgContinueBtn(function () { _mgTeardown(ov); done(outcome, { chosen: chosen.slice() }); }));
+            }
+            phaseGather();
+        }
+
+        // ── Public entry: play a micro-game, resolve { outcome, detail, gameId } ──
+        // outcome ∈ 'win' | 'lose' | 'draw' | 'skip'. Never throws; never advances
+        // the timeline. Tests / reduced-motion auto-play bypass the DOM.
+        function _mgPlay(gameId, opts) {
+            opts = opts || {};
+            const cfg = (STORY_MINIGAMES && STORY_MINIGAMES[gameId]) ? STORY_MINIGAMES[gameId] : (opts.config || null);
+            return new Promise(function (resolve) {
+                const finish = function (outcome, detail) { resolve({ outcome: outcome, detail: detail || null, gameId: gameId }); };
+                if (!cfg) { finish('skip', { reason: 'no-config' }); return; }
+                const rng = _mgResolveRng(opts);
+                const headless = opts.auto === true || (opts.auto !== false && typeof window !== 'undefined' && window.__testHarness === true && !opts.forceDom);
+                if (headless) {
+                    const o = opts.forceOutcome ? { outcome: opts.forceOutcome, detail: null } : _mgAutoResolve(cfg, rng, opts);
+                    finish(o.outcome, o.detail); return;
+                }
+                const type = cfg.type || 'tell';
+                if (type === 'rps') _mgRunRps(cfg, rng, finish, opts);
+                else if (type === 'memory') _mgRunMemory(cfg, rng, finish, opts);
+                else if (type === 'riddle') _mgRunRiddle(cfg, rng, finish, opts);
+                else if (type === 'spot') _mgRunSpot(cfg, rng, finish, opts);
+                else if (type === 'cipher') _mgRunCipher(cfg, rng, finish, opts);
+                else if (type === 'craft') _mgRunCraft(cfg, rng, finish, opts);
+                else _mgRunTell(cfg, rng, finish, opts);
+            });
+        }
+
+        // Convenience: play a micro-game then apply its win/lose effect. Resolves
+        // the outcome string so a scene step can branch follow-up dialogue on it.
+        function _mgPlayAndApply(spec, opts) {
+            return _mgPlay(spec && spec.gameId, opts).then(function (res) {
+                const eff = (res.outcome === 'win') ? (spec && spec.onWin) : (res.outcome === 'lose') ? (spec && spec.onLose) : (spec && spec.onDraw);
+                if (eff) {
+                    const applied = _applyStoryInteractionOutcome(eff);
+                    try { res.applied = applied; } catch (e) {}
+                }
+                // Remember the outcome so later acts can branch on it via _branchMatches.
+                try {
+                    const pk = spec && spec.persistKey;
+                    if (pk && typeof sm === 'object' && sm) { sm.storyChoices = sm.storyChoices || {}; sm.storyChoices[pk] = res.outcome; }
+                } catch (e) {}
+                return res;
+            });
+        }
+
+        window.StoryMiniGames = {
+            play: _mgPlay,
+            playAndApply: _mgPlayAndApply,
+            applyOutcome: _applyStoryInteractionOutcome,
+            battleModForRow: _mgBattleModForRow,
+        };
+        // Deterministic test surface (pure primitives + seedable RNG factory).
+        window.__miniGameTest = {
+            rpsBeats: _mgRpsBeats,
+            rpsCpuThrow: _mgRpsCpuThrow,
+            memorySequence: _mgMemorySequence,
+            applyOutcome: _applyStoryInteractionOutcome,
+            battleModForRow: _mgBattleModForRow,
+            autoResolve: _mgAutoResolve,
+            play: _mgPlay,
+            playAndApply: _mgPlayAndApply,
+            mkRng: _mgMulberry,
+            THROWS: _MG_THROWS,
+            registry: STORY_MINIGAMES,
+        };
         // ── Narration overhaul (v26): thread labels + objective subline ───────
         const _THREAD_LABELS = {
             rocket:'Rocket', magma:'Magma', aqua:'Aqua', galactic:'Galactic', plasma:'Plasma',
@@ -46664,6 +47515,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 reply: Array.isArray(o.reply) ? o.reply : (o.reply ? [o.reply] : []),
                 persistKey: pk,
                 value: (o.value != null ? o.value : o.label),
+                // v28+ signature branches: an option may carry a light effect
+                // (gold / item / flag / giftPokemon / skipBattle) applied on pick,
+                // optionally gated by affordability. When the gate fails the effect
+                // is NOT applied and `lockedReply` (if any) is shown instead.
+                effect: (o.effect && typeof o.effect === 'object') ? o.effect : null,
+                requireGold: (o.requireGold != null) ? (o.requireGold | 0) : null,
+                requireItem: (o.requireItem && o.requireItem.id) ? o.requireItem : null,
+                lockedReply: Array.isArray(o.lockedReply) ? o.lockedReply : (o.lockedReply ? [o.lockedReply] : null),
             }));
         }
         // Subtle filled/empty dot row signalling arc position (act i of total)
@@ -46721,6 +47580,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sigil: _trackSigilForSceneKey(sceneKey),
             };
         }
+        // Per-act TONE → name-accent colour for the regular modernization pass.
+        // A scene's acts can each carry a `tone` so the speaker plate / accent
+        // shifts with the beat (warm intro → dread climax) instead of one flat
+        // colour. Unknown / absent tone falls back to the overlay default gold.
+        const _TONE_ACCENTS = {
+            warm: '#ffd54f', gold: '#ffd54f',
+            villain: '#ff5252', anger: '#ff7043',
+            dread: '#9c8cff', eerie: '#9c8cff', horror: '#b388ff',
+            mystery: '#b39ddb',
+            rival: '#4fc3f7', cold: '#4fc3f7',
+            grief: '#90a4ae', sorrow: '#90a4ae',
+            hope: '#aed581', calm: '#80cbc4', tender: '#80cbc4'
+        };
+        function _actAccentForTone(tone) {
+            if (!tone) return undefined;
+            return _TONE_ACCENTS[String(tone).toLowerCase()] || undefined;
+        }
         function _playSceneActs(scene, baseMeta, onDone, ctx) {
             const acts = (scene && Array.isArray(scene.acts)) ? scene.acts.filter(Boolean) : [];
             if (!acts.length) { try { onDone && onDone(); } catch (e) {} return; }
@@ -46731,14 +47607,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const step = (i) => {
                 if (i >= total) { try { onDone && onDone(); } catch (e) {} return; }
                 const act = acts[i];
+                // Per-act regular-pass framing: speaker plate, portrait, side, tone.
+                // All optional — absent fields fall back to the scene-level values,
+                // so legacy scenes render byte-identically to before.
+                const _spk  = (act && act.speaker) || '';
+                const _np   = (act && act.nameplate) || scene.title || '';
+                const _spr  = (act && act.sprite) || scene.sprite || null;
+                const _mon  = (act && act.mon) || scene.mon || null;
+                const _side = (act && act.spriteSide) || scene.spriteSide || undefined;
+                const _acc  = (act && act.tone) ? _actAccentForTone(act.tone) : undefined;
+                const _rev  = (act && act.revealLines) || undefined;
+                // Interactive act (v28): play a micro-game, apply its light effect,
+                // remember the outcome in sm.storyChoices (so a later branch act can
+                // react via _branchMatches), then advance. Optional lead-in lines
+                // render first. The arc order is never forked — we always step(i+1).
+                if (act && act.interaction && act.interaction.gameId && window.StoryMiniGames) {
+                    const _launchMg = () => {
+                        window.StoryMiniGames.playAndApply(act.interaction, {
+                            toneClass: (typeof _toneClassForScene === 'function') ? _toneClassForScene(_sceneKey, '') : ''
+                        }).then(() => step(i + 1), () => step(i + 1));
+                    };
+                    const _leadLines = _resolveActLines(act);
+                    if (_leadLines && _leadLines.length) {
+                        _renderNarrativeOverlay({
+                            metaKey: baseMeta ? (baseMeta + '-' + i) : null,
+                            sprite: _spr, monSprite: _mon, monShiny: !!scene.monShiny,
+                            name: _spk, nameplate: _np, sceneKey: _sceneKey || null,
+                            spriteSide: _side, accent: _acc, revealLines: _rev,
+                            bannerParts: (i === 0) ? _bannerParts : null,
+                            banner: _sceneProgressDots(i, total), bannerClass: 'story-narr-progress',
+                            typewriter: true, lines: _leadLines, continueLabel: 'Begin →',
+                            onDone: _launchMg,
+                        });
+                    } else { _launchMg(); }
+                    return;
+                }
                 _renderNarrativeOverlay({
                     metaKey: baseMeta ? (baseMeta + '-' + i) : null,
-                    sprite: scene.sprite || null,
-                    monSprite: scene.mon || null,
+                    sprite: _spr,
+                    monSprite: _mon,
                     monShiny: !!scene.monShiny,
-                    name: '',
-                    nameplate: scene.title || '',
+                    name: _spk,
+                    nameplate: _np,
                     sceneKey: _sceneKey || null,
+                    spriteSide: _side,
+                    accent: _acc,
+                    revealLines: _rev,
                     bannerParts: (i === 0) ? _bannerParts : null, // context line on the opening act only
                     banner: _sceneProgressDots(i, total),
                     bannerClass: 'story-narr-progress',
@@ -52555,6 +53469,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const idx = +btn.getAttribute('data-narr-choice-idx');
                         const pick = choices[idx];
                         if (!pick) { dismiss(); return; }
+                        // Affordability gate (ransom / sacrifice / toll): when an
+                        // option requires gold or an item the player lacks, the
+                        // effect is skipped and the lockedReply (if authored) shows.
+                        let _afford = true;
+                        try {
+                            if (pick.requireGold != null && sm && (sm.gold | 0) < pick.requireGold) _afford = false;
+                            if (pick.requireItem && pick.requireItem.id) {
+                                const _have = (sm && sm.inventory) ? (sm.inventory[pick.requireItem.id] | 0) : 0;
+                                if (_have < ((pick.requireItem.qty | 0) || 1)) _afford = false;
+                            }
+                        } catch (e2) {}
+                        // Apply the option's light effect (only when affordable) via
+                        // the single sanctioned state-touch helper.
+                        try {
+                            if (_afford && pick.effect && typeof window._applyStoryInteractionOutcome === 'function') {
+                                window._applyStoryInteractionOutcome(pick.effect);
+                            }
+                        } catch (e2) {}
                         // Persist the pick keyed by either an explicit
                         // persistKey on the option, or the scene's metaKey.
                         try {
@@ -52580,7 +53512,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // with a single Continue. No second choice tier.
                         const body = ov.querySelector('[data-narr-body="1"]');
                         const choiceWrap = ov.querySelector('[data-narr-choices="1"]');
-                        const reply = Array.isArray(pick.reply) ? pick.reply : [pick.reply || ''];
+                        const reply = (!_afford && pick.lockedReply)
+                            ? pick.lockedReply
+                            : (Array.isArray(pick.reply) ? pick.reply : [pick.reply || '']);
                         if (body) {
                             body.innerHTML = reply.filter(Boolean).map((l, i) =>
                                 `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
@@ -54529,6 +55463,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             spawn();
         }
 
+        // Resolve a battle beat WITHOUT a fight — the rare pacifist / ransom
+        // outcome of a signature interaction (skipBattle). Mirrors the win-path
+        // TAIL in onBattleEnd (mark beat fired → advance eventIndex → aftermath
+        // scene → processNextEvent) but grants no combat reward: peace costs you
+        // the loot, by design. Never fires for boss/raid/mysteryBoss (gated by
+        // the caller). A flow-sensitive helper — kept deliberately minimal.
+        function _storyResolveBeatBySkip(beatKey, ev, _onDone) {
+            const _done = (typeof _onDone === 'function') ? _onDone : function () { processNextEvent(); };
+            try {
+                const row = sm.eventIndex | 0;
+                // Consume the skip flag so it can't replay or leak to another row.
+                try { if (sm.flags) delete sm.flags['mgSkipBattle:' + row]; } catch (e) {}
+                // Undo any canon-trainer swap stamped on the way in — there was no fight.
+                try {
+                    if (sm._priorTrainerAssignment) {
+                        const r = sm._priorTrainerAssignment;
+                        if (sm.trainerAssignments) {
+                            if (r.prev != null) sm.trainerAssignments[r.rowId] = r.prev;
+                            else delete sm.trainerAssignments[r.rowId];
+                        }
+                        delete sm._priorTrainerAssignment;
+                    }
+                } catch (e) {}
+                // Mark the beat fired (mirrors the onBattleEnd victory hook) so the
+                // arc doesn't re-offer this battle, and clear the in-flight key.
+                if (beatKey) {
+                    try { delete sm._activeBeatBattleKey; } catch (e) {}
+                    if (!sm.storyEventsFired) sm.storyEventsFired = {};
+                    sm.storyEventsFired[beatKey] = true;
+                }
+                // Advance the timeline exactly as the win tail does (clamped).
+                sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
+                try { save(); } catch (e) { console.warn('[Story] skip-beat save', e); }
+                // Hide battle/menu surfaces, then play the beat's aftermath (if any)
+                // and continue the run — no victory overlay, no combat loot.
+                try { document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden')); } catch (e) {}
+                if (typeof _playPostBattleScene === 'function' && beatKey) {
+                    _playPostBattleScene(beatKey, _done);
+                } else {
+                    _done();
+                }
+            } catch (e) {
+                _storyRecoverFromEntryFailure('pacifist beat resolution', e);
+            }
+        }
+        window._storyResolveBeatBySkip = _storyResolveBeatBySkip;
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked, _routeChecked) {
             if (!ev) return;
             if (ev[1] !== 'Battle') {
@@ -54624,7 +55604,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } catch (e) { console.warn('[Story] canon trainer override:', e); }
                 const _runBeatScene = () => _playStoryBeatScene(_beatBattle.sceneKey, () => {
-                    try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
+                    try {
+                        // Pacifist / ransom route (rare): the beat scene just played,
+                        // and a signature interaction inside it may have stamped a
+                        // skip flag for this row (onWin:{ skipBattle:true } or a choice
+                        // option with that effect). If so — and the beat is a lower
+                        // tier, never a boss/raid/mysteryBoss climax — resolve the beat
+                        // WITHOUT a fight: mark it fired, advance, play its aftermath.
+                        const _mod = (typeof _mgBattleModForRow === 'function') ? _mgBattleModForRow(sm.eventIndex) : null;
+                        const _k = _beatBattle.kind;
+                        const _skippable = _k !== 'boss' && _k !== 'raid' && _k !== 'mysteryBoss';
+                        if (_mod && _mod.skip && _skippable) {
+                            _storyResolveBeatBySkip(_beatBattle.sceneKey, ev);
+                            return;
+                        }
+                        // A skip flag on a non-skippable (climax) beat is ignored and
+                        // cleared so it can't leak forward onto a later row.
+                        if (_mod && _mod.skip && !_skippable && sm.flags) {
+                            try { delete sm.flags['mgSkipBattle:' + (sm.eventIndex | 0)]; } catch (e2) {}
+                        }
+                        enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked);
+                    }
                     catch (e) { _storyRecoverFromEntryFailure('beat-battle scene continuation', e); }
                 });
                 // H2-3 substitution bridge: when this beat swapped a scheduled road battle

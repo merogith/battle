@@ -264,10 +264,12 @@ test('each converted arc has exactly one persisted choice with a unique key', ()
     let persistKey = null;
     for (const n of [1, 2, 3, 4, 5, 6]) {
       for (const act of (S[`villain.${track}.event${n}`].acts || [])) {
-        if (act.choice) { choiceCount++; persistKey = act.choice.persistKey; }
+        // Count only the CANONICAL choice — framing-injected flavor choices
+        // (tagged flavor:true) are a separate, no-payoff modernization layer.
+        if (act.choice && !act.choice.flavor) { choiceCount++; persistKey = act.choice.persistKey; }
       }
     }
-    assert.equal(choiceCount, 1, `villain.${track} has exactly one choice`);
+    assert.equal(choiceCount, 1, `villain.${track} has exactly one canonical choice`);
     assert.ok(persistKey && persistKey.startsWith(`villain.${track}.`),
       `villain.${track} choice key is namespaced`);
     assert.ok(!seenKeys.has(persistKey), `persistKey ${persistKey} is unique`);
@@ -406,9 +408,10 @@ test('extra-arc choices are unique and pay off in the ending', () => {
     const track = c.key.split('.')[1];
     let choiceCount = 0;
     for (const n of [1, 2, 3, 4, 5, 6]) {
-      for (const act of (S[`extra.${track}.event${n}`].acts || [])) if (act.choice) choiceCount++;
+      // Canonical choices only; framing flavor choices (flavor:true) don't count.
+      for (const act of (S[`extra.${track}.event${n}`].acts || [])) if (act.choice && !act.choice.flavor) choiceCount++;
     }
-    assert.equal(choiceCount, 1, `extra.${track} has exactly one choice`);
+    assert.equal(choiceCount, 1, `extra.${track} has exactly one canonical choice`);
     const branchAct = S[`extra.${track}.ending`].acts.find(a => a.branches);
     assert.ok(branchAct, `extra.${track}.ending branches`);
     nt.sm = { storyChoices: { [c.key]: c.a } };
@@ -477,7 +480,14 @@ test('e2e: a scene plays acts → choice → persistence → branch → cleared 
     let fin = false, text = '';
     nt.playStoryBeatScene(key, () => { fin = true; });
     let g = 0;
-    while (!fin && g++ < 12) { text += ' ' + _body(); try { _clickContinue(); } catch (e) { break; } }
+    while (!fin && g++ < 16) {
+      text += ' ' + _body();
+      // A scene act may now carry a flavor choice — pick one (swaps to its reply
+      // + a Continue) the way a player would, then keep advancing.
+      const choice = document.querySelector('button[data-narr-choice-idx]');
+      if (choice) { choice.click(); continue; }
+      try { _clickContinue(); } catch (e) { break; }
+    }
     return text + ' ' + _body();
   };
   assert.match(drive('villain.rocket.event4'), /trucker traded|thread you started|grave at the other end/i,
