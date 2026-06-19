@@ -777,6 +777,35 @@
             background: rgba(35, 28, 28, 0.85); color: #e0c0b0; border-color: #5c4038;
         }
         .story-tutor-btn.active { border-color:#ce93d8; color:#ce93d8; background:rgba(206,147,216,0.1); }
+        /* Type-picker chips — the 18-type Tera grid + recommended row and the
+           Z-Move type list. Was inline-styled at 36px (below the 44px touch
+           target) with the selected pick as a bare inline outline. One tokenized
+           chip: comfortable touch size, centered label, and a ringed+glowing
+           selected state. Scales phone -> iPad -> desktop via the grid's
+           auto-fill columns. */
+        .story-tutor-btn.tx-type-pick {
+            min-height: 40px;
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 4px; padding: 6px 8px;
+            border: none; font-weight: bold;
+            border-radius: var(--radius-sm);
+        }
+        .story-tutor-btn.tx-type-pick[data-current="1"] {
+            outline: 2px solid #fff; outline-offset: -2px;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.30), 0 0 8px rgba(255,255,255,0.22);
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .story-tutor-btn.tx-type-pick { min-height: 44px; }
+        }
+        .tx-tera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+            gap: 6px;
+        }
+        .tx-tera-grid.tx-tera-grid--spaced { margin-top: 8px; }
+        @media (max-width: 380px) {
+            .tx-tera-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+        }
         .story-tutor-price { font-size:10px; color:#ffd700; margin-left:4px; }
         .story-tutor-move-slot {
             margin-bottom: 10px; padding: 8px; border: 1px solid #333; border-radius: 6px; background: rgba(0,0,0,0.2);
@@ -69170,7 +69199,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const starHtml = isStab ? '<span class="tx-tera-star" aria-hidden="true">★</span>' : '';
                         const voucherHtml = voucherBtn(`window.StoryMode.colressApplyZ(${idx},'${typ}',true)`, `Use Wishing Piece`, voucherDis);
                         return `<div class="story-tutor-choice"${isStab ? ' data-z-stab="1"' : ''}><div class="story-tutor-choice-actions">`
-                            + `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;" ${goldDis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}',false)">${starHtml}${typ} (${_esc(crystal)})</button>`
+                            + `<button type="button" class="story-tutor-btn tx-type-pick type-badge type-${typ}"${isCurrent ? ' data-current="1"' : ''} ${goldDis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}',false)">${starHtml}${typ} (${_esc(crystal)})</button>`
                             + priceTag + voucherHtml + `</div></div>`;
                     }).join('');
                 }
@@ -69204,7 +69233,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const onclickHtml = addShift
                         ? `data-tera-type="${typ}" onclick="(function(e,i,t){e.preventDefault();window.StoryMode.colressApplyTera(i,t,e.shiftKey);})(event,${idx},'${typ}')"`
                         : `onclick="window.StoryMode.colressApplyTera(${idx},'${typ}',false)"`;
-                    return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}"${recAttr} ${goldDis} ${onclickHtml}>${recStarHtml}${typ}${pctHtml}</button>`;
+                    return `<button type="button" class="story-tutor-btn tx-type-pick type-badge type-${typ}"${isCurrent ? ' data-current="1"' : ''}${recAttr} ${goldDis} ${onclickHtml}>${recStarHtml}${typ}${pctHtml}</button>`;
                 };
                 // Recommended-row first (shown when we have data), full 18-type grid below.
                 const recRow = teraStats && teraStats.length
@@ -69221,7 +69250,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#81d4fa;">◆ Terastallization</div>`
                     + `<p class="story-tutor-moves-hint">Choose any of the 18 Tera types. Held item unchanged.</p>`
                     + recRow
-                    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-top:${recRow ? '8px' : '0'};">${fullGrid}</div>`
+                    + `<div class="tx-tera-grid${recRow ? ' tx-tera-grid--spaced' : ''}">${fullGrid}</div>`
                     + `<div style="font-size:10px;color:#ffd54f;margin-top:6px;text-align:right;">Each pick: ${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</div>`
                     + voucherTeraNote
                     + `</div>`
