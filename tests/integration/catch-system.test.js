@@ -60,7 +60,8 @@ test('catch-system: Master Ball is throwable on a normal wild encounter (no boss
   assert.ok(btn, 'Master Ball button renders on the catch screen');
   assert.equal(btn.disabled, false, 'an owned Master Ball must be usable outside the Caged God fight');
   assert.doesNotMatch(btn.textContent, /boss/i, 'no "boss" reservation lock on the Master Ball');
-  assert.match(btn.textContent, /100\s*%/, 'guaranteed throw advertises 100%');
+  assert.match(btn.textContent, /guaranteed/i, 'guaranteed throw advertises its guaranteed identity, not a %');
+  assert.doesNotMatch(btn.textContent, /\d\s*%/, 'no raw catch % on the Master Ball button (odds are opaque)');
 });
 
 test('catch-system: Master Ball is disabled only when the stack is empty (×0), never by a lock', async () => {
