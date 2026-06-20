@@ -267,7 +267,12 @@ All five modes use **full-heal between battles**. The HC-only persistence code a
 > pre-HoF) for the **roaming legendary**. `migrateStoryPreV24` strips the old `sm.bossArc`
 > state. The subsections below are retained only as a record of the cut design.
 
-Still live: row 67 (`Mystery Figure`) is the post-HoF climax — `continuePostGame()` routes the player through it once on first post-HoF reentry (mask-drop + single fight), then returns `sm.eventIndex` to the last visited city so the Crucible is reachable from every city. Mystery Figure also remains the Crucible's "Mystery" encore.
+Still live: row 67 (`Mystery Figure`) is the post-HoF climax. `continuePostGame()` routes the player into it on the first post-HoF reentry.
+
+- **Win** → the mask-drop reveal + the `main.ending` finale play, then the post-game opens **directly into the Crucible**, which becomes the player's **home hub** (`sm.atCrucible = true`). The endgame is **Crucible-only** — the old town hubs are no longer the return point.
+- **Loss** → routed through the **standard story defeat screen** (Retry / Return to last city, normal retreat-fee rules) with the climax left **pending** (`postHofMysteryClimaxDone` stays `false`). The town then shows a **🚪 The Mystery Figure** re-challenge action (`enterMysteryClimax`, gated on `sm.hofPartySnapshot && !postHofMysteryClimaxDone`) so the player can heal, rebuild, and try again. The endgame opens only on an actual win.
+
+Mystery Figure also remains the Crucible's "Mystery" encore.
 
 ### Trigger and leads
 
@@ -478,10 +483,13 @@ These remain valid from the prior docs:
 
 ## 14b. The Crucible — endgame super-hub + Battle Frontier (M6)
 
-After Hall of Fame, every city's recover section shows a new action button:
-**🧨 The Crucible — All facilities + Battle Frontier**. It enters a post-game
-screen that consolidates every system the player has met, plus a new endless
-ladder mode.
+After the Hall of Fame the player fights the **Mystery Figure** climax (§9). On the
+**win**, the post-game opens directly into the Crucible and it becomes the player's
+**home hub** for the rest of the endgame (**🧨 The Crucible** also appears in the town
+recover section, gated on the climax being beaten). While the climax is still pending
+(the player lost it and returned to town), the town shows a **🚪 The Mystery Figure**
+re-challenge action instead. The Crucible is a post-game screen that consolidates every
+system the player has met, plus a new endless ladder mode.
 
 ### The Crucible screen
 
@@ -494,8 +502,9 @@ Two button grids in one screen:
   🧪 Colress · 🔌 Link Station · 🎰 Poké Casino.
 
 While `sm.atCrucible === true`, `enterCity()` short-circuits to `enterCrucible()`,
-so every "Back to City" button across facilities preserves the Crucible context.
-"Leave The Crucible" returns the player to the last visited city.
+so every "Back to City" button across facilities returns to the Crucible. The endgame
+is **Crucible-only**: there is no "Leave The Crucible" path back to the old town hubs
+(the Crucible already exposes every facility, so the towns are fully superseded).
 
 ### Battle Frontier
 
@@ -519,13 +528,20 @@ in the current streak. New runs start at round 1.
 
 ### Crucible-sourced battle flow
 
-A new flag `sm.crucibleBattleSource` (values: `frontier` / `mystery` / `rival` /
-`league` / `gym`) tells `onBattleEnd` to bypass the normal victory overlay /
+A flag `sm.crucibleBattleSource` (values: `frontier` / `postHofMystery` / `mystery` /
+`rival` / `league` / `gym`) tells `onBattleEnd` to bypass the normal victory overlay /
 game-over screen and route back to the right hub. `_handleCrucibleBattleEnd`
 syncs the team, fires the source-specific outcome (frontier streak update,
 league next-stage chain, simple return-to-Crucible for others), then drops a
 `sm._crucibleBattleJustEnded` breadcrumb so `afterBattleReturn` short-circuits
 and `processNextEvent` does not advance the main timeline.
+
+**Exception — `postHofMystery` losses:** the post-HoF Mystery Figure climax is the one
+Crucible-sourced fight whose **loss** is *not* funneled through `_handleCrucibleBattleEnd`.
+`onBattleEnd` clears the source and falls through to the standard story defeat screen, so
+the climax stays pending and the endgame opens only on an actual win. Wins still route
+through `_handleCrucibleBattleEnd`, which plays the reveal + ending and hands off to the
+Crucible (`continuePostGame` → `sm.atCrucible = true`).
 
 ---
 
