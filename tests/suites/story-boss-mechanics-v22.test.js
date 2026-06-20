@@ -370,3 +370,101 @@ test('showBossBanner creates and removes a DOM banner', async () => {
     const after = W.document.querySelectorAll('.story-boss-banner').length;
     assert.equal(after, 0, 'banner should be removed after timeout');
 });
+
+// ── Scope regression (2026-06): the boss balance knobs must be visible to the
+//    GLOBAL damage function (performAction), not just inside the StoryMode IIFE.
+//    Before the fix, reading BOSS_WARD_MULT / BOSS_STAB_BOOST_MULT from the damage
+//    path threw "Can't find variable: BOSS_WARD_MULT", which the turn wrapper caught
+//    and logged as "[Error: … Turn skipped.]" — the player's move silently did
+//    nothing. The state-only tests above never exercised the damage path, so they
+//    missed it. These drive a REAL turn through performAction with each effect live.
+
+// Mirror of the harness runTurn, but lets us inject boss state before playTurn.
+async function runManualBossTurn({ player, boss, bossField = {}, bossFast = false }) {
+    eng.reset();
+    const st = eng.engine.state;
+    st.pActive = player; st.fActive = boss;
+    st.playerParty = [player]; st.foeParty = [boss];
+    st.mode = 'pve';
+    st.turnNumber = 0; st.isOver = false; st.isLocked = false;
+    st._activeStoryBeatKey = 'test.boss'; // arms the boss-mechanic damage branches
+    Object.assign(st, bossField);
+    // Pin move order deterministically.
+    if (bossFast) { boss.stats.spe = 99999; player.stats.spe = 1; }
+    else { player.stats.spe = 99999; boss.stats.spe = 1; }
+    eng.engine.setForcedFoeMoveSlot(0);
+    const start = eng.logs.length;
+    await W.playTurn(0, null);
+    return eng.logs.slice(start).map(l => (typeof l === 'string' ? l : (l && l.text) || ''));
+}
+
+const noCrash = (lines) => {
+    const bad = lines.find(t => /Turn skipped|find variable|is not defined/i.test(t));
+    assert.equal(bad, undefined, 'turn must not throw/skip — got: ' + (bad || ''));
+};
+
+test('ward: player hit lands (no Turn skipped) and incoming damage is reduced', async () => {
+    const mk = eng.mkMon;
+    // Bulky boss survives one hit so we can compare damage.
+    const noWardLines = await runManualBossTurn({
+        player: mk({ species: 'Pikachu', moves: ['Thunderbolt', 'Tackle', 'Tackle', 'Tackle'] }),
+        boss:   mk({ species: 'Blissey', moves: ['Tackle', 'Tackle', 'Tackle', 'Tackle'] }),
+        bossField: { _bossWardTurns: 0 },
+    });
+    noCrash(noWardLines);
+    const bossNo = eng.engine.state.fActive;
+    const dmgNo = bossNo.maxHp - bossNo.currentHp;
+    assert.ok(dmgNo > 0, 'sanity: the unwarded hit dealt damage');
+
+    const wardLines = await runManualBossTurn({
+        player: mk({ species: 'Pikachu', moves: ['Thunderbolt', 'Tackle', 'Tackle', 'Tackle'] }),
+        boss:   mk({ species: 'Blissey', moves: ['Tackle', 'Tackle', 'Tackle', 'Tackle'] }),
+        bossField: { _bossWardTurns: 3 },
+    });
+    noCrash(wardLines);
+    const bossW = eng.engine.state.fActive;
+    const dmgWard = bossW.maxHp - bossW.currentHp;
+    assert.ok(dmgWard > 0 && dmgWard < dmgNo, `ward should reduce damage (${dmgWard} < ${dmgNo})`);
+    const ratio = dmgWard / dmgNo;
+    assert.ok(ratio >= 0.70 && ratio <= 0.80, `ward ≈ ×0.75 (got ${ratio.toFixed(3)})`);
+});
+
+test('stabBoost: boss STAB hit lands (no Turn skipped) and is amplified', async () => {
+    const mk = eng.mkMon;
+    const plainLines = await runManualBossTurn({
+        player: mk({ species: 'Snorlax', moves: ['Splash', 'Tackle', 'Tackle', 'Tackle'] }),
+        boss:   mk({ species: 'Mewtwo', moves: ['Psychic', 'Tackle', 'Tackle', 'Tackle'] }),
+        bossField: { _bossStabBoostTurns: 0 },
+        bossFast: true,
+    });
+    noCrash(plainLines);
+    const playerNo = eng.engine.state.pActive;
+    const dmgNo = playerNo.maxHp - playerNo.currentHp;
+    assert.ok(dmgNo > 0, 'sanity: the un-boosted STAB hit dealt damage');
+
+    const boostLines = await runManualBossTurn({
+        player: mk({ species: 'Snorlax', moves: ['Splash', 'Tackle', 'Tackle', 'Tackle'] }),
+        boss:   mk({ species: 'Mewtwo', moves: ['Psychic', 'Tackle', 'Tackle', 'Tackle'] }),
+        bossField: { _bossStabBoostTurns: 3 },
+        bossFast: true,
+    });
+    noCrash(boostLines);
+    const playerB = eng.engine.state.pActive;
+    const dmgBoost = playerB.maxHp - playerB.currentHp;
+    assert.ok(dmgBoost > dmgNo, `stabBoost should amplify damage (${dmgBoost} > ${dmgNo})`);
+    const ratio = dmgBoost / dmgNo;
+    assert.ok(ratio >= 1.15 && ratio <= 1.25, `stabBoost ≈ ×1.20 (got ${ratio.toFixed(3)})`);
+});
+
+test('activation writes a plain-language explanation to the battle log (mobile QOL)', () => {
+    const captured = [];
+    const realLog = W.logMsg;
+    W.logMsg = (m) => { captured.push(String(m)); };
+    try {
+        activatePhase('ward'); // telegraph then activate a ward phase
+    } finally { W.logMsg = realLog; }
+    const wardLine = captured.find(t => /less damage/i.test(t));
+    assert.ok(wardLine, 'a "takes N% less damage" line should be logged on ward activation');
+    const pct = Math.round((1 - ST.bossBalanceKnobs().BOSS_WARD_MULT) * 100);
+    assert.ok(wardLine.includes(pct + '%'), `explanation should quote the real reduction (${pct}%)`);
+});

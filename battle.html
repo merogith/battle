@@ -11189,6 +11189,45 @@
         let STONE_SHOP_ITEMS = [];
         let STONE_SHOP_ITEM_IDS = new Set();
         let STORY_BATTLE_BAG_SHOP_IDS = new Set();
+        // ── Boss/Raid mechanic balance knobs (redesign 2026-06) ───────────────
+        // Maintainer-owned (CLAUDE.md). Declared HERE in the early-let block — not
+        // inside the StoryMode IIFE — because the global damage function
+        // (performAction) reads BOSS_STAB_BOOST_MULT / BOSS_WARD_MULT and closures
+        // can't see *into* the IIFE. Single source of truth; the IIFE's boss helpers
+        // close over these outer bindings. (Fixes the "Can't find variable:
+        // BOSS_WARD_MULT. Turn skipped." crash on every ward/stabBoost boss phase.)
+        let BOSS_STAB_BOOST_MULT = 1.2;    // stabBoost: boss STAB moves ×this
+        let BOSS_WARD_MULT       = 0.75;   // ward: incoming non-status damage ×this
+        let BOSS_SHIELD_FRAC     = 0.25;   // shield: barrier pool = maxHp × this
+        let BOSS_REGEN_TURNS     = 3;      // regen: duration in turns
+        let BOSS_REGEN_PCT       = 0.0625; // regen: heal/turn (1/16, Leftovers-rate)
+        // Raid stat split — "bulky, not fast" (Mewtwo-like). Replaces the single
+        // legacy _bossStatMult=1.3 that boosted Speed too (outspeed + OHKO problem).
+        let RAID_OFF_MULT  = 1.15;  // atk/spa
+        let RAID_BULK_MULT = 1.30;  // def/spd/HP
+        let RAID_SPE_MULT  = 0.85;  // spe (≤1 so the boss rarely outspeeds)
+        // Per-type effect POOLS — villain ≠ mystery (maintainer rule). All bosses of
+        // one family share its pool. Mystery additionally keeps its signature every-5
+        // -turn immunityRound cadence (no other family uses it).
+        let BOSS_EFFECT_POOLS = {
+            villain: ['surge', 'immunity', 'stabBoost'],             // aggressive pressure
+            raid:    ['ward', 'shield', 'regen', 'heal', 'cleanse'], // durable + soft anti-cheese
+            mystery: ['ward', 'regen', 'immunity'],                  // attrition mirror (its own feel)
+        };
+        // Dynamic field — a fieldLock {value:'auto'} resolves the boss's primary type
+        // to an advantageous weather/terrain (Mewtwo→Psychic Terrain, Fire→Sun).
+        // Unmapped types → null (no lock; graceful). Maintainer-owned contents.
+        let BOSS_FIELD_BY_TYPE = {
+            Fire:     { kind: 'weather', value: 'Sun' },
+            Water:    { kind: 'weather', value: 'Rain' },
+            Rock:     { kind: 'weather', value: 'Sandstorm' },
+            Ground:   { kind: 'weather', value: 'Sandstorm' },
+            Ice:      { kind: 'weather', value: 'Hail' },
+            Electric: { kind: 'terrain', value: 'Electric' },
+            Grass:    { kind: 'terrain', value: 'Grassy' },
+            Psychic:  { kind: 'terrain', value: 'Psychic' },
+            Fairy:    { kind: 'terrain', value: 'Misty' },
+        };
         // Mirror to window so test harnesses + other scripts can inspect the
         // populated objects without re-declaring. Stable reference: loadGameData
         // uses Object.assign / .push to mutate in place, so window.X stays valid.
@@ -11213,6 +11252,16 @@
             window.STONE_SHOP_ITEMS = STONE_SHOP_ITEMS;
             window.STONE_SHOP_ITEM_IDS = STONE_SHOP_ITEM_IDS;
             window.STORY_BATTLE_BAG_SHOP_IDS = STORY_BATTLE_BAG_SHOP_IDS;
+            window.BOSS_STAB_BOOST_MULT = BOSS_STAB_BOOST_MULT;
+            window.BOSS_WARD_MULT = BOSS_WARD_MULT;
+            window.BOSS_SHIELD_FRAC = BOSS_SHIELD_FRAC;
+            window.BOSS_REGEN_TURNS = BOSS_REGEN_TURNS;
+            window.BOSS_REGEN_PCT = BOSS_REGEN_PCT;
+            window.RAID_OFF_MULT = RAID_OFF_MULT;
+            window.RAID_BULK_MULT = RAID_BULK_MULT;
+            window.RAID_SPE_MULT = RAID_SPE_MULT;
+            window.BOSS_EFFECT_POOLS = BOSS_EFFECT_POOLS;
+            window.BOSS_FIELD_BY_TYPE = BOSS_FIELD_BY_TYPE;
         }
 
         async function loadGameData() {
@@ -48553,40 +48602,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.SUBSTITUTION_BRIDGES = SUBSTITUTION_BRIDGES;
 
         // ── Boss/Raid mechanic vocabulary (redesign 2026-06) ──────────────────
-        // Balance knobs — maintainer-owned (CLAUDE.md). Recommended defaults; tune
-        // against the Mewtwo reference raid. Exposed on __storyTest for the suites.
-        const BOSS_STAB_BOOST_MULT = 1.2;    // stabBoost: boss STAB moves ×this
-        const BOSS_WARD_MULT       = 0.75;   // ward: incoming non-status damage ×this
-        const BOSS_SHIELD_FRAC     = 0.25;   // shield: barrier pool = maxHp × this
-        const BOSS_REGEN_TURNS     = 3;      // regen: duration in turns
-        const BOSS_REGEN_PCT       = 0.0625; // regen: heal/turn (1/16, Leftovers-rate)
-        // Raid stat split — "bulky, not fast" (Mewtwo-like). Replaces the single
-        // legacy _bossStatMult=1.3 that boosted Speed too (outspeed + OHKO problem).
-        const RAID_OFF_MULT  = 1.15;  // atk/spa
-        const RAID_BULK_MULT = 1.30;  // def/spd/HP
-        const RAID_SPE_MULT  = 0.85;  // spe (≤1 so the boss rarely outspeeds)
-        // Per-type effect POOLS — villain ≠ mystery (maintainer rule). All bosses of
-        // one family share its pool. Mystery additionally keeps its signature every-5
-        // -turn immunityRound cadence (no other family uses it).
-        const BOSS_EFFECT_POOLS = {
-            villain: ['surge', 'immunity', 'stabBoost'],             // aggressive pressure
-            raid:    ['ward', 'shield', 'regen', 'heal', 'cleanse'], // durable + soft anti-cheese
-            mystery: ['ward', 'regen', 'immunity'],                  // attrition mirror (its own feel)
-        };
-        // Dynamic field — a fieldLock {value:'auto'} resolves the boss's primary type
-        // to an advantageous weather/terrain (Mewtwo→Psychic Terrain, Fire→Sun).
-        // Unmapped types → null (no lock; graceful). Maintainer-owned contents.
-        const BOSS_FIELD_BY_TYPE = {
-            Fire:     { kind: 'weather', value: 'Sun' },
-            Water:    { kind: 'weather', value: 'Rain' },
-            Rock:     { kind: 'weather', value: 'Sandstorm' },
-            Ground:   { kind: 'weather', value: 'Sandstorm' },
-            Ice:      { kind: 'weather', value: 'Hail' },
-            Electric: { kind: 'terrain', value: 'Electric' },
-            Grass:    { kind: 'terrain', value: 'Grassy' },
-            Psychic:  { kind: 'terrain', value: 'Psychic' },
-            Fairy:    { kind: 'terrain', value: 'Misty' },
-        };
+        // Balance knobs (BOSS_*_MULT, BOSS_SHIELD_FRAC, BOSS_REGEN_*, RAID_*,
+        // BOSS_EFFECT_POOLS, BOSS_FIELD_BY_TYPE) now live in the early-let block above
+        // loadGameData() — the global damage function (performAction) reads two of them
+        // and can't see *into* this IIFE. The helpers below close over those outer
+        // bindings. Maintainer-owned; tune them there (single source of truth),
+        // exposed on __storyTest for the suites.
         function _bossFieldForType(t) { return (t && BOSS_FIELD_BY_TYPE[t]) || null; }
         // Curated raid held-item pool — survivability only (no Life Orb / Choice /
         // offense items that made raids swingy). Applied after makeBuild.
@@ -48605,6 +48626,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             heal: 'Second Wind', cleanse: 'Cleansed',
         };
         function _effectLabel(effect) { return BOSS_EFFECT_LABELS[effect] || ''; }
+        // Plain-language description of what an effect DOES, built from the live
+        // balance knobs. Players on mobile can't hover for tooltips, so this text is
+        // (a) written to the persistent battle log when a phase activates, and
+        // (b) shown in the tappable popover on the boss status indicator. `name` is
+        // the boss mon's name; `n` is turns remaining (or barrier HP for shield).
+        function _effectDesc(effect, name, n) {
+            const who = name || 'The boss';
+            const wardPct = Math.round((1 - BOSS_WARD_MULT) * 100);
+            const stabPct = Math.round((BOSS_STAB_BOOST_MULT - 1) * 100);
+            const regenPct = Math.round(BOSS_REGEN_PCT * 100);
+            const t = (k) => (k > 0 ? ' (' + k + (k === 1 ? ' turn)' : ' turns)') : '');
+            switch (effect) {
+                case 'surge':     return who + ' powers up — its attacks deal +25% damage' + t(n) + '.';
+                case 'stabBoost': return who + "'s same-type moves hit " + stabPct + '% harder' + t(n) + '.';
+                case 'ward':      return who + ' braces — it takes ' + wardPct + '% less damage from attacks' + t(n) + '.';
+                case 'immunity':  return who + ' is shielded — attacks deal no damage' + t(n) + '. (Status moves still work.)';
+                case 'shield':    return who + ' raises a barrier — ' + (n > 0 ? n + ' HP' : 'an HP pool') + ' that soaks damage before its own HP.';
+                case 'regen':     return who + ' regenerates — it heals ' + regenPct + '% HP each turn' + t(n) + '.';
+                case 'heal':      return who + ' gets a second wind and restores HP.';
+                case 'cleanse':   return who + ' is cleansed of status conditions and traps.';
+                default:          return who + ' activates a phase mechanic.';
+            }
+        }
 
         // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
         // boss/raid prose ("Phase 3 at 25%", "PRIMAL HEAT", "PRIMORDIAL RAIN",
@@ -48802,8 +48846,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 el.className = 'story-boss-banner';
                 el.style.cssText = 'position:fixed;top:18%;left:50%;transform:translateX(-50%);' +
                     'background:rgba(20,12,8,0.93);color:' + acc + ';' +
-                    'font-weight:bold;font-size:18px;letter-spacing:0.18em;text-transform:uppercase;' +
-                    'padding:10px 24px;border:2px solid ' + acc + ';border-radius:4px;' +
+                    'font-weight:bold;font-size:clamp(13px,4.2vw,18px);letter-spacing:0.12em;text-transform:uppercase;' +
+                    'padding:clamp(8px,2.4vw,10px) clamp(14px,5vw,24px);border:2px solid ' + acc + ';border-radius:4px;' +
+                    'max-width:92vw;text-align:center;white-space:normal;' +
                     'z-index:var(--sn-z-spotlight);pointer-events:none;opacity:0;' +
                     'box-shadow:0 0 24px rgba(255,200,80,0.4);' +
                     'transition:opacity 0.25s ease-out;';
@@ -48815,6 +48860,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { console.warn('[Story] boss banner failed:', e); }
         }
 
+        // Tappable-pill explanation: phones can't hover for tooltips, so tapping a
+        // boss-status pill shows what the effect does. Dismisses on the next tap
+        // anywhere or after a few seconds. Non-blocking (pointer-events:none).
+        function _showBossMechanicPopover(text) {
+            try {
+                if (typeof document === 'undefined' || !document.body) return;
+                let pop = document.getElementById('boss-mechanic-popover');
+                if (!pop) { pop = document.createElement('div'); pop.id = 'boss-mechanic-popover'; document.body.appendChild(pop); }
+                pop.style.cssText = 'position:fixed;top:calc(var(--safe-top,0px) + 100px);left:50%;transform:translateX(-50%);' +
+                    'background:rgba(20,12,8,0.96);color:#ffe9a8;border:1px solid #ffd54f;border-radius:8px;' +
+                    'padding:8px 14px;max-width:min(86vw,420px);font-size:clamp(11px,3vw,13px);line-height:1.35;' +
+                    'text-align:center;z-index:var(--sn-z-spotlight);box-shadow:0 4px 18px rgba(0,0,0,0.5);pointer-events:none;';
+                pop.textContent = String(text || '');
+                clearTimeout(pop._dismissTimer);
+                pop._dismissTimer = setTimeout(() => { try { pop.remove(); } catch (e) {} }, 4500);
+                const _dismiss = () => { try { pop.remove(); } catch (e) {} try { document.removeEventListener('pointerdown', _dismiss, true); } catch (e) {} };
+                // Defer the dismiss listener so the tap that opened the popover doesn't close it.
+                setTimeout(() => { try { document.addEventListener('pointerdown', _dismiss, true); } catch (e) {} }, 60);
+            } catch (e) { console.warn('[Story] boss mechanic popover failed:', e); }
+        }
+
         // Persistent on-screen indicator of the boss's CURRENTLY-active effects — the
         // fix for "mechanics are opaque." Pure-derived from the six state._boss* fields
         // (can't desync), refreshed once per turn. Hidden when nothing is active.
@@ -48824,26 +48890,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let el = document.getElementById('boss-status-indicator');
                 const parts = [];
                 if (stateRef) {
-                    if (stateRef._bossSurgeTurns > 0)     parts.push('⚔ Power Up (' + stateRef._bossSurgeTurns + ')');
-                    if (stateRef._bossStabBoostTurns > 0) parts.push('✦ STAB Amp (' + stateRef._bossStabBoostTurns + ')');
-                    if (stateRef._bossWardTurns > 0)      parts.push('🛡 Damage Down (' + stateRef._bossWardTurns + ')');
-                    if (stateRef._bossImmuneTurns > 0)    parts.push('✦ Immune (' + stateRef._bossImmuneTurns + ')');
-                    if (stateRef._bossShieldHp > 0)       parts.push('🔰 Barrier ' + stateRef._bossShieldHp);
-                    if (stateRef._bossRegen && stateRef._bossRegen.turns > 0) parts.push('♻ Regenerating (' + stateRef._bossRegen.turns + ')');
+                    if (stateRef._bossSurgeTurns > 0)     parts.push({ effect: 'surge',     n: stateRef._bossSurgeTurns,     label: '⚔ Power Up (' + stateRef._bossSurgeTurns + ')' });
+                    if (stateRef._bossStabBoostTurns > 0) parts.push({ effect: 'stabBoost', n: stateRef._bossStabBoostTurns, label: '✦ STAB Amp (' + stateRef._bossStabBoostTurns + ')' });
+                    if (stateRef._bossWardTurns > 0)      parts.push({ effect: 'ward',      n: stateRef._bossWardTurns,      label: '🛡 Damage Down (' + stateRef._bossWardTurns + ')' });
+                    if (stateRef._bossImmuneTurns > 0)    parts.push({ effect: 'immunity',  n: stateRef._bossImmuneTurns,    label: '✦ Immune (' + stateRef._bossImmuneTurns + ')' });
+                    if (stateRef._bossShieldHp > 0)       parts.push({ effect: 'shield',    n: stateRef._bossShieldHp,       label: '🔰 Barrier ' + stateRef._bossShieldHp });
+                    if (stateRef._bossRegen && stateRef._bossRegen.turns > 0) parts.push({ effect: 'regen', n: stateRef._bossRegen.turns, label: '♻ Regenerating (' + stateRef._bossRegen.turns + ')' });
                 }
                 if (!parts.length) { if (el) el.remove(); return; }
                 if (!el) {
                     el = document.createElement('div');
                     el.id = 'boss-status-indicator';
-                    el.style.cssText = 'position:fixed;top:6%;left:50%;transform:translateX(-50%);' +
-                        'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:90vw;' +
+                    // Sits BELOW the full-width foe HP strip (top:0) on phones so the pills
+                    // don't overlap the foe's HP bar. Container is non-interactive; the pills
+                    // themselves are tappable (pointer-events:auto on each chip).
+                    el.style.cssText = 'position:fixed;top:calc(var(--safe-top,0px) + 66px);left:50%;transform:translateX(-50%);' +
+                        'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:92vw;' +
                         'z-index:var(--sn-z-spotlight);pointer-events:none;';
+                    el.addEventListener('click', function (ev) {
+                        const chip = ev.target && ev.target.closest ? ev.target.closest('[data-desc]') : null;
+                        if (chip) _showBossMechanicPopover(chip.getAttribute('data-desc'));
+                    });
                     document.body.appendChild(el);
                 }
                 const _chip = 'background:rgba(20,12,8,0.92);color:#ffd54f;font-weight:bold;' +
-                    'font-size:12px;letter-spacing:0.04em;padding:3px 9px;border:1px solid #ffd54f;' +
-                    'border-radius:10px;white-space:nowrap;';
-                el.innerHTML = parts.map(p => '<span style="' + _chip + '">' + p + '</span>').join('');
+                    'font-size:clamp(10px,2.8vw,12px);letter-spacing:0.04em;padding:3px 9px;border:1px solid #ffd54f;' +
+                    'border-radius:10px;white-space:nowrap;pointer-events:auto;cursor:pointer;';
+                const bossName = (stateRef.fActive && stateRef.fActive.name) || 'The boss';
+                el.innerHTML = '';
+                for (const p of parts) {
+                    const span = document.createElement('span');
+                    span.style.cssText = _chip;
+                    span.textContent = p.label;
+                    span.setAttribute('data-effect', p.effect);
+                    span.setAttribute('data-desc', _effectDesc(p.effect, bossName, p.n));
+                    el.appendChild(span);
+                }
             } catch (e) { console.warn('[Story] boss status indicator failed:', e); }
         }
         function _removeBossStatusIndicator() {
@@ -48983,6 +49065,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (pending.type === 'immunityRound') {
                     stateRef._bossImmuneTurns = (pending.turns | 0) || 1;
                 }
+                // Persistent, scrollable explanation in the battle log — the 1.8s banner
+                // above is easy to miss on mobile, and players can't hover for tooltips.
+                const _eff = (pending.type === 'immunityRound') ? 'immunity' : (pending.effect || 'surge');
+                let _n = 0;
+                switch (_eff) {
+                    case 'surge':     _n = stateRef._bossSurgeTurns; break;
+                    case 'stabBoost': _n = stateRef._bossStabBoostTurns; break;
+                    case 'ward':      _n = stateRef._bossWardTurns; break;
+                    case 'immunity':  _n = stateRef._bossImmuneTurns; break;
+                    case 'shield':    _n = stateRef._bossShieldHp; break;
+                    case 'regen':     _n = (stateRef._bossRegen && stateRef._bossRegen.turns) || 0; break;
+                }
+                try { if (typeof window !== 'undefined' && typeof window.logMsg === 'function') window.logMsg(_effectDesc(_eff, foeMon && foeMon.name, _n), 'info'); } catch (e) {}
                 // fieldLock activates at battle-init, not from telegraph.
             }
             // 3. Walk mechanics, queue new telegraphs for next turn.
