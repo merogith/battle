@@ -54968,6 +54968,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _camp_raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
         const _camp_caf = (typeof cancelAnimationFrame === 'function') ? cancelAnimationFrame : (id) => clearTimeout(id);
         const _campNow = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const _campReduceMotion = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
         function _campDefer(fn) { setTimeout(fn, 0); }
         function _campStatLabel(stat) {
             return ({ hp: 'HP', atk: 'Attack', def: 'Defense', spa: 'Sp. Atk', spd: 'Sp. Def', spe: 'Speed' })[stat] || stat;
@@ -55916,18 +55917,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <button type="button" id="camp-sk-drop" style="padding:12px 32px;background:#ffd54f;color:#001b1e;border:none;font-weight:bold;font-size:15px;cursor:pointer;font-family:inherit;border-radius:6px;">DROP</button>`);
             const field = ov.querySelector('#camp-sk-field'), slab = ov.querySelector('#camp-sk-slab'), nEl = ov.querySelector('#camp-sk-n');
             const W = field.getBoundingClientRect().width || 300;
-            let finished = false, raf = 0, stacked = 0, centerPx = W / 2; const start = _campNow();
-            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (ov.parentNode) ov.remove(); };
+            const H = field.getBoundingClientRect().height || 200;   // field CSS height; base 16px @ bottom:8px, slabs 16px
+            const reduceMotion = _campReduceMotion();
+            let finished = false, locked = false, raf = 0, endTimer = 0, stacked = 0, centerPx = W / 2; const start = _campNow();
+            const cleanup = () => { finished = true; if (raf) _camp_caf(raf); if (endTimer) clearTimeout(endTimer); if (ov.parentNode) ov.remove(); };
             const settle = (won) => { if (finished) return; cleanup(); done(won); };
             const posAt = (tm) => { const p = ((tm - start) % slideMs) / slideMs, tri = p < 0.5 ? p * 2 : (1 - p) * 2; return 0.12 * W + tri * 0.76 * W; };
-            const loop = () => { if (finished) return; slab.style.left = posAt(_campNow()) + 'px'; raf = _camp_raf(loop); };
+            const loop = () => { if (finished || locked) return; slab.style.left = posAt(_campNow()) + 'px'; raf = _camp_raf(loop); };
+            // Drop a slab onto the growing tower (or topple it off on a miss). Visual only — scoring is unchanged.
+            const placeSlab = (at, layerIndex, topple) => {
+                const placed = document.createElement('div');
+                placed.className = 'camp-sk-placed';
+                placed.style.cssText = 'position:absolute;top:12px;left:' + at + 'px;width:84px;height:16px;background:#ffd54f;transform:translateX(-50%);border-radius:3px;';
+                field.insertBefore(placed, slab);   // behind the moving slab
+                const targetTop = H - 40 - layerIndex * 16;   // base(16)+8 gap, each layer 16px higher
+                if (reduceMotion) { if (topple) placed.style.opacity = '0'; else placed.style.top = targetTop + 'px'; return; }
+                const dir = (at < centerPx) ? -1 : 1;   // deterministic tumble side (no RNG)
+                _camp_raf(() => {
+                    if (topple) {
+                        placed.style.transition = 'top 0.32s ease-in, transform 0.32s ease-in, opacity 0.32s';
+                        placed.style.top = (H + 30) + 'px';
+                        placed.style.transform = 'translateX(-50%) translateX(' + (dir * 60) + 'px) rotate(' + (dir * 70) + 'deg)';
+                        placed.style.opacity = '0.2';
+                    } else {
+                        placed.style.transition = 'top 0.2s cubic-bezier(.45,.05,.55,1)';
+                        placed.style.top = targetTop + 'px';
+                    }
+                });
+            };
+            const finishAfterDrop = (won, ms) => { locked = true; slab.style.visibility = 'hidden'; endTimer = setTimeout(() => settle(won), reduceMotion ? 0 : ms); };
             ov.querySelector('#camp-sk-drop').onclick = () => {
-                if (finished) return;
+                if (finished || locked) return;
                 const at = posAt(_campNow());
                 if (Math.abs(at - centerPx) <= tol) {
-                    stacked++; centerPx = at; slab.style.left = at + 'px'; nEl.textContent = stacked + ' / ' + need;
-                    if (stacked >= need) { settle(true); return; }
-                } else { settle(_campScoreStack(stacked, need)); }   // missed the tower → topple
+                    placeSlab(at, stacked, false);   // land on top of the current tower
+                    stacked++; centerPx = at; nEl.textContent = stacked + ' / ' + need;
+                    if (stacked >= need) { finishAfterDrop(true, 240); return; }   // let the final slab land
+                } else { placeSlab(at, stacked, true); finishAfterDrop(_campScoreStack(stacked, need), 360); }   // missed the tower → topple
             };
             loop();
         }
