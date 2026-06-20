@@ -237,6 +237,7 @@ test('track data: every track game tops out at a winnable required-fraction & ra
 });
 
 test('run-routing: unknown primitive → freebie win; known primitives mount an interactive overlay', () => {
+    W.__campSkipCountdown = true;   // start games instantly so the overlay mounts synchronously (production shows a 3·2·1·GO! countdown first)
     let res = null;
     ST.campRunMicrogame({ primitive: 'totally-unknown', name: 'X' }, (won) => { res = won; });
     assert.equal(res, true, 'unknown primitive → freebie win, never a soft-lock');
@@ -282,4 +283,22 @@ test('run-routing: unknown primitive → freebie win; known primitives mount an 
         assert.ok(field && field.querySelector('.camp-sk-placed'), 'stack drop spawns a placed slab');
         if (ov && ov.parentNode) ov.remove();
     }
+});
+
+test('get-ready countdown gates every microgame start (unknown primitives skip it)', () => {
+    delete W.__campSkipCountdown;   // exercise the real countdown path
+    let resolved = 'pending';
+    ST.campRunMicrogame({ primitive: 'stack', name: 'Stack!', need: 4, tol: 26, slideMs: 1200 }, (won) => { resolved = won; });
+    const cd = W.document.getElementById('camp-countdown');
+    assert.ok(cd, 'countdown overlay mounts before the game');
+    assert.ok(cd.textContent.includes('Stack!'), 'countdown names the upcoming game');
+    assert.equal(W.document.getElementById('camp-microgame'), null, 'game overlay is gated behind the countdown');
+    assert.equal(resolved, 'pending', 'game cannot resolve during the countdown');
+
+    let freebie = null;   // unknown primitive: instant freebie, no countdown, never a soft-lock
+    ST.campRunMicrogame({ primitive: 'totally-unknown', name: 'X' }, (won) => { freebie = won; });
+    assert.equal(freebie, true, 'unknown primitive resolves instantly with no countdown');
+
+    if (cd && cd.parentNode) cd.remove();
+    W.__campSkipCountdown = true;   // restore instant mode
 });

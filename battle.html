@@ -55356,13 +55356,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             goNoGo:     (g, d) => _campGoNoGo(g, d),
             whack:      (g, d) => _campWhack(g, d),
         };
+        // Pre-game "get ready" countdown shared by every camp microgame. Mounts a brief
+        // 3·2·1·GO! overlay, then constructs the game — so each game's clock/motion only
+        // starts at GO (no game internals change). Set window.__campSkipCountdown to start
+        // instantly (used by automated tests for synchronous mounting).
+        function _campCountdown(game, go) {
+            if (typeof window !== 'undefined' && window.__campSkipCountdown) { go(); return; }
+            const reduceMotion = _campReduceMotion();
+            const ov = document.createElement('div');
+            ov.id = 'camp-countdown';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;box-sizing:border-box;';
+            ov.innerHTML = `<div style="font-size:24px;font-weight:bold;color:#ffd54f;letter-spacing:0.04em;">${_esc(game.name)}</div>
+                            <div style="font-size:12px;color:#e0f2f1;max-width:430px;text-align:center;line-height:1.5;">${_esc(game.instr || '')}</div>
+                            <div id="camp-cd-num" style="font-size:72px;font-weight:bold;color:#ffd54f;line-height:1;margin-top:6px;text-shadow:0 0 18px rgba(255,213,79,0.45);">3</div>`;
+            document.body.appendChild(ov);
+            const numEl = ov.querySelector('#camp-cd-num');
+            const seq = ['3', '2', '1', 'GO!'], stepMs = 500;
+            let i = 0, fired = false;
+            const finish = () => { if (fired) return; fired = true; go(); if (ov.parentNode) ov.remove(); };   // mount game first, then drop the countdown → no flash
+            const tick = () => {
+                numEl.textContent = seq[i];
+                if (!reduceMotion) {
+                    numEl.style.transition = 'none'; numEl.style.transform = 'scale(1.45)'; numEl.style.opacity = '0.2';
+                    _camp_raf(() => { numEl.style.transition = 'transform 0.28s ease-out, opacity 0.28s ease-out'; numEl.style.transform = 'scale(1)'; numEl.style.opacity = '1'; });
+                }
+                const last = (i >= seq.length - 1);
+                i++;
+                setTimeout(last ? finish : tick, last ? 360 : stepMs);
+            };
+            tick();
+        }
         function _campRunMicrogame(game, onResult) {
             const done = (won) => { try { onResult(!!won); } catch (e) { console.warn('[Camp] microgame result', e); } };
-            try {
-                const fn = game && _CAMP_PRIMITIVES[game.primitive];
-                if (fn) return fn(game, done);
-            } catch (e) { console.warn('[Camp] microgame run', e); }
-            done(true); // unknown primitive: never soft-lock the player — treat as a freebie
+            const fn = game && _CAMP_PRIMITIVES[game.primitive];
+            if (!fn) { done(true); return; } // unknown primitive: never soft-lock the player — treat as a freebie
+            _campCountdown(game, () => {                    // a moment to get ready, then the game's clock starts
+                try { fn(game, done); }
+                catch (e) { console.warn('[Camp] microgame run', e); done(true); }
+            });
         }
         function _campMicrogameShell(game, innerHtml) {
             const ov = document.createElement('div');
