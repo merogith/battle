@@ -12554,7 +12554,7 @@ All four are always on. In Classic mode each team gets one per battle; in Unlimi
 The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
 Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. The Master Ball — a guaranteed catch from the villain story-track boss — is best saved for a roaming legendary.<br>
-<b>Catch chance</b> = species rate × ball multiplier. Poké Ball <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates climb with rarity: G1 12%, G2 22%, G3 35%, G4 50%. On a missed throw the wild may flee, with G1 the most likely to bolt and G4 the least.</div>
+A better ball gives a better chance, and a <b>Master Ball</b> never fails. The rarer the Pokémon, the tougher the catch — and the likelier it is to bolt on a missed throw.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Build Power Tiers (T1 → T4)</h3>
 Every Pokémon carries a training tier, separate from its species grade:<br>
 <b style="color:#9e9e9e;">T1 Untrained</b> — 0 EVs, neutral nature, no held item, default ability. Where wilds start.<br>
@@ -19805,7 +19805,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Critical-hit ratio (Focus Energy / Dire Hit / Lansat Berry) is rendered as a stat-stage
             // badge alongside Atk/Def/SpA/SpD/Spe/Acc/Eva in the stat-info-row, not as a volatile chip.
             if (v.aquaRing) chip('Aqua', 'Aqua Ring — heals a little HP each turn', 'buff');
-            if (v.bagRegen && v.bagRegen.turns > 0) chip(`Regen ${v.bagRegen.turns}`, 'HP-regen (Potion) — recovers HP at the end of each turn (' + v.bagRegen.turns + ' turn(s) left)', 'buff');
+            if (v.bagRegen && v.bagRegen.turns > 0) chip(`Regen ${v.bagRegen.turns}`, 'HP regen — end of turn (' + v.bagRegen.turns + ' left)', 'buff');
             if (v.ingrain) chip('Root', 'Ingrain — heals each turn but cannot switch out voluntarily', 'neutral');
             if (v.healBlock > 0) chip(`Hb ${v.healBlock}`, 'Heal Block — cannot heal (' + v.healBlock + ' turn(s))', 'debuff');
             if (v.throatChop > 0) chip(`Throat ${v.throatChop}`, 'Throat Chop — cannot use sound moves', 'debuff');
@@ -20855,7 +20855,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (v.torment) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Torment — cannot use the same move twice in a row">Torment</span>`);
             if (v.lockMove && v.lockTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Locked into ${v.lockMove} (${v.lockTurns} turn${v.lockTurns === 1 ? '' : 's'} left)">Lock: ${v.lockMove}</span>`);
             if (v.aquaRing) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Aqua Ring — recovers 1/16 HP each turn">Aqua Ring</span>`);
-            if (v.bagRegen && v.bagRegen.turns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="HP-regen (Potion) — recovers ${Math.round(Math.min(1, v.bagRegen.pct) * 100)}% HP each turn (${v.bagRegen.turns} turn${v.bagRegen.turns === 1 ? '' : 's'} left)">Regen ${v.bagRegen.turns}</span>`);
+            if (v.bagRegen && v.bagRegen.turns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="HP regen — ${Math.round(Math.min(1, v.bagRegen.pct) * 100)}%/turn (${v.bagRegen.turns} left)">Regen ${v.bagRegen.turns}</span>`);
             if (v.ingrain) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Ingrained — heals each turn but can't switch out">Ingrain</span>`);
             if (v.magnetRise) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Magnet Rise — Ground-immune">Magnet Rise</span>`);
             if (v.destinyBond) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Destiny Bond — if KO'd, the attacker faints too">D-Bond</span>`);
@@ -40942,10 +40942,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_SHOP_ICON_HTML = {
             _default: '<img class="story-shop-item-img" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="30" height="30" loading="lazy" decoding="async">'
         };
+        // Poké Ball items live as pokesprite ball art (sprites/pokesprite/balls/*.png),
+        // not in the PokeAPI item set — without this map shop/bag balls fell through
+        // to the generic artifact icon. Same sprites the catch UI's _BALL_DISPLAY uses.
+        const STORY_SHOP_BALL_SPRITE = {
+            pokeBall: 'poke', greatBall: 'great', ultraBall: 'ultra', masterBall: 'master', safariBall: 'safari'
+        };
         function storyShopIconInnerHtml(id) {
             if (typeof id === 'string') {
                 if (id.startsWith('mega_')) return storyShopIconInnerHtml(id.slice(5));
                 if (id.startsWith('ultra_')) return storyShopIconInnerHtml(id.slice(6));
+            }
+            const ballSlug = STORY_SHOP_BALL_SPRITE[id];
+            if (ballSlug) {
+                return '<img class="story-shop-item-img" src="sprites/pokesprite/balls/' + ballSlug + '.png" alt="" width="30" height="30" loading="lazy" decoding="async" style="image-rendering:pixelated;">';
             }
             const slug = STORY_SHOP_ITEM_SPRITE_SLUG[id];
             if (slug) {
@@ -46896,10 +46906,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-trainer-battle',
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Your First Fight',
                 lines: [
-                    '"Two teams, one road — that\'s a battle. Let me walk you through your first."',
-                    '"No grinding here. What wins is how a partner is *built* — its nature, its training, its moves — and hitting where the foe is weak."',
-                    '"Every move has a type, and types beat types: Water douses Fire, Fire scorches Grass, Grass drinks Water — and so on across the chart. On each move you\'ll see ▲ super-effective (hits hard), ▼ resisted (barely scratches), ⊘ no effect. Chase the ▲ and you\'ll win fights you have no business winning."',
-                    '"⚔ FIGHT picks a move. 🔴 POKÉMON swaps in a partner (costs a turn). 🎒 BAG, 🏃 RUN. Keep that HP bar green."'
+                    '"Two teams, one road — that\'s a battle. Here\'s your first."',
+                    '"Grinding won\'t save you here. What wins is how a partner is *built* — nature, training, moves — and hitting where the foe is weak."',
+                    '"Types beat types: Water douses Fire, Fire scorches Grass, Grass drinks Water. On each move you\'ll see ▲ super-effective, ▼ resisted, ⊘ no effect. Chase the ▲."',
+                    '"⚔ FIGHT, 🔴 POKÉMON to swap (costs a turn), 🎒 BAG, 🏃 RUN. Keep that HP bar green."'
                 ],
             },
             firstWild: {
@@ -46907,7 +46917,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Catching 101',
                 lines: [
                     '"A wild one! They won\'t just stroll over — you have to invite them."',
-                    '"This first throw\'s on me — a sure thing. After that, the number on each ball is your real chance at it. Bigger ball, better odds; a Master Ball never misses at all."',
+                    '"This first throw\'s on me — a sure thing. After that, a bigger ball gives a better shot; a Master Ball never misses at all."',
                     '"Anything you catch turns up rested and ready to walk. Treat them well."'
                 ],
             },
@@ -46916,7 +46926,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The Road',
                 lines: [
                     '"Between every two cities the road has its own residents — wild Pokémon, waiting in the grass."',
-                    '"Tap a ball to throw; the percentage on it is your real chance. The rarer ones spook easily and may bolt on a miss — that throw could be the last you see of them. Commoner ones tend to linger."',
+                    '"Tap a ball to throw. The rarer ones spook easily and may bolt on a miss — that throw could be the last you see of them. Commoner ones tend to linger."',
                     '"You can always Run. The road won\'t wait long, though — one more wild may appear, then a trainer\'s up ahead."'
                 ],
             },
@@ -46924,18 +46934,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-safari-catch',
                 sprite: 'Hiker', name: 'Safari Warden', nameplate: 'Safari Rules',
                 lines: [
-                    '"Past the gate only Safari Balls work, friend — your own stash stays at the door."',
-                    '"🍓 Bait settles a wild down: harder to catch, but it sticks around. 🪨 Rock does the opposite — easier catch, far likelier to bolt. Pile on more of either to push it further; they reset each encounter."',
-                    '"And it can run at the end of any turn — bait, rock, or a missed throw. A good stack of rocks is your best swing and your biggest risk. Pick your moment."'
+                    '"Past the gate only Safari Balls work — your own stash stays at the door."',
+                    '"🍓 Bait settles a wild: harder to catch, but it stays. 🪨 Rock does the opposite — easier catch, likelier to bolt. Stack either to push it; they reset each encounter."',
+                    '"It can run at the end of any turn. A big rock stack is your best swing and your biggest risk — pick your moment."'
                 ],
             },
             firstMart: {
                 metaKey: 'tutorial-first-mart',
                 sprite: 'Clerk', name: 'Mart Clerk', nameplate: 'Pokémart',
                 lines: [
-                    '"Well howdy! Pull up a basket — Poké Balls, Potions, the lot. All stocked, all the time."',
-                    '"Towns patch your team up free between scraps, so don\'t fuss over the small stuff. Grab some balls for catchin\', a Potion or two for when a fight drags long — whatever feels right."',
-                    '"Here — five Poké Balls on the house, welcome gift. And hey… word is the fancier shops out there keep the real good stuff. You didn\'t hear it from me."'
+                    '"Howdy! Poké Balls, Potions, the lot — all stocked, all the time."',
+                    '"Towns heal your team free, so don\'t fuss. Grab balls for catching and a Potion for the long fights."',
+                    '"Here — five Poké Balls, welcome gift. Word is the fancier shops keep the real good stuff. You didn\'t hear it from me."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ pokeBall: 5 }); } catch (e) {}
@@ -46946,9 +46956,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-dept',
                 sprite: 'Clerk-2', name: 'Dept Store Clerk', nameplate: 'Department Store',
                 lines: [
-                    '"Welcome to the Department Store — five floors, one elevator, and nothing on the shelf comes cheap."',
-                    '"Great Balls for a surer catch. Revives for partners who fall mid-battle. Weather and Terrain Orbs to tilt the field the moment the bell rings. And the Emergency Teleporter — one clean escape from any trap, once a battle."',
-                    '"Mind you, each item\'s a single sale per city — no restock when you pass through again. Buy while it\'s on the shelf. Here: a Great Ball and a Revive, with the store\'s compliments. First-visit policy."'
+                    '"Welcome to the Department Store — five floors, nothing cheap."',
+                    '"Great Balls for surer catches. Revives for fallen partners. Weather and Terrain Orbs to tilt the field. And an Emergency Teleporter — one clean escape per battle."',
+                    '"Each item\'s a single sale per city — no restock. Buy while it\'s here. A Great Ball and a Revive, with our compliments."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ greatBall: 1, revive: 1 }); } catch (e) {}
@@ -46960,8 +46970,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Hiker', name: 'Safari Warden', nameplate: 'Safari Zone',
                 lines: [
                     '"Welcome to the Safari Zone! First trip\'s on the house."',
-                    '"Here — a satchel of Safari Balls, the only kind that works past this gate. You get a handful of encounters before the bell rings, so make them count."',
-                    '"Two tricks inside: 🍓 Bait calms a wild down, 🪨 Rock sharpens the catch but tempts it to bolt — and bolt it might, any turn. Leftover balls stay at the gate. Good hunting."'
+                    '"Here — Safari Balls, the only kind that works past this gate. A handful of encounters before the bell, so make them count."',
+                    '"🍓 Bait calms a wild, 🪨 Rock sharpens the catch but tempts it to bolt — any turn. Leftover balls stay at the gate. Good hunting."'
                 ],
             },
             firstCasino: {
@@ -46982,9 +46992,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: 'tutorial-first-pokemon-center',
                 sprite: 'Nurse', name: 'Nurse Joy', nameplate: 'Pokémon Center',
                 lines: [
-                    '"Welcome to the Pokémon Center! Your team\'s already healed — the road sees to that before you reach my counter."',
-                    '"Upstairs is the PC: cold storage for every partner you\'ve caught but can\'t carry today. Deposit, withdraw, or release — whenever you like."',
-                    '"And downstairs… the Underground. Quieter folk down there, happy to buy any Pokémon you\'ll never field — though they\'ll never take your last party member. Here, a Full Restore for the road. Do take care out there."'
+                    '"Welcome! Your team\'s already healed — the road sees to that."',
+                    '"Upstairs is the PC: storage for partners you can\'t carry today. Deposit, withdraw, or release, whenever."',
+                    '"Downstairs, the Underground buys any Pokémon you\'ll never field — but never your last one. Here, a Full Restore. Take care."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ fullRestore: 1 }); save(); } catch (e) {}
@@ -54459,19 +54469,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         }
 
-        /** Per-variant intro-rival cold-open content. The original `classic`
-         *  intro is preserved verbatim so existing saves replay identically.
-         *  All other variants are new prose. Each variant's intro is the
-         *  single most important narrative moment of the run — it sets the
-         *  tone for everything that follows. */
+        /** Per-variant intro-rival cold-open content. The `classic` intro was
+         *  trimmed (2026-06) for a leaner read; dedupe is variant-keyed
+         *  (not content-keyed), so the rewrite is save-safe and existing runs
+         *  simply replay the shorter scene. Each variant's intro is the single
+         *  most important narrative moment of the run — it sets the tone for
+         *  everything that follows. */
         const _STORY_INTRO_SCENES = {
             classic: {
                 sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
                 lines: [
-                    '"Hold up. Your rival got their starter the same morning you got yours — same lab, same shelf, the same nervous hands. Now they\'re standing in the route gate, and they\'re not moving."',
-                    '"Here\'s the arithmetic nobody says out loud: the two of you are dead even exactly once, and this is it. After today the road starts keeping score, and it only ever tips one way. Take the even fight while it\'s still even."',
+                    '"Hold up. Your rival got their starter the same morning you got yours — same lab, same shelf. Now they\'re in the route gate, not moving."',
+                    '"Here\'s the arithmetic nobody says aloud: the two of you are dead even exactly once, and this is it. After today the road keeps score. Take the even fight while it\'s even."',
                     '"Show me what the partner can do."',
-                    '"…Huh. First-day nerves all over you — but you\'re standing like your feet already know the way. Shake it off. Go on."'
+                    '"…First-day nerves all over you — but you\'re standing like your feet already know the way. Go on."'
                 ]
             }
         };
@@ -59563,43 +59574,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const baitMult = Math.pow(SAFARI_BAIT_CATCH_MULT, sess.baitCount | 0);
                 const rockMult = Math.pow(SAFARI_ROCK_CATCH_MULT, sess.rockCount | 0);
                 const safariCatchMult = Math.max(0.1, Math.min(4.0, SAFARI_BALL_MULT * baitMult * rockMult));
-                const safariChance = Math.min(1, baseRate * safariCatchMult);
-                const safariPct = Math.round(safariChance * 100);
                 const display = _BALL_DISPLAY.safari;
                 const have = sess.ballsLeft | 0;
                 const canThrow = have > 0;
+                // Safari odds stay opaque too — no catch %, no flee %. Bait and
+                // Rock still show their *direction* (calm vs rile) so the gamble
+                // reads, just without the numbers behind it.
                 ballRows = `<button type="button" onclick="window.StoryMode.catchThrow('safari')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                    <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span></span>
-                    <span style="color:#fff;">${safariPct}%</span>
+                    <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> ×${have}</span></span>
                 </button>`;
-                // Per-turn flee % AND projected catch % surfaced on each
-                // button so the full gamble is legible at the point of
-                // decision. Bait stays gentle (low flee, but it drags catch
-                // down); Rock scales hard on both axes — mirrors the
-                // canonical Safari dilemma where every rock is "one more
-                // roll closer to a catch, but the wild might bolt this turn".
-                const _projChance = (baitCount, rockCount) => {
-                    const bm = Math.pow(SAFARI_BAIT_CATCH_MULT, baitCount);
-                    const rm = Math.pow(SAFARI_ROCK_CATCH_MULT, rockCount);
-                    const mult = Math.max(0.1, Math.min(4.0, SAFARI_BALL_MULT * bm * rm));
-                    return Math.min(1, baseRate * mult);
-                };
-                const _projFlee = (baitCount, rockCount, actionMult) => {
-                    // Mirrors _safariActionFleeThreshold: rock-anger only, no bait
-                    // factor — food never changes the per-turn flee shown on a
-                    // button. baitCount kept for call-site symmetry with _projChance.
-                    const m = Math.pow(SAFARI_ROCK_FLEE_MULT, rockCount);
-                    const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
-                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * actionMult));
-                };
-                const _simBaitB = Math.min(3, (sess.baitCount | 0) + 1);
-                const _simBaitR = sess.rockCount | 0;
-                const _simRockB = sess.baitCount | 0;
-                const _simRockR = Math.min(3, (sess.rockCount | 0) + 1);
-                const _baitProjPct = Math.round(_projChance(_simBaitB, _simBaitR) * 100);
-                const _rockProjPct = Math.round(_projChance(_simRockB, _simRockR) * 100);
-                const _baitTurnPct = Math.round(_projFlee(_simBaitB, _simBaitR, SAFARI_BAIT_TURN_FLEE_MULT) * 100);
-                const _rockTurnPct = Math.round(_projFlee(_simRockB, _simRockR, SAFARI_ROCK_TURN_FLEE_MULT) * 100);
+                // Bait vs Rock is the classic Safari dilemma — Bait calms the
+                // wild (harder to catch, but it lingers), Rock riles it (easier
+                // catch, far likelier to bolt). We surface the *direction* of
+                // each, never the underlying odds.
                 const baitMaxed = (sess.baitCount | 0) >= 3;
                 const rockMaxed = (sess.rockCount | 0) >= 3;
                 // PokéSprite icons from main — better than a plain emoji and
@@ -59615,15 +59602,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? ` <span style="opacity:0.7;font-size:10px;color:#888;">MAX</span>`
                     : (sess.rockCount ? ` <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.rockCount}</span>` : '');
                 const baitTitle = baitMaxed
-                    ? `Bait stack maxed at 3×. The wild is as calm as it gets.`
-                    : `Calms the Pokémon — catch ${safariPct}% → ${_baitProjPct}%, flee risk this turn ${_baitTurnPct}%.`;
+                    ? `The wild is as calm as it gets.`
+                    : `Calms the wild — harder to catch, but it's likelier to stay.`;
                 const rockTitle = rockMaxed
-                    ? `Rock stack maxed at 3×. The wild is fully riled — throw now.`
-                    : `Angers the Pokémon — catch ${safariPct}% → ${_rockProjPct}%, flee risk this turn ${_rockTurnPct}%.`;
-                // Action stat preview "→ NN%catch · flee N%" — readable green/orange
-                // split so the upside and the risk are visually distinct.
-                const baitStats = baitMaxed ? '' : `<span style="font-size:10px;">→ <span style="color:#aed581;">${_baitProjPct}%</span> · <span style="color:#ff7043;">flee ${_baitTurnPct}%</span></span>`;
-                const rockStats = rockMaxed ? '' : `<span style="font-size:10px;">→ <span style="color:#aed581;">${_rockProjPct}%</span> · <span style="color:#ff7043;">flee ${_rockTurnPct}%</span></span>`;
+                    ? `The wild is fully riled — throw now.`
+                    : `Riles the wild — easier to catch, but it's likelier to bolt.`;
+                // Direction-only cue — calm (green) vs flighty (orange), no odds.
+                const baitStats = baitMaxed ? '' : `<span style="font-size:10px;color:#aed581;">calmer</span>`;
+                const rockStats = rockMaxed ? '' : `<span style="font-size:10px;color:#ff7043;">flightier</span>`;
                 safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
                     <button type="button" onclick="window.StoryMode.safariBait()" ${baitMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;${baitMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(baitTitle)}">
                         <span>${_baitIco}Bait${baitStack}</span>
@@ -59638,35 +59624,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <button type="button" onclick="window.StoryMode.catchRun()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #5e7a90;color:#a8bccc;font-family:inherit;font-size:10px;cursor:pointer;" title="Skip to next encounter">&#8594; Skip to Next</button>
                     <button type="button" onclick="window.StoryMode.safariLeaveEarly()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #8b6b3a;color:#d7b489;font-family:inherit;font-size:10px;cursor:pointer;" title="Unused Safari Balls will be forfeited">&#8617; Leave Safari</button>
                 </div>`;
-                const _fleeBase = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
-                const _fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
-                const _fleeThresh = Math.max(0, Math.min(0.85, _fleeBase * _fleeMult));
-                const _fleePct = Math.round(_fleeThresh * 100);
                 safariStatusRow = `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aed581;padding:6px 8px;background:rgba(10,18,12,0.45);border:1px solid #4a6c44;margin-top:6px;">
                     <span>Encounter ${sess.encountersUsed} of ${SAFARI_MAX_ENCOUNTERS}</span>
-                    <span>Flee on miss: <strong style="color:#ff7043;">${_fleePct}%</strong></span>
+                    <span style="color:#ff7043;">A miss may scare it off</span>
                 </div>`;
             } else {
                 ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
                     const have = (sm.balls && (sm.balls[k] | 0)) || 0;
                     const mult = _CATCH_BALL_MULT[k];
                     const display = _BALL_DISPLAY[k];
-                    const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
-                    const pct = Math.round(chance * 100);
-                    // Master Ball is a normal guaranteed-catch ball — usable on any
-                    // encounter, not reserved for a special boss capture. (It still
-                    // reads as the guaranteed throw via the purple glow + ✨ below.)
+                    // Catch odds are deliberately opaque — you throw and watch the
+                    // wobbles, classic-Pokémon style. The catch math still runs in
+                    // catchThrow; we just never print a percentage. Master Ball is
+                    // the one exception: it stays visibly the guaranteed throw.
                     const canThrow = have > 0;
-                    const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
+                    const isMaster = mult === Infinity;
                     // Master Ball gets a dedicated CSS class so the button
                     // glows purple and carries a ✨ marker — its guaranteed-
-                    // catch identity now reads at a glance, before throw
-                    // resolution. Other balls render exactly as before.
+                    // catch identity reads at a glance. Other balls show no odds.
                     const masterCls = (k === 'master' && canThrow) ? ' story-catch-ball--master' : '';
                     const masterMark = (k === 'master' && canThrow) ? '<span style="margin-left:6px;color:#ce93d8;text-shadow:0 0 6px rgba(206,147,216,0.85);">✨</span>' : '';
-                    const rightLabel = `<span style="color:#fff;">${pct}%</span>`;
+                    const multLabel = isMaster ? ' <span style="color:#aaa;font-size:10px;">(guaranteed)</span>' : '';
+                    const rightLabel = isMaster ? '<span style="color:#ce93d8;font-size:11px;">✓</span>' : '';
                     return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} data-ball-type="${k}" class="story-catch-ball${masterCls}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong>${masterMark} <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
+                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong>${masterMark}${multLabel} ×${have}</span></span>
                         ${rightLabel}
                     </button>`;
                 }).join('');
@@ -59689,7 +59670,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const headerColor = _encShiny ? '#ffd54f' : '#a5d6a7';
             const headerBg = 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
             const gradeBg = _encShiny ? '#ffd54f' : '#a5d6a7';
-            const subText = _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
+            const subText = _catchState.safariMode ? 'Safari Balls only. Bait calms, Rock riles — every turn the wild may flee.' : 'A better ball means a better chance — a Master Ball never fails.';
             // "Up next" pill — surfaced on route catch screens (not safari /
             // boss / tutorial, which have their own framing). Tells the player
             // what they walk into next: another wild on the same route, or
