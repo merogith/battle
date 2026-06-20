@@ -269,4 +269,17 @@ test('run-routing: unknown primitive → freebie win; known primitives mount an 
         assert.ok(ov && ov.querySelector(c.sel), `${c.game.primitive} overlay rendered (${c.sel})`);
         if (ov) ov.remove();
     }
+
+    // Stack! drop produces a visible placed-slab in the field (both hit and miss
+    // branches spawn one; a resolving drop defers settle() so it is present now).
+    {
+        ST.campRunMicrogame({ primitive: 'stack', name: 'Stack!', need: 4, tol: 26, slideMs: 1200 }, () => {});
+        ov = W.document.getElementById('camp-microgame');
+        const drop = ov && ov.querySelector('#camp-sk-drop');
+        assert.ok(drop, 'stack DROP button present');
+        drop.click();
+        const field = ov.querySelector('#camp-sk-field');
+        assert.ok(field && field.querySelector('.camp-sk-placed'), 'stack drop spawns a placed slab');
+        if (ov && ov.parentNode) ov.remove();
+    }
 });
