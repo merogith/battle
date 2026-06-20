@@ -3397,6 +3397,21 @@
             overflow-y: auto; min-height: 0; padding-right: 2px;
         }
         body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-tip { width: 100%; box-sizing: border-box; }
+        /* Objective card on the narrow (~300px) desktop rail: the kicker chip
+           ("NEW HERE" / "NEXT" / "ERRAND") used to sit on the SAME row as the
+           label, squeezing the label into ~160px so "See the new Daycare Inn
+           before you go" wrapped to five lines. Lift the kicker onto its own
+           line so the label gets the full rail width and wraps to two lines. */
+        body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-objective {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            grid-template-areas: "kicker kicker kicker" "icon label go";
+            align-items: center; column-gap: 8px; row-gap: 6px;
+        }
+        body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-objective .obj-kicker { grid-area: kicker; justify-self: start; }
+        body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-objective .obj-ico { grid-area: icon; }
+        body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-objective .obj-label { grid-area: label; }
+        body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-objective .obj-go { grid-area: go; }
         /* Facility card grid — section headers span the full row. */
         body:not(.is-mobile) #screen-story-city #story-action-buttons {
             grid-area: actions;
@@ -3409,9 +3424,27 @@
         }
         body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-section-header { grid-column: 1 / -1; margin: 12px 0 0; }
         body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-section-header:first-child { margin-top: 0; }
-        /* Card treatment — scoped to the city grid; casino reuse untouched. */
+        /* Card treatment — scoped to the city grid; casino reuse untouched.
+           On desktop each card is a 2-column GRID rather than the mobile wrap-flex:
+           the icon spans the left, the title owns a full-width row, and the meta
+           badges drop to their own row beneath the title. The old flex-wrap let a
+           wrapped title's second line slide UNDER the right-floated badges (Daycare
+           Inn / Party / Move Tutor / Stones / Cable Link all collided); a grid track
+           can't overlap, so the title and badges are now always cleanly separated. */
         body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn {
             min-height: 56px; height: 100%; box-sizing: border-box;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-areas: "icon text" "icon meta";
+            align-items: center; align-content: center;
+            column-gap: 10px; row-gap: 0;
+        }
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn .story-action-ico { grid-area: icon; align-self: center; }
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn .story-action-btn-text {
+            grid-area: text; min-width: 0; align-self: center;
+        }
+        body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn .story-action-btn-meta {
+            grid-area: meta; justify-self: start; margin: 6px 0 0; flex-wrap: wrap;
         }
         body:not(.is-mobile) #screen-story-city #story-action-buttons .story-action-btn:hover {
             box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #3a4050, 0 6px 16px rgba(0,0,0,0.45);
