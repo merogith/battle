@@ -43025,6 +43025,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return cur || name;
         }
 
+        // League boss "best team" EVOLVE-UP: walk a signature ALL the way to its
+        // terminal (fully-evolved) form, regardless of grade floor. Used only for
+        // E1-E4 / Champion so their authored aces always field at max evolution
+        // stage (Lance's Dragonair → Dragonite). Mirrors _evolveSigToGradeFloor's
+        // gen-legal branch walk — at each hop step to the strongest-grade reachable
+        // evolution — but the loop condition is "has a gen-legal evo", so it never
+        // stops early at a mid-line grade. A no-evo final (Aerodactyl) returns
+        // unchanged. genSet keeps Gen-locked runs honest (Onix never climbs to its
+        // Gen-2 Steelix in a Gen-1-only run); a null genSet allows every evolution.
+        function _evolveSigToMaxStage(name, genSet) {
+            let cur = name, guard = 0;
+            while (cur && guard++ < 5) {
+                const b = baseStats[cur];
+                const evos = (b && Array.isArray(b.evos))
+                    ? b.evos.filter(e => baseStats[e] && (!genSet || genSet.has(baseStats[e].gen)))
+                    : [];
+                if (!evos.length) break;
+                let best = evos[0];
+                for (const e of evos) if (getMonGrade(e, getBST(e)) < getMonGrade(best, getBST(best))) best = e;
+                cur = best;
+            }
+            return cur || name;
+        }
+
         // ── TRAINER TEAM ROLLER ───────────────────────────────────────────
         function parseTrainerTypes(typeStr) {
             if (!typeStr) return ['Normal'];
@@ -44478,6 +44502,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_fillerFloor < 4 && !_exemptFromSigCap && Array.isArray(S) && S.length) {
                 S = S.map(n => _evolveSigToGradeFloor(n, _fillerFloor, sigGenSet));
             }
+            // League boss "best team" (maintainer spec, 2026-06): E1-E4 / Champion
+            // always field their signatures at MAX evolution stage — not the authored
+            // verbatim form. Lance E4's two Dragonair become Dragonite, so with his
+            // listed Dragonite the dedup basis below counts 3 (see _multBasis). Gated
+            // to the league bosses only (Rival returns early as a counter-team; Mystery
+            // Figure fields the HoF snapshot, never this path). Per-species exceptions
+            // in LEAGUE_SIG_KEEP_VERBATIM keep an intentionally iconic under-evolved ace.
+            const _isLeagueBoss = /^E[1-4]$/.test(_evtStr) || _evtStr === 'Champion';
+            if (_isLeagueBoss && Array.isArray(S) && S.length) {
+                S = S.map(n => LEAGUE_SIG_KEEP_VERBATIM.has(n) ? n : _evolveSigToMaxStage(n, sigGenSet));
+            }
             if (!_exemptFromSigCap) {
                 // Clamp the sig ceiling no weaker than the filler floor: at GL6 the row
                 // weights say G3, but the G2 floor wants G2 filler — letting the leader's
@@ -44699,7 +44734,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // identical mons. So cap each species in S at its verbatim authored count before
             // building _sigMult. Non-duplicate trainers are unaffected (every count = 1).
             const _origMult = new Map();
-            for (const _o of (trainer.sigs || [])) _origMult.set(_o, (_origMult.get(_o) || 0) + 1);
+            // For league bosses (E1-E4 / Champion) the signatures were force-evolved to
+            // max stage above, which can COLLAPSE distinct authored sigs onto one form
+            // (2 Dragonair → Dragonite). That collapse is intended to STACK here, so the
+            // multiplicity basis is the max-evolved authored list — Lance gets a Dragonite
+            // allowance of 3, and dedup keeps all three. Every other event keeps the raw
+            // verbatim basis, preserving the "collapsed different sigs don't multiply" guard.
+            const _multBasis = _isLeagueBoss
+                ? (trainer.sigs || []).map(n => {
+                    if (!baseStats[n]) return n;
+                    const g = _genLegalEvoLineForm(n, sigGenSet);
+                    return LEAGUE_SIG_KEEP_VERBATIM.has(g) ? g : _evolveSigToMaxStage(g, sigGenSet);
+                })
+                : (trainer.sigs || []);
+            for (const _o of _multBasis) _origMult.set(_o, (_origMult.get(_o) || 0) + 1);
             {
                 const _seenCnt = new Map();
                 const _dedupS = [];
@@ -45027,6 +45075,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     capGradePoolsByGradeCeiling: (...a) => _capGradePoolsByGradeCeiling(...a),
                     stagePowerTargetForEvent: (...a) => _stagePowerTargetForEvent(...a),
                     evolveSigToGradeFloor: (...a) => _evolveSigToGradeFloor(...a),
+                    evolveSigToMaxStage: (...a) => _evolveSigToMaxStage(...a),
+                    leagueSigKeepVerbatim: () => LEAGUE_SIG_KEEP_VERBATIM,
                     rollCityIVs: (...a) => _rollCityIVs(...a),
                     trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
                     storyEvTotalForCity: (...a) => _storyEvTotalForCity(...a),
@@ -45566,6 +45616,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             E3: [],
             E4: ['Lance', 'Karen'],
         };
+
+        // League boss signatures are force-evolved to their MAX stage (best team):
+        // Lance E4's authored Dragonair → Dragonite, so his list collapses to 3
+        // Dragonite. Species listed here are the curated EXCEPTION — kept verbatim
+        // even on E1-E4 / Champion (for an intentionally iconic under-evolved ace,
+        // e.g. a 'Pikachu'). Maintainer-owned; empty Set = evolve everything.
+        const LEAGUE_SIG_KEEP_VERBATIM = new Set([ /* 'Pikachu', */ ]);
 
         // ── Per-event deterministic RNG (static-roll spec) ─────────────────────
         // A non-rival event's roll must be reproducible across refresh / flee / revisit.
