@@ -1468,7 +1468,7 @@
            can tell "Earthquake 99%" apart from "Scale Shot 24%". */
         .tx-card-pct {
             display: inline-flex; align-items: center;
-            font-size: 10.5px; font-weight: 700;
+            font-size: 10px; font-weight: 700;
             color: #d2b35a; letter-spacing: 0.04em;
             background: rgba(255,213,79,0.12);
             border: 1px solid rgba(255,213,79,0.32);
@@ -1550,13 +1550,13 @@
         .tx-card-title { color: #e8eaf0; flex: 1; min-width: 0; }
         .tx-card-stats {
             display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 2px 8px; font-size: 10.5px; color: #aab2c4;
+            gap: 2px 8px; font-size: 10px; color: #aab2c4;
         }
         .tx-card-stats strong { color: #d4d9e4; font-weight: 700; }
         .tx-card-stats .tx-stat-spe { color: #ffd54f; }
         .tx-card-stats .tx-stat-bp { color: var(--hp-yellow, #ffeb3b); }
         .tx-card-desc {
-            font-size: 11.5px; color: #c6ccd9; line-height: 1.5;
+            font-size: 11px; color: #c6ccd9; line-height: 1.5;
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
             overflow: hidden; text-overflow: ellipsis;
         }
@@ -1567,7 +1567,7 @@
         .tx-card-price { font-size: 10px; color: #ffd700; font-weight: 600; }
         .tx-pill {
             display: inline-flex; align-items: center; gap: 3px;
-            padding: 2px 7px; font-size: 10px; font-weight: 700;
+            padding: 2px 7px; font-size: 9.5px; font-weight: 700;
             background: rgba(0,0,0,0.5); border: 1px solid #4a5268;
             color: #c8cedb; border-radius: 999px; letter-spacing: 0.04em;
         }
@@ -1756,7 +1756,7 @@
         .tx-rec-equipped svg { width: 12px; height: 12px; }
         .tx-rec-tag {
             display: inline-flex; align-items: center; justify-content: center;
-            padding: 3px 7px; font-size: 10px; font-weight: 800;
+            padding: 3px 7px; font-size: 9.5px; font-weight: 800;
             letter-spacing: 0.06em; text-transform: uppercase;
             border-radius: 999px;
             background: rgba(102,187,106,0.18); border: 1px solid #66bb6a;
@@ -1788,14 +1788,14 @@
         .tx-rec-tag--card { padding: 1px 6px; font-size: 8.5px; }
         .tx-rec-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .tx-rec-name {
-            font-size: 13px; font-weight: 700; color: #e8eaf0;
+            font-size: 12.5px; font-weight: 700; color: #e8eaf0;
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
             line-height: 1.2;
         }
         .tx-rec-name .type-badge { font-size: 9px; }
         .tx-rec-reason {
-            font-size: 11px; color: #c6ccd9; line-height: 1.45;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            font-size: 10.5px; color: #c6ccd9; line-height: 1.45;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
             overflow: hidden;
         }
         .tx-rec-go {
@@ -1806,7 +1806,7 @@
             .tx-rec-row { grid-template-columns: 66px minmax(0, 1fr) auto; padding: 9px 10px; }
             .tx-rec-tag { font-size: 9px; padding: 2px 6px; }
             .tx-rec-name { font-size: 12px; }
-            .tx-rec-reason { font-size: 10px; -webkit-line-clamp: 2; }
+            .tx-rec-reason { font-size: 10px; -webkit-line-clamp: 3; }
         }
 
         /* Clear-all-filters button — appears in the toolbar when a search or
@@ -3230,6 +3230,14 @@
             display: flex; align-items: center; gap: 4px;
             flex: 0 0 auto; margin-left: 8px;
         }
+        /* City facility cards: a Required + cost badge could make the meta so wide
+           that the title's flex box collapsed toward 0 and its text spilled OVER
+           the badges. Let the row wrap so the badges fall to a second line on tight
+           cards, and hold a readable minimum width on the title so it never
+           collapses. Scoped to the city list so the casino's reuse is untouched. */
+        #story-action-buttons .story-action-btn { flex-wrap: wrap; row-gap: 4px; font-size: 11.5px; }
+        #story-action-buttons .story-action-btn-text { flex: 1 1 auto; min-width: 7em; }
+        #story-action-buttons .story-action-btn-meta { margin-left: auto; }
         .story-action-section-header {
             display: flex; align-items: center; gap: 8px;
             margin: 14px 0 6px 0;
@@ -3417,7 +3425,7 @@
         .story-journal-section li { font-size: 12px; color: #cfd8e6; line-height: 1.6; }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
-            font-size: 10px; line-height: 1; letter-spacing: 0.5px;
+            font-size: 9.5px; line-height: 1; letter-spacing: 0.4px;
             padding: 3px 6px; border: 1px solid currentColor; border-radius: 2px;
             font-family: var(--battle-font) !important;
             text-transform: uppercase;
@@ -66620,35 +66628,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 used.add(item); out.push({ purpose, item, reason, equipped: item === curItem }); return true;
             };
 
+            // A rec's blurb states what the pick actually DOES (its real effect),
+            // so a newer player learns the mechanic — not just the strategy. The
+            // coloured purpose tag already carries the role; the blurb falls back to
+            // the old strategic line if an item somehow has no description.
+            const why = (item, fallback) => { const e = item ? (_txDescriptionFor(item, 'item') || '').trim() : ''; return e || fallback || ''; };
+
             // 1) PRIMARY — the headline item by archetype.
             if (wall) {
-                add('Bulk', pick(nfe ? 'Eviolite' : null, sustainItem, !isPhys ? 'Assault Vest' : null, 'Rocky Helmet', 'Sitrus Berry'),
-                    nfe ? 'Eviolite — +50% Def & Sp.Def on a not-fully-evolved Pokémon.' : 'Best sustain item to anchor a wall.');
+                const it = pick(nfe ? 'Eviolite' : null, sustainItem, !isPhys ? 'Assault Vest' : null, 'Rocky Helmet', 'Sitrus Berry');
+                add('Bulk', it, why(it, 'Best sustain item to anchor a wall.'));
             } else {
                 const choice = isPhys ? 'Choice Band' : 'Choice Specs';
-                add('Offensive', pick(
+                const it = pick(
                     sweeper ? choice : null, 'Life Orb', choice,
                     isPhys ? 'Muscle Band' : 'Wise Glasses', stabBoost, 'Expert Belt',
                     isPhys ? 'Liechi Berry' : 'Petaya Berry', 'Salac Berry',
-                ), 'The biggest damage boost this Pokémon can hold right now.');
+                );
+                add('Offensive', it, why(it, 'The biggest damage boost this Pokémon can hold right now.'));
             }
 
             // 2) SUSTAIN — stay healthy over the long game.
-            add('Sustain', pick(sustainItem, nfe ? 'Eviolite' : null, 'Sitrus Berry',
-                (off >= 100 || spe >= 95 || frail) ? 'Focus Sash' : null, 'Figy Berry'),
-                'Sustain to win the long exchanges.');
+            const sustainPick = pick(sustainItem, nfe ? 'Eviolite' : null, 'Sitrus Berry',
+                (off >= 100 || spe >= 95 || frail) ? 'Focus Sash' : null, 'Figy Berry');
+            add('Sustain', sustainPick, why(sustainPick, 'Sustain to win the long exchanges.'));
 
             // 3) STATUS INSURANCE — shrug off a crippling status once.
-            add('Status', pick('Lum Berry', 'Chesto Berry', 'Cheri Berry'),
-                'Cures a status once — frees you from a burn / paralysis / sleep.');
+            const statusPick = pick('Lum Berry', 'Chesto Berry', 'Cheri Berry');
+            add('Status', statusPick, why(statusPick, 'Cures a status once — frees you from a burn / paralysis / sleep.'));
 
             // 4) DEFENSIVE TECH — resist berry vs the worst weakness, else passive defense.
             if (worst && _DOJO_RESIST_BERRY[worst.type]) {
                 add('Defensive', pick(_DOJO_RESIST_BERRY[worst.type], 'Rocky Helmet', 'Covert Cloak'),
-                    `Softens a ${worst.type}-type hit once — covers this Pokémon's ${worst.mult}x weakness.`);
+                    `Softens ${/^[AEIOU]/i.test(worst.type) ? 'an' : 'a'} ${worst.type}-type hit once — covers this Pokémon's ${worst.mult}x weakness.`);
             } else {
-                add('Defensive', pick('Rocky Helmet', 'Covert Cloak', 'Sitrus Berry'),
-                    'Defensive tech for trickier matchups.');
+                const defPick = pick('Rocky Helmet', 'Covert Cloak', 'Sitrus Berry');
+                add('Defensive', defPick, why(defPick, 'Defensive tech for trickier matchups.'));
             }
 
             // Backfill any empty slots with the next best-scoring available item.
@@ -66684,18 +66699,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const bestIn = (set) => _txBestBy(pool, a => set.has(a), a => _txScoreAbility(a, mon, build));
 
+            // Blurb = what the ability actually DOES (its real effect); the purpose
+            // tag carries the role. Falls back to the old strategic line if missing.
+            const whyA = (ability, fallback) => { const e = ability ? (_txDescriptionFor(ability, 'ability') || '').trim() : ''; return e || fallback || ''; };
+
             const off = bestIn(OFFENSIVE);
-            if (off) push('Offensive', off, 'Boosts damage output every turn.');
+            if (off) push('Offensive', off, whyA(off, 'Boosts damage output every turn.'));
 
             const def = bestIn(DEFENSIVE);
-            if (def) push('Defensive', def, 'Cuts incoming damage or blocks status.');
+            if (def) push('Defensive', def, whyA(def, 'Cuts incoming damage or blocks status.'));
 
             const util = bestIn(UTILITY);
-            if (util) push('Utility', util, 'Shifts the matchup the moment you switch in.');
+            if (util) push('Utility', util, whyA(util, 'Shifts the matchup the moment you switch in.'));
 
             if (out.length < 4) {
                 const niche = bestIn(NICHE);
-                if (niche) push('Niche', niche, 'Immunity / counter — wins specific matchups.');
+                if (niche) push('Niche', niche, whyA(niche, 'Immunity / counter — wins specific matchups.'));
             }
 
             // Fallback: best by score (if categories couldn't produce 3 distinct picks)
