@@ -9953,9 +9953,6 @@
                 Post-game hub. All facilities, all rematches, plus the Battle Frontier.
             </div>
             <div id="story-crucible-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,10,18,0.2);"></div>
-            <div style="padding:10px;flex-shrink:0;">
-                <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.leaveCrucible()">&#8592; Back to City</button>
-            </div>
         </div>
     </div>
 
@@ -50253,6 +50250,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // previously gated on the now-removed Caged God `bossArc.available` flag.
             if (sm.postHofMysteryClimaxDone) {
                 _push('recover', makeActionBtn('🧨 The Crucible','crucible','window.StoryMode.enterCrucible()','center', _facOpts('crucible', [{label:'Post-game',tone:'info'}])));
+            } else if (sm.hofPartySnapshot) {
+                // Post-HoF, climax still PENDING — the player lost the masked-figure
+                // climax and returned to town. Re-challenge entry point; beating it plays
+                // the reveal + ending and opens the Crucible endgame. (Before any attempt
+                // the player goes straight from the Hall of Fame into the fight, so this
+                // only ever surfaces after a loss.)
+                _push('recover', makeActionBtn('🚪 The Mystery Figure','mystery','window.StoryMode.enterMysteryClimax()','center', _facOpts('mystery', [{label:'Climax',tone:'info'}])));
             }
             const _partyN = sm.team.length;
             const _partyCapNow = _partyCap;
@@ -56659,8 +56663,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Crucible-sourced battles (Frontier / Mystery / Rival / League / Gym) bypass
             // the normal victory overlay + game-over screen and route back to their hub.
             if (sm.crucibleBattleSource) {
-                _handleCrucibleBattleEnd(!!won, sm.crucibleBattleSource);
-                return;
+                // The post-HoF Mystery Figure climax is the one Crucible-sourced fight
+                // whose LOSS must NOT consume the endgame: route it through the normal
+                // game-over screen (Retry / Return to last city) with the climax still
+                // pending, exactly like any scripted story battle, so the endgame only
+                // opens once the masked figure is actually beaten. Drop the source first
+                // so the defeat / retreat / row-67-recovery machinery treats this as a
+                // clean, still-pending climax. Every other source — and every WIN — keeps
+                // its off-timeline hub handler.
+                if (won || sm.crucibleBattleSource !== 'postHofMystery') {
+                    _handleCrucibleBattleEnd(!!won, sm.crucibleBattleSource);
+                    return;
+                }
+                sm.crucibleBattleSource = null;
+                try { save(); } catch (e) {}
             }
             // Pits-sourced bracket fight — fully off-timeline; never touches eventIndex.
             if (sm.pits && sm.pits._inBattle) {
@@ -57054,6 +57070,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // gameover surface.
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            // Re-arm the post-HoF Mystery Figure climax as Crucible-sourced. It's a
+            // timeline row, but a LOSS now routes to this game-over screen (with the
+            // climax still pending) instead of the off-timeline handler — and load()
+            // cleared the transient source. The lock-fast-path below skips
+            // processNextEvent's row-67 recovery, so without this a retried climax WIN
+            // would route as a plain trainer win instead of into the reveal → ending →
+            // Crucible hand-off.
+            if (ev && ev[1] === 'Battle' && String(ev[2] || '') === 'Mystery Figure' && !sm.postHofMysteryClimaxDone) {
+                sm.crucibleBattleSource = 'postHofMystery';
+            }
             if (ev && ev[1] === 'Battle' && sm.currentEnemyLock && sm.currentEnemyLock.eventIdx === sm.eventIndex) {
                 // Retry replays the SAME trainer fight. The route wild / catch
                 // tutorial / roaming legendary already happened on the first
@@ -58343,15 +58369,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible — every facility and every fight from the road, under one roof, open whenever you are: the Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, and the full circuit of tutors and shops.\n\nBack to City returns you to the last town you visited.'); } catch (e) {}
-        }
-        function leaveCrucible() {
-            sm.atCrucible = false;
-            try { save(); } catch (e) {}
-            const lastCity = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
-            sm.eventIndex = lastCity;
-            try { save(); } catch (e) {}
-            enterCity();
+                'The Crucible — every facility and every fight from the road, under one roof, open whenever you are: the Battle Frontier ladder, the Mystery Figure rematch, rival and gym rematches, and the full circuit of tutors and shops.\n\nThis is your home base now — the post-game lives here.'); } catch (e) {}
         }
         function _renderCrucible() {
             const goldEl = document.getElementById('story-crucible-gold');
@@ -58614,49 +58632,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (source === 'postHofMystery') {
-                // First post-HoF climax: flip the climax flag so continuePostGame
-                // falls through past its climax branch into the Master-Ball /
-                // boss-arc / lastCity flow. On a win, drop a post-game vitamin
-                // bundle — fuels investment in the Crucible / Frontier grind.
-                if (won && !sm.staticDrops?.rwdPostHofMystery) {
+                // WIN-ONLY: a climax LOSS is intercepted in onBattleEnd and routed to
+                // the standard game-over screen with the climax still pending, so the
+                // endgame only opens once the masked figure is actually beaten. (Guard
+                // defensively in case a future caller ever reaches here on a loss — it
+                // re-offers the climax rather than consuming the post-game.)
+                if (!won) { continuePostGame(); return; }
+                // Post-game vitamin bundle — fuels the Crucible / Frontier grind.
+                if (!sm.staticDrops?.rwdPostHofMystery) {
                     if (!sm.staticDrops) sm.staticDrops = {};
                     _storyGrantBundle({ ultraBall:3, masterBall:0, rareCandy:2, vitamin:3,
                         hpUp:3, protein:3, iron:3, calcium:3, zinc:3, carbos:3, gold:5000 });
                     sm.staticDrops.rwdPostHofMystery = true;
                 }
-                if (won) {
-                    try { _storyAchievementUnlock('r_mystery'); } catch (e) {}
-                    // Unmasker (grind): tiered lifetime Mystery-Figure defeats.
-                    try { _storyAchievementBumpCount('mystery_defeats', 1); } catch (e) {}
-                }
+                try { _storyAchievementUnlock('r_mystery'); } catch (e) {}
+                // Unmasker (grind): tiered lifetime Mystery-Figure defeats.
+                try { _storyAchievementBumpCount('mystery_defeats', 1); } catch (e) {}
                 sm.postHofMysteryClimaxDone = true;
                 try { save(); } catch (e) {}
-                if (won) {
-                    // The mask only comes off on a win: play the reveal + ending
-                    // beats (moved here from the league road, where they used to
-                    // spoil at E1), then the reward toast, then open the post-game.
-                    _fireMysteryRevealThenEnding(function () {
-                        try {
-                            window.showGameAlert && window.showGameAlert(
-                                '+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.');
-                        } catch (e) {}
-                        continuePostGame();
-                    });
-                } else {
+                // The mask comes off: play the reveal + ending beats (moved here from
+                // the league road, where they used to spoil at E1), then the reward
+                // toast, then continuePostGame opens the endgame straight into the
+                // Crucible — now the player's home hub.
+                _fireMysteryRevealThenEnding(function () {
                     try {
                         window.showGameAlert && window.showGameAlert(
-                            'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
+                            '+3 Ultra Balls, +2 Rare Candies, +3 EV Vouchers, +3 of every vitamin (+18 perm-boosts total), +5,000G.');
                     } catch (e) {}
                     continuePostGame();
-                }
+                });
                 return;
             }
             if (source === 'mystery') {
-                // Crucible Mystery-button rematch. If the post-HoF climax was
-                // lost, the mask still hasn't come off — deliver the one-time
-                // reveal + ending on this win (deduped via storyEventsFired, so
-                // a win after the reveal already played just shows a plain
-                // victory toast and returns to the hub).
+                // Crucible Mystery-button rematch — a pure replay. The Crucible is only
+                // reachable after the climax has been BEATEN (it's the gate that opens
+                // the hub), so the reveal + ending have already fired; the calls below
+                // dedupe via storyEventsFired down to a plain victory toast + hub return.
                 if (won) {
                     // Reveal, then the deferred finale (this branch never re-enters
                     // continuePostGame, so it plays the ending itself — once, guarded
@@ -63992,6 +64003,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showHallOfFame();
         }
 
+        // Re-enter the post-HoF Mystery Figure climax (row 67) from a town — wired to
+        // the city "Face the Mystery Figure" action that appears after a climax loss.
+        // The climax stays gated by postHofMysteryClimaxDone; winning it plays the
+        // reveal + ending and opens the Crucible (via continuePostGame). The main.event9
+        // lead-in already fired on the first attempt, so route straight to the fight.
+        function enterMysteryClimax() {
+            if (sm.postHofMysteryClimaxDone) { enterCrucible(); return; }
+            const mysteryIdx = STORY_EVENTS_RAW.findIndex(function (r) {
+                return r && r[1] === 'Battle' && String(r[2] || '') === 'Mystery Figure';
+            });
+            if (mysteryIdx < 0) { continuePostGame(); return; }
+            sm.eventIndex = mysteryIdx;
+            sm.crucibleBattleSource = 'postHofMystery';
+            sm.atCrucible = false;
+            try { save(); } catch (e) {}
+            processNextEvent();
+        }
+
         function continuePostGame() {
             document.querySelectorAll('.story-hof-gb-overlay').forEach(el => { try { el.remove(); } catch (e) {} });
             window._storyHofToken = (window._storyHofToken || 0) + 1;
@@ -64032,26 +64061,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // post-game still opens cleanly.
                 sm.postHofMysteryClimaxDone = true;
             }
-            // Return to the last visited city — the post-game hub (Crucible / Frontier /
-            // Mystery Figure rematch) is reachable from any city you've visited.
+            // Endgame: the Crucible is now the player's home hub and REPLACES the town
+            // hubs entirely. Anchor eventIndex at the last visited city (some code reads
+            // city/theme context off eventIndex) and flag atCrucible so every enterCity()
+            // short-circuits into the Crucible.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
             sm.eventIndex = lastCityEv;
+            sm.atCrucible = true;
             save();
             // Per-variant post-HoF epilogue first (cinematic closure of the
             // narrative arc), then the generic orientation tip, then drop the
-            // player into the city. The epilogue is a metaKey-deduped one-shot
+            // player into the Crucible. The epilogue is a metaKey-deduped one-shot
             // overlay; if it already played on a prior run for this variant,
             // we fall straight through to the orientation tip.
-            const _showOrientationTipThenCity = function () {
+            const _showOrientationTipThenHub = function () {
                 try { _storyShowOneTimeTip('postHof',
-                    'The wall is yours — but the road keeps going. Two doors open from any city now:\n\n🧨 The Crucible — every facility you used, under one roof, with the endless Battle Frontier ladder out back.\n\n🚪 The Mystery Figure — summon one last masked challenger from the Crucible. The mask stays on until you beat them.'); } catch (e) {}
-                enterCity();
+                    'The wall is yours — and the Crucible is now your home base. Every facility from the road, the Mystery Figure rematch, the rival / gym / league rematches, and the endless Battle Frontier ladder all live here under one roof.'); } catch (e) {}
+                enterCrucible();
             };
             // Order: Oak epilogue → main.ending (the finale, deferred so it no
-            // longer dumps back-to-back with mfReveal) → orientation tip → city.
+            // longer dumps back-to-back with mfReveal) → orientation tip → Crucible.
             // The epilogue is the breath between the reveal and the ending.
             const _afterEpilogue = function () {
-                _playDeferredMainEnding(_showOrientationTipThenCity);
+                _playDeferredMainEnding(_showOrientationTipThenHub);
             };
             try {
                 const fired = _showVariantPostHofEpilogue(_afterEpilogue);
@@ -70836,7 +70868,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             catchResolveSendToPC, catchResolveSwap,
             safariBait, safariRock, safariLeaveEarly,
             enterSafariZone,
-            enterCrucible, leaveCrucible,
+            enterCrucible,
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,
             crucibleMysteryFight, crucibleRivalFight, crucibleLeagueRun, crucibleGymPick, crucibleWildEncounter,
             enterLink, linkReroll, linkUpgrade, linkRebuild, linkMoveUp, linkMoveDown,
@@ -70850,7 +70882,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openPermBoostPicker, applyPermBoost, removePermBoost,
             openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,
-            confirmAbandon, abandonAndReturn, continuePostGame,
+            confirmAbandon, abandonAndReturn, continuePostGame, enterMysteryClimax,
             openSummary, profOpenSummary, summaryMove, moveInParty, setPartyLead, partyReorder, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
