@@ -26,15 +26,21 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const HTML = read('battle.html');
 
-test('offline-assets.json exists, is non-empty, and lists real files', () => {
+test('offline-assets.json exists, is hashed, and lists real files', () => {
   const m = JSON.parse(read('offline-assets.json'));
   assert.ok(m.totalBytes > 0, 'totalBytes > 0');
-  assert.ok(Array.isArray(m.urls) && m.urls.length > 1000, 'urls is a large array');
-  assert.equal(m.fileCount, m.urls.length, 'fileCount matches urls length');
-  assert.ok(m.urls.includes('battle.html'), 'boot file present');
-  assert.ok(m.urls.includes('sprites/gen5ani/kilowattrel.gif'), 'gen9 sprite present');
+  assert.ok(typeof m.digest === 'string' && m.digest.length >= 8, 'has a manifest digest');
+  assert.ok(Array.isArray(m.files) && m.files.length > 1000, 'files is a large array');
+  assert.equal(m.fileCount, m.files.length, 'fileCount matches files length');
+  // Each entry carries url + content hash + bytes (the diff keys).
+  for (const f of [m.files[0], m.files[m.files.length - 1]]) {
+    assert.ok(f.u && typeof f.h === 'string' && f.h.length >= 8 && f.b >= 0, `well-formed entry ${JSON.stringify(f)}`);
+  }
+  const urls = m.files.map((f) => f.u);
+  assert.ok(urls.includes('battle.html'), 'boot file present');
+  assert.ok(urls.includes('sprites/gen5ani/kilowattrel.gif'), 'gen9 sprite present');
   // Spot-check a sample of URLs resolve to real files (decodeURI to undo encodeURI segments).
-  const sample = [0, 1, m.urls.length >> 1, m.urls.length - 1].map((i) => m.urls[i]);
+  const sample = [0, 1, urls.length >> 1, urls.length - 1].map((i) => urls[i]);
   for (const u of sample) {
     assert.ok(fs.existsSync(path.join(ROOT, decodeURI(u))), `exists: ${u}`);
   }
@@ -79,9 +85,19 @@ test('avoidable remote boot deps are gone from battle.html', () => {
   assert.ok(read('online-pvp.js').includes('ensureSdk'), 'online-pvp exposes ensureSdk');
 });
 
-test('sw.js implements the bulk-cache message protocol', () => {
+test('sw.js implements the differential-sync message protocol + stable assets cache', () => {
   const sw = read('sw.js');
-  for (const tok of ['CACHE_ALL', 'CACHE_PROGRESS', 'CACHE_DONE', 'CLEAR_CACHE', 'cacheUrlsInBatches']) {
+  for (const tok of ['SYNC_ASSETS', 'SYNC_PLAN', 'SYNC_PROGRESS', 'SYNC_DONE', 'CLEAR_CACHE',
+                     'computeSyncPlan', "ASSETS_CACHE = 'battle-assets'", '__OFFLINE_MANIFEST__']) {
     assert.ok(sw.includes(tok), `sw.js has ${tok}`);
   }
+  // The stable assets cache must NOT be deleted on activate (so a version bump never wipes the download).
+  assert.ok(/k !== ASSETS_CACHE/.test(sw), 'activate preserves ASSETS_CACHE');
+});
+
+test('client uses differential sync (digest-based), not the old bulk re-download', () => {
+  assert.ok(HTML.includes('window.checkOfflineUpdate'), 'launch update-check present');
+  assert.ok(/SYNC_ASSETS/.test(HTML), 'client posts SYNC_ASSETS');
+  assert.ok(/offlineDownload[\s\S]{0,60}digest/.test(HTML), 'offlineDownload persists a digest');
+  assert.ok(!HTML.includes("type: 'CACHE_ALL'"), 'old CACHE_ALL bulk message removed');
 });
