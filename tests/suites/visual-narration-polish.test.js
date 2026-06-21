@@ -105,3 +105,16 @@ test('uiSvgGear helper returns a currentColor SVG', () => {
   assert.match(html, /<svg/, 'returns an svg');
   assert.match(html, /currentColor/, 'inherits currentColor');
 });
+
+// ── 5. Screen cross-fade must keep the instant (synchronous) swap under the harness ──
+test('showScreen swaps screens instantly (no fade class) under the harness', () => {
+  assert.equal(typeof window.showScreen, 'function', 'showScreen exposed');
+  assert.equal(window._screenFadeEnabled(), false, 'cross-fade disabled under the harness');
+  window.showScreen('screen-menu');
+  const menu = document.getElementById('screen-menu');
+  assert.ok(menu && !menu.classList.contains('hidden'), 'target screen is shown');
+  assert.ok(!menu.classList.contains('screen-fade-in'), 'no fade class added under the harness');
+  document.querySelectorAll('.screen').forEach(s => {
+    if (s !== menu) assert.ok(s.classList.contains('hidden'), `${s.id} is hidden after the swap`);
+  });
+});

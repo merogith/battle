@@ -3128,6 +3128,11 @@
             animation: campFireGlow 2.6s ease-in-out infinite;
         }
         @keyframes campFireGlow { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+        /* Screen cross-fade — one short opacity/lift on every showScreen() swap (cities,
+           stores, tutors, battle, menu). Disabled under reduced motion + the harness. */
+        .screen-fade-in { animation: screenFadeIn 0.3s ease-out; }
+        @keyframes screenFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .screen-fade-in { animation: none !important; } }
         /* Narration overlay (P3): optional side-by-side speaker framing + the
            tap-to-reveal line gate. Defaults (fields absent) render exactly the
            legacy column layout with every line visible. */
@@ -12936,7 +12941,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, audioBus: false, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
@@ -13040,6 +13045,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.soundEnabled === 'boolean') settings.soundEnabled = _pbs.soundEnabled;
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
             if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
+            if (typeof _pbs.ambientParticles === 'boolean') settings.ambientParticles = _pbs.ambientParticles;
+            if (typeof _pbs.audioBus === 'boolean') settings.audioBus = _pbs.audioBus;
             if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
             if (typeof _pbs.soundVol === 'number' && _pbs.soundVol >= 0 && _pbs.soundVol <= 1) _initSoundVol = _pbs.soundVol;
             if (_pbs.offlineDownload && typeof _pbs.offlineDownload === 'object') Object.assign(settings.offlineDownload, _pbs.offlineDownload);
@@ -13069,6 +13076,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     soundEnabled: settings.soundEnabled,
                     weatherAnimation: settings.weatherAnimation,
                     terrainBackground: settings.terrainBackground,
+                    ambientParticles: settings.ambientParticles,
+                    audioBus: settings.audioBus,
                     musicVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : _initMusicVol,
                     soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol,
                     offlineDownload: settings.offlineDownload
@@ -14575,11 +14584,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // shake itself; the hit FLASH stays wired at the hit sites (this is the shake +
         // hit-stop dispatcher). Purely visual — never touches state / RNG / damage. async so
         // the caller can `await` the hit-stop beat.
+        // Type-tinted impact accent for the hit-burst (one representative colour per type;
+        // the nested battle-anim TYPE_COLORS table isn't reachable from this scope).
+        const _TYPE_BURST_COLOR = { Normal:'#c6c6a7', Fire:'#ff7043', Water:'#42a5f5', Electric:'#ffd54f', Grass:'#66bb6a', Ice:'#80deea', Fighting:'#e57373', Poison:'#ba68c8', Ground:'#d4a85a', Flying:'#9fa8da', Psychic:'#f06292', Bug:'#c0ca33', Rock:'#bcaaa4', Ghost:'#9575cd', Dragon:'#7e57c2', Dark:'#90a4ae', Steel:'#b0bec5', Fairy:'#f48fb1' };
+        // One-shot particle pop on the TARGET sprite for the punchy tiers (crit / boss-phase
+        // gold; super-effective tinted by move type). Localised to the sprite-container (it's
+        // position:absolute, sized to the sprite). Purely visual — FxParticles self-gates on
+        // reduced-motion / settings.ambientParticles / the harness, so this is a no-op there.
+        function _battleImpactBurst(o) {
+            try {
+                if (!window.FxParticles || !o) return;
+                const isCrit = !!(o.bossPhase || o.crit);
+                const isSuper = !isCrit && o.effectiveness > 1;
+                if (!isCrit && !isSuper) return;
+                const host = document.getElementById(o.isPlayerTarget ? 'player-sprite-container' : 'foe-sprite-container');
+                if (!host) return;
+                const color = isCrit ? ['#ffd54f', '#fff8e1', '#ffe082'] : (_TYPE_BURST_COLOR[o.type] || '#ffd54f');
+                window.FxParticles.burst(host, 'sparkle', { color: color, density: isCrit ? 1.2 : 0.85, duration: 1100 });
+            } catch (e) {}
+        }
+        window._battleImpactBurst = _battleImpactBurst;   // mirrored for the fx-battle test
+        window._TYPE_BURST_COLOR = _TYPE_BURST_COLOR;
         async function _applyHitImpact(opts) {
             try {
                 const o = opts || {};
                 if (!settings.animations) return;
                 if (window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion()) return;
+                _battleImpactBurst(o);   // particle pop on the target (crit / super-effective)
                 if (o.bossPhase)              { _battleHitShake('crit');  await _hitStop(120); }
                 else if (o.crit)              { _battleHitShake('crit');  await _hitStop(90);  }
                 else if (o.effectiveness > 1) { _battleHitShake('super'); }
@@ -20425,6 +20456,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (w === 'Hail') { wOverlay.className = 'weather-overlay weather-hail active'; }
                 else { wOverlay.className = 'weather-overlay'; }
             }
+            // Real particle precipitation on top of the gradient (change-detected; no-op
+            // under reduced-motion / particles-off — the CSS gradient remains the fallback).
+            syncBattleWeatherFx(wOverlay, settings.weatherAnimation ? w : null);
 
             let tOverlay = be.terrainOverlay;
             if (tOverlay) {
@@ -27438,7 +27472,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_anyHitCrit) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
                     if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
-                    await _applyHitImpact({ effectiveness: typeEff, crit: _anyHitCrit });   // one shake by tier (no double-shake)
+                    await _applyHitImpact({ effectiveness: typeEff, crit: _anyHitCrit, isPlayerTarget: !isPlayer, type: move.type });   // one shake by tier (no double-shake)
                     if (actualDamage > 0) showBattlePopup('-' + actualDamage, 'popup-dmg', !isPlayer);
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
@@ -27668,7 +27702,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer);
                     }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
-                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1 });   // one shake by tier (no double-shake)
+                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1, isPlayerTarget: !isPlayer, type: move.type });   // one shake by tier (no double-shake)
                     await sleep(200);
 
                     // Step 5: Damage number and HP bar animation
@@ -33319,6 +33353,285 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 playSfx: _sfx
             };
         })();
+
+        // ===================================================================
+        // ===== FxParticles — lazy tsParticles wrapper (vendor/tsparticles.slim.min.js)
+        // ===================================================================
+        // Ambient scene particles (camp embers, weather, interior dust, shimmer) plus
+        // one-shot celebration bursts (catch / bond-mastered). Self-disabling — a no-op
+        // under the jsdom harness, prefers-reduced-motion, or when settings.ambientParticles
+        // is off — so the synchronous test contract and the accessibility guards hold. The
+        // library loads on FIRST real use (mirrors the @pkmn/dex lazy-load near _dexCoreReady
+        // ~12774), so initial page weight is unchanged. Every layer is tracked by id; callers
+        // MUST clear() on scene exit so no canvas leaks (the perf profiler watches memory).
+        window.FxParticles = (function () {
+            let _libPromise = null;
+            const _live = new Map();      // id -> { container, host }
+            let _seq = 0;
+
+            function _settingOn() {
+                try { return (typeof settings === 'undefined' || !settings) ? true : settings.ambientParticles !== false; }
+                catch (e) { return true; }
+            }
+            function _enabled() {
+                try {
+                    if (typeof window !== 'undefined' && window.__testHarness === true) return false;
+                    if (window.StoryFx && StoryFx.isReducedMotion && StoryFx.isReducedMotion()) return false;
+                    if (!_settingOn()) return false;
+                } catch (e) { return false; }
+                return true;
+            }
+            function _loadLib() {
+                if (typeof window !== 'undefined' && window.tsParticles) return Promise.resolve(window.tsParticles);
+                if (_libPromise) return _libPromise;
+                _libPromise = new Promise(resolve => {
+                    try {
+                        const s = document.createElement('script');
+                        s.src = 'vendor/tsparticles.slim.min.js';
+                        s.dataset.tsparticlesBundle = '1';
+                        s.onload = () => resolve(window.tsParticles || null);
+                        s.onerror = () => { _libPromise = null; resolve(null); };
+                        document.head.appendChild(s);
+                    } catch (e) { _libPromise = null; resolve(null); }
+                });
+                return _libPromise;
+            }
+            const _common = x => Object.assign({
+                fullScreen: { enable: false }, detectRetina: true, fpsLimit: 45,
+                background: { color: 'transparent' }, pauseOnBlur: true, pauseOnOutsideViewport: true
+            }, x);
+            // opts: { color, density } — presets stay terse; callers tint per scene.
+            const PRESETS = {
+                embers: o => _common({ particles: {
+                    number: { value: Math.round(24 * (o.density || 1)) },
+                    color: { value: o.color || ['#ffb74d', '#ff7043', '#ffd54f'] }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.1, max: 0.75 }, animation: { enable: true, speed: 0.7, startValue: 'max', destroy: 'min' } },
+                    size: { value: { min: 1, max: 3 } },
+                    move: { enable: true, direction: 'top', speed: { min: 0.5, max: 1.6 }, random: true, straight: false, outModes: { default: 'destroy', bottom: 'none' }, gravity: { enable: true, acceleration: -3 } },
+                    life: { duration: { value: { min: 2, max: 4 } } }
+                } }),
+                dust: o => _common({ particles: {
+                    number: { value: Math.round(20 * (o.density || 1)) },
+                    color: { value: o.color || '#cfd8dc' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.04, max: 0.3 } }, size: { value: { min: 1, max: 2.4 } },
+                    move: { enable: true, speed: 0.3, direction: 'none', random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                shimmer: o => _common({ particles: {
+                    number: { value: Math.round(14 * (o.density || 1)) },
+                    color: { value: o.color || '#fff8e1' }, shape: { type: 'star' },
+                    opacity: { value: { min: 0, max: 0.7 }, animation: { enable: true, speed: 1.4, startValue: 'random', sync: false } },
+                    size: { value: { min: 1, max: 2.6 } },
+                    move: { enable: true, speed: 0.25, direction: 'top', random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                leaves: o => _common({ particles: {
+                    number: { value: Math.round(12 * (o.density || 1)) },
+                    color: { value: o.color || ['#aed581', '#9ccc65', '#c5e1a5'] }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.25, max: 0.6 } }, size: { value: { min: 2, max: 4 } },
+                    move: { enable: true, direction: 'bottom-right', speed: { min: 0.6, max: 1.4 }, random: true, straight: false, outModes: { default: 'out' }, gravity: { enable: true, acceleration: 1.5 } },
+                    rotate: { value: { min: 0, max: 360 }, animation: { enable: true, speed: 12, sync: false } },
+                    wobble: { enable: true, distance: 12, speed: 6 }
+                } }),
+                snow: o => _common({ particles: {
+                    number: { value: Math.round(70 * (o.density || 1)) },
+                    color: { value: o.color || '#ffffff' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.3, max: 0.9 } }, size: { value: { min: 1, max: 3 } },
+                    move: { enable: true, direction: 'bottom', speed: { min: 1, max: 2.5 }, random: true, straight: false, outModes: { default: 'out' }, drift: { min: -1, max: 1 } },
+                    wobble: { enable: true, distance: 10, speed: 5 }
+                } }),
+                rain: o => _common({ particles: {
+                    number: { value: Math.round(110 * (o.density || 1)) },
+                    color: { value: o.color || '#9fd3ff' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.2, max: 0.5 } }, size: { value: { min: 1, max: 2 } },
+                    move: { enable: true, direction: 'bottom', speed: { min: 14, max: 22 }, straight: true, outModes: { default: 'out' } }
+                } }),
+                sand: o => _common({ particles: {
+                    number: { value: Math.round(90 * (o.density || 1)) },
+                    color: { value: o.color || ['#e0c068', '#cba94f', '#d6b85a'] }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.15, max: 0.5 } }, size: { value: { min: 1, max: 2.5 } },
+                    move: { enable: true, direction: 'right', speed: { min: 10, max: 18 }, random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                sun: o => _common({ particles: {
+                    number: { value: Math.round(16 * (o.density || 1)) },
+                    color: { value: o.color || '#fff3c4' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.05, max: 0.4 }, animation: { enable: true, speed: 0.6, sync: false } },
+                    size: { value: { min: 2, max: 5 } },
+                    move: { enable: true, direction: 'top-right', speed: 0.5, random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                // ── one-shot bursts (finite life; auto-cleared by burst()) ──
+                sparkle: o => _common({ particles: {
+                    number: { value: Math.round(36 * (o.density || 1)) },
+                    color: { value: o.color || ['#ffd54f', '#fff8e1', '#ffe082'] }, shape: { type: 'star' },
+                    opacity: { value: { min: 0.4, max: 1 }, animation: { enable: true, speed: 1.2, startValue: 'max', destroy: 'min' } },
+                    size: { value: { min: 1, max: 4 } },
+                    move: { enable: true, direction: 'none', speed: { min: 3, max: 9 }, random: true, straight: false, outModes: { default: 'destroy' }, gravity: { enable: true, acceleration: 6 }, decay: 0.06 },
+                    life: { duration: { value: { min: 0.6, max: 1 } }, count: 1 }
+                } }),
+                confetti: o => _common({ particles: {
+                    number: { value: Math.round(50 * (o.density || 1)) },
+                    color: { value: o.color || ['#ff5252', '#ffd54f', '#69f0ae', '#40c4ff', '#e040fb'] }, shape: { type: ['square', 'circle'] },
+                    opacity: { value: 0.95 }, size: { value: { min: 2, max: 5 } },
+                    move: { enable: true, direction: 'none', speed: { min: 6, max: 14 }, random: true, straight: false, outModes: { default: 'destroy' }, gravity: { enable: true, acceleration: 9 }, decay: 0.04 },
+                    rotate: { value: { min: 0, max: 360 }, animation: { enable: true, speed: 30, sync: false } },
+                    life: { duration: { value: { min: 0.8, max: 1.3 } }, count: 1 }
+                } })
+            };
+            function _hostFor(target, z) {
+                const host = document.createElement('div');
+                host.className = 'fxp-layer';
+                host.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:' + ((z | 0) || 0) + ';';
+                (target && target.appendChild ? target : document.body).appendChild(host);
+                return host;
+            }
+            // Mount a continuous ambient layer. Returns an id (or null if disabled / unavailable).
+            async function mount(target, presetKey, opts) {
+                opts = opts || {};
+                if (!_enabled()) return null;
+                const build = PRESETS[presetKey];
+                if (!build) return null;
+                const lib = await _loadLib();
+                if (!lib) return null;
+                if (target && target.isConnected === false) return null;  // scene torn down mid-load
+                const id = 'fxp-' + (++_seq);
+                const host = _hostFor(target, opts.z);
+                host.id = id;
+                try {
+                    const container = await lib.load({ id: id, element: host, options: build(opts) });
+                    if (!container) { try { host.remove(); } catch (e) {} return null; }
+                    _live.set(id, { container, host });
+                    return id;
+                } catch (e) { try { host.remove(); } catch (e2) {} return null; }
+            }
+            // One-shot burst over a target; self-clears after its lifetime (default 1.3s).
+            async function burst(target, presetKey, opts) {
+                opts = opts || {};
+                const id = await mount(target, presetKey, Object.assign({ z: 5 }, opts));
+                if (id) setTimeout(() => clear(id), (opts.duration | 0) || 1300);
+                return id;
+            }
+            function clear(id) {
+                const rec = _live.get(id);
+                if (!rec) return;
+                _live.delete(id);
+                try { rec.container && rec.container.destroy && rec.container.destroy(); } catch (e) {}
+                try { rec.host && rec.host.remove(); } catch (e) {}
+            }
+            function clearAll() { Array.from(_live.keys()).forEach(clear); }
+            return {
+                mount, burst, clear, clearAll,
+                isEnabled: _enabled, settingOn: _settingOn,
+                presets: () => Object.keys(PRESETS), liveCount: () => _live.size
+            };
+        })();
+
+        // ===================================================================
+        // ===== AudioBus — lazy Howler wrapper for BGM crossfades (vendor/howler.min.js)
+        // ===================================================================
+        // Scoped to the MUSIC layer only (background loops + scene themes). Cries, move-SFX
+        // and UI-SFX stay on AudioSystem. Built behind settings.audioBus so the existing
+        // AudioSystem _fade path stays the default until the transition seams are wired.
+        // No-op under the harness or when music is disabled.
+        window.AudioBus = (function () {
+            let _libPromise = null;
+            let _current = null;     // { howl, src }
+            function _enabled() {
+                try {
+                    if (typeof window !== 'undefined' && window.__testHarness === true) return false;
+                    if (typeof settings === 'undefined' || !settings) return false;
+                    if (settings.audioBus !== true) return false;       // dormant until opted in
+                    if (settings.musicEnabled === false) return false;
+                } catch (e) { return false; }
+                return true;
+            }
+            function _loadLib() {
+                if (typeof window !== 'undefined' && window.Howl) return Promise.resolve(window.Howl);
+                if (_libPromise) return _libPromise;
+                _libPromise = new Promise(resolve => {
+                    try {
+                        const s = document.createElement('script');
+                        s.src = 'vendor/howler.min.js';
+                        s.dataset.howlerBundle = '1';
+                        s.onload = () => resolve(window.Howl || null);
+                        s.onerror = () => { _libPromise = null; resolve(null); };
+                        document.head.appendChild(s);
+                    } catch (e) { _libPromise = null; resolve(null); }
+                });
+                return _libPromise;
+            }
+            function _musicVol() {
+                try { return (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : 0.45; }
+                catch (e) { return 0.45; }
+            }
+            // Crossfade the background track to `src` (looping by default). No-op if already on it.
+            async function crossfadeTo(src, o) {
+                o = o || {};
+                if (!_enabled() || !src) return null;
+                const Howl = await _loadLib();
+                if (!Howl) return null;
+                if (_current && _current.src === src) return _current.howl;
+                const target = _musicVol() * (o.vol == null ? 1 : o.vol);
+                const ms = (o.fadeMs == null ? 900 : o.fadeMs);
+                const prev = _current;
+                const howl = new Howl({ src: [src], loop: o.loop !== false, html5: true, volume: 0 });
+                howl.play();
+                try { howl.fade(0, target, ms); } catch (e) {}
+                _current = { howl: howl, src: src };
+                if (prev && prev.howl) {
+                    try {
+                        prev.howl.fade(prev.howl.volume(), 0, ms);
+                        setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80);
+                    } catch (e) {}
+                }
+                return howl;
+            }
+            function stop(o) {
+                o = o || {};
+                const prev = _current; _current = null;
+                if (!prev || !prev.howl) return;
+                const ms = (o.fadeMs == null ? 700 : o.fadeMs);
+                try { prev.howl.fade(prev.howl.volume(), 0, ms); setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80); }
+                catch (e) { try { prev.howl.stop(); prev.howl.unload(); } catch (e2) {} }
+            }
+            function duck(level, ms) {
+                if (!_current || !_current.howl) return;
+                try { _current.howl.fade(_current.howl.volume(), _musicVol() * (level == null ? 0.35 : level), ms == null ? 250 : ms); } catch (e) {}
+            }
+            function unduck(ms) {
+                if (!_current || !_current.howl) return;
+                try { _current.howl.fade(_current.howl.volume(), _musicVol(), ms == null ? 350 : ms); } catch (e) {}
+            }
+            function current() { return _current ? _current.src : null; }
+            return { crossfadeTo, stop, duck, unduck, current, isEnabled: _enabled };
+        })();
+
+        // Battle weather → particle layer. The render loop calls this every frame, so it
+        // change-detects on the weather TYPE and only re-mounts when it actually changes
+        // (no per-render canvas churn). The CSS-gradient `.weather-*` classes stay as the
+        // base tint + the reduced-motion / particles-off fallback; FxParticles overlays
+        // real precipitation on top. State lives on a module-level object so it survives
+        // across renders.
+        const _battleWeatherFx = { key: '', id: null };
+        function _battleWeatherPreset(w) {
+            if (w === 'Rain' || w === 'HeavyRain') return 'rain';
+            if (w === 'Sandstorm') return 'sand';
+            if (w === 'Hail') return 'snow';
+            if (w === 'Sun' || w === 'HarshSun') return 'sun';
+            return '';
+        }
+        function syncBattleWeatherFx(overlayEl, w) {
+            if (!overlayEl || !window.FxParticles) return;
+            const preset = (settings.weatherAnimation && settings.ambientParticles) ? _battleWeatherPreset(w) : '';
+            if (preset === _battleWeatherFx.key) return;   // unchanged → nothing to do
+            _battleWeatherFx.key = preset;
+            if (_battleWeatherFx.id) { try { window.FxParticles.clear(_battleWeatherFx.id); } catch (e) {} _battleWeatherFx.id = null; }
+            if (!preset) return;
+            window.FxParticles.mount(overlayEl, preset, {}).then(id => {
+                // Weather may have changed again during the async lib load — reconcile.
+                if (_battleWeatherFx.key === preset) _battleWeatherFx.id = id;
+                else if (id) { try { window.FxParticles.clear(id); } catch (e) {} }
+            });
+        }
+        window._battleWeatherPreset = _battleWeatherPreset;   // mirrored for the fx-battle test
+        window.syncBattleWeatherFx = syncBattleWeatherFx;
 
         // ===================================================================
         // ===== STORY MODE — window.StoryMode =====
@@ -51543,8 +51856,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyScene(beats, onDone, sceneId) {
             sceneId = sceneId || 'story-scene-overlay';
             let done = false;
+            let _ambId = null, _ambKey = '';   // ambient particle layer (camp embers, dust, …)
             const finish = () => {
                 if (done) return; done = true;
+                if (_ambId) { try { window.FxParticles.clear(_ambId); } catch (e) {} _ambId = null; }
                 const o = document.getElementById(sceneId); if (o) o.remove();
                 try { onDone && onDone(); } catch (e) { console.warn('[Story] scene done', e); }
             };
@@ -51602,7 +51917,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }).join('');
                     if (_imgs) _castHtml = `<div class="story-scene-cast${_fxCls ? ' ' + _fxCls : ''}">${_imgs}</div>`;
                 }
-                ov.innerHTML = `${_castHtml}<div class="story-scene-card${(!_castHtml && _fxCls) ? ' ' + _fxCls : ''}" style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
+                // Persistent content wrapper so the per-beat innerHTML swap never wipes the
+                // ambient particle layer (mounted on ov, a sibling of this wrapper, below).
+                let _content = ov.querySelector('.story-scene-content');
+                if (!_content) {
+                    _content = document.createElement('div');
+                    _content.className = 'story-scene-content';
+                    _content.style.cssText = 'position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:560px;';
+                    ov.appendChild(_content);
+                }
+                // Ambient particle layer (camp embers, interior dust, …) — keyed per scene,
+                // mounted once and reused across beats, torn down in finish(). No-op under
+                // reduced-motion / particles-off / the harness; the scene reads fine without it.
+                try {
+                    const _amb = beat.ambient || '';
+                    if (_amb !== _ambKey) {
+                        _ambKey = _amb;
+                        if (_ambId) { window.FxParticles.clear(_ambId); _ambId = null; }
+                        if (_amb && window.FxParticles) {
+                            window.FxParticles.mount(ov, _amb, beat.ambientOpts || {}).then(id => {
+                                if (_ambKey === _amb) _ambId = id; else if (id) window.FxParticles.clear(id);
+                            });
+                        }
+                    }
+                } catch (e) {}
+                _content.innerHTML = `${_castHtml}<div class="story-scene-card${(!_castHtml && _fxCls) ? ' ' + _fxCls : ''}" style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
                     ${beat.title ? `<div style="font-size:13px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">${beat.title}</div>` : ''}
                     <div>${beat.html || ''}</div>
                     ${btns}
@@ -51623,6 +51962,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             render(beats[0]);
         }
+        window._storyScene = _storyScene;   // test access (ambient-layer guard)
 
         // ─────────────────────────────────────────────────────────────────────
         // EGG SLOTS — a real, carryable party/PC slot (icon, depositable, hatches)
@@ -55742,6 +56082,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 id: 'camp-menu', title: '⛺  Camp', accent: _CAMP_ACCENT,
                 backdropCss: 'linear-gradient(180deg, #070d1f 0%, #0d1730 38%, #1a1208 76%, #241405 100%)',
                 fx: 'fire',
+                ambient: 'embers',
                 cast: _campCast,
                 html: `<div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
                 options,
@@ -55760,6 +56101,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             options.push({ label: '← Back', onPick: () => _campDefer(() => _campOpenMenu(ctx)) });
             _storyScene([{
                 id: 'camp-roster', title: '⛺  Spend time with…', accent: _CAMP_ACCENT,
+                ambient: 'embers',
                 html: `<div>Who do you want to spend time with at the fire?</div>`,
                 options,
             }], null, _CAMP_SCENE_ID);
@@ -55865,6 +56207,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html,
                 options: [{ label: 'Continue ▶', onPick: () => _campDefer(() => _campMon(ctx, slotIndex)) }],
             }], null, _CAMP_SCENE_ID);
+            // Spotlight a milestone — a path mastered (gold sparkle) or a new Title earned
+            // (purple/gold confetti) gets a celebratory burst over the result card. Pure
+            // visual on the existing copy + 'achv' SFX; no-op under reduced-motion / off.
+            if (won && award && (award.justMastered || award.titleChanged)) {
+                try {
+                    const _ov = document.getElementById(_CAMP_SCENE_ID);
+                    if (_ov && window.FxParticles) {
+                        window.FxParticles.burst(_ov, award.justMastered ? 'sparkle' : 'confetti', {
+                            color: award.justMastered ? ['#ffd54f', '#fff8e1', '#ffe082'] : ['#ce93d8', '#ffd54f', '#aed581'],
+                            duration: 1500, z: 6,
+                        });
+                    }
+                } catch (e) {}
+            }
         }
         function _campSulk(action) {
             // Mild, non-graphic recoil per tone (maintainer copy pass for edgier variants).
@@ -60667,6 +61023,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Apply the resolved outcome now that the animation has played.
             if (!_catchState || _catchState.ended) return; // user navigated away mid-throw
             if (outcome === 'catch') {
+                // Capture flourish — a sparkle burst over the encounter stage (full confetti
+                // for a shiny). Pure visual; no-op under reduced-motion / particles-off.
+                try {
+                    const _shiny = !!(enc && enc.build && enc.build._isShiny);
+                    if (_catchStageEl && window.FxParticles) {
+                        window.FxParticles.burst(_catchStageEl, _shiny ? 'confetti' : 'sparkle', {
+                            color: _shiny ? ['#ffd54f', '#80deea', '#f48fb1', '#aed581'] : ['#ffd54f', '#fff8e1', '#ffe082'],
+                            duration: 1500, z: 6,
+                        });
+                    }
+                } catch (e) {}
                 _catchHandleSuccess(enc, ballKey);
                 return;
             }
@@ -64864,11 +65231,75 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── UI HELPERS ────────────────────────────────────────────────────
+        // Facility / city ambient particle layer — one centralized manager so every story
+        // interior gets a subtle atmosphere (shop dust, tutor/center shimmer, city leaves)
+        // without touching each enter*(). Change-detected on the screen id; the layer is
+        // parented to the (position:relative) `.screen`, so it fills the interior and is torn
+        // down on the next swap. No-op under reduced-motion / particles-off / the harness.
+        const _FACILITY_AMBIENT = {
+            'screen-story-city':          { preset: 'leaves', opts: { density: 0.8 } },
+            'screen-story-shop':          { preset: 'dust' },
+            'screen-story-stone-shop':    { preset: 'dust' },
+            'screen-story-artifact-shop': { preset: 'dust' },
+            'screen-story-artifacts':     { preset: 'dust' },
+            'screen-story-professor':     { preset: 'dust' },
+            'screen-story-pokemoncenter': { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-tutor':         { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-evolab':        { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-colress':       { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-evtrainer':     { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-fanclub':       { preset: 'shimmer', opts: { color: '#f8bbd0', density: 0.7 } }
+        };
+        const _facilityAmbient = { id: null, key: '' };
+        function _syncFacilityAmbient(id) {
+            const cfg = _FACILITY_AMBIENT[id] || null;
+            const key = cfg ? id : '';
+            if (key === _facilityAmbient.key) return;   // unchanged → nothing to do
+            _facilityAmbient.key = key;
+            if (_facilityAmbient.id) { try { window.FxParticles.clear(_facilityAmbient.id); } catch (e) {} _facilityAmbient.id = null; }
+            if (!cfg) return;
+            const host = document.getElementById(id);
+            if (!host || !window.FxParticles) return;
+            window.FxParticles.mount(host, cfg.preset, cfg.opts || {}).then(fxid => {
+                if (_facilityAmbient.key === key) _facilityAmbient.id = fxid;
+                else if (fxid) { try { window.FxParticles.clear(fxid); } catch (e) {} }
+            });
+        }
+        window._syncFacilityAmbient = _syncFacilityAmbient;   // test access
+        window._FACILITY_AMBIENT = _FACILITY_AMBIENT;
+        // Cross-fade gate — instant under the harness, reduced motion, or when the user
+        // has turned animations off, so the synchronous contract + a11y both hold.
+        function _screenFadeEnabled() {
+            try {
+                if (typeof window !== 'undefined' && window.__testHarness === true) return false;
+                if (!settings.animations) return false;
+                if (window.StoryFx && StoryFx.isReducedMotion && StoryFx.isReducedMotion()) return false;
+            } catch (e) { return false; }
+            return true;
+        }
         function showScreen(id) {
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
+            // Leaving the battle screen → drop its weather particle layer (no orphan canvas).
+            if (id !== 'screen-battle' && _battleWeatherFx.id) {
+                try { window.FxParticles.clear(_battleWeatherFx.id); } catch (e) {}
+                _battleWeatherFx.id = null; _battleWeatherFx.key = '';
+            }
+            _syncFacilityAmbient(id);   // shop dust / tutor shimmer / city leaves (or clear)
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('hidden');
+                // One short fade-in on the newly shown screen (auto-cleared on animationend
+                // so the class never lingers; guarded so child animations don't trip it).
+                if (_screenFadeEnabled()) {
+                    el.classList.remove('screen-fade-in'); void el.offsetWidth;   // restart if re-shown
+                    el.classList.add('screen-fade-in');
+                    const _clr = (e) => {
+                        if (e && e.animationName && e.animationName !== 'screenFadeIn') return;
+                        try { el.classList.remove('screen-fade-in'); } catch (e2) {}
+                        el.removeEventListener('animationend', _clr);
+                    };
+                    el.addEventListener('animationend', _clr);
+                }
                 // A11y: deliver focus into the newly shown (already aria-labelled)
                 // region so keyboard / screen-reader users aren't stranded on <body>
                 // after a transition. preventScroll avoids a jarring jump; any code
@@ -64879,6 +65310,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) {}
             }
         }
+        window.showScreen = showScreen;                 // cross-script + test access
+        window._screenFadeEnabled = _screenFadeEnabled;
 
         function showMenu(fromMenu) {
             if (fromMenu === false) {

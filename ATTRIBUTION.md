@@ -46,6 +46,9 @@ If you are a rights holder and want something removed, please open an issue.
 |---|---|---|
 | [@pkmn/dex](https://github.com/pkmn/ps) | MIT | Pokémon name → National Dex number mapping for sprite vendoring. |
 | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | CC0 1.0 | Sprite source (compilation). |
+| [anime.js](https://github.com/juliangarnier/anime) (`vendor/anime.min.js`) | MIT | Tween engine for per-move battle animations. |
+| [tsParticles](https://github.com/tsparticles/tsparticles) slim bundle (`vendor/tsparticles.slim.min.js`) | MIT | Lazy-loaded ambient scene particles, particle weather, and celebration bursts (`window.FxParticles`). |
+| [howler.js](https://github.com/goldfire/howler.js) (`vendor/howler.min.js`) | MIT | Lazy-loaded BGM crossfade / scene-ambience layer (`window.AudioBus`). |
 
 ---
 
