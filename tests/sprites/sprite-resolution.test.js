@@ -121,7 +121,10 @@ test('un-bundled back sprites fall through to Showdown URL', () => {
   const s = makeContext();
   Object.keys(s._spriteCache).forEach(k => delete s._spriteCache[k]);
   const backManifest = s.LOCAL_SPRITE_MANIFEST['gen5ani-back'];
-  const unbundled = ['Meowscarada', 'Poltchageist', 'Gholdengo', 'Tinkaton']
+  // The newest Gen 9 mons (Paradox / Treasures of Ruin / DLC legendaries) have no animated
+  // BACK sprite at the PokeAPI mirror, so they stay un-bundled in gen5ani-back and must still
+  // fall through to the remote Showdown back sprite. (Most base-species backs are now vendored.)
+  const unbundled = ['Iron Treads', 'Iron Bundle', 'Chi-Yu', 'Ogerpon', 'Pecharunt']
     .find(n => !backManifest.has(s.toShowdownSpriteId(n)));
   assert.ok(unbundled, 'expected at least one un-bundled back-sprite species for this test');
   const url = s.getSprite(unbundled, false, true);
@@ -169,7 +172,7 @@ test('LOCAL_SPRITE_MANIFEST matches sprites on disk', () => {
   }
 });
 
-test('handleSpriteError falls back from local → Showdown → PokeAPI form-id and terminates', () => {
+test('handleSpriteError falls back from local → Showdown → PokeAPI form-id → local placeholder and terminates', () => {
   const s = makeContext({
     'Charizard-Mega-X': { dex: 6 },
     'Charizard': { dex: 6 },
@@ -178,6 +181,7 @@ test('handleSpriteError falls back from local → Showdown → PokeAPI form-id a
     src: 'sprites/gen5ani/charizard-megax.gif',
     alt: 'Charizard-Mega-X',
     dataset: { shiny: 'false', back: 'false' },
+    onerror: null,
   };
   const expected = [
     /pokemonshowdown\.com\/sprites\/gen5ani\/charizard-megax\.gif/,
@@ -186,16 +190,17 @@ test('handleSpriteError falls back from local → Showdown → PokeAPI form-id a
     /PokeAPI.+?\/other\/showdown\/10034\.gif/,
     /\/sprites\/gen5\/charizard-megax\.png/,
     /PokeAPI.+?\/sprites\/pokemon\/10034\.png/,
-    /\/sprites\/gen5\/charizard\.png/, // base species terminus
+    /\/sprites\/gen5\/charizard\.png/, // base species static (last remote rung)
+    /sprites\/placeholder\.svg/,        // remote chain exhausted → bundled offline placeholder
   ];
   for (const re of expected) {
     s.handleSpriteError(img);
     assert.match(img.src, re);
   }
-  // Chain must terminate at base species static — no further mutation.
+  // Chain must terminate at the local placeholder — no further mutation.
   const terminus = img.src;
   s.handleSpriteError(img);
-  assert.strictEqual(img.src, terminus, 'chain should terminate at base species static');
+  assert.strictEqual(img.src, terminus, 'chain should terminate at the local placeholder');
 });
 
 test('handleSpriteError uses correct form-dex ID for shiny back variants', () => {

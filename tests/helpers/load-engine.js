@@ -187,7 +187,11 @@ export async function loadEngine() {
             configurable: true,
             set(v) {
               this.setAttribute('src', v);
-              if (/^https?:\/\//.test(v)) {
+              // External CDN scripts AND the vendored @pkmn/dex bundles (vendor/*.js) are loaded
+              // by appending a <script> and gating _dexReady on load/error. jsdom won't execute
+              // them, so fire onerror immediately to unblock the gate (the engine guards every
+              // Dex.* lookup, and window.pkmn is stubbed above).
+              if (/^https?:\/\//.test(v) || /(^|\/)vendor\//.test(v)) {
                 setTimeout(() => {
                   if (typeof this.onerror === 'function') this.onerror(new Error('test stub'));
                 }, 0);

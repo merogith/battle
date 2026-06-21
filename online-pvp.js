@@ -23,6 +23,12 @@
     // which validates the token server-side. Cleared in dispose().
     let roomToken = null;
 
+    // Supabase JS SDK is loaded lazily (only when Online PvP is actually entered) so the
+    // offline/first-paint boot path carries no third-party script. Memoized: concurrent callers
+    // share one load; a failed load resets so a later retry can re-attempt.
+    let _sdkLoadPromise = null;
+    const SUPABASE_SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+
     function configured() {
         const u = global.__PBS_SUPABASE_URL;
         const k = global.__PBS_SUPABASE_ANON_KEY;
@@ -342,6 +348,33 @@
         },
         waitingOnOpponent(state) {
             return this.isActive() && state && state.mode === 'pvp' && !this.myTurn(state) && !state.isLocked;
+        },
+
+        // Lazily inject the Supabase UMD bundle. Returns Promise<boolean> (true once
+        // global.supabase.createClient is available). Call before any room create/join.
+        ensureSdk() {
+            if (global.supabase && global.supabase.createClient) return Promise.resolve(true);
+            if (_sdkLoadPromise) return _sdkLoadPromise;
+            _sdkLoadPromise = new Promise((resolve) => {
+                try {
+                    const doc = global.document;
+                    if (!doc || !doc.head) { resolve(false); return; }
+                    const s = doc.createElement('script');
+                    s.src = SUPABASE_SDK_URL;
+                    s.async = true;
+                    s.onload = () => {
+                        const ok = !!(global.supabase && global.supabase.createClient);
+                        if (!ok) _sdkLoadPromise = null;
+                        resolve(ok);
+                    };
+                    s.onerror = () => { _sdkLoadPromise = null; resolve(false); };
+                    doc.head.appendChild(s);
+                } catch (e) {
+                    _sdkLoadPromise = null;
+                    resolve(false);
+                }
+            });
+            return _sdkLoadPromise;
         },
 
         applyHostMatchOptions(settings) {
