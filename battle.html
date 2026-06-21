@@ -12907,7 +12907,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
@@ -13011,6 +13011,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.soundEnabled === 'boolean') settings.soundEnabled = _pbs.soundEnabled;
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
             if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
+            if (typeof _pbs.ambientParticles === 'boolean') settings.ambientParticles = _pbs.ambientParticles;
             if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
             if (typeof _pbs.soundVol === 'number' && _pbs.soundVol >= 0 && _pbs.soundVol <= 1) _initSoundVol = _pbs.soundVol;
             if (_pbs.offlineDownload && typeof _pbs.offlineDownload === 'object') Object.assign(settings.offlineDownload, _pbs.offlineDownload);
@@ -13040,6 +13041,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     soundEnabled: settings.soundEnabled,
                     weatherAnimation: settings.weatherAnimation,
                     terrainBackground: settings.terrainBackground,
+                    ambientParticles: settings.ambientParticles,
                     musicVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : _initMusicVol,
                     soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol,
                     offlineDownload: settings.offlineDownload
@@ -33264,6 +33266,255 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 flashPulse, floatCoin,
                 playSfx: _sfx
             };
+        })();
+
+        // ===================================================================
+        // ===== FxParticles — lazy tsParticles wrapper (vendor/tsparticles.slim.min.js)
+        // ===================================================================
+        // Ambient scene particles (camp embers, weather, interior dust, shimmer) plus
+        // one-shot celebration bursts (catch / bond-mastered). Self-disabling — a no-op
+        // under the jsdom harness, prefers-reduced-motion, or when settings.ambientParticles
+        // is off — so the synchronous test contract and the accessibility guards hold. The
+        // library loads on FIRST real use (mirrors the @pkmn/dex lazy-load near _dexCoreReady
+        // ~12774), so initial page weight is unchanged. Every layer is tracked by id; callers
+        // MUST clear() on scene exit so no canvas leaks (the perf profiler watches memory).
+        window.FxParticles = (function () {
+            let _libPromise = null;
+            const _live = new Map();      // id -> { container, host }
+            let _seq = 0;
+
+            function _settingOn() {
+                try { return (typeof settings === 'undefined' || !settings) ? true : settings.ambientParticles !== false; }
+                catch (e) { return true; }
+            }
+            function _enabled() {
+                try {
+                    if (typeof window !== 'undefined' && window.__testHarness === true) return false;
+                    if (window.StoryFx && StoryFx.isReducedMotion && StoryFx.isReducedMotion()) return false;
+                    if (!_settingOn()) return false;
+                } catch (e) { return false; }
+                return true;
+            }
+            function _loadLib() {
+                if (typeof window !== 'undefined' && window.tsParticles) return Promise.resolve(window.tsParticles);
+                if (_libPromise) return _libPromise;
+                _libPromise = new Promise(resolve => {
+                    try {
+                        const s = document.createElement('script');
+                        s.src = 'vendor/tsparticles.slim.min.js';
+                        s.dataset.tsparticlesBundle = '1';
+                        s.onload = () => resolve(window.tsParticles || null);
+                        s.onerror = () => { _libPromise = null; resolve(null); };
+                        document.head.appendChild(s);
+                    } catch (e) { _libPromise = null; resolve(null); }
+                });
+                return _libPromise;
+            }
+            const _common = x => Object.assign({
+                fullScreen: { enable: false }, detectRetina: true, fpsLimit: 45,
+                background: { color: 'transparent' }, pauseOnBlur: true, pauseOnOutsideViewport: true
+            }, x);
+            // opts: { color, density } — presets stay terse; callers tint per scene.
+            const PRESETS = {
+                embers: o => _common({ particles: {
+                    number: { value: Math.round(24 * (o.density || 1)) },
+                    color: { value: o.color || ['#ffb74d', '#ff7043', '#ffd54f'] }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.1, max: 0.75 }, animation: { enable: true, speed: 0.7, startValue: 'max', destroy: 'min' } },
+                    size: { value: { min: 1, max: 3 } },
+                    move: { enable: true, direction: 'top', speed: { min: 0.5, max: 1.6 }, random: true, straight: false, outModes: { default: 'destroy', bottom: 'none' }, gravity: { enable: true, acceleration: -3 } },
+                    life: { duration: { value: { min: 2, max: 4 } } }
+                } }),
+                dust: o => _common({ particles: {
+                    number: { value: Math.round(20 * (o.density || 1)) },
+                    color: { value: o.color || '#cfd8dc' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.04, max: 0.3 } }, size: { value: { min: 1, max: 2.4 } },
+                    move: { enable: true, speed: 0.3, direction: 'none', random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                shimmer: o => _common({ particles: {
+                    number: { value: Math.round(14 * (o.density || 1)) },
+                    color: { value: o.color || '#fff8e1' }, shape: { type: 'star' },
+                    opacity: { value: { min: 0, max: 0.7 }, animation: { enable: true, speed: 1.4, startValue: 'random', sync: false } },
+                    size: { value: { min: 1, max: 2.6 } },
+                    move: { enable: true, speed: 0.25, direction: 'top', random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                leaves: o => _common({ particles: {
+                    number: { value: Math.round(12 * (o.density || 1)) },
+                    color: { value: o.color || ['#aed581', '#9ccc65', '#c5e1a5'] }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.25, max: 0.6 } }, size: { value: { min: 2, max: 4 } },
+                    move: { enable: true, direction: 'bottom-right', speed: { min: 0.6, max: 1.4 }, random: true, straight: false, outModes: { default: 'out' }, gravity: { enable: true, acceleration: 1.5 } },
+                    rotate: { value: { min: 0, max: 360 }, animation: { enable: true, speed: 12, sync: false } },
+                    wobble: { enable: true, distance: 12, speed: 6 }
+                } }),
+                snow: o => _common({ particles: {
+                    number: { value: Math.round(70 * (o.density || 1)) },
+                    color: { value: o.color || '#ffffff' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.3, max: 0.9 } }, size: { value: { min: 1, max: 3 } },
+                    move: { enable: true, direction: 'bottom', speed: { min: 1, max: 2.5 }, random: true, straight: false, outModes: { default: 'out' }, drift: { min: -1, max: 1 } },
+                    wobble: { enable: true, distance: 10, speed: 5 }
+                } }),
+                rain: o => _common({ particles: {
+                    number: { value: Math.round(110 * (o.density || 1)) },
+                    color: { value: o.color || '#9fd3ff' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.2, max: 0.5 } }, size: { value: { min: 1, max: 2 } },
+                    move: { enable: true, direction: 'bottom', speed: { min: 14, max: 22 }, straight: true, outModes: { default: 'out' } }
+                } }),
+                sand: o => _common({ particles: {
+                    number: { value: Math.round(90 * (o.density || 1)) },
+                    color: { value: o.color || ['#e0c068', '#cba94f', '#d6b85a'] }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.15, max: 0.5 } }, size: { value: { min: 1, max: 2.5 } },
+                    move: { enable: true, direction: 'right', speed: { min: 10, max: 18 }, random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                sun: o => _common({ particles: {
+                    number: { value: Math.round(16 * (o.density || 1)) },
+                    color: { value: o.color || '#fff3c4' }, shape: { type: 'circle' },
+                    opacity: { value: { min: 0.05, max: 0.4 }, animation: { enable: true, speed: 0.6, sync: false } },
+                    size: { value: { min: 2, max: 5 } },
+                    move: { enable: true, direction: 'top-right', speed: 0.5, random: true, straight: false, outModes: { default: 'out' } }
+                } }),
+                // ── one-shot bursts (finite life; auto-cleared by burst()) ──
+                sparkle: o => _common({ particles: {
+                    number: { value: Math.round(36 * (o.density || 1)) },
+                    color: { value: o.color || ['#ffd54f', '#fff8e1', '#ffe082'] }, shape: { type: 'star' },
+                    opacity: { value: { min: 0.4, max: 1 }, animation: { enable: true, speed: 1.2, startValue: 'max', destroy: 'min' } },
+                    size: { value: { min: 1, max: 4 } },
+                    move: { enable: true, direction: 'none', speed: { min: 3, max: 9 }, random: true, straight: false, outModes: { default: 'destroy' }, gravity: { enable: true, acceleration: 6 }, decay: 0.06 },
+                    life: { duration: { value: { min: 0.6, max: 1 } }, count: 1 }
+                } }),
+                confetti: o => _common({ particles: {
+                    number: { value: Math.round(50 * (o.density || 1)) },
+                    color: { value: o.color || ['#ff5252', '#ffd54f', '#69f0ae', '#40c4ff', '#e040fb'] }, shape: { type: ['square', 'circle'] },
+                    opacity: { value: 0.95 }, size: { value: { min: 2, max: 5 } },
+                    move: { enable: true, direction: 'none', speed: { min: 6, max: 14 }, random: true, straight: false, outModes: { default: 'destroy' }, gravity: { enable: true, acceleration: 9 }, decay: 0.04 },
+                    rotate: { value: { min: 0, max: 360 }, animation: { enable: true, speed: 30, sync: false } },
+                    life: { duration: { value: { min: 0.8, max: 1.3 } }, count: 1 }
+                } })
+            };
+            function _hostFor(target, z) {
+                const host = document.createElement('div');
+                host.className = 'fxp-layer';
+                host.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:' + ((z | 0) || 0) + ';';
+                (target && target.appendChild ? target : document.body).appendChild(host);
+                return host;
+            }
+            // Mount a continuous ambient layer. Returns an id (or null if disabled / unavailable).
+            async function mount(target, presetKey, opts) {
+                opts = opts || {};
+                if (!_enabled()) return null;
+                const build = PRESETS[presetKey];
+                if (!build) return null;
+                const lib = await _loadLib();
+                if (!lib) return null;
+                if (target && target.isConnected === false) return null;  // scene torn down mid-load
+                const id = 'fxp-' + (++_seq);
+                const host = _hostFor(target, opts.z);
+                host.id = id;
+                try {
+                    const container = await lib.load({ id: id, element: host, options: build(opts) });
+                    if (!container) { try { host.remove(); } catch (e) {} return null; }
+                    _live.set(id, { container, host });
+                    return id;
+                } catch (e) { try { host.remove(); } catch (e2) {} return null; }
+            }
+            // One-shot burst over a target; self-clears after its lifetime (default 1.3s).
+            async function burst(target, presetKey, opts) {
+                opts = opts || {};
+                const id = await mount(target, presetKey, Object.assign({ z: 5 }, opts));
+                if (id) setTimeout(() => clear(id), (opts.duration | 0) || 1300);
+                return id;
+            }
+            function clear(id) {
+                const rec = _live.get(id);
+                if (!rec) return;
+                _live.delete(id);
+                try { rec.container && rec.container.destroy && rec.container.destroy(); } catch (e) {}
+                try { rec.host && rec.host.remove(); } catch (e) {}
+            }
+            function clearAll() { Array.from(_live.keys()).forEach(clear); }
+            return {
+                mount, burst, clear, clearAll,
+                isEnabled: _enabled, settingOn: _settingOn,
+                presets: () => Object.keys(PRESETS), liveCount: () => _live.size
+            };
+        })();
+
+        // ===================================================================
+        // ===== AudioBus — lazy Howler wrapper for BGM crossfades (vendor/howler.min.js)
+        // ===================================================================
+        // Scoped to the MUSIC layer only (background loops + scene themes). Cries, move-SFX
+        // and UI-SFX stay on AudioSystem. Built behind settings.audioBus so the existing
+        // AudioSystem _fade path stays the default until the transition seams are wired.
+        // No-op under the harness or when music is disabled.
+        window.AudioBus = (function () {
+            let _libPromise = null;
+            let _current = null;     // { howl, src }
+            function _enabled() {
+                try {
+                    if (typeof window !== 'undefined' && window.__testHarness === true) return false;
+                    if (typeof settings === 'undefined' || !settings) return false;
+                    if (settings.audioBus !== true) return false;       // dormant until opted in
+                    if (settings.musicEnabled === false) return false;
+                } catch (e) { return false; }
+                return true;
+            }
+            function _loadLib() {
+                if (typeof window !== 'undefined' && window.Howl) return Promise.resolve(window.Howl);
+                if (_libPromise) return _libPromise;
+                _libPromise = new Promise(resolve => {
+                    try {
+                        const s = document.createElement('script');
+                        s.src = 'vendor/howler.min.js';
+                        s.dataset.howlerBundle = '1';
+                        s.onload = () => resolve(window.Howl || null);
+                        s.onerror = () => { _libPromise = null; resolve(null); };
+                        document.head.appendChild(s);
+                    } catch (e) { _libPromise = null; resolve(null); }
+                });
+                return _libPromise;
+            }
+            function _musicVol() {
+                try { return (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : 0.45; }
+                catch (e) { return 0.45; }
+            }
+            // Crossfade the background track to `src` (looping by default). No-op if already on it.
+            async function crossfadeTo(src, o) {
+                o = o || {};
+                if (!_enabled() || !src) return null;
+                const Howl = await _loadLib();
+                if (!Howl) return null;
+                if (_current && _current.src === src) return _current.howl;
+                const target = _musicVol() * (o.vol == null ? 1 : o.vol);
+                const ms = (o.fadeMs == null ? 900 : o.fadeMs);
+                const prev = _current;
+                const howl = new Howl({ src: [src], loop: o.loop !== false, html5: true, volume: 0 });
+                howl.play();
+                try { howl.fade(0, target, ms); } catch (e) {}
+                _current = { howl: howl, src: src };
+                if (prev && prev.howl) {
+                    try {
+                        prev.howl.fade(prev.howl.volume(), 0, ms);
+                        setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80);
+                    } catch (e) {}
+                }
+                return howl;
+            }
+            function stop(o) {
+                o = o || {};
+                const prev = _current; _current = null;
+                if (!prev || !prev.howl) return;
+                const ms = (o.fadeMs == null ? 700 : o.fadeMs);
+                try { prev.howl.fade(prev.howl.volume(), 0, ms); setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80); }
+                catch (e) { try { prev.howl.stop(); prev.howl.unload(); } catch (e2) {} }
+            }
+            function duck(level, ms) {
+                if (!_current || !_current.howl) return;
+                try { _current.howl.fade(_current.howl.volume(), _musicVol() * (level == null ? 0.35 : level), ms == null ? 250 : ms); } catch (e) {}
+            }
+            function unduck(ms) {
+                if (!_current || !_current.howl) return;
+                try { _current.howl.fade(_current.howl.volume(), _musicVol(), ms == null ? 350 : ms); } catch (e) {}
+            }
+            function current() { return _current ? _current.src : null; }
+            return { crossfadeTo, stop, duck, unduck, current, isEnabled: _enabled };
         })();
 
         // ===================================================================
