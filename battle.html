@@ -43756,6 +43756,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 get STORY_SCENES() { return STORY_SCENES; },
                 get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
                 get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
+                get BEAT_FACTION_TRAINER() { return BEAT_FACTION_TRAINER; },
                 get MAIN_STORY_BEATS() { return MAIN_STORY_BEATS; },
                 get VILLAIN_STORY_BEATS() { return VILLAIN_STORY_BEATS; },
                 get sm() { return sm; },
@@ -45553,6 +45554,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }),
                     // Canon trainer overrides (PR-B/C).
                     get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
+                    // Faction grunt/admin overrides for grunt-tier villain beats.
+                    get BEAT_FACTION_TRAINER() { return BEAT_FACTION_TRAINER; },
                     // H2-3 substitution-bridge lines (one per canon-swap key).
                     get SUBSTITUTION_BRIDGES() { return SUBSTITUTION_BRIDGES; },
                     // Post-battle scenes (PR-D).
@@ -48819,6 +48822,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'villain.yell.miniBoss':     'Marnie',
             'villain.macroCosmos.miniBoss': 'Oleana',
             'villain.star.miniBoss':        'Giacomo',
+        };
+
+        // BEAT_FACTION_TRAINER — grunt-tier sceneKey → canon faction trainer from
+        // TRAINER_DATA. The grunt beats battle1/battle2 ("two grunts block the road")
+        // were the one villain tier with NO trainer override, so they inherited the
+        // route row's faction-blind assignment — which the late-game "villain gauntlet"
+        // lean fills with named villains from ANY team. That is how a Rocket story could
+        // serve a Flare trainer (Lysandre). This table completes the grunt → admin →
+        // boss ladder: battle1 = the team's grunt, battle2 = the team's admin. Resolved
+        // role-agnostically at battle entry (the grunts/admins are role:'Basic Trainer'),
+        // so they slot onto whatever route row the beat lands on. Yell / Macro Cosmos /
+        // Star have no grunt/admin trainer or sprite asset, so they are intentionally
+        // omitted — their grunt beats fall back to a neutral generated route trainer
+        // (never a wrong-faction villain). See enterBattleEvent's _beatForceGeneric.
+        const BEAT_FACTION_TRAINER = {
+            'villain.rocket.battle1':   'Team Rocket Grunt',
+            'villain.rocket.battle2':   'Rocket Executive',
+            'villain.aqua.battle1':     'Team Aqua Grunt',
+            'villain.aqua.battle2':     'Aqua Admin',
+            'villain.magma.battle1':    'Team Magma Grunt',
+            'villain.magma.battle2':    'Magma Admin',
+            'villain.galactic.battle1': 'Team Galactic Grunt',
+            'villain.galactic.battle2': 'Galactic Commander',
+            'villain.plasma.battle1':   'Team Plasma Grunt',
+            'villain.plasma.battle2':   'Plasma Sage',
+            'villain.flare.battle1':    'Team Flare Grunt',
+            'villain.flare.battle2':    'Flare Scientist',
+            'villain.skull.battle1':    'Team Skull Grunt',
+            'villain.skull.battle2':    'Skull Boss',
         };
 
         // SUBSTITUTION_BRIDGES (H2-3) — one world-narrator line per BEAT_CANON_TRAINER
@@ -56632,10 +56664,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // mutating STORY_EVENTS_RAW. Lower-tier (battle/miniRaid)
                 // beats skip the override — they keep theme via prose only.
                 try {
-                    const _canon = BEAT_CANON_TRAINER && BEAT_CANON_TRAINER[_beatBattle.sceneKey];
+                    const _canon = (BEAT_CANON_TRAINER && BEAT_CANON_TRAINER[_beatBattle.sceneKey])
+                                || (BEAT_FACTION_TRAINER && BEAT_FACTION_TRAINER[_beatBattle.sceneKey]);
                     const _isInsertKind = _beatBattle.kind === 'boss' || _beatBattle.kind === 'miniBoss'
                                         || _beatBattle.kind === 'raid' || _beatBattle.kind === 'mysteryBoss';
-                    if (_canon && _isInsertKind) {
+                    // Grunt-tier villain beats (battle1/battle2) now also pin a
+                    // faction-appropriate trainer (grunt → admin) via BEAT_FACTION_TRAINER,
+                    // so the enemy can never be a named villain from another team. Teams
+                    // with no grunt/admin asset instead DROP the row's faction-blind
+                    // assignment, so the fight falls back to a neutral generated trainer
+                    // (resolution forces that — see _beatForceGeneric below).
+                    const _isGruntKind = _beatBattle.kind === 'battle';
+                    if (_canon && (_isInsertKind || _isGruntKind)) {
                         if (!sm.trainerAssignments) sm.trainerAssignments = {};
                         // Stash the prior assignment so onBattleEnd can restore
                         // if the player retries / retreats without winning.
@@ -56644,6 +56684,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             prev: sm.trainerAssignments[ev[0] | 0] || null,
                         };
                         sm.trainerAssignments[ev[0] | 0] = _canon;
+                        try { save(); } catch (e) {}
+                    } else if (_isGruntKind && sm.trainerAssignments && sm.trainerAssignments[ev[0] | 0]) {
+                        // No faction grunt/admin asset for this team: drop the inherited
+                        // faction-blind named villain so it can't contradict the prose.
+                        sm._priorTrainerAssignment = {
+                            rowId: ev[0] | 0,
+                            prev: sm.trainerAssignments[ev[0] | 0],
+                        };
+                        delete sm.trainerAssignments[ev[0] | 0];
                         try { save(); } catch (e) {}
                     }
                 } catch (e) { console.warn('[Story] canon trainer override:', e); }
@@ -56709,6 +56758,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // event so the generated identity is static across flee / revisit / reload.
             const _genericBasicEvent = (String(event) === 'Basic Trainer' || /^Gym Trainer/.test(String(event)));
             const _mysteryFinalFace = isMysteryFinal ? _storyEnsureMysteryIdentity() : null;
+            // Beat-forced trainer (faction consistency): when an injected villain beat is
+            // active, the enemy identity comes from the BEAT tables keyed off
+            // sm._activeBeatBattleKey (boss/miniBoss → BEAT_CANON_TRAINER, grunt
+            // battle1/battle2 → BEAT_FACTION_TRAINER) — NOT the row's faction-blind
+            // assignment, so a Rocket story never serves a Flare trainer. Resolved
+            // role-agnostically (TRAINER_DATA name lookup) so a Basic-Trainer grunt/admin
+            // can sit on an Elite route row AND a canon boss survives a Basic route row
+            // (which the generic generator below would otherwise hijack). Grunt beats whose
+            // team has no grunt/admin asset force a neutral generated trainer rather than
+            // the inherited cross-faction name.
+            let _beatForced = null, _beatForceGeneric = false;
+            if (_beatBattle && _beatBattle.sceneKey && !isMysteryFinal) {
+                const _bk = _beatBattle.sceneKey;
+                const _bnm = (typeof BEAT_CANON_TRAINER === 'object' && BEAT_CANON_TRAINER && BEAT_CANON_TRAINER[_bk])
+                          || (typeof BEAT_FACTION_TRAINER === 'object' && BEAT_FACTION_TRAINER && BEAT_FACTION_TRAINER[_bk]);
+                if (_bnm) _beatForced = TRAINER_DATA.find(t => t.name === _bnm) || null;
+                else if (_beatBattle.kind === 'battle' && /\.battle[12]$/.test(_bk)) _beatForceGeneric = true;
+            }
             let trainer = isMysteryFinal
                 ? {
                     role: 'Mystery Figure',
@@ -56739,9 +56806,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ];
                     })()
                 }
-                : _genericBasicEvent
-                    ? _generateBasicTrainer(idx, /^Gym Trainer/.test(String(event)) ? prefType : null)
-                    : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
+                : _beatForced
+                    ? _beatForced
+                    : (_genericBasicEvent || _beatForceGeneric)
+                        ? _generateBasicTrainer(idx, /^Gym Trainer/.test(String(event)) ? prefType : null)
+                        : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival') {
                 // The rival is shown simply as "Rival": the sprite is a visual filler,
                 // not a fixed canonical character, so no rolled name — and not the old
@@ -59535,9 +59604,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!beat) return null;
                 const isInsert = beat.kind === 'boss' || beat.kind === 'miniBoss'
                               || beat.kind === 'raid' || beat.kind === 'mysteryBoss';
-                if (!isInsert) return null;
-                return (typeof BEAT_CANON_TRAINER === 'object' && BEAT_CANON_TRAINER
-                        && BEAT_CANON_TRAINER[beat.sceneKey]) || null;
+                const isGrunt = beat.kind === 'battle' && /\.battle[12]$/.test(beat.sceneKey || '');
+                if (!isInsert && !isGrunt) return null;
+                const nm = (typeof BEAT_CANON_TRAINER === 'object' && BEAT_CANON_TRAINER && BEAT_CANON_TRAINER[beat.sceneKey])
+                        || (typeof BEAT_FACTION_TRAINER === 'object' && BEAT_FACTION_TRAINER && BEAT_FACTION_TRAINER[beat.sceneKey]);
+                if (nm) return nm;
+                // Grunt beat whose team has no named grunt/admin asset: the fight uses a
+                // neutral generated trainer, so suppress the stale faction-blind name in
+                // the pill (return '' = show role only) rather than spoiling a wrong-faction
+                // villain.
+                if (isGrunt) return '';
+                return null;
             } catch (e) { return null; }
         }
         function _storyEventRowToUpNext(row) {
@@ -59558,7 +59635,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     if (STORY_EVENTS_RAW[sm.eventIndex] === row) {
                         const canon = _canonTrainerForUpcomingBattle();
-                        if (canon) trainerName = canon;
+                        if (canon != null) trainerName = canon; // '' suppresses the name (neutral grunt)
                     }
                 } catch (e) {}
                 const isFinale = /^(E[1-4]|Champion|Mystery Figure|Victory Road)$/.test(event);
