@@ -51799,8 +51799,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyScene(beats, onDone, sceneId) {
             sceneId = sceneId || 'story-scene-overlay';
             let done = false;
+            let _ambId = null, _ambKey = '';   // ambient particle layer (camp embers, dust, …)
             const finish = () => {
                 if (done) return; done = true;
+                if (_ambId) { try { window.FxParticles.clear(_ambId); } catch (e) {} _ambId = null; }
                 const o = document.getElementById(sceneId); if (o) o.remove();
                 try { onDone && onDone(); } catch (e) { console.warn('[Story] scene done', e); }
             };
@@ -51858,7 +51860,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }).join('');
                     if (_imgs) _castHtml = `<div class="story-scene-cast${_fxCls ? ' ' + _fxCls : ''}">${_imgs}</div>`;
                 }
-                ov.innerHTML = `${_castHtml}<div class="story-scene-card${(!_castHtml && _fxCls) ? ' ' + _fxCls : ''}" style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
+                // Persistent content wrapper so the per-beat innerHTML swap never wipes the
+                // ambient particle layer (mounted on ov, a sibling of this wrapper, below).
+                let _content = ov.querySelector('.story-scene-content');
+                if (!_content) {
+                    _content = document.createElement('div');
+                    _content.className = 'story-scene-content';
+                    _content.style.cssText = 'position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:560px;';
+                    ov.appendChild(_content);
+                }
+                // Ambient particle layer (camp embers, interior dust, …) — keyed per scene,
+                // mounted once and reused across beats, torn down in finish(). No-op under
+                // reduced-motion / particles-off / the harness; the scene reads fine without it.
+                try {
+                    const _amb = beat.ambient || '';
+                    if (_amb !== _ambKey) {
+                        _ambKey = _amb;
+                        if (_ambId) { window.FxParticles.clear(_ambId); _ambId = null; }
+                        if (_amb && window.FxParticles) {
+                            window.FxParticles.mount(ov, _amb, beat.ambientOpts || {}).then(id => {
+                                if (_ambKey === _amb) _ambId = id; else if (id) window.FxParticles.clear(id);
+                            });
+                        }
+                    }
+                } catch (e) {}
+                _content.innerHTML = `${_castHtml}<div class="story-scene-card${(!_castHtml && _fxCls) ? ' ' + _fxCls : ''}" style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
                     ${beat.title ? `<div style="font-size:13px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">${beat.title}</div>` : ''}
                     <div>${beat.html || ''}</div>
                     ${btns}
@@ -51879,6 +51905,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             render(beats[0]);
         }
+        window._storyScene = _storyScene;   // test access (ambient-layer guard)
 
         // ─────────────────────────────────────────────────────────────────────
         // EGG SLOTS — a real, carryable party/PC slot (icon, depositable, hatches)
@@ -55971,6 +55998,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 id: 'camp-menu', title: '⛺  Camp', accent: _CAMP_ACCENT,
                 backdropCss: 'linear-gradient(180deg, #070d1f 0%, #0d1730 38%, #1a1208 76%, #241405 100%)',
                 fx: 'fire',
+                ambient: 'embers',
                 cast: _campCast,
                 html: `<div>You make camp on the road. The fire catches, throwing warm light against the dark — and for a moment the day's trials are behind you. <b>${leadName}</b> settles in close.</div>`,
                 options,
@@ -55989,6 +56017,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             options.push({ label: '← Back', onPick: () => _campDefer(() => _campOpenMenu(ctx)) });
             _storyScene([{
                 id: 'camp-roster', title: '⛺  Spend time with…', accent: _CAMP_ACCENT,
+                ambient: 'embers',
                 html: `<div>Who do you want to spend time with at the fire?</div>`,
                 options,
             }], null, _CAMP_SCENE_ID);
@@ -65081,6 +65110,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── UI HELPERS ────────────────────────────────────────────────────
+        // Facility / city ambient particle layer — one centralized manager so every story
+        // interior gets a subtle atmosphere (shop dust, tutor/center shimmer, city leaves)
+        // without touching each enter*(). Change-detected on the screen id; the layer is
+        // parented to the (position:relative) `.screen`, so it fills the interior and is torn
+        // down on the next swap. No-op under reduced-motion / particles-off / the harness.
+        const _FACILITY_AMBIENT = {
+            'screen-story-city':          { preset: 'leaves', opts: { density: 0.8 } },
+            'screen-story-shop':          { preset: 'dust' },
+            'screen-story-stone-shop':    { preset: 'dust' },
+            'screen-story-artifact-shop': { preset: 'dust' },
+            'screen-story-artifacts':     { preset: 'dust' },
+            'screen-story-professor':     { preset: 'dust' },
+            'screen-story-pokemoncenter': { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-tutor':         { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-evolab':        { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-colress':       { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-evtrainer':     { preset: 'shimmer', opts: { density: 0.7 } },
+            'screen-story-fanclub':       { preset: 'shimmer', opts: { color: '#f8bbd0', density: 0.7 } }
+        };
+        const _facilityAmbient = { id: null, key: '' };
+        function _syncFacilityAmbient(id) {
+            const cfg = _FACILITY_AMBIENT[id] || null;
+            const key = cfg ? id : '';
+            if (key === _facilityAmbient.key) return;   // unchanged → nothing to do
+            _facilityAmbient.key = key;
+            if (_facilityAmbient.id) { try { window.FxParticles.clear(_facilityAmbient.id); } catch (e) {} _facilityAmbient.id = null; }
+            if (!cfg) return;
+            const host = document.getElementById(id);
+            if (!host || !window.FxParticles) return;
+            window.FxParticles.mount(host, cfg.preset, cfg.opts || {}).then(fxid => {
+                if (_facilityAmbient.key === key) _facilityAmbient.id = fxid;
+                else if (fxid) { try { window.FxParticles.clear(fxid); } catch (e) {} }
+            });
+        }
+        window._syncFacilityAmbient = _syncFacilityAmbient;   // test access
+        window._FACILITY_AMBIENT = _FACILITY_AMBIENT;
         // Cross-fade gate — instant under the harness, reduced motion, or when the user
         // has turned animations off, so the synchronous contract + a11y both hold.
         function _screenFadeEnabled() {
@@ -65098,6 +65163,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.FxParticles.clear(_battleWeatherFx.id); } catch (e) {}
                 _battleWeatherFx.id = null; _battleWeatherFx.key = '';
             }
+            _syncFacilityAmbient(id);   // shop dust / tutor shimmer / city leaves (or clear)
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('hidden');
