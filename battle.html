@@ -7791,6 +7791,26 @@
         .menu-mode-grid .menu-mode-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; line-height: 1.2; }
         .menu-mode-title { font-size: 14px; font-weight: bold; }
         .menu-mode-sub { font-size: 10px; font-weight: normal; opacity: 0.72; text-transform: none; letter-spacing: 0; }
+        /* Secondary home affordance — discoverable but subordinate to the play-mode buttons. */
+        .menu-offline-entry {
+            display: flex; align-items: center; gap: 10px; width: 100%; max-width: 340px;
+            margin: 4px auto 0; padding: 9px 12px; text-align: left; cursor: pointer;
+            background: #121212; border: 1px solid #2f6f3a; border-radius: 8px; color: #a5d6a7;
+        }
+        .menu-offline-entry:hover { border-color: var(--hp-green, #7ad17a); background: #161a16; }
+        .menu-offline-entry.has-offline-update { border-color: var(--hp-amber, #ffb74d); }
+        .menu-offline-entry-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+        .menu-offline-entry-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .menu-offline-entry-title { font-size: 12px; font-weight: bold; color: #c8e6c9; }
+        .menu-offline-entry-sub { font-size: 10px; color: #8a9a8c; line-height: 1.35; }
+        .menu-offline-update {
+            font-size: 9px; font-weight: bold; color: var(--hp-amber, #ffb74d);
+            text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px;
+        }
+        .offline-update-dot {
+            display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%;
+            background: var(--hp-amber, #ffb74d); vertical-align: middle;
+        }
         .menu-secondary-head {
             font-size: 12px; color: var(--accent); font-weight: bold;
             text-transform: uppercase; letter-spacing: 0.08em;
@@ -9427,6 +9447,14 @@
                     <span class="menu-mode-title">Leaderboard</span><span class="menu-mode-sub">Top Gauntlet runs</span>
                 </button>
             </div>
+            <button type="button" id="menu-offline-entry" class="menu-offline-entry" onclick="window.openOfflineSettings && window.openOfflineSettings()" aria-label="Download the game for offline play">
+                <span class="menu-offline-entry-ico" aria-hidden="true">⤓</span>
+                <span class="menu-offline-entry-text">
+                    <span class="menu-offline-entry-title">Download for offline play<span class="offline-update-dot" style="display:none;" aria-hidden="true"></span></span>
+                    <span class="menu-offline-entry-sub">Play with no internet — saves on your device</span>
+                    <span id="menu-offline-update" class="menu-offline-update" style="display:none;">Update available</span>
+                </span>
+            </button>
             <p id="online-setup-hint" class="hidden" style="max-width:340px;margin:0 12px;padding:10px 12px;font-size:11px;line-height:1.45;color:#aaa;text-align:center;border:1px solid #444;border-radius:6px;background:#121212;">
                 <strong style="color:#4fc3f7;">Online PvP is off</strong> until you add a free Supabase backend (GitHub Pages cannot host it). Steps:
                 (1) Create a project at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color:#81d4fa;">supabase.com</a>
@@ -9521,6 +9549,7 @@
                 <span>Fullscreen</span>
                 <button type="button" id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green); min-height:40px; padding:6px 14px;">ENTER</button>
             </div>
+            <div class="settings-section-title">App &amp; data</div>
             <div class="settings-row" id="install-app-row" style="display:none;">
                 <span>Install app</span>
                 <button type="button" id="install-app-btn" onclick="window.promptInstallApp()" style="color: var(--accent); min-height:40px; padding:6px 14px;">INSTALL</button>
@@ -13179,9 +13208,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.refreshOfflineUpdateBadge = function(show) {
             const row = document.getElementById('offline-dl-row');
             const note = document.getElementById('offline-dl-update-note');
+            const menuEntry = document.getElementById('menu-offline-entry');
+            const menuChip = document.getElementById('menu-offline-update');
             if (note) note.style.display = show ? '' : 'none';
             if (row) row.classList.toggle('has-offline-update', !!show);
+            if (menuEntry) menuEntry.classList.toggle('has-offline-update', !!show);
+            if (menuChip) menuChip.style.display = show ? '' : 'none';
             document.querySelectorAll('.offline-update-dot').forEach((d) => { d.style.display = show ? '' : 'none'; });
+        };
+        // Home-menu entry point → open Settings with the offline panel already expanded.
+        window.openOfflineSettings = function() {
+            try { window.openSettings && window.openSettings(); } catch (e) {}
+            // Defer one frame so the modal is in the DOM/visible before the panel un-hides + dry-runs.
+            setTimeout(function () { try { window.openDownloadOfflineFlow && window.openDownloadOfflineFlow(); } catch (e) {} }, 30);
         };
         window.checkOfflineUpdate = async function() {
             try {
