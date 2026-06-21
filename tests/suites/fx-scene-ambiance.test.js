@@ -72,6 +72,26 @@ test('_FACILITY_AMBIENT maps every interior to a real FxParticles preset', () =>
   ids.forEach(id => assert.ok(known.includes(map[id].preset), `${id} → real preset (${map[id].preset})`));
 });
 
+// ── 3. Milestone / capture burst contract (Stage 4 rides FxParticles.burst) ──
+test('FxParticles.burst accepts the camp-milestone + capture option shapes (no-op under harness)', async () => {
+  const fx = window.FxParticles;
+  const body = document.body;
+  const before = document.querySelectorAll('.fxp-layer').length;
+  // Shapes used by the camp bond-mastery spotlight and the catch-success flourish.
+  const calls = [
+    ['sparkle',  { color: ['#ffd54f', '#fff8e1', '#ffe082'], duration: 1500, z: 6 }],   // path mastered
+    ['confetti', { color: ['#ce93d8', '#ffd54f', '#aed581'], duration: 1500, z: 6 }],   // new title
+    ['confetti', { color: ['#ffd54f', '#80deea', '#f48fb1', '#aed581'], duration: 1500, z: 6 }], // shiny catch
+    ['sparkle',  { color: ['#ffd54f', '#fff8e1', '#ffe082'], duration: 1500, z: 6 }],   // normal catch
+  ];
+  for (const [preset, opts] of calls) {
+    const id = await fx.burst(body, preset, opts);
+    assert.equal(id, null, `${preset} burst no-ops under the harness`);
+  }
+  assert.equal(document.querySelectorAll('.fxp-layer').length, before, 'no burst canvas mounted while disabled');
+  assert.equal(fx.liveCount(), 0, 'no burst layer leaked');
+});
+
 test('_syncFacilityAmbient no-ops under the harness and clears for non-facility ids', () => {
   const f = window._syncFacilityAmbient;
   assert.equal(typeof f, 'function', '_syncFacilityAmbient exposed');

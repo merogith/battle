@@ -56123,6 +56123,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html,
                 options: [{ label: 'Continue ▶', onPick: () => _campDefer(() => _campMon(ctx, slotIndex)) }],
             }], null, _CAMP_SCENE_ID);
+            // Spotlight a milestone — a path mastered (gold sparkle) or a new Title earned
+            // (purple/gold confetti) gets a celebratory burst over the result card. Pure
+            // visual on the existing copy + 'achv' SFX; no-op under reduced-motion / off.
+            if (won && award && (award.justMastered || award.titleChanged)) {
+                try {
+                    const _ov = document.getElementById(_CAMP_SCENE_ID);
+                    if (_ov && window.FxParticles) {
+                        window.FxParticles.burst(_ov, award.justMastered ? 'sparkle' : 'confetti', {
+                            color: award.justMastered ? ['#ffd54f', '#fff8e1', '#ffe082'] : ['#ce93d8', '#ffd54f', '#aed581'],
+                            duration: 1500, z: 6,
+                        });
+                    }
+                } catch (e) {}
+            }
         }
         function _campSulk(action) {
             // Mild, non-graphic recoil per tone (maintainer copy pass for edgier variants).
@@ -60913,6 +60927,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Apply the resolved outcome now that the animation has played.
             if (!_catchState || _catchState.ended) return; // user navigated away mid-throw
             if (outcome === 'catch') {
+                // Capture flourish — a sparkle burst over the encounter stage (full confetti
+                // for a shiny). Pure visual; no-op under reduced-motion / particles-off.
+                try {
+                    const _shiny = !!(enc && enc.build && enc.build._isShiny);
+                    if (_catchStageEl && window.FxParticles) {
+                        window.FxParticles.burst(_catchStageEl, _shiny ? 'confetti' : 'sparkle', {
+                            color: _shiny ? ['#ffd54f', '#80deea', '#f48fb1', '#aed581'] : ['#ffd54f', '#fff8e1', '#ffe082'],
+                            duration: 1500, z: 6,
+                        });
+                    }
+                } catch (e) {}
                 _catchHandleSuccess(enc, ballKey);
                 return;
             }
