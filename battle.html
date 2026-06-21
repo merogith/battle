@@ -65629,13 +65629,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 'natural' | 'learnt' | 'awakened' | 'unknown' (unknown = cache cold).
         function _moveTagForSpecies(monName, moveName) {
             if (!monName || !moveName) return 'unknown';
-            // Hidden Power is mentor-unlocked for ANY species and sits outside the
-            // learnset buckets, so it would otherwise fall through to 'awakened'
-            // (5,000G + Guru-locked stripe) despite being teachable from City 1. Pin
-            // it to a fixed, accessible tier. MAINTAINER: this is the Hidden Power
-            // tutor price tier — 'natural' = 1,000G. Change to 'learnt'/'awakened' to
-            // raise it (see _moveCostForStage).
-            if (/^Hidden Power/.test(moveName)) return 'natural';
             const cached = _tutorLearnsetCache.get(monName);
             if (!cached) return 'unknown';
             // O(1) lookup via the tagOf Map (lazily built on first read so existing
@@ -65656,6 +65649,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const t = cached._tagOf.get(moveName);
             if (t) return t;
+            // Mentor-unlocked bare "Hidden Power" is offered to EVERY species; for one
+            // whose dex learnset omits it, it lands here. Price it as the TM/tutor
+            // 'learnt' move it has always been (2,500G), not the 'awakened' default
+            // below. Typed variants keep their real learnset tag (canary-safe).
+            // MAINTAINER: this is the Hidden Power tutor price tier — change to
+            // 'natural' (1,000G) to lower it (see _moveCostForStage).
+            if (moveName === 'Hidden Power') return 'learnt';
             // Not in any cached bucket — if `all` exists and doesn't contain the move,
             // it's an off-legal Smogon pick (Awakened). Otherwise, cache is too thin to
             // judge.
@@ -65690,12 +65690,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ...(learn.natural || []), ...(learn.learnt || []), ...(learn.awakened || []),
                 ...(learn.all || []),
             ])].sort();
-            // Hidden Power: once the Diviner has unlocked it, the tutor can wake it in
-            // ANY Pokémon — independent of the species learnset. Added to the visible
-            // pool here and to the teachable set below; its element is the mon's own
-            // assigned hpType (chosen once at the first lesson, random thereafter).
-            // Priced like any other move through the shared tag/stage machinery.
-            if (sm && sm.hiddenPowerUnlocked && !full.includes('Hidden Power')) full.push('Hidden Power');
+            // Hidden Power — collapse every learnset / Smogon-usage variant the dex
+            // hands us ("Hidden Power Fire", the bare IV-form entry, …) into ONE
+            // logical move, gated behind the Diviner's unlock. Locked: no Hidden Power
+            // appears in the tutor at all. Unlocked: a single "Hidden Power" card the
+            // tutor can wake in ANY species — its element is the mon's own assigned
+            // hpType (chosen once at the first lesson, random thereafter), projected on
+            // teach. (An already-equipped Hidden Power still shows in the loadout panel.)
+            for (let i = full.length - 1; i >= 0; i--) { if (/^Hidden Power/.test(full[i])) full.splice(i, 1); }
+            if (sm && sm.hiddenPowerUnlocked) full.push('Hidden Power');
             const stage = (typeof _npcStage === 'function') ? _npcStage('tutor') : 0;
             // Phase 2 (BUG B fix): a Heart Scale no longer unlocks the full pool — it
             // only waives the GOLD cost of an IN-stage teach. The staged gate below
@@ -65726,7 +65729,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 (learn.learnt   || []).forEach(m => allow.add(m));
                 (learn.awakened || []).forEach(m => allow.add(m));
             }
-            // Mentor-unlocked Hidden Power is teachable at any tutor stage.
+            // Hidden Power: strip any learnset variant from the teachable set; the only
+            // teachable Hidden Power is the unified, mentor-unlocked one (see above).
+            for (const m of [...allow]) { if (/^Hidden Power/.test(m)) allow.delete(m); }
             if (sm && sm.hiddenPowerUnlocked) allow.add('Hidden Power');
             // Barren-species floor (e.g. Beldum, whose only Natural move is Take Down at
             // 90 BP): if the BP cap leaves NO teachable Natural move at L1, admit the single
