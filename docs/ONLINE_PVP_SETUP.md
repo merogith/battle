@@ -41,15 +41,21 @@ What each migration does:
 | `004_online_pvp_rls_tighten.sql` | Tighter row policies |
 | `005_online_pvp_room_tokens.sql` | Per-room tokens + `try_create_pvp_room` / `pvp_push_data` SECURITY DEFINER RPCs |
 | `006_online_pvp_rls_harden.sql` | Direct INSERT/UPDATE locked off; token columns SELECT-revoked |
+| `007_online_pvp_matchmaking.sql` | `pvp_queue` table + `pvp_matchmake_enqueue` / `_poll` / `_cancel` RPCs (random matchmaking) |
 
 ## 2. Enable Realtime on `pvp_rooms` (required — not SQL)
 
 Turn/draft sync is delivered by Postgres Realtime UPDATE events. Without this,
 players create and join rooms but **never see each other's moves**.
 
-Dashboard → **Database → Publications → `supabase_realtime`** → toggle on the
-**`public.pvp_rooms`** table. (On some dashboard versions this lives under
-**Database → Replication**.)
+Dashboard → **Database → Publications → `supabase_realtime`** → toggle on both
+**`public.pvp_rooms`** and **`public.pvp_queue`**. (On some dashboard versions
+this lives under **Database → Replication**.)
+
+> Migration 007 already attempts to add `pvp_queue` to the publication
+> automatically; verify the toggle is on here regardless. `pvp_rooms` powers
+> turn/draft sync; `pvp_queue` powers random-matchmaking "opponent found"
+> notifications (with the `pvp_matchmake_poll` RPC as a fallback).
 
 ## 3. (Optional) Gauntlet leaderboard
 

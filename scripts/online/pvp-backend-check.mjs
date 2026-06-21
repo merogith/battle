@@ -87,7 +87,7 @@ function rpcMissing(r) {
     return r.status === 404 && r.body && r.body.code === 'PGRST202';
 }
 
-const migrations = { '001': false, '002': false, '003/005': false, '006': false };
+const migrations = { '001': false, '002': false, '003/005': false, '006': false, '007': false };
 
 async function readOnlyProbes() {
     head('1. Tables (migrations 001 + 002)');
@@ -147,10 +147,41 @@ async function readOnlyProbes() {
     } else {
         pass('try_create_pvp_room is callable (migration 005 applied).');
     }
+
+    head('4. Matchmaking (migration 007)');
+    const queue = await selectTable('pvp_queue', 'id,status,bucket,queue_kind');
+    let queueOk = false;
+    if (queue.status === 200 && Array.isArray(queue.body)) {
+        pass('pvp_queue is selectable (migration 007 applied).');
+        queueOk = true;
+    } else {
+        fail(`pvp_queue not selectable (status ${queue.status}) — migration 007 not applied (no random matchmaking).`);
+    }
+
+    const secret = await selectTable('pvp_queue', 'team_payload');
+    if (secret.status === 200 && Array.isArray(secret.body)) {
+        fail('pvp_queue.team_payload is anon-readable — secret columns not revoked (opponents could scout teams).');
+    } else if (queueOk) {
+        pass(`pvp_queue secret columns not anon-readable (status ${secret.status}) — consistent with 007.`);
+    }
+
+    // Non-mutating RPC existence: a short owner_token / random queue id makes
+    // each function exit early (bad_owner / not_found) without writing a row.
+    const enq = await rpc('pvp_matchmake_enqueue', {
+        p_owner_id: fakeId, p_owner_token: '', p_display_name: 'd', p_kind: 'menu',
+        p_bucket: 0, p_tolerance: 0, p_match_options: {}, p_team_payload: []
+    });
+    const poll = await rpc('pvp_matchmake_poll', { p_queue_id: fakeId, p_owner_token: 'x', p_tolerance: 0 });
+    if (rpcMissing(enq) || rpcMissing(poll)) {
+        fail('pvp_matchmake RPCs missing — migration 007 not applied.');
+    } else {
+        pass('pvp_matchmake_enqueue / _poll exist (migration 007 applied).');
+        migrations['007'] = queueOk;
+    }
 }
 
 async function smokeRoundTrip() {
-    head('4. Round-trip smoke test (--smoke, mutating)');
+    head('5. Room round-trip smoke test (--smoke, mutating)');
     info('Creates a throwaway room, joins it, pushes a turn patch, checks realtime.');
 
     const code = 'DIAG' + Math.random().toString(36).slice(2, 4).toUpperCase();
@@ -215,15 +246,63 @@ async function smokeRoundTrip() {
     info(`Throwaway room ${code} remains in pvp_rooms (no anon delete RPC) — harmless ephemeral data.`);
 }
 
+async function smokeMatchmaking() {
+    head('6. Matchmaking smoke test (--smoke, mutating)');
+    info('Enqueues two synthetic players in the same bucket and checks they pair into one room.');
+
+    const uuid = () => (globalThis.crypto && globalThis.crypto.randomUUID)
+        ? globalThis.crypto.randomUUID() : '00000000-0000-0000-0000-000000000000';
+    const tokA = 'diag-' + Math.random().toString(36).slice(2).padEnd(20, '0');
+    const tokB = 'diag-' + Math.random().toString(36).slice(2).padEnd(20, '0');
+    const opts = { partySize: 1 };
+    const team = [{ name: 'Pikachu', build: { m: ['Thunderbolt'] } }];
+
+    const a = await rpc('pvp_matchmake_enqueue', {
+        p_owner_id: uuid(), p_owner_token: tokA, p_display_name: 'DiagA', p_kind: 'menu',
+        p_bucket: 100, p_tolerance: 0, p_match_options: opts, p_team_payload: team
+    });
+    if (a.status !== 200 || !a.body || !a.body.ok) { fail(`enqueue A failed: ${JSON.stringify(a.body)}`); return; }
+    if (a.body.matched) { warn('Player A matched immediately (a stale waiter was present) — pairing works.'); }
+    else pass('Player A enqueued (waiting).');
+    const queueIdA = a.body.queue_id;
+
+    const b = await rpc('pvp_matchmake_enqueue', {
+        p_owner_id: uuid(), p_owner_token: tokB, p_display_name: 'DiagB', p_kind: 'menu',
+        p_bucket: 100, p_tolerance: 0, p_match_options: opts, p_team_payload: team
+    });
+    if (b.status !== 200 || !b.body || !b.body.ok) { fail(`enqueue B failed: ${JSON.stringify(b.body)}`); return; }
+    if (b.body.matched && b.body.role === 1 && b.body.room_id && b.body.token) {
+        pass(`Player B claimed A → matched as host (room ${b.body.room_id}).`);
+    } else {
+        fail(`Player B did not pair with A: ${JSON.stringify(b.body)}`);
+        return;
+    }
+
+    const pollA = await rpc('pvp_matchmake_poll', { p_queue_id: queueIdA, p_owner_token: tokA, p_tolerance: 0 });
+    if (pollA.body && pollA.body.matched && pollA.body.role === 2 && pollA.body.room_id === b.body.room_id && pollA.body.token) {
+        pass('Player A polled → matched as guest into the SAME room with a token.');
+    } else {
+        fail(`Player A poll did not resolve to the shared room: ${JSON.stringify(pollA.body)}`);
+    }
+
+    const cancelBad = await rpc('pvp_matchmake_cancel', { p_queue_id: queueIdA, p_owner_token: 'wrong-token' });
+    if (cancelBad.body && cancelBad.body.ok === false && cancelBad.body.error === 'bad_token') {
+        pass('cancel rejects a wrong owner_token (auth enforced).');
+    } else {
+        warn(`cancel did not reject a bad token as expected: ${JSON.stringify(cancelBad.body)}`);
+    }
+    info('Throwaway queue rows + matched room remain (ephemeral; expire on their own).');
+}
+
 function summary() {
     head('Summary — inferred migration state');
     for (const [m, ok] of Object.entries(migrations)) {
         console.log(`  ${ok ? C.green + 'applied ' : C.yellow + 'MISSING '}${C.reset}migration ${m}`);
     }
-    if (!migrations['006']) {
+    if (!migrations['006'] || !migrations['007']) {
         info('Apply docs/online-pvp-combined-migrations.sql in the Supabase SQL editor.');
     }
-    info('Realtime is a dashboard toggle, not SQL: Database -> Publications -> supabase_realtime -> add public.pvp_rooms.');
+    info('Realtime is a dashboard toggle, not SQL: Database -> Publications -> supabase_realtime -> add public.pvp_rooms AND public.pvp_queue.');
     console.log(`\n${failures ? C.red : C.green}${C.bold}${failures} failed, ${warnings} warnings${C.reset}\n`);
 }
 
@@ -236,8 +315,8 @@ async function main() {
     info(`Target: ${URL_BASE}`);
     try {
         await readOnlyProbes();
-        if (SMOKE) await smokeRoundTrip();
-        else info('\nRun with --smoke to also exercise create/join/push + realtime.');
+        if (SMOKE) { await smokeRoundTrip(); await smokeMatchmaking(); }
+        else info('\nRun with --smoke to also exercise create/join/push + realtime + matchmaking.');
     } catch (e) {
         fail(`Unreachable or unexpected error: ${e && e.message ? e.message : e}`);
         info('If this is "fetch failed" / ENOTFOUND, the host is likely blocked by the sandbox egress policy.');

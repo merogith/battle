@@ -28,6 +28,15 @@
     // which validates the token server-side. Cleared in dispose().
     let roomToken = null;
 
+    // Matchmaking (migration 007) client state — a separate channel + poll ticker
+    // from the room subscription. mmOwnerToken authorizes poll/cancel on our queue
+    // row; the device id (stable in localStorage) prevents double-queueing.
+    let mmQueueId = null;
+    let mmOwnerToken = null;
+    let mmChannel = null;
+    let mmPollIv = null;
+    let mmActive = false;
+
     // Supabase JS SDK is loaded lazily (only when Online PvP is actually entered) so the
     // offline/first-paint boot path carries no third-party script. Memoized: concurrent callers
     // share one load; a failed load resets so a later retry can re-attempt.
@@ -573,7 +582,138 @@
             }
         },
 
+        // --- Random matchmaking (migration 007) ----------------------------------
+        // Stable per-device identity (accountless). Prevents double-queueing and
+        // identifies the player across re-queues without any login.
+        getDeviceId() {
+            try {
+                let id = global.localStorage.getItem('pbs_online_device_id');
+                if (!id) {
+                    id = (global.crypto && global.crypto.randomUUID)
+                        ? global.crypto.randomUUID()
+                        : 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+                    global.localStorage.setItem('pbs_online_device_id', id);
+                }
+                return id;
+            } catch (e) {
+                return 'dev-' + Math.random().toString(36).slice(2);
+            }
+        },
+
+        isMatchmaking() { return mmActive; },
+
+        // Enter the random-matchmaking queue. opts:
+        //   kind 'crucible'|'menu', bucket int, matchOptions obj, teamPayload array,
+        //   displayName str, toleranceFor(tick)->int (widening search; menu uses 0),
+        //   pollMs int, onMatched({roomId,role}), onWaiting(), onError(err).
+        async startMatchmaking(opts) {
+            opts = opts || {};
+            const sb = getClient();
+            if (!sb) { if (opts.onError) opts.onError(new Error('not_configured')); return; }
+            this.cancelMatchmaking(); // clear any prior search
+            mmActive = true;
+            mmOwnerToken = (global.crypto && global.crypto.randomUUID)
+                ? global.crypto.randomUUID().replace(/-/g, '')
+                : (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).padEnd(24, '0');
+            const ownerId = this.getDeviceId();
+            const toleranceFor = typeof opts.toleranceFor === 'function' ? opts.toleranceFor : function () { return 0; };
+            let tick = 0;
+            try {
+                const { data: res, error } = await sb.rpc('pvp_matchmake_enqueue', {
+                    p_owner_id: ownerId,
+                    p_owner_token: mmOwnerToken,
+                    p_display_name: opts.displayName || this.getDisplayName(),
+                    p_kind: opts.kind,
+                    p_bucket: opts.bucket | 0,
+                    p_tolerance: toleranceFor(0) | 0,
+                    p_match_options: opts.matchOptions || {},
+                    p_team_payload: opts.teamPayload || []
+                });
+                if (error) throw error;
+                if (!res || !res.ok) throw new Error('enqueue: ' + ((res && res.error) || 'unknown'));
+                if (res.matched) { await this._onMatchmakeMatched(res, opts); return; }
+                mmQueueId = res.queue_id;
+                if (opts.onWaiting) opts.onWaiting();
+            } catch (e) {
+                mmActive = false;
+                if (opts.onError) opts.onError(e);
+                return;
+            }
+
+            // Realtime fast-path: our queue row flips to 'matched'. The broadcast row
+            // has no room_token (SELECT-revoked), so we still poll once to fetch it.
+            try {
+                mmChannel = sb.channel('mmqueue-' + mmQueueId)
+                    .on('postgres_changes',
+                        { event: 'UPDATE', schema: 'public', table: 'pvp_queue', filter: 'id=eq.' + mmQueueId },
+                        (payload) => {
+                            const row = payload && payload.new;
+                            if (row && row.status === 'matched') this._matchmakePoll(0, opts);
+                        })
+                    .subscribe();
+            } catch (e) { console.warn('[OnlinePvP] mm subscribe', e); }
+
+            // Poll fallback + re-claim with widening tolerance.
+            mmPollIv = global.setInterval(() => {
+                tick++;
+                this._matchmakePoll(toleranceFor(tick) | 0, opts);
+            }, opts.pollMs || 2500);
+        },
+
+        async _matchmakePoll(tolerance, opts) {
+            const sb = getClient();
+            if (!sb || !mmActive || !mmQueueId) return;
+            try {
+                const { data: res, error } = await sb.rpc('pvp_matchmake_poll', {
+                    p_queue_id: mmQueueId, p_owner_token: mmOwnerToken, p_tolerance: tolerance | 0
+                });
+                if (error || !res || !res.ok) return;
+                if (res.matched && mmActive) {
+                    await this._onMatchmakeMatched(res, opts);
+                }
+            } catch (e) { console.warn('[OnlinePvP] mm poll', e); }
+        },
+
+        // Shared "we got matched" handoff: tear down the search, attach the seeded
+        // room, let the UI prep (onMatched), then replay the seeded row so the host's
+        // draft-complete trigger fires (the room already carries both teams).
+        async _onMatchmakeMatched(res, opts) {
+            this._teardownMatchmaking();
+            roomId = res.room_id;
+            roomToken = res.token;
+            role = res.role === 2 ? 2 : 1;
+            lastRemoteSeq = 0;
+            hostLastResolvedTurn = 0;
+            this._subscribe();
+            if (opts && opts.onMatched) opts.onMatched({ roomId: res.room_id, role: role });
+            await this._resyncFromHead();
+        },
+
+        // Cancel an active search (user cancel, or bot-fallback handoff to a local CPU).
+        cancelMatchmaking() {
+            const wasActive = mmActive;
+            const sb = getClient();
+            if (sb && mmQueueId && mmOwnerToken) {
+                try {
+                    sb.rpc('pvp_matchmake_cancel', { p_queue_id: mmQueueId, p_owner_token: mmOwnerToken })
+                        .then(function () {}, function () {});
+                } catch (e) { /* best-effort */ }
+            }
+            this._teardownMatchmaking();
+            return wasActive;
+        },
+
+        _teardownMatchmaking() {
+            mmActive = false;
+            const sb = getClient();
+            if (mmChannel && sb) { try { sb.removeChannel(mmChannel); } catch (e) { /* best-effort */ } }
+            mmChannel = null;
+            if (mmPollIv) { try { global.clearInterval(mmPollIv); } catch (e) { /* best-effort */ } mmPollIv = null; }
+            mmQueueId = null;
+        },
+
         dispose() {
+            this._teardownMatchmaking();
             const sb = getClient();
             if (channel && sb) {
                 try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
