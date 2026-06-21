@@ -3128,6 +3128,11 @@
             animation: campFireGlow 2.6s ease-in-out infinite;
         }
         @keyframes campFireGlow { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+        /* Screen cross-fade — one short opacity/lift on every showScreen() swap (cities,
+           stores, tutors, battle, menu). Disabled under reduced motion + the harness. */
+        .screen-fade-in { animation: screenFadeIn 0.3s ease-out; }
+        @keyframes screenFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .screen-fade-in { animation: none !important; } }
         /* Narration overlay (P3): optional side-by-side speaker framing + the
            tap-to-reveal line gate. Defaults (fields absent) render exactly the
            legacy column layout with every line visible. */
@@ -65076,11 +65081,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── UI HELPERS ────────────────────────────────────────────────────
+        // Cross-fade gate — instant under the harness, reduced motion, or when the user
+        // has turned animations off, so the synchronous contract + a11y both hold.
+        function _screenFadeEnabled() {
+            try {
+                if (typeof window !== 'undefined' && window.__testHarness === true) return false;
+                if (!settings.animations) return false;
+                if (window.StoryFx && StoryFx.isReducedMotion && StoryFx.isReducedMotion()) return false;
+            } catch (e) { return false; }
+            return true;
+        }
         function showScreen(id) {
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
+            // Leaving the battle screen → drop its weather particle layer (no orphan canvas).
+            if (id !== 'screen-battle' && _battleWeatherFx.id) {
+                try { window.FxParticles.clear(_battleWeatherFx.id); } catch (e) {}
+                _battleWeatherFx.id = null; _battleWeatherFx.key = '';
+            }
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('hidden');
+                // One short fade-in on the newly shown screen (auto-cleared on animationend
+                // so the class never lingers; guarded so child animations don't trip it).
+                if (_screenFadeEnabled()) {
+                    el.classList.remove('screen-fade-in'); void el.offsetWidth;   // restart if re-shown
+                    el.classList.add('screen-fade-in');
+                    const _clr = (e) => {
+                        if (e && e.animationName && e.animationName !== 'screenFadeIn') return;
+                        try { el.classList.remove('screen-fade-in'); } catch (e2) {}
+                        el.removeEventListener('animationend', _clr);
+                    };
+                    el.addEventListener('animationend', _clr);
+                }
                 // A11y: deliver focus into the newly shown (already aria-labelled)
                 // region so keyboard / screen-reader users aren't stranded on <body>
                 // after a transition. preventScroll avoids a jarring jump; any code
@@ -65091,6 +65123,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) {}
             }
         }
+        window.showScreen = showScreen;                 // cross-script + test access
+        window._screenFadeEnabled = _screenFadeEnabled;
 
         function showMenu(fromMenu) {
             if (fromMenu === false) {
