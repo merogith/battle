@@ -1,4 +1,4 @@
-// 3-stage Move Tutor (user model, tutor:[0,3,6]) — Inner Strength (Natural ≤75) at
+// 3-stage Move Tutor (user model, tutor:[0,3,6]) — Inner Strength (Natural, per-city BP cap) at
 // C0-C2, Unleashed (ALL Natural, no TMs) at C3-C5, Guru (+Learnt +Awakened) at C6+. Verifies:
 //   • the staged pool's contents grow as the tutor levels up,
 //   • _moveCostForStage by-tag returns 1000 / 2500 / 5000 per Natural / Learnt /
@@ -64,18 +64,19 @@ test('staged pool: Inner→Unleashed→Guru unlock ladder (user model) end-to-en
   // Warm the cache for Garchomp + verify the ACTUAL gating function (not a helper).
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   assert.ok(ls.natural.length && ls.learnt.length && ls.awakened.length, 'precondition: all buckets populated (offline index)');
-  const nat = ls.natural.find(m => bp(m) <= 75) || ls.natural[0]; // Inner-teachable Natural (≤75)
+  const nat = ls.natural.find(m => bp(m) <= 40) || ls.natural[0]; // C0-teachable Natural (≤40, the C0 cap)
   const lrn = ls.learnt[0];
   const awk = ls.awakened[0];
-  // L1 Inner Strength: Natural ≤75 only — no Learnt, no Awakened. Pre-fix bug: syncMoves
-  // was unioned unconditionally, so any Smogon Learnt move slipped through. This pins the
-  // actual function — if syncMoves leaks again (or the BP cap regresses), it fails.
+  // L1 Inner Strength (C0, BP cap 40): Natural within cap only — no Learnt, no Awakened.
+  // Pre-fix bug: syncMoves was unioned unconditionally, so any Smogon Learnt move slipped
+  // through. This pins the actual function — if syncMoves leaks again, it fails.
   primeAtCity(cityAtTutorStage(0));
   const poolL1 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
-  assert.ok(poolL1.has(nat), `L1 includes a ≤75 Natural "${nat}"`);
+  assert.ok(poolL1.has(nat), `L1 includes a ≤40 Natural "${nat}"`);
   assert.ok(!poolL1.has(lrn), `L1 must NOT include Learnt "${lrn}"`);
   assert.ok(!poolL1.has(awk), `L1 must NOT include Awakened "${awk}"`);
-  // L2 Unleashed: ALL Natural, but still NO Learnt/TM and NO Awakened (TMs wait for Guru).
+  // L2 Unleashed (C3, BP cap 80): Natural within cap, but still NO Learnt/TM and NO
+  // Awakened (those wait for Guru). `nat` (≤40) stays available.
   primeAtCity(cityAtTutorStage(1));
   const poolL2 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(poolL2.has(nat), 'L2 includes Natural');

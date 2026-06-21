@@ -1,5 +1,26 @@
 # Story Mode — Progression Curve Master
 
+> **⚠️ 1.6.0 balance update (move-cap / dojo / grade-skew pass) — supersedes the
+> older per-stage move-cap and 3-tier dojo notes throughout this doc:**
+> 1. **Per-city move BP cap** (was per tutor-stage `[75/0/0]`). Player & foe cap by
+>    city: **C0=40 · C1/C2=60 · C3/C4=80 · C5+=∞** (`STORY_MOVE_BP_CAP_BY_CITY` /
+>    `STORY_FOE_MOVE_BP_CAP_BY_CITY`). The professor's first-choice **starter** keeps a
+>    **60-BP floor** (`build.starter`; only bites at C0). The cap is now enforced BOTH as
+>    the tutor/foe pool filter AND as a hard **battle-time clamp** (`_storyBattleBpCap` /
+>    `_STORY_VARPOW_CLAMP_EXEMPT`): a leaked over-cap move (voucher / preset / CSV /
+>    Return's 102) is clamped to the city cap at damage time. Variable-power moves
+>    (Low Kick, Eruption, Flail, Gyro Ball, …) are exempt; **Return/Frustration are clamped.**
+>    The tutor TIER gate (Inner/Unleashed/Guru = move CATEGORY) stays `tutor:[0,3,6]`.
+> 2. **4-tier Battle Dojo** (`NPC_STAGE_CITY.dojo` `[2,5,8]` → **`[1,4,6,8]`**):
+>    **White Belt C1** (basic abilities · berry items) → **Black Belt C4** (+Hidden
+>    abilities · +staple items) → **Master C6** (**all items unlocked**, abilities
+>    unchanged) → **Grandmaster C8** (**Awakened abilities** — relocated here from the old
+>    Black Belt). Foe item/Hidden gates track the same clock (now C4, was C5).
+> 3. **Enemy grade skew** bumped: City4–6 phase k `0.30→0.42`, City6+/league phase
+>    `0.40→0.55` (`STORY_GRADE_K_GL4/GL6`). 0%-weight grades are untouched.
+> 4. Save schema **SAVE_VER 27→28** (`migrateStoryPreV28`: resync `npcStageSeen.dojo`,
+>    mirror the starter flag to its build). Version string **v1.6.0**.
+
 > **Orchestration source of truth** for the strategic-progression-curve pass.
 > Generated 2026-05-25. **Read-only synthesis — no gameplay code has been changed.**
 > All numbers are verbatim from `battle.html` (now ~54,035 lines) and cited as

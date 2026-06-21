@@ -40,18 +40,18 @@ test('Heart Scale no longer unlocks the full pool at Inner Strength (C0)', async
   // to load. With data/move-tags.json present, Garchomp always has natural+learnt.
   assert.ok(ls.natural.length && ls.learnt.length,
     'precondition: Garchomp learnset is populated (offline index loaded)');
-  // At Inner the BP cap (≤75) applies, so pick a Natural move that is actually
+  // At C0 the per-city BP cap (≤40) applies, so pick a Natural move that is actually
   // teachable there, plus a Learnt (TM) move that must stay hidden until Guru.
-  const nat = ls.natural.find(m => bp(m) <= 75) || ls.natural[0];
+  const nat = ls.natural.find(m => bp(m) <= 40) || ls.natural[0];
   const lrn = ls.learnt[0];
 
-  // No scale: Natural-only at Inner.
-  primeAtCity(cityAtTutorStage(0), 0);
+  // No scale: Natural-only at Inner (C0).
+  primeAtCity(0, 0);
   const noScale = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
-  assert.ok(noScale.has(nat) && !noScale.has(lrn), 'Inner without scale: Natural(≤75) only, no Learnt');
+  assert.ok(noScale.has(nat) && !noScale.has(lrn), 'C0 without scale: Natural(≤40) only, no Learnt');
 
   // WITH 5 scales held: the staged pool MUST be identical — no bypass.
-  primeAtCity(cityAtTutorStage(0), 5);
+  primeAtCity(0, 5);
   const withScale = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(withScale.has(nat), 'Inner with scale still shows Natural');
   assert.ok(!withScale.has(lrn), 'Inner with scale must STILL hide Learnt (no bypass)');
@@ -96,16 +96,24 @@ test('T1: a cold move-acceptance cache fails SAFE — no teach slips through', {
     'cold acceptance cache must reject the teach (fail safe), leaving the moveset unchanged');
 });
 
-test('Player L1 cap: a high-BP Natural move is hidden at Inner, shown at Expert', async () => {
+test('Player per-city cap: Natural moves gate by the city cap (40 → 80 → ∞)', async () => {
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  const highNat = ls.natural.find(m => bp(m) > 75); // e.g. Outrage (120)
-  assert.ok(highNat, 'precondition: Garchomp has a >75-BP Natural move');
-  primeAtCity(cityAtTutorStage(0), 0); // Inner
-  const inner = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
-  assert.ok(!inner.has(highNat), `Inner hides high-BP Natural (${highNat}) under the ≤75 cap`);
-  primeAtCity(cityAtTutorStage(1), 0); // Expert
-  const expert = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
-  assert.ok(expert.has(highNat), `Expert shows high-BP Natural (${highNat}) once the cap lifts`);
+  // Mid-BP Natural (41–80): hidden at C0 (cap 40), shown at C3 (cap 80).
+  const midNat = ls.natural.find(m => bp(m) > 40 && bp(m) <= 80);
+  // High-BP Natural (>80): hidden at C3 (cap 80), shown at C5 (cap lifts to ∞).
+  const highNat = ls.natural.find(m => bp(m) > 80); // e.g. Outrage (120)
+  assert.ok(highNat, 'precondition: Garchomp has a >80-BP Natural move');
+  primeAtCity(0, 0); // C0 cap 40
+  const c0 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
+  if (midNat) assert.ok(!c0.has(midNat), `C0 (cap 40) hides ${midNat}`);
+  assert.ok(!c0.has(highNat), `C0 (cap 40) hides ${highNat}`);
+  primeAtCity(3, 0); // C3 cap 80
+  const c3 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
+  if (midNat) assert.ok(c3.has(midNat), `C3 (cap 80) shows mid-BP ${midNat}`);
+  assert.ok(!c3.has(highNat), `C3 (cap 80) still hides ${highNat}`);
+  primeAtCity(5, 0); // C5 cap lifts
+  const c5 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
+  assert.ok(c5.has(highNat), `C5 (cap lifts) shows ${highNat}`);
 });
 
 test('Barren-species floor: Beldum still gets a Natural move at Inner', async () => {
