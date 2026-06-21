@@ -14538,11 +14538,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // shake itself; the hit FLASH stays wired at the hit sites (this is the shake +
         // hit-stop dispatcher). Purely visual — never touches state / RNG / damage. async so
         // the caller can `await` the hit-stop beat.
+        // Type-tinted impact accent for the hit-burst (one representative colour per type;
+        // the nested battle-anim TYPE_COLORS table isn't reachable from this scope).
+        const _TYPE_BURST_COLOR = { Normal:'#c6c6a7', Fire:'#ff7043', Water:'#42a5f5', Electric:'#ffd54f', Grass:'#66bb6a', Ice:'#80deea', Fighting:'#e57373', Poison:'#ba68c8', Ground:'#d4a85a', Flying:'#9fa8da', Psychic:'#f06292', Bug:'#c0ca33', Rock:'#bcaaa4', Ghost:'#9575cd', Dragon:'#7e57c2', Dark:'#90a4ae', Steel:'#b0bec5', Fairy:'#f48fb1' };
+        // One-shot particle pop on the TARGET sprite for the punchy tiers (crit / boss-phase
+        // gold; super-effective tinted by move type). Localised to the sprite-container (it's
+        // position:absolute, sized to the sprite). Purely visual — FxParticles self-gates on
+        // reduced-motion / settings.ambientParticles / the harness, so this is a no-op there.
+        function _battleImpactBurst(o) {
+            try {
+                if (!window.FxParticles || !o) return;
+                const isCrit = !!(o.bossPhase || o.crit);
+                const isSuper = !isCrit && o.effectiveness > 1;
+                if (!isCrit && !isSuper) return;
+                const host = document.getElementById(o.isPlayerTarget ? 'player-sprite-container' : 'foe-sprite-container');
+                if (!host) return;
+                const color = isCrit ? ['#ffd54f', '#fff8e1', '#ffe082'] : (_TYPE_BURST_COLOR[o.type] || '#ffd54f');
+                window.FxParticles.burst(host, 'sparkle', { color: color, density: isCrit ? 1.2 : 0.85, duration: 1100 });
+            } catch (e) {}
+        }
+        window._battleImpactBurst = _battleImpactBurst;   // mirrored for the fx-battle test
+        window._TYPE_BURST_COLOR = _TYPE_BURST_COLOR;
         async function _applyHitImpact(opts) {
             try {
                 const o = opts || {};
                 if (!settings.animations) return;
                 if (window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion()) return;
+                _battleImpactBurst(o);   // particle pop on the target (crit / super-effective)
                 if (o.bossPhase)              { _battleHitShake('crit');  await _hitStop(120); }
                 else if (o.crit)              { _battleHitShake('crit');  await _hitStop(90);  }
                 else if (o.effectiveness > 1) { _battleHitShake('super'); }
@@ -20388,6 +20410,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (w === 'Hail') { wOverlay.className = 'weather-overlay weather-hail active'; }
                 else { wOverlay.className = 'weather-overlay'; }
             }
+            // Real particle precipitation on top of the gradient (change-detected; no-op
+            // under reduced-motion / particles-off — the CSS gradient remains the fallback).
+            syncBattleWeatherFx(wOverlay, settings.weatherAnimation ? w : null);
 
             let tOverlay = be.terrainOverlay;
             if (tOverlay) {
@@ -27386,7 +27411,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_anyHitCrit) { logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer); if (isPlayer && defender.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== defender)) _emitBark('critKO'); }
                     if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
-                    await _applyHitImpact({ effectiveness: typeEff, crit: _anyHitCrit });   // one shake by tier (no double-shake)
+                    await _applyHitImpact({ effectiveness: typeEff, crit: _anyHitCrit, isPlayerTarget: !isPlayer, type: move.type });   // one shake by tier (no double-shake)
                     if (actualDamage > 0) showBattlePopup('-' + actualDamage, 'popup-dmg', !isPlayer);
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
@@ -27616,7 +27641,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer);
                     }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
-                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1 });   // one shake by tier (no double-shake)
+                    await _applyHitImpact({ effectiveness: typeEff, crit: crit > 1, isPlayerTarget: !isPlayer, type: move.type });   // one shake by tier (no double-shake)
                     await sleep(200);
 
                     // Step 5: Damage number and HP bar animation
@@ -33516,6 +33541,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function current() { return _current ? _current.src : null; }
             return { crossfadeTo, stop, duck, unduck, current, isEnabled: _enabled };
         })();
+
+        // Battle weather → particle layer. The render loop calls this every frame, so it
+        // change-detects on the weather TYPE and only re-mounts when it actually changes
+        // (no per-render canvas churn). The CSS-gradient `.weather-*` classes stay as the
+        // base tint + the reduced-motion / particles-off fallback; FxParticles overlays
+        // real precipitation on top. State lives on a module-level object so it survives
+        // across renders.
+        const _battleWeatherFx = { key: '', id: null };
+        function _battleWeatherPreset(w) {
+            if (w === 'Rain' || w === 'HeavyRain') return 'rain';
+            if (w === 'Sandstorm') return 'sand';
+            if (w === 'Hail') return 'snow';
+            if (w === 'Sun' || w === 'HarshSun') return 'sun';
+            return '';
+        }
+        function syncBattleWeatherFx(overlayEl, w) {
+            if (!overlayEl || !window.FxParticles) return;
+            const preset = (settings.weatherAnimation && settings.ambientParticles) ? _battleWeatherPreset(w) : '';
+            if (preset === _battleWeatherFx.key) return;   // unchanged → nothing to do
+            _battleWeatherFx.key = preset;
+            if (_battleWeatherFx.id) { try { window.FxParticles.clear(_battleWeatherFx.id); } catch (e) {} _battleWeatherFx.id = null; }
+            if (!preset) return;
+            window.FxParticles.mount(overlayEl, preset, {}).then(id => {
+                // Weather may have changed again during the async lib load — reconcile.
+                if (_battleWeatherFx.key === preset) _battleWeatherFx.id = id;
+                else if (id) { try { window.FxParticles.clear(id); } catch (e) {} }
+            });
+        }
+        window._battleWeatherPreset = _battleWeatherPreset;   // mirrored for the fx-battle test
+        window.syncBattleWeatherFx = syncBattleWeatherFx;
 
         // ===================================================================
         // ===== STORY MODE — window.StoryMode =====
