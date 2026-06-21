@@ -76,20 +76,25 @@ test('Return (102, hard-coded) IS clamped early but full late', async () => {
   assert.ok(early < late, `Return is clamped at C2 (${early}) vs full at C6 (${late})`);
 });
 
-test('variable-power moves are EXEMPT (Low Kick scales by weight, identical early and late)', async () => {
-  // Low Kick's BP is computed from the target's weight — it must NOT be clamped, so the
-  // damage is identical whether or not a city cap is in force.
+test('variable-power moves are now CLAMPED too (1.6.1 — Low Kick capped early, full late)', async () => {
+  // 1.6.1: variable-power moves are no longer exempt. Low Kick's weight-computed BP
+  // (Snorlax is very heavy → 120) is clamped to the city cap, so it deals less at C2
+  // (cap 60) than at C6 (∞).
   const early = await dealtBy('Low Kick', 2);
   const late = await dealtBy('Low Kick', 6);
-  assert.ok(early > 0, 'Low Kick deals damage');
-  assert.equal(early, late, 'Low Kick (variable power) is exempt — same damage at C2 and C6');
+  assert.ok(early > 0 && late > 0, 'Low Kick deals damage');
+  assert.ok(early < late, `Low Kick clamped at C2 (${early}) vs full at C6 (${late})`);
 });
 
-test('fixed-damage moves are unaffected (Seismic Toss = 50 regardless of city cap)', async () => {
-  const early = await dealtBy('Seismic Toss', 2);
-  const late = await dealtBy('Seismic Toss', 6);
-  assert.equal(early, 50, 'Seismic Toss deals its flat 50 at C2 (clamp does not touch it)');
-  assert.equal(late, 50, 'Seismic Toss deals its flat 50 at C6');
+test('fixed-damage moves are now CAPPED to the city cap (1.6.1 — Seismic Toss scales)', async () => {
+  // 1.6.1 System G: a flat-damage move can't out-hit a cap-BP move of its profile. At C0
+  // (cap 40) Seismic Toss's flat 50 is reduced; once the cap is high enough it is its
+  // full flat 50.
+  const c0 = await dealtBy('Seismic Toss', 0);   // capped below 50
+  const late = await dealtBy('Seismic Toss', 6); // ∞ → full flat 50
+  assert.equal(late, 50, 'Seismic Toss deals its flat 50 once the cap lifts (C6)');
+  assert.ok(c0 < 50, `Seismic Toss capped below its flat 50 at C0 (got ${c0})`);
+  assert.ok(c0 > 0, 'still deals damage');
 });
 
 test('the starter keeps a 60-BP floor — a 120-BP move hits harder for the starter at C0', async () => {
@@ -97,4 +102,14 @@ test('the starter keeps a 60-BP floor — a 120-BP move hits harder for the star
   const starter = await dealtBy('Double-Edge', 0, { starter: true }); // floored to 60
   assert.ok(nonStarter > 0 && starter > 0, 'both deal damage');
   assert.ok(starter > nonStarter, `starter (cap 60 → ${starter}) out-hits the non-starter (cap 40 → ${nonStarter}) at C0`);
+});
+
+test('multi-hit moves clamp PER HIT — no leak (Dragon Darts 50/hit ×2)', async () => {
+  // Dragon Darts = 50 BP, fixed 2 hits. At C0 (cap 40) each hit's base power is clamped to
+  // 40; at C6 (∞) each hits at 50. The clamp lowers per-hit POWER, not the hit count — so
+  // C0 total < C6 total and the move never leaks its uncapped per-hit BP across hits.
+  const early = await dealtBy('Dragon Darts', 0); // 40/hit ×2
+  const late = await dealtBy('Dragon Darts', 6);  // 50/hit ×2
+  assert.ok(early > 0 && late > 0, 'both deal damage across the 2 hits');
+  assert.ok(early < late, `multi-hit clamped per hit at C0 (${early}) vs full at C6 (${late})`);
 });

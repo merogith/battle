@@ -138,17 +138,18 @@ test('Daycare drop-off is one-time', () => {
   assert.ok(!$('story-daycare-overlay'), 'no second drop-off picker once the egg event is done');
 });
 
-test('Egg hatches at laid-city + 2, not before', () => {
+test('Egg hatches at laid-city + 2, not before', async () => {
   setupStory(); // eventIndex=38 → a mid-game city (well past city 2)
   // An egg "laid" in a far-future city is never due (curCity < laidCity + 2).
   const future = SM._makeEggSlot('Pikachu', 999);
   sm.team.push(future);
-  assert.equal(SM._hatchEligibleEggs().length, 0, 'egg laid in a far city does not hatch yet');
+  // _hatchEligibleEggs is async (1.6.1: it filters each hatchling's moveset to the city cap).
+  assert.equal((await SM._hatchEligibleEggs()).length, 0, 'egg laid in a far city does not hatch yet');
   assert.equal(sm.team[sm.team.length - 1].isEgg, true, 'still an egg before laidCity+2');
   // An egg "laid" back at city 0 is due mid-game (curCity >= 0 + 2).
   const due = SM._makeEggSlot('Eevee', 0);
   sm.team.push(due);
-  const hatched = SM._hatchEligibleEggs();
+  const hatched = await SM._hatchEligibleEggs();
   assert.ok(hatched.includes('Eevee'), 'egg laid back at city 0 hatches mid-game');
   assert.ok(!hatched.includes('Pikachu'), 'far-future egg has not hatched');
   const slot = sm.team.find(s => s.id === due.id);
