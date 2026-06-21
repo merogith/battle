@@ -16860,6 +16860,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return m;
         }
 
+        // ── Hidden Power: one logical move, one stable per-Pokémon type ─────────
+        // Every Pokémon carries a single `hpType` (one of the 16 legal Hidden Power
+        // types — all types except Normal and Fairy). It is the single source of
+        // truth: the equipped "Hidden Power" move is always projected to its typed
+        // variant ("Hidden Power Fire") so damage / AI / UI keep reading an ordinary
+        // typed move. Resolution priority: an already-assigned type wins (stable
+        // across save / PC storage / evolution / battle); else parse a build-specified
+        // variant (preserves curated Smogon coverage); else a deterministic,
+        // replay-safe per-individual pick (buildPokemon also runs in display and
+        // quick-play contexts, so we must NOT perturb the story RNG stream here).
+        const HP_TYPES = ['Fighting','Flying','Poison','Ground','Rock','Bug','Ghost','Steel','Fire','Water','Grass','Electric','Psychic','Ice','Dragon','Dark'];
+        const HP_TYPE_SET = new Set(HP_TYPES);
+        window.HP_TYPES = HP_TYPES;
+        function hiddenPowerTypeFromName(mName) {
+            if (typeof mName !== 'string') return null;
+            const m = mName.match(/^Hidden Power\s+(\w+)$/);
+            return m && HP_TYPE_SET.has(m[1]) ? m[1] : null;
+        }
+        function _hpHashPick(str) {
+            let h = 2166136261 >>> 0;
+            const s = String(str);
+            for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+            return HP_TYPES[(h >>> 0) % HP_TYPES.length];
+        }
+        // Resolve + persist a build's Hidden Power type, then project any Hidden Power
+        // move slot onto the matching typed variant. Returns the resolved type.
+        function resolveHiddenPowerForBuild(build, monName) {
+            if (!build) return null;
+            let t = HP_TYPE_SET.has(build.hpType) ? build.hpType : null;
+            if (!t && Array.isArray(build.m)) {
+                for (const mv of build.m) { const p = hiddenPowerTypeFromName(mv); if (p) { t = p; break; } }
+            }
+            if (!t) t = _hpHashPick(String(monName) + '|' + (build.id || '') + '|' + (Array.isArray(build.m) ? build.m.join(',') : '') + '|' + (build.n || ''));
+            build.hpType = t;
+            if (Array.isArray(build.m)) build.m = build.m.map(mv => /^Hidden Power(\s|$)/.test(mv) ? ('Hidden Power ' + t) : mv);
+            return t;
+        }
+        window.resolveHiddenPowerForBuild = resolveHiddenPowerForBuild;
+
         function buildPokemon(monName, build) {
             monName = monName.trim();
             // Handle Farfetch'd name variants
@@ -16877,6 +16916,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else if (build.m.length > 4) {
                 build.m = build.m.slice(0, 4);
             }
+            // Hidden Power: resolve this mon's single stable type and project the
+            // equipped move onto its typed variant (see resolveHiddenPowerForBuild).
+            resolveHiddenPowerForBuild(build, monName);
             let generatedMoves = build.m.map(mName => buildMoveObject(mName));
             let evs = build.evs || { hp:0, atk:0, spa:0, def:0, spd:0, spe:0 };
             // VGC EV cap: max 252 per stat, 510 total
@@ -41999,6 +42041,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    banterByRow: {},
                    banterStats: { flirty: 0, positive: 0, negative: 0, stoic: 0 },
                    banterPersona: { id: 'wildcard', tier: 0 },
+                   // Hidden Power mentor (early road encounter before City 1): once met,
+                   // the Move Tutor can teach Hidden Power to any Pokémon for the rest of
+                   // the run. `choosePending` is the one-time token the mentor grants —
+                   // consumed at the first Hidden Power lesson to let the player pick that
+                   // mon's type; every later mon uses its own (stable, auto-assigned) type.
+                   hiddenPowerUnlocked: false, hiddenPowerChoosePending: false,
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -42247,6 +42295,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // on saves predating the per-run scene split — default to empty so
                 // a mid-run load doesn't suppress beats it hasn't actually shown.
                 if (!sm.scenesShown || typeof sm.scenesShown !== 'object') sm.scenesShown = {};
+                // Hidden Power mentor flags — absent on saves predating the feature;
+                // default false so the mentor still fires on the approach to City 1.
+                if (typeof sm.hiddenPowerUnlocked !== 'boolean') sm.hiddenPowerUnlocked = false;
+                if (typeof sm.hiddenPowerChoosePending !== 'boolean') sm.hiddenPowerChoosePending = false;
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -43508,6 +43560,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 get sm() { return sm; },
                 set sm(v) { sm = v; },
                 get baseStats() { return baseStats; },
+            };
+            // Hidden Power unification + mentor/tutor test surface — exposed in the same
+            // inner (story) scope as sm / STORY_TUTORIAL_SCENES / the tutor helpers so the
+            // wrappers resolve. Inert in normal play.
+            window.__hpTest = {
+                get sm() { return sm; },
+                get STORY_TUTORIAL_SCENES() { return STORY_TUTORIAL_SCENES; },
+                resolveHiddenPowerForBuild: (...a) => resolveHiddenPowerForBuild(...a),
+                _moveTagForSpecies: (...a) => _moveTagForSpecies(...a),
+                _moveCostForStage: (...a) => _moveCostForStage(...a),
+                _tutorGetStagedMovePoolAsync: (...a) => _tutorGetStagedMovePoolAsync(...a),
+                _hpTutorApply: (...a) => _hpTutorApply(...a),
             };
             // Narration-system test surface (structured scenes, overlay queue,
             // preview/dispatch parity) — exposed in the same inner scope as the
@@ -47158,6 +47222,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.showGameAlert && window.showGameAlert('Received 1 Heart Scale — waives the gold on one move tutor lesson.'); } catch (e) {}
                 }
             },
+            hiddenPowerMentor: {
+                metaKey: 'tutorial-hidden-power-mentor',
+                sprite: 'Hex_Maniac', name: 'Wandering Diviner', nameplate: 'The Diviner',
+                lines: [
+                    '"Hold there, traveler. Every Pokémon hides a power even it can\'t name — a single secret element sleeping in its blood. Hidden Power, the old books call it."',
+                    '"Yours each already carry a type, fixed from birth and unchanging. But the very first you draw it from — that one I can help you shape. Choose its element, just this once."',
+                    '"Seek the Move Tutors in the cities ahead; they can now wake Hidden Power in any of your team. Go — and mind what sleeps within."'
+                ],
+                onContinue: function () {
+                    try {
+                        sm.hiddenPowerUnlocked = true;
+                        sm.hiddenPowerChoosePending = true;
+                        save();
+                    } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Hidden Power unlocked at every Move Tutor. Your first lesson lets you choose its type.'); } catch (e) {}
+                }
+            },
             firstNatureRater: {
                 metaKey: 'tutorial-first-nature-rater',
                 sprite: 'Aroma_Lady', name: 'Nature Rater', nameplate: 'Nature Rater',
@@ -49718,6 +49799,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.cityRerollsUsed = {};
                 sm.storyCityVisit = cidx;
                 try { save(); } catch (e) { console.warn('[Story] enterCity save', e); }
+            }
+            // Hidden Power Mentor (one-time, on the approach to City 1): a wandering
+            // diviner stops the player just after their first route trainer — before
+            // the tall grass and the city hub. Fires once per run via its own scene
+            // dedupe; on dismiss it re-enters enterCity so wander / arrival / hub flow
+            // normally. Unlocks Hidden Power at every Move Tutor for the rest of the run.
+            if (cidx === 1 && !_storyRunSceneSeen('tutorial-hidden-power-mentor')) {
+                if (playStoryTutorial('hiddenPowerMentor', function () { enterCity(); })) return;
             }
             // Wander Around — optional route-exit wild search before a *new* city.
             // Same gate as the arrival screen below (first arrival per run), so it
@@ -62858,6 +62947,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (old.n)        evoBuild.n        = old.n;
             if (old.evs)      evoBuild.evs      = { ...old.evs };
             if (old.teraType) evoBuild.teraType = old.teraType;
+            // Hidden Power type is the individual's, not the species' — carry it so it
+            // stays stable through evolution even for a mon that hasn't learned the move
+            // yet (a taught Hidden Power also keeps its type via the move name below).
+            if (old.hpType)   evoBuild.hpType   = old.hpType;
             // Held item carries over unchanged — the player chose it. Eviolite is kept
             // too: its boost is NFE-gated in the damage calc, so on a now-fully-evolved
             // form it simply lies inert until the player re-slots it (never an illegal
@@ -62929,15 +63022,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 const kept = [];
                 const seen = new Set();
+                let keptHp = false;
                 for (const m of old.m) {
                     if (!m || seen.has(m)) continue;
-                    if (legalPool.has(m)) { kept.push(m); seen.add(m); }
+                    // A mentor-taught Hidden Power (stored as its typed variant) isn't in
+                    // the learnset pool — keep it regardless so it survives evolution.
+                    const _isHp = /^Hidden Power/.test(m);
+                    if (legalPool.has(m) || _isHp) { kept.push(m); seen.add(m); if (_isHp) keptHp = true; }
                 }
                 if (kept.length) {
                     const fillFrom = Array.isArray(evoBuild.m) ? evoBuild.m : [];
                     for (const m of fillFrom) {
                         if (kept.length >= 4) break;
-                        if (m && !seen.has(m)) { kept.push(m); seen.add(m); }
+                        if (!m || seen.has(m)) continue;
+                        // Never let the rolled fill add a second Hidden Power.
+                        if (/^Hidden Power/.test(m) && keptHp) continue;
+                        kept.push(m); seen.add(m); if (/^Hidden Power/.test(m)) keptHp = true;
                     }
                     evoBuild.m = kept.slice(0, 4);
                 }
@@ -65529,6 +65629,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // 'natural' | 'learnt' | 'awakened' | 'unknown' (unknown = cache cold).
         function _moveTagForSpecies(monName, moveName) {
             if (!monName || !moveName) return 'unknown';
+            // Hidden Power is mentor-unlocked for ANY species and sits outside the
+            // learnset buckets, so it would otherwise fall through to 'awakened'
+            // (5,000G + Guru-locked stripe) despite being teachable from City 1. Pin
+            // it to a fixed, accessible tier. MAINTAINER: this is the Hidden Power
+            // tutor price tier — 'natural' = 1,000G. Change to 'learnt'/'awakened' to
+            // raise it (see _moveCostForStage).
+            if (/^Hidden Power/.test(moveName)) return 'natural';
             const cached = _tutorLearnsetCache.get(monName);
             if (!cached) return 'unknown';
             // O(1) lookup via the tagOf Map (lazily built on first read so existing
@@ -65583,6 +65690,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ...(learn.natural || []), ...(learn.learnt || []), ...(learn.awakened || []),
                 ...(learn.all || []),
             ])].sort();
+            // Hidden Power: once the Diviner has unlocked it, the tutor can wake it in
+            // ANY Pokémon — independent of the species learnset. Added to the visible
+            // pool here and to the teachable set below; its element is the mon's own
+            // assigned hpType (chosen once at the first lesson, random thereafter).
+            // Priced like any other move through the shared tag/stage machinery.
+            if (sm && sm.hiddenPowerUnlocked && !full.includes('Hidden Power')) full.push('Hidden Power');
             const stage = (typeof _npcStage === 'function') ? _npcStage('tutor') : 0;
             // Phase 2 (BUG B fix): a Heart Scale no longer unlocks the full pool — it
             // only waives the GOLD cost of an IN-stage teach. The staged gate below
@@ -65613,6 +65726,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 (learn.learnt   || []).forEach(m => allow.add(m));
                 (learn.awakened || []).forEach(m => allow.add(m));
             }
+            // Mentor-unlocked Hidden Power is teachable at any tutor stage.
+            if (sm && sm.hiddenPowerUnlocked) allow.add('Hidden Power');
             // Barren-species floor (e.g. Beldum, whose only Natural move is Take Down at
             // 90 BP): if the BP cap leaves NO teachable Natural move at L1, admit the single
             // lowest-BP Natural move so the picker is never empty. Mirrors the foe gate's
@@ -69250,6 +69365,80 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // ── Hidden Power at the Move Tutor ──────────────────────────────────────
+        // One-time type picker the Diviner's lesson grants. Resolves to a type string
+        // or null (cancelled). Built from the 16 legal HP types; styled with the same
+        // type-badge colours used everywhere else.
+        function _chooseHiddenPowerType(mon) {
+            return new Promise((resolve) => {
+                let done = false;
+                const finish = (val) => { if (done) return; done = true; try { document.removeEventListener('keydown', onKey); } catch (e) {} try { ov.remove(); } catch (e) {} resolve(val); };
+                const ov = document.createElement('div');
+                ov.className = 'story-tutorial-overlay';
+                ov.setAttribute('role', 'dialog');
+                ov.setAttribute('aria-modal', 'true');
+                ov.setAttribute('aria-label', 'Choose Hidden Power type');
+                const types = (window.HP_TYPES || []);
+                const btns = types.map(t =>
+                    `<button type="button" class="type-badge type-${t}" data-hp="${t}" style="font-size:13px;padding:7px 12px;border:none;border-radius:5px;cursor:pointer;">${t}</button>`
+                ).join('');
+                ov.innerHTML = `
+                    <div class="story-dialog-host story-tutorial-dialog-host" style="max-width:520px;">
+                        <div class="story-dialog-nameplate">The Diviner</div>
+                        <div class="story-dialog-box">
+                            <p class="story-dialog-text">Which element sleeps in ${_esc(mon && mon.name || 'your Pokémon')}? Choose its Hidden Power — this once.</p>
+                            <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:12px;">${btns}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="story-tutorial-continue" data-hp-cancel="1">Not now</button>`;
+                const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); finish(null); } };
+                document.addEventListener('keydown', onKey);
+                ov.addEventListener('click', (e) => {
+                    const b = e.target.closest('[data-hp]');
+                    if (b) { e.stopPropagation(); finish(b.getAttribute('data-hp')); return; }
+                    if (e.target.closest('[data-hp-cancel]') || e.target === ov) { e.stopPropagation(); finish(null); }
+                });
+                document.body.appendChild(ov);
+            });
+        }
+        // Pre-teach guard for Hidden Power: blocks a second Hidden Power (any element)
+        // and, on the mentor's one-time token, opens the type picker. Returns
+        // { proceed, chosenType }; chosenType is applied post-commit by _hpTutorApply.
+        async function _hpTutorPreteach(mon, newMove) {
+            if (String(newMove).split('/')[0] !== 'Hidden Power') return { proceed: true, chosenType: null };
+            const moves = (mon.build && mon.build.m) || [];
+            if (moves.some(m => /^Hidden Power/.test(String(m)))) {
+                try { window.showGameAlert && window.showGameAlert(`${mon.name} already knows Hidden Power.`); } catch (e) {}
+                return { proceed: false, chosenType: null };
+            }
+            if (sm && sm.hiddenPowerChoosePending) {
+                const picked = await _chooseHiddenPowerType(mon);
+                if (!picked) return { proceed: false, chosenType: null };
+                return { proceed: true, chosenType: picked };
+            }
+            return { proceed: true, chosenType: null };
+        }
+        // Apply the chosen/assigned Hidden Power type after the move is committed, then
+        // project the bare "Hidden Power" onto its typed variant so the loadout reads
+        // the element ("Hidden Power Fire"). The one-time token is consumed only here —
+        // on a successful teach — so cancelling the cost confirm never spends it.
+        function _hpTutorApply(mon, newMove, chosenType) {
+            if (String(newMove).split('/')[0] !== 'Hidden Power') return;
+            if (chosenType) {
+                mon.build.hpType = chosenType;
+                if (sm) sm.hiddenPowerChoosePending = false;
+            }
+            try { resolveHiddenPowerForBuild(mon.build, mon.name); } catch (e) {}
+        }
+        // Confirm-prompt label for a Hidden Power lesson: shows the element the lesson
+        // will yield — the just-picked type, else the mon's assigned hpType. Non-HP
+        // moves pass through unchanged.
+        function _hpTeachLabel(mon, newMove, chosenType) {
+            if (String(newMove).split('/')[0] !== 'Hidden Power') return newMove;
+            const t = chosenType || (mon && mon.build && mon.build.hpType) || null;
+            return t ? ('Hidden Power (' + t + ')') : newMove;
+        }
+
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             // Stage gate (Phase 2, BUG A/B fix): below Guru, only moves in the staged
             // pool are teachable AT ALL — Natural ≤75 at Inner (C0–1), ALL Natural at
@@ -69270,6 +69459,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                // Hidden Power: one-time type choice + no-duplicate guard (see helper).
+                const _hpPre = await _hpTutorPreteach(mon, newMove);
+                if (!_hpPre.proceed) return;
                 // Price by the MOVE's tier (Natural 1000 / Learnt 2500 / Awakened 5000),
                 // exactly as the confirm bar displays it. Calling _moveCostForStage() with
                 // no tag falls back to the per-STAGE price (Guru = 5000 flat), which made
@@ -69285,9 +69477,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isAppend = moveSlot >= moves.length;
                 if (isAppend && moves.length >= 4) return;
                 const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
+                // Show the element on a Hidden Power lesson so the player sees what they're teaching.
+                const _teachLabel = _hpTeachLabel(mon, newMove, _hpPre.chosenType);
                 const prompt = isAppend
-                    ? `Teach ${newMove} to ${mon.name}? Fills an open move slot.`
-                    : `Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`;
+                    ? `Teach ${_teachLabel} to ${mon.name}? Fills an open move slot.`
+                    : `Teach ${_teachLabel} to ${mon.name}? Replaces "${oldMove}".`;
                 const ok = await _storyConfirmTutorChange(prompt, moveCost);
                 if (!ok) return;
                 sm.gold -= moveCost;
@@ -69295,6 +69489,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
                 mon.build.m = moves.filter(Boolean);
+                _hpTutorApply(mon, newMove, _hpPre.chosenType);
                 mon.currentHp = null;
                 mon.status = null;
                 mon.pp = null;
@@ -69504,6 +69699,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         return false;
                     }
                 }
+                // Hidden Power: one-time type choice + no-duplicate guard (see helper).
+                const _hpPreV = await _hpTutorPreteach(mon, newMove);
+                if (!_hpPreV.proceed) return false;
                 const moves = mon.build.m || (mon.build.m = []);
                 const cur = moves.map(m => m.split('/')[0]);
                 if (cur.includes(newMove)) return false;
@@ -69514,13 +69712,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // confirm bar + tutorChangeMove), not the per-stage fallback.
                 const _vTag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(mon.name, newMove) : null;
                 const _vSaved = _moveCostForStage(_vTag === 'unknown' ? null : _vTag).toLocaleString();
+                const _teachLabelV = _hpTeachLabel(mon, newMove, _hpPreV.chosenType);
                 const prompt = isAppend
-                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
-                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                    ? `Use 1 Heart Scale to teach ${_teachLabelV} to ${mon.name}? Fills an open slot. Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${_teachLabelV} to ${mon.name}? Replaces "${oldMove}". Saves ${_vSaved}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
                 if (!await _storyConfirmTutorChange(prompt, 0)) return false;
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
                 mon.build.m = moves.filter(Boolean);
+                _hpTutorApply(mon, newMove, _hpPreV.chosenType);
                 mon.currentHp = null; mon.status = null; mon.pp = null;
                 return true;
             });
@@ -71570,6 +71770,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get settings() { return settings; },
                     get baseStats() { return baseStats; },
                     get movesDB() { return movesDB; },
+                    resolveHiddenPowerForBuild: resolveHiddenPowerForBuild,
                 };
                 // __testReady resolves after loadGameData populates baseStats + movesDB.
                 window.__testReady = (async () => {
