@@ -17,6 +17,11 @@
     let pushDataQueue = Promise.resolve();
     let remoteRowQueue = Promise.resolve();
     let hostResolving = false;
+    // Highest battle turn the host has already resolved locally. Fences
+    // consumeRemoteForHost / the guest-timeout path against re-resolving a turn
+    // we already advanced past (a re-delivered row, or a timeout racing a real
+    // pick). Reset to 0 at battle start (afterHostStartBattle) and in dispose().
+    let hostLastResolvedTurn = 0;
     // Per-room caller token (ISSUE-020). Host receives this from
     // try_create_pvp_room; guest receives a different one from
     // try_join_pvp_room. All subsequent writes go through pvp_push_data
@@ -528,16 +533,44 @@
                 try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
                 channel = null;
             }
+            let hadDrop = false;
             channel = sb.channel('room-' + roomId)
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pvp_rooms', filter: 'id=eq.' + roomId }, (payload) => {
                     this._onRemoteRow(payload.new);
                 })
                 .subscribe((status, err) => {
-                    if (status === 'SUBSCRIBED') return;
-                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    if (status === 'SUBSCRIBED') {
+                        // postgres_changes only streams UPDATEs from now on — any row
+                        // change during an outage was missed, and because _onRemoteRow
+                        // gates on seq monotonicity a later update can't backfill it.
+                        // On a (re)subscribe that follows a drop, pull head once and
+                        // replay it so a transient blip can't silently desync the match.
+                        if (hadDrop) {
+                            hadDrop = false;
+                            this._resyncFromHead();
+                        }
+                        return;
+                    }
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                        hadDrop = true;
                         console.warn('[OnlinePvP] Realtime', status, err && err.message ? err.message : err);
                     }
                 });
+        },
+
+        // One-shot catch-up read used after a Realtime reconnect. Feeds the current
+        // row through the normal _onRemoteRow path, which is seq-gated and therefore
+        // a no-op if we never actually fell behind.
+        async _resyncFromHead() {
+            const sb = getClient();
+            if (!sb || !roomId) return;
+            try {
+                const { data: row, error } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', roomId).single();
+                if (error || !row) { console.warn('[OnlinePvP] resync fetch', error); return; }
+                this._onRemoteRow(row);
+            } catch (e) {
+                console.warn('[OnlinePvP] resync', e);
+            }
         },
 
         dispose() {
@@ -555,6 +588,7 @@
             remoteRowQueue = Promise.resolve();
             hostStartedBattle = false;
             hostResolving = false;
+            hostLastResolvedTurn = 0;
             try {
                 global.__hostOnlineBattleStarted = false;
                 global.__guestLastResolved = 0;
@@ -634,6 +668,22 @@
                 .catch((e) => console.warn('[OnlinePvP] onOnlineRoomData', e));
         },
 
+        // Re-open the command menu and tell the player their move didn't send, so a
+        // failed pre-write read or push doesn't leave them frozen with a hidden menu
+        // and a turn that was "spent" locally but never reached the opponent.
+        _restoreTurnUiAfterSendFailure() {
+            try {
+                if (typeof global.logMsg === 'function') {
+                    global.logMsg("Couldn't send your move — connection issue. Try again.", 'info');
+                }
+                const moveMenu = global.document && global.document.getElementById('move-menu');
+                const cmdMenu = global.document && global.document.getElementById('command-menu');
+                if (moveMenu) moveMenu.classList.add('hidden');
+                if (cmdMenu) cmdMenu.classList.remove('hidden');
+                try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
+            } catch (e) { /* best-effort UI restore */ }
+        },
+
         async handleSelectDraft(state, settings, draftItem, selectDraftLocal) {
             selectDraftLocal(draftItem);
             await this.pushDraftState(state);
@@ -656,10 +706,17 @@
             const g2 = state.p2GimmickIntent ? deepClone(state.p2GimmickIntent) : null;
 
             if (cp === 1) {
+                const prevAction = state.p1Action;
+                const prevPlayer = state.currentPlayer;
                 state.p1Action = action;
                 state.currentPlayer = 2;
                 const { data: row, error: rowErr } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
                 if (rowErr || !row || row.data == null) {
+                    // Roll the local turn back so the player can retry instead of being
+                    // stranded mid-turn with nothing sent to the opponent.
+                    state.p1Action = prevAction;
+                    state.currentPlayer = prevPlayer;
+                    this._restoreTurnUiAfterSendFailure();
                     console.warn('[OnlinePvP] handlePvPPlayTurn (P1) fetch', rowErr);
                     return;
                 }
@@ -671,7 +728,15 @@
                     p2_gimmick: prev.battle && prev.battle.p2_gimmick
                 });
                 const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
-                await this.pushData({ battle, battle_turn_deadline_iso: deadlineIso }, prev);
+                try {
+                    await this.pushData({ battle, battle_turn_deadline_iso: deadlineIso }, prev);
+                } catch (e) {
+                    state.p1Action = prevAction;
+                    state.currentPlayer = prevPlayer;
+                    this._restoreTurnUiAfterSendFailure();
+                    console.warn('[OnlinePvP] handlePvPPlayTurn (P1) push', e);
+                    return;
+                }
                 if (typeof global.logMsg === 'function') global.logMsg("Waiting for opponent…", 'info');
                 const moveMenu = global.document && global.document.getElementById('move-menu');
                 const cmdMenu = global.document && global.document.getElementById('command-menu');
@@ -681,10 +746,15 @@
                 return;
             }
 
+            const prevAction2 = state.p2Action;
+            const prevPlayer2 = state.currentPlayer;
             state.p2Action = action;
             state.currentPlayer = 1;
             const { data: row2, error: row2Err } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
             if (row2Err || !row2 || row2.data == null) {
+                state.p2Action = prevAction2;
+                state.currentPlayer = prevPlayer2;
+                this._restoreTurnUiAfterSendFailure();
                 console.warn('[OnlinePvP] handlePvPPlayTurn (P2) fetch', row2Err);
                 return;
             }
@@ -695,7 +765,15 @@
                 p1_pick: prev.battle && prev.battle.p1_pick,
                 p1_gimmick: prev.battle && prev.battle.p1_gimmick
             });
-            await this.pushData({ battle }, prev);
+            try {
+                await this.pushData({ battle }, prev);
+            } catch (e) {
+                state.p2Action = prevAction2;
+                state.currentPlayer = prevPlayer2;
+                this._restoreTurnUiAfterSendFailure();
+                console.warn('[OnlinePvP] handlePvPPlayTurn (P2) push', e);
+                return;
+            }
             /* Host runs resolution when guest's p2 pick arrives — see consumeRemoteForHost from onOnlineRoomData */
         },
 
@@ -704,6 +782,12 @@
             const b = d.battle;
             if (!b.p1_pick || !b.p2_pick) return;
             if (state.isLocked || hostResolving) return;
+            // Fence: a re-delivered row (or a timeout that raced a real pick) can
+            // still carry both picks for a turn the host already resolved+pushed.
+            // Without this, the boolean `hostResolving` is the only guard and a
+            // second distinct UPDATE could double-apply the same turn.
+            const turn = (typeof b.pending_turn === 'number') ? b.pending_turn : null;
+            if (turn !== null && turn <= hostLastResolvedTurn) return;
             hostResolving = true;
             try {
                 await this._hostRunResolution(state, settings, b);
@@ -740,13 +824,18 @@
                 return;
             }
             const prev = row.data;
+            const resolvedTurn = (prev.battle && prev.battle.pending_turn) || 1;
+            // Local battle state has already advanced (resolution ran above), so fence
+            // this turn now — even if the push below fails we must not re-run resolution
+            // for it, which would double-apply on already-advanced state.
+            if (resolvedTurn > hostLastResolvedTurn) hostLastResolvedTurn = resolvedTurn;
             const battle = Object.assign({}, prev.battle || {}, {
                 p1_pick: null,
                 p2_pick: null,
                 p1_gimmick: null,
                 p2_gimmick: null,
-                resolved_turn: (prev.battle && prev.battle.pending_turn) || 1,
-                pending_turn: ((prev.battle && prev.battle.pending_turn) || 1) + 1,
+                resolved_turn: resolvedTurn,
+                pending_turn: resolvedTurn + 1,
                 state_blob: blob,
                 state_hash: h
             });
@@ -754,7 +843,18 @@
                 ? global.computeOnlineBattleTurnDeadlineIso(state)
                 : null;
             const battle_log_html = captureBattleLogHtml();
-            await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline, battle_log_html }, prev);
+            try {
+                await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline, battle_log_html }, prev);
+            } catch (e) {
+                // The turn resolved locally on the host but the snapshot didn't reach the
+                // opponent. Surface it rather than failing silently; the guest re-syncs on
+                // its next Realtime reconnect (_resyncFromHead).
+                console.warn('[OnlinePvP] _hostRunResolution push', e);
+                if (typeof global.logMsg === 'function') {
+                    global.logMsg('[Online] Connection issue — your opponent may not have received this turn.', 'info');
+                }
+                return;
+            }
 
             if (state.isOver) {
                 const p1Alive = state.playerParty.some((m) => m.currentHp > 0);
@@ -802,6 +902,11 @@
             const b = row.data.battle;
             if (!b.p1_pick || b.p2_pick || state.isLocked) return;
             if (state.currentPlayer !== 2) return;
+            if (hostResolving) return;
+            // Same fence as consumeRemoteForHost: don't synthesize a timeout pick for a
+            // turn the host already resolved (e.g. a real guest pick landed first).
+            const timeoutTurn = (typeof b.pending_turn === 'number') ? b.pending_turn : null;
+            if (timeoutTurn !== null && timeoutTurn <= hostLastResolvedTurn) return;
             if (typeof global._pvpBuildTimeoutAction !== 'function') return;
             global.__onlineBattleDeadlineFiring = true;
             try {
@@ -829,6 +934,9 @@
 
         async afterHostStartBattle(state) {
             if (!this.isHost() || !roomId) return;
+            // New battle (incl. rematch) resets pending_turn to 1, so clear the fence
+            // or the first turn of a rematch would be skipped as "already resolved".
+            hostLastResolvedTurn = 0;
             const blob = exportBattleSnapshot(state);
             const h = simpleHash(blob);
             const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
