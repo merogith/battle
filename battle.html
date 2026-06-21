@@ -45757,17 +45757,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return files[Math.floor(rng() * files.length)];
         }
 
-        // Canonical named Elite Four candidates per slot. assignTrainers pins
-        // the first gen-eligible name from each role array to that role's
-        // STORY_EVENTS_RAW row before Pass 3's general picker runs, so the
-        // fan-favorite faces appear in their correct E-slots whenever the
-        // player has the relevant charGen enabled. Order = priority.
-        const STORY_LOCKED_ELITE_NAMES = {
-            E1: ['Lorelei', 'Will'],
-            E2: ['Bruno'],
-            E3: [],
-            E4: ['Lance', 'Karen'],
-        };
+        // Elite Four selection is fully pool-driven: no canonical name is pinned to a slot.
+        // Every E-slot (E1-E4) and the Champion fall through assignTrainers' Pass 3 to the
+        // gen-agnostic, run-deduped picker in selectTrainerForRole, so ANY elite member can
+        // surface in ANY run independent of the generation lock, with the team adapting via the
+        // rollTrainerTeam rules (signature → evolve → type/theme pool → random). Revive a
+        // canonical-pin pass from git history if a fixed Kanto E4 block is ever wanted again.
 
         // League boss signatures are force-evolved to their MAX stage (best team):
         // Lance E4's authored Dragonair → Dragonite, so his list collapses to 3
@@ -45872,25 +45867,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // read it. Gym-trainer typing comes from the assigned gym LEADER via
             // preferredTypeBeforeGymBattle, not from any stored gym-trainer name. (Pass 3
             // likewise skips generic Basic/Gym rows — see the skip there.)
-            // Pass 2.5: pin canonical named Elite Four to their slots when their
-            // charGen is enabled, before Pass 3's untargeted picker can spend
-            // them on the Champion (Lance) or leave them out of the run entirely.
-            // Each name takes the FIRST E-slot of its role; later un-pinned
-            // E-slots fall through to Pass 3 so variety is preserved.
-            const _genSet = new Set(eg);
-            for (const role of ['E1','E2','E3','E4']) {
-                const candidates = (STORY_LOCKED_ELITE_NAMES[role] || []);
-                for (const name of candidates) {
-                    const td = TRAINER_DATA.find(t => t.role === role && t.name === name);
-                    if (!td || !_genSet.has(td.charGen)) continue;
-                    if (usedBase.has(_baseTrainerName(td.name))) continue;
-                    const row = STORY_EVENTS_RAW.find(ev => ev[1] === 'Battle' && String(ev[2]) === role);
-                    if (!row || sm.trainerAssignments[row[0]]) continue;
-                    sm.trainerAssignments[row[0]] = td.name;
-                    usedBase.add(_baseTrainerName(td.name));
-                    break;
-                }
-            }
+            // Pass 2.5 REMOVED: the Elite Four are no longer pinned to canonical faces. All four
+            // E-slots (and the Champion) fall through to Pass 3's gen-agnostic, run-deduped picker
+            // so any elite member can appear in any run, independent of the generation lock. This
+            // also frees Lance to roll as Champion rather than being reserved for E4.
             // Pass 3: rivals (locked) and remaining battles. Mystery Figure uses a synthetic trainer at battle time — skip to avoid name pollution.
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             STORY_EVENTS_RAW.forEach((ev, posInRaw) => {
