@@ -14,7 +14,7 @@
  * used. Play through once while online to warm the cache for a given team/region; after that the
  * game is fully offline. Bump CACHE_VERSION whenever battle.html or a vendored script changes.
  */
-const CACHE_VERSION = 'battle-v1';
+const CACHE_VERSION = 'battle-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -86,4 +86,57 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => cached);
     })
   );
+});
+
+// ── Opt-in bulk download ("Download for offline") ───────────────────────────────────────────
+// The page posts {type:'CACHE_ALL', urls, batchId}. We fetch+cache in batches, reporting progress
+// back so the UI can render a bar. Resilient: per-asset failures are counted, never abort the run.
+async function cacheUrlsInBatches(urls, batchSize, onProgress) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const total = urls.length;
+  let done = 0, failed = 0;
+  for (let i = 0; i < total; i += batchSize) {
+    const batch = urls.slice(i, i + batchSize);
+    await Promise.allSettled(batch.map(async (url) => {
+      try {
+        if (await cache.match(url)) { done++; return; }   // already cached → cheap skip
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (res && res.ok) { await cache.put(url, res.clone()); done++; }
+        else failed++;
+      } catch (e) {
+        failed++;                                          // network error / QuotaExceededError
+      }
+    }));
+    onProgress({ done, total, failed });
+  }
+  return { done, total, failed };
+}
+
+self.addEventListener('message', (event) => {
+  const msg = event.data || {};
+  const reply = (payload) => {
+    if (event.source && event.source.postMessage) event.source.postMessage(payload);
+    else self.clients.matchAll().then((cs) => cs.forEach((c) => c.postMessage(payload)));
+  };
+
+  if (msg.type === 'CACHE_ALL' && Array.isArray(msg.urls)) {
+    event.waitUntil((async () => {
+      const r = await cacheUrlsInBatches(msg.urls, 50, (p) => {
+        reply({ type: 'CACHE_PROGRESS', batchId: msg.batchId, ...p });
+      });
+      reply({ type: 'CACHE_DONE', batchId: msg.batchId, ...r });
+    })());
+  } else if (msg.type === 'CLEAR_CACHE') {
+    event.waitUntil((async () => {
+      await caches.delete(RUNTIME_CACHE);
+      await caches.open(RUNTIME_CACHE); // recreate empty so subsequent runtime caching works
+      reply({ type: 'CACHE_CLEARED' });
+    })());
+  } else if (msg.type === 'CACHE_STATE') {
+    event.waitUntil((async () => {
+      const cache = await caches.open(RUNTIME_CACHE);
+      const keys = await cache.keys();
+      reply({ type: 'CACHE_STATE', cachedCount: keys.length });
+    })());
+  }
 });

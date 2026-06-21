@@ -6,12 +6,12 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Battle Sim">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="icons/app-icon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-180.png">
     <meta name="theme-color" content="#0a0a0a">
     <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
-    <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet">
     <title>Pokémon Arena</title>
     <style>
         /* Self-hosted Press Start 2P (SIL OFL 1.1) — no external CDN so the retro font renders identically offline; see fonts/OFL.txt. */
@@ -9258,7 +9258,8 @@
 
     </style>
     <script src="vendor/anime.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- Supabase JS SDK is loaded lazily by OnlineBattle.ensureSdk() only when Online PvP is
+         entered, so the offline/first-paint boot path carries no third-party script. -->
     <script src="online-config.js"></script>
     <script src="online-pvp.js"></script>
     <script src="move-sfx-map.js"></script>
@@ -9501,6 +9502,25 @@
             <div class="settings-row">
                 <span>Fullscreen</span>
                 <button type="button" id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green); min-height:40px; padding:6px 14px;">ENTER</button>
+            </div>
+            <div class="settings-row" id="install-app-row" style="display:none;">
+                <span>Install app</span>
+                <button type="button" id="install-app-btn" onclick="window.promptInstallApp()" style="color: var(--accent); min-height:40px; padding:6px 14px;">INSTALL</button>
+            </div>
+            <div class="settings-row" id="offline-dl-row">
+                <span>Download for offline</span>
+                <button type="button" id="offline-dl-btn" onclick="window.openDownloadOfflineFlow()" style="color: var(--accent); min-height:40px; padding:6px 14px;">SET UP</button>
+            </div>
+            <div id="offline-dl-panel" class="hidden" style="padding:8px 4px 4px; border-top:1px solid #333; margin-bottom:6px;">
+                <div id="offline-dl-size" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:6px;">Checking size…</div>
+                <div style="height:10px; background:var(--surface2,#222); border-radius:5px; overflow:hidden; margin-bottom:6px;">
+                    <div id="offline-dl-bar-fill" style="height:100%; width:0%; background:var(--hp-green,#7ad17a); transition:width .2s;"></div>
+                </div>
+                <div id="offline-dl-status" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:8px; min-height:14px;"></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="offline-dl-start" onclick="window.startOfflineDownload()" style="color:var(--hp-green); min-height:36px; padding:6px 14px;">Download all</button>
+                    <button type="button" onclick="window.clearOfflineCache()" style="color:var(--hp-amber,#ffb74d); min-height:36px; padding:6px 14px;">Clear cache</button>
+                </div>
             </div>
             <div class="settings-row">
                 <span>Help &amp; controls</span>
@@ -12876,6 +12896,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
             gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
+            offlineDownload: { completed: false, version: null, at: null }, /* opt-in "Download for offline" state; mutate via Object.assign */
             /* Build-pool filters (read by makeBuild / loadBuildsCSV consumers):
                - allowDoublesBuilds: include VGC / Battle Spot Doubles sets in singles rolls. Off by default
                  so Tailwind / Wide Guard / Follow Me roles don't pollute singles encounters.
@@ -12974,6 +12995,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
             if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
             if (typeof _pbs.soundVol === 'number' && _pbs.soundVol >= 0 && _pbs.soundVol <= 1) _initSoundVol = _pbs.soundVol;
+            if (_pbs.offlineDownload && typeof _pbs.offlineDownload === 'object') Object.assign(settings.offlineDownload, _pbs.offlineDownload);
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -13001,10 +13023,134 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     weatherAnimation: settings.weatherAnimation,
                     terrainBackground: settings.terrainBackground,
                     musicVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : _initMusicVol,
-                    soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol
+                    soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol,
+                    offlineDownload: settings.offlineDownload
                 }));
             } catch (e) {}
         }
+
+        // ── Opt-in "Download for offline" (talks to sw.js) ───────────────────────────────────
+        let _offlineManifest = null;        // memoized offline-assets.json
+        let _offlineSwVersion = 'battle-v2'; // mirror sw.js CACHE_VERSION; surfaces "re-download"
+        function _fmtBytes(n) {
+            if (!n) return '0 MB';
+            const mb = n / (1024 * 1024);
+            return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(0) + ' MB';
+        }
+        async function _getOfflineManifest() {
+            if (_offlineManifest) return _offlineManifest;
+            const res = await fetch('offline-assets.json', { cache: 'no-cache' });
+            _offlineManifest = await res.json();
+            return _offlineManifest;
+        }
+        window.openDownloadOfflineFlow = async function() {
+            const panel = document.getElementById('offline-dl-panel');
+            const sizeEl = document.getElementById('offline-dl-size');
+            if (!panel) return;
+            // SW required (HTTPS/localhost only). Disable gracefully otherwise.
+            if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) {
+                panel.classList.remove('hidden');
+                if (sizeEl) sizeEl.textContent = 'Offline download needs the installed/HTTPS app — not available here.';
+                const sb = document.getElementById('offline-dl-start'); if (sb) sb.disabled = true;
+                return;
+            }
+            panel.classList.remove('hidden');
+            try {
+                const m = await _getOfflineManifest();
+                let line = `Caches everything for offline play: ${m.fileCount} files, ~${_fmtBytes(m.totalBytes)}.`;
+                const od = settings.offlineDownload || {};
+                if (od.completed && od.version === _offlineSwVersion) line += ' ✓ Already downloaded.';
+                else if (od.completed) line += ' ⚠ Update available — re-download.';
+                if (navigator.storage && navigator.storage.estimate) {
+                    try {
+                        const est = await navigator.storage.estimate();
+                        const free = (est.quota || 0) - (est.usage || 0);
+                        if (free && m.totalBytes > free) line += ` ⚠ May exceed free storage (~${_fmtBytes(free)} free).`;
+                    } catch (e) {}
+                }
+                line += ' On phones this is large — Wi-Fi recommended.';
+                if (sizeEl) sizeEl.textContent = line;
+            } catch (e) {
+                if (sizeEl) sizeEl.textContent = 'Could not read the asset list. Check your connection and reload.';
+            }
+        };
+        window.startOfflineDownload = async function() {
+            const startBtn = document.getElementById('offline-dl-start');
+            const statusEl = document.getElementById('offline-dl-status');
+            const fillEl = document.getElementById('offline-dl-bar-fill');
+            const setStatus = (t) => { if (statusEl) statusEl.textContent = t; };
+            if (!('serviceWorker' in navigator)) { setStatus('Service worker unavailable.'); return; }
+            let m;
+            try { m = await _getOfflineManifest(); } catch (e) { setStatus('Could not load asset list.'); return; }
+            // Resolve an active SW; controller is null on the very first load (pre-activation).
+            let sw = null;
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                sw = navigator.serviceWorker.controller || (reg && reg.active);
+            } catch (e) {}
+            if (!sw) { setStatus('Reload the page once, then try again.'); return; }
+            const batchId = Date.now();
+            if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Downloading…'; }
+            const onMsg = (ev) => {
+                const d = ev.data || {};
+                if (d.batchId !== batchId) return;
+                if (d.type === 'CACHE_PROGRESS') {
+                    const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
+                    if (fillEl) fillEl.style.width = pct + '%';
+                    setStatus(`${d.done} / ${d.total} cached${d.failed ? ' · ' + d.failed + ' failed' : ''}…`);
+                } else if (d.type === 'CACHE_DONE') {
+                    if (fillEl) fillEl.style.width = '100%';
+                    setStatus(`Done — ${d.done} cached${d.failed ? ', ' + d.failed + ' failed (storage may be full)' : ''}.`);
+                    Object.assign(settings.offlineDownload, { completed: true, version: _offlineSwVersion, at: new Date().toISOString() });
+                    persistMiscSettings();
+                    if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Download all'; }
+                    const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'DONE';
+                    navigator.serviceWorker.removeEventListener('message', onMsg);
+                }
+            };
+            navigator.serviceWorker.addEventListener('message', onMsg);
+            setStatus('Starting…');
+            sw.postMessage({ type: 'CACHE_ALL', urls: m.urls, batchId });
+        };
+        window.clearOfflineCache = function() {
+            const statusEl = document.getElementById('offline-dl-status');
+            const fillEl = document.getElementById('offline-dl-bar-fill');
+            if (!('serviceWorker' in navigator)) return;
+            navigator.serviceWorker.ready.then((reg) => {
+                const sw = navigator.serviceWorker.controller || (reg && reg.active);
+                if (sw) sw.postMessage({ type: 'CLEAR_CACHE' });
+            });
+            Object.assign(settings.offlineDownload, { completed: false, version: null, at: null });
+            persistMiscSettings();
+            if (fillEl) fillEl.style.width = '0%';
+            if (statusEl) statusEl.textContent = 'Offline cache cleared.';
+            const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'SET UP';
+        };
+
+        // ── Native "Install app" prompt (Chromium desktop/Android). iOS fires no event; it uses
+        //    Add to Home Screen + the existing hint. Hidden while already running standalone. ──
+        let _deferredInstallPrompt = null;
+        function _isStandaloneApp() {
+            try { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+            catch (e) { return false; }
+        }
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            _deferredInstallPrompt = e;
+            const row = document.getElementById('install-app-row');
+            if (row && !_isStandaloneApp()) row.style.display = '';
+        });
+        window.promptInstallApp = async function() {
+            if (!_deferredInstallPrompt) return;
+            _deferredInstallPrompt.prompt();
+            try { await _deferredInstallPrompt.userChoice; } catch (e) {}
+            _deferredInstallPrompt = null;
+            const row = document.getElementById('install-app-row'); if (row) row.style.display = 'none';
+        };
+        window.addEventListener('appinstalled', function() {
+            _deferredInstallPrompt = null;
+            const row = document.getElementById('install-app-row'); if (row) row.style.display = 'none';
+        });
         window.applyDisplayMode = function() {
             const m = settings.displayMode || 'auto';
             const wantMobile = m === 'phone' ? true : m === 'desktop' ? false : _computeAutoIsMobile();
@@ -18437,6 +18583,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.showGameAlert('Online PvP needs Supabase. Edit online-config.js with your project URL and anon key, run supabase/migrations/001_online_pvp.sql and 002_gauntlet_leaderboard.sql, and enable Realtime on table pvp_rooms.');
                 return;
             }
+            if (!(await window.OnlineBattle.ensureSdk())) {
+                window.showGameAlert('Could not load the online module — check your connection and try again.');
+                return;
+            }
             try {
                 const pools = await buildDraftPoolsForCurrentSettings('pvp');
                 const match = window.OnlineBattle.buildMatchOptionsFromSettings(settings);
@@ -18494,6 +18644,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const code = (document.getElementById('online-join-code').value || '').trim().toUpperCase();
             const name = (document.getElementById('online-join-name').value || '').trim() || 'Guest';
             if (code.length < 4) { if (ne) ne.textContent = 'Enter a valid room code.'; return; }
+            if (!(await window.OnlineBattle.ensureSdk())) {
+                if (ne) ne.textContent = 'Could not load the online module — check your connection.';
+                return;
+            }
             window.OnlineBattle.setDisplayName(name);
             try {
                 const row = await window.OnlineBattle.joinRoom(code, name);
