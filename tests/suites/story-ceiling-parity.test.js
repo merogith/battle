@@ -33,17 +33,19 @@ test('items: foe item tier never exceeds the player Dojo tier (foe ≤ player)',
     const playerTier = c <= 1 ? 0 : (ST.npcStageForCity('dojo', c) + 1);
     assert.ok(foe <= playerTier, `C${c}: foe item tier ${foe} must be ≤ player ${playerTier}`);
   }
-  // Concretely: staples (tier 2) open at C5 for both, not C4 for foes.
-  assert.equal(ST.storyFoeItemTier(4), 1, 'C4 foe still berries (staples are a C5 unlock)');
-  assert.equal(ST.storyFoeItemTier(5), 2, 'C5 foe staples (== Black Belt)');
-  assert.equal(ST.storyFoeItemTier(7), 2, 'C7 foe still staples (best is a C8 unlock)');
-  assert.equal(ST.storyFoeItemTier(8), 3, 'C8 foe best (== Grandmaster)');
+  // Concretely (1.6.0 ladder [1,4,6,8]): berries C2-3, staples open at C4 (Black Belt),
+  // best meta at C6 (Master), all by C8 (Grandmaster).
+  assert.equal(ST.storyFoeItemTier(3), 1, 'C3 foe berries (White Belt)');
+  assert.equal(ST.storyFoeItemTier(4), 2, 'C4 foe staples (== Black Belt)');
+  assert.equal(ST.storyFoeItemTier(5), 2, 'C5 foe still staples');
+  assert.equal(ST.storyFoeItemTier(6), 3, 'C6 foe best meta (== Master)');
+  assert.equal(ST.storyFoeItemTier(8), 4, 'C8 foe all (== Grandmaster; tier-4 = no item gated)');
 });
 
-test('hidden abilities: foe HA opens at the player Black Belt (C5), not C4', () => {
-  // The foe HA gate is derived from dojo stage ≥ 1; that threshold is C5.
-  assert.equal(ST.npcStageForCity('dojo', 4), 0, 'C4 dojo stage 0 → no Hidden for player OR foe');
-  assert.equal(ST.npcStageForCity('dojo', 5), 1, 'C5 dojo stage 1 (Black Belt) → Hidden unlocks');
+test('hidden abilities: foe HA opens at the player Black Belt (C4), not C3', () => {
+  // The foe HA gate is derived from dojo stage ≥ 1; under the 1.6.0 ladder that is C4.
+  assert.equal(ST.npcStageForCity('dojo', 3), 0, 'C3 dojo stage 0 → no Hidden for player OR foe');
+  assert.equal(ST.npcStageForCity('dojo', 4), 1, 'C4 dojo stage 1 (Black Belt) → Hidden unlocks');
 });
 
 test('#23 fix: the intro rival (row 68) resolves to City 0, not City 9', () => {

@@ -28,13 +28,16 @@ setSm();
 const cityRow = (c) => { for (let i = 0; i < SER.length; i++) { const r = SER[i]; if (Array.isArray(r) && r[1] === 'City' && r[2] === 'City' + c) return i; } return -1; };
 const renderCity = (c) => { setSm(); return W.__renderCityActionsForTest(cityRow(c)); };
 
-test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/3/6, evolab 2/4)', () => {
-  assert.equal(ST.npcStageForCity('dojo', 1), 0, 'pre-debut clamps to stage 0');
-  assert.equal(ST.npcStageForCity('dojo', 2), 0);
-  assert.equal(ST.npcStageForCity('dojo', 4), 0);
+test('npcStageForCity: city-anchored thresholds (dojo 1/4/6/8, tutor 0/3/6, evolab 2/4)', () => {
+  // Dojo is 4 tiers (1.6.0): White Belt C1-3 · Black Belt C4-5 · Master C6-7 · Grandmaster C8+.
+  assert.equal(ST.npcStageForCity('dojo', 0), 0, 'pre-debut clamps to stage 0');
+  assert.equal(ST.npcStageForCity('dojo', 1), 0);
+  assert.equal(ST.npcStageForCity('dojo', 3), 0);
+  assert.equal(ST.npcStageForCity('dojo', 4), 1);
   assert.equal(ST.npcStageForCity('dojo', 5), 1);
-  assert.equal(ST.npcStageForCity('dojo', 7), 1);
-  assert.equal(ST.npcStageForCity('dojo', 8), 2);
+  assert.equal(ST.npcStageForCity('dojo', 6), 2);
+  assert.equal(ST.npcStageForCity('dojo', 7), 2);
+  assert.equal(ST.npcStageForCity('dojo', 8), 3);
   // Move Tutor thresholds tutor:[0,3,6] — Inner C0-2, Unleashed C3-5, Guru C6+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 2), 0);
@@ -49,7 +52,8 @@ test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/3/6, evolab
 test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('dojo', 0), 'White Belt');
   assert.equal(ST.npcStageName('dojo', 1), 'Black Belt');
-  assert.equal(ST.npcStageName('dojo', 2), 'Grandmaster');
+  assert.equal(ST.npcStageName('dojo', 2), 'Master');
+  assert.equal(ST.npcStageName('dojo', 3), 'Grandmaster');
   // Phase 4.2: Move Tutor is now 3-stage with renamed labels.
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
   assert.equal(ST.npcStageName('tutor', 1), 'Unleashed');
@@ -84,27 +88,27 @@ test('Awakened picks are stage-independent (lock lives in the UI/handler, not th
   // at every stage; the gate moved to the card + tutorChangeAbility. Assert the
   // count is identical across stages (robust whether or not op-abilities.json
   // loaded under the jsdom fetch stub — 0===0 holds either way).
-  setSm({ eventIndex: cityRow(4) });   // White Belt
-  assert.equal(ST.npcStage('dojo'), 0, 'C4 is dojo stage 0');
+  setSm({ eventIndex: cityRow(2) });   // White Belt (stage 0)
+  assert.equal(ST.npcStage('dojo'), 0, 'C2 is dojo stage 0');
   const wb = ST.opAbilitiesForMon('Garchomp').length;
-  setSm({ eventIndex: cityRow(6) });   // Black Belt
-  assert.equal(ST.npcStage('dojo'), 1, 'C6 is dojo stage 1');
+  setSm({ eventIndex: cityRow(5) });   // Black Belt (stage 1)
+  assert.equal(ST.npcStage('dojo'), 1, 'C5 is dojo stage 1');
   const bb = ST.opAbilitiesForMon('Garchomp').length;
-  setSm({ eventIndex: cityRow(8) });   // Grandmaster
-  assert.equal(ST.npcStage('dojo'), 2, 'C8 is dojo stage 2');
+  setSm({ eventIndex: cityRow(8) });   // Grandmaster (stage 3)
+  assert.equal(ST.npcStage('dojo'), 3, 'C8 is dojo stage 3');
   const gm = ST.opAbilitiesForMon('Garchomp').length;
   assert.equal(wb, bb, 'White Belt and Black Belt expose the same Awakened data');
   assert.equal(bb, gm, 'Black Belt and Grandmaster expose the same Awakened data');
 });
 
-test('dojoAbilityUnlockStage: basic=0 (slots 0/1), Hidden=1 (slot H), off-legal Smogon=2', () => {
+test('dojoAbilityUnlockStage: basic=0 (slots 0/1), Hidden=1 (slot H), off-legal Smogon=3 (Grandmaster)', () => {
   setSm({ eventIndex: cityRow(8) });
   // Garchomp legal slots: Sand Veil (0), Rough Skin (H).
   assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sand Veil'), 0, 'slot 0 = basic / White Belt');
-  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Rough Skin'), 1, 'slot H = Hidden / Black Belt');
-  // Off-legal Smogon picks (not in any legal slot) classify as Awakened.
-  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sword of Ruin'), 2, 'off-legal = Awakened / Grandmaster');
-  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Adaptability'), 2, 'off-legal = Awakened / Grandmaster');
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Rough Skin'), 1, 'slot H = Hidden / Black Belt (C4)');
+  // Off-legal Smogon picks (not in any legal slot) classify as Awakened → Grandmaster (C8) in 1.6.0.
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sword of Ruin'), 3, 'off-legal = Awakened / Grandmaster');
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Adaptability'), 3, 'off-legal = Awakened / Grandmaster');
 });
 
 test('ability cost tiers track the unlock stage (basic 2000 / Hidden 3000 / Awakened 5000)', () => {
@@ -137,16 +141,22 @@ test('stage-up beat: one-time free use, fires once, debut grants nothing', () =>
   assert.equal(sm.inventory.heartScale | 0, 1, 'no double-grant on re-entry');
 });
 
-test('stage-up gifts: dojo (Black Belt / Grandmaster) and Evolution Tutor (Evolution Master)', () => {
-  const sm = setSm({ eventIndex: cityRow(6), inventory: {}, npcStageSeen: {} });
-  ST.npcStageUpCheck('dojo');                   // first dojo visit at C6 = Black Belt
+test('stage-up gifts: dojo 4-tier (Black Belt → Master → Grandmaster) and Evolution Tutor', () => {
+  const sm = setSm({ eventIndex: cityRow(4), inventory: {}, npcStageSeen: {} });
+  ST.npcStageUpCheck('dojo');                   // first tier-up at C4 = Black Belt (stage 1)
   assert.equal(sm.npcStageSeen.dojo, 1);
   assert.equal(sm.inventory.abilityCapsule | 0, 1, 'Black Belt grants an Ability Capsule');
-  sm.eventIndex = cityRow(8);                    // → Grandmaster
+  assert.equal(sm.inventory.emblemHonor | 0, 0, 'no Emblem yet at Black Belt');
+  sm.eventIndex = cityRow(6);                    // → Master (stage 2): all items unlock
   ST.npcStageUpCheck('dojo');
   assert.equal(sm.npcStageSeen.dojo, 2);
+  assert.equal(sm.inventory.emblemHonor | 0, 1, 'Master grants an Emblem of Honor');
+  assert.equal(sm.inventory.abilityCapsule | 0, 1, 'Master grants no extra Capsule (abilities unchanged)');
+  sm.eventIndex = cityRow(8);                    // → Grandmaster (stage 3): Awakened unlocks
+  ST.npcStageUpCheck('dojo');
+  assert.equal(sm.npcStageSeen.dojo, 3);
   assert.equal(sm.inventory.abilityCapsule | 0, 2, 'Grandmaster adds another Capsule');
-  assert.equal(sm.inventory.emblemHonor | 0, 1, 'Grandmaster grants an Emblem of Honor');
+  assert.equal(sm.inventory.emblemHonor | 0, 2, 'Grandmaster adds another Emblem of Honor');
 
   const sm2 = setSm({ eventIndex: cityRow(4), inventory: {}, npcStageSeen: {} });
   ST.npcStageUpCheck('evolab');                  // C4 = Evolution Master (stage 1; evolab is [2,4])
@@ -159,8 +169,9 @@ test('city-screen chip tags advance with the arrived city', () => {
   assert.ok(renderCity(2).includes('Move Tutor — Inner Strength'), 'C2 Move Tutor = Inner Strength');
   assert.ok(renderCity(3).includes('Move Tutor — Unleashed'), 'C3 Move Tutor = Unleashed');
   assert.ok(renderCity(6).includes('Move Tutor — Guru'), 'C6 Move Tutor = Guru');
-  assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
-  assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');
+  assert.ok(renderCity(2).includes('Battle Dojo — White Belt'), 'C2 Dojo = White Belt');
+  assert.ok(renderCity(4).includes('Battle Dojo — Black Belt'), 'C4 Dojo = Black Belt');
+  assert.ok(renderCity(6).includes('Battle Dojo — Master'), 'C6 Dojo = Master');
   assert.ok(renderCity(8).includes('Battle Dojo — Grandmaster'), 'C8 Dojo = Grandmaster');
   assert.ok(renderCity(2).includes('Evolution Teacher'), 'C2 Evolution Tutor = Evolution Teacher');
   assert.ok(renderCity(4).includes('Evolution Master'), 'C4 Evolution Tutor = Evolution Master');

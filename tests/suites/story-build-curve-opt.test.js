@@ -42,13 +42,14 @@ test('difficulty raises the apply-probability at the same city', () => {
 });
 
 test('foe item tier = parity Dojo clock (Phase 3: foe never leads the player)', () => {
-  // Aligned to the player's Battle-Dojo clock (NPC_STAGE_CITY.dojo=[2,5,8]):
-  // none C0-1 · berries C2-4 (White Belt) · staples C5-7 (Black Belt) · best C8-9
-  // (Grandmaster). Previously each tier opened ONE city early for foes.
-  for (const c of [0, 1]) assert.equal(ST.storyFoeItemTier(c), 0, `C${c} none (Dojo not open)`);
-  for (const c of [2, 3, 4]) assert.equal(ST.storyFoeItemTier(c), 1, `C${c} berries (White Belt)`);
-  for (const c of [5, 6, 7]) assert.equal(ST.storyFoeItemTier(c), 2, `C${c} staples (Black Belt)`);
-  for (const c of [8, 9]) assert.equal(ST.storyFoeItemTier(c), 3, `C${c} best (Grandmaster)`);
+  // Aligned to the player's Battle-Dojo clock (NPC_STAGE_CITY.dojo=[1,4,6,8], 1.6.0):
+  // none C0-1 · berries C2-3 (White Belt) · staples C4-5 (Black Belt) · best meta C6-7
+  // (Master) · all C8+ (Grandmaster, tier-4 = nothing gated).
+  for (const c of [0, 1]) assert.equal(ST.storyFoeItemTier(c), 0, `C${c} none (Dojo itemless)`);
+  for (const c of [2, 3]) assert.equal(ST.storyFoeItemTier(c), 1, `C${c} berries (White Belt)`);
+  for (const c of [4, 5]) assert.equal(ST.storyFoeItemTier(c), 2, `C${c} staples (Black Belt)`);
+  for (const c of [6, 7]) assert.equal(ST.storyFoeItemTier(c), 3, `C${c} best meta (Master)`);
+  for (const c of [8, 9]) assert.equal(ST.storyFoeItemTier(c), 4, `C${c} all (Grandmaster)`);
   assert.equal(ST.storyFoeItemTier(-1), 3, 'frontier/generator = full');
 });
 

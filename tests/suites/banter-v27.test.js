@@ -267,7 +267,7 @@ test('line selection is seeded, tier-gates the match cell, and degrades safely',
 });
 
 // ── Persistence: SAVE_VER 27 + migration round-trip ──────────────────────────
-test('v25 save migrates to 27 with banter fields seeded; v27 data round-trips', () => {
+test('v25 save migrates to current SAVE_VER with banter fields seeded; banter data round-trips', () => {
   const LS = installLocalStorageShim();
   const plant = (extra) => LS.setItem('pbs_story_save', JSON.stringify(Object.assign({
     version: 25, active: true, storyLine: 'classic', eventIndex: 0, badges: 0,
@@ -276,7 +276,7 @@ test('v25 save migrates to 27 with banter fields seeded; v27 data round-trips', 
     settings: { minGen: 1, maxGen: 9, enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
   }, extra || {})));
 
-  assert.equal(W.__STORY_SAVE_VER, 27, 'SAVE_VER bumped to 27');
+  assert.equal(W.__STORY_SAVE_VER, 28, 'SAVE_VER bumped to 28 (1.6.0 dojo 4-tier / per-city cap)');
 
   // load() merges the parsed save onto the live sm (the early-let pattern),
   // so reset the in-memory banter fields to pristine zeros first — mirroring
@@ -285,16 +285,16 @@ test('v25 save migrates to 27 with banter fields seeded; v27 data round-trips', 
   plant({ version: 25 });
   W.__storyLoad();
   let sm = ST.sm;
-  assert.equal(sm.version, 27);
+  assert.equal(sm.version, 28);
   assert.deepEqual(N(sm.banterStats), { flirty: 0, positive: 0, negative: 0, stoic: 0 });
   assert.deepEqual(N(sm.banterPersona), { id: 'wildcard', tier: 0 });
   assert.equal(typeof sm.banterByRow, 'object');
 
-  // v26 → 27 (the immediately-previous version) seeds the same fields.
+  // v26 → current seeds the same fields.
   freshSm();
   plant({ version: 26 });
   W.__storyLoad();
-  assert.equal(ST.sm.version, 27);
+  assert.equal(ST.sm.version, 28);
   assert.deepEqual(N(ST.sm.banterPersona), { id: 'wildcard', tier: 0 });
 
   // v27 data survives a load untouched.

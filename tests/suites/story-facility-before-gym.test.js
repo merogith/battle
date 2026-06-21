@@ -139,8 +139,9 @@ test('staged tier-up registers as a pending intro at the upgrade city', () => {
   setSm({ npcStageSeen: { tutor: 0, evolab: 0, dojo: 0 } });
   assert.equal(ST.isFacilityStageUpPendingHere(4, 'tutor'), true, 'Move Tutor → Unleashed pending at C4');
   assert.equal(ST.isFacilityStageUpPendingHere(4, 'evolab'), true, 'Evolution Tutor → Master pending at C4');
-  assert.equal(ST.isFacilityStageUpPendingHere(4, 'dojo'), false, 'Dojo still White Belt at C4 — no tier-up');
-  assert.equal(ST.isFacilityStageUpPendingHere(5, 'dojo'), true, 'Dojo → Black Belt pending at C5');
+  assert.equal(ST.isFacilityStageUpPendingHere(1, 'dojo'), false, 'Dojo debut (White Belt) at C1 is the first-visit beat, not a tier-up');
+  assert.equal(ST.isFacilityStageUpPendingHere(4, 'dojo'), true, 'Dojo → Black Belt pending at C4 (1.6.0 ladder [1,4,6,8])');
+  assert.equal(ST.isFacilityStageUpPendingHere(6, 'dojo'), true, 'Dojo → Master pending at C6');
   assert.equal(ST.isFacilityStageUpPendingHere(8, 'dojo'), true, 'Dojo → Grandmaster pending at C8');
 
   setSm({ npcStageSeen: { tutor: 1 } });
@@ -163,8 +164,9 @@ test('gym is gated behind facility tier-ups, then opens once they are seen', () 
   const gated = W.__renderCityActionsForTest(gymRow);
   assert.ok(/Enter the Gym <span[^>]*>\(Visit [^)]*first\)/.test(gated), 'gym is disabled with a "Visit … first" facility hint while tier-ups are pending');
 
-  // Mark the C4 tier-ups seen → the gym opens.
-  ST.sm.npcStageSeen = { tutor: 1, evolab: 1, dojo: 0 };
+  // Mark the C4 tier-ups seen → the gym opens. C4 is now a Dojo tier-up (Black Belt,
+  // 1.6.0 ladder), so the dojo tier must also be marked seen for the gym to open.
+  ST.sm.npcStageSeen = { tutor: 1, evolab: 1, dojo: 1 };
   const open = W.__renderCityActionsForTest(gymRow);
   assert.ok(!/Enter the Gym <span[^>]*>\(Visit [^)]*first\)/.test(open), 'gym no longer carries the facility gate once tier-ups are seen');
   assert.ok(/Enter the Gym/.test(open), 'gym button is still present (now enabled)');

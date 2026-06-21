@@ -74,18 +74,21 @@ test('ability Stage filter: Legal hides off-legal abilities', async () => {
   assert.equal(cards.filter((c) => c.querySelector('.tx-pill--awaken')).length, 0, 'no off-legal abilities under the Legal filter');
 });
 
-// The move Stage chips now mirror the three tutor STAGES, not raw obtainability:
-//   Inner Strength — an innate (Natural) move within the power cap (BP ≤ 75).
-//   Unleashed      — an innate move above the cap (BP > 75).
+// The move Stage chips mirror the tutor stripe (1.6.0: the BP cap is PER-CITY):
+//   Inner Strength — an innate (Natural) move within the current city's BP cap.
+//   Unleashed      — an innate move above the city cap.
 //   Guru           — a taught (Learnt) or off-legal (Awakened) move.
 // Each shown card must belong to the picked stage. Garchomp is primed at Guru (C6)
-// so the full pool is visible (nothing locked) and the chip narrows it purely by stage.
+// where the city cap is ∞, so every Natural move classifies as Inner (nothing above
+// an infinite cap) and the full pool is visible.
 const bpOf = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
+const cityCap = () => { try { return ST.storyMoveBpCapForCity(ST.cityIndexFromEventIndex(ST.sm.eventIndex)); } catch (e) { return Infinity; } };
 const stageOf = (mon, mv) => {
   let tag = null; try { tag = ST.moveTagForSpecies(mon, mv); } catch (e) {}
   if (tag === 'learnt' || tag === 'awakened') return 'guru';
   if (tag !== 'natural') return null;
-  return bpOf(mv) <= 75 ? 'inner' : 'unleashed';
+  const cap = cityCap();
+  return (cap === Infinity || bpOf(mv) <= cap) ? 'inner' : 'unleashed';
 };
 const shownMoveCards = () => [...host().querySelectorAll('.tx-card[data-card-kind="move"]:not([hidden])')];
 
@@ -107,11 +110,11 @@ test('move Stage filter: Inner Strength shows only innate moves within the power
   await prime(6, 'Garchomp', { m: ['Dragon Claw'], n: 'Jolly', a: 'Rough Skin' }, 'moves');
   await clickTier('moves', 'inner');
   const cards = shownMoveCards();
-  assert.ok(cards.length > 0, 'Inner Strength reveals innate moves at BP ≤ 75');
+  assert.ok(cards.length > 0, 'Inner Strength reveals innate moves within the city cap (∞ at C6)');
   const leak = cards.filter((c) => {
     const mv = c.getAttribute('data-card-value');
-    if (mv === 'Dragon Claw') return false; // equipped is exempt (BP 80 → Unleashed)
+    if (mv === 'Dragon Claw') return false; // equipped is exempt
     return stageOf('Garchomp', mv) !== 'inner';
   });
-  assert.equal(leak.length, 0, 'only Inner-stage moves (innate, BP ≤ 75) show under the Inner Strength filter');
+  assert.equal(leak.length, 0, 'only Inner-stage moves (innate, within the city cap) show under the Inner Strength filter');
 });

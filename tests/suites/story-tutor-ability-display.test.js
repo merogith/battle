@@ -31,14 +31,14 @@ async function openDojoAbilityTabAtGrandmaster() {
 
 const abilityCards = () => [...doc.querySelectorAll('.tx-card--ability')];
 
-test('Grandmaster precondition: dojo stage 2, off-legal abilities unlocked', () => {
+test('Grandmaster precondition: dojo stage 3, off-legal abilities unlocked', () => {
   // sanity only — populated by the async open in the next tests
   assert.ok(ST.npcStage, 'npcStage exposed');
 });
 
 test('the ★ chip does not hide off-legal abilities (sort-only)', async () => {
   await openDojoAbilityTabAtGrandmaster();
-  assert.equal(ST.npcStage('dojo'), 2, 'precondition: Grandmaster (awakened unlocked)');
+  assert.equal(ST.npcStage('dojo'), 3, 'precondition: Grandmaster (C8, awakened unlocked)');
   const cards = abilityCards();
   assert.ok(cards.length >= 3, 'ability grid renders multiple cards');
   // With the ★ chip ON by default, an off-legal pick (data-tier="awaken") must

@@ -903,6 +903,16 @@ Stage 2 has a single "now you're optimizing" hub. Earlier cities
 intentionally have *no* held-item or EV-shaping facility — the team
 fights with the starter and whatever wilds the player caught.
 
+> **1.6.0 — Battle Dojo is now a 4-tier ladder** (`NPC_STAGE_CITY.dojo = [1,4,6,8]`):
+> **White Belt (C1)** basic abilities + berry/basic items · **Black Belt (C4)** +Hidden
+> abilities + staple items · **Master (C6)** **all items unlocked** (abilities unchanged) ·
+> **Grandmaster (C8)** unlocks **Awakened abilities** (off-legal picks — relocated here
+> from the old Black Belt). Held-item access tops out at Master (C6); the deepest
+> abilities wait for Grandmaster (C8). Foe item/Hidden-ability gates track the same clock.
+> Move pacing is also now a **per-city BP cap** (40/60/60/80/80/∞, starter floored to 60)
+> enforced as both a tutor/foe pool filter and a battle-time damage clamp — see
+> `docs/PROGRESSION_CURVE_MASTER.md` (1.6.0 callout).
+
 ### Enemy build tier — stage-aligned
 
 `_storyBuildTierForEvent` now mirrors the gym index directly:

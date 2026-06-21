@@ -9275,7 +9275,7 @@
     </script>
 </head>
 <body>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.5.5</div>
+    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.6.0</div>
     <!-- Rotate overlay (portrait phones only) -->
     <div id="rotate-overlay">
         <div class="rotate-icon">▒</div>
@@ -24439,6 +24439,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             abortPostCanMoveBlock(attacker);
         }
 
+        // Story per-city BP clamp (System A safety net): the per-city move cap is
+        // primarily a tutor/foe POOL filter, but high-BP moves can still slip into a
+        // moveset (heart-scale vouchers, foe signature presets, builds.csv). This Set
+        // names the inherently VARIABLE-power moves whose BP is computed from live
+        // battle state (HP/weight/speed/stat-stages/consecutive use) — they are EXEMPT
+        // from the hard clamp so the clamp never flattens their mechanic. Everything
+        // else (including Return/Frustration, which are NOT listed here) is clamped to
+        // the city cap. Keep in sync with the variable-power blocks in performAction.
+        const _STORY_VARPOW_CLAMP_EXEMPT = new Set([
+            'Rollout', 'Ice Ball', 'Fury Cutter', 'Echoed Voice', 'Hidden Power',
+            'Flail', 'Reversal', 'Magnitude', 'Natural Gift', 'Fling',
+            'Wring Out', 'Hard Press', 'Crush Grip', 'Eruption', 'Water Spout',
+            'Dragon Energy', 'Final Gambit', 'Low Kick', 'Grass Knot', 'Heavy Slam',
+            'Heat Crash', 'Punishment', 'Stored Power', 'Power Trip', 'Gyro Ball',
+            'Electro Ball', 'Last Respects', 'Rage Fist', 'Weather Ball', 'Terrain Pulse',
+        ]);
+        // _storyBattleBpCap lives in the STORY scope (next to _storyMoveBpCapForCity) and
+        // is reached here via window._storyBattleBpCap — the battle engine scope cannot
+        // see story-scope symbols (sm / cityIndexFromEventIndex) except through window.
+
         async function performAction(isPlayer, move) {
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
@@ -26863,6 +26883,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (modifier !== 1) d = _pokeRound(d * modifier);
                     return Math.max(1, Math.floor(d));
                 };
+                // Story per-city BP clamp (System A): hard-ceiling the move's effective
+                // base power at the city cap so a leaked over-cap move (voucher / preset /
+                // CSV / Return's 102 override) can't out-hit the pacing. Variable-power
+                // moves are exempt (see _STORY_VARPOW_CLAMP_EXEMPT); the starter keeps its
+                // 60-BP floor. Fixed-damage moves override `damage` below, so they're
+                // unaffected regardless.
+                {
+                    const _cityCap = (typeof window._storyBattleBpCap === 'function')
+                        ? window._storyBattleBpCap(attacker, isPlayer, state) : Infinity;
+                    if (_cityCap !== Infinity && basePower > _cityCap && !_STORY_VARPOW_CLAMP_EXEMPT.has(move.name)) {
+                        basePower = _cityCap;
+                    }
+                }
                 let damage = _stagedDamage(basePower);
                 // Glass Cannon Pact artifact: +25% all damage, both sides
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
@@ -38615,12 +38648,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyFoeItemTier(city) {
             if ((city | 0) < 0) return 3; // Frontier / generator: full meta items
             const c = city | 0;
-            if (c <= 1) return 0; // C0-1: Battle Dojo not open yet → no held items
-            // Phase 3 (ceiling parity): derive the foe item tier from the PLAYER's
-            // Battle-Dojo item clock so foes never out-tier the player at any city —
-            // White Belt (dojo stage 0) → berries (tier 1) · Black Belt (stage 1, C5)
-            // → staples (tier 2) · Grandmaster (stage 2, C8) → best meta (tier 3).
-            // Previously berries/staples/best each opened ONE city early for foes.
+            if (c <= 1) return 0; // C0-1: foes hold no items yet (deliberate early soften)
+            // Ceiling parity: derive the foe item tier from the PLAYER's Battle-Dojo item
+            // clock so foes never out-tier the player at any city — White Belt (dojo stage
+            // 0, C2-3) → berries (tier 1) · Black Belt (stage 1, C4-5) → staples (tier 2) ·
+            // Master (stage 2, C6-7) → best meta (tier 3) · Grandmaster (stage 3, C8+) → all.
             return (_npcStageForCity('dojo', c) | 0) + 1;
         }
         // Stamp IVs onto a build. Default behavior: only set when none are present
@@ -41146,7 +41178,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // sm.routeShown (route-interstitial fire-once, keyed by battle-row eventIndex).
         // All additive; migrateStoryPreV26 seeds them and back-fills routeShown for
         // any row at/behind eventIndex so resumed saves never replay a stale route.
-        const SAVE_VER = 27;
+        const SAVE_VER = 28;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV22 against a saved `version`).
@@ -41769,6 +41801,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof sm.banterStats[k] !== 'number') sm.banterStats[k] = 0;
             }
             if (!sm.banterPersona || typeof sm.banterPersona !== 'object') sm.banterPersona = { id: 'wildcard', tier: 0 };
+        }
+        /** v28: Dojo goes 3→4 tiers (NPC_STAGE_CITY.dojo [2,5,8] → [1,4,6,8]) and the
+         *  per-stage cap becomes per-CITY. Two additive fixes, no destructive rewrites:
+         *   (a) Resync sm.npcStageSeen.dojo to the NEW ladder for the player's current
+         *       city so the one-time tier-up gifts don't re-fire (or mis-fire) after the
+         *       stage indices shifted. Dojo stage is otherwise DERIVED from city on every
+         *       read, so nothing else persisted needs touching.
+         *   (b) Mirror the starter slot's `starter` flag onto its build so the in-battle
+         *       mon (mon.buildData) carries it — the per-city BP clamp reads
+         *       attacker.buildData.starter for the 60-BP starter floor.
+         *  Intended behaviour shift (NOT a bug): a mid-run save that had Awakened
+         *  abilities unlocked under the old C5 Black Belt now re-locks NEW awakening
+         *  until C8 (Grandmaster). Abilities ALREADY chosen on saved builds persist
+         *  un-stripped (they live on the build and are never re-validated). */
+        function migrateStoryPreV28() {
+            try {
+                if (!sm.npcStageSeen || typeof sm.npcStageSeen !== 'object') sm.npcStageSeen = {};
+                let c = 0; try { c = cityIndexFromEventIndex(sm.eventIndex | 0) | 0; } catch (e) { c = 0; }
+                sm.npcStageSeen.dojo = _npcStageForCity('dojo', c < 0 ? 0 : c);
+            } catch (e) {}
+            try {
+                if (Array.isArray(sm.team)) {
+                    for (const slot of sm.team) {
+                        if (slot && slot.starter === true && slot.build && typeof slot.build === 'object') {
+                            slot.build.starter = true;
+                        }
+                    }
+                }
+            } catch (e) {}
         }
         /** v26: Narration overhaul travel/journal state. All additive — courier
          *  errands, the journal NPC roster, per-run recap flags, and the route
@@ -42395,6 +42456,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 27) {
                     try { migrateStoryPreV27(); } catch (e) { console.warn('[Story] v27 vibe-exchange migrate', e); }
                 }
+                if (_loadedVer < 28) {
+                    try { migrateStoryPreV28(); } catch (e) { console.warn('[Story] v28 dojo 4-tier / BP-cap migrate', e); }
+                }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -42836,17 +42900,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_GRADE_BIAS_ROW_AFTER_GL2 = 11;
         const STORY_GRADE_BIAS_ROW_GL4 = 24;
         const STORY_GRADE_BIAS_ROW_GL6 = 38;
+        // Per-phase grade-1 bias magnitude (user-owned balance numbers). Each shifts mass
+        // toward the strongest AVAILABLE grade; a 0%-weight grade in the row stays 0 (the
+        // formula multiplies the existing weight, so "no change when 0%" is automatic).
+        //   GL2 phase (post-GL2 … GL4): mild       — unchanged
+        //   GL4 phase (City 4–6):       stronger   — bumped 0.30 → 0.42 (1.6.0)
+        //   GL6 phase (City 6+, league):strongest  — bumped 0.40 → 0.55 (1.6.0)
+        const STORY_GRADE_K_GL2 = 0.20;
+        const STORY_GRADE_K_GL4 = 0.42;
+        const STORY_GRADE_K_GL6 = 0.55;
         // After GL6, each further story battle adds a small amount to k (grade-1 pressure), capped.
-        // Effective max k = base 0.40 (GL6+) + ramp cap 0.14 = 0.54, so no further clamp is needed.
+        // Effective max k = base 0.55 (GL6+) + ramp cap 0.14 = 0.69, so g4's (1 - k) factor
+        // stays positive (0.31) — no further clamp needed.
         const STORY_GRADE_POST_GL6_RAMP_PER_ROW = 0.0048;
         const STORY_GRADE_POST_GL6_RAMP_CAP = 0.14;
         /** @param {number|undefined} storyRowIdx first column of STORY_EVENTS_RAW for this battle */
         function applyStoryProgressToGradeWeights(gw, storyRowIdx) {
             if (!gw || storyRowIdx == null || !(sm && sm.active)) return gw;
             let k = 0;
-            if (storyRowIdx >= STORY_GRADE_BIAS_ROW_GL6) k = 0.40;
-            else if (storyRowIdx >= STORY_GRADE_BIAS_ROW_GL4) k = 0.30;
-            else if (storyRowIdx > STORY_GRADE_BIAS_ROW_AFTER_GL2) k = 0.20;
+            if (storyRowIdx >= STORY_GRADE_BIAS_ROW_GL6) k = STORY_GRADE_K_GL6;
+            else if (storyRowIdx >= STORY_GRADE_BIAS_ROW_GL4) k = STORY_GRADE_K_GL4;
+            else if (storyRowIdx > STORY_GRADE_BIAS_ROW_AFTER_GL2) k = STORY_GRADE_K_GL2;
             else return gw;
             if (storyRowIdx > STORY_GRADE_BIAS_ROW_GL6) {
                 const steps = (storyRowIdx | 0) - STORY_GRADE_BIAS_ROW_GL6;
@@ -44197,9 +44271,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Phase 3 (ceiling parity): facility-gated unlocks (hidden abilities, item
             // tiers, evolutions, move stage) are bound to the city and must NEVER open
             // for foes before the PLAYER can field them. We derive the foe gates from
-            // the player's Battle-Dojo clock (NPC_STAGE_CITY.dojo = [2,5,8]) so they're
-            // parity-locked: Hidden abilities at Black Belt (C5), tier-2 staples at C5,
-            // tier-3 meta at Grandmaster (C8). Off outside an active story roll
+            // the player's Battle-Dojo clock (NPC_STAGE_CITY.dojo = [1,4,6,8]) so they're
+            // parity-locked: Hidden abilities at Black Belt (C4), tier-2 staples at C4,
+            // tier-3 meta at Master (C6). Off outside an active story roll
             // (frontier / generator), which use full Smogon builds.
             let _foeCity = -1;
             try {
@@ -44210,7 +44284,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             // Hidden abilities unlock for foes at the player's Black Belt (dojo stage 1 =
-            // C5) — previously C4, one city ahead of the player (fixed for parity).
+            // C4) — parity-locked to the player's own Hidden-ability unlock city.
             const _hiddenAllowedForFoes = _foeCity < 0 || (_npcStageForCity('dojo', _foeCity) | 0) >= 1;
             const _foeItemTierCap = _storyFoeItemTier(_foeCity); // C0 none · C1-3 berries · C4-6 staples · C7+ best
             const _diffStep = _trainerDifficultyStep(eventType);
@@ -45189,8 +45263,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyGateFoeMovesByCity: (...a) => _storyGateFoeMovesByCity(...a),
                     storyApplyMoveStageToBuild: (...a) => _storyApplyMoveStageToBuild(...a),
                     storyCoherentMoveRanker: (...a) => _storyCoherentMoveRanker(...a),
-                    storyMoveBpCapForStage: (...a) => _storyMoveBpCapForStage(...a),
-                    storyFoeMoveBpCapForStage: (...a) => _storyFoeMoveBpCapForStage(...a),
+                    storyMoveBpCapForCity: (...a) => _storyMoveBpCapForCity(...a),
+                    storyFoeMoveBpCapForCity: (...a) => _storyFoeMoveBpCapForCity(...a),
                     moveTagIndexResultFor: (...a) => _moveTagIndexResultFor(...a),
                     ensureMoveData: (...a) => ensureMoveData(...a),
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
@@ -45198,6 +45272,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyDifficultyCoinMult: () => storyDifficultyCoinMult(),
                     storyStartingGoldBonus: (...a) => _storyStartingGoldBonus(...a),
                     applyDifficultyToGradeWeights: (...a) => applyDifficultyToGradeWeights(...a),
+                    applyStoryProgressToGradeWeights: (...a) => applyStoryProgressToGradeWeights(...a),
                     buildPokemon: (...a) => buildPokemon(...a),
                     getStatTooltipHTML: (...a) => getStatTooltipHTML(...a),
                     findTrainerDataByName,
@@ -53307,6 +53382,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const newSlot = { name: ch.name, build: ch.build, id: 'm_' + Math.random().toString(36).slice(2, 10) };
             if (isStarterPick) {
                 newSlot.starter = true;
+                // Mirror onto the build so the in-battle mon (mon.buildData) carries it —
+                // the per-city BP clamp reads attacker.buildData.starter for the 60-BP floor.
+                if (newSlot.build && typeof newSlot.build === 'object') newSlot.build.starter = true;
             }
             sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
@@ -54781,40 +54859,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
         // full. From City 6 (Guru) on both sides have full move access → no-op. Deterministic.
-        // Enemy move pool mirrors the player's TUTOR STAGE at this city (tutor:[0,3,6]):
-        //   C0–C2 (Inner Strength): Natural only, BP ≤ 60 (foe ceiling — tighter than the
-        //                           player's 75 to soften the very early game; see
-        //                           STORY_FOE_MOVE_BP_CAP_BY_STAGE).
-        //   C3–C5 (Unleashed):      ALL Natural (cap lifts; no Learnt yet).
+        // Enemy move CATEGORY mirrors the player's TUTOR TIER at this city (tutor:[0,3,6]):
+        //   C0–C2 (Inner Strength): Natural only.
+        //   C3–C5 (Unleashed):      ALL Natural (no Learnt yet).
         //   C6+   (Guru):           + Learnt + Awakened — i.e. unfiltered.
+        // The BP ceiling itself is PER-CITY (STORY_FOE_MOVE_BP_CAP_BY_CITY = the player
+        // cap by the foe ≤ player rule): C0=40 · C1/C2=60 · C3/C4=80 · C5+=∞.
         // When a Smogon preset move sits above the allowed tag, drop it and refill from
         // the allowed pool (ordered by usage % so the replacement is meta-sensible, not
         // a random low-usage egg move).
-        // ─── Move-pacing ceiling (Phase 1) ──────────────────────────────────────
-        // The single move-pacing authority, shared by the foe gate and (Phase 3)
-        // player-obtainable builds. Keyed on the TUTOR STAGE so both sides unlock in
-        // lockstep with the player's Move Tutor:
-        //   stage 0 (Inner Strength, C0–C2): Natural-tag moves only, BP ≤ 75 (player).
-        //                                     Foes use a tighter ≤ 60 cap — see below.
-        //   stage 1 (Unleashed,       C3–C5): ALL Natural — the BP cap lifts; still no Learnt.
-        //   stage 2 (Guru,            C6+):   no gate (full Smogon pool).
-        // STORY_MOVE_BP_CAP_BY_STAGE is a user-owned balance number (0 = no cap). This is
-        // the PLAYER-side authority (Move Tutor pool / stripe classification).
-        const STORY_MOVE_BP_CAP_BY_STAGE = [75, 0, 0];
-        function _storyMoveBpCapForStage(stage) {
-            const c = STORY_MOVE_BP_CAP_BY_STAGE[stage | 0];
-            return (c && c > 0) ? c : Infinity;
+        // ─── Move-pacing ceiling (per-CITY) ─────────────────────────────────────
+        // The single move-pacing authority, shared by the foe gate, the player tutor
+        // pool, and the stripe classifier. Keyed on the ARRIVED CITY (not the tutor
+        // STAGE) so the early game ramps in fine steps independent of the
+        // Inner / Unleashed / Guru tutor TIERS (which still gate move CATEGORIES —
+        // natural vs learnt vs awakened — via NPC_STAGE_CITY.tutor = [0,3,6]):
+        //   C0 = 40 · C1 = 60 · C2 = 60 · C3 = 80 · C4 = 80 · C5+ = ∞ (no cap).
+        // An index past the array end clamps to the last entry (so C5+ → 0 → ∞).
+        // User-owned balance numbers (0 = no cap). PLAYER and FOE caps are separate
+        // arrays so they can be tuned apart; today they're equal (foe ≤ player rule).
+        // STARTER EXCEPTION: the professor's first-choice starter (build.starter) gets a
+        // 60-BP floor so it keeps its already-learnt up-to-60 moves at C0 — the floor
+        // only bites where the city cap is below 60 (i.e. C0).
+        const STORY_MOVE_BP_CAP_BY_CITY     = [40, 60, 60, 80, 80, 0];
+        const STORY_FOE_MOVE_BP_CAP_BY_CITY = [40, 60, 60, 80, 80, 0];
+        const STORY_STARTER_BP_CAP_FLOOR = 60;
+        function _storyBpCapFromTable(tbl, city, isStarter) {
+            const a = (Array.isArray(tbl) && tbl.length) ? tbl : [0];
+            const i = Math.max(0, Math.min(a.length - 1, city | 0));
+            const raw = a[i];
+            let c = (raw && raw > 0) ? raw : Infinity;
+            if (isStarter && c < STORY_STARTER_BP_CAP_FLOOR) c = STORY_STARTER_BP_CAP_FLOOR;
+            return c;
         }
-        // FOE-only ceiling: enemy movesets before City 2 (tutor stage 0 = C0–C1) are held
-        // to a tighter BP cap than the player's tutor pool, to soften the very early game.
-        // Foe ≤ player at every stage; the player's pool keeps STORY_MOVE_BP_CAP_BY_STAGE.
-        // User-owned balance number (0 = fall back to no cap). Only _storyGateFoeMovesByCity
-        // reads this — see the bpCapOverride arg threaded into _storyApplyMoveStageToBuild.
-        const STORY_FOE_MOVE_BP_CAP_BY_STAGE = [60, 0, 0];
-        function _storyFoeMoveBpCapForStage(stage) {
-            const c = STORY_FOE_MOVE_BP_CAP_BY_STAGE[stage | 0];
-            return (c && c > 0) ? c : Infinity;
+        function _storyMoveBpCapForCity(city, isStarter) { return _storyBpCapFromTable(STORY_MOVE_BP_CAP_BY_CITY, city, isStarter); }
+        function _storyFoeMoveBpCapForCity(city)         { return _storyBpCapFromTable(STORY_FOE_MOVE_BP_CAP_BY_CITY, city, false); }
+        // Battle-time BP clamp resolver (System A safety net). Defined in the STORY scope
+        // so it can read sm / cityIndexFromEventIndex / _storyMoveBpCapForCity directly;
+        // the battle engine calls it via window._storyBattleBpCap(attacker,isPlayer,state)
+        // since that scope only reaches story state through window. Returns Infinity (no
+        // clamp) outside an active story battle. The starter (build.starter) gets the
+        // 60-BP floor. Memoized by eventIndex so the city scan runs once per city, not
+        // once per hit.
+        let _storyBpCapMemoEI = -999, _storyBpCapMemoVal = Infinity, _storyBpCapMemoStarter = Infinity;
+        function _storyBattleBpCap(attacker, isPlayer, battleState) {
+            if (!(battleState && battleState.mode === 'story' && sm && sm.active)) return Infinity;
+            const ei = sm.eventIndex | 0;
+            if (_storyBpCapMemoEI !== ei) {
+                _storyBpCapMemoEI = ei;
+                let cc = 0; try { cc = cityIndexFromEventIndex(ei) | 0; } catch (e) { cc = 0; }
+                _storyBpCapMemoVal = _storyMoveBpCapForCity(cc, false);
+                _storyBpCapMemoStarter = _storyMoveBpCapForCity(cc, true);
+            }
+            const isStarter = !!(isPlayer && attacker && attacker.buildData && attacker.buildData.starter);
+            return isStarter ? _storyBpCapMemoStarter : _storyBpCapMemoVal;
         }
+        try { window._storyBattleBpCap = _storyBattleBpCap; } catch (e) {}
         // Default backfill ranker: Smogon usage % (kept for reference / tie-breaks).
         function _storyDefaultMoveRanker(names, monName) {
             let pctOf = null;
@@ -54872,7 +54972,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // added at L2 the way it was previously.
             const allowed = new Set(learn.natural || learn.tier1 || []);
             if (!allowed.size) return false; // thin learnset → leave alone
-            const bpCap = (bpCapOverride != null) ? bpCapOverride : _storyMoveBpCapForStage(stage);
+            // Callers always pass a city-resolved cap via bpCapOverride; absent one,
+            // fall back to no cap (the tag filter below still applies).
+            const bpCap = (bpCapOverride != null) ? bpCapOverride : Infinity;
             const baseName = (mv) => String(mv).split('/')[0];
             const bpOK = (mv) => {
                 if (bpCap === Infinity) return true;
@@ -54912,9 +55014,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (city < 0) return;
             const tutorStage = _npcStageForCity('tutor', city); // 0 / 1 / 2
             if (tutorStage >= 2) return; // Guru — no tag filter, full Smogon pool stays
-            // Foes use the tighter FOE BP ceiling (≤ the player's tutor cap) so enemy
-            // movesets are softer than the player's pool in the very early game.
-            const foeBpCap = _storyFoeMoveBpCapForStage(tutorStage);
+            // Foes use the per-city FOE BP ceiling (≤ the player's cap by the foe ≤
+            // player rule) — keyed on the battle's city, not the tutor stage, so the
+            // 40/60/60/80/80 ramp applies even within the Unleashed tier (C3–C4 = 80).
+            const foeBpCap = _storyFoeMoveBpCapForCity(city);
             const species = [...new Set(team.map(s => s && s.name).filter(Boolean))];
             // Warm all species' learnsets in parallel so the pre-fight delay stays small.
             try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
@@ -64991,11 +65094,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // (more entries = more tiers). Move a number to rebalance when an NPC
         // levels up, or split a facility's tiers independently of its debut city.
         const NPC_STAGE_CITY = {
-            // Battle Dojo:  White Belt (natural abilities · berry/basic items)
-            //             → Black Belt (+Hidden abilities · +decent items)
-            //             → Grandmaster (+Awakened abilities · +all items)
-            // Matrix (post-merge from main): White Belt C2–C4, Black Belt C5–C7, Grandmaster C8+.
-            dojo:   [2, 5, 8],
+            // Battle Dojo (4 tiers):
+            //   White Belt   (C1–C3) — natural abilities · berry/basic (tier-1) items
+            //   Black Belt   (C4–C5) — +Hidden abilities · +staple (tier-2) items
+            //   Master       (C6–C7) — +ALL items (tier-3 meta) · abilities unchanged
+            //   Grandmaster  (C8+)   — +Awakened abilities (the deepest, off-legal picks)
+            // Item access tops out at Master (C6); Awakened is held back to Grandmaster (C8).
+            dojo:   [1, 4, 6, 8],
             // Move Tutor (user model): three stages along TWO axes — what a move IS
             // (innate vs taught) AND how hard it hits (the Inner power cap):
             //   Inner Strength (L1) — innate moves (level-up/egg/transfer/evo), BP ≤ 75.   C0-C2.
@@ -65009,7 +65114,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             evolab: [2, 4],
         };
         const NPC_STAGE_NAMES = {
-            dojo:   ['White Belt', 'Black Belt', 'Grandmaster'],
+            dojo:   ['White Belt', 'Black Belt', 'Master', 'Grandmaster'],
             tutor:  ['Inner Strength', 'Unleashed', 'Guru'],
             evolab: ['Evolution Teacher', 'Evolution Master'],
         };
@@ -65107,7 +65212,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // facility's normal first-visit beat.
         const _NPC_STAGE_GIFT = {
             tutor:  { 1: { heartScale: 1 }, 2: { heartScale: 2 } },
-            dojo:   { 1: { abilityCapsule: 1 }, 2: { abilityCapsule: 1, emblemHonor: 1 } },
+            dojo:   { 1: { abilityCapsule: 1 }, 2: { emblemHonor: 1 }, 3: { abilityCapsule: 1, emblemHonor: 1 } },
             evolab: { 1: { stoneToken: 1 } },
         };
         const _NPC_STAGE_INTRO = {
@@ -65117,7 +65222,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             },
             dojo:   {
                 1: 'Dojo Master: "Black Belt material. Hidden talents are on the table now — take this Ability Capsule and wake one up, no charge."',
-                2: 'Dojo Master: "Grandmaster. Nothing is off-limits in my dojo. An Ability Capsule and an Emblem of Honor — spend them however you like."',
+                2: 'Dojo Master: "Master rank. Every item in my cabinet is open to you now — nothing on the shelf is locked away. The deepest abilities still sleep a while longer, but your gear will want for nothing. Take this Emblem of Honor."',
+                3: 'Dojo Master: "Grandmaster. The awakened arts are yours at last — the picks no honest trainer admits to teaching. An Ability Capsule and an Emblem of Honor; wake something that shouldn\'t be possible."',
             },
             evolab: {
                 1: 'Evolution Master: "Your bond has deepened; the final forms will ascend at your word — and my reach now extends to your PC: I can evolve a stored partner in place, with no need to free a slot on your team. Take this token, too — one free pick from the shop, gratis."',
@@ -65169,11 +65275,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Dojo ability tier → the Dojo stage that unlocks it for this species:
-        //   0 = basic    (slots 0/1)            · White Belt
-        //   1 = Hidden   (slot H)               · Black Belt
-        //   2 = Awakened (curated OP pick OR any off-legal Smogon ability) · Grandmaster
+        //   0 = basic    (slots 0/1)            · White Belt  (C1)
+        //   1 = Hidden   (slot H)               · Black Belt  (C4)
+        //   3 = Awakened (curated OP pick OR any off-legal Smogon ability) · Grandmaster (C8)
+        // (Stage 2 = Master unlocks all ITEMS but no new abilities, so no ability maps to it.)
         // Single source of truth for cost, the card lock, and the change-handler
-        // gate (mirrors _dojoItemTier-1 for held items).
+        // gate; the value is compared directly against the player's Dojo stage.
         function _dojoAbilityUnlockStage(monName, abilityName) {
             if (!abilityName) return 0;
             try {
@@ -65183,18 +65290,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (const k of Object.keys(slots)) {                      // basic legal slot
                     if (k !== 'H' && slots[k] === abilityName) return 0;
                 }
-                if (new Set(_opAbilitiesForMon(monName)).has(abilityName)) return 2; // curated Awakened
+                if (new Set(_opAbilitiesForMon(monName)).has(abilityName)) return 3; // curated Awakened
                 // Off-legal Smogon pick: present in the species' Dojo pool but
                 // outside every legal slot (own + form base + dex) → Awakened.
                 const legal = new Set((_tutorGetPoolForMon(monName) || {}).legalAbilities || []);
-                if (legal.size && !legal.has(abilityName)) return 2;
+                if (legal.size && !legal.has(abilityName)) return 3;
             } catch (e) {}
             return 0;
         }
         function _abilityCostForMon(monName, abilityName) {
             if (!abilityName) return TUTOR_COST_ABILITY;
             const stage = _dojoAbilityUnlockStage(monName, abilityName);
-            return stage >= 2 ? TUTOR_COST_AWAKEN : stage === 1 ? TUTOR_COST_HIDDEN : TUTOR_COST_ABILITY;
+            return stage >= 3 ? TUTOR_COST_AWAKEN : stage >= 1 ? TUTOR_COST_HIDDEN : TUTOR_COST_ABILITY;
         }
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
@@ -65711,10 +65818,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
             // / Choice item move bypasses Natural-only). They're already merged into
             // `full` for the Show-All view; gating reads ONLY the cache buckets here.
-            // Staging (user model): L1 Inner = Natural within the BP cap (≤75); L2 Unleashed =
-            // ALL Natural (cap lifts); L3 Guru = + Learnt (TM/HM/TR/tutor) + Awakened.
-            // Mirrors the foe move-gate so the player and enemies pace together.
-            const _bpCap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(stage) : Infinity;
+            // Staging (user model): the tutor TIER (Inner/Unleashed/Guru) gates move
+            // CATEGORIES — Natural (L1/L2) then + Learnt + Awakened (L3 Guru). The BP cap
+            // is now PER-CITY (40/60/60/80/80/∞), so C3–C4 (Unleashed) is held to 80 and
+            // C5 lifts. Mirrors the foe move-gate so the player and enemies pace together.
+            // (The starter's already-known over-cap moves are preserved by the
+            // currently-known-moves passthrough below, so no starter floor is needed here.)
+            let _bpCity = 0; try { _bpCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _bpCity = 0; }
+            const _bpCap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_bpCity) : Infinity;
             const _bpUnder = (m) => {
                 if (_bpCap === Infinity) return true;
                 const md = ensureMoveData(String(m).split('/')[0]);
@@ -66334,7 +66445,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _natSource = (typeof _tutorLearnsetCache !== 'undefined' && _tutorLearnsetCache.has(monName))
                 ? _tutorLearnsetCache.get(monName)
                 : null;
-            const _innerCap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(0) : 75;
+            let _innerCity = 0; try { _innerCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _innerCity = 0; }
+            const _innerCap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_innerCity) : 75;
             const _eggLvlSet = (stageRule.tutorStage === 0 && _natSource)
                 ? new Set(((_natSource.natural && _natSource.natural.length ? _natSource.natural : _natSource.tier1) || [])
                     .filter(m => { if (_innerCap === Infinity) return true; const md = ensureMoveData(String(m).split('/')[0]); return !(md && md.pow) || (md.pow | 0) <= _innerCap; }))
@@ -67301,17 +67413,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The Move Tutor STAGE that first makes a move teachable for this species —
         // the single source of truth shared by the Stage filter chips AND the card's
         // color stripe, so both speak the same language the gate enforces:
-        //   'inner'     — an innate (Natural) move within the Inner-Strength power cap.
-        //   'unleashed' — an innate move ABOVE the cap (opens once the ceiling lifts).
+        //   'inner'     — an innate (Natural) move within the current city's power cap.
+        //   'unleashed' — an innate move ABOVE the cap (opens once the city cap lifts).
         //   'guru'      — a Learnt (TM/HM/tutor/TR/event) or Awakened (off-legal) move.
         // Returns null while the learnset tag is still cold — the picker re-renders once
         // the cache warms — so an unclassified move shows no stripe and no stage match,
-        // exactly as before the stripe was stage-keyed.
+        // exactly as before the stripe was stage-keyed. The cap is now PER-CITY, so the
+        // inner/unleashed split moves with the player's city (40/60/60/80/80/∞).
         function _txMoveStageKey(monName, moveName) {
             const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, moveName) : null;
             if (tag === 'learnt' || tag === 'awakened') return 'guru';
             if (tag !== 'natural') return null; // unknown / cold cache — no stage yet
-            const cap = (typeof _storyMoveBpCapForStage === 'function') ? _storyMoveBpCapForStage(0) : 75;
+            let _capCity = 0; try { _capCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _capCity = 0; }
+            const cap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_capCity) : 75;
             if (cap === Infinity) return 'inner';
             const md = ensureMoveData(String(moveName).split('/')[0]);
             const pow = (md && md.pow) ? (md.pow | 0) : 0;
@@ -67905,10 +68019,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txDojoAbilLockedCountBadge(monName, abils, awakenSet, haSet, dojoStage) {
             try {
                 let locked = 0;
-                if (dojoStage < 1 && haSet && haSet.size) locked += haSet.size;
-                if (dojoStage < 2 && awakenSet && awakenSet.size) locked += awakenSet.size;
+                if (dojoStage < 1 && haSet && haSet.size) locked += haSet.size;          // Hidden → Black Belt (stage 1)
+                if (dojoStage < 3 && awakenSet && awakenSet.size) locked += awakenSet.size; // Awakened → Grandmaster (stage 3)
                 if (!locked) return '';
-                const nextStage = dojoStage < 1 ? 'Black Belt' : 'Grandmaster';
+                const nextStage = (dojoStage < 1) ? _npcStageName('dojo', 1) : _npcStageName('dojo', 3);
                 const title = `${locked} abilit${locked === 1 ? 'y' : 'ies'} unlock at ${nextStage}.`;
                 return ` <span class="tx-tab-badge" title="${_esc(title)}">🔒 ${locked}</span>`;
             } catch (e) { return ''; }
@@ -67983,9 +68097,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const cap = stage >= 2 ? 3 : (stage >= 1 ? 2 : 1);
                     const label = cap === 3 ? 'All tiers' : cap === 2 ? 'T1 + T2' : 'T1 only';
                     const title = cap === 3
-                        ? 'Grandmaster — every item tier is unlocked.'
+                        ? 'Master — every item tier is unlocked.'
                         : cap === 2
-                        ? 'Black Belt — berries (T1) and staples (T2) unlocked. Choice/AV/Boots unlock at Grandmaster.'
+                        ? 'Black Belt — berries (T1) and staples (T2) unlocked. Choice/AV/Boots unlock at Master.'
                         : 'White Belt — berry tier unlocked. Higher tiers reveal as the Dojo levels up.';
                     tierBadge = `<span class="tx-tier-badge" title="${_esc(title)}">🔒 ${label}</span>`;
                 }
@@ -68221,8 +68335,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // pick is never locked.
             let lockStage = -1;
             if (ctx && typeof ctx.dojoStage === 'number' && !isCurrent) {
-                if (isAwaken) lockStage = 2;
-                else if (abilityName === ctx.haName) lockStage = 1;
+                if (isAwaken) lockStage = 3;                          // Awakened → Grandmaster (C8)
+                else if (abilityName === ctx.haName) lockStage = 1;  // Hidden → Black Belt (C4)
             }
             const locked = lockStage > (ctx ? ctx.dojoStage : 99);
             // Role tag (intrinsic — independent of Smogon usage), so every ability reads
@@ -68927,10 +69041,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sPool = _txStarredPoolMemo(t.name);
             const sparseBanner = _txSparseBannerHtml(t.name);
 
-            // Battle Dojo stage (city-anchored): 0 White Belt · 1 Black Belt · 2 Grandmaster.
-            // Items unlock by tier (berries → +decent → +all); abilities unlock
-            // natural → +Hidden → +Awakened. The currently-equipped pick always stays
-            // visible so a higher-tier loadout from a prior city reads correctly.
+            // Battle Dojo stage (city-anchored): 0 White Belt · 1 Black Belt · 2 Master · 3 Grandmaster.
+            // Items unlock by tier (berries → +staples → +all by Master/C6); abilities
+            // unlock natural → +Hidden (Black Belt/C4) → +Awakened (Grandmaster/C8). The
+            // currently-equipped pick always stays visible so a higher-tier loadout from a
+            // prior city reads correctly.
             const _dojoStage = _npcStage('dojo');
             const _haName = (() => { try { const bs = baseStats[t.name]; return (bs && bs.abilities && bs.abilities.H) || null; } catch (e) { return null; } })();
 
