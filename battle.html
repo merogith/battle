@@ -18414,7 +18414,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rank.style.cssText = 'color:#ffd700;font-weight:bold;min-width:28px;';
                     const meta = document.createElement('div');
                     meta.style.flex = '1';
-                    meta.innerHTML = '<div style="color:#eee;font-weight:bold;">' + (row.display_name || '?') + '</div><div style="color:#81d4fa;">Rounds: ' + (row.rounds_cleared != null ? row.rounds_cleared : '?') + '</div>';
+                    // display_name comes off the wire from gauntlet_leaderboard, whose
+                    // insert policy is `with check (true)` — any anon client can POST an
+                    // arbitrary string, so it must never reach innerHTML. Build the rows
+                    // as elements and set .textContent (same pattern as the rank span).
+                    const nameEl = document.createElement('div');
+                    nameEl.style.cssText = 'color:#eee;font-weight:bold;';
+                    nameEl.textContent = row.display_name || '?';
+                    const roundsEl = document.createElement('div');
+                    roundsEl.style.cssText = 'color:#81d4fa;';
+                    roundsEl.textContent = 'Rounds: ' + (row.rounds_cleared != null ? row.rounds_cleared : '?');
+                    meta.appendChild(nameEl);
+                    meta.appendChild(roundsEl);
                     const icons = document.createElement('div');
                     icons.style.display = 'flex'; icons.style.flexWrap = 'wrap'; icons.style.gap = '2px';
                     const party = row.final_party;
@@ -18718,7 +18729,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { logMsg('Opponent joined — you can draft now.', 'info'); } catch (e2) {}
                         try { await window.OnlineBattle.refreshDraftDeadlineOnly(); } catch (e) { console.warn(e); }
                     }
-                    const n = settings.partySize;
+                    // Drive the "both drafts complete" trigger off the match-options
+                    // contract (authoritative for both peers) rather than the host's
+                    // local settings — if the two ever diverge, the host would never
+                    // fire startBattle() and both players hang on the draft forever.
+                    const n = (d.match_options && d.match_options.partySize) || settings.partySize;
                     if (window.OnlineBattle.isHost() && (d.p1_draft || []).length === n && (d.p2_draft || []).length === n && !window.__hostOnlineBattleStarted) {
                         window.__hostOnlineBattleStarted = true;
                         await startBattle();
