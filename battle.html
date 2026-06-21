@@ -9302,7 +9302,7 @@
     </script>
 </head>
 <body>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.6.0</div>
+    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.6.1</div>
     <!-- Rotate overlay (portrait phones only) -->
     <div id="rotate-overlay">
         <div class="rotate-icon">▒</div>
@@ -22225,6 +22225,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _vp = (typeof _varPowerMoveBP !== "undefined" && _varPowerMoveBP) ? _varPowerMoveBP[move.name] : 0;
                 if (_vp > 0) _basePow = _vp; else return 0;
             }
+            // Story per-city BP cap (1.6.1): clamp the estimate so previews match what the
+            // move will actually deal AND the bot stops over-valuing a soon-to-be-clamped
+            // move. Mirrors the battle clamp (variable-power moves are no longer exempt).
+            try {
+                if (typeof window._storyBattleBpCap === 'function') {
+                    const _aiCap = window._storyBattleBpCap(attacker, attacker === state.pActive, state);
+                    if (_aiCap !== Infinity && _basePow > _aiCap) _basePow = _aiCap;
+                }
+            } catch (e) {}
             if (abilityImmunity(move, defender, attacker)) return 0;
             let eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             let stab = calcSTAB(attacker, move);
@@ -24695,22 +24704,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             abortPostCanMoveBlock(attacker);
         }
 
-        // Story per-city BP clamp (System A safety net): the per-city move cap is
-        // primarily a tutor/foe POOL filter, but high-BP moves can still slip into a
-        // moveset (heart-scale vouchers, foe signature presets, builds.csv). This Set
-        // names the inherently VARIABLE-power moves whose BP is computed from live
-        // battle state (HP/weight/speed/stat-stages/consecutive use) — they are EXEMPT
-        // from the hard clamp so the clamp never flattens their mechanic. Everything
-        // else (including Return/Frustration, which are NOT listed here) is clamped to
-        // the city cap. Keep in sync with the variable-power blocks in performAction.
-        const _STORY_VARPOW_CLAMP_EXEMPT = new Set([
-            'Rollout', 'Ice Ball', 'Fury Cutter', 'Echoed Voice', 'Hidden Power',
-            'Flail', 'Reversal', 'Magnitude', 'Natural Gift', 'Fling',
-            'Wring Out', 'Hard Press', 'Crush Grip', 'Eruption', 'Water Spout',
-            'Dragon Energy', 'Final Gambit', 'Low Kick', 'Grass Knot', 'Heavy Slam',
-            'Heat Crash', 'Punishment', 'Stored Power', 'Power Trip', 'Gyro Ball',
-            'Electro Ball', 'Last Respects', 'Rage Fist', 'Weather Ball', 'Terrain Pulse',
-        ]);
+        // Story per-city BP clamp exempt set. 1.6.1: variable-power moves (Eruption,
+        // Flail, Low Kick, Gyro Ball, …) are NO LONGER exempt — the maintainer chose to
+        // clamp their computed base power to the city cap too (they're evaluated in the
+        // variable-power blocks BEFORE the clamp at the _stagedDamage call, so the clamp
+        // sees their final BP and lowers it). The set is kept (empty) as a forward hook in
+        // case a specific move ever needs to bypass the clamp. Fixed/percent-damage moves
+        // (Seismic Toss, Super Fang, Final Gambit, Counter…) override `damage` AFTER the
+        // clamp — the flat-damage ones are handled by their own city cap (System G).
+        const _STORY_VARPOW_CLAMP_EXEMPT = new Set([]);
+        // Flat / level-based damage moves (Night Shade, Seismic Toss, Dragon Rage, Sonic
+        // Boom, Psywave) are capped to the city cap at their own early-return handlers in
+        // performAction (System G, 1.6.1) — see the `_capFlat` helper there. NOT %/reflect
+        // moves (Super Fang, Endeavor, Counter, Mirror Coat, Metal Burst, Final Gambit),
+        // whose damage model is orthogonal to base power.
         // _storyBattleBpCap lives in the STORY scope (next to _storyMoveBpCapForCity) and
         // is reached here via window._storyBattleBpCap — the battle engine scope cannot
         // see story-scope symbols (sm / cityIndexFromEventIndex) except through window.
@@ -26051,11 +26058,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     changeStage(defender, 'atk', 1); await sleep(1000); return;
                 }
 
+                // Per-city cap for flat/level damage moves (1.6.1, System G): these resolve
+                // here with an early return, so cap their flat output to the city cap (they
+                // ignore base power, so the cap number — 40/60/80 — is the natural ceiling).
+                // Makes them scale with progression instead of a fixed amount C0→C8.
+                // No-op outside an active story run (resolver returns Infinity).
+                const _flatDmgCap = (typeof window._storyBattleBpCap === 'function')
+                    ? window._storyBattleBpCap(attacker, isPlayer, state) : Infinity;
+                const _capFlat = (dmg) => (_flatDmgCap !== Infinity) ? Math.max(1, Math.min(dmg, _flatDmgCap)) : dmg;
                 // SEISMIC TOSS: Fixed 50 damage at Lv50
                 if (move.name === "Seismic Toss") {
                     let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
                     if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
-                    let damage = 50;
+                    let damage = _capFlat(50);
                     if (defender.volatile.sub > 0) {
                         let subDmg = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDmg;
                         logMsg(`The substitute took ${subDmg} damage!`, 'dmg');
@@ -26073,7 +26088,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Night Shade") {
                     let typeEff = getMoveEffectiveness("Ghost", defender.type1, defender.type2);
                     if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
-                    let damage = 50;
+                    let damage = _capFlat(50);
                     if (defender.volatile.sub > 0) { let subDmg = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDmg; logMsg(`The substitute took ${subDmg} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let actualDmg = Math.min(defender.currentHp, damage); defender.currentHp -= actualDmg; defender.tookDamageThisTurn = true; logMsg(`It dealt ${actualDmg} damage!`, 'dmg'); if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} }
                     updateUI(); await sleep(1000); return;
@@ -26081,7 +26096,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // DRAGON RAGE: Always deals exactly 40 damage (no type chart, no crits)
                 if (move.name === "Dragon Rage") {
-                    let damage = 40;
+                    let damage = _capFlat(40);
                     if (defender.volatile.sub > 0) { let subDmg = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDmg; logMsg(`The substitute took ${subDmg} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let actualDmg = Math.min(defender.currentHp, damage); defender.currentHp -= actualDmg; defender.tookDamageThisTurn = true; logMsg(`It dealt ${actualDmg} damage!`, 'dmg'); if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} }
                     updateUI(); await sleep(1000); return;
@@ -26091,7 +26106,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Sonic Boom" || move.name === "SonicBoom") {
                     let typeEff = getMoveEffectiveness("Normal", defender.type1, defender.type2);
                     if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
-                    let damage = 20;
+                    let damage = _capFlat(20);
                     if (defender.volatile.sub > 0) { let subDmg = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDmg; logMsg(`The substitute took ${subDmg} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let actualDmg = Math.min(defender.currentHp, damage); defender.currentHp -= actualDmg; defender.tookDamageThisTurn = true; logMsg(`It dealt ${actualDmg} damage!`, 'dmg'); if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} }
                     updateUI(); await sleep(1000); return;
@@ -26188,7 +26203,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Psywave") {
                     let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
                     if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
-                    let damage = Math.max(1, Math.floor(50 * (0.5 + Math.random())));
+                    let damage = _capFlat(Math.max(1, Math.floor(50 * (0.5 + Math.random()))));
                     if (defender.volatile.sub > 0) { let s = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= s; logMsg(`The substitute took ${s} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let a = Math.min(defender.currentHp, damage); defender.currentHp -= a; defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`It dealt ${a} damage!`, 'dmg'); }
                     updateUI(); await sleep(1000); return;
@@ -45519,6 +45534,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     moveTagForSpecies: (...a) => _moveTagForSpecies(...a),
                     storyGateFoeMovesByCity: (...a) => _storyGateFoeMovesByCity(...a),
                     storyApplyMoveStageToBuild: (...a) => _storyApplyMoveStageToBuild(...a),
+                    storyFilterBuildMovesForCity: (...a) => _storyFilterBuildMovesForCity(...a),
                     storyCoherentMoveRanker: (...a) => _storyCoherentMoveRanker(...a),
                     storyMoveBpCapForCity: (...a) => _storyMoveBpCapForCity(...a),
                     storyFoeMoveBpCapForCity: (...a) => _storyFoeMoveBpCapForCity(...a),
@@ -51612,10 +51628,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Hatch every egg whose gate badge is met, in place (party + PC). Keeps the
         // slot id/position so a party egg becomes a party mon (no slot juggling).
         // Returns the hatched species names (for the reveal scene).
-        function _storyHatchEligibleEggs() {
+        // async so each hatchling's moveset can be filtered to the hatch-city cap
+        // (1.6.1) — eggs hatch with a wild build, so they follow the same ruleset.
+        async function _storyHatchEligibleEggs() {
             const curCity = cityIndexFromEventIndex(sm.eventIndex | 0);
             const hatched = [];
-            const doList = (arr) => {
+            const doList = async (arr) => {
                 if (!Array.isArray(arr)) return;
                 for (const slot of arr) {
                     if (!slot || !slot.isEgg) continue;
@@ -51630,11 +51648,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.build = _eggBuildFor(sp);
                     slot.name = sp;
                     delete slot.isEgg; delete slot.eggSpecies; delete slot.eggLaidAt; delete slot.eggLaidAtCity;
+                    try { await _storyFilterBuildMovesForCity(slot.build, sp, curCity, false); } catch (e) {}
                     hatched.push(sp);
                 }
             };
-            doList(sm.team);
-            doList(sm.pcBox);
+            await doList(sm.team);
+            await doList(sm.pcBox);
             if (hatched.length) { try { save(); } catch (_) {} }
             return hatched;
         }
@@ -52644,10 +52663,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     curCity === (s.eggLaidAtCity | 0) + STORY_EGG_HATCH_CITY_DELTA - 1);
                 if (stirring) { if (!sm.flags) sm.flags = {}; sm.flags._daycareHatchQueued = true; }
             } catch (_) {}
-            try {
-                const hatched = _storyHatchEligibleEggs();
-                if (hatched.length) setTimeout(() => { try { _storyHatchRevealScene(hatched); } catch (_) {} }, 350);
-            } catch (e) { console.warn('[Egg] city hatch', e); }
+            _storyHatchEligibleEggs().then((hatched) => {
+                if (hatched && hatched.length) setTimeout(() => { try { _storyHatchRevealScene(hatched); } catch (_) {} }, 350);
+            }).catch((e) => console.warn('[Egg] city hatch', e));
             return false;
         }
 
@@ -53588,7 +53606,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function profAccept() {
+        async function profAccept() {
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch) return;
@@ -53653,6 +53671,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Mirror onto the build so the in-battle mon (mon.buildData) carries it —
                 // the per-city BP clamp reads attacker.buildData.starter for the 60-BP floor.
                 if (newSlot.build && typeof newSlot.build === 'object') newSlot.build.starter = true;
+            }
+            // Per-city moveset filter (1.6.1): non-starter professor gifts follow the
+            // city cap like trainers/wild catches (re-teachable via the Move Tutor as the
+            // cap lifts). The starter is exempt — its 60-BP battle clamp floor governs.
+            if (!newSlot.starter) {
+                try { await _storyFilterBuildMovesForCity(newSlot.build, newSlot.name, cityIdx, false); } catch (e) {}
             }
             sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
@@ -55294,6 +55318,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker, foeBpCap);
             }
         }
+        // Apply the per-city moveset pool filter to a SINGLE player-side build (wild
+        // encounter / caught mon / gift) so wild/caught/gift Pokémon follow the same
+        // "natural moves within the city cap" ruleset as trainer foes — stripped moves
+        // are re-teachable via the Move Tutor as the city cap lifts. Mirrors the foe gate
+        // but uses the PLAYER cap and warms one species. Safe no-op when: starter (its
+        // 60-BP battle clamp floor already governs), Guru tier (full pool), sm inactive,
+        // bad city, or cold learnset cache (offline/jsdom — the battle clamp still caps
+        // damage). RNG-free (the ranker is pure) so it never perturbs seeded rolls.
+        async function _storyFilterBuildMovesForCity(build, species, city, isStarter) {
+            if (!build || !Array.isArray(build.m) || !build.m.length) return false;
+            if (isStarter || build.starter) return false;   // starter exempt
+            if (!sm || !sm.active || species == null || city == null || (city | 0) < 0) return false;
+            const tutorStage = _npcStageForCity('tutor', city | 0);
+            if (tutorStage >= 2) return false;               // Guru — full pool, matches trainers
+            try { await _tutorFetchLearnsetMoveNames(species); } catch (e) {}
+            return _storyApplyMoveStageToBuild(build, species, tutorStage, _storyCoherentMoveRanker,
+                                               _storyMoveBpCapForCity(city | 0, false));
+        }
+        try { window._storyFilterBuildMovesForCity = _storyFilterBuildMovesForCity; } catch (e) {}
         // ── CAMP BUFFER (Camp System PR C) — the between-events beat ──────────
         // docs/story-design/camp/CAMP_FLOW.md. Camp lives in the FLOW, never as a
         // STORY_EVENTS_RAW row (inserting rows would re-point every save's eventIndex
@@ -60171,7 +60214,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex.seen.includes(name)) sm.pokedex.seen.push(name);
         }
 
-        function enterCatchEncounter(wildMon, onComplete, options) {
+        // async ONLY so it can host the per-city moveset warm/filter below (the single
+        // chokepoint every wild/safari/roaming/crucible/wander catch funnels through).
+        // Callers fire-and-forget; the await precedes _catchState so the reveal + the
+        // caught build both read the filtered moveset.
+        async function enterCatchEncounter(wildMon, onComplete, options) {
             // Lock in the shiny roll at encounter time. Every catch path (wild,
             // safari, roaming, boss, tutorial) ought to have rolled this
             // already, but stamping it here guarantees the catch header,
@@ -60183,6 +60230,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             const wildShiny = !!(wildMon && wildMon.build && wildMon.build._isShiny);
+            // Per-city moveset filter (1.6.1): wild mons follow the same "natural moves
+            // within the city cap" ruleset as trainer foes. The caught mon inherits this
+            // filtered build verbatim (_catchHandleSuccess copies enc.build), so no second
+            // filter is needed at catch time. No-op outside an active story run.
+            {
+                let _encCity = 0; try { _encCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+                try { await _storyFilterBuildMovesForCity(wildMon && wildMon.build, wildMon && wildMon.name, _encCity, false); } catch (e) {}
+            }
             _catchState = {
                 encounter: wildMon,
                 onComplete: onComplete || null,

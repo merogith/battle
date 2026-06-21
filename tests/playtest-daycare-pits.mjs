@@ -131,13 +131,13 @@ check('team slot count unchanged (parent out, egg in)', sm.team.length === 6);
 act('ACT 2 — Carry the egg → it will NOT hatch early, hatches at Gym 7');
 const eggId = eggs1[0].id;
 sm.badges = 6;
-check('at 6 badges the egg has not hatched', SM._hatchEligibleEggs().length === 0 && sm.team.some(s => s.id === eggId && s.isEgg));
+check('at 6 badges the egg has not hatched', (await SM._hatchEligibleEggs()).length === 0 && sm.team.some(s => s.id === eggId && s.isEgg));
 check('egg is not counted as a fighter', SM._countFighters() === 5); // 5 real mons + 1 egg
 sm.badges = 7;
 // In the real game this fires automatically on the next city return:
 //   renderCityActions → _pitsReleaseBondedOnCityReturn → _storyHatchEligibleEggs  (battle.html:36017)
 // (enterCity's full hub render won't complete headlessly, so we call the same hatch fn the hook calls.)
-const hatchedNames = SM._hatchEligibleEggs();
+const hatchedNames = await SM._hatchEligibleEggs();
 check('egg hatches at Gym 7', hatchedNames.length === 1);
 const hatchedSlot = [...sm.team, ...sm.pcBox].find(s => s && s.id === eggId);
 check('the egg slot is now a real (non-egg) Pokémon', !!hatchedSlot && !hatchedSlot.isEgg && !!hatchedSlot.build);
