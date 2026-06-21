@@ -16860,6 +16860,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return m;
         }
 
+        // ── Hidden Power: one logical move, one stable per-Pokémon type ─────────
+        // Every Pokémon carries a single `hpType` (one of the 16 legal Hidden Power
+        // types — all types except Normal and Fairy). It is the single source of
+        // truth: the equipped "Hidden Power" move is always projected to its typed
+        // variant ("Hidden Power Fire") so damage / AI / UI keep reading an ordinary
+        // typed move. Resolution priority: an already-assigned type wins (stable
+        // across save / PC storage / evolution / battle); else parse a build-specified
+        // variant (preserves curated Smogon coverage); else a deterministic,
+        // replay-safe per-individual pick (buildPokemon also runs in display and
+        // quick-play contexts, so we must NOT perturb the story RNG stream here).
+        const HP_TYPES = ['Fighting','Flying','Poison','Ground','Rock','Bug','Ghost','Steel','Fire','Water','Grass','Electric','Psychic','Ice','Dragon','Dark'];
+        const HP_TYPE_SET = new Set(HP_TYPES);
+        window.HP_TYPES = HP_TYPES;
+        function hiddenPowerTypeFromName(mName) {
+            if (typeof mName !== 'string') return null;
+            const m = mName.match(/^Hidden Power\s+(\w+)$/);
+            return m && HP_TYPE_SET.has(m[1]) ? m[1] : null;
+        }
+        function _hpHashPick(str) {
+            let h = 2166136261 >>> 0;
+            const s = String(str);
+            for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+            return HP_TYPES[(h >>> 0) % HP_TYPES.length];
+        }
+        // Resolve + persist a build's Hidden Power type, then project any Hidden Power
+        // move slot onto the matching typed variant. Returns the resolved type.
+        function resolveHiddenPowerForBuild(build, monName) {
+            if (!build) return null;
+            let t = HP_TYPE_SET.has(build.hpType) ? build.hpType : null;
+            if (!t && Array.isArray(build.m)) {
+                for (const mv of build.m) { const p = hiddenPowerTypeFromName(mv); if (p) { t = p; break; } }
+            }
+            if (!t) t = _hpHashPick(String(monName) + '|' + (build.id || '') + '|' + (Array.isArray(build.m) ? build.m.join(',') : '') + '|' + (build.n || ''));
+            build.hpType = t;
+            if (Array.isArray(build.m)) build.m = build.m.map(mv => /^Hidden Power(\s|$)/.test(mv) ? ('Hidden Power ' + t) : mv);
+            return t;
+        }
+        window.resolveHiddenPowerForBuild = resolveHiddenPowerForBuild;
+
         function buildPokemon(monName, build) {
             monName = monName.trim();
             // Handle Farfetch'd name variants
@@ -16877,6 +16916,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else if (build.m.length > 4) {
                 build.m = build.m.slice(0, 4);
             }
+            // Hidden Power: resolve this mon's single stable type and project the
+            // equipped move onto its typed variant (see resolveHiddenPowerForBuild).
+            resolveHiddenPowerForBuild(build, monName);
             let generatedMoves = build.m.map(mName => buildMoveObject(mName));
             let evs = build.evs || { hp:0, atk:0, spa:0, def:0, spd:0, spe:0 };
             // VGC EV cap: max 252 per stat, 510 total
