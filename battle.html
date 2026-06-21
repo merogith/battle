@@ -9268,7 +9268,25 @@
         // Register the offline service worker (no-op on file:// or unsupported browsers).
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('sw.js').catch(function () {});
+                navigator.serviceWorker.register('sw.js').then(function () {
+                    // After the SW is ready, check whether the downloaded offline snapshot is stale
+                    // (live manifest digest differs) and surface a non-intrusive "update available".
+                    if (typeof window.checkOfflineUpdate === 'function') {
+                        setTimeout(function () { window.checkOfflineUpdate(); }, 1500);
+                    }
+                }).catch(function () {});
+            });
+            // A NEW SW replaced an existing one → fresh app code is live. Reload ONCE to pick it up,
+            // but never on first install (no prior controller) and never mid-battle (would interrupt
+            // play). _hadController distinguishes an update from initial control via clients.claim().
+            var _swReloaded = false;
+            var _hadController = !!navigator.serviceWorker.controller;
+            navigator.serviceWorker.addEventListener('controllerchange', function () {
+                if (_swReloaded || !_hadController) return;
+                _swReloaded = true;
+                var inBattle = false;
+                try { inBattle = !!(window.state && window.state.mode && !window.state.isOver); } catch (e) {}
+                if (!inBattle) location.reload();
             });
         }
     </script>
@@ -9508,7 +9526,7 @@
                 <button type="button" id="install-app-btn" onclick="window.promptInstallApp()" style="color: var(--accent); min-height:40px; padding:6px 14px;">INSTALL</button>
             </div>
             <div class="settings-row" id="offline-dl-row">
-                <span>Download for offline</span>
+                <span>Download for offline <span id="offline-dl-update-note" style="display:none; color:var(--hp-amber,#ffb74d); font-size:10px;">• update available</span></span>
                 <button type="button" id="offline-dl-btn" onclick="window.openDownloadOfflineFlow()" style="color: var(--accent); min-height:40px; padding:6px 14px;">SET UP</button>
             </div>
             <div id="offline-dl-panel" class="hidden" style="padding:8px 4px 4px; border-top:1px solid #333; margin-bottom:6px;">
@@ -12896,7 +12914,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
             gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
-            offlineDownload: { completed: false, version: null, at: null }, /* opt-in "Download for offline" state; mutate via Object.assign */
+            offlineDownload: { completed: false, digest: null, at: null }, /* opt-in "Download for offline" state; digest = last-applied manifest digest; mutate via Object.assign */
             /* Build-pool filters (read by makeBuild / loadBuildsCSV consumers):
                - allowDoublesBuilds: include VGC / Battle Spot Doubles sets in singles rolls. Off by default
                  so Tailwind / Wide Guard / Follow Me roles don't pollute singles encounters.
@@ -13029,46 +13047,92 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
         }
 
-        // ── Opt-in "Download for offline" (talks to sw.js) ───────────────────────────────────
-        let _offlineManifest = null;        // memoized offline-assets.json
-        let _offlineSwVersion = 'battle-v2'; // mirror sw.js CACHE_VERSION; surfaces "re-download"
+        // ── Opt-in "Download for offline" + differential update (talks to sw.js) ──────────────
+        // First run caches everything (~686 MB). Later, the service worker diffs the live manifest's
+        // per-file content hashes against the last-applied snapshot and fetches ONLY the changed/new
+        // files — so an update is a few MB (a new battle.html + a handful of files), not the whole lot.
+        let _offlineManifest = null;        // memoized offline-assets.json (now { digest, files:[{u,h,b}] })
         function _fmtBytes(n) {
             if (!n) return '0 MB';
             const mb = n / (1024 * 1024);
-            return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(0) + ' MB';
+            return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(mb < 10 ? 1 : 0) + ' MB';
         }
-        async function _getOfflineManifest() {
-            if (_offlineManifest) return _offlineManifest;
+        async function _getOfflineManifest(force) {
+            if (_offlineManifest && !force) return _offlineManifest;
             const res = await fetch('offline-assets.json', { cache: 'no-cache' });
             _offlineManifest = await res.json();
             return _offlineManifest;
         }
+        async function _offlineActiveSW() {
+            if (!('serviceWorker' in navigator)) return null;
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                return navigator.serviceWorker.controller || (reg && reg.active) || null;
+            } catch (e) { return null; }
+        }
+        // Post a message to the SW and resolve on the matching reply (by batchId), optionally
+        // forwarding intermediate SYNC_PROGRESS to onProgress. Resolves on doneType.
+        function _swRequest(sw, message, doneType, onProgress) {
+            return new Promise((resolve) => {
+                const batchId = message.batchId || Date.now();
+                const onMsg = (ev) => {
+                    const d = ev.data || {};
+                    if (d.batchId !== batchId) return;
+                    if (d.type === 'SYNC_PROGRESS' && onProgress) onProgress(d);
+                    else if (d.type === doneType) { navigator.serviceWorker.removeEventListener('message', onMsg); resolve(d); }
+                };
+                navigator.serviceWorker.addEventListener('message', onMsg);
+                sw.postMessage({ ...message, batchId });
+            });
+        }
+        // Returns { firstRun, upToDate, fetchCount, bytes, manifest } or null if unavailable.
+        async function _offlineSyncPlan() {
+            const sw = await _offlineActiveSW();
+            if (!sw) return null;
+            const manifest = await _getOfflineManifest(true);
+            const plan = await _swRequest(sw, { type: 'SYNC_ASSETS', manifest, dryRun: true }, 'SYNC_PLAN');
+            const od = settings.offlineDownload || {};
+            return {
+                manifest,
+                fetchCount: plan.fetchCount, removeCount: plan.removeCount, bytes: plan.bytes,
+                firstRun: !od.completed,
+                upToDate: od.completed && plan.fetchCount === 0 && plan.removeCount === 0,
+            };
+        }
         window.openDownloadOfflineFlow = async function() {
             const panel = document.getElementById('offline-dl-panel');
             const sizeEl = document.getElementById('offline-dl-size');
+            const startBtn = document.getElementById('offline-dl-start');
             if (!panel) return;
-            // SW required (HTTPS/localhost only). Disable gracefully otherwise.
+            panel.classList.remove('hidden');
             if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) {
-                panel.classList.remove('hidden');
                 if (sizeEl) sizeEl.textContent = 'Offline download needs the installed/HTTPS app — not available here.';
-                const sb = document.getElementById('offline-dl-start'); if (sb) sb.disabled = true;
+                if (startBtn) startBtn.disabled = true;
                 return;
             }
-            panel.classList.remove('hidden');
+            if (sizeEl) sizeEl.textContent = 'Checking…';
             try {
-                const m = await _getOfflineManifest();
-                let line = `Caches everything for offline play: ${m.fileCount} files, ~${_fmtBytes(m.totalBytes)}.`;
-                const od = settings.offlineDownload || {};
-                if (od.completed && od.version === _offlineSwVersion) line += ' ✓ Already downloaded.';
-                else if (od.completed) line += ' ⚠ Update available — re-download.';
-                if (navigator.storage && navigator.storage.estimate) {
+                const plan = await _offlineSyncPlan();
+                if (!plan) { if (sizeEl) sizeEl.textContent = 'Reload the page once, then try again.'; return; }
+                let line;
+                if (plan.upToDate) {
+                    line = '✓ Up to date — everything is cached for offline play.';
+                    if (startBtn) startBtn.textContent = 'Re-check';
+                } else if (plan.firstRun) {
+                    line = `Download for offline play: ${plan.manifest.fileCount} files, ~${_fmtBytes(plan.manifest.totalBytes)}. On phones this is large — Wi-Fi recommended.`;
+                    if (startBtn) startBtn.textContent = 'Download all';
+                } else {
+                    line = `Update available — ${plan.fetchCount} changed file${plan.fetchCount === 1 ? '' : 's'}, ~${_fmtBytes(plan.bytes)} to download` + (plan.removeCount ? ` (${plan.removeCount} removed).` : '.');
+                    if (startBtn) startBtn.textContent = 'Update';
+                }
+                if (startBtn) startBtn.disabled = false;
+                if (navigator.storage && navigator.storage.estimate && plan.bytes) {
                     try {
                         const est = await navigator.storage.estimate();
                         const free = (est.quota || 0) - (est.usage || 0);
-                        if (free && m.totalBytes > free) line += ` ⚠ May exceed free storage (~${_fmtBytes(free)} free).`;
+                        if (free && plan.bytes > free) line += ` ⚠ May exceed free storage (~${_fmtBytes(free)} free).`;
                     } catch (e) {}
                 }
-                line += ' On phones this is large — Wi-Fi recommended.';
                 if (sizeEl) sizeEl.textContent = line;
             } catch (e) {
                 if (sizeEl) sizeEl.textContent = 'Could not read the asset list. Check your connection and reload.';
@@ -13079,52 +13143,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const statusEl = document.getElementById('offline-dl-status');
             const fillEl = document.getElementById('offline-dl-bar-fill');
             const setStatus = (t) => { if (statusEl) statusEl.textContent = t; };
-            if (!('serviceWorker' in navigator)) { setStatus('Service worker unavailable.'); return; }
-            let m;
-            try { m = await _getOfflineManifest(); } catch (e) { setStatus('Could not load asset list.'); return; }
-            // Resolve an active SW; controller is null on the very first load (pre-activation).
-            let sw = null;
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                sw = navigator.serviceWorker.controller || (reg && reg.active);
-            } catch (e) {}
+            const sw = await _offlineActiveSW();
             if (!sw) { setStatus('Reload the page once, then try again.'); return; }
-            const batchId = Date.now();
-            if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Downloading…'; }
-            const onMsg = (ev) => {
-                const d = ev.data || {};
-                if (d.batchId !== batchId) return;
-                if (d.type === 'CACHE_PROGRESS') {
-                    const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
-                    if (fillEl) fillEl.style.width = pct + '%';
-                    setStatus(`${d.done} / ${d.total} cached${d.failed ? ' · ' + d.failed + ' failed' : ''}…`);
-                } else if (d.type === 'CACHE_DONE') {
-                    if (fillEl) fillEl.style.width = '100%';
-                    setStatus(`Done — ${d.done} cached${d.failed ? ', ' + d.failed + ' failed (storage may be full)' : ''}.`);
-                    Object.assign(settings.offlineDownload, { completed: true, version: _offlineSwVersion, at: new Date().toISOString() });
-                    persistMiscSettings();
-                    if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Download all'; }
-                    const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'DONE';
-                    navigator.serviceWorker.removeEventListener('message', onMsg);
-                }
-            };
-            navigator.serviceWorker.addEventListener('message', onMsg);
+            let manifest;
+            try { manifest = await _getOfflineManifest(true); } catch (e) { setStatus('Could not load asset list.'); return; }
+            if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Working…'; }
             setStatus('Starting…');
-            sw.postMessage({ type: 'CACHE_ALL', urls: m.urls, batchId });
+            const done = await _swRequest(sw, { type: 'SYNC_ASSETS', manifest }, 'SYNC_DONE', (d) => {
+                const pct = d.total ? Math.round(d.done / d.total * 100) : 100;
+                if (fillEl) fillEl.style.width = pct + '%';
+                setStatus(`${d.done} / ${d.total} files${d.failed ? ' · ' + d.failed + ' failed' : ''}…`);
+            });
+            if (fillEl) fillEl.style.width = '100%';
+            setStatus(`Done — ${done.done} fetched${done.removed ? ', ' + done.removed + ' removed' : ''}${done.failed ? ', ' + done.failed + ' failed (storage may be full)' : ''}.`);
+            Object.assign(settings.offlineDownload, { completed: true, digest: manifest.digest, at: new Date().toISOString() });
+            persistMiscSettings();
+            const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'DONE';
+            window.refreshOfflineUpdateBadge && window.refreshOfflineUpdateBadge(false);
+            if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Re-check'; }
         };
-        window.clearOfflineCache = function() {
+        window.clearOfflineCache = async function() {
             const statusEl = document.getElementById('offline-dl-status');
             const fillEl = document.getElementById('offline-dl-bar-fill');
-            if (!('serviceWorker' in navigator)) return;
-            navigator.serviceWorker.ready.then((reg) => {
-                const sw = navigator.serviceWorker.controller || (reg && reg.active);
-                if (sw) sw.postMessage({ type: 'CLEAR_CACHE' });
-            });
-            Object.assign(settings.offlineDownload, { completed: false, version: null, at: null });
+            const sw = await _offlineActiveSW();
+            if (sw) sw.postMessage({ type: 'CLEAR_CACHE' });
+            Object.assign(settings.offlineDownload, { completed: false, digest: null, at: null });
             persistMiscSettings();
             if (fillEl) fillEl.style.width = '0%';
             if (statusEl) statusEl.textContent = 'Offline cache cleared.';
             const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'SET UP';
+            window.refreshOfflineUpdateBadge && window.refreshOfflineUpdateBadge(false);
+        };
+        // Launch-time auto-detect: if the player has a download and the live manifest digest differs,
+        // surface a non-intrusive "update available" badge on the Settings button + offline row.
+        window.refreshOfflineUpdateBadge = function(show) {
+            const row = document.getElementById('offline-dl-row');
+            const note = document.getElementById('offline-dl-update-note');
+            if (note) note.style.display = show ? '' : 'none';
+            if (row) row.classList.toggle('has-offline-update', !!show);
+            document.querySelectorAll('.offline-update-dot').forEach((d) => { d.style.display = show ? '' : 'none'; });
+        };
+        window.checkOfflineUpdate = async function() {
+            try {
+                const od = settings.offlineDownload || {};
+                if (!od.completed || !('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
+                const manifest = await _getOfflineManifest(true);
+                window.refreshOfflineUpdateBadge(!!manifest.digest && manifest.digest !== od.digest);
+            } catch (e) {}
         };
 
         // ── Native "Install app" prompt (Chromium desktop/Android). iOS fires no event; it uses
