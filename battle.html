@@ -15507,6 +15507,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         function handleSpriteError(img) {
             let src = img.src;
+            // Already on the bundled offline placeholder — the fallback chain is fully
+            // terminated. Guard here (not just via onerror=null) so nothing re-routes the
+            // placeholder back out to a remote URL via the local-sprite branch below.
+            if (/sprites\/placeholder\.svg/.test(src)) return;
             let alt = img.alt;
             let isShiny = img.dataset.shiny === 'true';
             let isBack = img.dataset.back === 'true';
@@ -65717,6 +65721,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //              External teaching — opens at the Guru tier.
         //   awakened = moves used by this species' Smogon CSV builds (legal or off-legal)
         //              that are NOT in any gen's learnset. Also Guru tier (the off-legal book).
+        // Hidden Power is mentor-gated (surfaced only via sm.hiddenPowerUnlocked, see
+        // _tutorGetStagedMovePoolAsync) and is pinned to the 'natural' price tier by
+        // _moveTagForSpecies regardless of species. It must therefore NOT appear in any
+        // species' learnset buckets here, or the bucket (learnt, from its TM/tutor method)
+        // would contradict that fixed tag. Strip it from every bucket so the two stay
+        // consistent (locks tests/suites/story-move-tag-index + hidden-power-mentor).
+        function _stripHiddenPowerBuckets(r) {
+            if (!r) return r;
+            for (const k of ['all', 'tier1', 'natural', 'learnt', 'awakened']) {
+                if (Array.isArray(r[k])) r[k] = r[k].filter(m => !/^Hidden Power/.test(m));
+            }
+            return r;
+        }
         async function _tutorFetchLearnsetMoveNames(monName) {
             const cached = _tutorLearnsetCache.get(monName);
             if (cached) return cached;
@@ -65724,7 +65741,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // (deterministic, no network). The live @pkmn/dex below is the fallback
             // only for species missing from data/move-tags.json.
             const fromIdx = _moveTagIndexResultFor(monName);
-            if (fromIdx) { _tutorLearnsetCache.set(monName, fromIdx); return fromIdx; }
+            if (fromIdx) { _stripHiddenPowerBuckets(fromIdx); _tutorLearnsetCache.set(monName, fromIdx); return fromIdx; }
             const D = getPssDex();
             if (!D || !D.learnsets || typeof D.learnsets.get !== 'function') {
                 const empty = { all: [], tier1: [] };
@@ -65786,13 +65803,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!natural.has(mv) && !learnt.has(mv) && _tutorMoveAllowedStrict(mv)) awakened.add(mv);
                 }
             } catch (e3) {}
-            const result = {
+            const result = _stripHiddenPowerBuckets({
                 all: [...all].sort(),
                 tier1: [...tier1].sort(),
                 natural: [...natural].sort(),
                 learnt: [...learnt].sort(),
                 awakened: [...awakened].sort(),
-            };
+            });
             _tutorLearnsetCache.set(monName, result);
             return result;
         }
