@@ -68278,12 +68278,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t.classList.contains('tx-search-input')) {
                     const kind = t.dataset.kind || 'moves';
                     _txState.search[kind] = (t.value || '').trim();
-                    // Phase 2 fast path: when the only change is the search
-                    // string, toggle [hidden] on existing cards instead of
-                    // rebuilding the DOM. Falls back to the full re-render
-                    // when the fast update isn't possible (e.g. card grid
-                    // not yet rendered for this kind / mon).
-                    if (_txSearchFastUpdate(kind)) return;
+                    // Fast paths. MOVES must go through _txMoveGridFastUpdate (the
+                    // FULL predicate): the grid fast path keeps filtered-out cards in
+                    // the DOM as [hidden] for cheap toggle-back, so a search-only
+                    // predicate would resurrect cards an active type/category/stage
+                    // chip has hidden (and clearing the search would unhide the whole
+                    // grid under a still-active filter pill). Other kinds never keep
+                    // hidden leftovers (their filters always full-render), so the
+                    // cheaper search-only toggle stays correct there.
+                    if (kind === 'moves') {
+                        if (_txMoveGridFastUpdate()) return;
+                    } else if (_txSearchFastUpdate(kind)) return;
                     _scheduleSearchRender();
                     return;
                 }
@@ -68312,7 +68317,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_storyTutorOpenIdx !== -1) {
                         _storyTutorOpenIdx = -1;
                         _txPending = null;
-                        void renderTutorTeam();
+                        // skipFetch: open/close doesn't change any pool — reuse the caches
+                        // warmed at enterTutor (a bare call would clear + re-await every
+                        // team member's staged pool and flicker locked cards unlocked).
+                        void renderTutorTeam(true);
                     }
                     return;
                 }
@@ -68330,11 +68338,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_storyTutorOpenIdx === nextIdx) {
                             _storyTutorOpenIdx = -1;
                             _txPending = null;
-                            void renderTutorTeam();
+                            void renderTutorTeam(true);
                         } else {
                             _storyTutorOpenIdx = nextIdx;
                             _txPending = null;
-                            void renderTutorTeam();
+                            void renderTutorTeam(true);
                             setTimeout(() => {
                                 try {
                                     const teamEl = document.getElementById('story-tutor-team');
@@ -68372,7 +68380,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (Number.isFinite(nextIdx)) {
                         _storyTutorOpenIdx = (_storyTutorOpenIdx === nextIdx) ? -1 : nextIdx;
                         _txPending = null;
-                        void renderTutorTeam();
+                        void renderTutorTeam(true);
                     }
                     return;
                 }
@@ -68616,9 +68624,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // player taps "Show all".
             const recOnly = _txState.filter.recOnly && _txState.filter.recOnly[kind];
             // Show the sort selector whenever the list is un-curated — including sparse
-            // species, where ★ has no usage data to filter on (it sits out), so the
-            // player should still be able to sort the full list.
-            const showSort = !recOnly || !!opts.sparse;
+            // species, where ★ has no usage data to filter on (it sits out), and when an
+            // active Stage/tier filter bypasses ★ (the predicate shows the full tier
+            // then, so manual sorting is meaningful again).
+            const tierN = (_txState.filter.tier && _txState.filter.tier[kind]) ? _txState.filter.tier[kind].size : 0;
+            const showSort = !recOnly || !!opts.sparse || tierN > 0;
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
                 : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
@@ -68712,6 +68722,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_txState.filter.natureDown && _txState.filter.natureDown !== 'any') {
                     const d = _txState.filter.natureDown;
                     out.push(`<button type="button" class="tx-active-filter tx-active-filter--down" data-filter-kind="natureDown" data-filter-value="${d}" title="Remove -${d} filter">${window.uiSvgX()} -${_TX_STAT_LABEL[d]||d}</button>`);
+                }
+            }
+            // Stage/tier selections (moves / items / abilities). Counted by
+            // _txActiveFilterCount, so they MUST surface as pills too — otherwise a
+            // collapsed filter sheet on phone shows "Filters (1)" with no visible,
+            // removable cause ("the list is mysteriously short"). The pill carries the
+            // same data attributes as the tier chip, so the existing delegation branch
+            // toggles the tier off.
+            const tierSel = (_txState.filter.tier && _txState.filter.tier[kind]) || null;
+            if (tierSel && tierSel.size && _TX_TIER_DEFS[kind]) {
+                const labelOf = new Map(_TX_TIER_DEFS[kind]);
+                for (const v of tierSel) {
+                    const label = labelOf.get(v) || v;
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--tier" data-filter-kind="tier" data-tier-kind="${kind}" data-filter-value="${v}" title="Remove ${_esc(label)} stage filter">${window.uiSvgX()} ${_esc(label)}</button>`);
                 }
             }
             if (!out.length) return '';
@@ -69590,6 +69614,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (emptyEl) emptyEl.remove();
 
                 // Small toolbar bits that reflect filter state (no card work).
+                // Search-visibility mirror of the full render: the ✨ suggest panel
+                // (which wraps the Best-picks rows) hides while a query is active.
+                const sug = body.querySelector('details.tx-suggest');
+                if (sug) sug.hidden = !!(_txState.search.moves);
                 const countPill = body.querySelector('.tx-count-pill');
                 if (countPill) countPill.textContent = `${ordered.length} moves`;
                 const strip = body.querySelector('.tx-chip-strip');
@@ -70120,6 +70148,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // to baseline regressions before / after the partial-update fast paths.
             const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined')
                 ? performance.now() : 0;
+            // Render-generation token: the pool fetch below awaits per team member, so
+            // two overlapping renders can interleave. Only the NEWEST render may write
+            // the DOM — a stale one bailing out here can't overwrite fresher state
+            // (and can't briefly paint unlocked cards from a half-warmed cache).
+            const _gen = (renderTutorTeam._gen = (renderTutorTeam._gen || 0) + 1);
             // Fresh per-render memo so score / pool / tag lookups within this
             // cycle are O(1) after the first hit. See _txRender comment block.
             _txBeginRender();
@@ -70171,16 +70204,51 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
+            // A newer render started while we awaited the pools — let it own the DOM.
+            // If that newer render was a skipFetch partial, it may have painted from a
+            // cold cache (no lock pills); queue one cheap cache-backed repaint so the
+            // warm data we just fetched reaches the screen. Can't recurse: the repaint
+            // is skipFetch, so it never enters this fetch+bail path itself.
+            if (_gen !== renderTutorTeam._gen) {
+                if (showMoves && !skipFetch) setTimeout(() => { try { void renderTutorTeam(true); } catch (e) {} }, 0);
+                return;
+            }
 
             // Remember what was focused BEFORE we blow away the DOM, so we
             // can refocus the same input after the partial re-render.
             let _focusKind = null;
             let _focusSelStart = null, _focusSelEnd = null;
+            let _focusRestoreSel = null;
             try {
                 const a = document.activeElement;
                 if (a && a.classList && a.classList.contains('tx-search-input') && el.contains(a)) {
                     _focusKind = a.dataset.kind || null;
                     try { _focusSelStart = a.selectionStart; _focusSelEnd = a.selectionEnd; } catch (e) {}
+                } else if (a && a.getAttribute && el.contains(a)) {
+                    // Keyboard flow: keep focus on the card / chip / slot the user just
+                    // activated instead of dropping to <body> (which forced a full re-Tab
+                    // from the top of the screen after every interaction).
+                    const esc = (s) => String(s).replace(/["\\]/g, '\\$&');
+                    if (a.matches('.tx-card[data-card-value]')) {
+                        _focusRestoreSel = `.tx-card[data-card-value="${esc(a.getAttribute('data-card-value'))}"]`;
+                    } else if (a.matches('.tx-chip[data-filter-kind]')) {
+                        const tk = a.getAttribute('data-tier-kind');
+                        _focusRestoreSel = `.tx-chip[data-filter-kind="${esc(a.getAttribute('data-filter-kind'))}"][data-filter-value="${esc(a.getAttribute('data-filter-value') || '')}"]` + (tk ? `[data-tier-kind="${esc(tk)}"]` : '');
+                    } else if (a.matches('.tx-slot-chip[data-slot-idx], .tx-slot-card[data-slot-idx]')) {
+                        _focusRestoreSel = `.tx-slot-chip[data-slot-idx="${esc(a.getAttribute('data-slot-idx'))}"], .tx-slot-card[data-slot-idx="${esc(a.getAttribute('data-slot-idx'))}"]`;
+                    }
+                }
+            } catch (e) {}
+            // Preserve the open editor's option-grid scroll position (desktop keeps the
+            // grid as its own 60vh scroller; a full innerHTML rebuild resets it to 0 —
+            // ISSUE-011 pattern). Only restored when the same mon stays open.
+            let _prevGridScroll = null;
+            try {
+                const gEl = el.querySelector('.tx-grid');
+                if (gEl && gEl.scrollTop > 0) {
+                    const monRoot = gEl.closest('.story-tutor-mon');
+                    const tglEl = monRoot && monRoot.querySelector('.story-tutor-mon-toggle[data-team]');
+                    _prevGridScroll = { idx: tglEl ? parseInt(tglEl.dataset.team, 10) : -1, top: gEl.scrollTop };
                 }
             } catch (e) {}
 
@@ -70208,6 +70276,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const sw = el.querySelector('.tx-mon-switcher');
                 if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
             } catch (e) {}
+
+            // Restore the option-grid scroll if the same mon's editor is still open.
+            if (_prevGridScroll && _prevGridScroll.idx === _storyTutorOpenIdx) {
+                try {
+                    const gEl = el.querySelector('.tx-grid');
+                    if (gEl) gEl.scrollTop = _prevGridScroll.top;
+                } catch (e) {}
+            }
+            // Re-anchor keyboard focus on the element the user just activated.
+            if (!_focusKind && _focusRestoreSel) {
+                try {
+                    const n = el.querySelector(_focusRestoreSel);
+                    if (n) n.focus({ preventScroll: true });
+                } catch (e) {}
+            }
 
             // Refocus the search input that was active before the re-render so
             // typing stays uninterrupted. Restore caret position too.
