@@ -39603,6 +39603,51 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return nextBattleIdx;
         }
+        // Rich, spoiler-safe label for the Battle row at STORY_EVENTS_RAW[rowIdx] —
+        // the single source for the hub objective line AND the camp-return
+        // destination, extracted (v30) from renderCityActions so the two can't
+        // drift. Injected story bosses REPLACE the trainer, so the label goes
+        // opaque in the house voice (no villain name spoiled); lower-tier injects
+        // keep the trainer identity. Rival identity is never surfaced (§11.1).
+        // Returns '' for anything that isn't a Battle row. Wild-interrupt
+        // prefixing stays with the caller (it depends on where the player stands).
+        function _storyNextBattleLabelForRow(rowIdx) {
+            const row = (rowIdx >= 0) ? STORY_EVENTS_RAW[rowIdx] : null;
+            if (!row || row[1] !== 'Battle') return '';
+            const nxId = row[0] | 0;
+            const nxEvent = String(row[2] || '');
+            const trAssign = sm.trainerAssignments && sm.trainerAssignments[nxId];
+            let nextLabel = nxEvent;
+            const gm = nxEvent.match(/^Gym Leader ([1-8])$/);
+            if (gm) nextLabel = `Gym ${gm[1]}` + (trAssign ? ` — ${trAssign}` : '');
+            else if (nxEvent === 'Rival') {
+                const _rp = getRivalEncounterPhase(nxId);
+                const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
+                const _tease = _rivalTease[_rp];
+                nextLabel = `🏁 ${_rivalDisplayName()}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
+            }
+            else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
+            else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
+            else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
+            else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
+            else if (nxEvent === 'Elite Trainer') nextLabel = 'Elite Trainer';
+            else if (/^Gym Trainer/.test(nxEvent)) nextLabel = 'Gym Trainer';
+            else if (nxEvent === 'Basic Trainer') nextLabel = 'Route Trainer';
+            const _injBeat = _injectedBattleBeatForRow(rowIdx);
+            const _injLabel = _injBeat && ({
+                boss:     '⚔ An ambush waits on the road',
+                miniBoss: '⚔ Someone is blocking the road',
+                raid:     '🌑 Something stirs on the road',
+            })[_injBeat.kind];
+            if (_injLabel) {
+                nextLabel = _injLabel;
+            } else {
+                const theme = _resolveThemeForBattleRow(nxId);
+                const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
+                if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
+            }
+            return nextLabel;
+        }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
             0: ['Got your first partner? Good. Battle me before you leave town — that\'s the tradition.','No route yet. First we find out whose starter walks out of this fight.','Professor gave you a Pokémon. I brought the second half of the lesson.','Whoever wins the first battle wins the whole rivalry. Old wisdom. Probably wrong.','First fight of two careers. Make it count.','You picked your starter? Then you picked your side. Show me.'],
@@ -40009,21 +40054,79 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const lines = poolArr[idx] || poolArr[0];
             return lines[Math.floor(Math.random() * lines.length)];
         }
+        // Reactive City-Guide quote picker (v30). city-guide-quotes.json entries are
+        // tagged pools per city — { generic, preGym, postGym, rivalAhead } — so the
+        // guide reacts to the run instead of re-rolling the same six lines blind.
+        // Contract:
+        //   (a) stable per situation — the pick is remembered on sm.cityGuideQuote and
+        //       reused until the city row / badge / gym / rival state changes, so the
+        //       box doesn't re-roll on every render;
+        //   (b) seeded from runSeed ⊕ row ⊕ badges via a LOCAL LCG — deterministic for
+        //       replays WITHOUT consuming window.storyRngNext (cosmetic text must not
+        //       drain the battle stream — same contract as STORY_FACILITY_QUOTES);
+        //   (c) biased toward the state-tagged pool (2/3) when one applies, and away
+        //       from the previously shown line so consecutive visits don't echo.
+        // JSON entries 10/11 are the two League epilogue pools the 0-9 city indexing
+        // can't reach: 10 = post-HoF with the Mystery climax still pending, 11 =
+        // post-HoF with the Crucible open. (They were dead data under the old flat
+        // indexing; the cityIdx-9 branch below is what makes them reachable.)
+        function _pickCityGuideQuote(cityIdx, ctx) {
+            const pools = CITY_GUIDE_QUOTES;
+            if (!Array.isArray(pools) || !pools.length) return '';
+            let entry = pools[Math.min(Math.max(0, cityIdx | 0), pools.length - 1)];
+            if ((cityIdx | 0) === 9 && sm) {
+                if (sm.postHofMysteryClimaxDone && pools[11]) entry = pools[11];
+                else if (sm.hofPartySnapshot && pools[10]) entry = pools[10];
+            }
+            if (!entry) return '';
+            // Legacy flat shape (array of lines) — plain random pick.
+            if (Array.isArray(entry)) return entry[Math.floor(Math.random() * entry.length)] || '';
+            const tagged = [];
+            if (ctx && ctx.rivalAhead && Array.isArray(entry.rivalAhead)) tagged.push(...entry.rivalAhead);
+            if (ctx && ctx.preGym && Array.isArray(entry.preGym)) tagged.push(...entry.preGym);
+            if (ctx && ctx.postGym && Array.isArray(entry.postGym)) tagged.push(...entry.postGym);
+            const generic = Array.isArray(entry.generic) ? entry.generic.slice() : [];
+            if (!tagged.length && !generic.length) return '';
+            const stateKey = (sm ? (sm.eventIndex | 0) : 0) + ':' + (sm ? (sm.badges | 0) : 0) + ':'
+                + (ctx && ctx.preGym ? 'g' : '') + (ctx && ctx.postGym ? 'p' : '') + (ctx && ctx.rivalAhead ? 'r' : '');
+            const remembered = sm && sm.cityGuideQuote;
+            if (remembered && remembered.k === stateKey
+                && (tagged.indexOf(remembered.line) !== -1 || generic.indexOf(remembered.line) !== -1)) {
+                return remembered.line;
+            }
+            let s = ((((sm && sm.runSeed) | 0) ^ Math.imul((sm ? (sm.eventIndex | 0) : 0) + 1, 2654435761)
+                ^ Math.imul((sm ? (sm.badges | 0) : 0) + 1, 40503)) >>> 0) || 1;
+            const rng = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+            const useTagged = tagged.length && (!generic.length || rng() < 2 / 3);
+            const pool = useTagged ? tagged : (generic.length ? generic : tagged);
+            const last = remembered && remembered.line;
+            let choices = pool.filter(l => l !== last);
+            if (!choices.length) choices = pool;
+            const line = choices[Math.floor(rng() * choices.length)] || '';
+            // Remember opportunistically (rides along with the next save()) so the
+            // pick is stable across re-renders and the next pick can avoid an echo.
+            if (sm) sm.cityGuideQuote = { k: stateKey, line: line };
+            return line;
+        }
 
         // One-line city specialty blurb — surfaces each city's identity so the player
         // gets a sense of progression (where to catch, where to gamble, where to polish).
         // The map below is keyed by city index. Indexes that fall outside (e.g. the
         // post-HoF return to City 9) fall back to the last entry.
+        // v30: realigned to the ACTUAL facility matrix (post-augment). The old list
+        // drifted — it promised the Safari at City 4 and Colress at City 6, but the
+        // Safari + Casino debut at City 5 (row 28) and Colress/EV Trainer at City 7
+        // (row 43); the Department Store debuts at City 4 (row 22).
         const CITY_SPECIALTY_BLURBS = [
             'Hometown. The lab, the starter, and the only road that goes north.',
             'Training town. The Battle Dojo keeps the gym hopefuls honest.',
-            'Move-craft town. Move Tutor and Battle Dojo, side by side.',
+            'Evolution town. Cable Link, Stone Shop, and the Evolution Tutor share one street.',
             'Academy town. Scholars test their theories on the gym floor.',
-            'Wilderness town. The Safari gate marks the city limit.',
-            'Resort town. Casino lights, gym floor, last easy night before the climb.',
-            'Metropolis. Department Store, Colress\'s roof lab, every tutor on payroll.',
-            'Champion\'s road. Every tutor open. Last Pokémart before the League.',
-            'Final-gym town. Battle Dojo and EV Trainer for the last polish.',
+            'Market town. The region\'s first Department Store — twelve floors of want.',
+            'Frontier town. Safari mud on one boot, casino carpet under the other.',
+            'Metropolis. This city eats trainers and prints champions.',
+            'Champion\'s road. The EV Trainer and Colress\'s roof lab add the final points.',
+            'Final-gym town. Bells, pilgrims, and one gate left before the Plateau.',
             'Pokémon League. Every facility under one roof — the Plateau is upstairs.',
         ];
         function _cityBlurbFor(cityIdx) {
@@ -40044,12 +40147,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ['Coffee, kettles, and a Move Tutor who claims to remember every move ever invented.','Trainers do not pass through this town by accident.'],
             // City 3 — academy town
             ['Lecture halls bleed students into the streets between bells.','The campus gym sits at the top of the hill. The leader grades you like a thesis.'],
-            // City 4 — wilderness town
-            ['Ranger boots, hunter boots, poacher boots — every kind of mud meets at this trailhead.','Past the Safari gate, the Pokédex word "rare" stops being decorative.'],
-            // City 5 — resort town
-            ['Neon over a still lake. Slot machines and the gym share a roof here.','Half the badges in this town were earned at the tables. Half is a generous estimate.'],
+            // City 4 — market town (Department Store debut; the Safari is City 5)
+            ['Delivery trucks at dawn, neon by dusk. The Department Store owns the skyline here.','Twelve floors of everything you could want. The gym waits at street level, unimpressed.'],
+            // City 5 — frontier town (Safari Zone + Casino debut)
+            ['Neon over a still lake on one side of town, ranger stations and Safari mud on the other.','Slot machines and tall grass both take your money. Only one of them pays out in Pokémon.'],
             // City 6 — metropolis
-            ['The skyline ate the route signs. Every kind of trainer is somebody in this city.','The Department Store, the underground, the rooftop labs — twenty-four hours, all of it.'],
+            ['The skyline ate the route signs. Every kind of trainer is somebody in this city.','The Department Store never closes. Neither does the arena crowd.'],
             // City 7 — Champion's road
             ['Stone gates, switchback ramps, wind that tastes like the high country.','Three trainers in this town have beaten the League. They will tell you it is the climb that breaks people.'],
             // City 8 — final gym town
@@ -45994,6 +46097,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     backdropKeyForScene: (k, beat) => _backdropKeyForScene(k, beat),
                     maybeShowRouteInterstitial: (ev, cb) => _maybeShowRouteInterstitial(ev, cb),
                     storyThreadObjectiveLine: () => _storyThreadObjectiveLine(),
+                    // City-hub guidance (v30) test handles.
+                    pickCityGuideQuote: (c, ctx) => _pickCityGuideQuote(c, ctx),
+                    nextBattleLabelForRow: (i) => _storyNextBattleLabelForRow(i),
                     journalRenderHTML: () => _journalRenderHTML(),
                     errandOfferForCity: (c) => _errandOfferForCity(c),
                     errandActiveForCity: (c) => _errandActiveForCity(c),
@@ -47480,6 +47586,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 wanderByEventIdx: {},
                 campByEventIdx: {},
                 campReturnPoint: null,
+                cityGuideQuote: null,
+                newMovesPending: {},
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
@@ -50720,11 +50828,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // one-shot toast — keeping the dialogue box quiet and on-character.
             // The Professor voices the hub only at City 0 (the starter lab); every other
             // city — including the City-8 Mystery Figure gate — uses the City Guide voice.
+            // v30: the Professor pool only voices the box WHILE the City-0 starter
+            // business is pending (the speaker branches above make the nameplate say
+            // "City Guide" after the visit — the old cityIdx===0 pool pick kept
+            // serving Professor lines under the Guide's name). Every other state
+            // picks from the reactive tagged guide pools; the flags mirror the gym /
+            // rival gates computed for the action grid below (same sources:
+            // actions[] and sm.gymCleared) so the flavor can't contradict the UI.
             let quoteText = _rivalCameoActive
                 ? _rivalAmbientCityLine(cityIdx)
-                : (cityIdx === 0
+                : (cityIdx === 0 && hasProf && !profUsedHere && hasTeamRoom
                     ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
-                    : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx));
+                    : _pickCityGuideQuote(cityIdx, {
+                        preGym: actions.includes('Gym Battle') && !((sm.gymCleared || {})[cityIdx]),
+                        postGym: !!((sm.gymCleared || {})[cityIdx]),
+                        rivalAhead: _nextIsAnyRival,
+                    }));
             // City specialty banner — the one-line identity for this city, shown above
             // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
@@ -50763,52 +50882,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // a flat "Battle Your Rival" that lied about the next two screens.
             const _willFireWildNext = _storyNextBatIdx >= 0 && _shouldFireWildBeforeBattle(_storyNextBatIdx);
             // Rich label for the next queued battle — feeds the single objective line
-            // below (was the old competing "Next:" chip).
+            // below (was the old competing "Next:" chip). Built by the shared
+            // _storyNextBattleLabelForRow helper (v30) so the camp-return branch can
+            // name the same destination without duplicating the mapping.
+            // When wilds fire first, surface the journey in order — the grass
+            // before the gate — so the one objective stays honest:
+            // "🌿 Wild → ⚔ Rival" reads in one glance.
             let nextBattleLabel = '';
             if (_storyNextBat) {
-                const nxId = _storyNextBat[0] | 0;
-                const nxEvent = String(_storyNextBat[2] || '');
-                const trAssign = sm.trainerAssignments && sm.trainerAssignments[nxId];
-                let nextLabel = nxEvent;
-                const gm = nxEvent.match(/^Gym Leader ([1-8])$/);
-                if (gm) nextLabel = `Gym ${gm[1]}` + (trAssign ? ` — ${trAssign}` : '');
-                else if (nxEvent === 'Rival') {
-                    const _rp = getRivalEncounterPhase(nxId);
-                    const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
-                    const _tease = _rivalTease[_rp];
-                    // §11.1: the rolled identity (Blue/Silver/…) is never surfaced —
-                    // the hub label says "Rival" like every other rival-facing UI.
-                    nextLabel = `🏁 ${_rivalDisplayName()}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
-                }
-                else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
-                else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
-                else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
-                else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
-                else if (nxEvent === 'Elite Trainer') nextLabel = 'Elite Trainer';
-                else if (/^Gym Trainer/.test(nxEvent)) nextLabel = 'Gym Trainer';
-                else if (nxEvent === 'Basic Trainer') nextLabel = 'Route Trainer';
-                // When a story boss/raid is injected onto this route fight it
-                // REPLACES the trainer — so the label must not promise a plain
-                // "Route Trainer." Keep it opaque (no villain name spoiled), in the
-                // house voice. Lower-tier injects (battle / miniRaid) keep the
-                // route-trainer identity and only theme the prose, so they don't
-                // override the label. mysteryBoss has its own post-HoF path.
-                const _injBeat = (_storyNextBatIdx >= 0) ? _injectedBattleBeatForRow(_storyNextBatIdx) : null;
-                const _injLabel = _injBeat && ({
-                    boss:     '⚔ An ambush waits on the road',
-                    miniBoss: '⚔ Someone is blocking the road',
-                    raid:     '🌑 Something stirs on the road',
-                })[_injBeat.kind];
-                if (_injLabel) {
-                    nextLabel = _injLabel;
-                } else {
-                    const theme = _resolveThemeForBattleRow(nxId);
-                    const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
-                    if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
-                }
-                // When wilds fire first, surface the journey in order — the grass
-                // before the gate — so the one objective stays honest:
-                // "🌿 Wild → ⚔ Rival" reads in one glance.
+                const nextLabel = _storyNextBattleLabelForRow(_storyNextBatIdx);
                 nextBattleLabel = _willFireWildNext ? `🌿 Wild Pokémon → ${nextLabel}` : nextLabel;
             }
             if (rivalGateActive) {
@@ -50820,14 +50902,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 tips.push({ iconPath: 'icons/story/story_route.png?v=20260516', label: _healTipLabel, click: 'window.StoryMode.enterPokemonCenter()' });
             }
             const hasTeam = sm.team && sm.team.length > 0;
+            // v30 SUGGESTED redesign: the rail describes TEAM GAPS (what's missing /
+            // newly possible), never raw voucher inventory. A voucher only appears
+            // as a "— free with …" suffix on the chip whose gap it pays for, so it
+            // surfaces exactly when there's something real to spend it on. The Bag
+            // still lists every voucher; the facility screens still auto-apply them.
+            const _rcN = (sm.inventory && sm.inventory.rareCandy) | 0;
+            const _vtN = (sm.inventory && sm.inventory.vitamin)   | 0;
+            const _hsN = (sm.inventory && sm.inventory.heartScale) | 0;
+            const _mtN = (sm.inventory && sm.inventory.mint)       | 0;
+            const _acN = (sm.inventory && sm.inventory.abilityCapsule) | 0;
+            const _ehN = (sm.inventory && sm.inventory.emblemHonor) | 0;
             if (hasTeam) {
                 if (actions.includes('Battle Dojo')) {
                     const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
-                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: n === 1 ? '1 Pokémon needs a held item' : `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" }); }
+                    if (n) { suggestedFacilities.add('dojo'); tips.push({ iconPath: storyFacilityIconSrc('dojo'), label: (n === 1 ? '1 Pokémon needs a held item' : `${n} Pokémon need held items`) + (_ehN > 0 ? ' — free with your Emblem of Honor' : ''), click: "window.StoryMode.enterTutor('loadout')" }); }
+                    const na = sm.team.filter(s => s && s.build && (!s.build.a || s.build.a === 'None' || s.build.a === '(none)')).length;
+                    if (na) { suggestedFacilities.add('dojo'); tips.push({ iconPath: 'sprites/pokesprite/items/ability-capsule.png', label: (na === 1 ? '1 Pokémon has no ability set' : `${na} Pokémon have no ability set`) + (_acN > 0 ? ' — free with your Ability Capsule' : ''), click: "window.StoryMode.enterTutor('loadout')" }); }
                 }
                 if (actions.includes('Move Tutor')) {
                     const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
-                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: n === 1 ? '1 Pokémon has an empty move slot' : `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" }); }
+                    if (n) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: (n === 1 ? '1 Pokémon has an empty move slot' : `${n} Pokémon have empty move slots`) + (_hsN > 0 ? ' — free with a Heart Scale' : ''), click: "window.StoryMode.enterTutor('moves')" }); }
+                    // Evolved since their last Move Tutor look-in → the learnset moved
+                    // on with the species. Flag set by _evoLabApplyEvolution, cleared
+                    // when the tutor's move screen is opened.
+                    const ne = sm.team.filter(s => s && s.id && sm.newMovesPending && sm.newMovesPending[s.id]).length;
+                    if (ne) { suggestedFacilities.add('tutor'); tips.push({ iconPath: storyFacilityIconSrc('tutor'), label: ne === 1 ? '1 Pokémon evolved — new moves to learn' : `${ne} Pokémon evolved — new moves to learn`, click: "window.StoryMode.enterTutor('moves')" }); }
+                }
+                if (actions.includes('Nature Rater')) {
+                    // "Neutral nature = nobody's touched it yet" — the Nature Rater's
+                    // own framing (see STORY_FACILITY_QUOTES.natureRater).
+                    const n = sm.team.filter(s => s && s.build && _NEUTRAL_NATURES_LIST.indexOf(String(s.build.n || '')) !== -1).length;
+                    if (n) { suggestedFacilities.add('nature'); tips.push({ iconPath: storyFacilityIconSrc('nature'), label: (n === 1 ? '1 Pokémon is still on a neutral nature' : `${n} Pokémon are still on neutral natures`) + (_mtN > 0 ? ' — free with your Mint' : ''), click: "window.StoryMode.enterTutor('nature')" }); }
                 }
                 if (actions.includes('EV Trainer')) {
                     const n = sm.team.filter(s => {
@@ -50835,46 +50941,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const e = s.build.evs || {};
                         return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
                     }).length;
-                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: n === 1 ? '1 Pokémon has no EVs' : `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' }); }
+                    if (n) { suggestedFacilities.add('evtrainer'); tips.push({ iconPath: storyFacilityIconSrc('evtrainer'), label: (n === 1 ? '1 Pokémon has no EVs' : `${n} Pokémon have no EVs`) + (_vtN > 0 ? ' — free with an EV Voucher' : ''), click: 'window.StoryMode.enterEVTrainer()' }); }
+                }
+                if (actions.includes('Evolution Tutor')) {
+                    // Need-gated (was: a bare Rare-Candy inventory chip): only when
+                    // something on the team can actually evolve. baseStats[..].evos is
+                    // the same sync source the trainer-roller evolve-up walks use
+                    // (see _evolveSigToGradeFloor) — gen-filtered so a Gen-1-only run
+                    // never advertises an Onix → Steelix it can't perform.
+                    let evoN = 0;
+                    try {
+                        const _genSet = (() => { try { const g = storySettingsGens(); return (Array.isArray(g) && g.length) ? new Set(g) : null; } catch (e) { return null; } })();
+                        for (const s of sm.team) {
+                            if (!s || !s.name || s.isEgg) continue;
+                            const b = baseStats[s.name];
+                            const evos = (b && Array.isArray(b.evos))
+                                ? b.evos.filter(e => baseStats[e] && (!_genSet || _genSet.has(baseStats[e].gen)))
+                                : [];
+                            if (evos.length) evoN++;
+                        }
+                    } catch (e) {}
+                    if (evoN) { suggestedFacilities.add('evolab'); tips.push({ iconPath: 'sprites/pokesprite/items/rare-candy.png', label: (evoN === 1 ? '1 Pokémon can evolve' : `${evoN} Pokémon can evolve`) + (_rcN > 0 ? ' — free with a Rare Candy' : ''), click: 'window.StoryMode.enterEvolutionLab()' }); }
                 }
             }
             const relicAvailableHere = [0, 3, 6, 9].includes(cityIdx);
             if (relicAvailableHere && cityIdx === 0 && !sm.artifactFreeClaimUsed) {
                 suggestedFacilities.add('relic');
                 tips.push({ iconPath: 'icons/story/story_artifacts.png?v=20260516', label: 'Claim your free relic!', click: 'window.StoryMode.enterArtifactShop()' });
-            }
-            const _rcN = (sm.inventory && sm.inventory.rareCandy) | 0;
-            const _vtN = (sm.inventory && sm.inventory.vitamin)   | 0;
-            const _hsN = (sm.inventory && sm.inventory.heartScale) | 0;
-            const _mtN = (sm.inventory && sm.inventory.mint)       | 0;
-            const _acN = (sm.inventory && sm.inventory.abilityCapsule) | 0;
-            const _ehN = (sm.inventory && sm.inventory.emblemHonor) | 0;
-            if (_rcN > 0 && actions.includes('Evolution Tutor') && sm.team.length) {
-                suggestedFacilities.add('evolab');
-                tips.push({ iconPath: 'sprites/pokesprite/items/rare-candy.png', label: `${_rcN} Rare Cand${_rcN===1?'y':'ies'} — free evolution`, click: 'window.StoryMode.enterEvolutionLab()' });
-            }
-            if (_vtN > 0 && actions.includes('EV Trainer') && sm.team.length) {
-                suggestedFacilities.add('evtrainer');
-                tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} EV Voucher${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
-            } else if (_vtN > 0 && !actions.includes('EV Trainer') && sm.team.length) {
-                tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} EV Voucher${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
-            }
-            // New voucher tips: facility-only (keeps the 4-tip rail uncluttered;
-            // bag is one click away if you want a city-wide reminder).
-            if (_hsN > 0 && actions.includes('Move Tutor') && sm.team.length) {
-                suggestedFacilities.add('tutor');
-                tips.push({ iconPath: 'sprites/pokesprite/items/heart-scale.png', label: `${_hsN} Heart Scale${_hsN===1?'':'s'} — free move swap`, click: "window.StoryMode.enterTutor('moves')" });
-            }
-            if (_mtN > 0 && actions.includes('Nature Rater') && sm.team.length) {
-                suggestedFacilities.add('nature');
-                tips.push({ iconPath: 'sprites/pokesprite/items/mint.png', label: `${_mtN} Mint${_mtN===1?'':'s'} — free nature change`, click: "window.StoryMode.enterTutor('nature')" });
-            }
-            if ((_acN > 0 || _ehN > 0) && actions.includes('Battle Dojo') && sm.team.length) {
-                suggestedFacilities.add('dojo');
-                const parts = [];
-                if (_acN > 0) parts.push(`${_acN} Ability Capsule${_acN===1?'':'s'}`);
-                if (_ehN > 0) parts.push(`${_ehN} Emblem of Honor`);
-                tips.push({ iconPath: _acN > 0 ? 'sprites/pokesprite/items/ability-capsule.png' : 'sprites/pokesprite/items/emblem-of-honor.png', label: `${parts.join(' + ')} — free dojo swap`, click: "window.StoryMode.enterTutor('loadout')" });
             }
             // (The tip rail — single objective line + optional Suggested chips — is
             // rendered after the gate flags are known, just before the action grid.)
@@ -51242,7 +51335,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // through to the next-battle scan, which reads from the revisited
                 // city's row — labeling an already-cleared route fight while the
                 // click warps back to camp. Label and destination now agree.
-                objective = { kicker: 'NEXT', icon: 'story_route.png', label: 'Head back to the road — camp waits', click: 'window.StoryMode.proceedToNextBattle()' };
+                // v30: name where the road leads — the saved return row is known
+                // (camp scene replays first, then that row's fight), and the shared
+                // label builder keeps injected ambushes opaque.
+                let _campDest = '';
+                try {
+                    const _backIdx = (typeof sm.campReturnPoint.eventIndex === 'number') ? (sm.campReturnPoint.eventIndex | 0) : -1;
+                    _campDest = _storyNextBattleLabelForRow(_backIdx);
+                } catch (e) {}
+                objective = { kicker: 'NEXT', icon: 'story_route.png',
+                    label: _campDest ? `Head back to the road — camp, then ${_campDest}` : 'Head back to the road — camp waits',
+                    click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (_introsPending && _pendingNames.length) {
                 // Facilities come BEFORE the gym: surface the new/upgraded facility as
                 // the objective so the player meets it first. A first-time facility
@@ -51257,15 +51360,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     click: _FACILITY_ENTER_CALL[_firstKey] || 'window.StoryMode.enterCity()',
                 };
             } else if (hasGym && !gymBeat) {
-                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Enter the Gym', click: 'window.StoryMode.proceedToNextBattle()' };
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: _willFireWildNext ? '🌿 Wild Pokémon → Enter the Gym' : 'Enter the Gym', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (hasLeague) {
                 objective = { kicker: 'NEXT', icon: 'story_league.png', label: 'Enter the Pokémon League', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (hasVR) {
-                objective = { kicker: 'NEXT', icon: 'story_vr.png', label: 'Climb Victory Road', click: 'window.StoryMode.proceedToNextBattle()' };
+                // v30: the Victory Road / pre-League stretches are ROUTES — their
+                // first fight keeps the wild interrupt (_shouldFireWildBeforeBattle),
+                // so the objective walks through the grass first, same honesty rule
+                // as the rival route button. The gym branch above gets the same
+                // guard (in-city fights never fire wilds today, so it stays inert
+                // unless that flow ever changes).
+                objective = { kicker: 'NEXT', icon: 'story_vr.png', label: _willFireWildNext ? '🌿 Wild Pokémon → Climb Victory Road' : 'Climb Victory Road', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (hasTrainerRoad) {
-                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Pre-League Trainers', click: 'window.StoryMode.proceedToNextBattle()' };
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: _willFireWildNext ? '🌿 Wild Pokémon → Pre-League Trainers' : 'Pre-League Trainers', click: 'window.StoryMode.proceedToNextBattle()' };
             } else if (_storyNextBat) {
                 objective = { kicker: 'NEXT', icon: 'story_route.png', label: nextBattleLabel || 'Continue your journey', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (sm.postHofMysteryClimaxDone) {
+                // v30: post-game fallback — with no Battle row ahead the chain used
+                // to end with NO objective at all, breaking the "the gold bar always
+                // points the way" promise from the welcome tip. Mirrors the
+                // Crucible / Mystery-climax button gating above.
+                objective = { kicker: 'POST-GAME', icon: 'story_vr.png', label: 'The Crucible is open — take on the ladder', click: 'window.StoryMode.enterCrucible()' };
+            } else if (sm.hofPartySnapshot) {
+                objective = { kicker: 'STORY', icon: 'story_mystery.png', label: 'The Mystery Figure still waits past the Hall', click: 'window.StoryMode.enterMysteryClimax()' };
             }
             if (tipsEl) {
                 let _railHtml = '';
@@ -54621,26 +54738,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // interrupt from the first is still on screen (which would stack duplicate overlays).
             if (_storyBattleEntryBusy) { _storyWarnInteractionBusy(); return; }
             _storyBattleEntryBusy = true;
-            let nextBattleIdx = -1;
-            for (let i = sm.eventIndex; i < STORY_EVENTS_RAW.length; i++) {
-                if (STORY_EVENTS_RAW[i][1] === 'Battle') { nextBattleIdx = i; break; }
-            }
+            // v30: same scan the hub objective label uses (forward Battle-row scan +
+            // the blackout-rematch currentEnemyLock override) — one shared helper so
+            // what the NEXT bar promises and where this click lands can't drift.
+            const nextBattleIdx = storyEffectiveNextBattleIndexFromHub();
             if (nextBattleIdx < 0) {
                 console.warn('[Story] No Battle row ahead of eventIndex', sm.eventIndex);
                 window.showGameAlert('No upcoming battle found.');
                 enterCity();
                 return;
-            }
-            // After blacking out and returning to a city hub, eventIndex sits on the City row while
-            // currentEnemyLock still points at the trainer you lost to. Skip already-cleared route
-            // battles and resume that rematch (same frozen foe team as enterBattleEvent uses).
-            const lock = sm.currentEnemyLock;
-            if (lock && lock.eventIdx != null && Array.isArray(lock.team) && lock.team.length) {
-                const le = lock.eventIdx | 0;
-                const row = STORY_EVENTS_RAW[le];
-                if (row && row[1] === 'Battle' && le > nextBattleIdx) {
-                    nextBattleIdx = le;
-                }
             }
             sm.eventIndex = nextBattleIdx;
             save();
@@ -63944,6 +64050,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // above, so the new species hits the Shiny Dex if appropriate.
             // _storyMarkDexCaught handles per-run + cross-run + milestone gate.
             try { _storyMarkDexCaught(evoName, !!(old && old._isShiny)); } catch (e) {}
+            // New species → new learnset. Breadcrumb for the city-hub SUGGESTED rail
+            // ("evolved — new moves to learn"); cleared when the player opens the
+            // Move Tutor's move screen. Keyed by mon id so it survives PC round-trips.
+            try {
+                if (mon.id != null) {
+                    if (!sm.newMovesPending || typeof sm.newMovesPending !== 'object') sm.newMovesPending = {};
+                    sm.newMovesPending[mon.id] = 1;
+                }
+            } catch (e) {}
             return true;
         }
 
@@ -70163,6 +70278,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Staged-NPC level-up beat (Move Tutor / Battle Dojo). Nature doesn't stage.
             if (m !== 'nature') _npcStageUpCheck(m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
+            // Opening the move screen clears the "evolved — new moves" breadcrumb for
+            // the party (the player has now seen the evolved species' options).
+            if (m === 'moves' && sm.newMovesPending) {
+                try { for (const s of sm.team) { if (s && s.id != null && sm.newMovesPending[s.id]) delete sm.newMovesPending[s.id]; } } catch (e) {}
+            }
             // Start with every mon collapsed (all-closed) so the player chooses
             // which one to edit instead of being dropped straight into mon #1,
             // slot 1. Tap a collapsed header or a switcher pill to open one.
