@@ -44,6 +44,10 @@
             --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8;
             --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f;
             --surface: #161616; --surface2: #1e1e1e;
+            /* Motion tokens — transitions in this file already cluster on these two
+               durations; new CSS should reach for the tokens instead of raw values. */
+            --dur-fast: 0.12s;
+            --dur-med: 0.15s;
             /* Story facility accent palette — category-coded (see docs/story-design/UI_VISUAL_SYSTEM_AUDIT.md).
                Facility titles are recolored by function so hue signals the facility type. */
             --fac-quest: #ffab40;      /* quest & battle flow (professor/gym/league/VR/crucible) */
@@ -719,7 +723,15 @@
         .selected-swap-foe { border-color: var(--accent) !important; box-shadow: 0 0 20px rgba(255,213,79,0.3); } .selected-swap-player { border-color: var(--hp-red) !important; box-shadow: 0 0 20px rgba(244,67,54,0.3); }
 
         /* Story Mode */
-        .story-screen-root { position: relative; }
+        .story-screen-root {
+            /* Shared root layout — was an identical inline style repeated on all 17
+               story facility screens (.hidden's !important still wins when hidden). */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
         .story-screen-bg-layer {
             position: absolute; inset: 0; z-index: 0; pointer-events: none;
             background-color: #0a0e14;
@@ -7968,7 +7980,7 @@
         .settings-dev-block summary {
             cursor: pointer;
             font-size: 12px;
-            color: #777;
+            color: var(--text-muted);
             user-select: none;
         }
         .settings-dev-block .settings-dev-inner { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -8065,8 +8077,8 @@
         body.is-mobile #screen-battle.battle-phase-moves #battle-log.battle-log--peek::after {
             content: 'Tap to expand log';
             display: block;
-            font-size: 9px;
-            color: #666;
+            font-size: 10px;
+            color: var(--text-muted);
             text-align: center;
             margin-top: 2px;
             line-height: 1.2;
@@ -9918,7 +9930,7 @@
         </div>
     </div>
 
-    <div id="screen-story-city" class="screen hidden story-screen-root" role="region" aria-label="City" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-city" class="screen hidden story-screen-root" role="region" aria-label="City">
         <div id="story-city-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-city-stack">
         <!-- Top HUD -->
@@ -9974,7 +9986,7 @@
         </div>
     </div>
 
-    <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="Professor's Lab" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="Professor's Lab">
         <div id="story-professor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10003,7 +10015,7 @@
         </div>
     </div>
 
-    <div id="screen-story-shop" class="screen hidden story-screen-root" role="region" aria-label="Shop" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-shop" class="screen hidden story-screen-root" role="region" aria-label="Shop" data-shop-type="mart">
         <div id="story-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10018,7 +10030,7 @@
         </div>
     </div>
 
-    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" role="region" aria-label="Relic shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" role="region" aria-label="Relic shop">
         <div id="story-artifact-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10034,7 +10046,7 @@
         </div>
     </div>
 
-    <div id="screen-story-stone-shop" class="screen hidden story-screen-root" role="region" aria-label="Stone shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-stone-shop" class="screen hidden story-screen-root" role="region" aria-label="Stone shop">
         <div id="story-stone-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10050,7 +10062,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="Move Tutor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="Move Tutor">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10068,7 +10080,7 @@
         </div>
     </div>
 
-    <div id="screen-story-colress" class="screen hidden story-screen-root" role="region" aria-label="Colress — battle gimmicks" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-colress" class="screen hidden story-screen-root" role="region" aria-label="Colress — battle gimmicks">
         <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
@@ -10092,7 +10104,7 @@
         </div>
     </div>
 
-    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" role="region" aria-label="EV Trainer" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" role="region" aria-label="EV Trainer">
         <div id="story-evtrainer-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
@@ -10115,7 +10127,7 @@
         </div>
     </div>
 
-    <div id="screen-story-fanclub" class="screen hidden story-screen-root" role="region" aria-label="Fan Club" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-fanclub" class="screen hidden story-screen-root" role="region" aria-label="Fan Club">
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -10136,7 +10148,7 @@
         </div>
     </div>
 
-    <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" role="region" aria-label="Pokémon Center" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" role="region" aria-label="Pokémon Center">
         <div id="story-pokemoncenter-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10160,7 +10172,7 @@
         </div>
     </div>
 
-    <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="The Crucible" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="The Crucible">
         <div id="story-crucible-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10175,7 +10187,7 @@
         </div>
     </div>
 
-    <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="Battle Frontier" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="Battle Frontier">
         <div id="story-frontier-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10190,7 +10202,7 @@
         </div>
     </div>
 
-    <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="Wild encounter" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="Wild encounter">
         <div id="story-catch-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10205,7 +10217,7 @@
         </div>
     </div>
 
-    <div id="screen-story-link" class="screen hidden story-screen-root" role="region" aria-label="Cable Link Station" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-link" class="screen hidden story-screen-root" role="region" aria-label="Cable Link Station">
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
         <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10223,7 +10235,7 @@
         </div>
     </div>
 
-    <div id="screen-story-evolab" class="screen hidden story-screen-root" role="region" aria-label="Evolution Tutor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-evolab" class="screen hidden story-screen-root" role="region" aria-label="Evolution Tutor">
         <div id="story-evolab-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;flex-shrink:0;gap:10px;">
@@ -10246,7 +10258,7 @@
         </div>
     </div>
 
-    <div id="screen-story-casino" class="screen hidden story-screen-root" role="region" aria-label="Game Corner" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-casino" class="screen hidden story-screen-root" role="region" aria-label="Game Corner">
         <div id="story-casino-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row casino-header-row">
@@ -10417,7 +10429,7 @@
         </div>
     </div>
 
-<div id="screen-story-artifacts" class="screen hidden" role="region" aria-label="Relics" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+<div id="screen-story-artifacts" class="screen hidden story-screen-root" role="region" aria-label="Relics">
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -19472,7 +19484,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('draft-title').innerText = `Player ${state.draftTurn} is drafting (${oppLeft} left in their pool)`;
                 const waitMsg = document.createElement('div');
                 waitMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:36px 16px;color:#aaa;font-size:14px;line-height:1.65;max-width:420px;margin:0 auto;';
-                waitMsg.innerHTML = `You only pick from <strong style="color:#eee;">your</strong> pool when it is your turn (Player ${myR}).<br><span style="font-size:12px;color:#777;">Player ${state.draftTurn} is choosing from their own six now.</span>`;
+                waitMsg.innerHTML = `You only pick from <strong style="color:#eee;">your</strong> pool when it is your turn (Player ${myR}).<br><span style="font-size:12px;color:var(--text-muted);">Player ${state.draftTurn} is choosing from their own six now.</span>`;
                 grid.appendChild(waitMsg);
                 renderDraftPartyBar();
                 return;
@@ -21768,7 +21780,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Nature line with up/down highlights.
                 const natureLine = s.nature + (nMod
                     ? ` <span style="color:#ff8a65;font-size:10px;">▲${SUM_STAT_LABELS[nMod.up]}</span> <span style="color:#7986cb;font-size:10px;">▼${SUM_STAT_LABELS[nMod.down]}</span>`
-                    : ' <span style="color:#666;font-size:10px;">(neutral)</span>');
+                    : ' <span style="color:var(--text-muted);font-size:10px;">(neutral)</span>');
 
                 // EV/IV display — opt-in for player perspective via _summaryShowEVs flag (story mode).
                 let evIvHtml = '';
@@ -47761,7 +47773,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const cellCls = 'hof-team-cell' + (sh ? ' hof-team-cell--shiny' : '');
                     const sprite = (typeof getSprite === 'function') ? getSprite(t.name, sh) : '';
                     return `<div class="${cellCls}"><img src="${_esc(sprite)}" alt="${_esc(t.name)}" class="hof-team-cell-img" data-shiny="${sh ? 'true' : 'false'}" loading="lazy" decoding="async" onerror="handleSpriteError(this)"><span class="hof-team-cell-name">${sh ? '✨ ' : ''}${_esc(t.nickname || t.name)}</span></div>`;
-                }).join('') : '<p style="color:#666;font-size:10px;">No team data.</p>';
+                }).join('') : '<p style="color:var(--text-muted);font-size:10px;">No team data.</p>';
                 const sprite = r.trainerSprite ? _trainerSpritePath(r.trainerSprite) : '';
                 const gens = Array.isArray(r.gens) && r.gens.length ? `Gens ${r.gens.join('/')}` : '';
                 const open = (i === 0) ? ' open' : '';
@@ -47801,14 +47813,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
             const renderList = (entries, emptyMsg) => entries.length
                 ? `<div role="list">${entries.map(rowHtml).join('')}</div>`
-                : `<div style="padding:14px;color:#666;font-size:11px;font-style:italic;text-align:center;">${_esc(emptyMsg)}</div>`;
+                : `<div style="padding:14px;color:var(--text-muted);font-size:11px;font-style:italic;text-align:center;">${_esc(emptyMsg)}</div>`;
             const counterCard = (icon, label, n) => `<div style="flex:1;min-width:90px;text-align:center;padding:10px 8px;background:rgba(40,12,12,0.6);border:1px solid rgba(255,82,82,0.3);">
                 <div style="font-size:20px;line-height:1;">${icon}</div>
                 <div style="font-size:22px;font-weight:bold;color:#fff;margin-top:4px;">${n.toLocaleString()}</div>
                 <div style="font-size:9px;color:#bcaaa4;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">${_esc(label)}</div>
             </div>`;
             const headerNote = totalSouls === 0
-                ? `<div style="text-align:center;padding:12px;color:#666;font-size:11px;font-style:italic;">No one's fallen yet. Step into the ring and the page will fill itself.</div>`
+                ? `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px;font-style:italic;">No one's fallen yet. Step into the ring and the page will fill itself.</div>`
                 : `<div style="text-align:center;padding:6px;color:#7a4a4a;font-size:10px;font-style:italic;letter-spacing:0.03em;">First rule: you remember.</div>`;
             return `<div style="max-width:760px;margin:0 auto;color:#ffcdd2;font-family:inherit;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
@@ -52730,9 +52742,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <div style="margin-bottom:12px;font-size:9px;color:#8d6e63;border:1px dashed #5d4037;padding:4px 7px;background:rgba(40,20,12,0.3);letter-spacing:0.03em;">📽 taped by the staff door, water-stained: <span style="font-style:italic;">"120 DAYS OF PIKA — private screening · members only"</span></div>
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From Party</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">${teamHtml || '<div style="color:#666;font-size:11px;padding:6px;">Empty — visit the Professor first.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">${teamHtml || '<div style="color:var(--text-muted);font-size:11px;padding:6px;">Empty — visit the Professor first.</div>'}</div>
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From PC</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:200px;overflow-y:auto;">${boxHtml || '<div style="color:#666;font-size:11px;padding:6px;">No stored Pokémon.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:200px;overflow-y:auto;">${boxHtml || '<div style="color:var(--text-muted);font-size:11px;padding:6px;">No stored Pokémon.</div>'}</div>
                 <div style="text-align:right;margin-top:6px;"><button type="button" id="daycare-close-btn" style="padding:8px 14px;background:#37474f;color:#e0f2f1;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Close</button></div>
             </div>`;
         }
@@ -53154,7 +53166,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span>Best run: <strong style="color:#fff;">${best}</strong></span>
                 </div>
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Pick 3 to send in</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">${rows || '<div style="color:#666;font-size:11px;padding:6px;">No fighters in your party.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">${rows || '<div style="color:var(--text-muted);font-size:11px;padding:6px;">No fighters in your party.</div>'}</div>
                 <div style="display:flex;gap:8px;">
                     <button type="button" id="pits-start-btn" ${ready ? '' : 'disabled'} style="flex:1;padding:14px;background:${ready ? accent : '#37474f'};color:${ready ? '#1a0000' : '#666'};border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:${ready?'pointer':'not-allowed'};letter-spacing:0.05em;">${ready ? '🥊 STEP INTO THE RING ▶▶' : `Pick ${3 - picks.length} more`}</button>
                     <button type="button" id="pits-close-btn" style="padding:14px 20px;background:#37474f;color:#ffcdd2;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Leave</button>
@@ -53288,7 +53300,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">The house brings six — sends its best three</div>
                 <div role="list" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:14px;">${sixHtml}</div>
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Your three on the mat</div>
-                <div role="list" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:14px;">${trioHtml || '<div style="color:#666;font-size:11px;">—</div>'}</div>
+                <div role="list" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:14px;">${trioHtml || '<div style="color:var(--text-muted);font-size:11px;">—</div>'}</div>
                 <div style="padding:9px 12px;background:rgba(0,0,0,0.45);border-left:3px solid ${accent};margin-bottom:14px;font-size:11px;font-style:italic;color:#ef9a9a;">"They read your three. They sent the three that hurt you most. That's the game."</div>
                 <button type="button" id="pits-draft-go" style="width:100%;padding:14px;background:${accent};color:#1a0000;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">🥊 ${round.isBoss ? 'END IT ▶▶' : 'SEND THEM IN ▶▶'}</button>
             </div>`;
@@ -59133,7 +59145,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             <span style="font-size:8px;color:#aaa;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(n)}</span>
                         </span>`;
                     }).join('')
-                    : '<span style="font-size:10px;color:#777;">(team not recorded)</span>';
+                    : '<span style="font-size:10px;color:var(--text-muted);">(team not recorded)</span>';
                 const bn = e.badges | 0;
                 html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -63611,7 +63623,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="story-link-build-stats">${statsHtml}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`
-                    : `<div class="story-link-build" style="font-size:11px;color:#777;">Could not load set details.</div>`;
+                    : `<div class="story-link-build" style="font-size:11px;color:var(--text-muted);">Could not load set details.</div>`;
                 return `<div class="story-link-mon tier-${g}" id="link-mon-${i}">
                     ${header}
                     <div class="story-tutor-mon-body">
@@ -65227,7 +65239,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const onClick = atCap ? '' : `onclick="window.StoryMode.applyExpShareLevel('${source}',${idx})"`;
                 const previewHtml = atCap
                     ? `<span style="color:#888;">Lv${curLv} — MAX (+${EXP_SHARE_MAX_PER_MON})</span>`
-                    : `<span style="color:#9ab;">Lv${curLv}</span> <span style="color:#80deea;">→ Lv${curLv + 1}</span> <span style="color:#777;">(${used}/${EXP_SHARE_MAX_PER_MON} used)</span>`;
+                    : `<span style="color:#9ab;">Lv${curLv}</span> <span style="color:#80deea;">→ Lv${curLv + 1}</span> <span style="color:var(--text-muted);">(${used}/${EXP_SHARE_MAX_PER_MON} used)</span>`;
                 return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid ${isShiny ? '#a47800' : '#333'};border-radius:6px;color:${tone};${disabled}" ${onClick}>
                     ${sprite ? `<img src="${sprite}" data-shiny="${isShiny ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;${isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" alt="">` : ''}
                     <div style="flex:1;">
