@@ -2661,6 +2661,27 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
+        .story-hud-savequit {
+            font-family: var(--battle-font);
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            padding: 8px 14px;
+            min-height: 40px;
+            box-sizing: border-box;
+            color: #c8e6c9;
+            background: linear-gradient(180deg, #12241a 0%, #081408 100%);
+            border: 2px solid #66bb6a;
+            border-radius: 0;
+            box-shadow: inset -3px -3px 0 0 #15301f, inset 3px 3px 0 0 #2e5a3a;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .story-hud-savequit:hover {
+            background: linear-gradient(180deg, #16301f 0%, #0a1c0c 100%);
+            border-color: #81c784;
+            color: #fff;
+        }
         .story-hud-abandon {
             font-family: var(--battle-font);
             font-size: 10px;
@@ -7566,7 +7587,8 @@
                 min-height: 44px;
                 white-space: nowrap;
             }
-            .story-hud-abandon {
+            .story-hud-abandon,
+            .story-hud-savequit {
                 min-height: 44px;
                 padding: 8px 12px;
             }
@@ -9475,6 +9497,7 @@
             <h2 id="draft-title" style="color: var(--hp-yellow); margin: 0;">Player 1: Pick a Pokémon</h2>
             <span id="online-draft-timer" class="hidden" style="font-size:12px;font-weight:bold;color:#81d4fa;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.45);"></span>
             <button onclick="window.toggleEnemyPool()" style="font-size: 12px; padding: 5px 10px;">Inspect Foe's Pool</button>
+            <button onclick="window.exitCurrentContext()" style="font-size: 12px; padding: 5px 10px; color: var(--hp-red);" title="Cancel this draft and return to the main menu" aria-label="Cancel draft">&#10006; Cancel</button>
         </div>
         <p id="draft-pvp-hint" class="hidden" style="font-size:11px;color:#888;text-align:center;margin:-4px 8px 8px;padding:0 8px;"></p>
         <div id="draft-scroll-area" style="flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; min-height:0;">
@@ -9494,6 +9517,7 @@
             </div>
             <button type="button" onclick="window.copyOnlineInviteLink && window.copyOnlineInviteLink()" style="padding:10px 16px;max-width:280px;width:100%;">Copy full invite link</button>
             <p style="margin:0;color:#555;font-size:10px;">Your friend can also open the invite link directly to auto-join.</p>
+            <button type="button" onclick="window.exitCurrentContext()" style="padding:8px 16px;font-size:11px;color:var(--hp-red);border-color:var(--hp-red);background:transparent;" aria-label="Cancel and close the room">&#10006; Cancel — close the room</button>
         </div>
     </div>
 
@@ -9602,7 +9626,7 @@
                     <button type="button" onclick="window.__recoverBrokenStorySave && window.__recoverBrokenStorySave();" title="Restore the most recent broken save backup (pbs_story_save.broken.latest) over your current save. Use after a corruption warning.">Recover broken save</button>
                 </div>
             </details>
-            <button onclick="window.returnToHome()" style="width:100%; margin: 14px 0 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
+            <button id="settings-exit-btn" onclick="window.exitCurrentContext()" style="width:100%; margin: 14px 0 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
             <button onclick="window.closeModal('modal-settings')" style="width:100%;">Close</button>
         </div>
     </div>
@@ -9618,10 +9642,11 @@
 
     <div id="modal-story-abandon-confirm" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 380px;">
-            <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Abandon this run?</h2>
-            <p style="font-size: 13px; color: #aaa; line-height: 1.5;">Walking away wipes the save — the road won\'t remember you walked it. Your Pokédex carries over, but everything else starts fresh.</p>
+            <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Delete this run?</h2>
+            <p style="font-size: 13px; color: #aaa; line-height: 1.5;">Deleting wipes the save — the road won't remember you walked it. Your Pokédex carries over, but everything else starts fresh.</p>
+            <p style="font-size: 12px; color: #9aa0aa; line-height: 1.5;">Just want to stop for now? Use <strong>Save &amp; Quit</strong> instead — your run stays exactly where you left it.</p>
             <button type="button" onclick="window.closeModal('modal-story-abandon-confirm')" style="width: 100%; margin-bottom: 8px;">Stay on the road</button>
-            <button type="button" onclick="window.StoryMode.abandonAndReturn()" style="width: 100%; color: var(--hp-red); border-color: var(--hp-red);">Abandon Run</button>
+            <button type="button" onclick="window.StoryMode.abandonAndReturn()" style="width: 100%; color: var(--hp-red); border-color: var(--hp-red);">Delete Run</button>
         </div>
     </div>
 
@@ -9794,7 +9819,7 @@
     <!-- ===== STORY MODE SCREENS ===== -->
     <div id="screen-story-menu" class="screen hidden story-screen-outer" role="region" aria-label="story menu">
         <h1 class="story-title-main">&#9670; STORY MODE</h1>
-        <p class="story-tagline">A single-player road from Pallet Town to the Champion\'s seat — and whatever waits after the credits.</p>
+        <p class="story-tagline">A single-player road from Pallet Town to the Champion's seat — and whatever waits after the credits.</p>
         <div class="story-intro-stack">
             <div id="story-menu-resume-card" class="story-resume-card" style="display:none;" aria-live="polite">
                 <div class="story-resume-card-trainer">
@@ -9809,7 +9834,7 @@
             <!-- Buttons -->
             <button class="story-menu-btn story-menu-btn--continue" id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="display:none;">&#9654; Continue Run</button>
             <button class="story-menu-btn story-menu-btn--new" onclick="window.StoryMode.openTrainerCreate()">&#9670; New Adventure</button>
-            <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
+            <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Delete Run</button>
             <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Collection</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
             <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
@@ -9831,7 +9856,8 @@
             </div>
             <div class="story-hud-actions">
                 <button type="button" class="story-hud-collection" onclick="window.StoryMode.openCollection('pokedex')" title="Open Pokédex, Achievements, Hall of Fame" aria-label="Open Collection">📖</button>
-                <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Abandon and delete this run" aria-label="Abandon this run">Abandon</button>
+                <button type="button" class="story-hud-savequit" onclick="window.StoryMode.saveAndQuitToMenu()" title="Save and return to the Story menu — your run is kept" aria-label="Save and quit to Story menu">Save &amp; Quit</button>
+                <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Delete this run permanently — cannot be undone" aria-label="Delete this run">Delete Run</button>
                 <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics" aria-label="Run settings and info">Run Info</button>
                 <button type="button" class="story-hud-help" onclick="window.showHelp()" title="How to play Story Mode" aria-label="Help — story mode reference">?</button>
                 <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings" title="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.25em;height:1.25em;display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg></button>
@@ -9893,6 +9919,9 @@
             <div id="story-prof-rolled-card" class="story-prof-card-wrap" style="display:none;"></div>
             <!-- Accept / Back buttons (rendered by JS; provides context-aware back) -->
             <div id="story-prof-buttons" class="story-prof-actions" style="display:flex;flex-direction:row;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;width:100%;max-width:920px;"></div>
+        </div>
+        <div style="padding:10px;flex-shrink:0;">
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -10058,7 +10087,7 @@
         <div id="story-crucible-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
-                <span style="width:32px;"></span>
+                <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.saveAndQuitToMenu()" title="Save &amp; Quit to Story menu" aria-label="Save and quit to Story menu">&#8592;</button>
                 <h3 class="story-screen-head-title fac-quest" style="flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_vr.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">The Crucible</span></h3>
                 <span id="story-crucible-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
@@ -10306,7 +10335,7 @@
                 <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
                 <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
                 <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
-                <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+                <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Delete Run</button>
             </div>
         </div>
     </div>
@@ -15921,6 +15950,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const show = !!(window.StoryMode && typeof window.StoryMode.isActive === 'function' && window.StoryMode.isActive());
                 srr.classList.toggle('hidden', !show);
             }
+            // Context-aware exit button: the old one-size "Forfeit & Exit" meant four
+            // different things (cancel draft / quit quickplay / end gauntlet / story
+            // loss). Relabel per context so the consequence is stated up front.
+            try {
+                const xb = document.getElementById('settings-exit-btn');
+                if (xb && window._exitContextInfo) {
+                    const info = window._exitContextInfo();
+                    xb.style.display = info.hidden ? 'none' : '';
+                    if (!info.hidden) {
+                        xb.textContent = info.label;
+                        xb.style.color = info.danger ? 'var(--hp-red)' : 'var(--accent)';
+                    }
+                }
+            } catch (e) {}
             window.openModal('modal-settings');
         };
         window.applyBattleLogDockClass = function() {
@@ -15996,6 +16039,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window.__pbsGlobalEscBound = true;
             document.addEventListener('keydown', function (e) {
                 if (e.key !== 'Escape') return;
+                // game-confirm has a Promise contract — route Esc through its
+                // resolver instead of just hiding it, otherwise the awaiter hangs.
+                const gameConfirm = document.getElementById('modal-game-confirm');
+                if (gameConfirm && !gameConfirm.classList.contains('hidden')) {
+                    e.preventDefault();
+                    if (typeof window._gameConfirmResult === 'function') window._gameConfirmResult(false);
+                    else gameConfirm.classList.add('hidden');
+                    return;
+                }
                 // Find the LAST (visually topmost in source order) un-hidden modal.
                 const modals = document.querySelectorAll('.modal:not(.hidden)');
                 if (!modals.length) return;
@@ -16094,31 +16146,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window.closeModal('modal-game-confirm');
             if (r) r(!!ok);
         };
-        if (!window._modalEscapeBound) {
-            window._modalEscapeBound = true;
-            document.addEventListener('keydown', function(e) {
-                if (e.key !== 'Escape') return;
-                // game-confirm has a Promise contract — route Esc through its
-                // resolver instead of just hiding it, otherwise the awaiter hangs.
-                const gameConfirm = document.getElementById('modal-game-confirm');
-                if (gameConfirm && !gameConfirm.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window._gameConfirmResult(false);
-                    return;
-                }
-                // Close the topmost visible modal. DOM order = stack order
-                // because openModal() pushes onto the end; the last `.modal:not(.hidden)`
-                // is what's painted on top.
-                const open = document.querySelectorAll('.modal:not(.hidden)');
-                if (open.length) {
-                    const top = open[open.length - 1];
-                    if (top.id) {
-                        e.preventDefault();
-                        window.closeModal(top.id);
-                    }
-                }
-            });
-        }
+        // Escape handling is unified in the single __pbsGlobalEscBound listener
+        // above (game-confirm resolver + topmost-modal close + data-no-escape).
+        // A second document-level Escape listener used to live here; with two
+        // bound, one keypress closed TWO stacked modals. Keep the guard flag so
+        // legacy checks stay truthy.
+        window._modalEscapeBound = true;
         window.showHelp = function() {
             dismissTextTooltipForModal();
             const ps = settings.partySize || 3;
@@ -17535,6 +17568,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             finish();
             // Music keeps playing — battle music continues on home screen
         }
+
+        // Context-aware exit: what leaving the current screen actually means.
+        // Consumed by openSettings (button label) and exitCurrentContext (action).
+        // { label, confirm (null = no dialog), danger, hidden, saveQuit }
+        window._exitContextInfo = function() {
+            const vis = id => { const el = document.getElementById(id); return !!(el && !el.classList.contains('hidden')); };
+            const storyActive = !!(window.StoryMode && typeof window.StoryMode.isActive === 'function' && window.StoryMode.isActive());
+            if (vis('screen-battle')) {
+                const mode = (typeof state !== 'undefined' && state && state.mode) || '';
+                if (mode === 'story') return { label: 'Forfeit Battle (counts as a loss)', confirm: 'Forfeit this battle? It counts as a loss — same as being defeated.', danger: true };
+                if (mode === 'gauntlet') return { label: 'Forfeit — End Gauntlet Run', confirm: 'Forfeit? This ends your whole Gauntlet run.', danger: true };
+                if (mode === 'online') return { label: 'Leave Online Battle (forfeit)', confirm: 'Leave the online battle? Your opponent takes the win.', danger: true };
+                return { label: 'Forfeit Battle & Exit', confirm: 'Forfeit this battle and return to the main menu?', danger: true };
+            }
+            if (vis('screen-draft')) {
+                const online = !!(window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function' && window.OnlineBattle.isActive());
+                if (online) return { label: 'Cancel & Leave Room', confirm: 'Leave the online room? The match is called off.', danger: true };
+                return { label: 'Cancel Draft & Exit', confirm: 'Cancel this draft and return to the main menu?', danger: true };
+            }
+            if (storyActive) return { label: 'Save & Quit to Menu', confirm: null, danger: false, saveQuit: true };
+            if (vis('screen-menu') || vis('screen-story-menu')) return { hidden: true };
+            return { label: 'Exit to Main Menu', confirm: null, danger: false };
+        };
+        window.exitCurrentContext = async function() {
+            const info = window._exitContextInfo();
+            window.closeModal('modal-settings');
+            if (info.hidden) return;
+            if (info.confirm) {
+                const ok = await window.showGameConfirm(info.confirm);
+                if (!ok) return;
+            }
+            if (info.saveQuit && window.StoryMode && typeof window.StoryMode.saveAndQuitToMenu === 'function') {
+                window.StoryMode.saveAndQuitToMenu();
+                return;
+            }
+            window.returnToHome();
+        };
 
         // Z-Move power table (base power → Z-Move power)
         function getZMovePower(bp) {
@@ -65308,6 +65378,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
                     el.focus({ preventScroll: true });
                 } catch (e) {}
+                // Post-game truth-in-labelling: every facility back re-enters
+                // enterCity(), which redirects to The Crucible while sm.atCrucible.
+                // Sync the static "Back to City" labels so they say where they
+                // actually go. Only rewrites buttons that already carry a
+                // "Back to…" label, so purpose-built backs (Save & Quit etc.) keep theirs.
+                try {
+                    if (id && id.indexOf('screen-story-') === 0 && typeof sm === 'object' && sm) {
+                        const label = sm.atCrucible ? 'Back to The Crucible' : 'Back to City';
+                        el.querySelectorAll('.story-shop-back-btn, .story-footer-back-btn').forEach(btn => {
+                            if (btn.classList.contains('story-footer-back-btn')) {
+                                if ((btn.textContent || '').indexOf('Back to') !== -1) btn.innerHTML = '&#8592; ' + label;
+                            } else if (((btn.getAttribute('title') || '').indexOf('Back to') !== -1)) {
+                                btn.setAttribute('title', label);
+                                btn.setAttribute('aria-label', label);
+                            }
+                        });
+                    }
+                } catch (e) {}
             }
         }
         window.showScreen = showScreen;                 // cross-script + test access
@@ -65387,6 +65475,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function confirmAbandon() {
             window.openModal('modal-story-abandon-confirm');
+        }
+
+        // Non-destructive exit: the run auto-saves throughout, so this persists
+        // once more and returns to the Story menu (resume card showing). The
+        // counterpart to abandonAndReturn(), which deletes the save. Not wired
+        // mid-battle — battle exits route through the forfeit path instead.
+        function saveAndQuitToMenu() {
+            if (!sm.active) { showMenu(true); return; }
+            try { save(); } catch (e) {}
+            showMenu(true);
         }
 
         function abandonAndReturn() {
@@ -72214,7 +72312,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openPermBoostPicker, applyPermBoost, removePermBoost,
             openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,
-            confirmAbandon, abandonAndReturn, continuePostGame, enterMysteryClimax,
+            confirmAbandon, abandonAndReturn, saveAndQuitToMenu, continuePostGame, enterMysteryClimax,
             openSummary, profOpenSummary, summaryMove, moveInParty, setPartyLead, partyReorder, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
