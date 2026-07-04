@@ -1420,7 +1420,7 @@
         .tx-card-pct {
             display: inline-flex; align-items: center;
             font-size: 10px; font-weight: 700;
-            color: #d2b35a; letter-spacing: 0.04em;
+            color: #e0c46a; letter-spacing: 0.04em; /* was #d2b35a — below AA at 10px on the dark card */
             background: rgba(255,213,79,0.12);
             border: 1px solid rgba(255,213,79,0.32);
             border-radius: 999px; padding: 1px 7px;
@@ -1692,6 +1692,30 @@
         .tx-apply-set-btn:hover:not(:disabled) { filter: brightness(1.12); }
         .tx-apply-set-btn:disabled { opacity: 0.55; cursor: not-allowed; }
         .tx-apply-set-tip { font-size: 10px; color: #b8c9b8; line-height: 1.35; }
+        /* Touch targets keyed on INPUT CAPABILITY, not viewport shape (overhaul U1).
+           The old 768px+portrait gate left landscape phones and every tablet with
+           ~26px chips; the landscape block even shrank slot chips to 36px. Mirrors
+           the .tx-type-pick precedent. Declared AFTER the landscape block so it
+           wins on touch devices; desktop mice keep the compact chrome. */
+        @media (hover: none) and (pointer: coarse) {
+            .tx-chip { min-height: 44px; padding: 10px 14px; }
+            .tx-chip.tx-chip--rec { padding: 10px 16px; }
+            .tx-sort-select { min-height: 44px; }
+            .tx-filters-toggle { min-height: 44px; padding: 10px 14px; }
+            .tx-sort-locked { min-height: 44px; display: inline-flex; align-items: center; }
+            .tx-confirm-bar-btn { min-height: 44px; }
+            .tx-slot-chip { min-height: 44px; }
+            .tx-tab { min-height: 48px; }
+            .tx-rec-row { min-height: 52px; }
+            .tx-mon-pill { min-height: 44px; }
+        }
+        /* Q7 — phone (either orientation): drop the tutor's footer "Back to City"
+           bar (duplicate of the header ← button) and reclaim its ~54px for the
+           picker. Landscape phones match via the height clause — 390px tall is
+           where that bar hurts most. Desktop keeps both. */
+        @media (max-width: 768px), (max-height: 480px) {
+            .story-tutor-footer { display: none; }
+        }
         .tx-rec-row {
             display: grid;
             grid-template-columns: 78px minmax(0, 1fr) auto;
@@ -2002,6 +2026,15 @@
         .tx-confirm-bar--locked .tx-confirm-bar-text strong { color: #ffd54f; }
         .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
         .tx-confirm-bar-text strong { color: var(--accent); }
+        /* Full move-effect text at confirm time (U3) — the grid card clamps its
+           description; this is the promised overflow home. Capped at 3 lines so
+           the sticky bar can't swallow the viewport on phones. */
+        .tx-confirm-bar-desc {
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+            overflow: hidden; margin-top: 3px;
+            font-size: 10px; line-height: 1.4; color: var(--text-muted, #9aa3b3);
+            font-style: italic;
+        }
         .tx-confirm-bar-btn {
             padding: 10px 16px; font-size: 13px; font-weight: 700;
             background: linear-gradient(180deg, #66bb6a, #43a047);
@@ -2067,7 +2100,7 @@
         .tx-nature-cell-name { font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
         .tx-nature-pct {
             font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
-            color: #c4a548; background: rgba(255,213,79,0.10);
+            color: #d8b95c; background: rgba(255,213,79,0.10); /* was #c4a548 — below AA at 9px */
             border: 1px solid rgba(255,213,79,0.28); border-radius: 999px;
             padding: 0 5px;
         }
@@ -9888,7 +9921,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="story tutor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="Training Facility" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -9900,7 +9933,7 @@
             <p id="story-tutor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Tap a move slot to swap it. Available moves come from each Pokémon's learnset.</p>
             <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;flex-shrink:0;">
+        <div class="story-tutor-footer" style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -16392,6 +16425,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let tt = getTextTooltipEl();
             tt.innerHTML = '<div style="font-size:12px;color:#e0e0e0;max-width:260px;">' + text + '</div>';
             tt.classList.remove('tooltip-tap-mode');
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
+        // Coarse-pointer fallback for title=""-only info (ISSUE-058): shows the
+        // element's title as a dismissible tap tooltip. Hover titles never fire on
+        // touch, so lock pills / tier badges / "↓ by usage" were invisible there.
+        window.showTapInfoTooltip = function(el, e) {
+            if (!el) return;
+            if (e && e.stopPropagation) e.stopPropagation();
+            let text = el.getAttribute('data-tapinfo-text') || el.getAttribute('title') || '';
+            if (!text) return;
+            text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const tt = getTextTooltipEl();
+            tt.classList.add('tooltip-tap-mode');
+            tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button>'
+                + '<div style="clear:both;font-size:12px;color:#e0e0e0;max-width:280px;line-height:1.4;">' + text + '</div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.showMoveTooltipTap = function(moveName, e) {
@@ -68542,6 +68590,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const t = ev.target && ev.target.closest ? ev.target : null;
                 if (!t) return;
 
+                // Touch info fallback (ISSUE-058): title-only labels (lock pills,
+                // tier badges, "↓ by usage", usage %, mechanic icons) show a
+                // dismissible tap tooltip on coarse pointers. Never intercepts a
+                // tap that would otherwise ACT: inside an enabled card the pick
+                // wins; on disabled/equipped cards and bare labels the info shows.
+                const tapInfo = t.closest('.tx-tapinfo[title]');
+                if (tapInfo && typeof window._prefersFinePointerHover === 'function' && !window._prefersFinePointerHover()) {
+                    const cardHost = tapInfo.closest('.tx-card');
+                    if (!cardHost || cardHost.dataset.disabled === '1' || cardHost.dataset.equipped === '1') {
+                        try { window.showTapInfoTooltip && window.showTapInfoTooltip(tapInfo, ev); } catch (e) {}
+                        return;
+                    }
+                }
+
                 // "Collapse all" affordance — close the open mon so the team
                 // list returns to the compact picker state. Rendered only when
                 // one mon is open.
@@ -68871,7 +68933,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const showSort = !recOnly || !!opts.sparse || tierN > 0;
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
-                : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
+                : `<span class="tx-sort-locked tx-tapinfo" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
             // Count pill flashes briefly when the count changes between
             // renders so the player can see the ★ toggle / chip filter
             // actually narrowed or widened the list.
@@ -68915,7 +68977,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<div class="tx-controls-row">${filtersToggle}<div class="tx-controls-row-end">${sortHtml}</div></div>`
                 : '';
             const chipStrip = hasChips
-                ? `<div class="tx-chip-strip" role="tablist" aria-label="Filters">${opts.chipsHtml}</div>`
+                ? `<div class="tx-chip-strip" role="group" aria-label="Filters">${opts.chipsHtml}</div>`
                 : '';
             const filterSheet = hasFilterSheet
                 ? `<div class="tx-filter-sheet"${sheetOpen ? '' : ' hidden'}>${chipStrip}${opts.belowChipsHtml || ''}</div>`
@@ -69039,7 +69101,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!locked) return '';
                 const nextStage = (dojoStage < 1) ? _npcStageName('dojo', 1) : _npcStageName('dojo', 3);
                 const title = `${locked} abilit${locked === 1 ? 'y' : 'ies'} unlock at ${nextStage}.`;
-                return ` <span class="tx-tab-badge" title="${_esc(title)}">🔒 ${locked}</span>`;
+                return ` <span class="tx-tab-badge tx-tapinfo" title="${_esc(title)}">🔒 ${locked}</span>`;
             } catch (e) { return ''; }
         }
 
@@ -69116,10 +69178,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : cap === 2
                         ? 'Black Belt — berries (T1) and staples (T2) unlocked. Choice/AV/Boots unlock at Master.'
                         : 'White Belt — berry tier unlocked. Higher tiers reveal as the Dojo levels up.';
-                    tierBadge = `<span class="tx-tier-badge" title="${_esc(title)}">🔒 ${label}</span>`;
+                    tierBadge = `<span class="tx-tier-badge tx-tapinfo" title="${_esc(title)}">🔒 ${label}</span>`;
                 }
             } catch (e) {}
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${tierBadge}${
+            return `<div class="tx-chip-row" role="group" aria-label="Filter items by category">${tierBadge}${
                 _TX_ITEM_CAT_ORDER.map(k =>
                     `<button type="button" class="tx-chip" data-filter-kind="itemCat" data-filter-value="${k}" data-active="${cur===k?1:0}">${_TX_ITEM_CAT_LABEL[k]}</button>`
                 ).join('')
@@ -69161,7 +69223,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // a "<1%" chip rather than nothing, so the wider 30-move pool never
             // shows bare trailing cards with no usage signal.
             const label = pct < 1 ? '<1%' : `${Math.round(pct)}%`;
-            return `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
+            return `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
         }
 
         // Build a Move card. The ★ prefix on the title marks options in the
@@ -69185,7 +69247,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             return order
                 .filter(t => tags.has(t))
-                .map(t => `<span class="tx-mech-icon ${map[t].cls}" title="${map[t].title}" aria-label="${map[t].title}">${map[t].letter}</span>`)
+                .map(t => `<span class="tx-mech-icon ${map[t].cls} tx-tapinfo" title="${map[t].title}" aria-label="${map[t].title}">${map[t].letter}</span>`)
                 .join('');
         }
         function _txMoveCardHtml(moveName, ctx) {
@@ -69242,7 +69304,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (ctx.acceptSet && !ctx.acceptSet.has(_base)) {
                             const unlockStage = (stageKey === 'guru') ? 2 : 1;
                             const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Unleashed');
-                            lockPill = `<span class="tx-pill tx-pill--locked" title="Opens when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
+                            lockPill = `<span class="tx-pill tx-pill--locked tx-tapinfo" title="Opens when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
                             locked = true; // gate the card so off-stage moves can't be picked
                         }
                     }
@@ -69327,7 +69389,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pills = [
                 `<span class="tx-pill">${_esc(_TX_ITEM_CAT_LABEL[cat] || cat)}</span>`,
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
-                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked tx-tapinfo" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
             ].filter(Boolean).join('');
             return _txSimpleCardHtml('item', itemName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills });
         }
@@ -69362,7 +69424,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 `<span class="tx-rec-tag tx-rec-tag--card" data-purpose="${_esc(role)}">${_esc(role)}</span>`,
                 isAwaken ? `<span class="tx-pill tx-pill--awaken" title="Off-legal ability — illegal in standard play, but often very strong. Only the Grandmaster Dojo can teach it.">⛔ Off-legal</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
-                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked tx-tapinfo" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
             // Awakened picks never show a usage % (off-legal builds only) and never
@@ -69478,8 +69540,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const summaryHtml = (kind === 'move' && isAppendMove)
                 ? `Learn <strong>${_esc(pending.value)}</strong> · ${costStr}`
                 : `Replace <strong style="color:#ef9a9a;">${_esc(current)}</strong> → <strong>${_esc(pending.value)}</strong> · ${costStr}`;
+            // Full effect text for the pending MOVE (U3): the grid card clamps its
+            // description to 2–3 lines with the promise that the full text shows at
+            // confirm time — this is where that promise is kept (hover tooltips
+            // don't exist on touch).
+            let descHtml = '';
+            if (kind === 'move') {
+                try {
+                    const _pmd = movesDB[String(pending.value).split('/')[0]] || ensureMoveData(String(pending.value).split('/')[0]);
+                    if (_pmd && _pmd.eff) descHtml = `<span class="tx-confirm-bar-desc">${_esc(_pmd.eff)}</span>`;
+                } catch (e) {}
+            }
             return `<div class="tx-confirm-bar">
-                <span class="tx-confirm-bar-text">${summaryHtml}</span>
+                <span class="tx-confirm-bar-text">${summaryHtml}${descHtml}</span>
                 <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
                 ${voucherBtn}
                 <button type="button" class="tx-confirm-bar-btn" data-action="${action}" data-team="${teamIdx}" ${canAfford?'':'disabled'}>${canAfford ? 'Confirm' : 'Locked'}</button>
@@ -69709,7 +69782,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const closeChip = activeIdx >= 0
                 ? `<button type="button" class="tx-collapse-all" data-collapse-all="${_esc(facility)}" aria-label="Close all" title="Close all Pokémon">▾ Close</button>`
                 : `<span class="tx-mon-switcher-hint" aria-hidden="true">Tap a Pokémon →</span>`;
-            return `<div class="tx-mon-switcher" role="tablist" aria-label="Switch Pokémon">${closeChip}${pills}</div>`;
+            return `<div class="tx-mon-switcher" role="group" aria-label="Switch Pokémon">${closeChip}${pills}</div>`;
         }
 
         // Render: collapsed mon header (same look as before, lightly polished)
@@ -70211,7 +70284,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
-                    <div class="tx-tabs" role="tablist" aria-label="Battle Dojo">
+                    <div class="tx-tabs" role="group" aria-label="Battle Dojo sections">
                         <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
                         <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability${_txDojoAbilLockedCountBadge(t.name, abils, awakenSet, haSet, _dojoStage)}</button>
                     </div>
@@ -72327,7 +72400,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
-                ? `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
+                ? `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
                 : '';
             return `<div id="evpreset-${idx}-${_esc(p.id)}" class="tx-card" data-recommended="${isRecommended?1:0}" data-current="${isCurrent?1:0}" style="cursor:default;scroll-margin-top:80px;">
                 <div class="tx-card-head">
