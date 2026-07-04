@@ -1,8 +1,15 @@
 # UX / Onboarding / Flow & Pacing — Full Investigation & Redesign Plan
 
-> **Status:** PROPOSAL — nothing here ships without maintainer sign-off (per CLAUDE.md approval
-> rules). Behavior-preserving items are marked; everything else needs an explicit ✅ from the
-> maintainer before implementation.
+> **Status:** IMPLEMENTED (single PR, 2026-07-04) at the maintainer's request ("do all in a
+> single PR"). The PR diff is the review surface; merge = sign-off. Item status:
+> **Shipped:** A1–A8 · B1–B8 · C1, C2-small, C4, C5, C7, C8, C3 (honesty-label form) ·
+> D1–D3 · E2–E5 · F2, F5, F6 (motion tokens) · A6 (browser history).
+> **Deferred with rationale (follow-up PRs):** C2-structural (turn-phase enum), C3-full
+> (ability-reveal tracking), E1 (overlay-system migration), F1 (type-scale ramp),
+> F3 (gold/hex consolidation), F4 (66→4 button families), F6-breakpoints, F7 (44px sweep
+> beyond the new controls) — each is a large sweep best reviewed in isolation.
+> Where the plan needed maintainer-owned decisions (§5), the recommended option was taken
+> and is flagged in the PR body for veto.
 >
 > **Trigger:** playtest feedback — players enjoy the game but "sometimes feel confused or lost
 > in menus"; UI/UX described as "a bit confusing and buggy".
