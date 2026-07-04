@@ -7863,6 +7863,61 @@
             letter-spacing: 0.04em;
         }
         .menu-btn-quickplay--story:hover { background: linear-gradient(180deg, #3a1010 0%, #220c0c 100%); }
+        /* Home hero slot 2 — Continue (returning story player) / Jump In (new visitor) */
+        .menu-btn-quickplay--continue {
+            border-color: var(--hp-green) !important;
+            color: #c8e6c9 !important;
+            font-size: 14px;
+            min-height: 48px;
+        }
+        .menu-btn-quickplay--jumpin {
+            border-color: #4fc3f7 !important;
+            background: linear-gradient(180deg, rgba(79,195,247,0.18) 0%, rgba(10,26,38,0.9) 100%);
+            color: #b3e5fc !important;
+            font-size: 14px;
+            min-height: 48px;
+        }
+        /* Leaderboard demoted from mode tile to link row */
+        .menu-lb-link {
+            display: block;
+            margin: 2px auto 0;
+            padding: 8px 14px;
+            min-height: 40px;
+            background: transparent;
+            border: none;
+            color: #9aa0aa;
+            font-family: inherit;
+            font-size: 12px;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            cursor: pointer;
+        }
+        .menu-lb-link:hover { color: #ffd54f; }
+        /* Battle-options preset chips */
+        .menu-preset-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .menu-preset-chip {
+            min-height: 40px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #555;
+            background: var(--surface2, #1e1e1e);
+            color: #ccc;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .menu-preset-chip:hover { border-color: #999; }
+        .menu-preset-chip--active {
+            border-color: var(--accent, #ffd54f);
+            color: var(--accent, #ffd54f);
+            background: rgba(255, 213, 79, 0.1);
+        }
         .menu-collection-row { width: 100%; max-width: 400px; margin: 10px auto 4px; }
         .menu-collection-btn {
             width: 100%;
@@ -9377,6 +9432,10 @@
             </div>
 
             <button type="button" class="menu-btn-quickplay menu-btn-quickplay--story" onclick="window.StoryMode && window.StoryMode.showMenu()">&#9670; Story Mode</button>
+            <!-- One primary action for the first 60 seconds: a returning story player
+                 sees "Continue — <name>"; a brand-new visitor sees an instant Jump In.
+                 Populated by refreshHomeHero(). -->
+            <div id="menu-continue-slot"></div>
             <!-- Collection moved into the Story Mode page (removed from the home screen per spec). -->
         </div>
 
@@ -9387,6 +9446,15 @@
             <span>&#9881; Battle Options — teams, rules &amp; bot difficulty</span><span class="chev" aria-hidden="true">▼</span>
         </button>
         <div id="menu-customize-panel" class="menu-customize-panel white-outline" hidden>
+            <!-- Preset chips first (Hick's law: 3 choices, not 20 controls). "Custom…"
+                 reveals the full control panel below. -->
+            <div class="menu-preset-row" role="radiogroup" aria-label="Battle options preset">
+                <button type="button" class="menu-preset-chip" data-preset="casual" role="radio" aria-checked="false" onclick="window.applyBattleOptionsPreset('casual')" title="Random teams, no gimmicks, classic Gen 1–2 pool — just play.">Casual</button>
+                <button type="button" class="menu-preset-chip" data-preset="standard" role="radio" aria-checked="false" onclick="window.applyBattleOptionsPreset('standard')" title="The default experience — random teams, all gimmicks on.">Standard</button>
+                <button type="button" class="menu-preset-chip" data-preset="competitive" role="radio" aria-checked="false" onclick="window.applyBattleOptionsPreset('competitive')" title="Draft your own 6v6 from every generation, weather &amp; terrain on, smartest bot.">Competitive</button>
+                <button type="button" class="menu-preset-chip" data-preset="custom" role="radio" aria-checked="false" onclick="window.applyBattleOptionsPreset('custom')" title="Open every individual control.">Custom&hellip;</button>
+            </div>
+            <div id="menu-custom-options">
             <div class="menu-section-title">Quick Battle</div>
             <div class="menu-filter-row" style="font-size:11px; gap:16px; justify-content:center;">
                 <label style="display:flex; align-items:center; gap:6px;"><span style="color:#aaa;">Teams</span>
@@ -9452,6 +9520,7 @@
                     <option value="6">6v6</option>
                 </select>
             </div>
+            </div><!-- /#menu-custom-options -->
         </div>
         <div class="menu-options menu-mode-wrap" id="menu-other-modes-wrap" style="flex-direction:column; align-items:center; gap:12px; margin-top:10px; padding-bottom:24px;">
             <div class="menu-mode-grid">
@@ -9470,10 +9539,9 @@
                 <button type="button" class="menu-mode-btn menu-mode-btn--onlinej" onclick="window.openOnlineJoinModal && window.openOnlineJoinModal()">
                     <span class="menu-mode-title">Online Join</span><span class="menu-mode-sub">Enter a room code</span>
                 </button>
-                <button type="button" class="menu-mode-btn menu-mode-btn--lb" onclick="window.openGauntletLeaderboardModal && window.openGauntletLeaderboardModal()">
-                    <span class="menu-mode-title">Leaderboard</span><span class="menu-mode-sub">Top Gauntlet runs</span>
-                </button>
             </div>
+            <!-- Leaderboard is a lookup, not a play mode — a link row, not a mode tile. -->
+            <button type="button" class="menu-lb-link" onclick="window.openGauntletLeaderboardModal && window.openGauntletLeaderboardModal()">🏆 Leaderboard — top Gauntlet runs</button>
             <button type="button" id="menu-offline-entry" class="menu-offline-entry" onclick="window.openOfflineSettings && window.openOfflineSettings()" aria-label="Download the game for offline play">
                 <span class="menu-offline-entry-ico" aria-hidden="true">⤓</span>
                 <span class="menu-offline-entry-text">
@@ -17610,6 +17678,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('screen-menu').classList.remove('hidden');
             try { window.runScreenTransition('fade'); } catch (e) {}
             try { if (typeof window.refreshOnlineSetupHint === 'function') window.refreshOnlineSetupHint(); } catch (e) {}
+            try { if (typeof window.refreshHomeHero === 'function') window.refreshHomeHero(); } catch (e) {}
             finish();
             // Music keeps playing — battle music continues on home screen
         }
@@ -18289,6 +18358,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (window.innerWidth > 768) return;
                 if (window.matchMedia && !window.matchMedia('(orientation: portrait)').matches) return;
                 if (localStorage.getItem('pwaHintDismissed')) return;
+                // Never nag a zero-commitment first arrival: the install pitch waits
+                // until the player has actually won something (web.dev guidance —
+                // prompt after a completed journey, at the engagement peak).
+                try { const f = JSON.parse(localStorage.getItem('pbs_ux_funnel') || '{}'); if (!f.first_win) return; } catch (e) { return; }
                 if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) return;
                 const hint = document.createElement('div');
                 hint.id = 'pwa-install-hint';
@@ -18509,6 +18582,98 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
         };
         try { window._uxFunnelMark('load'); } catch (e) {}
+
+        // Home hero second slot: "Continue — <name>" when a story run exists,
+        // else an instant "Jump In" quick battle (zero-commitment first 60 s).
+        window.refreshHomeHero = function() {
+            const slot = document.getElementById('menu-continue-slot');
+            if (!slot) return;
+            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            let html = '';
+            try {
+                const raw = localStorage.getItem('pbs_story_save');
+                if (raw) {
+                    const s = JSON.parse(raw);
+                    if (s && s.active) {
+                        const name = (s.trainerProfile && s.trainerProfile.name) ? s.trainerProfile.name : 'Trainer';
+                        const badges = s.badges | 0;
+                        html = `<button type="button" class="menu-btn-quickplay menu-btn-quickplay--continue" onclick="window.StoryMode && window.StoryMode.continueRun && window.StoryMode.continueRun()">&#9654; Continue — ${esc(name)} · ${badges}/8 badges</button>`;
+                    }
+                }
+            } catch (e) {}
+            if (!html) {
+                html = `<button type="button" class="menu-btn-quickplay menu-btn-quickplay--jumpin" onclick="window.jumpInQuickBattle && window.jumpInQuickBattle()" title="Instant random-team battle vs the bot — no setup">&#9889; Jump In — instant battle</button>`;
+            }
+            slot.innerHTML = html;
+        };
+        // Jump In always skips the draft, regardless of the saved Teams preference.
+        window.jumpInQuickBattle = function() {
+            const prev = settings.quickTeamSource;
+            settings.quickTeamSource = 'random';
+            try { window.startQuickBattle(); } finally { settings.quickTeamSource = prev; }
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { try { window.refreshHomeHero(); } catch (e) {} });
+        else { try { window.refreshHomeHero(); } catch (e) {} }
+
+        // Battle-options presets (Hick's law: 3 curated bundles + Custom).
+        window.applyBattleOptionsPreset = function(name, opts) {
+            const silent = !!(opts && opts.silent);
+            const byId = id => document.getElementById(id);
+            const setCb = (id, on) => { const el = byId(id); if (el) el.checked = !!on; };
+            const custom = name === 'custom';
+            const detail = byId('menu-custom-options');
+            if (detail) detail.hidden = !custom;
+            document.querySelectorAll('.menu-preset-chip').forEach(ch => {
+                const on = ch.getAttribute('data-preset') === name;
+                ch.classList.toggle('menu-preset-chip--active', on);
+                ch.setAttribute('aria-checked', on ? 'true' : 'false');
+            });
+            try { localStorage.setItem('pbs_battle_preset', name); } catch (e) {}
+            if (custom) return; // custom = whatever the controls currently say
+            const P = {
+                casual:      { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: false, weather: false, party: '3' },
+                standard:    { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: true,  weather: false, party: '3' },
+                competitive: { teams: 'draft',  bot: 'stall',    gens: [1,2,3,4,5,6,7,8,9],     gimmicks: true,  weather: true,  party: '6' },
+            }[name];
+            if (!P) return;
+            const ts = byId('quick-team-source'); if (ts) ts.value = P.teams;
+            const ap = byId('menu-ai-profile'); if (ap) ap.value = P.bot;
+            for (let g = 1; g <= 9; g++) setCb('draft-gen-cb-' + g, P.gens.indexOf(g) !== -1);
+            ['grade-1-cb', 'grade-2-cb', 'grade-3-cb', 'grade-4-cb'].forEach(id => setCb(id, true));
+            setCb('mech-mega-cb', P.gimmicks); setCb('mech-z-cb', P.gimmicks);
+            setCb('mech-dyna-cb', P.gimmicks); setCb('mech-tera-cb', P.gimmicks);
+            setCb('mech-weather-cb', P.weather); setCb('mech-terrain-cb', P.weather);
+            setCb('smart-draft-cb', true); setCb('gauntlet-scaling-cb', true);
+            const ps = byId('party-size-select'); if (ps) ps.value = P.party;
+            if (silent) return;
+            try { window.setMenuAiProfile && window.setMenuAiProfile(P.bot); } catch (e) {}
+            try { window.updateMechanics && window.updateMechanics(); } catch (e) {}
+            try { window.updatePoolCount && window.updatePoolCount(); } catch (e) {}
+            try { window.persistQuickBattlePrefs && window.persistQuickBattlePrefs(); } catch (e) {}
+        };
+        // Restore the last-chosen preset chip state (visual only — the underlying
+        // control values are already persisted/restored by their own plumbing).
+        (function _restoreBattlePresetChip() {
+            const apply = function () {
+                // Fresh install (no persisted settings at all) starts on Standard —
+                // which IS the shipped defaults, so the chip never lies. Anyone with
+                // prior persisted prefs but no chip choice reads as Custom.
+                let saved = 'custom';
+                try {
+                    saved = localStorage.getItem('pbs_battle_preset')
+                        || (localStorage.getItem('pbs_settings') ? 'custom' : 'standard');
+                } catch (e) {}
+                const detail = document.getElementById('menu-custom-options');
+                if (detail) detail.hidden = saved !== 'custom';
+                document.querySelectorAll('.menu-preset-chip').forEach(ch => {
+                    const on = ch.getAttribute('data-preset') === saved;
+                    ch.classList.toggle('menu-preset-chip--active', on);
+                    ch.setAttribute('aria-checked', on ? 'true' : 'false');
+                });
+            };
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+            else apply();
+        })();
 
         window.initDraft = async function(mode) {
             try { window._uxFunnelMark('mode_' + mode); } catch (e) {}
@@ -65670,6 +65835,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // "Back" button → return to main menu
                 document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                 document.getElementById('screen-menu').classList.remove('hidden');
+                try { window.refreshHomeHero && window.refreshHomeHero(); } catch (e) {}
                 return;
             }
             try { window._uxFunnelMark('mode_story'); } catch (e) {}
@@ -65764,6 +65930,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             deleteSave();
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             document.getElementById('screen-menu').classList.remove('hidden');
+            try { window.refreshHomeHero && window.refreshHomeHero(); } catch (e) {}
             _reenterFullscreenIfNeeded(wantFs);
         }
 
