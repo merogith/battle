@@ -23758,6 +23758,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return new Promise(resolve => {
                 // Fallback: if somehow there is nothing to pick, resolve immediately.
                 if (!bench || bench.length === 0) { resolve(null); return; }
+                // Headless test harness (jsdom) has no interactive party menu to click, so a real
+                // await here would hang playTurn forever. Auto-resolve with the first bench mon —
+                // the engine's historical pivot pick — so pivot tests stay deterministic. Real
+                // gameplay (no __testHarness) falls through to the party menu below.
+                if (typeof window !== 'undefined' && window.__testHarness) { resolve(bench[0]); return; }
                 window._pivotSwitchPending = { isP1: !!isP1, resolve };
                 // Re-stamp the watchdog clock: the player is now making a choice, so the
                 // lock timer should measure THIS wait, not the whole turn (mirrors the
