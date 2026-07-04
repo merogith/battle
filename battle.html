@@ -15981,6 +15981,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window._gameConfirmResolve = null;
                 try { r(false); } catch (e) {}
             }
+            // Same promise-strand hazard for the pivot-switch replacement menu (U-turn / Volt
+            // Switch / Baton Pass / …). awaitPlayerPivotSwitch parks the turn resolver on a
+            // promise settled by selectPartyMember's intercept. If modal-party is dismissed by a
+            // GENERIC path instead (the global Esc handler, a screen transition), that resolver
+            // would strand and the turn would hang until the watchdog. Settle it with the fallback
+            // (null → handlePivotSwitch sends out bench[0]) so no close path can hang the turn.
+            // (selectPartyMember clears _pivotSwitchPending before it calls closeParty, so the
+            // normal pick never double-resolves through here.)
+            if (id === 'modal-party' && window._pivotSwitchPending) {
+                const _pp = window._pivotSwitchPending;
+                window._pivotSwitchPending = null;
+                try { _pp.resolve(null); } catch (e) {}
+            }
             try {
                 const prev = window._modalFocusStack.get(id);
                 if (prev && typeof prev.focus === 'function') prev.focus();
@@ -20906,6 +20919,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // (cancel disabled, ignores isLocked) but need their own prompt.
             const _pivotPick = !!window._pivotSwitchPending;
             let _ctxText = _pivotPick ? "Choose a Pokémon to switch in." : (isForced ? "Your Pokémon fainted! Pick a replacement (this costs your turn)." : "Select a Pokémon to switch in.");
+            // During a pivot pick the player has already committed to the move and MUST send
+            // someone in — block the global Esc handler from abandoning it (a voluntary switch,
+            // by contrast, stays Esc-cancellable). closeModal still settles the resolver if any
+            // other close path fires, so this is UX polish, not the safety net.
+            try {
+                const _pm = document.getElementById('modal-party');
+                if (_pm) { if (_pivotPick) _pm.dataset.noEscape = 'true'; else delete _pm.dataset.noEscape; }
+            } catch (e) {}
             // Warn the player which entry hazards still threaten the next switch-in.
             try {
                 const _hazSide = ((state.mode === 'pvp') && state.currentPlayer === 2) ? state.fSide : state.pSide;
@@ -22657,10 +22678,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const best = aiBestSwitch(bench, defender);
                 if (best) {
                     let inDmg = 0;
-                    (best.moves || []).forEach(m => { if (m && m.cat !== "Status") { const d = aiEstimateDmg(best, defender, m); if (d > inDmg) inDmg = d; } });
+                    // Match the attacker's PP>0 filter so we don't credit the switch-in with a
+                    // nuke it can't actually fire (PP-depleted move).
+                    (best.moves || []).forEach(m => { if (m && m.cat !== "Status" && m.pp > 0) { const d = aiEstimateDmg(best, defender, m); if (d > inDmg) inDmg = d; } });
                     const inThreat = aiThreatScore(defender, best);
                     const survivesEntry = inThreat < best.currentHp; // not KO'd the moment it lands
-                    switchInImproves = survivesEntry && (inDmg > myBestDmg * 1.25 || (aboutToBeKOd && inThreat < attacker.currentHp));
+                    // An improvement means the switch-in survives entry AND either hits meaningfully
+                    // harder than we do (threshold matches aiDecision's newBestDmg>myBestDmg*1.2) or
+                    // simply escapes a KO we were about to eat. survivesEntry already carries the
+                    // "is it a safe landing spot" check, so the escape case is just aboutToBeKOd.
+                    switchInImproves = survivesEntry && (inDmg > myBestDmg * 1.2 || aboutToBeKOd);
                 }
 
                 if ((walled || aboutToBeKOd) && switchInImproves) {
@@ -22951,6 +22978,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     }
 
     // Collect every scored candidate, then select via seeded softmax (see aiSelectScoredMove).
+    // aiPivotWorth evaluates the current matchup + bench, NOT the specific pivot move, so its
+    // value is identical for every pivot move this turn. Compute it once here instead of
+    // re-running it (and its internal aiBestSwitch bench scan) per pivot move inside the loop —
+    // a U-turn + Volt Switch mon would otherwise scan the bench twice for the same answer.
+    const _PIVOT_MOVE_NAMES = new Set(["U-turn","Volt Switch","Flip Turn","Parting Shot","Baton Pass","Teleport"]);
+    const _pivotMult = validMoves.some(m => m && _PIVOT_MOVE_NAMES.has(m.name)) ? aiPivotWorth(attacker, defender) : 1;
+
     let scored = [];
     validMoves.forEach(move => {
         let score = 0;
@@ -23036,7 +23070,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // it (winning matchup, nothing better on the bench, or we just switched). A guaranteed
             // KO still wins outright because the KO multipliers above dwarf the ~0.35 floor.
             if (move.name === "U-turn" || move.name === "Volt Switch" || move.name === "Flip Turn") {
-                score *= aiPivotWorth(attacker, defender);
+                score *= _pivotMult;
             }
 
         } else {
@@ -23316,7 +23350,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (hpPct < 0.3) score += 14;
                 }
                 // Same anti-spam gate as the damaging pivots — don't bail a winning position.
-                score *= aiPivotWorth(attacker, defender);
+                score *= _pivotMult;
             }
             // Trick Room
             else if (move.name === "Trick Room") {
@@ -23739,6 +23773,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let bench = party.filter(m => m.currentHp > 0 && m !== activeMon);
             if (bench.length === 0) return; // No one to switch to
 
+            // If the pivot move already KO'd the opponent's LAST Pokémon, the battle is decided.
+            // Don't force a (hazard-eating) replacement pick on the winning turn — let the
+            // faint/win check that runs after this resolve end the battle. Matters most now that
+            // the player path is a blocking modal rather than a silent bench[0] auto-pick.
+            const oppParty = isPlayer ? state.foeParty : state.playerParty;
+            if (!oppParty.some(m => m && m.currentHp > 0)) return;
+
             // Decide the replacement:
             //  - Foe AI (PvE): auto-picks its best switch-in.
             //  - Human player (Story / Quick / Gauntlet): picks from the party menu.
@@ -23782,7 +23823,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.revealedFoe) state.revealedFoe.add(state.fActive.name);
             }
             logMsg(`${isPlayer ? 'Player 1' : 'Foe'} sent out ${newMon.name}!`, 'info');
-            const inMon = isPlayer ? state.pActive : state.fActive;
+            const inMon = newMon; // just assigned to the active slot above
             const outFoe = isPlayer ? state.fActive : state.pActive;
             applySwitchInAbilities(inMon, outFoe);
             applyEntryHazards(inMon, isPlayer);
@@ -24570,6 +24611,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cmd = document.getElementById('command-menu');
                 const move = document.getElementById('move-menu');
                 if (!cmd) return false;
+
+                // A pivot-switch replacement menu is legitimately awaiting the player's choice
+                // (window._pivotSwitchPending). The faint branch below would otherwise run
+                // checkFaints() RE-ENTRANTLY — a U-turn that KO'd the foe leaves fActive at 0 HP
+                // while this modal is up — double-handling the faint / ending an already-decided
+                // battle underneath the suspended resolver. If the modal is up, keep it and let the
+                // player pick; if it's somehow gone, clear the pending flag (closeModal already
+                // settled the resolver) so it can't hijack a later switch.
+                if (window._pivotSwitchPending) {
+                    if (party && !party.classList.contains('hidden')) {
+                        state.isLocked = true;
+                        try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
+                        if (typeof logMsg === 'function') logMsg('Choose a Pokémon to switch in to continue.', 'info');
+                        return true;
+                    }
+                    window._pivotSwitchPending = null;
+                }
 
                 // Stale bag pass is a common "my next move did nothing" source after an interrupted bag turn.
                 try { if (typeof window !== 'undefined') window._storyBagPassAfterItem = false; } catch (e) {}

@@ -149,6 +149,28 @@ test('selectPartyMember: a pending pivot ignores clicks on a fainted / active sl
   assert.equal(resolvedWith && resolvedWith.name, 'Metagross');
 });
 
+test('closeModal: dismissing modal-party settles a stranded pivot resolver (no turn hang)', async () => {
+  const eng = await loadEngine();
+  const { window } = eng;
+  // Simulate a pivot awaiting the player's pick, then a GENERIC close (Esc handler / screen
+  // transition) that does NOT go through selectPartyMember. The resolver must be settled so
+  // the parked handlePivotSwitch turn can't hang forever.
+  let settled = 'never';
+  window._pivotSwitchPending = { isP1: true, resolve: (m) => { settled = m; } };
+  window.closeModal('modal-party');
+  assert.equal(settled, null, 'a generic close must settle the pivot resolver (with the fallback null)');
+  assert.equal(window._pivotSwitchPending, null, 'pending pivot cleared after a generic close');
+});
+
+test('closeModal: settling a game-confirm still works and does not touch an absent pivot', async () => {
+  const eng = await loadEngine();
+  const { window } = eng;
+  window._pivotSwitchPending = null; // no pivot in flight
+  // Should be a no-op for the pivot path and not throw.
+  assert.doesNotThrow(() => window.closeModal('modal-party'));
+  assert.equal(window._pivotSwitchPending, null);
+});
+
 test('aiBestSwitch: avoids a switch-in that gets KO’d on entry, preferring a survivor', async () => {
   const eng = await loadEngine();
   const { mkMon, engine } = eng;
