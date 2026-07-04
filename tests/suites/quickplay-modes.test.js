@@ -21,10 +21,12 @@ test('the mode grid is visible (not behind the old paused panel)', () => {
     const wrap = D.getElementById('menu-other-modes-wrap');
     assert.ok(wrap, 'mode wrap exists');
     assert.equal(wrap.hasAttribute('hidden'), false, 'mode wrap is not hidden');
-    // All four play modes + leaderboard are reachable.
-    for (const cls of ['--pve', '--gaunt', '--pvp', '--onlineh', '--onlinej', '--lb']) {
+    // All five play modes are reachable as tiles; the leaderboard was demoted
+    // to a link row (UX 2026-07 — it's a lookup, not a play mode).
+    for (const cls of ['--pve', '--gaunt', '--pvp', '--onlineh', '--onlinej']) {
         assert.ok(D.querySelector('.menu-mode-btn' + cls), 'mode button ' + cls + ' present');
     }
+    assert.ok(D.querySelector('.menu-lb-link'), 'leaderboard link row present');
 });
 
 test('Battle Options exposes the new toggles', () => {

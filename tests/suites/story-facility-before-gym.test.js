@@ -151,25 +151,42 @@ test('staged tier-up registers as a pending intro at the upgrade city', () => {
   assert.equal(ST.isFacilityStageUpPendingHere(0, 'tutor'), false, 'debut stage 0 is not a tier-up (first-visit beat owns it)');
 });
 
-// ── Items 1 + 2 — gym is gated until new/upgraded facilities are seen ─────────
-test('gym is gated behind facility tier-ups, then opens once they are seen', () => {
+// ── Items 1 + 2 — UPDATED (UX pacing 2026-07): tier-ups no longer force-gate ──
+// Only the Pokémart (C0) and Pokémon Center (C1) may gate; staged tier-ups
+// surface as an "⬆ Upgraded" pill on the facility button instead of disabling
+// the gym/route. This test locks the NEW behavior in.
+test('gym is NOT gated behind facility tier-ups; the tier-up surfaces as an Upgraded pill instead', () => {
   const gymRow = cityRowWith(4, 'Gym Battle');
   assert.ok(gymRow >= 0, 'found a City4 gym row');
 
   // All first-time facilities already introduced; Professor satisfied; lower NPC
-  // tiers seen — but the C4 Move Tutor / Evolution Tutor tier-ups are NOT yet seen.
+  // tiers seen — the C4 Move Tutor / Evolution Tutor / Dojo tier-ups are NOT yet seen.
   const introsAll = { mart:1, tutor:1, nature:1, evolab:1, stoneShop:1, link:1, fanclub:1, dept:1, casino:1, dojo:1, evtrainer:1, colress:1, artifacts:1, safari:1, center:1, relic:1, bag:1, party:1 };
   setSm({ eventIndex: gymRow, badges: 3, facilityIntros: { ...introsAll }, npcStageSeen: { tutor: 0, evolab: 0, dojo: 0 }, profUsed: { 4: true } });
 
-  const gated = W.__renderCityActionsForTest(gymRow);
-  assert.ok(/Enter the Gym <span[^>]*>\(Visit [^)]*first\)/.test(gated), 'gym is disabled with a "Visit … first" facility hint while tier-ups are pending');
+  const html = W.__renderCityActionsForTest(gymRow);
+  assert.ok(!/Enter the Gym <span[^>]*>\(Visit [^)]*first\)/.test(html), 'gym is NOT disabled by pending tier-ups (force-tour gate removed)');
+  assert.ok(/Enter the Gym/.test(html), 'gym button is present and enabled');
+  assert.ok(/⬆ Upgraded/.test(html), 'pending tier-up facilities carry the "⬆ Upgraded" pill (the replacement signal)');
 
-  // Mark the C4 tier-ups seen → the gym opens. C4 is now a Dojo tier-up (Black Belt,
-  // 1.6.0 ladder), so the dojo tier must also be marked seen for the gym to open.
+  // Once the tier-ups are seen, the pill disappears too.
   ST.sm.npcStageSeen = { tutor: 1, evolab: 1, dojo: 1 };
-  const open = W.__renderCityActionsForTest(gymRow);
-  assert.ok(!/Enter the Gym <span[^>]*>\(Visit [^)]*first\)/.test(open), 'gym no longer carries the facility gate once tier-ups are seen');
-  assert.ok(/Enter the Gym/.test(open), 'gym button is still present (now enabled)');
+  const seen = W.__renderCityActionsForTest(gymRow);
+  assert.ok(!/⬆ Upgraded/.test(seen), 'Upgraded pill clears once the tier-up has been seen');
+});
+
+// ── Mart (C0) and Center (C1) keep their debut gate — the ONLY remaining gates ─
+test('mart still gates at its C0 debut; non-core facilities never gate', () => {
+  const c0Row = cityRowWith(0, 'Pokemart');
+  assert.ok(c0Row >= 0, 'found the City0 row with a Pokemart');
+  // Nothing introduced yet → mart (gate key) is required at C0; relics/tutor/bag are not.
+  setSm({ eventIndex: c0Row, facilityIntros: {}, npcStageSeen: {} });
+  assert.equal(ST.isFacilityRequiredHere(0, 'mart', ['Pokemart']), true, 'mart gates at its C0 debut');
+  assert.equal(ST.isFacilityRequiredHere(0, 'relic', ['Pokemart']), false, 'relics never gate (taught on first voluntary open)');
+  assert.equal(ST.isFacilityRequiredHere(0, 'tutor', ['Pokemart', 'Move Tutor']), false, 'move tutor never gates');
+  assert.equal(ST.isFacilityRequiredHere(0, 'bag', ['Pokemart']), false, 'bag intro never gates');
+  assert.equal(ST.isFacilityRequiredHere(1, 'center', ['Pokemart']), true, 'Pokémon Center gates at its C1 debut');
+  assert.equal(ST.isFacilityRequiredHere(1, 'fanclub', ['Pokemart']), false, 'fan club (IVs) never gates');
 });
 
 // ── Item 4 — reward lines render on the victory card ──────────────────────────
