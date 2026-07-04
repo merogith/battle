@@ -1,8 +1,24 @@
 # Mystery Figure Rework — Implementation Plan
 
-> Status: **PLAN — awaiting maintainer sign-off** (CLAUDE.md approval rules: game-behavior
-> changes need explicit approval before any code ships). Nothing in this document is
-> implemented yet.
+> Status: **IMPLEMENTED (2026-07-04)** — maintainer answered the open questions
+> (Q1: full grade-1 rolls from the enabled generations, full builds · Q2: narrative-only
+> reward · Q4: both encounters retakeable · Q5: no balance compensation) and the work
+> shipped on this branch. Deviations from the plan below, discovered during
+> implementation:
+> - **No SAVE_VER bump needed** — the new fields (`mfEncounter1`, `mfFinalResult`,
+>   `mfFirstInBattle`, `mfFirstTeamLock`) are additive with `load()` back-fills, same
+>   pattern as `hofPartySnapshot`. Old saves need no repair (the gate code is simply gone).
+> - **Same-six retries** use a frozen `sm.mfFirstTeamLock` (the `currentEnemyLock`
+>   pattern) instead of pure re-seeding — warm build caches consume the seeded RNG
+>   stream unevenly, so re-rolls could drift mid-session.
+> - **Final-encounter skippability** is the game-over **Accept the Loss** path (after an
+>   attempt), not a pre-fight decline — matching the user's own flow description. The
+>   mask stays on; the Crucible Mystery encore replays the fight and fires the reveal on
+>   a later win.
+> - The multiverse reveal already existed in `main.mfReveal`; Part B extended it with the
+>   sorting/trial framing + first-encounter branches rather than rewriting it.
+> Authoritative docs now live in `STORY_MODE_FLOW.md` (§9, §14d, §14e). This file is kept
+> as the design record.
 >
 > Scope: replace the City-8 Mystery Figure legendary-gift visit with a proper **first
 > encounter** (talk or fight, meant-to-lose-but-winnable, no punishment), rework the

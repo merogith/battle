@@ -6,7 +6,7 @@
  *
  * Two passes:
  *   A) fresh run, pump the early/mid game as far as it reliably goes (tests events).
- *   B) seed the end-game (seedDebugMysteryLegendGate → 8 badges / full party / Champion's
+ *   B) seed the end-game (seedDebugMysteryFirstEncounter → 8 badges / full party / Champion's
  *      Hall) and pump to beat Champion → Rival → Hall of Fame → Mystery Figure → post-game.
  *
  * Injects an anime.js stub at init so battles render under the CDN-blocked sandbox.
@@ -242,8 +242,8 @@ try {
   log(`PASS C end (mystery/post-game): ${JSON.stringify(cEndPass)}`);
   await shot(page, 'C-end');
 
-  phase('EXTRA — Mystery legend gate + HoF preview');
-  for (const [fn, label] of [['seedDebugMysteryLegendGate', 'mystery-legend-gate'], ['previewHallOfFame', 'hof-preview']]) {
+  phase('EXTRA — Mystery first encounter + HoF preview');
+  for (const [fn, label] of [['seedDebugMysteryFirstEncounter', 'mystery-first-encounter'], ['previewHallOfFame', 'hof-preview']]) {
     const r = await api(page, fn); await sleep(1400);
     if (r === 'ok') { await shot(page, `seed-${label}`); const cc = await classify(page); if (cc && cc.battleActive) { await autoWin(page); await shot(page, `seed-${label}-won`); } const e = newErrors(); if (e.length) finding('P2', 'late-game', `${label} threw ${e.length} error(s)`, e.slice(0, 2).map(x => x.text).join(' | ')); else log(`   ${label} clean`); for (let i = 0; i < 5; i++) { if (!(await clickText(page, 'Got it') || await clickText(page, 'Continue') || await clickText(page, 'OK'))) break; await sleep(400); } }
     else log(`   ${fn} → ${r}`);
