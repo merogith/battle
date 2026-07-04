@@ -149,6 +149,69 @@ test('selectPartyMember: a pending pivot ignores clicks on a fainted / active sl
   assert.equal(resolvedWith && resolvedWith.name, 'Metagross');
 });
 
+test('Shed Tail: the passed substitute transfers to the incoming Pokémon', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine, window, reset } = eng;
+  reset();
+  const player = mkMon({ species: 'Furret', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  const shed = mkMon({ species: 'Snorlax', moves: ['Shed Tail', 'Splash', 'Splash', 'Splash'] });
+  const incoming = mkMon({ species: 'Metagross', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  engine.state.pActive = player; engine.state.fActive = shed;
+  engine.state.playerParty = [player]; engine.state.foeParty = [shed, incoming];
+  engine.state.mode = 'pve';
+  const shedMaxHp = shed.maxHp;
+  const expectedSub = Math.floor(shedMaxHp / 4);
+  const expectedCost = Math.floor(shedMaxHp / 2);
+  engine.setForcedFoeMoveSlot(0); // foe uses Shed Tail
+  await window.playTurn(1, null);  // player uses Splash (harmless)
+
+  assert.equal(engine.state.fActive.name, 'Metagross', 'the benched mon should have switched in');
+  assert.equal(engine.state.fActive.volatile.sub, expectedSub,
+    `incoming mon should inherit the substitute (${expectedSub}), got ${engine.state.fActive.volatile.sub}`);
+  assert.equal(shed.volatile.sub, 0, 'the Shed Tail user should no longer hold the sub after switching out');
+  assert.equal(shed.currentHp, shedMaxHp - expectedCost, 'Shed Tail should cost half the user\'s max HP');
+});
+
+test('Shed Tail: only the sub is passed — stat boosts are NOT (unlike Baton Pass)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine, window, reset } = eng;
+  reset();
+  const player = mkMon({ species: 'Furret', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  const shed = mkMon({ species: 'Snorlax', moves: ['Shed Tail', 'Splash', 'Splash', 'Splash'] });
+  shed.stages.atk = 3; // a boost that Baton Pass WOULD carry but Shed Tail must not
+  const incoming = mkMon({ species: 'Metagross', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  engine.state.pActive = player; engine.state.fActive = shed;
+  engine.state.playerParty = [player]; engine.state.foeParty = [shed, incoming];
+  engine.state.mode = 'pve';
+  engine.setForcedFoeMoveSlot(0);
+  await window.playTurn(1, null);
+
+  assert.equal(engine.state.fActive.name, 'Metagross');
+  assert.ok(engine.state.fActive.volatile.sub > 0, 'sub should be passed');
+  assert.equal(engine.state.fActive.stages.atk, 0, 'Shed Tail must NOT pass the +3 Atk boost');
+});
+
+test('Shed Tail: fails (no HP spent) when there is no one to switch to', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine, window, reset, logs } = eng;
+  reset();
+  const player = mkMon({ species: 'Furret', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  const shed = mkMon({ species: 'Snorlax', moves: ['Shed Tail', 'Splash', 'Splash', 'Splash'] });
+  engine.state.pActive = player; engine.state.fActive = shed;
+  engine.state.playerParty = [player]; engine.state.foeParty = [shed]; // no bench
+  engine.state.mode = 'pve';
+  const before = shed.currentHp;
+  engine.setForcedFoeMoveSlot(0);
+  const startLen = logs.length;
+  await window.playTurn(1, null);
+  const turnLogs = logs.slice(startLen);
+
+  assert.equal(engine.state.fActive.name, 'Snorlax', 'no switch should occur');
+  assert.equal(shed.currentHp, before, 'a failed Shed Tail must not spend HP');
+  assert.equal(shed.volatile.sub, 0, 'a failed Shed Tail must not leave a substitute');
+  assert.ok(turnLogs.some(l => /no one to switch to/i.test(l.text)), 'should log the failure');
+});
+
 test('closeModal: dismissing modal-party settles a stranded pivot resolver (no turn hang)', async () => {
   const eng = await loadEngine();
   const { window } = eng;

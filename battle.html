@@ -23804,6 +23804,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             let oldMon = isPlayer ? state.pActive : state.fActive;
+            // Shed Tail passes ONLY its substitute to the incoming mon (not stat stages or other
+            // volatiles — that would be Baton Pass). Capture it before clearVolatileOnSwitch wipes
+            // it; re-applied to the survivor below.
+            const _shedTailSub = (move.name === "Shed Tail") ? (oldMon.volatile.sub | 0) : 0;
             if (move.name === "Baton Pass") {
                 applyBatonPass(oldMon, newMon);
             } else {
@@ -23827,6 +23831,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const outFoe = isPlayer ? state.fActive : state.pActive;
             applySwitchInAbilities(inMon, outFoe);
             applyEntryHazards(inMon, isPlayer);
+            // Shed Tail: the replacement arrives behind the passed substitute, provided it survived
+            // entry hazards. (Hazards hit real HP and can break through / KO before the sub lands.)
+            if (_shedTailSub > 0 && inMon.currentHp > 0) {
+                inMon.volatile.sub = _shedTailSub;
+                logMsg(`${inMon.name} came in behind the substitute!`, 'info');
+            }
             updateUI();
             await sleep(1000);
         }
@@ -31297,8 +31307,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); return;
             }
 
-            // === SHED TAIL: create sub at half-HP cost, then switch out ===
+            // === SHED TAIL: create sub at half-HP cost, then switch out (sub is passed to the
+            // incoming mon by handlePivotSwitch). Like Baton Pass, it fails if there's no one to
+            // switch to — otherwise it would spend HP + make a sub and then not switch. ===
             if (move.name === "Shed Tail") {
+                let _stParty = isPlayer ? state.playerParty : state.foeParty;
+                let _stActive = isPlayer ? state.pActive : state.fActive;
+                let _stBench = _stParty.filter(m => m.currentHp > 0 && m !== _stActive);
+                if (_stBench.length === 0) { logMsg(`But it failed! There's no one to switch to!`, 'info'); return; }
                 let _stCost = Math.floor(attacker.maxHp / 2);
                 if (attacker.currentHp <= _stCost) { logMsg(`But it failed! ${attacker.name} doesn't have enough HP!`, 'info'); return; }
                 attacker.currentHp -= _stCost;
