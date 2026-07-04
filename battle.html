@@ -10884,15 +10884,31 @@
             if (document.body.classList.contains('is-mobile') && inMoves && !sb.classList.contains('hidden')) {
                 log.classList.add('battle-log--peek');
                 log.classList.remove('battle-log--peek-expanded');
+                // Real expand/collapse affordance for AT + keyboard (was a bare div
+                // click handler — invisible to screen readers, unreachable by Tab).
+                log.setAttribute('role', 'button');
+                log.setAttribute('tabindex', '0');
+                log.setAttribute('aria-expanded', 'false');
+                log.setAttribute('aria-label', 'Battle log — tap to expand');
                 if (!log._pbsPeekBound) {
                     log._pbsPeekBound = true;
-                    log.addEventListener('click', function() {
+                    const _togglePeek = function () {
                         if (!log.classList.contains('battle-log--peek')) return;
-                        log.classList.toggle('battle-log--peek-expanded');
+                        const open = log.classList.toggle('battle-log--peek-expanded');
+                        log.setAttribute('aria-expanded', open ? 'true' : 'false');
+                        log.setAttribute('aria-label', open ? 'Battle log — tap to collapse' : 'Battle log — tap to expand');
+                    };
+                    log.addEventListener('click', _togglePeek);
+                    log.addEventListener('keydown', function (ev) {
+                        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); _togglePeek(); }
                     });
                 }
             } else {
                 log.classList.remove('battle-log--peek', 'battle-log--peek-expanded');
+                log.setAttribute('role', 'log');   // restore the markup's live-log role
+                log.removeAttribute('tabindex');
+                log.removeAttribute('aria-expanded');
+                log.removeAttribute('aria-label');
             }
         };
         window.runScreenTransition = function(kind) {
@@ -17717,6 +17733,74 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (vis('screen-menu') || vis('screen-story-menu')) return { hidden: true };
             return { label: 'Exit to Main Menu', confirm: null, danger: false };
         };
+        // Browser-history integration (A6): the game had ZERO popstate/pushState
+        // handling, so browser/gesture Back instantly exited the app losing any
+        // battle or draft in progress — the #1 accidental-exit trigger on mobile
+        // PWA. One history entry is pushed per screen (showScreen); Back routes
+        // through the same safe exits the on-screen buttons use.
+        (function _installHistoryIntegration() {
+            if (typeof history === 'undefined' || typeof history.pushState !== 'function') return;
+            if (typeof window !== 'undefined' && window.__testHarness === true) return; // keep the jsdom harness deterministic
+            let _lastPushed = '';
+            window._pbsHistoryPush = function(tag) {
+                if (!tag || tag === 'screen-menu' || tag === _lastPushed) return;
+                if (window.__pbsNavGuard) return; // popstate-driven navigation must not re-push
+                try { history.pushState({ pbs: tag }, '', location.href); _lastPushed = tag; } catch (e) {}
+            };
+            const vis = id => { const el = document.getElementById(id); return !!(el && !el.classList.contains('hidden')); };
+            window.addEventListener('popstate', function() {
+                window.__pbsNavGuard = true;
+                try {
+                    _lastPushed = '';
+                    // 1) An open modal? Back closes it (one layer per Back).
+                    const modals = document.querySelectorAll('.modal:not(.hidden)');
+                    if (modals.length) {
+                        const top = modals[modals.length - 1];
+                        if (!(top.dataset && top.dataset.noEscape === 'true') && top.id) window.closeModal(top.id);
+                        try { history.pushState({ pbs: 'modal-pop' }, '', location.href); } catch (e) {}
+                        return;
+                    }
+                    // 2) Mid-battle or mid-draft: don't silently forfeit — re-arm the
+                    // entry and open the context-aware exit confirm instead.
+                    if (vis('screen-battle') || vis('screen-draft')) {
+                        try { history.pushState({ pbs: 'exit-guard' }, '', location.href); } catch (e) {}
+                        try { window.exitCurrentContext(); } catch (e) {}
+                        return;
+                    }
+                    // 3) Story facility → back to the hub; hub → save & quit to menu.
+                    const SM = window.StoryMode;
+                    const facilityVisible = Array.prototype.some.call(
+                        document.querySelectorAll('.screen.story-screen-root:not(.hidden)'),
+                        el => el.id !== 'screen-story-city' && el.id !== 'screen-story-crucible');
+                    if (SM && facilityVisible && typeof SM.enterCity === 'function') {
+                        SM.enterCity();
+                        try { history.pushState({ pbs: 'screen-story-city' }, '', location.href); } catch (e) {}
+                        return;
+                    }
+                    if (SM && (vis('screen-story-city') || vis('screen-story-crucible')) && typeof SM.saveAndQuitToMenu === 'function') {
+                        SM.saveAndQuitToMenu();
+                        try { history.pushState({ pbs: 'screen-story-menu' }, '', location.href); } catch (e) {}
+                        return;
+                    }
+                    // 4) Everything else (story menu, collection, trainer create,
+                    // tester…) → main menu. At the menu, the next Back exits the page.
+                    if (!vis('screen-menu')) {
+                        if (SM && typeof SM.showMenu === 'function') SM.showMenu(false);
+                        else { document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden')); const m = document.getElementById('screen-menu'); if (m) m.classList.remove('hidden'); }
+                    }
+                } catch (e) {} finally {
+                    window.__pbsNavGuard = false;
+                }
+            });
+            // Tab close / refresh guard while a battle or draft is live (history-Back
+            // inside the SPA never triggers this — it's caught by popstate above).
+            window.addEventListener('beforeunload', function(e) {
+                try {
+                    if (vis('screen-battle') || vis('screen-draft')) { e.preventDefault(); e.returnValue = ''; }
+                } catch (err) {}
+            });
+        })();
+
         window.exitCurrentContext = async function() {
             const info = window._exitContextInfo();
             window.closeModal('modal-settings');
@@ -20912,26 +20996,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ball = document.createElement('div');
                         ball.className = 'party-bar-ball';
                         ball.style.cssText = `width:14px; height:14px; border-radius:50%; border:1px solid #666; position:relative; transition:transform 0.1s;`;
+                        // Touch-visible bench HP: a 3px sliver under the ball (the
+                        // HP/status data used to live in hover-only title text).
+                        const hpSliver = document.createElement('span');
+                        hpSliver.className = 'party-ball-hp';
+                        hpSliver.style.cssText = 'position:absolute;left:0;bottom:-4px;height:3px;border-radius:2px;max-width:100%;pointer-events:none;';
+                        ball.appendChild(hpSliver);
                         bar.appendChild(ball);
                     }
 
                     let revealed = !isFoe || (state.revealedFoe && state.revealedFoe.has(mon.name));
-                    // Update colors based on HP
+                    // Update colors based on HP; a status condition tints the ring.
+                    const _statusRing = { PSN: '#ab47bc', TOX: '#8e24aa', BRN: '#ff7043', PAR: '#fdd835', SLP: '#90a4ae', FRZ: '#4dd0e1' };
                     if (mon.currentHp > 0) {
                         ball.style.background = 'linear-gradient(180deg, #ee3333 50%, #f5f5f5 50%)';
                         ball.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.4)';
                         ball.style.opacity = '1';
-                        ball.style.borderColor = '#666';
+                        ball.style.borderColor = (revealed && mon.status && _statusRing[mon.status]) || '#666';
                     } else {
                         ball.style.background = '#2a2a2a';
                         ball.style.borderColor = '#1a1a1a';
                         ball.style.opacity = '0.5';
                     }
-                    // Tooltip
+                    // Bench HP sliver (revealed + alive only)
+                    const _hpSliver = ball.querySelector('.party-ball-hp');
+                    if (_hpSliver) {
+                        if (revealed && mon.currentHp > 0 && mon.maxHp > 0) {
+                            const _pct = Math.max(0.08, Math.min(1, mon.currentHp / mon.maxHp));
+                            _hpSliver.style.width = Math.round(_pct * 14) + 'px';
+                            _hpSliver.style.background = _pct > 0.5 ? 'var(--hp-green)' : (_pct > 0.2 ? 'var(--hp-yellow)' : 'var(--hp-red)');
+                            _hpSliver.style.display = '';
+                        } else {
+                            _hpSliver.style.display = 'none';
+                        }
+                    }
+                    // Tooltip + accessible name
                     let tipName = revealed ? mon.name : '???';
                     let tipHp = revealed ? ` ${mon.currentHp}/${mon.maxHp}HP` : '';
                     let tipStatus = revealed && mon.status ? ` [${mon.status}]` : '';
                     ball.title = `${tipName}${tipHp}${tipStatus}`;
+                    ball.setAttribute('aria-label', ball.title);
                     // Clickable: open summary if revealed and alive
                     if (revealed) {
                         ball.style.cursor = 'pointer';
@@ -20944,12 +21048,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ball._partyIdx = idx;
                     ball._isP1Summary = _summaryP1;
                     ball._revealed = revealed;
+                    ball.setAttribute('role', 'button');
+                    ball.setAttribute('tabindex', ball._revealed !== false && revealed ? '0' : '-1');
                     if (!ball._eventsAttached) {
                         ball._eventsAttached = true;
                         ball.addEventListener('mouseenter', () => { ball.style.transform = 'scale(1.3)'; });
                         ball.addEventListener('mouseleave', () => { ball.style.transform = 'scale(1)'; });
                         ball.addEventListener('click', () => {
                             if (ball._revealed) window.showSummary(ball._partyIdx, ball._isP1Summary);
+                        });
+                        ball.addEventListener('keydown', (ev) => {
+                            if ((ev.key === 'Enter' || ev.key === ' ') && ball._revealed) { ev.preventDefault(); window.showSummary(ball._partyIdx, ball._isP1Summary); }
                         });
                     }
                 });
@@ -22214,6 +22323,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? (shownMove.name + ' — tap “i” for full details')
                     : ('Keys ' + (i + 1) + ': ' + shownMove.name + ' — hover for details');
                 let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
+                // Honesty note: the arrow is TYPE-CHART only. It used to show a plain
+                // green ▲ into Levitate/Flash Fire/Water Absorb and the move did
+                // nothing, unexplained. (Full ability-aware hints need reveal
+                // tracking — flagged as a follow-up decision.)
+                if (shownMove.cat !== "Status" && shownMove.pow > 0) {
+                    effString += " <span style='color:var(--text-muted);font-size:10px;font-weight:normal;'>(by type — a foe ability like Levitate can still nullify)</span>";
+                }
                 let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
                 let moveTipHtml = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: ${moveCategoryTooltipHtml(shownMove.cat)}</div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div><div style="grid-column:1/-1;font-size:11px;">Priority: <strong>${priStr}</strong> <span style="color:#888;">(within bracket: faster / Trick Room)</span></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
                 btn.onmouseenter = () => {
@@ -65819,6 +65935,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
                     el.focus({ preventScroll: true });
                 } catch (e) {}
+                // Browser-history integration: one entry per screen shown, so a
+                // phone back-gesture navigates the game instead of killing the tab.
+                try { if (window._pbsHistoryPush) window._pbsHistoryPush(id); } catch (e) {}
                 // Post-game truth-in-labelling: every facility back re-enters
                 // enterCity(), which redirects to The Crucible while sm.atCrucible.
                 // Sync the static "Back to City" labels so they say where they
