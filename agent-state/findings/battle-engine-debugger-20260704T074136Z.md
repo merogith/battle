@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 6d267eec0d3f
 confidence: high
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: Quick Battle/Gauntlet played mid-story-run drains the persisted story RNG stream — replay drift
@@ -40,7 +40,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 53800916f440
 confidence: high
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: aiSelectScoredMove picks window.storyRngNext unconditionally — consumes story stream even when sm.active=false

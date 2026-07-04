@@ -7,7 +7,7 @@ file: battle.html
 agents: [pvp-concurrency-hunter]
 fingerprint: 181f526c1a75
 confidence: high
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: Draft-card innerHTML renders remote-controlled Pokémon name / teraType — XSS + JS-injection past the log sanitizer
@@ -97,7 +97,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 7f0a0b2a2a94
 confidence: medium
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: dispose() removes the channel but never closes the Supabase client — realtime socket + no disconnect teardown leak across a session

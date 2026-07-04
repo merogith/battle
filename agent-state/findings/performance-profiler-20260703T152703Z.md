@@ -7,7 +7,7 @@ file: tests/helpers/load-engine.js
 agents: [performance-profiler]
 fingerprint: 05b53f56eb47
 confidence: high
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: Harness `window.settings` override is a silent no-op — every jsdom test runs with `animations:true`

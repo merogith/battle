@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 53957c71e739
 confidence: medium
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: Cosmetic animation RNG consumes the seeded story stream — replay drift vector

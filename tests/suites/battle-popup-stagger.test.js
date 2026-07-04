@@ -19,6 +19,11 @@ const eng = await loadEngine();
 const W = eng.window;
 const document = W.document;
 
+// This suite exercises the ANIMATED popup path (showBattlePopup no-ops when
+// settings.animations is off). The harness now genuinely defaults animations OFF, so
+// enable them here — popup stagger geometry only exists when animations render.
+eng.engine.settings.animations = true;
+
 assert.equal(typeof W.showBattlePopup, 'function', 'showBattlePopup is exposed under the harness');
 
 // The function mounts into #screen-battle — ensure the container exists in the harness DOM.

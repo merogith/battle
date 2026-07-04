@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 8c00879fe027
 confidence: high
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: Party+PC-full check runs AFTER ball spend + catch roll — ball burned, mon discarded, roaming legendary lost on a successful Master Ball throw
@@ -41,7 +41,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1ed4ca03a321
 confidence: high
-status: open
+status: fixed-claude/bug-performance-investigation-8snuw9
 ---
 
 **Title**: _withEventSeededRng swaps window.storyRngNext but the Math.random patch calls the LOCAL storyRngNext — seeded "static rolls" mix two streams
