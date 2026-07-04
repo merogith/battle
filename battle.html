@@ -9531,6 +9531,14 @@
             </div>
             <div class="settings-section-title">Visuals</div>
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
+            <div class="settings-row" style="border-bottom:1px solid #444;" title="How fast battle text and pauses play out. Fast halves every pause; Instant skips them.">
+                <span>Battle speed</span>
+                <select id="setting-battle-speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                    <option value="normal">Normal</option>
+                    <option value="fast">Fast (2×)</option>
+                    <option value="instant">Instant</option>
+                </select>
+            </div>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Length of Mega Evolution / Dynamax / Tera / Z-Move activation animations.">
                 <span>Gimmick anim speed</span>
                 <select id="setting-gimmick-anim-speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
@@ -10583,7 +10591,6 @@
 
     <div id="screen-battle" class="screen hidden" role="region" aria-label="battle">
         <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.25em;height:1.25em;display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg></button>
-        <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="terrain-overlay" class="terrain-overlay"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
         <div id="gauntlet-score" class="hidden">Score: 0</div>
@@ -12977,6 +12984,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
             gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
+            battleSpeed: 'normal',       /* 'normal' | 'fast' | 'instant' — scales every scripted battle pause via sleep() */
             offlineDownload: { completed: false, digest: null, at: null }, /* opt-in "Download for offline" state; digest = last-applied manifest digest; mutate via Object.assign */
             /* Build-pool filters (read by makeBuild / loadBuildsCSV consumers):
                - allowDoublesBuilds: include VGC / Battle Spot Doubles sets in singles rolls. Off by default
@@ -13059,6 +13067,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
             if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
+            if (_pbs.battleSpeed === 'normal' || _pbs.battleSpeed === 'fast' || _pbs.battleSpeed === 'instant') settings.battleSpeed = _pbs.battleSpeed;
             if (typeof _pbs.allowDoublesBuilds === 'boolean') settings.allowDoublesBuilds = _pbs.allowDoublesBuilds;
             if (typeof _pbs.allowExoticFormats === 'boolean') settings.allowExoticFormats = _pbs.allowExoticFormats;
             if (_pbs.quickTeamSource === 'random' || _pbs.quickTeamSource === 'draft') settings.quickTeamSource = _pbs.quickTeamSource;
@@ -13092,6 +13101,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     csvBuildMix: settings.csvBuildMix,
                     displayMode: settings.displayMode,
                     gimmickAnimSpeed: settings.gimmickAnimSpeed,
+                    battleSpeed: settings.battleSpeed,
                     allowDoublesBuilds: settings.allowDoublesBuilds,
                     allowExoticFormats: settings.allowExoticFormats,
                     quickTeamSource: settings.quickTeamSource,
@@ -14516,7 +14526,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 grade: 3, _fromAPI: true
             };
         }
-        const sleep = ms => (typeof window !== 'undefined' && window.__testHarness === true) ? Promise.resolve() : new Promise(res => setTimeout(res, settings.animations ? ms : 10));
+        // Battle pacing: settings.battleSpeed scales every scripted battle pause
+        // through this one helper ('normal' ×1, 'fast' ×0.5, 'instant' ≈ none).
+        // settings.animations === false remains the hard "no waits" switch.
+        const _battleSleepMs = ms => {
+            if (typeof settings === 'undefined' || !settings.animations) return 10;
+            const s = settings.battleSpeed || 'normal';
+            if (s === 'instant') return 10;
+            if (s === 'fast') return Math.max(10, Math.round(ms * 0.5));
+            return ms;
+        };
+        const sleep = ms => (typeof window !== 'undefined' && window.__testHarness === true) ? Promise.resolve() : new Promise(res => setTimeout(res, _battleSleepMs(ms)));
         // Concurrent battle popups (CRITICAL!, Super Effective!, damage/heal numbers) used
         // to stack at one fixed coord per side, so a crit+super-effective hit rendered both
         // labels on top of each other (unreadable). Track how many are live per side and
@@ -15929,6 +15949,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (dm) dm.value = settings.displayMode || 'auto';
             const gas = document.getElementById('setting-gimmick-anim-speed');
             if (gas) gas.value = settings.gimmickAnimSpeed || 'normal';
+            const bsp = document.getElementById('setting-battle-speed');
+            if (bsp) bsp.value = settings.battleSpeed || 'normal';
             // Reflect the live (possibly persisted) volumes — the slider markup is hard-coded
             // to 45/55, so without this it lies after a change+reopen or a reload.
             try {
@@ -20560,6 +20582,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${tipEsc}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
                 };
                 const isPerm = v => v === 'HarshSun' || v === 'HeavyRain' || v === 'StrongWinds';
+                // Turn counter — always first. The 200-turn draw rule (playTurn) was
+                // previously invisible until it fired; warn when it approaches.
+                if ((state.turnNumber | 0) > 0 && !state.isOver) {
+                    const _tn = state.turnNumber | 0;
+                    const _nearDraw = _tn >= 180;
+                    pills.push(mkPill(`T${_tn}`, 0, _nearDraw ? '#ff8a65' : '#9aa0aa', 'rgba(255,255,255,0.06)',
+                        _nearDraw ? `<b>Turn ${_tn}</b><br>At turn 200 the battle is called as a draw!` : `<b>Turn ${_tn}</b><br>One turn = both sides act once.`));
+                }
+                // Hot-seat PvP: persistent whose-turn pill (the log line scrolls away).
+                if (state.mode === 'pvp' && !state.isOver && !(window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function' && window.OnlineBattle.isActive())) {
+                    pills.push(mkPill(`🎮 P${state.currentPlayer | 0}`, 0, '#ffd54f', 'rgba(255,213,79,0.12)',
+                        `<b>Player ${state.currentPlayer | 0} to act</b><br>Two players, one device — pass it over.`));
+                }
                 if (w) {
                     const wCfg = {
                         Sun:         ['☀ Sun',        '#ffd700','rgba(255,140,0,0.25)',  `<b>Sun</b><br>Fire ×1.5 · Water ×0.5<br>Turns left: ${state.weatherTurns}`],
@@ -20773,7 +20808,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             window.showGameAlert("Battle items are not available in this mode.");
         }
-        window.runAway = function() { if(!state.isLocked) { logMsg("You fled!", "dmg"); _emitBark('fledRoad'); state.isOver = true; if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You walked away after clearing ${state.score} round${state.score !== 1 ? 's' : ''}.`); } else { showEndScreen("FORFEIT", "You walked off the field.", false); } } }
+        window.runAway = async function() {
+            if (state.isLocked || state.isOver) return;
+            // RUN is a permanent forfeit (in Gauntlet it ends the whole run) — one
+            // accidental tap on a 2×2 grid shouldn't do that silently. Confirm first.
+            const msg = state.mode === 'gauntlet'
+                ? `Run away? This ends your Gauntlet run — your score of ${state.score} is final.`
+                : (state.mode === 'story'
+                    ? 'Run from this battle? It counts as a forfeit — same as being defeated.'
+                    : 'Run away? This forfeits the battle.');
+            const ok = await window.showGameConfirm(msg);
+            if (!ok || state.isLocked || state.isOver) return;
+            logMsg("You fled!", "dmg"); _emitBark('fledRoad'); state.isOver = true;
+            if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You walked away after clearing ${state.score} round${state.score !== 1 ? 's' : ''}.`); }
+            else { showEndScreen("FORFEIT", "You walked off the field.", false); }
+        }
 
         function showEndScreen(title, desc, storyPlayerWon) {
             document.getElementById('command-menu').classList.add('hidden'); document.getElementById('move-menu').classList.add('hidden');
@@ -21869,13 +21918,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lockBadge.className = 'move-lock-badge';
                 lockBadge.innerHTML = `🔒 <strong>${lockName}</strong> — ${activeMon.volatile.lockTurns} turn${activeMon.volatile.lockTurns !== 1 ? 's' : ''} remaining`;
                 menu.appendChild(lockBadge);
-                document.getElementById('command-menu').classList.add('hidden');
-                menu.classList.remove('hidden');
-                setTimeout(() => {
+                // Explicit continue instead of a 700 ms auto-fire — the game should
+                // never appear to move by itself while a menu is on screen.
+                let lockGo = document.createElement('button');
+                lockGo.type = 'button';
+                lockGo.className = 'battle-btn-move';
+                lockGo.style.cssText = 'margin:6px auto 0; display:block; min-width:220px; font-weight:bold;';
+                lockGo.innerHTML = `<div style="display:flex;justify-content:center;width:100%;">&#9654; Use ${lockName}</div>`;
+                lockGo.onclick = () => {
+                    menu.classList.add('hidden');
                     let idx2 = activeMon.moves.indexOf(lockedSlot);
                     state.p1Action = { moveIndex: idx2 >= 0 ? idx2 : null, switchIndex: null, aiMove: idx2 < 0 ? lockMoveObj : null };
                     if (isP1) window.playTurn(null, null);
-                }, 700);
+                };
+                menu.appendChild(lockGo);
+                document.getElementById('command-menu').classList.add('hidden');
+                menu.classList.remove('hidden');
+                try { lockGo.focus({ preventScroll: true }); } catch (e) {}
                 try { syncBattleActiveHighlight(); } catch (e) {}
                 return;
             }
@@ -21974,7 +22033,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Imprison: check if foe used Imprison and shares this move
                 let foeActive = activeMon === state.pActive ? state.fActive : state.pActive;
                 let isImprisoned = foeActive && foeActive.volatile.imprisoned && foeActive.moves.some(m => m.name === rawMove.name);
-                if (!activeMon.dynamaxed && (rawMove.pp <= 0 || isCharging || isRecharging || (activeMon.volatile.choiceLock && activeMon.volatile.choiceLock !== rawMove.name) || isTaunted || isEncored || isFakeOutBlocked || isNoConsec || isDisabledMove || isTormented || isHealBlocked || isThroatChopped || isImprisoned)) btn.disabled = true;
+                // Disabled moves state WHY — 12 causes used to render identically as a
+                // dimmed tile with no explanation ("why can't I click this?").
+                let disableReason = '';
+                if (!activeMon.dynamaxed) {
+                    if (rawMove.pp <= 0) disableReason = 'No PP';
+                    else if (isCharging) disableReason = 'Charging';
+                    else if (isRecharging) disableReason = 'Recharging';
+                    else if (activeMon.volatile.choiceLock && activeMon.volatile.choiceLock !== rawMove.name) disableReason = 'Choice-locked';
+                    else if (isTaunted) disableReason = 'Taunted';
+                    else if (isEncored) disableReason = 'Encored';
+                    else if (isFakeOutBlocked) disableReason = 'First turn only';
+                    else if (isNoConsec) disableReason = 'Not twice in a row';
+                    else if (isDisabledMove) disableReason = 'Disabled';
+                    else if (isTormented) disableReason = 'Tormented';
+                    else if (isHealBlocked) disableReason = 'Heal Block';
+                    else if (isThroatChopped) disableReason = 'Throat Chop';
+                    else if (isImprisoned) disableReason = 'Imprisoned';
+                }
+                if (disableReason) {
+                    btn.disabled = true;
+                    const _metaEl = btn.querySelector('.move-tile-meta');
+                    if (_metaEl) _metaEl.insertAdjacentHTML('beforeend', `<span class="move-tile-sep">·</span><span style="color:#ef9a9a;font-weight:bold;">${disableReason}</span>`);
+                    btn.setAttribute('aria-label', (btn.getAttribute('aria-label') || shownMove.name) + ' — unavailable: ' + disableReason);
+                    btn.title = shownMove.name + ' — unavailable: ' + disableReason;
+                }
 
                 btn.onclick = () => {
                     window.closeStickyMoveTooltip();
@@ -21997,19 +22080,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 moveScroll.className = 'move-menu-scroll command-grid';
                 menu.appendChild(moveScroll);
                 if (activeMon.volatile.recharge) {
-                    // Recharge turn: auto-submit a recharge action (performAction handles it)
+                    // Recharge turn: explicit continue instead of a 600 ms auto-submit —
+                    // the game should never appear to move by itself.
                     let rechargeMove = { name: "_Recharge", type: "Normal", cat: "Status", pow: 0, acc: 100, pri: 0, pp: 1, eff: "" };
                     let rechBtn = document.createElement('button');
-                    rechBtn.disabled = true;
-                    rechBtn.innerHTML = `<div style="display:flex;justify-content:center;width:100%;color:#aaa;"><span>Recharging...</span></div>`;
+                    rechBtn.type = 'button';
+                    rechBtn.innerHTML = `<div style="display:flex;justify-content:center;width:100%;"><span>&#9654; Recharge — skip this turn</span></div><div style="font-size:10px;text-align:center;color:#aaa;margin-top:4px;">${activeMon.name} must recharge after its last move</div>`;
+                    rechBtn.onclick = () => {
+                        menu.classList.add('hidden');
+                        state.p1Action = { moveIndex: null, switchIndex: null, aiMove: rechargeMove };
+                        if (isP1) window.playTurn(null, null);
+                    };
                     moveScroll.appendChild(rechBtn);
                     moveScroll.classList.add('move-grid--few');
                     document.getElementById('command-menu').classList.add('hidden'); menu.classList.remove('hidden');
-                    // Auto-submit after brief display
-                    setTimeout(() => {
-                        state.p1Action = { moveIndex: null, switchIndex: null, aiMove: rechargeMove };
-                        if (isP1) window.playTurn(null, null);
-                    }, 600);
+                    try { rechBtn.focus({ preventScroll: true }); } catch (e) {}
                     try { syncBattleActiveHighlight(); } catch (e) {}
                     return;
                 }
@@ -23932,6 +24017,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Critical: do NOT consume window._storyBagPassAfterItem here — the user's bag-item
                 // turn never actually started, so the flag must persist for the legitimate next call.
                 try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+                // Stale lock (way past any legitimate animation): hand the menu back now
+                // instead of leaving the player menu-less until the 30 s watchdog. Fresh
+                // locks (a double-click racing a resolving turn) keep the old behavior.
+                try {
+                    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                    const since = state._lockedAt ? (now - state._lockedAt) : 0;
+                    if (since > 4000) document.getElementById('command-menu').classList.remove('hidden');
+                } catch (e) {}
                 return;
             }
             if (state.isOver) {
