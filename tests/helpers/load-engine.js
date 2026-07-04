@@ -144,9 +144,13 @@ export async function loadEngine() {
         });
       }
 
-      // Engine may call requestAnimationFrame
-      window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
-      window.cancelAnimationFrame = (id) => clearTimeout(id);
+      // Engine may call requestAnimationFrame. Route the shim through
+      // window.setTimeout (jsdom-owned), NOT Node's global setTimeout: a
+      // self-rescheduling RAF loop (e.g. a camp microgame render loop) on
+      // Node timers survives window.close() and keeps `node --test` alive
+      // forever after the suite finishes.
+      window.requestAnimationFrame = (cb) => window.setTimeout(cb, 0);
+      window.cancelAnimationFrame = (id) => window.clearTimeout(id);
 
       // Suppress noisy console output from engine init
       const _origWarn = window.console.warn;
