@@ -2,7 +2,8 @@
 // trainer foes via _storyFilterBuildMovesForCity: natural moves within the city BP cap.
 // Stripped moves are RE-TEACHABLE through the Move Tutor as the city cap lifts (so the
 // filter is reversible, mirroring real-Pokémon "slowly get stronger" pacing). The
-// professor's first-choice STARTER is exempt (its 60-BP battle-clamp floor governs).
+// professor's first-choice STARTER follows the same filter with a cap+20 BP allowance
+// (Q9 — replaces the old blanket exemption; the battle clamp mirrors the same bonus).
 //   node --test tests/suites/story-wild-catch-movecap.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,17 +41,25 @@ test('wild/caught build is filtered to natural moves within the city cap (C0 = 4
   assert.ok(build.m.length >= 1, 'never leaves an empty moveset');
 });
 
-test('the starter is EXEMPT from the moveset filter (60-BP clamp floor governs it)', async () => {
+test('the starter follows the same filter with a cap+20 BP allowance (Q9)', async () => {
   primeStory();
   await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  // isStarter flag exempt:
+  // isStarter arg → allowance 40+20=60 at C0: everything over 60 BP (and all TMs) strips.
   const b1 = { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] };
-  assert.equal(await ST.storyFilterBuildMovesForCity(b1, 'Garchomp', 0, true), false, 'isStarter arg exempts');
-  assert.deepEqual(b1.m, ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'], 'starter moveset untouched');
-  // build.starter flag exempt (how the in-battle/caught mon carries it):
-  const b2 = { m: ['Outrage', 'Earthquake'], starter: true };
-  assert.equal(await ST.storyFilterBuildMovesForCity(b2, 'Garchomp', 0, false), false, 'build.starter exempts');
-  assert.deepEqual(b2.m, ['Outrage', 'Earthquake'], 'flagged-starter moveset untouched');
+  assert.equal(await ST.storyFilterBuildMovesForCity(b1, 'Garchomp', 0, true), true, 'starter IS filtered (at cap+20)');
+  for (const m of b1.m) {
+    assert.ok(tag('Garchomp', m) === 'natural' || tag('Garchomp', m) === 'unknown', `kept "${m}" is natural`);
+    assert.ok(bp(m) <= 60, `kept "${m}" is within the starter allowance (≤60, was ${bp(m)})`);
+  }
+  // build.starter flag carries the same allowance: a 60-BP natural move survives for
+  // the starter at C0 where a non-starter (cap 40) would lose it.
+  const b2 = { m: ['Outrage', 'Bulldoze'], starter: true };
+  await ST.storyFilterBuildMovesForCity(b2, 'Garchomp', 0, false);
+  assert.ok(b2.m.includes('Bulldoze'), 'Bulldoze (60) survives for the starter at C0');
+  assert.ok(!b2.m.includes('Outrage'), 'Outrage (120) does not');
+  const b3 = { m: ['Bulldoze', 'Tackle'] };
+  await ST.storyFilterBuildMovesForCity(b3, 'Garchomp', 0, false);
+  assert.ok(!b3.m.includes('Bulldoze'), 'the same 60-BP move IS stripped for a non-starter at C0');
 });
 
 test('Guru cities (C6+) leave the moveset unfiltered (full pool, matches trainers)', async () => {

@@ -53979,12 +53979,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // the per-city BP clamp reads attacker.buildData.starter for the 60-BP floor.
                 if (newSlot.build && typeof newSlot.build === 'object') newSlot.build.starter = true;
             }
-            // Per-city moveset filter (1.6.1): non-starter professor gifts follow the
-            // city cap like trainers/wild catches (re-teachable via the Move Tutor as the
-            // cap lifts). The starter is exempt — its 60-BP battle clamp floor governs.
-            if (!newSlot.starter) {
-                try { await _storyFilterBuildMovesForCity(newSlot.build, newSlot.name, cityIdx, false); } catch (e) {}
-            }
+            // Per-city moveset filter: professor gifts follow the city cap like
+            // trainers/wild catches (re-teachable via the Move Tutor as the cap lifts).
+            // The starter is filtered too (Q9) — same Natural-category rule with a
+            // cap+20 BP allowance instead of the old blanket exemption.
+            try { await _storyFilterBuildMovesForCity(newSlot.build, newSlot.name, cityIdx, !!newSlot.starter); } catch (e) {}
             sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
@@ -54005,7 +54004,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
         }
 
-        function _mysteryDoSwap(slotIdx) {
+        async function _mysteryDoSwap(slotIdx) {
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch || slotIdx < 0 || slotIdx >= sm.team.length) return;
@@ -54014,6 +54013,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
             const replaced = target.name;
+            // City move filter — the swap path must match the append path (a full-party
+            // gift otherwise arrived holding TM/Awakened moves the tutor would refuse).
+            // No-op at the C8 legendary gate (Guru = ungated), so this is pure
+            // defense-in-depth for any future gift path.
+            try { await _storyFilterBuildMovesForCity(ch.build, ch.name, cityIdx, false); } catch (e) {}
             // Displaced partner returns to the PC — never destroyed. Mirrors the
             // catch-swap flow (catchResolveSwap). Pre-fix this slot was simply
             // overwritten, silently deleting the mon despite the gate text's
@@ -54044,12 +54048,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // catch flow's catchResolveSendToPC. Still flips profUsed so the City-8
         // legendary gate opens Victory Road on accept (the figure handed you a
         // legendary; fielding it is your call).
-        function _mysterySendToPc() {
+        async function _mysterySendToPc() {
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch) return;
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
+            // Same city move filter as the append/swap paths (defense-in-depth; no-op
+            // at the C8 legendary gate where the tutor is already Guru).
+            try { await _storyFilterBuildMovesForCity(ch.build, ch.name, cityIdx, false); } catch (e) {}
             _pcEnsureBoxArray();
             sm.pcBox.push({ name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) });
             if (!sm.profUsed) sm.profUsed = {};
@@ -55477,18 +55484,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // An index past the array end clamps to the last entry (so C5+ → 0 → ∞).
         // User-owned balance numbers (0 = no cap). PLAYER and FOE caps are separate
         // arrays so they can be tuned apart; today they're equal (foe ≤ player rule).
-        // STARTER EXCEPTION: the professor's first-choice starter (build.starter) gets a
-        // 60-BP floor so it keeps its already-learnt up-to-60 moves at C0 — the floor
-        // only bites where the city cap is below 60 (i.e. C0).
+        // STARTER ADVANTAGE (Q9): the professor's first-choice starter (build.starter)
+        // follows the SAME Natural-category filter as everything else, with a BP
+        // allowance of city cap + 20 (60 at C0) — a principled slight edge instead of
+        // the old blanket pool-filter exemption + flat 60 floor.
         const STORY_MOVE_BP_CAP_BY_CITY     = [40, 60, 60, 80, 80, 0];
         const STORY_FOE_MOVE_BP_CAP_BY_CITY = [40, 60, 60, 80, 80, 0];
-        const STORY_STARTER_BP_CAP_FLOOR = 60;
+        const STORY_STARTER_BP_CAP_BONUS = 20;
         function _storyBpCapFromTable(tbl, city, isStarter) {
             const a = (Array.isArray(tbl) && tbl.length) ? tbl : [0];
             const i = Math.max(0, Math.min(a.length - 1, city | 0));
             const raw = a[i];
             let c = (raw && raw > 0) ? raw : Infinity;
-            if (isStarter && c < STORY_STARTER_BP_CAP_FLOOR) c = STORY_STARTER_BP_CAP_FLOOR;
+            if (isStarter && c !== Infinity) c += STORY_STARTER_BP_CAP_BONUS;
             return c;
         }
         function _storyMoveBpCapForCity(city, isStarter) { return _storyBpCapFromTable(STORY_MOVE_BP_CAP_BY_CITY, city, isStarter); }
@@ -55498,8 +55506,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // the battle engine calls it via window._storyBattleBpCap(attacker,isPlayer,state)
         // since that scope only reaches story state through window. Returns Infinity (no
         // clamp) outside an active story battle. The starter (build.starter) gets the
-        // 60-BP floor. Memoized by eventIndex so the city scan runs once per city, not
-        // once per hit.
+        // cap+20 allowance (Q9). Memoized by eventIndex so the city scan runs once per
+        // city, not once per hit.
         let _storyBpCapMemoEI = -999, _storyBpCapMemoVal = Infinity, _storyBpCapMemoStarter = Infinity;
         function _storyBattleBpCap(attacker, isPlayer, battleState) {
             if (!(battleState && battleState.mode === 'story' && sm && sm.active)) return Infinity;
@@ -55554,6 +55562,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return ((pctOf && pctOf.get(b)) || 0) - ((pctOf && pctOf.get(a)) || 0);
             });
         }
+        // True when a move is a Status-category move (0-BP utility). Shared by the
+        // foe/wild gate and the player tutor pool so the Unleashed "learnt guile"
+        // unlock below can never drift between the two sides.
+        function _storyIsStatusMoveName(mv) {
+            try {
+                const md = ensureMoveData(String(mv).split('/')[0]);
+                return !!(md && md.cat === 'Status');
+            } catch (e) { return false; }
+        }
         // Apply the move ceiling (tag filter + stage BP cap + backfill) to ONE build,
         // in place. Assumes the species' learnset is warm in _tutorLearnsetCache (callers
         // await _tutorFetchLearnsetMoveNames first). Returns true if build.m changed.
@@ -55565,11 +55582,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
             if (!learn) return false; // cache cold → leave as-is (offline-safe via the index)
-            // Staging (user model): L1 Inner = Natural ≤ BP cap; L2 Unleashed = ALL Natural
-            // (cap lifts, still no Learnt); L3 Guru = no gate at all (handled by the early
-            // return above). Learnt (TM/tutor) therefore unlocks only at Guru — it is NOT
-            // added at L2 the way it was previously.
+            // Staging (user model, Q2b overhaul): L1 Inner = Natural ≤ BP cap;
+            // L2 Unleashed = ALL Natural (cap lifts) PLUS Learnt STATUS moves — the
+            // mid-game "new builds" unlock (Toxic / Will-O-Wisp / hazards / screens)
+            // without raw-damage inflation; L3 Guru = no gate at all (early return
+            // above). Damaging Learnt moves still wait for Guru. Shared by player,
+            // trainers, wilds, and gifts — never add a player-only branch here.
             const allowed = new Set(learn.natural || learn.tier1 || []);
+            if ((stage | 0) >= 1) {
+                for (const m of (learn.learnt || [])) { if (_storyIsStatusMoveName(m)) allowed.add(m); }
+            }
             if (!allowed.size) return false; // thin learnset → leave alone
             // Callers always pass a city-resolved cap via bpCapOverride; absent one,
             // fall back to no cap (the tag filter below still applies).
@@ -55608,6 +55630,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         async function _storyGateFoeMovesByCity(team, storyRowIdx) {
             if (!Array.isArray(team) || !team.length || storyRowIdx == null || storyRowIdx < 0 || !sm || !sm.active) return;
+            // Post-game Crucible re-entries replay early rows (crucibleGymPick re-enters
+            // the original gym row), but the ladder is a POST-HoF challenge: re-capping a
+            // GL1 rematch to Inner-tier 40-BP moves while the build tier is forced to T4
+            // ("so rematches stay sharp") contradicted itself. Off-timeline Crucible
+            // battles skip the historical city move gate entirely (player is at Guru).
+            if (sm.crucibleBattleSource) return;
             let city = -1;
             try { city = _cityIndexForStoryRow(storyRowIdx); } catch (e) { return; } // storyRowIdx is a ROW ID (fixes #23)
             if (city < 0) return;
@@ -55629,19 +55657,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // encounter / caught mon / gift) so wild/caught/gift Pokémon follow the same
         // "natural moves within the city cap" ruleset as trainer foes — stripped moves
         // are re-teachable via the Move Tutor as the city cap lifts. Mirrors the foe gate
-        // but uses the PLAYER cap and warms one species. Safe no-op when: starter (its
-        // 60-BP battle clamp floor already governs), Guru tier (full pool), sm inactive,
+        // but uses the PLAYER cap and warms one species. The starter is NOT exempt
+        // (Q9): it follows the same Natural-category filter with a cap+20 BP allowance
+        // via the isStarter flag. Safe no-op when: Guru tier (full pool), sm inactive,
         // bad city, or cold learnset cache (offline/jsdom — the battle clamp still caps
         // damage). RNG-free (the ranker is pure) so it never perturbs seeded rolls.
         async function _storyFilterBuildMovesForCity(build, species, city, isStarter) {
             if (!build || !Array.isArray(build.m) || !build.m.length) return false;
-            if (isStarter || build.starter) return false;   // starter exempt
             if (!sm || !sm.active || species == null || city == null || (city | 0) < 0) return false;
+            const starterFlag = !!(isStarter || build.starter);
             const tutorStage = _npcStageForCity('tutor', city | 0);
             if (tutorStage >= 2) return false;               // Guru — full pool, matches trainers
             try { await _tutorFetchLearnsetMoveNames(species); } catch (e) {}
             return _storyApplyMoveStageToBuild(build, species, tutorStage, _storyCoherentMoveRanker,
-                                               _storyMoveBpCapForCity(city | 0, false));
+                                               _storyMoveBpCapForCity(city | 0, starterFlag));
         }
         try { window._storyFilterBuildMovesForCity = _storyFilterBuildMovesForCity; } catch (e) {}
         // ── CAMP BUFFER (Camp System PR C) — the between-events beat ──────────
@@ -63818,6 +63847,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Keep every old move the evolved species can legally learn; backfill remaining slots
             // from the rolled evoBuild so the moveset is always full.
+            // (Q3 overhaul) The BACKFILL obeys the current city's tutor stage gate —
+            // pre-Guru, evolving must not mint Learnt/Awakened Smogon moves the tutor
+            // would refuse (it was a C2–C5 category leak). KEPT old moves are never
+            // stripped (equipped-moves invariant: old picks persist un-stripped).
+            const _evoStarter = !!(mon.starter || old.starter);
+            let _evoStagedSet = null;
+            try {
+                if (sm && sm.active) {
+                    const _cc = cityIndexFromEventIndex(sm.eventIndex) | 0;
+                    if (_npcStageForCity('tutor', _cc) < 2) {
+                        const _staged = await _tutorGetStagedMovePoolAsync(evoName, [], _evoStarter);
+                        _evoStagedSet = new Set(_staged.map(m => String(m).split('/')[0]));
+                    }
+                }
+            } catch (e) { _evoStagedSet = null; }
             if (Array.isArray(old.m) && old.m.length) {
                 let legalPool;
                 try {
@@ -63842,9 +63886,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!m || seen.has(m)) continue;
                         // Never let the rolled fill add a second Hidden Power.
                         if (/^Hidden Power/.test(m) && keptHp) continue;
+                        // Stage gate on newly-minted fills only (kept moves already in).
+                        if (_evoStagedSet && !_evoStagedSet.has(String(m).split('/')[0])) continue;
                         kept.push(m); seen.add(m); if (/^Hidden Power/.test(m)) keptHp = true;
                     }
                     evoBuild.m = kept.slice(0, 4);
+                } else if (sm && sm.active) {
+                    // Nothing carried → the rolled Smogon set stands in wholesale. Gate it
+                    // like a fresh wild catch (filter + coherent in-stage backfill).
+                    try {
+                        const _cc = cityIndexFromEventIndex(sm.eventIndex) | 0;
+                        await _storyFilterBuildMovesForCity(evoBuild, evoName, _cc, _evoStarter);
+                    } catch (e) {}
                 }
             }
 
@@ -66531,7 +66584,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The mon's CURRENTLY-known moves are always kept selectable so an existing
         // tagged-above-stage move doesn't disappear from the editor. A Heart Scale
         // voucher overrides the gate entirely ("learn any move").
-        async function _tutorGetStagedMovePoolAsync(monName, currentMoves) {
+        async function _tutorGetStagedMovePoolAsync(monName, currentMoves, isStarter) {
             const syncMoves = _tutorGetPoolForMon(monName).moves;
             let learn = { all: [], tier1: [], natural: [], learnt: [], awakened: [] };
             try { learn = await _tutorFetchLearnsetMoveNames(monName); } catch (e) {}
@@ -66559,9 +66612,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // viewable via "Show all", but off-stage cards render locked/disabled).
             // Cold-cache fallback: if the learnset cache hasn't populated any tag bucket
             // yet (jsdom thin dex / async race), the gate would over-restrict — fall
-            // through to the full pool. The tutor UI re-renders once warm.
+            // through to the full pool. Schedule ONE retry render per species so the
+            // promised "re-renders once warm" actually happens (previously nothing
+            // scheduled it and the ungated pool stuck until the next interaction).
             const coldCache = !(learn.natural || []).length && !(learn.learnt || []).length && !(learn.awakened || []).length;
-            if (coldCache) { try { full.fullPool = full; } catch (e) {} return full; }
+            if (coldCache) {
+                try {
+                    if (!_tutorGetStagedMovePoolAsync._coldRetry) _tutorGetStagedMovePoolAsync._coldRetry = new Set();
+                    const _cr = _tutorGetStagedMovePoolAsync._coldRetry;
+                    if (!_cr.has(monName)) {
+                        _cr.add(monName);
+                        setTimeout(() => {
+                            try {
+                                const scr = document.getElementById('screen-story-tutor');
+                                if (scr && !scr.classList.contains('hidden')) void renderTutorTeam();
+                            } catch (e) {}
+                        }, 700);
+                    }
+                } catch (e) {}
+                try { full.fullPool = full; } catch (e) {}
+                return full;
+            }
             // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
             // NB: syncMoves (Smogon competitive moves) are NOT unconditionally unioned —
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
@@ -66574,7 +66645,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // (The starter's already-known over-cap moves are preserved by the
             // currently-known-moves passthrough below, so no starter floor is needed here.)
             let _bpCity = 0; try { _bpCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _bpCity = 0; }
-            const _bpCap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_bpCity) : Infinity;
+            // Starter (Q9): same category gate, BP allowance = city cap + 20.
+            const _bpCap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_bpCity, !!isStarter) : Infinity;
             const _bpUnder = (m) => {
                 if (_bpCap === Infinity) return true;
                 const md = ensureMoveData(String(m).split('/')[0]);
@@ -66582,6 +66654,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             const allow = new Set();
             (learn.natural || []).forEach(m => { if (_bpUnder(m)) allow.add(m); });
+            if (stage >= 1) {
+                // Unleashed (Q2b): Learnt STATUS moves join two cities early — the
+                // mid-game build unlock. Mirrors _storyApplyMoveStageToBuild exactly
+                // (foes get the same access on the same city clock).
+                (learn.learnt || []).forEach(m => { if (_storyIsStatusMoveName(m)) allow.add(m); });
+            }
             if (stage >= 2) {
                 (learn.learnt   || []).forEach(m => allow.add(m));
                 (learn.awakened || []).forEach(m => allow.add(m));
@@ -68173,6 +68251,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // inner/unleashed split moves with the player's city (40/60/60/80/80/∞).
         function _txMoveStageKey(monName, moveName) {
             const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, moveName) : null;
+            // Learnt STATUS moves unlock at Unleashed (Q2b), so their stage stripe /
+            // tier filter / lock pill must say Unleashed, not Guru.
+            if (tag === 'learnt' && typeof _storyIsStatusMoveName === 'function' && _storyIsStatusMoveName(moveName)) return 'unleashed';
             if (tag === 'learnt' || tag === 'awakened') return 'guru';
             if (tag !== 'natural') return null; // unknown / cold cache — no stage yet
             let _capCity = 0; try { _capCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _capCity = 0; }
@@ -69191,7 +69272,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
                     let tag = null;
                     try { tag = monName ? _txMoveTagMemo(monName, pending.value) : null; } catch (e) {}
-                    const unlock = (tag === 'learnt' || tag === 'awakened')
+                    const _lockedIsStatus = (typeof _storyIsStatusMoveName === 'function') && _storyIsStatusMoveName(base);
+                    const unlock = (tag === 'learnt' && _lockedIsStatus)
+                        ? 'It opens at <strong>Unleashed</strong> — from the third city the tutor also teaches learnt guile (status techniques).'
+                        : (tag === 'learnt' || tag === 'awakened')
                         ? 'It opens at <strong>Guru</strong> — the machines, the tutor\'s old verses, the off-legal picks.'
                         : (tag === 'natural'
                             ? 'It opens at <strong>Unleashed</strong>, when the tutor stops capping your partner\'s own strength.'
@@ -70179,7 +70263,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try {
                         const _tm = sm.team[ti];
                         const _cur = (_tm.build && _tm.build.m) || [];
-                        const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur);
+                        const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur, !!(_tm.starter || (_tm.build && _tm.build.starter)));
                         // The GRID renders the full movepool so off-stage moves show (locked),
                         // matching the Dojo's all-items roster. The acceptance set below stays
                         // the GATED/teachable set, so only in-stage moves are selectable.
