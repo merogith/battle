@@ -1675,6 +1675,23 @@
             .tx-recs-panel-title { white-space: normal; line-height: 1.25; }
         }
         .tx-recs-list { display: flex; flex-direction: column; gap: 0; }
+        /* ⚡ Apply-set (quick-apply) — sits under the rec rows inside the panel. */
+        .tx-apply-set-row {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 8px 10px 9px;
+            border-top: 1px solid rgba(102,187,106,0.25);
+        }
+        .tx-apply-set-btn {
+            width: 100%; box-sizing: border-box;
+            min-height: 44px; padding: 9px 12px;
+            font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+            color: #eaffea; text-align: center;
+            background: linear-gradient(180deg, rgba(46,105,46,0.9), rgba(30,72,30,0.9));
+            border: 1px solid #4f8a4f; border-radius: 6px;
+        }
+        .tx-apply-set-btn:hover:not(:disabled) { filter: brightness(1.12); }
+        .tx-apply-set-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .tx-apply-set-tip { font-size: 10px; color: #b8c9b8; line-height: 1.35; }
         .tx-rec-row {
             display: grid;
             grid-template-columns: 78px minmax(0, 1fr) auto;
@@ -46040,6 +46057,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                     txStarredPool: (...a) => _txStarredPool(...a),
                     txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
+                    txBuildApplySetPlan: (...a) => _txBuildApplySetPlan(...a),
+                    tutorApplyRecommendedSet: (...a) => tutorApplyRecommendedSet(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
                     // T1 regression hook: empty the move-acceptance cache to simulate a
@@ -68663,6 +68682,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
+                // ⚡ Apply-set — teach every applicable suggestion in one purchase.
+                const applySetBtn = t.closest('.tx-apply-set-btn[data-apply-set]');
+                if (applySetBtn) {
+                    const teamIdx = parseInt(applySetBtn.dataset.team, 10);
+                    if (Number.isFinite(teamIdx)) void tutorApplyRecommendedSet(teamIdx);
+                    return;
+                }
+
                 // Recommendation row — set pending selection (same effect as picking
                 // the card from the grid). The data attributes match `.tx-card`, so
                 // we just normalize to the card-pick path below.
@@ -69972,6 +69999,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             sPool.sparse
                                 ? 'Based on stats, typing, and ability — no competitive usage data exists for this species.'
                                 : 'Your ideal set — ✓ marks moves you already run.');
+                        // ⚡ Quick-apply (WS-D): one button teaches every applicable
+                        // suggestion in a single itemized, all-or-nothing purchase.
+                        const _plan = _txBuildApplySetPlan(idx);
+                        if (_plan && _plan.steps.length) {
+                            const _afford = sm.gold >= _plan.total;
+                            const _np = _plan.steps.length;
+                            const _label = `⚡ Apply this set — ${_np} move${_np === 1 ? '' : 's'} · ${_plan.total.toLocaleString()}G`
+                                + (_afford ? '' : ` (need ${(_plan.total - sm.gold).toLocaleString()}G more)`);
+                            const _scaleTip = (_plan.total > 0 && typeof _hasHeartScale === 'function' && _hasHeartScale())
+                                ? `<span class="tx-apply-set-tip">💗 A Heart Scale can cover one move for free — teach that one individually to use it.</span>`
+                                : '';
+                            recsPanel += `<div class="tx-apply-set-row">
+                                <button type="button" class="tx-apply-set-btn" data-apply-set data-team="${idx}"${_afford ? '' : ' disabled'}
+                                    title="${_afford ? 'Teach every suggested move in one confirmed purchase' : 'Not enough gold for the full set — teach picks individually'}">${_label}</button>
+                                ${_scaleTip}</div>`;
+                        }
                     }
                 }
             } catch (e) {}
@@ -70666,6 +70709,100 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.currentHp = null;
                 mon.status = null;
                 mon.pp = null;
+                // P-4: advance the edit slot so serially tapping suggestions can't
+                // silently overwrite the move just taught (the slot used to stay
+                // put, so the next pick replaced the purchase you just made).
+                try {
+                    const _n = mon.build.m.length;
+                    _txState.moveSlot = _n < 4 ? _n : (((isAppend ? _n - 1 : moveSlot) + 1) % 4);
+                } catch (e) {}
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        // ── Quick-apply: "⚡ Apply this set" (move-tutor overhaul, WS-D) ─────────
+        // Diff the mon's current moves against the ✨ suggested set and produce an
+        // all-or-nothing purchase plan. Pure planner — no state changes:
+        //   • suggested moves already equipped → nothing to do (stable ✓ rows)
+        //   • empty slots fill FIRST; then current moves NOT in the suggested set
+        //     are replaced in slot order; suggested moves never replace each other
+        //   • below Guru every pick must be in the staged acceptance set — locked
+        //     picks are SKIPPED (never silently bought), mirroring tutorChangeMove
+        //   • Hidden Power is excluded (its one-time type picker + mentor token
+        //     need the individual teach flow)
+        //   • per-move price by TAG via _moveCostForStage, same as the confirm bar
+        function _txBuildApplySetPlan(teamIdx) {
+            try {
+                const t = sm.team[teamIdx];
+                if (!t || t.isEgg || !t.build) return null;
+                const merged = _txMovePoolCache.get(teamIdx);
+                if (!merged) return null;
+                const accept = _txMoveTier1Cache.get(teamIdx);
+                const belowGuru = _npcStage('tutor') < 2;
+                const recPool = merged.filter(m => { const b = String(m).split('/')[0]; return (!accept || accept.has(b)); });
+                let mon = null;
+                try { mon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build)); } catch (e) {}
+                const recs = _txMoveRecsByPurpose(recPool, mon, t.build, t.name);
+                const current = (t.build.m || []).filter(Boolean).map(m => String(m).split('/')[0]);
+                const curSet = new Set(current);
+                const sugSet = new Set(recs.map(r => String(r.move).split('/')[0]));
+                const steps = [], skipped = [];
+                const replaceIdx = [];
+                current.forEach((m, i) => { if (!sugSet.has(m)) replaceIdx.push(i); });
+                let nextAppend = current.length;
+                for (const r of recs) {
+                    const base = String(r.move).split('/')[0];
+                    if (curSet.has(base)) continue;
+                    if (/^Hidden Power/.test(base)) { skipped.push({ move: base, why: 'hiddenpower' }); continue; }
+                    if (belowGuru && (!accept || !accept.has(base))) { skipped.push({ move: base, why: 'locked' }); continue; }
+                    const _tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(t.name, base) : null;
+                    const cost = _moveCostForStage(_tag === 'unknown' ? null : _tag);
+                    if (nextAppend < 4) { steps.push({ move: base, cost, slot: nextAppend, replaces: null }); nextAppend++; }
+                    else if (replaceIdx.length) { const si = replaceIdx.shift(); steps.push({ move: base, cost, slot: si, replaces: current[si] }); }
+                    else skipped.push({ move: base, why: 'noslot' });
+                }
+                return { steps, skipped, total: steps.reduce((s, x) => s + x.cost, 0) };
+            } catch (e) { return null; }
+        }
+        // Commit the plan: ONE itemized confirmation, ONE gold deduction, ONE save,
+        // ONE render. All-or-nothing — the plan is recomputed inside the interaction
+        // lock and either every step applies or none does (a mid-list failure can't
+        // half-apply). Vouchers are deliberately not spent here (a Heart Scale
+        // covers one individually-taught move; the panel shows a tip instead).
+        async function tutorApplyRecommendedSet(teamIdx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                const plan = _txBuildApplySetPlan(teamIdx);
+                if (!plan || !plan.steps.length) return;
+                if (sm.gold < plan.total) {
+                    try { window.showGameAlert && window.showGameAlert(`The full set costs ${plan.total.toLocaleString()}G — you need ${(plan.total - sm.gold).toLocaleString()}G more. You can still teach the suggestions one at a time.`); } catch (e) {}
+                    return;
+                }
+                const n = plan.steps.length;
+                const lines = plan.steps.map(s => s.replaces
+                    ? `${s.move} ${s.cost.toLocaleString()}G (replaces ${s.replaces})`
+                    : `${s.move} ${s.cost.toLocaleString()}G (open slot)`).join(' · ');
+                const ok = await _storyConfirmTutorChange(
+                    `Teach ${mon.name} the suggested set? ${n} move${n === 1 ? '' : 's'}: ${lines}.`, plan.total);
+                if (!ok) return;
+                sm.gold -= plan.total;
+                try { _storyTrackSpend(plan.total); } catch (e) {}
+                const moves = mon.build.m || (mon.build.m = []);
+                for (const s of plan.steps) {
+                    if (s.slot >= moves.length) moves.push(s.move);
+                    else moves[s.slot] = s.move;
+                }
+                mon.build.m = moves.filter(Boolean);
+                mon.currentHp = null;
+                mon.status = null;
+                mon.pp = null;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
                 _txPending = null;
@@ -70895,6 +71032,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.build.m = moves.filter(Boolean);
                 _hpTutorApply(mon, newMove, _hpPreV.chosenType);
                 mon.currentHp = null; mon.status = null; mon.pp = null;
+                // P-4: same edit-slot auto-advance as the gold path.
+                try {
+                    const _nv = mon.build.m.length;
+                    _txState.moveSlot = _nv < 4 ? _nv : (((isAppend ? _nv - 1 : moveSlot) + 1) % 4);
+                } catch (e) {}
                 return true;
             });
         }
