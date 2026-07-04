@@ -1,10 +1,18 @@
 # Move Tutor Overhaul — Investigation + Implementation Plan
 
-> Status: **PLAN — awaiting maintainer sign-off on the decision points in §8.**
-> Produced 2026-07-03 from a five-track deep investigation (staging/parity ·
-> recommender · filters · UI/UX · edge-cases/saves). Every claim below was
-> verified against code with line anchors. Implementation target: **one PR** on
-> `claude/move-tutor-overhaul-81mlyr`, sequenced per §9.
+> Status: **IMPLEMENTED (2026-07-04)** — maintainer approved "all recommended"
+> on Q1–Q9; every workstream shipped in this PR in the §9 commit order.
+> Outcome notes vs the plan: professor gift paths were re-scoped after the
+> maintainer confirmed the one-professor design (see §2 BUG-3 as amended);
+> Q2b shipped WITHOUT a ladder-city change, so no migration / SAVE_VER bump
+> was needed (WS-G reduced to docs + full-suite run); the card-snapshot
+> baseline was regenerated for two intentional renderer diffs (tap-info class,
+> doubles-filtered usage %). Deferred, by design: grid virtualization (P-3),
+> per-form learnset resolution. Line anchors below are pre-implementation.
+>
+> Originally produced 2026-07-03 from a five-track deep investigation
+> (staging/parity · recommender · filters · UI/UX · edge-cases/saves) on
+> `claude/move-tutor-overhaul-81mlyr`.
 
 ---
 
