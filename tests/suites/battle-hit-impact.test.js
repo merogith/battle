@@ -32,7 +32,9 @@ test('_battleHitShake and _applyHitImpact + _hitStop are each defined exactly on
 test('both damage paths route impact through _applyHitImpact (single + multi hit)', () => {
     // The multi-hit path passes _anyHitCrit (any hit in the volley crit) since the
     // per-hit roll fix; the single-hit path still passes the formula-time crit.
-    assert.ok(count(/await _applyHitImpact\(\{ effectiveness: typeEff, crit: (?:crit > 1|_anyHitCrit) \}\)/g) >= 2,
+    // Extra options after crit (e.g. isPlayerTarget/type for the hit-burst
+    // particles) are allowed — the guard locks the routing + crit semantics only.
+    assert.ok(count(/await _applyHitImpact\(\{ effectiveness: typeEff, crit: (?:crit > 1|_anyHitCrit)[^)]*\}\)/g) >= 2,
         'the single-hit and multi-hit telegraphs both call the dispatcher');
 });
 
