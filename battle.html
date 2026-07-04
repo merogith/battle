@@ -9581,6 +9581,7 @@
             </div>
             <label class="settings-row" for="sw-story-typewriter" title="Reveal story dialogue letter-by-letter for reading tempo. Off shows full text instantly. Reduced-motion always shows instant."><span>Story text reveal</span><input type="checkbox" class="pbs-switch" id="sw-story-typewriter" role="switch" onchange="settings.storyTypewriter=!!this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-story-bag"><span>Story battle bag</span><input type="checkbox" class="pbs-switch" id="sw-story-bag" role="switch" onchange="settings.storyBattleItems=!!this.checked; persistMiscSettings();"></label>
+            <label class="settings-row" for="sw-replay-tutorials" title="On: every new run replays all tutorial scenes and hint tips. Off: runs after your first skip the reading but still hand out the welcome gifts."><span>Replay tutorials (NG+)</span><input type="checkbox" class="pbs-switch" id="sw-replay-tutorials" role="switch" onchange="settings.replayTutorials=!!this.checked; persistMiscSettings();"></label>
             <label class="settings-row" for="sw-log-dock" title="Wide windows only"><span>Dock battle log (side)</span><input type="checkbox" class="pbs-switch" id="sw-log-dock" role="switch" onchange="settings.battleLogDock=this.checked; persistMiscSettings(); window.applyBattleLogDockClass&&window.applyBattleLogDockClass();"></label>
             <div class="settings-row">
                 <span>Fullscreen</span>
@@ -10483,28 +10484,28 @@
                 <div class="story-create-diff-grid" role="radiogroup" aria-label="Difficulty">
                     <button type="button" class="story-create-diff-card" data-diff="veryeasy" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('veryeasy')">
                         <span class="story-create-diff-name">Very Easy</span>
-                        <span class="story-create-diff-sub">Foes −30% • weakest teams • pay +60% • very beatable</span>
+                        <span class="story-create-diff-sub">Foes hit much softer • shops pay you the best prices • hard to lose</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="easy" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('easy')">
                         <span class="story-create-diff-name">Easy</span>
-                        <span class="story-create-diff-sub">Foes −15% • pay +50% • a chill, forgiving road</span>
+                        <span class="story-create-diff-sub">Foes hit a bit softer • generous shop prices • a chill, forgiving road</span>
                     </button>
                     <button type="button" class="story-create-diff-card story-create-diff-card--active" data-diff="normal" role="radio" aria-checked="true" onclick="window.StoryMode.trainerCreateSetDifficulty('normal')">
                         <span class="story-create-diff-badge">★ Recommended</span>
                         <span class="story-create-diff-name">Normal</span>
-                        <span class="story-create-diff-sub">Foes baseline • pay +30% • the intended road</span>
+                        <span class="story-create-diff-sub">The road as designed — fair fights, fair prices</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="hard" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('hard')">
                         <span class="story-create-diff-name">Hard</span>
-                        <span class="story-create-diff-sub">Foes +15% • tougher teams • pay standard • semi-Kaizo: the road bites back</span>
+                        <span class="story-create-diff-sub">Foes hit harder with tougher teams • standard prices • the road bites back</span>
                     </button>
                     <button type="button" class="story-create-diff-card" data-diff="challenge" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetDifficulty('challenge')">
                         <span class="story-create-diff-name">Very Hard</span>
-                        <span class="story-create-diff-sub">Foes +40% • elite teams • no head-start • pay −10% • hardcore Kaizo: no margin, no mercy</span>
+                        <span class="story-create-diff-sub">Elite foes, mean prices, no head start — no margin, no mercy</span>
                     </button>
                 </div>
                 <p id="story-create-diff-kaizo-hint" class="story-create-diff-hint" hidden aria-live="polite">
-                    🔥 <strong>Kaizo tip:</strong> for the full challenge, enable <strong>No Item Run</strong> under <em>Advanced</em> below — empties your battle bag so every fight is won on play alone.
+                    🔥 <strong>Challenge tip:</strong> for the full experience, enable <strong>No Item Run</strong> under <em>Advanced</em> below — empties your battle bag so every fight is won on play alone.
                 </p>
             </section>
 
@@ -12985,6 +12986,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
             gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
             battleSpeed: 'normal',       /* 'normal' | 'fast' | 'instant' — scales every scripted battle pause via sleep() */
+            replayTutorials: false,      /* NG+ replays every tutorial scene + hint tip when true (first run always plays them) */
             offlineDownload: { completed: false, digest: null, at: null }, /* opt-in "Download for offline" state; digest = last-applied manifest digest; mutate via Object.assign */
             /* Build-pool filters (read by makeBuild / loadBuildsCSV consumers):
                - allowDoublesBuilds: include VGC / Battle Spot Doubles sets in singles rolls. Off by default
@@ -13068,6 +13070,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
             if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
             if (_pbs.battleSpeed === 'normal' || _pbs.battleSpeed === 'fast' || _pbs.battleSpeed === 'instant') settings.battleSpeed = _pbs.battleSpeed;
+            if (typeof _pbs.replayTutorials === 'boolean') settings.replayTutorials = _pbs.replayTutorials;
             if (typeof _pbs.allowDoublesBuilds === 'boolean') settings.allowDoublesBuilds = _pbs.allowDoublesBuilds;
             if (typeof _pbs.allowExoticFormats === 'boolean') settings.allowExoticFormats = _pbs.allowExoticFormats;
             if (_pbs.quickTeamSource === 'random' || _pbs.quickTeamSource === 'draft') settings.quickTeamSource = _pbs.quickTeamSource;
@@ -13102,6 +13105,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     displayMode: settings.displayMode,
                     gimmickAnimSpeed: settings.gimmickAnimSpeed,
                     battleSpeed: settings.battleSpeed,
+                    replayTutorials: settings.replayTutorials,
                     allowDoublesBuilds: settings.allowDoublesBuilds,
                     allowExoticFormats: settings.allowExoticFormats,
                     quickTeamSource: settings.quickTeamSource,
@@ -15804,6 +15808,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
                 ['sw-story-typewriter', 'storyTypewriter'],
+                ['sw-replay-tutorials', 'replayTutorials'],
                 ['sw-log-dock', 'battleLogDock']
             ];
             pairs.forEach(function(pair) {
@@ -16051,6 +16056,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prev && typeof prev.focus === 'function') prev.focus();
                 window._modalFocusStack.delete(id);
             } catch (e) {}
+            // Alert queue drain: showGameAlert() queues instead of clobbering when
+            // the alert modal is already up (the single shared slot used to swallow
+            // teaching text when two alerts raced — e.g. a voucher grant inside a
+            // tutorial's onContinue). Whichever path closes the alert shows the next.
+            if (id === 'modal-game-alert' && window.__gameAlertQueue && window.__gameAlertQueue.length) {
+                const next = window.__gameAlertQueue.shift();
+                setTimeout(function () { try { window.showGameAlert(next); } catch (e) {} }, 80);
+            }
         }
         // Global Escape handler — closes the topmost visible .modal element.
         // Pre-fix only modal-summary handled Escape; every other modal trapped
@@ -16142,7 +16155,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.showGameAlert = function(msg) {
             dismissTextTooltipForModal();
+            const modal = document.getElementById('modal-game-alert');
             const p = document.getElementById('modal-game-alert-text');
+            // Already showing a different alert? Queue this one instead of
+            // overwriting it — closeModal drains the queue on dismiss.
+            if (modal && p && !modal.classList.contains('hidden')) {
+                const text = msg != null ? String(msg) : '';
+                if (text && text !== p.textContent) {
+                    (window.__gameAlertQueue = window.__gameAlertQueue || []).push(text);
+                }
+                return;
+            }
             if (p) p.textContent = msg != null ? String(msg) : '';
             window.openModal('modal-game-alert');
         };
@@ -18471,7 +18494,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 grid.appendChild(d);
             }
         }
+        // First-session funnel instrumentation (local only — nothing leaves the
+        // device). One timestamp per step, first occurrence only: load → mode
+        // chosen → battle started → first turn → first win. Read via
+        // JSON.parse(localStorage.pbs_ux_funnel) to measure onboarding changes
+        // against real sessions.
+        window._uxFunnelMark = function(step) {
+            try {
+                const k = 'pbs_ux_funnel';
+                const o = JSON.parse(localStorage.getItem(k) || '{}');
+                if (o[step]) return;
+                o[step] = Date.now();
+                localStorage.setItem(k, JSON.stringify(o));
+            } catch (e) {}
+        };
+        try { window._uxFunnelMark('load'); } catch (e) {}
+
         window.initDraft = async function(mode) {
+            try { window._uxFunnelMark('mode_' + mode); } catch (e) {}
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             document.getElementById('screen-draft').classList.remove('hidden');
             showDraftSkeleton();
@@ -18487,6 +18527,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // (default) auto-builds legal random teams for both sides and jumps straight to
         // the battle, skipping the draft entirely. Reuses the same pool builder as initDraft.
         window.startQuickBattle = async function() {
+            try { window._uxFunnelMark('mode_quick'); } catch (e) {}
             if (settings.quickTeamSource === 'draft') { return window.initDraft('pve'); }
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             const draftScreen = document.getElementById('screen-draft');
@@ -19511,6 +19552,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function startBattle() {
+            try { window._uxFunnelMark('battle_start'); } catch (e) {}
             // Every path that opens a fight must start from a clean turn machine (draft, story, gauntlet, tests).
             // Otherwise returnToHome / prior end can leave state.isOver true and playTurn will no-op — looks like a freeze on the first "KO" click.
             state.isOver = false;
@@ -20825,6 +20867,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function showEndScreen(title, desc, storyPlayerWon) {
+            try { if (String(title).indexOf('VICTORY') !== -1 || storyPlayerWon === true) window._uxFunnelMark('first_win'); } catch (e) {}
             document.getElementById('command-menu').classList.add('hidden'); document.getElementById('move-menu').classList.add('hidden');
             try { syncBattleActiveHighlight(); } catch (e) {}
             if (state.mode === 'story' && window.StoryMode) {
@@ -24044,6 +24087,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { if (typeof window !== 'undefined') window._storyBagPassAfterItem = false; } catch (e) {}
                 return;
             }
+            try { window._uxFunnelMark('first_turn'); } catch (e) {}
             // VGC: Cannot voluntarily switch while Dynamaxed
             if (pSwitchIndex !== null && state.pActive && state.pActive.dynamaxed) {
                 logMsg(`${state.pActive.name} cannot switch out while Dynamaxed!`, 'info');
@@ -42009,6 +42053,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // proof (narrative only — never a mechanical head start).
                 lastLoopChoice: '',
                 tipsShown: {},
+                // Cross-run tutorial-scene dedupe (NG+ fast-track): keys of tutorial
+                // scenes the player has actually read once. Runs 2+ skip the
+                // monologue but still receive the scene's welcome voucher.
+                tutorialsSeen: {},
                 // Cross-run Pokédex: { [speciesName]: { seen, caught, shinySeen, shinyCaught, firstSeenAt, firstCaughtAt, firstShinySeenAt } }
                 pokedex: {},
                 // Achievements: { [id]: { progress, currentRank, lastUpdated } }
@@ -42042,6 +42090,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : '',
                     lastLoopChoice: typeof obj.lastLoopChoice === 'string' ? obj.lastLoopChoice : '',
                     tipsShown: (obj.tipsShown && typeof obj.tipsShown === 'object') ? obj.tipsShown : {},
+                    tutorialsSeen: (obj.tutorialsSeen && typeof obj.tutorialsSeen === 'object') ? obj.tutorialsSeen : {},
                     pokedex: (obj.pokedex && typeof obj.pokedex === 'object') ? obj.pokedex : base.pokedex,
                     achievements: (obj.achievements && typeof obj.achievements === 'object') ? obj.achievements : base.achievements,
                     frontierRoundsTotal: Math.max(0, obj.frontierRoundsTotal | 0),
@@ -42059,7 +42108,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyShowOneTimeTip(key, message) {
             if (!key) return false;
             if (_storyRunSceneSeen(key)) return false;
+            // Once per PLAYER (meta.tipsShown) — matching the long-documented intent.
+            // The per-run guard alone made every NG+ run re-sit every hint alert.
+            // Settings → "Replay tutorials" opts back into the full tour.
+            try {
+                if (!settings.replayTutorials) {
+                    const m = readStoryMeta();
+                    if (m.tipsShown && m.tipsShown[key]) { _storyRunSceneMark(key); return false; }
+                }
+            } catch (e) {}
             _storyRunSceneMark(key);
+            try { const m = readStoryMeta(); if (!m.tipsShown || typeof m.tipsShown !== 'object') m.tipsShown = {}; m.tipsShown[key] = true; writeStoryMeta(m); } catch (e) {}
             try { window.showGameAlert && window.showGameAlert(message); } catch (e) {}
             return true;
         }
@@ -48113,6 +48172,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.showGameAlert && window.showGameAlert('Hidden Power unlocked at every Move Tutor. Your first lesson lets you choose its type.'); } catch (e) {}
                 }
             },
+            firstRelic: {
+                // The single most consequential early decision (a permanent, both-sides
+                // battle rule) was the ONLY facility with no teaching scene — one shop
+                // header line. It now gets the same NPC treatment as every sibling.
+                metaKey: 'tutorial-first-relic',
+                sprite: 'Ruin_Maniac', name: 'Relic Keeper', nameplate: 'Relic Keeper',
+                lines: [
+                    '"Careful with these. A relic isn\'t a held item — it\'s a RULE. Whatever it does hangs over every battle for the rest of your run, your side and the foe\'s alike."',
+                    '"That cuts both ways: a relic that doubles weather lengths helps whoever set the weather — you or them. Read the fine print before you commit."',
+                    '"No rush, either. The shelf isn\'t going anywhere, and you can toggle any relic you own from the Manage tab. Your first one, here in Pallet, is free — when you\'re ready."'
+                ],
+                onContinue: function () {}
+            },
             firstNatureRater: {
                 metaKey: 'tutorial-first-nature-rater',
                 sprite: 'Aroma_Lady', name: 'Nature Rater', nameplate: 'Nature Rater',
@@ -48330,8 +48402,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { onDone && onDone(); } catch (e) {}
                 return false;
             }
+            // NG+ fast-track: a player who already read this lesson in a PREVIOUS run
+            // skips the monologue but still receives its welcome voucher
+            // (scene.onContinue) — re-sitting ~20 scenes every run was pure friction.
+            // Settings → "Replay tutorials" turns the scenes back on.
+            try {
+                if (!settings.replayTutorials) {
+                    const m = readStoryMeta();
+                    if (m.tutorialsSeen && m.tutorialsSeen[key]) {
+                        _storyRunSceneMark(key);
+                        try { if (typeof scene.onContinue === 'function') scene.onContinue(); } catch (e) { console.error('[StoryTutorial] onContinue (fast-track) threw:', e); }
+                        try { onDone && onDone(); } catch (e) {}
+                        return false;
+                    }
+                }
+            } catch (e) {}
             _storyRunSceneMark(key);
-            _showStoryTutorialScene(scene, onDone);
+            _showStoryTutorialScene(scene, function () {
+                try { const m = readStoryMeta(); if (!m.tutorialsSeen || typeof m.tutorialsSeen !== 'object') m.tutorialsSeen = {}; if (!m.tutorialsSeen[key]) { m.tutorialsSeen[key] = true; writeStoryMeta(m); } } catch (e) {}
+                try { onDone && onDone(); } catch (e) {}
+            });
             return true;
         }
 
@@ -50721,7 +50811,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the tall grass and the city hub. Fires once per run via its own scene
             // dedupe; on dismiss it re-enters enterCity so wander / arrival / hub flow
             // normally. Unlocks Hidden Power at every Move Tutor for the rest of the run.
-            if (cidx === 1 && !_storyRunSceneSeen('tutorial-hidden-power-mentor')) {
+            // UX pacing (2026-07): deferred from the City-1 approach to the City-3
+            // approach — an IV-derived advanced mechanic was being taught before the
+            // player had seen Gym 1, natures, or the PC. By City 3 the fundamentals
+            // have landed and the "secret element" beat reads as depth, not noise.
+            if (cidx === 3 && !_storyRunSceneSeen('tutorial-hidden-power-mentor')) {
                 if (playStoryTutorial('hiddenPowerMentor', function () { enterCity(); })) return;
             }
             // Wander Around — optional route-exit wild search before a *new* city.
@@ -50772,17 +50866,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyShowOneTimeTip('what-is-a-gym',
                     'Each town has a Gym Leader — a type specialist who only hands over their badge to a trainer who earns it. The city wears their type\'s color, so you\'ll know what\'s coming.\n\nClear their deputies in the lobby first, then the leader. Win, and your party cap grows by one — room to catch a new partner out in the tall grass.\n\nReady? ⚔ Enter the Gym.'); } catch (e) {}
             }
-            // Per docs/EVOLUTION_FLOW_REBUILD.md §10: City 2 is the unlock band for
-            // Cable Link, Evolution Tutor, and Stones and Beyond. Chain Bill → Granny
-            // on first arrival so the player meets both NPCs before they touch the
-            // city hub. The intros granted vouchers (linkDiscount50, stoneToken)
-            // so the player has a tangible reward in hand walking in.
-            if (cidx === 2) {
-                try {
-                    _enqueueIntroTutorial('firstCableLink');
-                    _enqueueIntroTutorial('firstStoneSage');
-                } catch (e) {}
-            }
+            // UX pacing (2026-07): City 2 used to chain Bill → Granny BEFORE the hub
+            // rendered — a five-system arrival dump 20 minutes in. Their scenes (and
+            // vouchers) now fire lazily on first entry to the Cable Link / Stone Shop
+            // instead (see enterLink / enterStoneShop).
         }
 
         function updateHUD() {
@@ -51275,6 +51362,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_isFacilityRequiredHere(cityIdx, facKey, actions)) {
                     return [{ label: '🔴 Required', tone: 'required', title: "First visit — required before leaving this city." }].concat(baseMeta);
                 }
+                // Staged facility crossing into a new tier: surface it (the old
+                // force-visit gate is gone, so this pill is now the only signal).
+                if (typeof _isFacilityStageUpPendingHere === 'function' && _isFacilityStageUpPendingHere(cityIdx, facKey)) {
+                    return [{ label: '⬆ Upgraded', tone: 'new', title: 'New tier unlocked here — worth a look.' }].concat(baseMeta);
+                }
                 // Known facility-type from an earlier city, just not opened here yet → no
                 // badge (reserve the gold "New" pill for a genuine first-ever sighting).
                 if (sm.facilityIntros && sm.facilityIntros[facKey]) {
@@ -51717,8 +51809,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (let s = seen + 1; s <= cur; s++) { if (introMap[s]) return true; }
             return false;
         }
+        // UX pacing (2026-07): only a tiny core still GATES Leave City on its debut
+        // city — the Pokémart at C0 (buy balls before the first route) and the
+        // Pokémon Center at C1 (heal/PC before the first gym). The old behavior
+        // force-toured ~5 facilities per city across C0–C2 (~12 reading surfaces
+        // before the first battle). Everything else now debuts as a "New" pill and
+        // teaches on first VOLUNTARY open (the per-facility intro scenes are wired
+        // to facility entry, not to this gate). Stage-up re-intros no longer gate
+        // either — they surface as an "Upgraded" pill instead.
+        const FACILITY_GATE_KEYS = { mart: true, center: true };
         function _isFacilityRequiredHere(cityIdx, key, actionList) {
             if (!sm || cityIdx < 0) return false;
+            if (!FACILITY_GATE_KEYS[key]) return false;
             // Daycare Inn is pushed dynamically in renderCityActions (not present in the
             // raw STORY_EVENTS_RAW action array), so it can't be matched against
             // actionList like the static facilities. It's "present" when unlocked in a
@@ -61877,8 +61979,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             _markFacilitySeen('relic');
-            try { _storyShowOneTimeTip('relic',
-                'Relics aren\'t held items — they\'re rules. Whatever a relic does hangs over every battle for the rest of the run, your side and the foe\'s alike.\n\nPick one per visit; your first, here in Pallet, is free. Changed your mind later? Toggle any relic from the Manage tab.'); } catch (e) {}
+            // First visit fires the Relic Keeper's proper teaching scene (replaces the
+            // old one-shot alert wall — the heaviest early decision deserves an NPC).
+            _enqueueIntroTutorial('firstRelic');
             try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
@@ -61954,9 +62057,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 syncStoryStoneShopBackground();
                 showScreen('screen-story-stone-shop');
                 try { window.StoryFx && window.StoryFx.playSfx('sparkle', 0.45); } catch (e) {}
-                // Per docs/EVOLUTION_FLOW_REBUILD.md §6.3 / §9: first visit fires the
-                // Emporium Keeper intro. No voucher here — the Stonewise Token was
-                // already granted by Granny's earlier scene on City 2 entry.
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §6.3 / §9: first visit fires
+                // Granny's stone-lore scene (with the Stonewise Token voucher) and
+                // then the Emporium Keeper intro. Both used to be force-chained on
+                // City-2 arrival; they now play on first voluntary entry.
+                _enqueueIntroTutorial('firstStoneSage');
                 _enqueueIntroTutorial('firstStoneShop');
                 save();
             } finally {
@@ -62131,6 +62236,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
                 try { window.StoryFx && window.StoryFx.playSfx('beam', 0.45); } catch (e) {}
+                // Bill's intro (and the linkDiscount50 voucher) fires on first entry —
+                // it used to be force-chained on City-2 arrival before the hub rendered.
+                _enqueueIntroTutorial('firstCableLink');
                 try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
                 try { _storyShowOneTimeTip('first-link',
                     'The Cable Link Station — the fast lane to a tournament-grade partner.\n\nSwap for a same-grade species, Upgrade one straight to a full T4 build, or Rebuild a fresh set on the same mon. Swaps roll a random species, so read your team first — spend it on a keeper, not an impulse.'); } catch (e) {}
@@ -65564,6 +65672,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('screen-menu').classList.remove('hidden');
                 return;
             }
+            try { window._uxFunnelMark('mode_story'); } catch (e) {}
             const hasSv = hasSave();
             if (hasSv) {
                 try { load(); } catch (e) { /* use in-memory sm */ }
