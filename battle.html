@@ -22664,19 +22664,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function abilityImmunity(move, defender, attacker) {
             if (!move || move.cat === "Status") return false;
             const ab = defender.ability;
+            const t = move.type;
+            // Airborne Ground-move immunity from ITEM / VOLATILE (NOT an ability, so NOT bypassed by
+            // Mold Breaker and NOT suppressed by Gastro Acid). Checked before the ability table so it
+            // holds even on an ability-less mon. Mirrors engine: Air Balloon ~27891, Magnet Rise /
+            // Telekinesis ~27896. Gravity re-grounds everyone; Iron Ball / Smack Down / Thousand Arrows
+            // re-ground for the Magnet-Rise path (Air Balloon's engine gate ignores those, so we mirror).
+            if (t === "Ground" && !(typeof state !== "undefined" && state && state.gravity > 0)) {
+                const _magicRoom = (typeof state !== "undefined" && state && state.magicRoom > 0);
+                const _embargo = defender.volatile && defender.volatile.embargo > 0;
+                if (defender.item === "Air Balloon" && !_magicRoom && !_embargo) return true;
+                if (move.name !== "Thousand Arrows" && defender.item !== "Iron Ball"
+                    && !(defender.volatile && defender.volatile.smackedDown)
+                    && defender.volatile && (defender.volatile.magnetRise > 0 || defender.volatile.telekinesis > 0)) return true;
+            }
             if (!ab) return false;
             // Wonder Guard, Disguise, Shadow Shield, Prism Armor are canonically NOT bypassed by Mold Breaker
             // (and the engine matches). Most other immunities ARE bypassed. We only gate the bypass-eligible
             // checks via aiDefAbilityActive when attacker is supplied; legacy callers (no attacker) get the
             // pre-Mold-Breaker behavior, which is safe-but-pessimistic.
             const defActive = attacker ? aiDefAbilityActive(attacker, defender) : true;
-            const t = move.type;
             if (defActive) {
                 if (ab === "Lightning Rod" || ab === "Lightningrod" || ab === "Volt Absorb" || ab === "Motor Drive") return t === "Electric";
                 if (ab === "Water Absorb" || ab === "Storm Drain" || ab === "Dry Skin") return t === "Water";
                 if (ab === "Flash Fire") return t === "Fire";
                 if (ab === "Sap Sipper") return t === "Grass";
                 if (ab === "Levitate") return t === "Ground";
+                // Earth Eater (Ground → absorbed + heal), Well-Baked Body (Fire → absorbed + Def),
+                // Wind Rider (wind moves → absorbed + Atk). Engine ~26879 / ~26887 / ~26893, all
+                // gated on _defAbilityActive like the classic absorbers.
+                if (ab === "Earth Eater") return t === "Ground";
+                if (ab === "Well-Baked Body") return t === "Fire";
+                if (ab === "Wind Rider" && window._aiWindMoves && window._aiWindMoves.has(move.name)) return true;
                 // Bulletproof: ball/bomb/cannon moves. Engine ~16322 gates on _defAbilityActive.
                 if (ab === "Bulletproof" && window._aiBulletMoves && window._aiBulletMoves.has(move.name)) return true;
                 // Soundproof: sound moves. Engine ~16317 gates on _defAbilityActive.
@@ -22758,6 +22777,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window._aiSoundMoves = new Set(["Alluring Voice","Boomburst","Bug Buzz","Chatter","Clanging Scales","Clangorous Soul","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Torch Song","Uproar"]);
         window._aiBulletMoves = new Set(["Acid Spray","Aura Sphere","Barrage","Beak Blast","Bullet Seed","Egg Bomb","Electro Ball","Energy Ball","Focus Blast","Gyro Ball","Ice Ball","Magnet Bomb","Mist Ball","Mud Bomb","Octazooka","Pollen Puff","Pyro Ball","Rock Blast","Rock Wrecker","Searing Shot","Seed Bomb","Shadow Ball","Sludge Bomb","Weather Ball","Zap Cannon","Syrup Bomb","Ice Spinner","Aura Wheel","Steam Eruption"]);
         window._aiMagicBounceMoves = new Set(["Will-O-Wisp","Thunder Wave","Stun Spore","Sleep Powder","Spore","Toxic","Leech Seed","Strength Sap","Taunt","Encore","Disable","Heal Block","Torment","Mean Look","Spider Web","Block","Tickle","Growl","Leer","Tail Whip","Screech","Metal Sound","String Shot","Smokescreen","Sand Attack","Flash","Kinesis","Charm","Baby-Doll Eyes","Captivate","Sweet Scent","Swagger","Flatter","Noble Roar","Tearful Look","Spikes","Stealth Rock","Toxic Spikes","Sticky Web"]);
+        // Wind moves absorbed by Wind Rider (mirror engine ~26892). Kept on window for AI immunity checks.
+        window._aiWindMoves = new Set(["Gust","Twister","Hurricane","Whirlwind","Icy Wind","Fairy Wind","Air Cutter","Air Slash","Bleakwind Storm","Springtide Storm","Wildbolt Storm","Sandsear Storm"]);
         window._aiPowderMoves = new Set(["Sleep Powder","Stun Spore","Poison Powder","Spore","Cotton Spore","Rage Powder","Magic Powder","Powder"]);
         window._aiSheerForceMoves = new Set(["Acid","Acid Spray","Air Slash","Astonish","Aurora Beam","Blaze Kick","Blizzard","Body Slam","Bone Club","Bounce","Bubble","Bubble Beam","Bug Buzz","Buzzy Buzz","Charge Beam","Chatter","Confusion","Constrict","Crunch","Crush Claw","Dark Pulse","Diamond Storm","Discharge","Dizzy Punch","Dragon Breath","Dragon Rush","DynamicPunch","Dynamic Punch","Earth Power","Ember","Energy Ball","Extrasensory","Fake Out","Fiery Wrath","Fire Blast","Fire Fang","Fire Punch","Flame Wheel","Flamethrower","Flash Cannon","Fling","Floaty Fall","Focus Blast","Force Palm","Freeze-Dry","Freeze Shock","Freezing Glare","Gunk Shot","Headbutt","Heart Stamp","Heat Wave","Hurricane","Hyper Fang","Ice Beam","Ice Burn","Ice Fang","Ice Punch","Icicle Crash","Icy Wind","Iron Head","Iron Tail","Lava Plume","Leaf Tornado","Lick","Liquidation","Luster Purge","Magical Leaf","Metal Claw","Meteor Mash","Mist Ball","Moonblast","Mud Bomb","Mud Shot","Mud-Slap","Muddy Water","Needle Arm","Night Daze","Octazooka","Ominous Wind","Plasma Fists","Poison Fang","Poison Jab","Poison Sting","Poison Tail","Powder Snow","Power-Up Punch","Psybeam","Psychic","Pyro Ball","Rock Climb","Rock Slide","Rock Smash","Rock Tomb","Rolling Kick","Sacred Fire","Salt Cure","Scald","Searing Shot","Secret Power","Seed Flare","Shadow Ball","Shadow Bone","Signal Beam","Silver Wind","Sky Attack","Sludge","Sludge Bomb","Sludge Wave","Smog","Snarl","Snore","Spark","Spirit Shackle","Steamroller","Steel Wing","Stomp","Strange Steam","Struggle Bug","Stuff Cheeks","Submission","Surf","Thunder","Thunder Fang","Thunder Punch","Thunder Shock","Thunderbolt","Tri Attack","Triple Arrows","Twineedle","Twister","Volt Tackle","Water Pulse","Waterfall","Wing Attack","Zap Cannon","Zen Headbutt","Zing Zap"]);
 
@@ -23016,26 +23037,157 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return want.includes(cw);
         }
 
+        // Status moves the AI scores that inflict a major status condition → the status they apply.
+        // Used to consult the engine's applyStatus immunity table (~32404) so the AI never clicks a
+        // status the target is immune to (ability, type, terrain, Safeguard, Uproar).
+        window._aiStatusMoveInflicts = {
+            "Will-O-Wisp": "BRN",
+            "Thunder Wave": "PAR", "Glare": "PAR", "Stun Spore": "PAR", "Nuzzle": "PAR",
+            "Toxic": "TOX", "Poison Gas": "PSN", "Poison Powder": "PSN", "Toxic Thread": "PSN",
+            "Spore": "SLP", "Sleep Powder": "SLP", "Hypnosis": "SLP", "Lovely Kiss": "SLP",
+            "Sing": "SLP", "Dark Void": "SLP", "Grass Whistle": "SLP",
+        };
+        // Self-targeting status moves (mirror of the engine's _selfTargetMoves ~30749) — Good as Gold
+        // does NOT block these, so the AI may still use its own setup / heal / hazard moves into it.
+        window._aiSelfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song","Laser Focus"]);
+
+        // AI mirror of applyStatus (~32404): true if the defender cannot receive `status` right now.
+        // Covers abilities, type immunities, terrain, Safeguard, and Uproar — everything the engine
+        // checks before writing mon.status. Used by aiAbilityBlocksMoveForAi.
+        function aiStatusImmune(defender, status) {
+            if (!defender || !status) return false;
+            const ab = defender.ability;
+            const t1 = defender.type1, t2 = defender.type2;
+            // Safeguard on the defender's side blocks all status.
+            const defSide = (typeof state !== "undefined" && state)
+                ? ((defender === state.pActive) ? state.pSide : (defender === state.fActive ? state.fSide : null)) : null;
+            if (defSide && defSide.safeguard > 0) return true;
+            // Terrain (grounded only): Misty blocks all, Electric blocks sleep.
+            if (typeof state !== "undefined" && state && state.terrainTurns > 0 && isGroundedMon(defender)) {
+                if (state.terrain === "Misty") return true;
+                if (status === "SLP" && state.terrain === "Electric") return true;
+            }
+            // Sleep-blocking abilities (Comatose treats the mon as permanently asleep → immune).
+            if (status === "SLP" && (ab === "Insomnia" || ab === "Vital Spirit" || ab === "Sweet Veil" || ab === "Comatose")) return true;
+            if ((status === "PSN" || status === "TOX") && (ab === "Immunity" || ab === "Pastel Veil")) return true;
+            if (status === "PAR" && ab === "Limber") return true;
+            if (status === "BRN" && (ab === "Water Veil" || ab === "Thermal Exchange")) return true;
+            if (status === "FRZ" && ab === "Magma Armor") return true;
+            if (ab === "Flower Veil" && (t1 === "Grass" || t2 === "Grass")) return true;
+            if (ab === "Leaf Guard" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun")) return true;
+            // Uproar on the field prevents sleep for everyone.
+            if (status === "SLP" && typeof state !== "undefined" && state
+                && ((state.pActive && state.pActive.volatile && state.pActive.volatile.lockMove === "Uproar")
+                 || (state.fActive && state.fActive.volatile && state.fActive.volatile.lockMove === "Uproar"))) return true;
+            // Type immunities.
+            if ((status === "PSN" || status === "TOX") && (t1 === "Poison" || t2 === "Poison" || t1 === "Steel" || t2 === "Steel")) return true;
+            if (status === "BRN" && (t1 === "Fire" || t2 === "Fire")) return true;
+            if (status === "PAR" && (t1 === "Electric" || t2 === "Electric")) return true;
+            if (status === "FRZ" && (t1 === "Ice" || t2 === "Ice")) return true;
+            return false;
+        }
+
         /** Status moves absorbed/blocked by abilities the same way as damaging immunities */
         function aiAbilityBlocksMoveForAi(attacker, defender, move) {
             if (!move || !defender) return false;
             const ab = defender.ability;
-            if (!ab) return false;
             const t = move.type;
+            // Good as Gold: immune to ALL opponent-targeting status moves (self-target moves still fine).
+            if (ab === "Good as Gold" && move.cat === "Status" && !(window._aiSelfTargetMoves && window._aiSelfTargetMoves.has(move.name))) return true;
+            // Status-condition moves the target is immune to (ability / type / terrain / Safeguard / Uproar).
+            const _inflicts = window._aiStatusMoveInflicts && window._aiStatusMoveInflicts[move.name];
+            if (_inflicts && aiStatusImmune(defender, _inflicts)) return true;
+            if (!ab) {
+                // No ability, but powder / Safety-Goggles item and powder-vs-Grass still apply below.
+            }
             if (t === "Electric" && (ab === "Lightning Rod" || ab === "Lightningrod" || ab === "Volt Absorb" || ab === "Motor Drive")) return true;
             if (t === "Water" && (ab === "Water Absorb" || ab === "Storm Drain" || ab === "Dry Skin")) return true;
             if (t === "Fire" && ab === "Flash Fire") return true;
             if (t === "Grass" && ab === "Sap Sipper") return true;
             // Magic Bounce: non-damaging moves in the bounce list reflect back. Engine list at ~19612.
             if (ab === "Magic Bounce" && window._aiMagicBounceMoves && window._aiMagicBounceMoves.has(move.name)) return true;
-            // Overcoat / Safety Goggles: powder moves don't land. Engine references at ~17889 / ~19607.
-            // Grass-type powder immunity is intentionally left to existing per-move scoring so as not
-            // to override Sleep-move's calibrated ×0.3 penalty.
+            // Powder moves (Spore, Sleep Powder, …): fully blocked by Overcoat, Safety Goggles, AND
+            // Grass typing (engine powder gate ~30762 is a hard block — the old ×0.3 sleep penalty for
+            // Grass targets was wrong; a Grass-type is flat immune to powder).
             if (window._aiPowderMoves && window._aiPowderMoves.has(move.name)) {
                 if (ab === "Overcoat") return true;
                 if (defender.item === "Safety Goggles") return true;
+                if (defender.type1 === "Grass" || defender.type2 === "Grass") return true;
             }
             return false;
+        }
+
+        // AI: is `move` blocked because its (effective) priority is nullified by the defender?
+        // Mirrors the engine's priority-block gate (~26742): Queenly Majesty / Dazzling / Armor Tail
+        // block ANY increased-priority move; Psychic Terrain blocks increased-priority moves aimed at
+        // a grounded target. Effective priority includes Gale Wings / Triage / Prankster like the engine.
+        function aiPriorityBlocked(attacker, defender, move) {
+            if (!move || !attacker || !defender) return false;
+            let pri = move.pri || 0;
+            const _drain = ["Drain Punch","Draining Kiss","Giga Drain","Leech Life","Mega Drain","Horn Leech","Parabolic Charge","Strength Sap","Absorb"];
+            if (attacker.ability === "Triage" && _drain.includes(move.name)) pri += 3;
+            if (attacker.ability === "Gale Wings" && move.type === "Flying" && attacker.currentHp === attacker.maxHp) pri += 1;
+            if (attacker.ability === "Prankster" && move.cat === "Status") pri += 1;
+            if (pri <= 0) return false;
+            if (defender.ability === "Queenly Majesty" || defender.ability === "Dazzling" || defender.ability === "Armor Tail") return true;
+            if (typeof state !== "undefined" && state && state.terrain === "Psychic" && state.terrainTurns > 0 && isGroundedMon(defender)) return true;
+            return false;
+        }
+
+        // AI: precondition multiplier for conditional DAMAGING moves the engine will fail or that only
+        // work reactively. Returns 0 for deterministic failures (the move accomplishes nothing this
+        // turn) and a bounded discount for moves whose success depends on the opponent's hidden action.
+        // All discount magnitudes are maintainer-owned balance numbers (see CLAUDE.md).
+        const AI_PRECOND_FLOOR = 0.2; // floor for merely prediction-dependent moves (never a hard 0)
+        function aiMovePreconditionMult(attacker, defender, move) {
+            try {
+                const n = move.name;
+                // --- Deterministic failures (engine WILL fail the move) → hard 0 ---
+                if (n === "Last Resort") {
+                    const others = (attacker.moves || []).filter(m => m && m.name !== "Last Resort");
+                    const hist = (attacker.volatile && attacker.volatile.moveHistory) || [];
+                    if (others.length > 0 && !others.every(m => hist.includes(m.name))) return 0;
+                }
+                if (n === "Dream Eater" && defender.status !== "SLP") return 0;
+                if (n === "Belch" && !(attacker.volatile && attacker.volatile.belchReady)) return 0;
+                if (n === "Snore" && attacker.status !== "SLP") return 0;
+                if (n === "Burn Up" && attacker.type1 !== "Fire" && attacker.type2 !== "Fire") return 0;
+                if (n === "Double Shock" && attacker.type1 !== "Electric" && attacker.type2 !== "Electric") return 0;
+                if (n === "Steel Roller" && !(typeof state !== "undefined" && state && state.terrain && state.terrainTurns > 0)) return 0;
+                if (n === "Poltergeist" && !defender.item) return 0;
+                if (n === "Synchronoise") {
+                    const ut = [attacker.type1, attacker.type2].filter(Boolean);
+                    const dt = [defender.type1, defender.type2].filter(Boolean);
+                    if (!ut.some(x => dt.includes(x))) return 0;
+                }
+                if ((n === "Gigaton Hammer" || n === "Blood Moon") && attacker.volatile && attacker.volatile.lastMoveUsed === n) return 0;
+                // --- Prediction-dependent: success hinges on the FOE's hidden action this turn → discount ---
+                const foeUsable = (defender.moves || []).filter(m => m && m.pp > 0);
+                const foeDmg = foeUsable.filter(m => m.cat !== "Status");
+                if (n === "Sucker Punch" || n === "Thunderclap") {
+                    if (foeDmg.length === 0) return AI_PRECOND_FLOOR; // foe has only status → nearly always fails
+                    const frac = foeDmg.length / Math.max(1, foeUsable.length);
+                    return Math.max(AI_PRECOND_FLOOR, Math.min(1, 0.5 + 0.5 * frac));
+                }
+                if (n === "Upper Hand") {
+                    return foeDmg.some(m => (m.pri || 0) > 0) ? 0.6 : AI_PRECOND_FLOOR;
+                }
+                if (n === "Focus Punch" || n === "Shell Trap") {
+                    // -3 priority: nearly always moves last, so it fails if the foe can damage it first.
+                    const threatened = foeDmg.some(m => aiEstimateDmg(defender, attacker, m) > 0);
+                    return threatened ? 0.4 : 1.0;
+                }
+                if (n === "Counter" || n === "Mirror Coat" || n === "Metal Burst" || n === "Comeuppance") {
+                    // Purely reactive; the flat _varPowerMoveBP over-values them. Discount unless the foe
+                    // has a matching-category damaging threat that could feed the counter.
+                    const hasMatch = foeDmg.some(m =>
+                        n === "Counter" ? m.cat === "Physical"
+                        : n === "Mirror Coat" ? m.cat === "Special"
+                        : true);
+                    return hasMatch ? 0.5 : AI_PRECOND_FLOOR;
+                }
+                return 1;
+            } catch (e) { return 1; }
         }
 
         // AI: lead-pick bonus. Layered on top of aiBestSwitch's matchup score when opts.isLead is set.
@@ -23453,6 +23605,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         return { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "", effectStr: "" };
     }
 
+    // Asleep: while sleeping ONLY Sleep Talk / Snore can act (engine ~30674). If the mon won't wake
+    // at the start of this turn and holds a usable sleep-move, restrict scoring to it — otherwise the
+    // bot burns the turn "fast asleep" on a move that can never fire. wakeThreshold mirrors the engine
+    // (sleepDuration, halved for Early Bird); the engine wakes when statusTurns+1 > threshold.
+    if (attacker.status === "SLP") {
+        const _wakeThreshold = (attacker.ability === "Early Bird")
+            ? Math.ceil((attacker.sleepDuration || 2) / 2) : (attacker.sleepDuration || 2);
+        const _willWake = attacker.ability === "Vital Spirit" || attacker.ability === "Insomnia"
+            || ((attacker.statusTurns || 0) >= _wakeThreshold);
+        if (!_willWake) {
+            const _sleepUsable = validMoves.filter(m => (m.name === "Sleep Talk" || m.name === "Snore") && m.pp > 0);
+            if (_sleepUsable.length) validMoves = _sleepUsable;
+        }
+    }
+
     let hpPct = attacker.currentHp / attacker.maxHp;
     let defHpPct = defender.currentHp / defender.maxHp;
     let w = getCurrentWeather();
@@ -23520,6 +23687,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let foEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             score = foEff > 0 ? 130 : 0;
             if (defender.ability === "Inner Focus" || defHasSub) score = 0;
+            // Priority blockers (Queenly Majesty / Dazzling / Armor Tail / Psychic Terrain) stop it cold.
+            if (aiPriorityBlocked(attacker, defender, move)) score = 0;
             scored.push({ move, score });
             return;
         }
@@ -23570,8 +23739,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.ability === "Aftermath" && dmg >= defender.currentHp && attacker.currentHp <= Math.floor(attacker.maxHp / 4)) score *= 0.6;
             }
 
-            // Immune = worthless (type immunity OR ability immunity)
-            if (eff === 0 || abilityImmunity(move, defender, attacker)) score = 0;
+            // Immune = worthless (type immunity, ability/item immunity, or a nullified priority move)
+            if (eff === 0 || abilityImmunity(move, defender, attacker) || aiPriorityBlocked(attacker, defender, move)) score = 0;
             // Resisted penalty
             if (eff > 0 && eff < 1) score *= 0.5;
 
@@ -23599,12 +23768,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 score *= _pivotMult;
             }
 
+            // Conditional-move preconditions: 0 for moves the engine will fail outright (Last Resort
+            // with unused siblings, Dream Eater vs an awake target, Belch w/o a berry, Burn Up / Double
+            // Shock off-type, Steel Roller w/o terrain, Synchronoise w/o a shared type, Poltergeist vs
+            // itemless, Gigaton Hammer / Blood Moon back-to-back), and a bounded discount for reactive
+            // / prediction-dependent moves (Sucker Punch, Focus Punch, Counter, …).
+            score *= aiMovePreconditionMult(attacker, defender, move);
+
         } else {
             // === STATUS MOVE AI ===
 
-            // Ability-absorbed status (Lightning Rod + Thunder Wave, Flash Fire + Will-O-Wisp, …)
-            if (aiAbilityBlocksMoveForAi(attacker, defender, move)) {
+            // Blocked status: ability absorb (Lightning Rod + T-Wave …), Good as Gold, the full
+            // status-immunity table (Limber / Insomnia / Immunity / terrain / Safeguard …), powder
+            // immunity, or a Prankster-boosted status move nullified by a priority blocker.
+            if (aiAbilityBlocksMoveForAi(attacker, defender, move) || aiPriorityBlocked(attacker, defender, move)) {
                 score = 0;
+                scored.push({ move, score });
+                return;
+            }
+
+            // Sleep Talk / Snore are only meaningful while asleep. Sleep Talk's value ≈ the best
+            // damaging move it could roll into; awake, it's near-useless. (Snore's own damage is
+            // scored in the damaging branch, but while asleep the sleep-restriction above leaves
+            // only these two candidates, so give Sleep Talk a real number to compare against Snore.)
+            if (move.name === "Sleep Talk") {
+                if (attacker.status === "SLP") {
+                    let _stBest = 0;
+                    (attacker.moves || []).forEach(m => {
+                        if (m && m.cat !== "Status" && m.name !== "Sleep Talk" && m.name !== "Snore") {
+                            const d = aiEstimateDmg(attacker, defender, m); if (d > _stBest) _stBest = d;
+                        }
+                    });
+                    score = _stBest > 0 ? _stBest * 1.1 : 30;
+                } else score = 3;
                 scored.push({ move, score });
                 return;
             }
@@ -26077,6 +26273,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Double Shock" && attacker.type1 !== "Electric" && attacker.type2 !== "Electric") {
                 logMsg(`But it failed! ${attacker.name} is not Electric type.`, 'info');
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+            // Poltergeist: fails if the target has no held item (Showdown onTry). A knocked-off /
+            // consumed item leaves defender.item null, which this covers.
+            if (move.name === "Poltergeist" && !defender.item) {
+                logMsg(`But it failed! ${defender.name} has no held item!`, 'info');
                 abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Aura Wheel: only Morpeko (either form) can use it (Showdown onTry).
