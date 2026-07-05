@@ -60,7 +60,7 @@ test('Phase 0: classification is served from the index (deterministic)', async (
   assert.equal(ST.moveTagForSpecies('Garchomp', 'Outrage'), 'natural', 'Outrage is a level-up (Natural)');
 });
 
-test('Phase 1: per-city BP-cap table — 40/60/60/80/80/∞ (player & foe equal), starter floor 60', () => {
+test('Phase 1: per-city BP-cap table — 40/60/60/80/80/∞ (player & foe equal), starter cap+20', () => {
   assert.equal(ST.storyMoveBpCapForCity(0), 40, 'C0 = 40');
   assert.equal(ST.storyMoveBpCapForCity(1), 60, 'C1 = 60');
   assert.equal(ST.storyMoveBpCapForCity(2), 60, 'C2 = 60');
@@ -71,10 +71,11 @@ test('Phase 1: per-city BP-cap table — 40/60/60/80/80/∞ (player & foe equal)
   assert.equal(ST.storyMoveBpCapForCity(9), Infinity, 'C9 (past array end) clamps to no cap');
   // Foe cap == player cap at every city (foe ≤ player rule, set equal in 1.6.0).
   for (let c = 0; c <= 9; c++) assert.equal(ST.storyFoeMoveBpCapForCity(c), ST.storyMoveBpCapForCity(c), `foe cap == player cap at C${c}`);
-  // Starter floor: 60 even at C0 (only bites where the city cap is below 60).
-  assert.equal(ST.storyMoveBpCapForCity(0, true), 60, 'starter floored to 60 at C0');
-  assert.equal(ST.storyMoveBpCapForCity(1, true), 60, 'starter unaffected at C1 (cap already 60)');
-  assert.equal(ST.storyMoveBpCapForCity(5, true), Infinity, 'starter floor never lowers an uncapped city');
+  // Starter advantage (Q9): city cap + 20 wherever a cap exists (so 60 at C0).
+  assert.equal(ST.storyMoveBpCapForCity(0, true), 60, 'starter = 40+20 = 60 at C0');
+  assert.equal(ST.storyMoveBpCapForCity(1, true), 80, 'starter = 60+20 = 80 at C1');
+  assert.equal(ST.storyMoveBpCapForCity(3, true), 100, 'starter = 80+20 = 100 at C3');
+  assert.equal(ST.storyMoveBpCapForCity(5, true), Infinity, 'starter bonus never changes an uncapped city');
 });
 
 test('Phase 1: foe gate per-city — C3 caps at 80 (Dragon Claw kept, Outrage stripped); C0 ≤40', async () => {

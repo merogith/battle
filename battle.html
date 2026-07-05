@@ -819,57 +819,8 @@
             .tx-tera-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
         }
         .story-tutor-price { font-size:10px; color:#ffd700; margin-left:4px; }
-        .story-tutor-move-slot {
-            margin-bottom: 10px; padding: 8px; border: 1px solid #333; border-radius: 6px; background: rgba(0,0,0,0.2);
-            display: flex; flex-direction: column; align-items: stretch; gap: 6px;
-        }
-        .story-tutor-move-slot > .story-tutor-option-row { margin-bottom: 0; }
-        .story-tutor-move-picker {
-            display: flex; flex-direction: column; gap: 8px;
-            width: 100%; max-width: min(100%, 28rem); box-sizing: border-box;
-            padding: 10px; border: 1px solid #3a3a3a; border-radius: 6px;
-            background: rgba(0,0,0,0.28);
-        }
-        .story-tutor-move-picker .story-tutor-move-filter {
-            width: 100%; box-sizing: border-box; margin: 0;
-            padding: 6px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #555;
-            background: var(--surface2); color: #e0e0e0; font-family: inherit;
-        }
-        .story-tutor-move-picker .story-tutor-move-select {
-            width: 100%; box-sizing: border-box; margin: 0; min-height: 11em;
-            font-size: 12px; border-radius: 4px; border: 1px solid #555;
-            background: var(--surface2); color: #ddd; font-family: inherit;
-        }
-        .story-tutor-move-picker-footer {
-            display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px;
-        }
-        .story-tutor-move-picker .story-tutor-apply-move {
-            width: 100%; box-sizing: border-box; margin: 0; margin-top: 0;
-            padding: 8px 12px; font-size: 11px; font-weight: 600;
-        }
         .story-tutor-moves-hint {
             font-size: 10px; color: var(--text-muted); margin: 0 0 8px; line-height: 1.35;
-        }
-        .story-tutor-move-detail {
-            margin-top: 4px; padding: 8px 0 0; border-top: 1px solid #3a3a3a;
-            font-size: 11px; color: #c8c8c8; line-height: 1.4;
-        }
-        .story-tutor-move-slot--locked .story-tutor-move-detail { margin-top: 6px; padding-top: 8px; }
-        .story-tutor-move-detail--empty { color: var(--text-muted); font-style: italic; }
-        .story-tutor-move-detail-head { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-        .story-tutor-move-detail-name { font-size: 12px; color: var(--hp-yellow, #ffeb3b); }
-        .story-tutor-move-detail-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px;
-        }
-        .story-tutor-move-detail-pri { grid-column: 1 / -1; }
-        .story-tutor-move-detail-eff {
-            margin-top: 6px; padding-top: 6px; border-top: 1px dashed #444;
-            font-size: 10px; color: #aaa; font-style: italic;
-        }
-        .story-tutor-current-equip.story-tutor-move-detail { margin-top: 4px; }
-        .story-tutor-afford-warn {
-            font-size: 10px; color: #ffb74d; margin: 6px 0 0; line-height: 1.4; padding: 6px 8px;
-            border-radius: 4px; background: rgba(80, 50, 20, 0.35); border: 1px solid #5a4030;
         }
         .story-tutor-choice-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; width: 100%; max-height: 280px; overflow: auto; padding-right: 2px; }
         .story-tutor-choice { border: 1px solid #333; border-radius: 6px; padding: 8px 10px; background: rgba(0,0,0,0.18); }
@@ -1481,7 +1432,7 @@
         .tx-card-pct {
             display: inline-flex; align-items: center;
             font-size: 10px; font-weight: 700;
-            color: #d2b35a; letter-spacing: 0.04em;
+            color: #e0c46a; letter-spacing: 0.04em; /* was #d2b35a — below AA at 10px on the dark card */
             background: rgba(255,213,79,0.12);
             border: 1px solid rgba(255,213,79,0.32);
             border-radius: 999px; padding: 1px 7px;
@@ -1736,6 +1687,47 @@
             .tx-recs-panel-title { white-space: normal; line-height: 1.25; }
         }
         .tx-recs-list { display: flex; flex-direction: column; gap: 0; }
+        /* ⚡ Apply-set (quick-apply) — sits under the rec rows inside the panel. */
+        .tx-apply-set-row {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 8px 10px 9px;
+            border-top: 1px solid rgba(102,187,106,0.25);
+        }
+        .tx-apply-set-btn {
+            width: 100%; box-sizing: border-box;
+            min-height: 44px; padding: 9px 12px;
+            font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+            color: #eaffea; text-align: center;
+            background: linear-gradient(180deg, rgba(46,105,46,0.9), rgba(30,72,30,0.9));
+            border: 1px solid #4f8a4f; border-radius: 6px;
+        }
+        .tx-apply-set-btn:hover:not(:disabled) { filter: brightness(1.12); }
+        .tx-apply-set-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .tx-apply-set-tip { font-size: 10px; color: #b8c9b8; line-height: 1.35; }
+        /* Touch targets keyed on INPUT CAPABILITY, not viewport shape (overhaul U1).
+           The old 768px+portrait gate left landscape phones and every tablet with
+           ~26px chips; the landscape block even shrank slot chips to 36px. Mirrors
+           the .tx-type-pick precedent. Declared AFTER the landscape block so it
+           wins on touch devices; desktop mice keep the compact chrome. */
+        @media (hover: none) and (pointer: coarse) {
+            .tx-chip { min-height: 44px; padding: 10px 14px; }
+            .tx-chip.tx-chip--rec { padding: 10px 16px; }
+            .tx-sort-select { min-height: 44px; }
+            .tx-filters-toggle { min-height: 44px; padding: 10px 14px; }
+            .tx-sort-locked { min-height: 44px; display: inline-flex; align-items: center; }
+            .tx-confirm-bar-btn { min-height: 44px; }
+            .tx-slot-chip { min-height: 44px; }
+            .tx-tab { min-height: 48px; }
+            .tx-rec-row { min-height: 52px; }
+            .tx-mon-pill { min-height: 44px; }
+        }
+        /* Q7 — phone (either orientation): drop the tutor's footer "Back to City"
+           bar (duplicate of the header ← button) and reclaim its ~54px for the
+           picker. Landscape phones match via the height clause — 390px tall is
+           where that bar hurts most. Desktop keeps both. */
+        @media (max-width: 768px), (max-height: 480px) {
+            .story-tutor-footer { display: none; }
+        }
         .tx-rec-row {
             display: grid;
             grid-template-columns: 78px minmax(0, 1fr) auto;
@@ -2046,6 +2038,15 @@
         .tx-confirm-bar--locked .tx-confirm-bar-text strong { color: #ffd54f; }
         .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
         .tx-confirm-bar-text strong { color: var(--accent); }
+        /* Full move-effect text at confirm time (U3) — the grid card clamps its
+           description; this is the promised overflow home. Capped at 3 lines so
+           the sticky bar can't swallow the viewport on phones. */
+        .tx-confirm-bar-desc {
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+            overflow: hidden; margin-top: 3px;
+            font-size: 10px; line-height: 1.4; color: var(--text-muted, #9aa3b3);
+            font-style: italic;
+        }
         .tx-confirm-bar-btn {
             padding: 10px 16px; font-size: 13px; font-weight: 700;
             background: linear-gradient(180deg, #66bb6a, #43a047);
@@ -2111,7 +2112,7 @@
         .tx-nature-cell-name { font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
         .tx-nature-pct {
             font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
-            color: #c4a548; background: rgba(255,213,79,0.10);
+            color: #d8b95c; background: rgba(255,213,79,0.10); /* was #c4a548 — below AA at 9px */
             border: 1px solid rgba(255,213,79,0.28); border-radius: 999px;
             padding: 0 5px;
         }
@@ -2153,19 +2154,6 @@
         }
 
         @media (min-width: 720px) {
-            .story-tutor-move-picker {
-                display: grid; grid-template-columns: 1fr minmax(200px, 1fr); grid-template-rows: auto 1fr auto;
-                align-items: stretch; gap: 8px 12px; margin-inline: auto;
-            }
-            .story-tutor-move-picker .story-tutor-move-filter { grid-column: 1; grid-row: 1; }
-            .story-tutor-move-picker .story-tutor-move-select { grid-column: 1; grid-row: 2; min-height: 11em; }
-            .story-tutor-move-picker .story-tutor-move-detail {
-                grid-column: 2; grid-row: 1 / span 2; margin-top: 0; padding-top: 0;
-                border-top: none; border-left: 1px solid #3a3a3a; padding-left: 12px; align-self: start;
-            }
-            .story-tutor-move-picker .story-tutor-move-picker-footer {
-                grid-column: 1 / -1; grid-row: 3; margin-top: 0;
-            }
             .story-tutor-mon-meta { max-width: 42vw; }
         }
         @media (max-width: 719px) {
@@ -7424,17 +7412,6 @@
                 background: linear-gradient(180deg, rgba(22,26,40,0.98), rgba(14,18,28,0.98)) !important;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.35);
             }
-            .story-tutor-move-slot { padding: 10px !important; }
-            .story-tutor-move-picker { padding: 10px !important; }
-            .story-tutor-move-picker .story-tutor-move-filter {
-                font-size: 13px !important; padding: 8px 10px !important; min-height: 38px;
-            }
-            .story-tutor-move-picker .story-tutor-move-select {
-                font-size: 13px !important; min-height: 12em !important;
-            }
-            .story-tutor-move-picker .story-tutor-apply-move {
-                min-height: 42px !important; padding: 9px 14px !important; font-size: 13px !important;
-            }
             .story-tutor-choice-list { max-height: 320px !important; }
             .story-tutor-section-title { font-size: 11px !important; }
             .story-tutor-choice { padding: 10px 12px !important; }
@@ -10062,7 +10039,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="Move Tutor">
+    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="Training Facility">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
@@ -10074,7 +10051,7 @@
             <p id="story-tutor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Tap a move slot to swap it. Available moves come from each Pokémon's learnset.</p>
             <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
-        <div style="padding:10px;flex-shrink:0;">
+        <div class="story-tutor-footer" style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
@@ -16656,6 +16633,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let tt = getTextTooltipEl();
             tt.innerHTML = '<div style="font-size:12px;color:#e0e0e0;max-width:260px;">' + text + '</div>';
             tt.classList.remove('tooltip-tap-mode');
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
+        // Coarse-pointer fallback for title=""-only info (ISSUE-058): shows the
+        // element's title as a dismissible tap tooltip. Hover titles never fire on
+        // touch, so lock pills / tier badges / "↓ by usage" were invisible there.
+        window.showTapInfoTooltip = function(el, e) {
+            if (!el) return;
+            if (e && e.stopPropagation) e.stopPropagation();
+            let text = el.getAttribute('data-tapinfo-text') || el.getAttribute('title') || '';
+            if (!text) return;
+            text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const tt = getTextTooltipEl();
+            tt.classList.add('tooltip-tap-mode');
+            tt.innerHTML = '<button type="button" class="tip-close-x" aria-label="Close" onclick="window.hideTextTooltip()">×</button>'
+                + '<div style="clear:both;font-size:12px;color:#e0e0e0;max-width:280px;line-height:1.4;">' + text + '</div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.showMoveTooltipTap = function(moveName, e) {
@@ -46116,7 +46108,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   5.  enterBattleEvent stamps build._storyStatMult per (event, city, row)
         //       so buildPokemon scales maxHp + stats at battle-build time. (Phase 4.4)
         //   6.  _storyGateFoeMovesByCity(team, storyRowIdx)      [in enterBattleEvent]
-        //       — async tag filter: C0–C3 Natural only · C4–C6 +Learnt · C7+ no gate
+        //       — async tag filter: C0–C2 Natural only · C3–C5 Natural + Learnt status ·
+        //         C6+ no gate (mirrors NPC_STAGE_CITY.tutor = [0,3,6])
         //         (uses the per-species learnset cache from Phase 4.1).
         //   7.  storyFreezeFoeTeamForPersistence(team)           [pre-startFight]
         //       — runs buildPokemon (move padding / gender / shiny lock) AND
@@ -47034,6 +47027,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                     txStarredPool: (...a) => _txStarredPool(...a),
                     txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
+                    txBuildApplySetPlan: (...a) => _txBuildApplySetPlan(...a),
+                    tutorApplyRecommendedSet: (...a) => tutorApplyRecommendedSet(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
                     // T1 regression hook: empty the move-acceptance cache to simulate a
@@ -55061,12 +55056,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // the per-city BP clamp reads attacker.buildData.starter for the 60-BP floor.
                 if (newSlot.build && typeof newSlot.build === 'object') newSlot.build.starter = true;
             }
-            // Per-city moveset filter (1.6.1): non-starter professor gifts follow the
-            // city cap like trainers/wild catches (re-teachable via the Move Tutor as the
-            // cap lifts). The starter is exempt — its 60-BP battle clamp floor governs.
-            if (!newSlot.starter) {
-                try { await _storyFilterBuildMovesForCity(newSlot.build, newSlot.name, cityIdx, false); } catch (e) {}
-            }
+            // Per-city moveset filter: professor gifts follow the city cap like
+            // trainers/wild catches (re-teachable via the Move Tutor as the cap lifts).
+            // The starter is filtered too (Q9) — same Natural-category rule with a
+            // cap+20 BP allowance instead of the old blanket exemption.
+            try { await _storyFilterBuildMovesForCity(newSlot.build, newSlot.name, cityIdx, !!newSlot.starter); } catch (e) {}
             sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
@@ -55087,7 +55081,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
         }
 
-        function _mysteryDoSwap(slotIdx) {
+        async function _mysteryDoSwap(slotIdx) {
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch || slotIdx < 0 || slotIdx >= sm.team.length) return;
@@ -55096,6 +55090,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
             const replaced = target.name;
+            // City move filter — the swap path must match the append path (a full-party
+            // gift otherwise arrived holding TM/Awakened moves the tutor would refuse).
+            // No-op at the C8 legendary gate (Guru = ungated), so this is pure
+            // defense-in-depth for any future gift path.
+            try { await _storyFilterBuildMovesForCity(ch.build, ch.name, cityIdx, false); } catch (e) {}
             // Displaced partner returns to the PC — never destroyed. Mirrors the
             // catch-swap flow (catchResolveSwap). Pre-fix this slot was simply
             // overwritten, silently deleting the mon despite the gate text's
@@ -55126,12 +55125,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // catch flow's catchResolveSendToPC. Still flips profUsed so the City-8
         // legendary gate opens Victory Road on accept (the figure handed you a
         // legendary; fielding it is your call).
-        function _mysterySendToPc() {
+        async function _mysterySendToPc() {
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch) return;
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
+            // Same city move filter as the append/swap paths (defense-in-depth; no-op
+            // at the C8 legendary gate where the tutor is already Guru).
+            try { await _storyFilterBuildMovesForCity(ch.build, ch.name, cityIdx, false); } catch (e) {}
             _pcEnsureBoxArray();
             sm.pcBox.push({ name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) });
             if (!sm.profUsed) sm.profUsed = {};
@@ -56522,9 +56524,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
-        // Parity move gate (#1): before the player's Move Tutor reaches Guru (City 5)
-        // the player has only innate (egg/level-up/transfer) moves — no TMs — so foes
-        // are held to the same access.
+        // Parity move gate (#1): before the player's Move Tutor reaches Guru (City 6)
+        // the player has only innate (egg/level-up/transfer) moves — plus Learnt STATUS
+        // moves from Unleashed (City 3) — so foes are held to the same access.
         // Pre-warm the egg/level-up learnset for the rolled foe species (reusing the Move
         // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
@@ -56548,18 +56550,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // An index past the array end clamps to the last entry (so C5+ → 0 → ∞).
         // User-owned balance numbers (0 = no cap). PLAYER and FOE caps are separate
         // arrays so they can be tuned apart; today they're equal (foe ≤ player rule).
-        // STARTER EXCEPTION: the professor's first-choice starter (build.starter) gets a
-        // 60-BP floor so it keeps its already-learnt up-to-60 moves at C0 — the floor
-        // only bites where the city cap is below 60 (i.e. C0).
+        // STARTER ADVANTAGE (Q9): the professor's first-choice starter (build.starter)
+        // follows the SAME Natural-category filter as everything else, with a BP
+        // allowance of city cap + 20 (60 at C0) — a principled slight edge instead of
+        // the old blanket pool-filter exemption + flat 60 floor.
         const STORY_MOVE_BP_CAP_BY_CITY     = [40, 60, 60, 80, 80, 0];
         const STORY_FOE_MOVE_BP_CAP_BY_CITY = [40, 60, 60, 80, 80, 0];
-        const STORY_STARTER_BP_CAP_FLOOR = 60;
+        const STORY_STARTER_BP_CAP_BONUS = 20;
         function _storyBpCapFromTable(tbl, city, isStarter) {
             const a = (Array.isArray(tbl) && tbl.length) ? tbl : [0];
             const i = Math.max(0, Math.min(a.length - 1, city | 0));
             const raw = a[i];
             let c = (raw && raw > 0) ? raw : Infinity;
-            if (isStarter && c < STORY_STARTER_BP_CAP_FLOOR) c = STORY_STARTER_BP_CAP_FLOOR;
+            if (isStarter && c !== Infinity) c += STORY_STARTER_BP_CAP_BONUS;
             return c;
         }
         function _storyMoveBpCapForCity(city, isStarter) { return _storyBpCapFromTable(STORY_MOVE_BP_CAP_BY_CITY, city, isStarter); }
@@ -56569,8 +56572,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // the battle engine calls it via window._storyBattleBpCap(attacker,isPlayer,state)
         // since that scope only reaches story state through window. Returns Infinity (no
         // clamp) outside an active story battle. The starter (build.starter) gets the
-        // 60-BP floor. Memoized by eventIndex so the city scan runs once per city, not
-        // once per hit.
+        // cap+20 allowance (Q9). Memoized by eventIndex so the city scan runs once per
+        // city, not once per hit.
         let _storyBpCapMemoEI = -999, _storyBpCapMemoVal = Infinity, _storyBpCapMemoStarter = Infinity;
         function _storyBattleBpCap(attacker, isPlayer, battleState) {
             if (!(battleState && battleState.mode === 'story' && sm && sm.active)) return Infinity;
@@ -56625,6 +56628,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return ((pctOf && pctOf.get(b)) || 0) - ((pctOf && pctOf.get(a)) || 0);
             });
         }
+        // True when a move is a Status-category move (0-BP utility). Shared by the
+        // foe/wild gate and the player tutor pool so the Unleashed "learnt guile"
+        // unlock below can never drift between the two sides.
+        function _storyIsStatusMoveName(mv) {
+            try {
+                const md = ensureMoveData(String(mv).split('/')[0]);
+                return !!(md && md.cat === 'Status');
+            } catch (e) { return false; }
+        }
         // Apply the move ceiling (tag filter + stage BP cap + backfill) to ONE build,
         // in place. Assumes the species' learnset is warm in _tutorLearnsetCache (callers
         // await _tutorFetchLearnsetMoveNames first). Returns true if build.m changed.
@@ -56636,11 +56648,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
             if (!learn) return false; // cache cold → leave as-is (offline-safe via the index)
-            // Staging (user model): L1 Inner = Natural ≤ BP cap; L2 Unleashed = ALL Natural
-            // (cap lifts, still no Learnt); L3 Guru = no gate at all (handled by the early
-            // return above). Learnt (TM/tutor) therefore unlocks only at Guru — it is NOT
-            // added at L2 the way it was previously.
+            // Staging (user model, Q2b overhaul): L1 Inner = Natural ≤ BP cap;
+            // L2 Unleashed = ALL Natural (cap lifts) PLUS Learnt STATUS moves — the
+            // mid-game "new builds" unlock (Toxic / Will-O-Wisp / hazards / screens)
+            // without raw-damage inflation; L3 Guru = no gate at all (early return
+            // above). Damaging Learnt moves still wait for Guru. Shared by player,
+            // trainers, wilds, and gifts — never add a player-only branch here.
             const allowed = new Set(learn.natural || learn.tier1 || []);
+            if ((stage | 0) >= 1) {
+                for (const m of (learn.learnt || [])) { if (_storyIsStatusMoveName(m)) allowed.add(m); }
+            }
             if (!allowed.size) return false; // thin learnset → leave alone
             // Callers always pass a city-resolved cap via bpCapOverride; absent one,
             // fall back to no cap (the tag filter below still applies).
@@ -56679,6 +56696,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         async function _storyGateFoeMovesByCity(team, storyRowIdx) {
             if (!Array.isArray(team) || !team.length || storyRowIdx == null || storyRowIdx < 0 || !sm || !sm.active) return;
+            // Post-game Crucible re-entries replay early rows (crucibleGymPick re-enters
+            // the original gym row), but the ladder is a POST-HoF challenge: re-capping a
+            // GL1 rematch to Inner-tier 40-BP moves while the build tier is forced to T4
+            // ("so rematches stay sharp") contradicted itself. Off-timeline Crucible
+            // battles skip the historical city move gate entirely (player is at Guru).
+            if (sm.crucibleBattleSource) return;
             let city = -1;
             try { city = _cityIndexForStoryRow(storyRowIdx); } catch (e) { return; } // storyRowIdx is a ROW ID (fixes #23)
             if (city < 0) return;
@@ -56700,19 +56723,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // encounter / caught mon / gift) so wild/caught/gift Pokémon follow the same
         // "natural moves within the city cap" ruleset as trainer foes — stripped moves
         // are re-teachable via the Move Tutor as the city cap lifts. Mirrors the foe gate
-        // but uses the PLAYER cap and warms one species. Safe no-op when: starter (its
-        // 60-BP battle clamp floor already governs), Guru tier (full pool), sm inactive,
+        // but uses the PLAYER cap and warms one species. The starter is NOT exempt
+        // (Q9): it follows the same Natural-category filter with a cap+20 BP allowance
+        // via the isStarter flag. Safe no-op when: Guru tier (full pool), sm inactive,
         // bad city, or cold learnset cache (offline/jsdom — the battle clamp still caps
         // damage). RNG-free (the ranker is pure) so it never perturbs seeded rolls.
         async function _storyFilterBuildMovesForCity(build, species, city, isStarter) {
             if (!build || !Array.isArray(build.m) || !build.m.length) return false;
-            if (isStarter || build.starter) return false;   // starter exempt
             if (!sm || !sm.active || species == null || city == null || (city | 0) < 0) return false;
+            const starterFlag = !!(isStarter || build.starter);
             const tutorStage = _npcStageForCity('tutor', city | 0);
             if (tutorStage >= 2) return false;               // Guru — full pool, matches trainers
             try { await _tutorFetchLearnsetMoveNames(species); } catch (e) {}
             return _storyApplyMoveStageToBuild(build, species, tutorStage, _storyCoherentMoveRanker,
-                                               _storyMoveBpCapForCity(city | 0, false));
+                                               _storyMoveBpCapForCity(city | 0, starterFlag));
         }
         try { window._storyFilterBuildMovesForCity = _storyFilterBuildMovesForCity; } catch (e) {}
         // ── CAMP BUFFER (Camp System PR C) — the between-events beat ──────────
@@ -64910,6 +64934,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Keep every old move the evolved species can legally learn; backfill remaining slots
             // from the rolled evoBuild so the moveset is always full.
+            // (Q3 overhaul) The BACKFILL obeys the current city's tutor stage gate —
+            // pre-Guru, evolving must not mint Learnt/Awakened Smogon moves the tutor
+            // would refuse (it was a C2–C5 category leak). KEPT old moves are never
+            // stripped (equipped-moves invariant: old picks persist un-stripped).
+            const _evoStarter = !!(mon.starter || old.starter);
+            let _evoStagedSet = null;
+            try {
+                if (sm && sm.active) {
+                    const _cc = cityIndexFromEventIndex(sm.eventIndex) | 0;
+                    if (_npcStageForCity('tutor', _cc) < 2) {
+                        const _staged = await _tutorGetStagedMovePoolAsync(evoName, [], _evoStarter);
+                        _evoStagedSet = new Set(_staged.map(m => String(m).split('/')[0]));
+                    }
+                }
+            } catch (e) { _evoStagedSet = null; }
             if (Array.isArray(old.m) && old.m.length) {
                 let legalPool;
                 try {
@@ -64934,9 +64973,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!m || seen.has(m)) continue;
                         // Never let the rolled fill add a second Hidden Power.
                         if (/^Hidden Power/.test(m) && keptHp) continue;
+                        // Stage gate on newly-minted fills only (kept moves already in).
+                        if (_evoStagedSet && !_evoStagedSet.has(String(m).split('/')[0])) continue;
                         kept.push(m); seen.add(m); if (/^Hidden Power/.test(m)) keptHp = true;
                     }
                     evoBuild.m = kept.slice(0, 4);
+                } else if (sm && sm.active) {
+                    // Nothing carried → the rolled Smogon set stands in wholesale. Gate it
+                    // like a fresh wild catch (filter + coherent in-stage backfill).
+                    try {
+                        const _cc = cityIndexFromEventIndex(sm.eventIndex) | 0;
+                        await _storyFilterBuildMovesForCity(evoBuild, evoName, _cc, _evoStarter);
+                    } catch (e) {}
                 }
             }
 
@@ -65415,10 +65463,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _voucherItems = [
                 { id:'rareCandy',      name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Evolution Tutor to evolve any party Pokémon for free. Earned from Gym Leaders and big Casino wins.' },
                 { id:'vitamin',        name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">EV Voucher', desc:'Waives the gold cost of one EV preset at the EV Trainer (+252 / +252 spread) — same effect as paying 5,000G. Earned from Gym Leaders and big Casino wins. Distinct from IV vitamins (Protein, Iron, …), which raise IVs at the Fan Club.' },
-                { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to teach any move to any Pokémon for free — same effect as paying 1,500G. Earned from Gym Leaders and big Casino wins. The classic move-tutor coin from real games.' },
+                { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to waive the gold cost of one move it currently offers (1,000–5,000G depending on the move). Doesn\'t unlock moves the tutor hasn\'t staged yet. Earned from tutor tier-ups and big Casino wins. The classic move-tutor coin from real games.' },
                 { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from Gym Leaders and big Casino wins. The new nature sticks through PC, evolution, the works.' },
-                { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from Gym Leaders and big Casino wins. Hidden Abilities included, just like the dojo\'s gold path.' },
-                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from Gym Leaders and big Casino wins. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
+                { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — worth 2,000–5,000G depending on the ability tier. Earned from dojo belt-ups and big Casino wins. Hidden Abilities included, just like the dojo\'s gold path.' },
+                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — worth 500–2,500G depending on the item tier. Earned from dojo belt-ups and big Casino wins. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
                 { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 5,000G. The first one drops from Gym Leader 6; redeem at the next-city lab for your first awakening.' },
                 { id:'linkDiscount50', name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Bill\'s Discount Card', desc:'Take to the Cable Link Station for 50% off one transaction — Reroll, Upgrade, or Rebuild, your pick. Earned from Bill on your first visit to the Link Station.' },
                 { id:'stoneToken',     name:'<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Stonewise Token', desc:'Redeem at Stones and Beyond for one free item — any evolution stone or trade item on the shelf. Earned from the Stonewise Granny.' },
@@ -66959,16 +67007,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // so it matches Item cost. Hidden abilities are now gated and
         // gimmick-enemy density rose with the Frontier changes;
         // the +500G ability premium wasn't earning its keep.
-        const TUTOR_COST_MOVE    = 1500;  // fallback only — see _moveCostForStage (staged 1000/2500)
         const TUTOR_COST_ITEM    = 2000;  // fallback only — see _itemCostForTier (tiered 500/1000/2500)
         const TUTOR_COST_ABILITY = 2000;  // regular ability swap
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
         const TUTOR_COST_AWAKEN  = 5000;  // Awakened pick (Grandmaster · City 8+)
         const TUTOR_COST_NATURE  = 2000;
-        // Move Tutor charge is staged by tutor tier (cost = the stage CEILING, by stage):
-        //   L1 Inner Strength: 1,000 G per move (Natural pool, BP ≤ 75).
-        //   L2 Unleashed:      Natural only, so still 1,000 G per move (BP cap lifts, no TMs).
-        //   L3 Guru:           5,000 G per move (+ Learnt TM/HM/Tutor/TR/event + Awakened).
+        // Move Tutor pricing is per move TAG (natural 1,000 / learnt 2,500 / awakened
+        // 5,000 — see _moveCostForStage). Stage gates what is OFFERED, not the price:
+        //   L1 Inner Strength (C0–2): Natural pool, per-city BP cap (40/60/60).
+        //   L2 Unleashed      (C3–5): Natural + Learnt STATUS moves, BP cap 80/80/∞.
+        //   L3 Guru           (C6+):  + full Learnt (TM/HM/Tutor/TR/event) + Awakened.
         // NB: per-move price follows the move's TAG, not the tutor's stage — see the
         // tag branch below. The no-tag "starting from" label is the stage ceiling.
         function _moveCostForStage(moveTag) {
@@ -67280,41 +67328,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Kasib Berry', 'Haban Berry', 'Colbur Berry', 'Babiri Berry',
             'Chilan Berry', 'Roseli Berry', 'Enigma Berry'
         ];
-
-        /** HTML for Move Tutor detail block (stats + short effect); safe for innerHTML of .story-tutor-move-detail */
-        function _formatMoveTutorDetailHtml(moveName) {
-            if (!moveName || typeof moveName !== 'string') {
-                return '<div class="story-tutor-move-detail--empty">—</div>';
-            }
-            const move = ensureMoveData(moveName);
-            if (!move) return '<div class="story-tutor-move-detail--empty">—</div>';
-            const typ = move.type || 'Normal';
-            const pri = formatMovePriority(move.pri);
-            const powStr = move.pow > 0 ? String(move.pow) : '—';
-            const accStr = move.acc > 0 ? move.acc + '%' : '—';
-            const effHtml = move.eff
-                ? '<div class="story-tutor-move-detail-eff">' + _esc(move.eff) + '</div>'
-                : '';
-            return ''
-                + '<div class="story-tutor-move-detail-head"><strong class="story-tutor-move-detail-name">' + _esc(moveName) + '</strong> '
-                + '<span class="type-badge type-' + typ + '" style="font-size:10px;">' + _esc(typ) + '</span></div>'
-                + '<div class="story-tutor-move-detail-grid">'
-                + '<span>Cat: ' + moveCategoryTooltipHtml(move.cat) + '</span>'
-                + '<span>Pow: <strong>' + powStr + '</strong></span>'
-                + '<span>Acc: <strong>' + _esc(accStr) + '</strong></span>'
-                + '<span>PP: <strong>' + _esc(String(move.pp)) + '</strong></span>'
-                + '<span class="story-tutor-move-detail-pri">Pri: <strong>' + pri + '</strong></span>'
-                + '</div>' + effHtml;
-        }
-
-        function _tutorRefreshMoveDetailRow(row) {
-            if (!row) return;
-            const det = row.querySelector('.story-tutor-move-picker .story-tutor-move-detail');
-            if (!det) return;
-            const sel = row.querySelector('.story-tutor-move-select');
-            if (sel && sel.value) det.innerHTML = _formatMoveTutorDetailHtml(sel.value);
-            else det.innerHTML = '<div class="story-tutor-move-detail--empty">Select a move in the list to see type, power, and effect.</div>';
-        }
 
         /** Inline description for tutor item/ability/nature rows (sync; uses tooltipDict + @pkmn/dex via _resolveTooltipText). */
         function _tutorChoiceDescBlockFromKey(key) {
@@ -67701,7 +67714,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The mon's CURRENTLY-known moves are always kept selectable so an existing
         // tagged-above-stage move doesn't disappear from the editor. A Heart Scale
         // voucher overrides the gate entirely ("learn any move").
-        async function _tutorGetStagedMovePoolAsync(monName, currentMoves) {
+        async function _tutorGetStagedMovePoolAsync(monName, currentMoves, isStarter) {
             const syncMoves = _tutorGetPoolForMon(monName).moves;
             let learn = { all: [], tier1: [], natural: [], learnt: [], awakened: [] };
             try { learn = await _tutorFetchLearnsetMoveNames(monName); } catch (e) {}
@@ -67729,9 +67742,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // viewable via "Show all", but off-stage cards render locked/disabled).
             // Cold-cache fallback: if the learnset cache hasn't populated any tag bucket
             // yet (jsdom thin dex / async race), the gate would over-restrict — fall
-            // through to the full pool. The tutor UI re-renders once warm.
+            // through to the full pool. Schedule ONE retry render per species so the
+            // promised "re-renders once warm" actually happens (previously nothing
+            // scheduled it and the ungated pool stuck until the next interaction).
             const coldCache = !(learn.natural || []).length && !(learn.learnt || []).length && !(learn.awakened || []).length;
-            if (coldCache) { try { full.fullPool = full; } catch (e) {} return full; }
+            if (coldCache) {
+                try {
+                    if (!_tutorGetStagedMovePoolAsync._coldRetry) _tutorGetStagedMovePoolAsync._coldRetry = new Set();
+                    const _cr = _tutorGetStagedMovePoolAsync._coldRetry;
+                    if (!_cr.has(monName)) {
+                        _cr.add(monName);
+                        setTimeout(() => {
+                            try {
+                                const scr = document.getElementById('screen-story-tutor');
+                                if (scr && !scr.classList.contains('hidden')) void renderTutorTeam();
+                            } catch (e) {}
+                        }, 700);
+                    }
+                } catch (e) {}
+                try { full.fullPool = full; } catch (e) {}
+                return full;
+            }
             // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
             // NB: syncMoves (Smogon competitive moves) are NOT unconditionally unioned —
             // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
@@ -67744,7 +67775,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // (The starter's already-known over-cap moves are preserved by the
             // currently-known-moves passthrough below, so no starter floor is needed here.)
             let _bpCity = 0; try { _bpCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _bpCity = 0; }
-            const _bpCap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_bpCity) : Infinity;
+            // Starter (Q9): same category gate, BP allowance = city cap + 20.
+            const _bpCap = (typeof _storyMoveBpCapForCity === 'function') ? _storyMoveBpCapForCity(_bpCity, !!isStarter) : Infinity;
             const _bpUnder = (m) => {
                 if (_bpCap === Infinity) return true;
                 const md = ensureMoveData(String(m).split('/')[0]);
@@ -67752,6 +67784,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             const allow = new Set();
             (learn.natural || []).forEach(m => { if (_bpUnder(m)) allow.add(m); });
+            if (stage >= 1) {
+                // Unleashed (Q2b): Learnt STATUS moves join two cities early — the
+                // mid-game build unlock. Mirrors _storyApplyMoveStageToBuild exactly
+                // (foes get the same access on the same city clock).
+                (learn.learnt || []).forEach(m => { if (_storyIsStatusMoveName(m)) allow.add(m); });
+            }
             if (stage >= 2) {
                 (learn.learnt   || []).forEach(m => allow.add(m));
                 (learn.awakened || []).forEach(m => allow.add(m));
@@ -67973,6 +68011,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             for (const b of builds) {
                 if (!b || b._illegal) continue;
+                // 1v1-singles recs (Q8): doubles/VGC sets are excluded from usage
+                // counting unless the roll-side setting opts them in — the same
+                // policy _filterBuildPool applies to rolled teams. Without this,
+                // doubles-staple species (Incineroar, Amoonguss, Torkoal, …) get
+                // Fake Out / Follow Me / Rage Powder / Trick Room support sets
+                // inflating "recommended" moves that are weak or fail in singles.
+                if (b._category === 'doubles' && !(typeof settings === 'object' && settings && settings.allowDoublesBuilds)) continue;
                 const w = _txGenWeight(b._gen);
                 out.total++;
                 out.weightedTotal += w;
@@ -68581,15 +68626,91 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return pop.score * 0.40 + heurN * 0.60;
         }
 
-        // Move heuristic — STAB / power / accuracy / category fit / utility (unchanged
-        // from prior version; meta popularity is applied on top via _txBlend).
+        // ── Recommender fit factors (move-tutor overhaul) ─────────────────────
+        // Smogon usage is measured in long 6v6 singles; story fights are short
+        // (2–6 mons, no switching meta), so long-game chip tools earn less than
+        // their usage suggests. Multipliers are MAINTAINER-OWNED balance numbers
+        // (1 = neutral); they scale a move's effective usage in the Suggest panel
+        // and its heuristic score in the grid's "Best for this mon" sort.
+        const _TX_SHORT_BATTLE_FIT = {
+            hazards:    0.55,  // pay off over many switch-ins that story fights don't have
+            phaze:      0.60,  // shuffling matters less with 2–6 mon parties
+            pivot:      0.85,  // still fine damage+tempo, slightly overrated by OU usage
+            toxicStall: 0.75,  // strong, but not 6v6-webs-of-switches strong
+            screens:    0.90,
+        };
+        const _TX_SB_MOVE_CLASS = {
+            'Stealth Rock': 'hazards', 'Spikes': 'hazards', 'Toxic Spikes': 'hazards', 'Sticky Web': 'hazards',
+            'Roar': 'phaze', 'Whirlwind': 'phaze', 'Dragon Tail': 'phaze', 'Circle Throw': 'phaze',
+            'U-turn': 'pivot', 'Volt Switch': 'pivot', 'Flip Turn': 'pivot', 'Parting Shot': 'pivot', 'Teleport': 'pivot',
+            'Toxic': 'toxicStall',
+            'Reflect': 'screens', 'Light Screen': 'screens', 'Aurora Veil': 'screens',
+        };
+        function _txShortBattleFactor(moveName) {
+            const k = _TX_SB_MOVE_CLASS[String(moveName).split('/')[0]];
+            return k ? (_TX_SHORT_BATTLE_FIT[k] != null ? _TX_SHORT_BATTLE_FIT[k] : 1) : 1;
+        }
+        // Ability→move synergy — the few high-signal interactions computable from
+        // movesDB fields alone (type / category / power). Applied to DAMAGING moves.
+        function _txAbilityMoveFactor(abilityName, md, isStab) {
+            if (!abilityName || !md) return 1;
+            const dmg = md.cat === 'Physical' || md.cat === 'Special';
+            if (!dmg) return 1;
+            const a = String(abilityName);
+            if (a === 'Technician') return (md.pow > 0 && (md.pow | 0) <= 60) ? 1.5 : 1;
+            if (a === 'Huge Power' || a === 'Pure Power') return md.cat === 'Physical' ? 1.3 : 0.7;
+            if (a === 'Aerilate' || a === 'Pixilate' || a === 'Refrigerate' || a === 'Galvanize')
+                return md.type === 'Normal' ? 1.35 : 1;
+            if (a === 'Adaptability') return isStab ? 1.15 : 1;
+            return 1;
+        }
+        // Category fit from BASE stats (matches the item recs' archetype read —
+        // built stats let a -Atk nature flip the preference, compounding a bad
+        // pick). 1 for status / balanced species; down to ~0.55 for a move off
+        // the clearly-weaker attacking stat.
+        function _txCatFitFactor(monName, mon, md) {
+            if (!md || md.cat === 'Status') return 1;
+            const bs = (typeof baseStats === 'object' && monName && baseStats[monName]) || null;
+            const atk = bs ? (bs.atk | 0) : ((mon && mon.stats && mon.stats.atk) | 0);
+            const spa = bs ? (bs.spa | 0) : ((mon && mon.stats && mon.stats.spa) | 0);
+            if (!atk || !spa || atk === spa) return 1;
+            const gap = Math.abs(atk - spa) / Math.max(atk, spa);
+            const wrong = (md.cat === 'Physical') !== (atk > spa);
+            return wrong ? Math.max(0.55, 1 - gap * 0.75) : 1;
+        }
+        // Coverage value via the type chart: how many single defending types RESIST
+        // every STAB (≤1×) but take super-effective damage from this move type.
+        // Rewards real complements (Ice on Ground/Dragon) and zeroes out "coverage"
+        // that never matters (Normal is SE vs nothing → always 0).
+        function _txCoverageValue(moveType, stabTypes) {
+            try {
+                if (typeof typeChart !== 'object' || !moveType || !typeChart[moveType]) return 0;
+                const eff = (atk, def) => (typeChart[atk] && typeChart[atk][def] !== undefined) ? typeChart[atk][def] : 1;
+                let v = 0;
+                for (const def of Object.keys(typeChart)) {
+                    let stabMax = 0;
+                    for (const st of stabTypes) stabMax = Math.max(stabMax, eff(st, def));
+                    if (stabTypes.size && stabMax > 1) continue;   // a STAB already hits it hard
+                    if (eff(moveType, def) > 1) v++;
+                }
+                return v;
+            } catch (e) { return 0; }
+        }
+
+        // Move heuristic — STAB / power / accuracy / category fit / ability synergy /
+        // utility (meta popularity is applied on top via _txBlend). Overhaul additions:
+        // a WRONG-category penalty symmetric to the matching-category boost (a 110-BP
+        // special move no longer outranks a right-stat 80-BP one on a physical mon),
+        // ability→move synergy (Technician / Huge Power / -ate / Adaptability), and the
+        // short-battle fit factor (hazards/phaze/pivot down-weighted for story fights).
         function _txMoveHeuristic(moveName, mon, build, monName) {
             const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
             if (!md) return 0;
             const types = [];
             if (mon && mon.type1) types.push(mon.type1);
             if (mon && mon.type2) types.push(mon.type2);
-            const stab = types.includes(md.type) ? 1.5 : 1.0;
+            const isStab = types.includes(md.type);
+            const stab = isStab ? 1.5 : 1.0;
             const pow = Math.max(md.pow | 0, 0);
             const acc = (md.acc > 0 ? md.acc : 100) / 100;
             const isDamage = md.cat === 'Physical' || md.cat === 'Special';
@@ -68599,6 +68720,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 score = pow * stab * acc;
                 if (md.cat === 'Physical' && s.atk >= s.spa) score *= 1 + (s.atk - s.spa) / Math.max(s.atk, 1) * 0.5;
                 if (md.cat === 'Special'  && s.spa >= s.atk) score *= 1 + (s.spa - s.atk) / Math.max(s.spa, 1) * 0.5;
+                // Wrong-category penalty (was boost-only): scale down by the stat gap.
+                if (md.cat === 'Physical' && s.spa > s.atk) score *= Math.max(0.5, 1 - (s.spa - s.atk) / Math.max(s.spa, 1) * 0.6);
+                if (md.cat === 'Special'  && s.atk > s.spa) score *= Math.max(0.5, 1 - (s.atk - s.spa) / Math.max(s.atk, 1) * 0.6);
+                const abil = (build && build.a) || (mon && mon.ability) || '';
+                score *= _txAbilityMoveFactor(abil, md, isStab);
                 if (md.pri && md.pri > 0) score += 15;
             } else {
                 const hazards = ['Stealth Rock','Spikes','Toxic Spikes','Sticky Web','Defog','Rapid Spin'];
@@ -68611,7 +68737,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (support.includes(moveName)) score = 70;
                 else score = 30;
             }
-            return score;
+            return score * _txShortBattleFactor(moveName);
         }
         // Public scoring — heuristic blended with Smogon popularity per species.
         function _txScoreMove(moveName, mon, build, monName) {
@@ -68832,28 +68958,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const types = [mon && mon.type1, mon && mon.type2]
                 .filter(Boolean).filter((t, i, a) => a.indexOf(t) === i); // distinct, in order
             const typeSet = new Set(types);
-            const stats = _txMonStats(mon, monName);
-            // Preferred damaging category from the bigger attacking stat; null on a
-            // tie (no bias — usage % alone decides, exactly as requested).
-            const catPref = stats.atk > stats.spa ? 'Physical' : stats.spa > stats.atk ? 'Special' : null;
+            // Preferred damaging category from BASE stats (matches the item recs'
+            // archetype read; built stats let a -Atk nature flip the read). Null on a
+            // tie — no bias.
+            const _bs = (typeof baseStats === 'object' && monName && baseStats[monName]) || null;
+            const _stats = _txMonStats(mon, monName);
+            const _atkB = _bs ? (_bs.atk | 0) : _stats.atk;
+            const _spaB = _bs ? (_bs.spa | 0) : _stats.spa;
+            const catPref = _atkB > _spaB ? 'Physical' : _spaB > _atkB ? 'Special' : null;
             const pctOf = (() => { try { return _txStarredPoolMemo(monName).moves.pctOf; } catch (e) { return new Map(); } })();
             const usage = (m) => pctOf.get(m) || 0;
+            const _abil = (build && build.a) || (mon && mon.ability) || '';
 
             const isDamaging   = (m) => { const d = md(m); return !!d && (d.cat === 'Physical' || d.cat === 'Special'); };
             const isStatusMove = (m) => { const d = md(m); return !!d && d.cat === 'Status'; };
             const typeOf = (m) => { const d = md(m); return d ? d.type : null; };
             const catOf  = (m) => { const d = md(m); return d ? d.cat : null; };
             const powOf  = (m) => { const d = md(m); return d ? (d.pow | 0) : 0; };
+            // Fit factor (overhaul): category fit × ability synergy × short-battle
+            // fit. Scales usage into an EFFECTIVE usage, so category is a real
+            // weight — not a tie-only break that raw popularity steamrolls (the old
+            // model handed physically-built mons their most-used SPECIAL move).
+            const _fitMemo = new Map();
+            const fit = (m) => {
+                let f = _fitMemo.get(m);
+                if (f == null) {
+                    const d = md(m);
+                    f = _txCatFitFactor(monName, mon, d)
+                        * _txAbilityMoveFactor(_abil, d, typeSet.has(typeOf(m)))
+                        * _txShortBattleFactor(m);
+                    _fitMemo.set(m, f);
+                }
+                return f;
+            };
+            const effUsage = (m) => usage(m) * fit(m);
 
-            // Damaging order: usage% → category match (when there's a preference) →
-            // power → alphabetical. Status order: usage% → alphabetical.
+            // Damaging order: effective usage (usage × fit) → category match →
+            // power × fit → alphabetical. Status order: effective usage → alphabetical.
             const cmpDmg = (a, b) => {
-                const du = usage(b) - usage(a); if (du) return du;
+                const du = effUsage(b) - effUsage(a); if (du) return du > 0 ? 1 : -1;
                 if (catPref) { const ca = catOf(a) === catPref ? 1 : 0, cb = catOf(b) === catPref ? 1 : 0; if (cb - ca) return cb - ca; }
-                const dp = powOf(b) - powOf(a); if (dp) return dp;
+                const dp = powOf(b) * fit(b) - powOf(a) * fit(a); if (dp) return dp > 0 ? 1 : -1;
                 return a.localeCompare(b);
             };
-            const cmpStatus = (a, b) => (usage(b) - usage(a)) || a.localeCompare(b);
+            const cmpStatus = (a, b) => {
+                const du = effUsage(b) - effUsage(a); if (du) return du > 0 ? 1 : -1;
+                return a.localeCompare(b);
+            };
 
             const damaging = availMoves.filter(isDamaging);
             const statusMoves = availMoves.filter(isStatusMove).sort(cmpStatus);
@@ -68881,11 +69032,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // ── STAB ──────────────────────────────────────────────────────
             // One pick per type when the mon is dual-typed AND both types have a
-            // damaging move in the (stage-gated) pool — that's when two STABs earn
-            // their slots. Otherwise the single most-popular STAB.
+            // damaging move WORTH a slot — dual STAB is PREFERRED, not forced: a
+            // 40-BP zero-usage filler no longer burns a slot that premium coverage
+            // wanted (it qualifies only on ≥55 BP × fit, or real usage).
             const stabByType = {};
             for (const t of types) stabByType[t] = damaging.filter(m => typeOf(m) === t).sort(cmpDmg);
-            const dualStab = types.length >= 2 && types.every(t => stabByType[t] && stabByType[t].length);
+            const stabWorthIt = (m) => !!m && (powOf(m) * fit(m) >= 55 || usage(m) >= 5);
+            const dualStab = types.length >= 2 && types.every(t => stabByType[t] && stabWorthIt(stabByType[t][0]));
             if (dualStab) {
                 for (const t of types) add('STAB', stabByType[t][0]);
             } else {
@@ -68895,9 +69048,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // ── Coverage ──────────────────────────────────────────────────
             // Distinct-typed off-STAB damage. dual STAB → 1 coverage; else → 2.
+            // Type-chart value breaks effective-usage ties: a type that hits what
+            // the STABs can't (Ice on a Ground/Dragon killer) beats a "coverage"
+            // type that never matters (Normal is SE vs nothing → value 0).
             const nextCoverage = () => damaging
                 .filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m)))
-                .sort(cmpDmg)[0];
+                .sort((a, b) => {
+                    const du = effUsage(b) - effUsage(a);
+                    if (Math.abs(du) > 1) return du > 0 ? 1 : -1;  // clear usage winner
+                    const dv = _txCoverageValue(typeOf(b), usedTypes) - _txCoverageValue(typeOf(a), usedTypes);
+                    if (dv) return dv;
+                    return cmpDmg(a, b);
+                })[0];
             const coverageTarget = dualStab ? 1 : 2;
             for (let i = 0; i < coverageTarget; i++) {
                 const c = nextCoverage();
@@ -68905,19 +69067,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 add('Coverage', c);
             }
 
-            // ── Remaining slots — adaptive fill by usage ─────────────────────
-            // For each open slot take whichever the species RUNS more (Smogon usage):
+            // ── Remaining slots — adaptive fill by effective usage ────────────
+            // For each open slot take whichever the species RUNS more (usage × fit):
             // the next status/utility move, or the next damaging move. Distinct types
             // are preferred for damaging; on a narrow early pool with no distinct
             // coverage left, a 2nd same-type STAB is allowed (a different move) rather
-            // than leaving the slot empty — better than stacking nothing. Ties go to
-            // the damaging move so a pure attacker isn't handed an unused status move.
+            // than leaving the slot empty. Ties go to the damaging move — EXCEPT on
+            // zero-usage species (no build data at all): there the old tie-to-damage
+            // rule meant a fresh mon never saw Swords Dance / recovery suggested, so
+            // the 4th slot may take a KNOWN-GOOD status move (recovery/boost/support
+            // per the shared heuristic) once three damaging picks are in.
             while (out.length < 4) {
                 const nextStatus = statusMoves.find(m => !usedMoves.has(m));
                 const distinctDmg = damaging.filter(m => !usedMoves.has(m) && !usedTypes.has(typeOf(m))).sort(cmpDmg)[0];
                 const nextDmg = distinctDmg || damaging.filter(m => !usedMoves.has(m)).sort(cmpDmg)[0];
                 if (!nextStatus && !nextDmg) break;
-                if (nextStatus && (!nextDmg || usage(nextStatus) > usage(nextDmg))) {
+                const noData = (!nextStatus || usage(nextStatus) === 0) && (!nextDmg || usage(nextDmg) === 0);
+                const statusGood = nextStatus && _txMoveHeuristic(nextStatus, mon, build, monName) >= 60;
+                const takeStatus = nextStatus && (!nextDmg
+                    || effUsage(nextStatus) > effUsage(nextDmg)
+                    || (noData && statusGood && out.length === 3));
+                if (takeStatus) {
                     add('Status', nextStatus);
                 } else {
                     add(typeSet.has(typeOf(nextDmg)) ? 'STAB' : 'Coverage', nextDmg);
@@ -69343,6 +69513,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // inner/unleashed split moves with the player's city (40/60/60/80/80/∞).
         function _txMoveStageKey(monName, moveName) {
             const tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(monName, moveName) : null;
+            // Learnt STATUS moves unlock at Unleashed (Q2b), so their stage stripe /
+            // tier filter / lock pill must say Unleashed, not Guru.
+            if (tag === 'learnt' && typeof _storyIsStatusMoveName === 'function' && _storyIsStatusMoveName(moveName)) return 'unleashed';
             if (tag === 'learnt' || tag === 'awakened') return 'guru';
             if (tag !== 'natural') return null; // unknown / cold cache — no stage yet
             let _capCity = 0; try { _capCity = cityIndexFromEventIndex(sm ? sm.eventIndex : 0) | 0; } catch (e) { _capCity = 0; }
@@ -69448,12 +69621,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t.classList.contains('tx-search-input')) {
                     const kind = t.dataset.kind || 'moves';
                     _txState.search[kind] = (t.value || '').trim();
-                    // Phase 2 fast path: when the only change is the search
-                    // string, toggle [hidden] on existing cards instead of
-                    // rebuilding the DOM. Falls back to the full re-render
-                    // when the fast update isn't possible (e.g. card grid
-                    // not yet rendered for this kind / mon).
-                    if (_txSearchFastUpdate(kind)) return;
+                    // Fast paths. MOVES must go through _txMoveGridFastUpdate (the
+                    // FULL predicate): the grid fast path keeps filtered-out cards in
+                    // the DOM as [hidden] for cheap toggle-back, so a search-only
+                    // predicate would resurrect cards an active type/category/stage
+                    // chip has hidden (and clearing the search would unhide the whole
+                    // grid under a still-active filter pill). Other kinds never keep
+                    // hidden leftovers (their filters always full-render), so the
+                    // cheaper search-only toggle stays correct there.
+                    if (kind === 'moves') {
+                        if (_txMoveGridFastUpdate()) return;
+                    } else if (_txSearchFastUpdate(kind)) return;
                     _scheduleSearchRender();
                     return;
                 }
@@ -69475,6 +69653,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const t = ev.target && ev.target.closest ? ev.target : null;
                 if (!t) return;
 
+                // Touch info fallback (ISSUE-058): title-only labels (lock pills,
+                // tier badges, "↓ by usage", usage %, mechanic icons) show a
+                // dismissible tap tooltip on coarse pointers. Never intercepts a
+                // tap that would otherwise ACT: inside an enabled card the pick
+                // wins; on disabled/equipped cards and bare labels the info shows.
+                const tapInfo = t.closest('.tx-tapinfo[title]');
+                if (tapInfo && typeof window._prefersFinePointerHover === 'function' && !window._prefersFinePointerHover()) {
+                    const cardHost = tapInfo.closest('.tx-card');
+                    if (!cardHost || cardHost.dataset.disabled === '1' || cardHost.dataset.equipped === '1') {
+                        try { window.showTapInfoTooltip && window.showTapInfoTooltip(tapInfo, ev); } catch (e) {}
+                        return;
+                    }
+                }
+
                 // "Collapse all" affordance — close the open mon so the team
                 // list returns to the compact picker state. Rendered only when
                 // one mon is open.
@@ -69482,7 +69674,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_storyTutorOpenIdx !== -1) {
                         _storyTutorOpenIdx = -1;
                         _txPending = null;
-                        void renderTutorTeam();
+                        // skipFetch: open/close doesn't change any pool — reuse the caches
+                        // warmed at enterTutor (a bare call would clear + re-await every
+                        // team member's staged pool and flicker locked cards unlocked).
+                        void renderTutorTeam(true);
                     }
                     return;
                 }
@@ -69500,11 +69695,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_storyTutorOpenIdx === nextIdx) {
                             _storyTutorOpenIdx = -1;
                             _txPending = null;
-                            void renderTutorTeam();
+                            void renderTutorTeam(true);
                         } else {
                             _storyTutorOpenIdx = nextIdx;
                             _txPending = null;
-                            void renderTutorTeam();
+                            void renderTutorTeam(true);
                             setTimeout(() => {
                                 try {
                                     const teamEl = document.getElementById('story-tutor-team');
@@ -69542,7 +69737,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (Number.isFinite(nextIdx)) {
                         _storyTutorOpenIdx = (_storyTutorOpenIdx === nextIdx) ? -1 : nextIdx;
                         _txPending = null;
-                        void renderTutorTeam();
+                        void renderTutorTeam(true);
                     }
                     return;
                 }
@@ -69609,6 +69804,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _txResetFilters(kind);
                         void renderTutorTeam(true);
                     }
+                    return;
+                }
+
+                // ⚡ Apply-set — teach every applicable suggestion in one purchase.
+                const applySetBtn = t.closest('.tx-apply-set-btn[data-apply-set]');
+                if (applySetBtn) {
+                    const teamIdx = parseInt(applySetBtn.dataset.team, 10);
+                    if (Number.isFinite(teamIdx)) void tutorApplyRecommendedSet(teamIdx);
                     return;
                 }
 
@@ -69786,12 +69989,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // player taps "Show all".
             const recOnly = _txState.filter.recOnly && _txState.filter.recOnly[kind];
             // Show the sort selector whenever the list is un-curated — including sparse
-            // species, where ★ has no usage data to filter on (it sits out), so the
-            // player should still be able to sort the full list.
-            const showSort = !recOnly || !!opts.sparse;
+            // species, where ★ has no usage data to filter on (it sits out), and when an
+            // active Stage/tier filter bypasses ★ (the predicate shows the full tier
+            // then, so manual sorting is meaningful again).
+            const tierN = (_txState.filter.tier && _txState.filter.tier[kind]) ? _txState.filter.tier[kind].size : 0;
+            const showSort = !recOnly || !!opts.sparse || tierN > 0;
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
-                : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
+                : `<span class="tx-sort-locked tx-tapinfo" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
             // Count pill flashes briefly when the count changes between
             // renders so the player can see the ★ toggle / chip filter
             // actually narrowed or widened the list.
@@ -69835,7 +70040,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<div class="tx-controls-row">${filtersToggle}<div class="tx-controls-row-end">${sortHtml}</div></div>`
                 : '';
             const chipStrip = hasChips
-                ? `<div class="tx-chip-strip" role="tablist" aria-label="Filters">${opts.chipsHtml}</div>`
+                ? `<div class="tx-chip-strip" role="group" aria-label="Filters">${opts.chipsHtml}</div>`
                 : '';
             const filterSheet = hasFilterSheet
                 ? `<div class="tx-filter-sheet"${sheetOpen ? '' : ' hidden'}>${chipStrip}${opts.belowChipsHtml || ''}</div>`
@@ -69882,6 +70087,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_txState.filter.natureDown && _txState.filter.natureDown !== 'any') {
                     const d = _txState.filter.natureDown;
                     out.push(`<button type="button" class="tx-active-filter tx-active-filter--down" data-filter-kind="natureDown" data-filter-value="${d}" title="Remove -${d} filter">${window.uiSvgX()} -${_TX_STAT_LABEL[d]||d}</button>`);
+                }
+            }
+            // Stage/tier selections (moves / items / abilities). Counted by
+            // _txActiveFilterCount, so they MUST surface as pills too — otherwise a
+            // collapsed filter sheet on phone shows "Filters (1)" with no visible,
+            // removable cause ("the list is mysteriously short"). The pill carries the
+            // same data attributes as the tier chip, so the existing delegation branch
+            // toggles the tier off.
+            const tierSel = (_txState.filter.tier && _txState.filter.tier[kind]) || null;
+            if (tierSel && tierSel.size && _TX_TIER_DEFS[kind]) {
+                const labelOf = new Map(_TX_TIER_DEFS[kind]);
+                for (const v of tierSel) {
+                    const label = labelOf.get(v) || v;
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--tier" data-filter-kind="tier" data-tier-kind="${kind}" data-filter-value="${v}" title="Remove ${_esc(label)} stage filter">${window.uiSvgX()} ${_esc(label)}</button>`);
                 }
             }
             if (!out.length) return '';
@@ -69945,7 +70164,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!locked) return '';
                 const nextStage = (dojoStage < 1) ? _npcStageName('dojo', 1) : _npcStageName('dojo', 3);
                 const title = `${locked} abilit${locked === 1 ? 'y' : 'ies'} unlock at ${nextStage}.`;
-                return ` <span class="tx-tab-badge" title="${_esc(title)}">🔒 ${locked}</span>`;
+                return ` <span class="tx-tab-badge tx-tapinfo" title="${_esc(title)}">🔒 ${locked}</span>`;
             } catch (e) { return ''; }
         }
 
@@ -70022,10 +70241,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : cap === 2
                         ? 'Black Belt — berries (T1) and staples (T2) unlocked. Choice/AV/Boots unlock at Master.'
                         : 'White Belt — berry tier unlocked. Higher tiers reveal as the Dojo levels up.';
-                    tierBadge = `<span class="tx-tier-badge" title="${_esc(title)}">🔒 ${label}</span>`;
+                    tierBadge = `<span class="tx-tier-badge tx-tapinfo" title="${_esc(title)}">🔒 ${label}</span>`;
                 }
             } catch (e) {}
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${tierBadge}${
+            return `<div class="tx-chip-row" role="group" aria-label="Filter items by category">${tierBadge}${
                 _TX_ITEM_CAT_ORDER.map(k =>
                     `<button type="button" class="tx-chip" data-filter-kind="itemCat" data-filter-value="${k}" data-active="${cur===k?1:0}">${_TX_ITEM_CAT_LABEL[k]}</button>`
                 ).join('')
@@ -70067,7 +70286,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // a "<1%" chip rather than nothing, so the wider 30-move pool never
             // shows bare trailing cards with no usage signal.
             const label = pct < 1 ? '<1%' : `${Math.round(pct)}%`;
-            return `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
+            return `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
         }
 
         // Build a Move card. The ★ prefix on the title marks options in the
@@ -70091,7 +70310,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             return order
                 .filter(t => tags.has(t))
-                .map(t => `<span class="tx-mech-icon ${map[t].cls}" title="${map[t].title}" aria-label="${map[t].title}">${map[t].letter}</span>`)
+                .map(t => `<span class="tx-mech-icon ${map[t].cls} tx-tapinfo" title="${map[t].title}" aria-label="${map[t].title}">${map[t].letter}</span>`)
                 .join('');
         }
         function _txMoveCardHtml(moveName, ctx) {
@@ -70148,7 +70367,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (ctx.acceptSet && !ctx.acceptSet.has(_base)) {
                             const unlockStage = (stageKey === 'guru') ? 2 : 1;
                             const name = _npcStageName('tutor', unlockStage) || (unlockStage === 2 ? 'Guru' : 'Unleashed');
-                            lockPill = `<span class="tx-pill tx-pill--locked" title="Opens when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
+                            lockPill = `<span class="tx-pill tx-pill--locked tx-tapinfo" title="Opens when the Move Tutor reaches ${_esc(name)}">🔒 ${_esc(name)}</span>`;
                             locked = true; // gate the card so off-stage moves can't be picked
                         }
                     }
@@ -70233,7 +70452,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pills = [
                 `<span class="tx-pill">${_esc(_TX_ITEM_CAT_LABEL[cat] || cat)}</span>`,
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
-                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked tx-tapinfo" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
             ].filter(Boolean).join('');
             return _txSimpleCardHtml('item', itemName, ctx, { isRec, isPending, disabled: (isCurrent || locked), locked, desc, pills });
         }
@@ -70268,7 +70487,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 `<span class="tx-rec-tag tx-rec-tag--card" data-purpose="${_esc(role)}">${_esc(role)}</span>`,
                 isAwaken ? `<span class="tx-pill tx-pill--awaken" title="Off-legal ability — illegal in standard play, but often very strong. Only the Grandmaster Dojo can teach it.">⛔ Off-legal</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
-                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked tx-tapinfo" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
             // Awakened picks never show a usage % (off-legal builds only) and never
@@ -70337,7 +70556,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
                     let tag = null;
                     try { tag = monName ? _txMoveTagMemo(monName, pending.value) : null; } catch (e) {}
-                    const unlock = (tag === 'learnt' || tag === 'awakened')
+                    const _lockedIsStatus = (typeof _storyIsStatusMoveName === 'function') && _storyIsStatusMoveName(base);
+                    const unlock = (tag === 'learnt' && _lockedIsStatus)
+                        ? 'It opens at <strong>Unleashed</strong> — from the third city the tutor also teaches learnt guile (status techniques).'
+                        : (tag === 'learnt' || tag === 'awakened')
                         ? 'It opens at <strong>Guru</strong> — the machines, the tutor\'s old verses, the off-legal picks.'
                         : (tag === 'natural'
                             ? 'It opens at <strong>Unleashed</strong>, when the tutor stops capping your partner\'s own strength.'
@@ -70381,8 +70603,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const summaryHtml = (kind === 'move' && isAppendMove)
                 ? `Learn <strong>${_esc(pending.value)}</strong> · ${costStr}`
                 : `Replace <strong style="color:#ef9a9a;">${_esc(current)}</strong> → <strong>${_esc(pending.value)}</strong> · ${costStr}`;
+            // Full effect text for the pending MOVE (U3): the grid card clamps its
+            // description to 2–3 lines with the promise that the full text shows at
+            // confirm time — this is where that promise is kept (hover tooltips
+            // don't exist on touch).
+            let descHtml = '';
+            if (kind === 'move') {
+                try {
+                    const _pmd = movesDB[String(pending.value).split('/')[0]] || ensureMoveData(String(pending.value).split('/')[0]);
+                    if (_pmd && _pmd.eff) descHtml = `<span class="tx-confirm-bar-desc">${_esc(_pmd.eff)}</span>`;
+                } catch (e) {}
+            }
             return `<div class="tx-confirm-bar">
-                <span class="tx-confirm-bar-text">${summaryHtml}</span>
+                <span class="tx-confirm-bar-text">${summaryHtml}${descHtml}</span>
                 <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
                 ${voucherBtn}
                 <button type="button" class="tx-confirm-bar-btn" data-action="${action}" data-team="${teamIdx}" ${canAfford?'':'disabled'}>${canAfford ? 'Confirm' : 'Locked'}</button>
@@ -70612,7 +70845,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const closeChip = activeIdx >= 0
                 ? `<button type="button" class="tx-collapse-all" data-collapse-all="${_esc(facility)}" aria-label="Close all" title="Close all Pokémon">▾ Close</button>`
                 : `<span class="tx-mon-switcher-hint" aria-hidden="true">Tap a Pokémon →</span>`;
-            return `<div class="tx-mon-switcher" role="tablist" aria-label="Switch Pokémon">${closeChip}${pills}</div>`;
+            return `<div class="tx-mon-switcher" role="group" aria-label="Switch Pokémon">${closeChip}${pills}</div>`;
         }
 
         // Render: collapsed mon header (same look as before, lightly polished)
@@ -70760,6 +70993,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (emptyEl) emptyEl.remove();
 
                 // Small toolbar bits that reflect filter state (no card work).
+                // Search-visibility mirror of the full render: the ✨ suggest panel
+                // (which wraps the Best-picks rows) hides while a query is active.
+                const sug = body.querySelector('details.tx-suggest');
+                if (sug) sug.hidden = !!(_txState.search.moves);
                 const countPill = body.querySelector('.tx-count-pill');
                 if (countPill) countPill.textContent = `${ordered.length} moves`;
                 const strip = body.querySelector('.tx-chip-strip');
@@ -70873,7 +71110,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let recsPanel = '';
             try {
                 const searchingMoves = !!(_txState.search && _txState.search.moves);
-                if (!sPool.sparse && _txState.filter.recOnly.moves && !searchingMoves) {
+                // Sparse species FALLBACK (overhaul): previously the whole Suggest
+                // panel silently vanished for species with <10 builds — the #1
+                // "sometimes the feature just isn't there" complaint. The recommender
+                // is fully heuristic-capable (fit factors + power ordering, zero RNG),
+                // so sparse species now get the panel too, with an honest caption.
+                if ((sPool.sparse || _txState.filter.recOnly.moves) && !searchingMoves) {
                     // Restrict to the TEACHABLE acceptance set (the grid renders the full
                     // pool with off-stage moves locked, so without this the suggester would
                     // recommend moves the player can't learn at this tier). We INCLUDE
@@ -70890,7 +71132,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             equipped: equippedSet.has(String(e.move).split('/')[0]) }));
                     if (recEntries.length) {
                         recsPanel = _txRecsPanelHtml('Best picks for ' + t.name, recEntries, pendingMove,
-                            'Your ideal set — ✓ marks moves you already run.');
+                            sPool.sparse
+                                ? 'Based on stats, typing, and ability — no competitive usage data exists for this species.'
+                                : 'Your ideal set — ✓ marks moves you already run.');
+                        // ⚡ Quick-apply (WS-D): one button teaches every applicable
+                        // suggestion in a single itemized, all-or-nothing purchase.
+                        const _plan = _txBuildApplySetPlan(idx);
+                        if (_plan && _plan.steps.length) {
+                            const _afford = sm.gold >= _plan.total;
+                            const _np = _plan.steps.length;
+                            const _label = `⚡ Apply this set — ${_np} move${_np === 1 ? '' : 's'} · ${_plan.total.toLocaleString()}G`
+                                + (_afford ? '' : ` (need ${(_plan.total - sm.gold).toLocaleString()}G more)`);
+                            const _scaleTip = (_plan.total > 0 && typeof _hasHeartScale === 'function' && _hasHeartScale())
+                                ? `<span class="tx-apply-set-tip">💗 A Heart Scale can cover one move for free — teach that one individually to use it.</span>`
+                                : '';
+                            recsPanel += `<div class="tx-apply-set-row">
+                                <button type="button" class="tx-apply-set-btn" data-apply-set data-team="${idx}"${_afford ? '' : ' disabled'}
+                                    title="${_afford ? 'Teach every suggested move in one confirmed purchase' : 'Not enough gold for the full set — teach picks individually'}">${_label}</button>
+                                ${_scaleTip}</div>`;
+                        }
                     }
                 }
             } catch (e) {}
@@ -71087,7 +71347,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
-                    <div class="tx-tabs" role="tablist" aria-label="Battle Dojo">
+                    <div class="tx-tabs" role="group" aria-label="Battle Dojo sections">
                         <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
                         <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability${_txDojoAbilLockedCountBadge(t.name, abils, awakenSet, haSet, _dojoStage)}</button>
                     </div>
@@ -71295,6 +71555,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // to baseline regressions before / after the partial-update fast paths.
             const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined')
                 ? performance.now() : 0;
+            // Render-generation token: the pool fetch below awaits per team member, so
+            // two overlapping renders can interleave. Only the NEWEST render may write
+            // the DOM — a stale one bailing out here can't overwrite fresher state
+            // (and can't briefly paint unlocked cards from a half-warmed cache).
+            const _gen = (renderTutorTeam._gen = (renderTutorTeam._gen || 0) + 1);
             // Fresh per-render memo so score / pool / tag lookups within this
             // cycle are O(1) after the first hit. See _txRender comment block.
             _txBeginRender();
@@ -71321,7 +71586,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try {
                         const _tm = sm.team[ti];
                         const _cur = (_tm.build && _tm.build.m) || [];
-                        const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur);
+                        const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur, !!(_tm.starter || (_tm.build && _tm.build.starter)));
                         // The GRID renders the full movepool so off-stage moves show (locked),
                         // matching the Dojo's all-items roster. The acceptance set below stays
                         // the GATED/teachable set, so only in-stage moves are selectable.
@@ -71346,16 +71611,51 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
+            // A newer render started while we awaited the pools — let it own the DOM.
+            // If that newer render was a skipFetch partial, it may have painted from a
+            // cold cache (no lock pills); queue one cheap cache-backed repaint so the
+            // warm data we just fetched reaches the screen. Can't recurse: the repaint
+            // is skipFetch, so it never enters this fetch+bail path itself.
+            if (_gen !== renderTutorTeam._gen) {
+                if (showMoves && !skipFetch) setTimeout(() => { try { void renderTutorTeam(true); } catch (e) {} }, 0);
+                return;
+            }
 
             // Remember what was focused BEFORE we blow away the DOM, so we
             // can refocus the same input after the partial re-render.
             let _focusKind = null;
             let _focusSelStart = null, _focusSelEnd = null;
+            let _focusRestoreSel = null;
             try {
                 const a = document.activeElement;
                 if (a && a.classList && a.classList.contains('tx-search-input') && el.contains(a)) {
                     _focusKind = a.dataset.kind || null;
                     try { _focusSelStart = a.selectionStart; _focusSelEnd = a.selectionEnd; } catch (e) {}
+                } else if (a && a.getAttribute && el.contains(a)) {
+                    // Keyboard flow: keep focus on the card / chip / slot the user just
+                    // activated instead of dropping to <body> (which forced a full re-Tab
+                    // from the top of the screen after every interaction).
+                    const esc = (s) => String(s).replace(/["\\]/g, '\\$&');
+                    if (a.matches('.tx-card[data-card-value]')) {
+                        _focusRestoreSel = `.tx-card[data-card-value="${esc(a.getAttribute('data-card-value'))}"]`;
+                    } else if (a.matches('.tx-chip[data-filter-kind]')) {
+                        const tk = a.getAttribute('data-tier-kind');
+                        _focusRestoreSel = `.tx-chip[data-filter-kind="${esc(a.getAttribute('data-filter-kind'))}"][data-filter-value="${esc(a.getAttribute('data-filter-value') || '')}"]` + (tk ? `[data-tier-kind="${esc(tk)}"]` : '');
+                    } else if (a.matches('.tx-slot-chip[data-slot-idx], .tx-slot-card[data-slot-idx]')) {
+                        _focusRestoreSel = `.tx-slot-chip[data-slot-idx="${esc(a.getAttribute('data-slot-idx'))}"], .tx-slot-card[data-slot-idx="${esc(a.getAttribute('data-slot-idx'))}"]`;
+                    }
+                }
+            } catch (e) {}
+            // Preserve the open editor's option-grid scroll position (desktop keeps the
+            // grid as its own 60vh scroller; a full innerHTML rebuild resets it to 0 —
+            // ISSUE-011 pattern). Only restored when the same mon stays open.
+            let _prevGridScroll = null;
+            try {
+                const gEl = el.querySelector('.tx-grid');
+                if (gEl && gEl.scrollTop > 0) {
+                    const monRoot = gEl.closest('.story-tutor-mon');
+                    const tglEl = monRoot && monRoot.querySelector('.story-tutor-mon-toggle[data-team]');
+                    _prevGridScroll = { idx: tglEl ? parseInt(tglEl.dataset.team, 10) : -1, top: gEl.scrollTop };
                 }
             } catch (e) {}
 
@@ -71383,6 +71683,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const sw = el.querySelector('.tx-mon-switcher');
                 if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
             } catch (e) {}
+
+            // Restore the option-grid scroll if the same mon's editor is still open.
+            if (_prevGridScroll && _prevGridScroll.idx === _storyTutorOpenIdx) {
+                try {
+                    const gEl = el.querySelector('.tx-grid');
+                    if (gEl) gEl.scrollTop = _prevGridScroll.top;
+                } catch (e) {}
+            }
+            // Re-anchor keyboard focus on the element the user just activated.
+            if (!_focusKind && _focusRestoreSel) {
+                try {
+                    const n = el.querySelector(_focusRestoreSel);
+                    if (n) n.focus({ preventScroll: true });
+                } catch (e) {}
+            }
 
             // Refocus the search input that was active before the re-render so
             // typing stays uninterrupted. Restore caret position too.
@@ -71482,10 +71797,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             // Stage gate (Phase 2, BUG A/B fix): below Guru, only moves in the staged
-            // pool are teachable AT ALL — Natural ≤75 at Inner (C0–1), ALL Natural at
-            // Unleashed (C2–4). An off-stage move is rejected outright; a Heart Scale does NOT
-            // bypass the gate (it only waives the gold cost of an in-stage teach, via the
-            // separate voucher button). The full pool (Learnt + Awakened) unlocks at Guru (C5+).
+            // pool are teachable AT ALL — Natural under the per-city BP cap at Inner
+            // (C0–2), plus Learnt STATUS moves at Unleashed (C3–5). An off-stage move is
+            // rejected outright; a Heart Scale does NOT bypass the gate (it only waives
+            // the gold cost of an in-stage teach, via the separate voucher button). The
+            // full pool (Learnt + Awakened) unlocks at Guru (C6+).
             if (_npcStage('tutor') < 2) {
                 const _t1 = _txMoveTier1Cache.get(teamIdx);
                 // Fail SAFE: an unpopulated acceptance set (cold/errored render, or the
@@ -71531,6 +71847,100 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else moves[moveSlot] = newMove;
                 mon.build.m = moves.filter(Boolean);
                 _hpTutorApply(mon, newMove, _hpPre.chosenType);
+                mon.currentHp = null;
+                mon.status = null;
+                mon.pp = null;
+                // P-4: advance the edit slot so serially tapping suggestions can't
+                // silently overwrite the move just taught (the slot used to stay
+                // put, so the next pick replaced the purchase you just made).
+                try {
+                    const _n = mon.build.m.length;
+                    _txState.moveSlot = _n < 4 ? _n : (((isAppend ? _n - 1 : moveSlot) + 1) % 4);
+                } catch (e) {}
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        // ── Quick-apply: "⚡ Apply this set" (move-tutor overhaul, WS-D) ─────────
+        // Diff the mon's current moves against the ✨ suggested set and produce an
+        // all-or-nothing purchase plan. Pure planner — no state changes:
+        //   • suggested moves already equipped → nothing to do (stable ✓ rows)
+        //   • empty slots fill FIRST; then current moves NOT in the suggested set
+        //     are replaced in slot order; suggested moves never replace each other
+        //   • below Guru every pick must be in the staged acceptance set — locked
+        //     picks are SKIPPED (never silently bought), mirroring tutorChangeMove
+        //   • Hidden Power is excluded (its one-time type picker + mentor token
+        //     need the individual teach flow)
+        //   • per-move price by TAG via _moveCostForStage, same as the confirm bar
+        function _txBuildApplySetPlan(teamIdx) {
+            try {
+                const t = sm.team[teamIdx];
+                if (!t || t.isEgg || !t.build) return null;
+                const merged = _txMovePoolCache.get(teamIdx);
+                if (!merged) return null;
+                const accept = _txMoveTier1Cache.get(teamIdx);
+                const belowGuru = _npcStage('tutor') < 2;
+                const recPool = merged.filter(m => { const b = String(m).split('/')[0]; return (!accept || accept.has(b)); });
+                let mon = null;
+                try { mon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build)); } catch (e) {}
+                const recs = _txMoveRecsByPurpose(recPool, mon, t.build, t.name);
+                const current = (t.build.m || []).filter(Boolean).map(m => String(m).split('/')[0]);
+                const curSet = new Set(current);
+                const sugSet = new Set(recs.map(r => String(r.move).split('/')[0]));
+                const steps = [], skipped = [];
+                const replaceIdx = [];
+                current.forEach((m, i) => { if (!sugSet.has(m)) replaceIdx.push(i); });
+                let nextAppend = current.length;
+                for (const r of recs) {
+                    const base = String(r.move).split('/')[0];
+                    if (curSet.has(base)) continue;
+                    if (/^Hidden Power/.test(base)) { skipped.push({ move: base, why: 'hiddenpower' }); continue; }
+                    if (belowGuru && (!accept || !accept.has(base))) { skipped.push({ move: base, why: 'locked' }); continue; }
+                    const _tag = (typeof _txMoveTagMemo === 'function') ? _txMoveTagMemo(t.name, base) : null;
+                    const cost = _moveCostForStage(_tag === 'unknown' ? null : _tag);
+                    if (nextAppend < 4) { steps.push({ move: base, cost, slot: nextAppend, replaces: null }); nextAppend++; }
+                    else if (replaceIdx.length) { const si = replaceIdx.shift(); steps.push({ move: base, cost, slot: si, replaces: current[si] }); }
+                    else skipped.push({ move: base, why: 'noslot' });
+                }
+                return { steps, skipped, total: steps.reduce((s, x) => s + x.cost, 0) };
+            } catch (e) { return null; }
+        }
+        // Commit the plan: ONE itemized confirmation, ONE gold deduction, ONE save,
+        // ONE render. All-or-nothing — the plan is recomputed inside the interaction
+        // lock and either every step applies or none does (a mid-list failure can't
+        // half-apply). Vouchers are deliberately not spent here (a Heart Scale
+        // covers one individually-taught move; the panel shows a tip instead).
+        async function tutorApplyRecommendedSet(teamIdx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                const plan = _txBuildApplySetPlan(teamIdx);
+                if (!plan || !plan.steps.length) return;
+                if (sm.gold < plan.total) {
+                    try { window.showGameAlert && window.showGameAlert(`The full set costs ${plan.total.toLocaleString()}G — you need ${(plan.total - sm.gold).toLocaleString()}G more. You can still teach the suggestions one at a time.`); } catch (e) {}
+                    return;
+                }
+                const n = plan.steps.length;
+                const lines = plan.steps.map(s => s.replaces
+                    ? `${s.move} ${s.cost.toLocaleString()}G (replaces ${s.replaces})`
+                    : `${s.move} ${s.cost.toLocaleString()}G (open slot)`).join(' · ');
+                const ok = await _storyConfirmTutorChange(
+                    `Teach ${mon.name} the suggested set? ${n} move${n === 1 ? '' : 's'}: ${lines}.`, plan.total);
+                if (!ok) return;
+                sm.gold -= plan.total;
+                try { _storyTrackSpend(plan.total); } catch (e) {}
+                const moves = mon.build.m || (mon.build.m = []);
+                for (const s of plan.steps) {
+                    if (s.slot >= moves.length) moves.push(s.move);
+                    else moves[s.slot] = s.move;
+                }
+                mon.build.m = moves.filter(Boolean);
                 mon.currentHp = null;
                 mon.status = null;
                 mon.pp = null;
@@ -71763,6 +72173,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.build.m = moves.filter(Boolean);
                 _hpTutorApply(mon, newMove, _hpPreV.chosenType);
                 mon.currentHp = null; mon.status = null; mon.pp = null;
+                // P-4: same edit-slot auto-advance as the gold path.
+                try {
+                    const _nv = mon.build.m.length;
+                    _txState.moveSlot = _nv < 4 ? _nv : (((isAppend ? _nv - 1 : moveSlot) + 1) % 4);
+                } catch (e) {}
                 return true;
             });
         }
@@ -73053,7 +73468,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
-                ? `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
+                ? `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
                 : '';
             return `<div id="evpreset-${idx}-${_esc(p.id)}" class="tx-card" data-recommended="${isRecommended?1:0}" data-current="${isCurrent?1:0}" style="cursor:default;scroll-margin-top:80px;">
                 <div class="tx-card-head">

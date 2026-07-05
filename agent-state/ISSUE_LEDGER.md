@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-07-04T17:09:27.687Z
+> **Generated**: 2026-07-05T09:13:49.605Z
 > **Source**: `agent-state/findings/*.md` (203 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -7762,8 +7762,9 @@ if (diff === 'challenge') return 0.90;
 
 ## Retired / Resolved
 
-_319 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
+_320 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
 
+- [fixed] (no title) — `undefined` (P3/test-infra)
 - [fixed-claude/relaxed-bell-2X3Ys] Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog — `__pbsGlobalEscBound` (P3/a11y)
 - [fixed-claude/gifted-fermat-yfnqq5] Turn-resolution catch masks any in-loop throw as "[Error: …. Turn skipped.]" — both moves abandoned, real bugs hidden (PT-001) — `__runLockedPvPTurnResolution` (P2/bug)
 - [wontfix-descoped] Lead→city mapping duplicated (`_BOSS_LEAD_CITIES` const vs inline `_leadCity` literal) — `_BOSS_LEAD_CITIES` (P3/inconsistency)
