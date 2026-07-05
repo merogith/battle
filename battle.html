@@ -10756,6 +10756,20 @@
     </div>
 
     <script>
+        // Top-level HTML-escaper for innerHTML interpolation. A twin of the IIFE-private
+        // `_esc` (which top-level renderers like renderDraft / renderSwapGrid / the summary
+        // header cannot see), declared here at global scope so every render path — including
+        // the ones that interpolate remote-controlled Online-PvP data (opponent pool / party
+        // names, natures, abilities, items, move names, tera types) — can neutralize markup
+        // before it reaches innerHTML. Escapes the five HTML-significant characters.
+        function _escHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
         // === 0. DEVICE DETECTION ===
         // Re-evaluated on every call so resize / orientationchange / "device toolbar" toggle
         // can flip the body between desktop and phone layouts without a page refresh.
@@ -14787,6 +14801,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ─── Enhanced Move Animation Engine (anime.js) ───────────────────
         const MoveAnimEngine = (() => {
+            // Cosmetic particle jitter must NEVER touch the seeded story stream: this
+            // engine runs conditionally (skipped when anime.js failed to load or
+            // settings.animations is off), so consuming storyRngNext here desyncs
+            // replays at the same seed. Capture the native RNG now — this IIFE runs
+            // at load, BEFORE the Math.random story-seeding patch is installed — and
+            // route every particle-position roll below through it. Purely visual.
+            const _fxRand = Math.random;
             // Base stop (index 0) = canonical type palette from the CSS .type-* rules (single source of truth);
             // secondary/tertiary stops are tuned lighter/darker glow shades for particle gradients.
             const TYPE_COLORS = {
@@ -14826,8 +14847,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const els = _spawnMulti(container, 8, `width:18%;height:18%;opacity:0;`);
                     els.forEach((el, i) => {
                         el.style.background = `radial-gradient(circle, ${c[2] || c[0]} 0%, ${c[0]} 40%, transparent 70%)`;
-                        el.style.left = (30 + Math.random()*40) + '%';
-                        el.style.top = (20 + Math.random()*50) + '%';
+                        el.style.left = (30 + _fxRand()*40) + '%';
+                        el.style.top = (20 + _fxRand()*50) + '%';
                         el.style.filter = 'blur(1px)';
                     });
                     anime({
@@ -14846,16 +14867,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const els = _spawnMulti(container, 6, `width:12%;height:12%;opacity:0;`);
                     els.forEach((el, i) => {
                         el.style.background = `radial-gradient(circle, #fff 0%, ${c[0]} 50%, transparent 80%)`;
-                        el.style.left = (25 + Math.random()*50) + '%';
-                        el.style.top = (80 + Math.random()*10) + '%';
+                        el.style.left = (25 + _fxRand()*50) + '%';
+                        el.style.top = (80 + _fxRand()*10) + '%';
                         el.style.borderRadius = '50%';
                     });
                     anime({
                         targets: els,
                         opacity: [0, {value: 0.85, duration: 180}, {value: 0, duration: 450}],
                         scale: [0.3, 1.2],
-                        translateY: [{value: 0}, {value: -(40 + Math.random()*30), duration: 500}],
-                        translateX: () => (Math.random()-0.5)*30,
+                        translateY: [{value: 0}, {value: -(40 + _fxRand()*30), duration: 500}],
+                        translateX: () => (_fxRand()-0.5)*30,
                         delay: anime.stagger(50),
                         duration: 650,
                         easing: 'easeOutCubic',
@@ -14875,9 +14896,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     anime({
                         targets: bolts,
                         opacity: [0,1,0,1,0],
-                        scaleX: () => [0.5, 0.8 + Math.random()*1.5],
+                        scaleX: () => [0.5, 0.8 + _fxRand()*1.5],
                         scaleY: [0.3, 1, 0.6],
-                        skewX: () => (Math.random()-0.5)*40,
+                        skewX: () => (_fxRand()-0.5)*40,
                         duration: 500,
                         delay: anime.stagger(40),
                         easing: 'easeInOutQuad',
@@ -14887,18 +14908,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 Grass(container, c) {
                     const leaves = _spawnMulti(container, 7, `width:10%;height:10%;opacity:0;`);
                     leaves.forEach((el, i) => {
-                        el.style.background = c[Math.floor(Math.random()*c.length)];
+                        el.style.background = c[Math.floor(_fxRand()*c.length)];
                         el.style.borderRadius = '0 50% 50% 50%';
-                        el.style.left = (20 + Math.random()*60) + '%';
-                        el.style.top = (70 + Math.random()*20) + '%';
+                        el.style.left = (20 + _fxRand()*60) + '%';
+                        el.style.top = (70 + _fxRand()*20) + '%';
                     });
                     anime({
                         targets: leaves,
                         opacity: [0, {value:0.85, duration:200}, {value:0, duration:500}],
                         scale: [0.3, 1],
-                        translateY: () => -(30 + Math.random()*40),
-                        translateX: () => (Math.random()-0.5)*40,
-                        rotate: () => Math.random()*360,
+                        translateY: () => -(30 + _fxRand()*40),
+                        translateX: () => (_fxRand()-0.5)*40,
+                        rotate: () => _fxRand()*360,
                         delay: anime.stagger(55),
                         duration: 700,
                         easing: 'easeOutQuad',
@@ -14909,8 +14930,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const crystals = _spawnMulti(container, 6, `width:8%;height:8%;opacity:0;`);
                     crystals.forEach((el, i) => {
                         el.style.background = `radial-gradient(circle, #fff 20%, ${c[0]} 60%, transparent 90%)`;
-                        el.style.left = (20 + Math.random()*60) + '%';
-                        el.style.top = (20 + Math.random()*60) + '%';
+                        el.style.left = (20 + _fxRand()*60) + '%';
+                        el.style.top = (20 + _fxRand()*60) + '%';
                         el.style.boxShadow = `0 0 6px ${c[0]}`;
                     });
                     const flash = _spawn(container, `width:100%;height:100%;top:0;left:0;opacity:0;background:radial-gradient(circle,rgba(200,230,255,0.4) 0%,transparent 70%);`);
@@ -14937,15 +14958,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const blobs = _spawnMulti(container, 5, `width:14%;height:14%;opacity:0;`);
                     blobs.forEach((el, i) => {
                         el.style.background = `radial-gradient(circle, ${c[0]} 20%, ${c[1]} 60%, transparent 90%)`;
-                        el.style.left = (25 + Math.random()*50) + '%';
-                        el.style.top = (50 + Math.random()*30) + '%';
+                        el.style.left = (25 + _fxRand()*50) + '%';
+                        el.style.top = (50 + _fxRand()*30) + '%';
                         el.style.filter = 'blur(1px)';
                     });
                     anime({
                         targets: blobs,
                         opacity: [0, 0.8, 0],
                         scale: [0.3, {value:1.1, duration:300}, {value:1.4, duration:400}],
-                        translateY: () => -(10 + Math.random()*25),
+                        translateY: () => -(10 + _fxRand()*25),
                         delay: anime.stagger(70),
                         duration: 700,
                         easing: 'easeOutQuad',
@@ -14955,17 +14976,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 Ground(container, c) {
                     const chunks = _spawnMulti(container, 5, `opacity:0;`);
                     chunks.forEach((el, i) => {
-                        const s = 8 + Math.random()*10;
+                        const s = 8 + _fxRand()*10;
                         el.style.width = s+'%'; el.style.height = (s*0.6)+'%';
-                        el.style.background = c[Math.floor(Math.random()*c.length)];
-                        el.style.left = (15 + Math.random()*70) + '%';
+                        el.style.background = c[Math.floor(_fxRand()*c.length)];
+                        el.style.left = (15 + _fxRand()*70) + '%';
                         el.style.top = '75%';
                         el.style.borderRadius = '30%';
                     });
                     anime({
                         targets: chunks,
                         opacity: [0, 0.9, 0],
-                        translateY: () => [0, -(20 + Math.random()*30), 10],
+                        translateY: () => [0, -(20 + _fxRand()*30), 10],
                         scale: [0.4, 1, 0.6],
                         duration: 600,
                         delay: anime.stagger(45),
@@ -14991,16 +15012,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const wisps = _spawnMulti(container, 5, `width:12%;height:12%;opacity:0;`);
                     wisps.forEach((el, i) => {
                         el.style.background = `radial-gradient(circle, ${c[0]} 20%, transparent 70%)`;
-                        el.style.left = (30 + Math.random()*40) + '%';
-                        el.style.top = (30 + Math.random()*40) + '%';
+                        el.style.left = (30 + _fxRand()*40) + '%';
+                        el.style.top = (30 + _fxRand()*40) + '%';
                         el.style.filter = 'blur(3px)';
                     });
                     anime({
                         targets: wisps,
                         opacity: [0, 0.7, 0],
                         scale: [0.5, 1.3],
-                        translateY: () => -(20 + Math.random()*30),
-                        translateX: () => (Math.random()-0.5)*40,
+                        translateY: () => -(20 + _fxRand()*30),
+                        translateX: () => (_fxRand()-0.5)*40,
                         filter: ['blur(3px)','blur(8px)'],
                         duration: 800,
                         delay: anime.stagger(80),
@@ -15041,7 +15062,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     arcs.forEach((el, i) => {
                         el.style.background = `linear-gradient(90deg, transparent, ${c[0]}, transparent)`;
                         el.style.borderRadius = '50%';
-                        el.style.left = (10 + Math.random()*50) + '%';
+                        el.style.left = (10 + _fxRand()*50) + '%';
                         el.style.top = (20 + i*15) + '%';
                         el.style.filter = 'blur(1px)';
                     });
@@ -15060,19 +15081,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 Rock(container, c) {
                     const rocks = _spawnMulti(container, 5, `opacity:0;`);
                     rocks.forEach((el) => {
-                        const s = 8 + Math.random()*12;
+                        const s = 8 + _fxRand()*12;
                         el.style.width = s+'%'; el.style.height = s+'%';
-                        el.style.background = c[Math.floor(Math.random()*c.length)];
+                        el.style.background = c[Math.floor(_fxRand()*c.length)];
                         el.style.borderRadius = '20% 30% 25% 35%';
-                        el.style.left = (20 + Math.random()*60) + '%';
+                        el.style.left = (20 + _fxRand()*60) + '%';
                         el.style.top = '10%';
                     });
                     anime({
                         targets: rocks,
                         opacity: [0,0.9,0],
-                        translateY: [() => -(10+Math.random()*20), () => 30+Math.random()*30],
+                        translateY: [() => -(10+_fxRand()*20), () => 30+_fxRand()*30],
                         scale: [0.3, 1],
-                        rotate: () => Math.random()*90,
+                        rotate: () => _fxRand()*90,
                         duration: 600,
                         delay: anime.stagger(50),
                         easing: 'easeInQuad',
@@ -15082,18 +15103,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 Bug(container, c) {
                     const bits = _spawnMulti(container, 6, `width:8%;height:8%;opacity:0;`);
                     bits.forEach((el) => {
-                        el.style.background = c[Math.floor(Math.random()*c.length)];
+                        el.style.background = c[Math.floor(_fxRand()*c.length)];
                         el.style.borderRadius = '0 50% 50% 50%';
-                        el.style.left = (25 + Math.random()*50) + '%';
-                        el.style.top = (30 + Math.random()*40) + '%';
+                        el.style.left = (25 + _fxRand()*50) + '%';
+                        el.style.top = (30 + _fxRand()*40) + '%';
                     });
                     anime({
                         targets: bits,
                         opacity: [0,0.8,0],
                         scale: [0.3,1.1],
-                        translateX: () => (Math.random()-0.5)*35,
-                        translateY: () => (Math.random()-0.5)*35,
-                        rotate: () => Math.random()*360,
+                        translateX: () => (_fxRand()-0.5)*35,
+                        translateY: () => (_fxRand()-0.5)*35,
+                        rotate: () => _fxRand()*360,
                         duration: 600,
                         delay: anime.stagger(40),
                         easing: 'easeOutQuad',
@@ -15107,20 +15128,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sparks.forEach((el) => {
                         el.style.background = '#fff';
                         el.style.boxShadow = `0 0 4px ${c[0]}`;
-                        el.style.left = (35 + Math.random()*30) + '%';
-                        el.style.top = (35 + Math.random()*30) + '%';
+                        el.style.left = (35 + _fxRand()*30) + '%';
+                        el.style.top = (35 + _fxRand()*30) + '%';
                     });
                     anime.timeline({})
                         .add({ targets: flash, opacity:[0,0.9,0,0.7,0], duration:400, easing:'linear' })
-                        .add({ targets: sparks, opacity:[0,1,0], scale:[0.3,1.5], translateX:()=>(Math.random()-0.5)*40, translateY:()=>(Math.random()-0.5)*40, duration:350, easing:'easeOutExpo' }, 100);
+                        .add({ targets: sparks, opacity:[0,1,0], scale:[0.3,1.5], translateX:()=>(_fxRand()-0.5)*40, translateY:()=>(_fxRand()-0.5)*40, duration:350, easing:'easeOutExpo' }, 100);
                     _cleanup([flash,...sparks], 800);
                 },
                 Fairy(container, c) {
                     const sparkles = _spawnMulti(container, 7, `width:6%;height:6%;opacity:0;`);
                     sparkles.forEach((el) => {
                         el.style.background = `radial-gradient(circle, #fff 30%, ${c[0]} 70%, transparent 100%)`;
-                        el.style.left = (15 + Math.random()*70) + '%';
-                        el.style.top = (15 + Math.random()*70) + '%';
+                        el.style.left = (15 + _fxRand()*70) + '%';
+                        el.style.top = (15 + _fxRand()*70) + '%';
                         el.style.boxShadow = `0 0 6px ${c[0]}`;
                     });
                     anime({
@@ -15210,7 +15231,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     anime({ targets: bm, opacity: [0,1,1,0], scaleX: [0.1,1,1,1], translateX: isPlayerTarget ? ['20%','0%','0%','0%'] : ['-20%','0%','0%','0%'], duration: dur+100, easing: 'easeInOutQuad' });
                 } else if (s === 'ball') {
                     for (let i = 0; i < Math.min(numP, 5); i++) {
-                        const b = _spawn(wrapper, `width:${8+intensity*3}px;height:${8+intensity*3}px;border-radius:50%;background:radial-gradient(circle,#fff,${c1},${c2});box-shadow:0 0 6px ${c1};top:${40+Math.random()*20}%;left:${isPlayerTarget?'100%':'0'};`);
+                        const b = _spawn(wrapper, `width:${8+intensity*3}px;height:${8+intensity*3}px;border-radius:50%;background:radial-gradient(circle,#fff,${c1},${c2});box-shadow:0 0 6px ${c1};top:${40+_fxRand()*20}%;left:${isPlayerTarget?'100%':'0'};`);
                         anime({ targets: b, opacity: [1,0.8,0], translateX: isPlayerTarget ? [0,-b.parentElement.offsetWidth*0.8||(-120)] : [0,b.parentElement.offsetWidth*0.8||(120)], duration: dur, delay: i * 80, easing: 'easeInQuad' });
                     }
                 } else if (s === 'wave') {
@@ -15235,8 +15256,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     });
                 } else if (s === 'rain') {
                     for (let i = 0; i < numP; i++) {
-                        const drop = _spawn(wrapper, `width:3px;height:10px;background:${c1};border-radius:2px;top:-5%;left:${10+Math.random()*80}%;`);
-                        anime({ targets: drop, opacity: [1,0], translateY: [0,120], duration: 400+Math.random()*300, delay: i * 60, easing: 'easeInQuad' });
+                        const drop = _spawn(wrapper, `width:3px;height:10px;background:${c1};border-radius:2px;top:-5%;left:${10+_fxRand()*80}%;`);
+                        anime({ targets: drop, opacity: [1,0], translateY: [0,120], duration: 400+_fxRand()*300, delay: i * 60, easing: 'easeInQuad' });
                     }
                 } else if (s === 'vortex') {
                     const parts = _spawnMulti(wrapper, numP, `width:5px;height:5px;border-radius:50%;left:50%;top:50%;`);
@@ -15261,7 +15282,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     anime({ targets: glow, opacity: [0,0.8,0], scaleY: [0.5,1,1.2], duration: dur+200, easing: 'easeInOutQuad' });
                     const sparkles = _spawnMulti(wrapper, numP, `width:4px;height:4px;border-radius:50%;background:${c2};bottom:0;`);
                     sparkles.forEach((sp, i) => {
-                        sp.style.left = (20 + Math.random() * 60) + '%';
+                        sp.style.left = (20 + _fxRand() * 60) + '%';
                         anime({ targets: sp, opacity: [0,1,0], translateY: [0,-40,-80], duration: dur, delay: i * 80, easing: 'easeOutQuad' });
                     });
                 } else if (s === 'debuff') {
@@ -15273,14 +15294,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (s === 'heal') {
                     const sparkles = _spawnMulti(wrapper, numP, `width:6px;height:6px;border-radius:50%;background:${c2};box-shadow:0 0 4px ${c1};bottom:10%;`);
                     sparkles.forEach((sp, i) => {
-                        sp.style.left = (20 + Math.random() * 60) + '%';
+                        sp.style.left = (20 + _fxRand() * 60) + '%';
                         anime({ targets: sp, opacity: [0,1,0], translateY: [0,-30,-70], scale: [0.5,1,0.8], duration: dur+100, delay: i * 100, easing: 'easeOutQuad' });
                     });
                 } else if (s === 'drain') {
                     const parts = _spawnMulti(wrapper, numP, `width:5px;height:5px;border-radius:50%;background:${c1};`);
                     parts.forEach((sp, i) => {
-                        const sx = 20 + Math.random() * 60;
-                        const sy = 20 + Math.random() * 60;
+                        const sx = 20 + _fxRand() * 60;
+                        const sy = 20 + _fxRand() * 60;
                         sp.style.left = sx + '%'; sp.style.top = sy + '%';
                         anime({ targets: sp, opacity: [1,0], translateX: [(50-sx)*1.5+'%'], translateY: [(-sy)*0.8+'%'], duration: dur, delay: i * 80, easing: 'easeInQuad' });
                     });
@@ -15293,12 +15314,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     anime({ targets: bolt, opacity: [0,1,1,0], scaleY: [0,1,1,1], duration: dur, easing: 'easeOutExpo' });
                 } else if (s === 'blizzard') {
                     for (let i = 0; i < numP; i++) {
-                        const fl = _spawn(wrapper, `width:${3+Math.random()*4}px;height:${3+Math.random()*4}px;border-radius:50%;background:${c2};box-shadow:0 0 3px ${c1};top:-5%;left:${Math.random()*100}%;`);
-                        anime({ targets: fl, opacity: [0,1,0], translateX: [(Math.random()-0.5)*40,(Math.random()-0.5)*60], translateY: [0,60,120], rotate: [0,180,360], duration: dur+200, delay: i * 50, easing: 'easeInQuad' });
+                        const fl = _spawn(wrapper, `width:${3+_fxRand()*4}px;height:${3+_fxRand()*4}px;border-radius:50%;background:${c2};box-shadow:0 0 3px ${c1};top:-5%;left:${_fxRand()*100}%;`);
+                        anime({ targets: fl, opacity: [0,1,0], translateX: [(_fxRand()-0.5)*40,(_fxRand()-0.5)*60], translateY: [0,60,120], rotate: [0,180,360], duration: dur+200, delay: i * 50, easing: 'easeInQuad' });
                     }
                 } else if (s === 'flame') {
                     for (let i = 0; i < numP; i++) {
-                        const f = _spawn(wrapper, `width:${8+Math.random()*10}px;height:${12+Math.random()*15}px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(ellipse,#fff,${c1},${c2});bottom:10%;left:${30+Math.random()*40}%;`);
+                        const f = _spawn(wrapper, `width:${8+_fxRand()*10}px;height:${12+_fxRand()*15}px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(ellipse,#fff,${c1},${c2});bottom:10%;left:${30+_fxRand()*40}%;`);
                         anime({ targets: f, opacity: [0,1,0], translateY: [0,-20,-(40+intensity*15)], scale: [0.3,1,0.5], duration: dur, delay: i * 60, easing: 'easeOutQuad' });
                     }
                 } else if (s === 'whip') {
@@ -15306,12 +15327,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     anime({ targets: trail, opacity: [0,1,1,0], scaleX: [0,1,1,0], rotate: [0,5,-5,0], duration: dur, easing: 'easeInOutQuad' });
                 } else if (s === 'spore') {
                     for (let i = 0; i < numP; i++) {
-                        const sp = _spawn(wrapper, `width:${3+Math.random()*5}px;height:${3+Math.random()*5}px;border-radius:50%;background:${i%2===0?c1:c2};top:${15+Math.random()*70}%;left:${15+Math.random()*70}%;`);
-                        anime({ targets: sp, opacity: [0,0.8,0.6,0], scale: [0,1,0.8,0], translateX: [(Math.random()-0.5)*20], translateY: [(Math.random()-0.5)*20], duration: dur+200, delay: i * 70, easing: 'easeInOutQuad' });
+                        const sp = _spawn(wrapper, `width:${3+_fxRand()*5}px;height:${3+_fxRand()*5}px;border-radius:50%;background:${i%2===0?c1:c2};top:${15+_fxRand()*70}%;left:${15+_fxRand()*70}%;`);
+                        anime({ targets: sp, opacity: [0,0.8,0.6,0], scale: [0,1,0.8,0], translateX: [(_fxRand()-0.5)*20], translateY: [(_fxRand()-0.5)*20], duration: dur+200, delay: i * 70, easing: 'easeInOutQuad' });
                     }
                 } else if (s === 'multi') {
                     for (let i = 0; i < Math.min(numP, 5); i++) {
-                        const hit = _spawn(wrapper, `width:15px;height:15px;border-radius:50%;background:radial-gradient(circle,#fff,${c1});top:${20+Math.random()*60}%;left:${30+Math.random()*40}%;`);
+                        const hit = _spawn(wrapper, `width:15px;height:15px;border-radius:50%;background:radial-gradient(circle,#fff,${c1});top:${20+_fxRand()*60}%;left:${30+_fxRand()*40}%;`);
                         anime({ targets: hit, opacity: [0,1,0], scale: [0,1.2,0], duration: 250, delay: i * 120, easing: 'easeOutQuad' });
                     }
                 } else if (s === 'shadow') {
@@ -15344,7 +15365,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Stealth Rock — rocks rise from the ground, settle into a slow orbit around the foe's feet
                     const orbitR = 28 + intensity * 4;
                     for (let i = 0; i < Math.min(numP, 5); i++) {
-                        const sz = 7 + Math.random()*4;
+                        const sz = 7 + _fxRand()*4;
                         const r = _spawn(wrapper, `width:${sz}px;height:${sz}px;border-radius:25% 40% 30% 35%;background:linear-gradient(135deg,${c1},${c2});box-shadow:0 0 3px ${c1};left:50%;top:85%;`);
                         const a0 = (Math.PI * 2 * i) / numP;
                         const a1 = a0 + 0.6;
@@ -15382,7 +15403,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Substitute — smoke puff then the existing substitute sprite briefly appears
                     const smokes = _spawnMulti(wrapper, 5, `width:24%;height:24%;border-radius:50%;background:radial-gradient(circle,#cccccc,transparent 70%);left:38%;top:32%;filter:blur(1px);`);
                     smokes.forEach((sm, i) => {
-                        anime({ targets: sm, opacity: [0,0.7,0], scale: [0.3,1.6], translateX: () => (Math.random()-0.5)*40, translateY: () => -10 - Math.random()*20, duration: dur, delay: i*40, easing: 'easeOutQuad' });
+                        anime({ targets: sm, opacity: [0,0.7,0], scale: [0.3,1.6], translateX: () => (_fxRand()-0.5)*40, translateY: () => -10 - _fxRand()*20, duration: dur, delay: i*40, easing: 'easeOutQuad' });
                     });
                     const dollImg = document.createElement('img');
                     dollImg.src = 'sprites/substitute.png';
@@ -15471,13 +15492,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     anime({ targets: vine, opacity: [0,1,1,0.5], height: [0, 45, 50, 45], rotate: [0, -8, 8, -4], duration: dur, delay: dur*0.4, easing: 'easeOutQuad' });
                     for (let i = 0; i < 3; i++) {
                         const leaf = _spawn(wrapper, `width:7px;height:7px;border-radius:0 50% 50% 50%;background:${c1};left:${42 + i*6}%;bottom:${15 + i*8}%;`);
-                        anime({ targets: leaf, opacity: [0,0.9,0], scale: [0,1,0.8], rotate: () => Math.random()*360, duration: 500, delay: dur*0.5 + i*80, easing: 'easeOutQuad' });
+                        anime({ targets: leaf, opacity: [0,0.9,0], scale: [0,1,0.8], rotate: () => _fxRand()*360, duration: 500, delay: dur*0.5 + i*80, easing: 'easeOutQuad' });
                     }
                 } else if (s === 'wisp') {
                     // Will-O-Wisp — 2-3 small blueish flames drift slowly around the target
                     for (let i = 0; i < Math.max(numP, 3); i++) {
-                        const w = _spawn(wrapper, `width:${10+Math.random()*4}px;height:${14+Math.random()*5}px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(ellipse,#fff,${c2},${c1});box-shadow:0 0 6px ${c1};left:${25 + Math.random()*50}%;top:${35 + Math.random()*30}%;filter:blur(0.5px);`);
-                        anime({ targets: w, opacity: [0,0.9,0.7,0], translateX: () => (Math.random()-0.5)*30, translateY: [0, -15, -30 - Math.random()*15], scale: [0.4,1.1,0.7,0.4], duration: dur+300, delay: i*150, easing: 'easeInOutQuad' });
+                        const w = _spawn(wrapper, `width:${10+_fxRand()*4}px;height:${14+_fxRand()*5}px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(ellipse,#fff,${c2},${c1});box-shadow:0 0 6px ${c1};left:${25 + _fxRand()*50}%;top:${35 + _fxRand()*30}%;filter:blur(0.5px);`);
+                        anime({ targets: w, opacity: [0,0.9,0.7,0], translateX: () => (_fxRand()-0.5)*30, translateY: [0, -15, -30 - _fxRand()*15], scale: [0.4,1.1,0.7,0.4], duration: dur+300, delay: i*150, easing: 'easeInOutQuad' });
                     }
                 } else if (s === 't_wave') {
                     // Thunder Wave — yellow zigzag pulse expands from center + brief paralyzed-shake
@@ -15497,9 +15518,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     const wisps = _spawnMulti(wrapper, 4, `width:10%;height:10%;border-radius:50%;background:radial-gradient(circle,${c1},transparent 70%);filter:blur(2px);`);
                     wisps.forEach((w, i) => {
-                        w.style.left = (30 + Math.random()*40) + '%';
-                        w.style.top = (30 + Math.random()*40) + '%';
-                        anime({ targets: w, opacity: [0,0.7,0], scale: [0.5,1.4], translateY: () => -(15 + Math.random()*20), duration: dur, delay: i*80, easing: 'easeOutSine' });
+                        w.style.left = (30 + _fxRand()*40) + '%';
+                        w.style.top = (30 + _fxRand()*40) + '%';
+                        anime({ targets: w, opacity: [0,0.7,0], scale: [0.5,1.4], translateY: () => -(15 + _fxRand()*20), duration: dur, delay: i*80, easing: 'easeOutSine' });
                     });
                 } else if (s === 'pursuit_shadow') {
                     // Pursuit — a dark shadow streak chases in from behind, then a tackle impact
@@ -15527,8 +15548,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (s === 'heal_roost') {
                     // Roost — feathers drift down onto the user
                     for (let i = 0; i < Math.max(numP, 5); i++) {
-                        const f = _spawn(wrapper, `width:6px;height:14px;border-radius:50% 50% 30% 30% / 60% 60% 40% 40%;background:linear-gradient(180deg,${c2},${c1});left:${20 + Math.random()*60}%;top:-8%;box-shadow:0 0 2px ${c1};`);
-                        anime({ targets: f, opacity: [0,0.95,0.8,0], translateY: [0, 90, 110], translateX: () => (Math.random()-0.5)*30, rotate: [0, 80 + Math.random()*80], duration: dur+200, delay: i*80, easing: 'easeInOutSine' });
+                        const f = _spawn(wrapper, `width:6px;height:14px;border-radius:50% 50% 30% 30% / 60% 60% 40% 40%;background:linear-gradient(180deg,${c2},${c1});left:${20 + _fxRand()*60}%;top:-8%;box-shadow:0 0 2px ${c1};`);
+                        anime({ targets: f, opacity: [0,0.95,0.8,0], translateY: [0, 90, 110], translateX: () => (_fxRand()-0.5)*30, rotate: [0, 80 + _fxRand()*80], duration: dur+200, delay: i*80, easing: 'easeInOutSine' });
                     }
                     const glow = _spawn(wrapper, `width:100%;height:40%;left:0;bottom:0;background:radial-gradient(ellipse at center bottom,${c1}33,transparent 80%);`);
                     anime({ targets: glow, opacity: [0,0.7,0], duration: dur, easing: 'easeInOutQuad' });
@@ -15542,7 +15563,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     const sparkles = _spawnMulti(wrapper, numP, `width:5px;height:5px;border-radius:50%;background:${c2};box-shadow:0 0 4px ${c1};bottom:15%;`);
                     sparkles.forEach((sp, i) => {
-                        sp.style.left = (25 + Math.random() * 50) + '%';
+                        sp.style.left = (25 + _fxRand() * 50) + '%';
                         anime({ targets: sp, opacity: [0,1,0], translateY: [0,-30,-60], scale: [0.4,1,0.8], duration: dur, delay: 200 + i*70, easing: 'easeOutQuad' });
                     });
                 } else if (s === 'heal_bell') {
@@ -17204,7 +17225,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // returns the live `sm`). Falls back to Math.random outside seeded story battles.
         function storyAwareRng() {
             const s = (window.StoryMode && window.StoryMode.state) || null;
-            return (s && s.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            if (!(s && s.active && typeof window.storyRngNext === 'function')) return Math.random;
+            // Mirror the Math.random patch: don't consume the seeded story stream while a
+            // non-story battle (Quick Battle / Gauntlet / PvP) is underway with live
+            // combatants. Seeded rolls outside a battle (team / map generation) stay
+            // deterministic.
+            try {
+                if (typeof state !== 'undefined' && state && state.mode && state.mode !== 'story'
+                    && state.pActive && state.fActive && !state.isOver) return Math.random;
+            } catch (e) {}
+            return window.storyRngNext;
         }
         window.applyFoeDifficultyScaling = function(mon) {
             if (!mon) return;
@@ -19591,19 +19621,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let btn = document.createElement('div'); btn.className = `draft-card tier-${tier}`;
                 btn.setAttribute('role', 'button'); btn.tabIndex = 0;
                 btn.setAttribute('aria-label', `${draftItem.name}, Grade ${tier}, BST ${draftBst} — select for your team`);
-                let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_escHtml(m.name)}</div>`).join('');
                 const gimmickBadge = {MEGA:'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>',ZMOVE:'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>',DYNAMAX:'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>',GMAXDYNAMAX:'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>',STANDARD:''};
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
-                const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
+                const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip(decodeURIComponent(this.dataset.tera),decodeURIComponent(this.dataset.o1),decodeURIComponent(this.dataset.o2),event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${_escHtml(draftItem.build.teraType)}</span>` : '';
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${_escHtml(tempMon.name)}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
-                        <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
+                        <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${_escHtml(draftItem.name)} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-bst-mob">BST ${draftBst}</div>
                         <div class="draft-card-details">
-                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
-                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
-                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.nature)}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.ability)}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.item)}</span>
                         </div>
                         <div class="draft-card-stats">${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
@@ -19630,20 +19660,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : state.p2Pool;
                 foeDraftPool.forEach((draftItem) => {
                     let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
-                    let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                    let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_escHtml(m.name)}</div>`).join('');
                     const gimmickBadge = {MEGA:'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>',ZMOVE:'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>',DYNAMAX:'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>',GMAXDYNAMAX:'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>',STANDARD:''};
                     const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
-                    const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
+                    const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip(decodeURIComponent(this.dataset.tera),decodeURIComponent(this.dataset.o1),decodeURIComponent(this.dataset.o2),event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${_escHtml(draftItem.build.teraType)}</span>` : '';
                     let row = document.createElement('div');
                     row.className = `draft-card tier-${tier}`;
                     row.innerHTML = `
-                        <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                        <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${_escHtml(tempMon.name)}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                         <div class="draft-card-body">
-                            <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
+                            <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${_escHtml(draftItem.name)} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                             <div class="draft-card-details">
-                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
-                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
-                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.nature)}</span>
+                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.ability)}</span>
+                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.item)}</span>
                             </div>
                             <div class="draft-card-stats">${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
@@ -21389,7 +21419,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let pct = Math.max(0, (mon.currentHp / mon.maxHp) * 100); let color = pct > 50 ? 'var(--hp-green)' : (pct > 20 ? 'var(--hp-yellow)' : 'var(--hp-red)');
                 let slot = document.createElement('div'); slot.className = `party-slot ${!isAlive ? 'fainted' : ''} ${isActive ? 'active-mon' : ''}`;
                 slot.innerHTML = `
-                    <img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite">
+                    <img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${_escHtml(mon.name)}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite">
                     <div style="flex: 1;">
                         <div style="font-weight: bold; margin-bottom: 5px;">${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${isActive ? '<span style="color:var(--hp-yellow); font-size:10px;">(ACTIVE)</span>' : ''}</div>
                         <div class="hp-bar-container border-white" style="width: 80%;"><div class="hp-fill" style="width: ${pct}%; background: ${color};"></div></div>
@@ -21677,11 +21707,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             headerEl.innerHTML = `
                 <div class="sum-header-main">
                     <div class="sum-header-sprite-wrap">
-                        <img class="sum-header-sprite" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny ? 'filter:drop-shadow(0 0 6px gold);' : ''}">
+                        <img class="sum-header-sprite" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${_escHtml(s.name)}" onerror="handleSpriteError(this)" style="${s.isShiny ? 'filter:drop-shadow(0 0 6px gold);' : ''}">
                     </div>
                     <div class="sum-header-info">
                         <div class="sum-header-title">
-                            <span class="sum-header-name" id="sum-header-name">${s.name}</span>
+                            <span class="sum-header-name" id="sum-header-name">${_escHtml(s.name)}</span>
                             ${nickHtml}
                         </div>
                         <div class="sum-header-types">${getTypeHTML(effType1, effType2)}${s.teraActivated ? '<span style="font-size:9px;color:#4fc3f7;margin-left:4px;">▼ TERA</span>' : ''}</div>
@@ -23271,7 +23301,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function aiSelectScoredMove(scored, opts) {
             opts = opts || {};
             if (!scored || !scored.length) return null;
-            const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // storyAwareRng() returns the seeded stream only inside a real story
+            // battle; it falls back to Math.random when no run is active (BUG-095:
+            // a lingering runSeed must not let AI move choice drain the story
+            // stream) or when a non-story battle is underway.
+            const rng = storyAwareRng();
             let maxScore = -Infinity;
             scored.forEach(s => { if (s.score > maxScore) maxScore = s.score; });
             const EPS = 1e-6;
@@ -33008,7 +33042,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let row = document.createElement('div');
                 row.style.cssText = 'display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid #333; border-radius:4px; padding:6px 8px;';
                 row.innerHTML = `<span style="color:#888; font-size:12px; width:18px; text-align:center;">${i+1}</span>
-                    <img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" onerror="handleSpriteError(this)" style="width:36px;height:36px;image-rendering:pixelated;">
+                    <img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${_escHtml(mon.name)}" onerror="handleSpriteError(this)" style="width:36px;height:36px;image-rendering:pixelated;">
                     <span style="flex:1; font-size:13px; font-weight:bold;">${mon.isShiny ? '&#10024; ' : ''}${mon.name}</span>
                     <span class="tier-badge bg-tier-${tier}" style="margin-right:4px;">G${tier}</span>
                     <button onclick="window.reorderPartyUp(${i})" ${i===0?'disabled':''} style="min-width:32px;min-height:32px;padding:2px 6px;font-size:14px;" title="Move up">▲</button>
@@ -33041,19 +33075,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderReorderParty(); renderSwapGrid();
         }
         const _gimBadgeHTML = gimmick => ({'MEGA':'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>','ZMOVE':'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>','DYNAMAX':'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>','GMAXDYNAMAX':'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>'})[gimmick] || '';
-        const _teraBadgeHTML = teraType => teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">TERA ${teraType}</span>` : '';
+        const _teraBadgeHTML = teraType => teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">TERA ${_escHtml(teraType)}</span>` : '';
         function renderSwapGrid() {
             let fGrid = document.getElementById('swap-foe-grid'); let pGrid = document.getElementById('swap-player-grid'); fGrid.innerHTML = ''; pGrid.innerHTML = '';
             state.foeParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapFoeSelected === i ? 'selected-swap-foe' : ''}`;
-                let movesHtml = mon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = mon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_escHtml(m.name)}</div>`).join('');
                 let _gb = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${_escHtml(mon.name)}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
-                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb}${_tb}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
-                        <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${displayItem(mon,false)}</span></div>
+                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${_escHtml(mon.name)} ${getTypeHTML(mon.type1, mon.type2)}${_gb}${_tb}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
+                        <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(mon.nature)}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(mon.ability)}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(displayItem(mon,false))}</span></div>
                         <div class="draft-card-stats">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`;
@@ -33066,14 +33100,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             state.playerParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapPlayerSelected === i ? 'selected-swap-player' : ''}`;
-                let movesHtml = mon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = mon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_escHtml(m.name)}</div>`).join('');
                 let _gb2 = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb2 = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${_escHtml(mon.name)}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
-                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb2}${_tb2}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
-                        <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${displayItem(mon,false)}</span></div>
+                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${_escHtml(mon.name)} ${getTypeHTML(mon.type1, mon.type2)}${_gb2}${_tb2}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
+                        <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(mon.nature)}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(mon.ability)}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(displayItem(mon,false))}</span></div>
                         <div class="draft-card-stats">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`;
@@ -43508,9 +43542,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Math.random sites and the out-of-IIFE direct storyRngNext sites
         // resolve to the same seeded stream.
         const _nativeMathRandom = Math.random;
+        // Route Math.random through the seeded story stream ONLY when we're in a
+        // genuine story context. Two guards beyond "a run is loaded":
+        //  - Call window.storyRngNext (not the local storyRngNext) so an active
+        //    _withEventSeededRng() swap is honored — otherwise the bare Math.random
+        //    sites inside makeBuild drain the MAIN stream while the wrapper's own
+        //    window.storyRngNext calls draw from the per-event stream (BUG-002).
+        //  - Do NOT seed while a non-story battle (Quick Battle / Gauntlet / PvP)
+        //    is actually underway — that battle's RNG would advance the persisted
+        //    story stream and desync the story replay (BUG-068). "Underway" means
+        //    live combatants on a non-story board; story-map rolls (no combatants,
+        //    or mode==='story') still seed normally.
+        function _inNonStoryBattle() {
+            try {
+                // A non-story battle is actually UNDERWAY: a Quick Battle / Gauntlet /
+                // PvP board with live combatants on both sides. Keyed on combatants (not
+                // mode alone) so the per-turn battle RNG of a quick match no longer drains
+                // the persisted story stream, WITHOUT starving the seeded rolls that
+                // legitimately run outside a battle — team / map / timeline generation
+                // executes with no active combatants and MUST stay deterministic.
+                return (typeof state !== 'undefined' && state && state.mode && state.mode !== 'story'
+                    && state.pActive && state.fActive && !state.isOver);
+            } catch (e) { return false; }
+        }
         Math.random = function () {
-            if (typeof sm !== 'undefined' && sm && sm.active === true && sm.runSeed != null) {
-                return storyRngNext();
+            if (typeof sm !== 'undefined' && sm && sm.active === true && sm.runSeed != null && !_inNonStoryBattle()) {
+                return window.storyRngNext();
             }
             return _nativeMathRandom.call(Math);
         };
@@ -47842,14 +47899,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else if (slot.shinyCaught) {
                         cellCls += ' pdex-cell--caught pdex-cell--shiny';
                         if (typeof getSprite === 'function') {
-                            imgHtml = `<img src="${_esc(getSprite(s.name, true))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="true" onerror="handleSpriteError(this)">`;
+                            imgHtml = `<img src="${_esc(getSprite(s.name, true))}" alt="${_escHtml(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="true" onerror="handleSpriteError(this)">`;
                         }
                         title = s.name + ' — shiny caught';
                     } else {
                         // Shiny-seen but not caught — dim shiny sprite.
                         imgCls += ' pdex-cell-img--seen';
                         if (typeof getSprite === 'function') {
-                            imgHtml = `<img src="${_esc(getSprite(s.name, true))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="true" onerror="handleSpriteError(this)">`;
+                            imgHtml = `<img src="${_esc(getSprite(s.name, true))}" alt="${_escHtml(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="true" onerror="handleSpriteError(this)">`;
                         }
                         title = s.name + ' — shiny seen';
                     }
@@ -47867,13 +47924,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         cellCls += ' pdex-cell--caught';
                         if (slot.shinyCaught) cellCls += ' pdex-cell--shiny';
                         if (typeof getSprite === 'function') {
-                            imgHtml = `<img src="${_esc(getSprite(s.name, !!slot.shinyCaught))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="${slot.shinyCaught ? 'true' : 'false'}" onerror="handleSpriteError(this)">`;
+                            imgHtml = `<img src="${_esc(getSprite(s.name, !!slot.shinyCaught))}" alt="${_escHtml(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="${slot.shinyCaught ? 'true' : 'false'}" onerror="handleSpriteError(this)">`;
                         }
                         title = s.name + ' — caught' + (slot.shinyCaught ? ' (shiny)' : '');
                     } else {
                         imgCls += ' pdex-cell-img--seen';
                         if (typeof getSprite === 'function') {
-                            imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
+                            imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="${_escHtml(s.name)}" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
                         }
                         title = s.name + ' — seen';
                     }
@@ -54625,7 +54682,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _buildProfPickCardElement(ch, idx) {
             const tempMon = buildPokemon(ch.name, ch.build);
             const tier = ch.g;
-            const movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+            const movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_escHtml(m.name)}</div>`).join('');
             const gimmickBadge = { MEGA: '<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>', ZMOVE: '<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>', DYNAMAX: '<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>', GMAXDYNAMAX: '<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>', STANDARD: '' };
             const gb = (ch.build.gimmick && gimmickBadge[ch.build.gimmick]) || '';
             const tera = ch.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
@@ -54642,9 +54699,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <button type="button" class="draft-card-info-btn" title="Full summary" aria-label="Full summary" onclick="event.stopPropagation();window.StoryMode.profOpenSummary(${idx})">&#8505;</button>
                     </div>
                     <div class="draft-card-details">
-                        <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
-                        <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
-                        <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                        <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.nature)}</span>
+                        <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.ability)}</span>
+                        <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.item)}</span>
                     </div>
                     <div class="draft-card-stats">${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}</div>
                     <div class="draft-card-moves">${movesHtml}</div>
@@ -61673,6 +61730,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_catchThrowInFlight) return;
             const enc = _catchState.encounter;
             if (!enc) return;
+            // Storage-full guard BEFORE any ball is spent. If both the active party
+            // and the PC are full there is nowhere to put a caught mon, so the throw
+            // can only ever fail — and the old code discovered this AFTER spending the
+            // ball and rolling a success inside _catchHandleSuccess, burning the ball
+            // (worst case: the 1-per-run Master Ball on the roaming legendary) and
+            // discarding the mon. Refuse the throw instead: no ball spent, the
+            // encounter stays open (the run button remains) so the player can leave,
+            // free a slot at the Pokémon Center, and — for a roaming legendary — try
+            // again later without having wasted the ball.
+            _pcEnsureBoxArray();
+            if (_storyPartyFullForCatch() && (sm.pcBox || []).length >= PC_BOX_CAP) {
+                _catchState.message = `Your party (${(sm.team||[]).length}/${_storyMaxPartySize()}) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full — no room to catch anything. Free a slot at the Pokémon Center first.`;
+                _catchRender();
+                return;
+            }
             const isSafariThrow = ballKey === 'safari';
             // Safari Ball can ONLY be used in Safari Mode, and its supply lives on the
             // session, not sm.balls. Regular balls cannot be used in Safari Mode.
@@ -63829,7 +63901,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(t.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${t.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${t.build.teraType}</span>`
                     : '';
                 const movesHtml = tempMon
-                    ? tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('')
+                    ? tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_escHtml(m.name)}</div>`).join('')
                     : '';
                 const statsHtml = tempMon
                     ? `${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}`
@@ -63838,9 +63910,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? `<div class="story-link-build">
                         <div class="story-link-title-row" style="margin-bottom:6px;">${typeHtml}${teraHtml}</div>
                         <div class="draft-card-details">
-                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
-                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
-                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.nature)}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.ability)}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_escHtml(tempMon.item)}</span>
                         </div>
                         <div class="story-link-build-stats">${statsHtml}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
@@ -64279,7 +64351,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
             let evoBlockHtml;
             if (!evosAll.length) {
-                evoBlockHtml = `<div class="tx-grid-empty" style="margin-top:8px;"><strong>${_esc(mon.name)}</strong> is fully evolved. No more evolution paths.</div>`;
+                evoBlockHtml = `<div class="tx-grid-empty" style="margin-top:8px;"><strong>${_escHtml(mon.name)}</strong> is fully evolved. No more evolution paths.</div>`;
             } else {
                 const allowedAny = evosAll.some(e => e.allowed);
                 const evoCards = evosAll.map(e => {
@@ -64427,7 +64499,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const nameLine = (shiny ? '&#10024; ' : '') + _esc(m.nickname ? `${m.nickname} (${m.name})` : m.name);
                 const header = `<button type="button" class="story-tutor-mon-toggle" onclick="event.stopPropagation();window.StoryMode.evoLabTogglePcRow('${idArg}')" aria-expanded="${expanded?'true':'false'}">
                     <div class="story-tutor-mon-main">
-                        <img src="${getSprite(spriteDisplayName(m), shiny)}" alt="${_esc(m.name)}" style="width:38px;height:38px;image-rendering:pixelated;flex-shrink:0;${shiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <img src="${getSprite(spriteDisplayName(m), shiny)}" alt="${_escHtml(m.name)}" style="width:38px;height:38px;image-rendering:pixelated;flex-shrink:0;${shiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
                         <div style="min-width:0;flex:1;">
                             <div class="story-tutor-mon-name">${nameLine}</div>
                             <div class="story-tutor-mon-meta">G${g} · BST ${getBST(m.name)} · ${nReady} evolution${nReady===1?'':'s'} ready</div>
@@ -72350,7 +72422,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="fanclub" aria-expanded="${expanded?'true':'false'}">
                 ${storyMonTileMain({
                     imgHtml: sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : '',
-                    nameHtml: `${_esc(mon.name)}${build._isShiny ? ' ✦' : ''} ${fcTypeHtml}`,
+                    nameHtml: `${_escHtml(mon.name)}${build._isShiny ? ' ✦' : ''} ${fcTypeHtml}`,
                     metaHtml: summary,
                 })}
                 <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span></span>
