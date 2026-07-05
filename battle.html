@@ -24182,17 +24182,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // If this faint happened *after* residual already ran (burn/poison/orb at end of turn), do not
                         // run residual again: Flame/Toxic Orb would re-trigger and burn newly switched Pokémon early.
                         if (!state.residualPhaseComplete) {
-                            runVolatileTimers();
-                            runWishHealing();
-                            runResidualsBySpeed();
-                            tickWeather();
-                            // Dynamax turn countdown
-                            if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
-                            if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
-                            // Increment turn counts
-                            state.pActive.turnCount++;
-                            state.fActive.turnCount++;
-                            state.residualPhaseComplete = true;
+                            runEndOfTurnResiduals();
                             updateUI(); await sleep(1000);
                             let eotFaint = await checkFaints();
                             if (state.isOver) { state.isLocked = false; return; }
@@ -24470,10 +24460,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (side.wishTurns > 0) {
                     side.wishTurns--;
                     if (side.wishTurns === 0 && side.wishHp > 0) {
+                        // A mon reduced to 0 by weather earlier this residual phase (weather runs
+                        // BEFORE Wish — Showdown order) has fainted; the faint is processed after the
+                        // residual chain, so Wish fires against an empty/fainted slot and is wasted.
+                        // Do NOT revive it (the pre-fix single-end-of-turn faint check let Wish undo
+                        // a weather KO).
+                        if (mon.currentHp <= 0) { side.wishHp = 0; }
+                        else {
                         let heal = Math.min(mon.maxHp - mon.currentHp, side.wishHp);
                         if (heal > 0) { mon.currentHp += heal; logMsg(`${mon.name}'s wish came true, restoring ${heal} HP!`, 'heal'); }
                         else { logMsg(`${mon.name}'s HP is already full — the wish faded!`, 'info'); }
                         side.wishHp = 0;
+                        }
                     }
                 }
             });
@@ -24486,6 +24484,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // hit-time calculation, and adding the type-immunity case the old path skipped.
                 let side = state[sideKey]; let mon = state[activeKey];
                 if (!side || !mon) return;
+                if (mon.currentHp <= 0) { // fainted earlier this residual phase — nothing to strike
+                    if (side.futureSightTurns > 0) { side.futureSightTurns--; if (side.futureSightTurns === 0) { side.futureSightPow = 0; side.futureSightName = ''; side.futureSightSpA = 0; side.futureSightType = ''; side.futureSightStab = 0; } }
+                    return;
+                }
                 if (side.futureSightTurns > 0) {
                     side.futureSightTurns--;
                     if (side.futureSightTurns === 0 && side.futureSightPow > 0) {
@@ -25047,29 +25049,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // End of turn — each residual step is isolated so one throwing
-                // effect can't abort the rest of the chain (Dynamax countdown,
-                // turn counters, EoT faint check) and dump the turn into the
-                // generic catch with a misleading "Turn skipped" after the
-                // moves already executed.
-                const _eotStep = (label, fn) => {
-                    try { fn(); }
-                    catch (err) {
-                        console.error('[Battle] end-of-turn step failed: ' + label, err);
-                        try { window._lastTurnError = { step: label, message: String(err && err.message || err), stack: String(err && err.stack || ''), at: Date.now() }; } catch (e) {}
-                    }
-                };
-                _eotStep('volatileTimers', () => runVolatileTimers());
-                _eotStep('wishHealing', () => runWishHealing());
-                _eotStep('residuals(speed order)', () => runResidualsBySpeed());
-                _eotStep('weather', () => tickWeather());
-                // Dynamax turn countdown
-                if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
-                if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
-                // Increment turn counts for active mons
-                state.pActive.turnCount++;
-                state.fActive.turnCount++;
-                state.residualPhaseComplete = true;
+                // End of turn — residual sequence (weather damage → Future Sight/Wish →
+                // item/leech/status residuals → weather countdown → Dynamax countdown → turn
+                // counters). Each step is isolated inside runEndOfTurnResiduals() so one
+                // throwing effect can't abort the rest of the chain and dump the turn into the
+                // generic catch with a misleading "Turn skipped". Shared verbatim with the
+                // post-faint forced-switch path so the two can never drift out of order.
+                runEndOfTurnResiduals();
                 updateUI(); await sleep(1000);
                 
                 let eotFaint = await checkFaints();
@@ -32620,6 +32606,102 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // turn (the faster mon's residuals run first; Trick Room inverts the order;
         // speed ties keep the engine's historical player-first order — deterministic,
         // no extra RNG draw). Both turn-loop call sites route through here.
+        // Damaging weather (sandstorm/hail chip, Solar Power, Dry Skin in sun). Extracted
+        // from endOfTurnEffects so the live EoT sequence can apply it in Speed order BEFORE
+        // Wish/Future Sight (Showdown residual order: weather=1, Future Sight=3, Wish=4).
+        // Weather HEALS (Rain Dish / Ice Body / Dry Skin rain) stay in endOfTurnEffects —
+        // they are later-order heals and never cross a Wish faint boundary.
+        function applyWeatherResidualDamage(mon) {
+            if (!mon || mon.currentHp <= 0) return;
+            if (mon.ability !== "Magic Guard" && mon.item !== "Safety Goggles" && mon.ability !== "Overcoat") {
+                let w = getCurrentWeather();
+                const _nullInd = state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon);
+                if (mon.ability === "Dry Skin" && (w === "Sun" || w === "HarshSun")) {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the sun's bite!`, 'info');
+                    else {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
+                    let actDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actDmg;
+                    logMsg(`${mon.name} took ${actDmg} damage from the harsh sunlight!`, 'dmg');
+                    }
+                }
+                if (mon.ability === "Solar Power" && (w === "Sun" || w === "HarshSun")) {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored Solar Power's strain!`, 'info');
+                    else {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
+                    let actDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actDmg;
+                    logMsg(`${mon.name} took ${actDmg} damage from Solar Power!`, 'dmg');
+                    }
+                }
+                // Hail deals 1/16 damage to non-Ice types; Snow (Gen 9) deals NO damage
+                if (w === "Hail" && mon.type1 !== "Ice" && mon.type2 !== "Ice") {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the hail!`, 'info');
+                    else {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp / 16));
+                    let actDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actDmg;
+                    logMsg(`${mon.name} took ${actDmg} damage from hail!`, 'dmg');
+                    }
+                }
+                // Sandstorm damage (non-Rock/Ground/Steel types)
+                if (w === "Sandstorm" && mon.type1 !== "Rock" && mon.type2 !== "Rock" && mon.type1 !== "Ground" && mon.type2 !== "Ground" && mon.type1 !== "Steel" && mon.type2 !== "Steel") {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the sandstorm!`, 'info');
+                    else {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp / 16));
+                    let actDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actDmg;
+                    logMsg(`${mon.name} took ${actDmg} damage from the sandstorm!`, 'dmg');
+                    }
+                }
+            }
+        }
+
+        // Weather chip damage for both actives, in effective-Speed order (Trick Room aware),
+        // run before Wish/Future Sight so weather can KO first. Mirrors runResidualsBySpeed's
+        // ordering so the faster mon's weather tick logs first.
+        function runWeatherDamageBySpeed() {
+            let pFirst = true;
+            try {
+                const _rw = getCurrentWeather();
+                const _ps = getEffectiveSpeed(state.pActive, _rw);
+                const _fs = getEffectiveSpeed(state.fActive, _rw);
+                const _tr = state.trickRoom > 0;
+                if (_tr ? (_fs < _ps) : (_fs > _ps)) pFirst = false;
+            } catch (e) {}
+            const order = pFirst ? [state.pActive, state.fActive] : [state.fActive, state.pActive];
+            order.forEach(mon => { try { applyWeatherResidualDamage(mon); } catch (e) { try { console.error('[battle] weather residual threw', e); } catch (_e) {} } });
+        }
+
+        // Single source of truth for the end-of-turn residual sequence, shared by the main
+        // turn resolver AND the post-faint forced-switch path (these were duplicated verbatim
+        // — an ordering-drift hazard). Each step is isolated so one throwing effect can't abort
+        // the rest of the chain (the old _eotStep contract). Order follows Showdown: volatile
+        // timers → weather damage (1) → Future Sight/Wish (3/4) → item/leech/status residuals
+        // → weather countdown → Dynamax countdown → turn counters. Callers keep their own
+        // updateUI / sleep / checkFaints tail (their control flow after this differs).
+        function runEndOfTurnResiduals() {
+            const _eotStep = (label, fn) => {
+                try { fn(); }
+                catch (err) {
+                    console.error('[Battle] end-of-turn step failed: ' + label, err);
+                    try { window._lastTurnError = { step: label, message: String(err && err.message || err), stack: String(err && err.stack || ''), at: Date.now() }; } catch (e) {}
+                }
+            };
+            _eotStep('volatileTimers', () => runVolatileTimers());
+            _eotStep('weatherDamage', () => runWeatherDamageBySpeed());
+            _eotStep('wishHealing', () => runWishHealing());
+            _eotStep('residuals(speed order)', () => runResidualsBySpeed());
+            _eotStep('weather', () => tickWeather());
+            // Dynamax turn countdown
+            if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
+            if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
+            // Increment turn counts for active mons
+            state.pActive.turnCount++;
+            state.fActive.turnCount++;
+            state.residualPhaseComplete = true;
+        }
+
         function runResidualsBySpeed() {
             let pFirst = true;
             try {
@@ -32639,7 +32721,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // present (identical to the local fn in production; lets tests observe
             // a thrown residual) and falls back to the local declaration.
             const _runEoT = (a, b) => {
-                try { (window.endOfTurnEffects || endOfTurnEffects)(a, b); }
+                // skipWeatherDamage=true: weather chip already applied by runWeatherDamageBySpeed
+                // earlier in the sequence (so it lands before Wish/Future Sight).
+                try { (window.endOfTurnEffects || endOfTurnEffects)(a, b, true); }
                 catch (e) {
                     try { console.error('[battle] endOfTurnEffects threw', e); } catch (_e) {}
                     try { window._lastTurnError = { step: 'residuals(speed order)', message: String(e && e.message || e), stack: String(e && e.stack || ''), at: Date.now() }; } catch (_e) {}
@@ -32654,7 +32738,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function endOfTurnEffects(mon, foe) {
+        function endOfTurnEffects(mon, foe, skipWeatherDamage) {
             if (mon.currentHp <= 0) return;
             mon.volatile.protect = false;
             mon.volatile.endure = false;
@@ -32697,49 +32781,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // 4. Non-Volatile Status Damage (Burn, Poison, Toxic — residual order 9)
             // 5. Binding/Trap Damage (Partial Trap, Curse)
 
-            if (mon.ability !== "Magic Guard" && mon.item !== "Safety Goggles" && mon.ability !== "Overcoat") {
-                // 1. Weather damage
-                let w = getCurrentWeather();
-                const _nullInd = state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon);
-                if (mon.ability === "Dry Skin" && (w === "Sun" || w === "HarshSun")) {
-                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the sun's bite!`, 'info');
-                    else {
-                    let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
-                    let actDmg = Math.min(mon.currentHp, dmg);
-                    mon.currentHp -= actDmg;
-                    logMsg(`${mon.name} took ${actDmg} damage from the harsh sunlight!`, 'dmg');
-                    }
-                }
-                if (mon.ability === "Solar Power" && (w === "Sun" || w === "HarshSun")) {
-                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored Solar Power's strain!`, 'info');
-                    else {
-                    let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
-                    let actDmg = Math.min(mon.currentHp, dmg);
-                    mon.currentHp -= actDmg;
-                    logMsg(`${mon.name} took ${actDmg} damage from Solar Power!`, 'dmg');
-                    }
-                }
-                // Hail deals 1/16 damage to non-Ice types; Snow (Gen 9) deals NO damage
-                if (w === "Hail" && mon.type1 !== "Ice" && mon.type2 !== "Ice") {
-                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the hail!`, 'info');
-                    else {
-                    let dmg = Math.max(1, Math.floor(mon.maxHp / 16));
-                    let actDmg = Math.min(mon.currentHp, dmg);
-                    mon.currentHp -= actDmg;
-                    logMsg(`${mon.name} took ${actDmg} damage from hail!`, 'dmg');
-                    }
-                }
-                // Sandstorm damage (non-Rock/Ground/Steel types)
-                if (w === "Sandstorm" && mon.type1 !== "Rock" && mon.type2 !== "Rock" && mon.type1 !== "Ground" && mon.type2 !== "Ground" && mon.type1 !== "Steel" && mon.type2 !== "Steel") {
-                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the sandstorm!`, 'info');
-                    else {
-                    let dmg = Math.max(1, Math.floor(mon.maxHp / 16));
-                    let actDmg = Math.min(mon.currentHp, dmg);
-                    mon.currentHp -= actDmg;
-                    logMsg(`${mon.name} took ${actDmg} damage from the sandstorm!`, 'dmg');
-                    }
-                }
-            }
+            // 1. Weather damage. In the live end-of-turn sequence this is hoisted to
+            // runWeatherDamageBySpeed() (called BEFORE runWishHealing) so weather can KO
+            // before Wish/Future Sight resolve — Showdown residual order is weather(1) →
+            // Future Sight(3) → Wish(4). runResidualsBySpeed passes skipWeatherDamage=true so
+            // it isn't applied twice. Standalone callers (e.g. orb-status tests) pass no flag
+            // and still get weather here.
+            if (!skipWeatherDamage) applyWeatherResidualDamage(mon);
 
             // Grassy Terrain: grounded mons heal 1/16 HP per turn
             if (state.terrain === "Grassy" && state.terrainTurns > 0 && mon.currentHp > 0 && mon.currentHp < mon.maxHp) {
