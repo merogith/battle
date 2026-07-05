@@ -11090,6 +11090,7 @@
                         i: b.i, a: b.a, n: b.n,
                         evs: b.evs && typeof b.evs === 'object' ? { ...b.evs } : undefined,
                         ivs: b.ivs && typeof b.ivs === 'object' ? { ...b.ivs } : undefined,
+                        evTrainFocus: Array.isArray(b.evTrainFocus) ? b.evTrainFocus.slice() : undefined,
                         gimmick: b.gimmick, teraType: b.teraType,
                         _isShiny: b._isShiny, _gender: b._gender
                     };
@@ -21516,6 +21517,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._summaryDraftPoolMode = !opts.partyList;
             window._summaryDraftPartyList = opts.partyList || null;
             window._summaryDraftPartyIdx = typeof opts.index === 'number' ? opts.index : 0;
+            // The EV training-focus picker is editable ONLY for the story party
+            // summary (openSummary passes storyReorder + a partyList that maps 1:1 to
+            // sm.team). Foe-inspect, professor picks and single-mon views set showEVs
+            // but not this combo, so the picker (which writes sm.team) stays hidden.
+            window._summaryEvFocusEditable = !!(opts.storyReorder && opts.partyList && opts.partyList.length);
             window._summaryIdx = window._summaryDraftPartyIdx;
             window._summaryIsP1 = true;
             // Reset Z/Max preview to base on every new open so it doesn't persist across mons.
@@ -21535,6 +21541,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.showSummary = function(index, isP1 = true, opts) {
             opts = opts || {};
             window._summaryShowEVs = false;
+            window._summaryEvFocusEditable = false;
             window._summaryDraftPoolMode = false;
             window._summaryDraftPartyList = null;
             const reorderRow = document.getElementById('story-team-reorder-row');
@@ -21589,6 +21596,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const n = party.length;
             const idx = ((window._summaryIdx + delta) % n + n) % n;
             window.showSummary(idx, window._summaryIsP1, { resetTab: false });
+        };
+
+        // Story-mode EV training-focus picker (summary Overview tab). Toggles which
+        // stats the post-battle EV grant trains for the currently-displayed party mon.
+        // key='auto' clears the focus (default best-2-stats); a stat key toggles that
+        // stat in/out of the custom set. Persistence goes through the StoryMode module
+        // (writes the saved sm.team slot + save()); the live preview clone is updated
+        // so the immediate re-render reflects the new state. Story-only (guarded by
+        // _summaryShowEVs, which only story callers set).
+        window.setSummaryEvFocus = function(key) {
+            if (!window._summaryShowEVs || !window._summaryEvFocusEditable || !summaryTarget) return;
+            const bd = summaryTarget.buildData;
+            if (!bd || typeof bd !== 'object') return;
+            const EVK = ['hp','atk','def','spa','spd','spe'];
+            const cur = Array.isArray(bd.evTrainFocus) ? bd.evTrainFocus.filter(k => EVK.includes(k)) : [];
+            let next;
+            if (key === 'auto') next = [];
+            else if (EVK.includes(key)) next = cur.includes(key) ? cur.filter(k => k !== key) : cur.concat([key]);
+            else return;
+            const idx = (typeof window._summaryDraftPartyIdx === 'number') ? window._summaryDraftPartyIdx : 0;
+            try {
+                if (window.StoryMode && typeof window.StoryMode.setEvTrainFocus === 'function') {
+                    window.StoryMode.setEvTrainFocus(idx, next);
+                }
+            } catch (e) { console.warn('[Summary] setEvTrainFocus', e); }
+            // Reflect on the preview clone so the immediate re-render shows the change.
+            if (next.length) bd.evTrainFocus = next.slice();
+            else { try { delete bd.evTrainFocus; } catch (e) { bd.evTrainFocus = undefined; } }
+            try { window.switchSummaryTab(1); } catch (e) {}
         };
 
         window.updateSummaryNavUI = function() {
@@ -21998,12 +22034,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const sign = pct > 0 ? '+' : '';
                         storyMultHtml = `<div style="margin-top:6px;font-size:11px;"><b style="color:${col};">Story stat ${sign}${pct}%</b> <span style="color:#9aa0aa;">applied to maxHP + every combat stat</span></div>`;
                     }
+                    // Battle-training focus picker — story party summary only. Lets the
+                    // player choose which stats the post-battle EV grant trains (spread
+                    // equally among the chosen stats). Empty selection = Auto (the
+                    // species' 2 strongest stats). Writes through window.setSummaryEvFocus,
+                    // which persists to the saved sm.team slot and re-renders.
+                    let evFocusHtml = '';
+                    if (window._summaryEvFocusEditable) {
+                        const focus = Array.isArray(bd.evTrainFocus) ? bd.evTrainFocus.filter(k => allKeys.includes(k)) : [];
+                        const autoOn = focus.length === 0;
+                        const chip = (key, label, on) =>
+                            `<button type="button" class="tx-chip tx-chip--evfocus" data-active="${on ? '1' : '0'}" aria-pressed="${on ? 'true' : 'false'}" onclick="event.stopPropagation(); window.setSummaryEvFocus('${key}')">${label}</button>`;
+                        const statChips = allKeys.map(k => chip(k, SUM_STAT_LABELS[k], focus.includes(k))).join('');
+                        const desc = autoOn
+                            ? 'Auto — trains its 2 strongest stats each battle'
+                            : `Custom — battle EVs split evenly across ${focus.length} stat${focus.length > 1 ? 's' : ''}`;
+                        evFocusHtml = `<div class="sum-evfocus">
+                            <b style="display:block;margin-top:8px;" id="sum-evfocus-lbl">Battle training focus</b>
+                            <div class="tx-chip-row" style="margin-top:4px;" role="group" aria-labelledby="sum-evfocus-lbl">${chip('auto', 'Auto', autoOn)}${statChips}</div>
+                            <div style="margin-top:4px;font-size:10px;color:#8b92a4;line-height:1.35;">${desc}</div>
+                        </div>`;
+                    }
                     evIvHtml = `<div class="sum-evs-row">
                         <b>EVs (${evTotal}/510)</b>
                         <div class="sum-evs-grid">${evCells}</div>
                         <b style="display:block;margin-top:6px;color:#80deea;">IVs</b>
                         <div class="sum-evs-grid">${ivCells}</div>
                         ${storyMultHtml}
+                        ${evFocusHtml}
                     </div>`;
                 }
 
@@ -54984,6 +55042,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
             openSummary(_storySumIdx);
         }
+        // Persist a party mon's post-battle EV training focus (build.evTrainFocus).
+        // `focus` is an array of stat keys; an empty/invalid array clears the field
+        // back to Auto (the default best-2-stats behaviour). Called from the summary
+        // modal's stat-chip picker; writes the SAVED slot (not the preview clone) and
+        // saves. The immediate modal re-render is handled by the outer-scope caller.
+        function setEvTrainFocus(idx, focus) {
+            const t = sm && sm.team && sm.team[idx | 0];
+            const b = t && (t.build || t.buildData);
+            if (!b || typeof b !== 'object') return;
+            const keys = ['hp','atk','def','spa','spd','spe'];
+            const clean = Array.isArray(focus) ? focus.filter(k => keys.includes(k)) : [];
+            if (clean.length) b.evTrainFocus = clean.slice();
+            else if ('evTrainFocus' in b) delete b.evTrainFocus;
+            save();
+            try { renderTeamPanel(); } catch (e) {}
+        }
 
         // Browse / Manage tab bar — the two faces of the merged "Relics" facility:
         // Browse (acquire a run-wide rule; only in the relic cities C0/C3/C6/C9) and
@@ -62171,6 +62245,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // are a +50% general buff over the prior 6/12 (itself +50% over the original
         // 4/8 spread); ACE (14, ~1.5× a basic fight) is the middle tier, added on
         // user direction.
+        // Canonical stat-key order for EV work (spread, focus, clamps).
+        const EV_STAT_KEYS = Object.freeze(['hp','atk','def','spa','spd','spe']);
         const EV_GAIN_ACTIVE = Object.freeze({
             REGULAR: 9,  // Basic Trainer, Gym Trainer 1/2
             ACE:     14, // Elite Trainer; villain/extra miniBoss & miniRaid beats
@@ -62276,23 +62352,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Robust base lookup — mirror buildPokemon's Farfetch'd alias.
                 const lookupName = mon.name === "Farfetch'd" ? 'Farfetchd' : mon.name;
                 const base = (typeof baseStats !== 'undefined') ? (baseStats[mon.name] || baseStats[lookupName] || null) : null;
-                const targets = _pickBattleEVStats(base);
+                // Auto (species best-2) stats — the default, and the spill target
+                // when a player's chosen focus is fully capped.
+                const autoTargets = _pickBattleEVStats(base);
+                // Player-chosen training focus (build.evTrainFocus): an array of stat
+                // keys the post-battle EVs should train, spread EQUALLY (the round-robin
+                // below places one EV per listed stat per pass, so an N-stat focus
+                // splits the flat grant N ways, remainder falling to earlier entries).
+                // Absent / empty / malformed => Auto. Set via the party summary picker.
+                const _pref = mon.build.evTrainFocus;
+                const _prefTargets = (Array.isArray(_pref) && _pref.length
+                        && _pref.every(k => EV_STAT_KEYS.includes(k)))
+                    ? _pref : null;
                 let remaining = Math.min(grant, 510 - curTotal);
                 const gained = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-                let guard = 64;
-                while (remaining > 0 && guard-- > 0) {
-                    let placedThisLoop = false;
-                    for (const s of targets) {
-                        if (remaining <= 0) break;
-                        if ((evs[s]|0) >= 252) continue;
-                        evs[s] = (evs[s]|0) + 1;
-                        gained[s]++;
-                        remaining--;
-                        curTotal++;
-                        placedThisLoop = true;
+                const _placeInto = (tgts) => {
+                    let guard = 64;
+                    while (remaining > 0 && guard-- > 0) {
+                        let placedThisLoop = false;
+                        for (const s of tgts) {
+                            if (remaining <= 0) break;
+                            if ((evs[s]|0) >= 252) continue;
+                            evs[s] = (evs[s]|0) + 1;
+                            gained[s]++;
+                            remaining--;
+                            curTotal++;
+                            placedThisLoop = true;
+                        }
+                        if (!placedThisLoop) break;
                     }
-                    if (!placedThisLoop) break;
-                }
+                };
+                _placeInto(_prefTargets || autoTargets);
+                // Spill any remainder (every chosen focus stat already at 252) into the
+                // Auto stats so a battle's EVs are never silently wasted. Only relevant
+                // when a custom focus was in play — the auto path already used autoTargets.
+                if (remaining > 0 && _prefTargets) _placeInto(autoTargets);
                 const gainedAny = gained.hp|gained.atk|gained.def|gained.spa|gained.spd|gained.spe;
                 if (gainedAny) {
                     report.push({ name: mon.nickname || mon.name, gained, active: isActive });
@@ -65687,6 +65781,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // not the species'. Without this, evolving a Fan-Club-trained mon
             // would silently reset its stats to the species default 31s.
             if (old.ivs) evoBuild.ivs = { ...old.ivs };
+            // Carry the post-battle EV training focus (build.evTrainFocus): a
+            // forward-looking per-mon preference, not a species trait. Slice so the
+            // evolved and pre-evo forms never share a mutable array. Without this,
+            // makeBuild() would drop it and the mon would silently revert to Auto.
+            if (Array.isArray(old.evTrainFocus)) evoBuild.evTrainFocus = old.evTrainFocus.slice();
             // Identity carry-over: shiny and gender are properties of the
             // individual Pokémon, not the species. Evolving a shiny Magikarp
             // produces a shiny Gyarados; a male Eevee evolving into Espeon
@@ -74505,7 +74604,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openExpShareGift, applyExpShareLevel,
             openEvResetPicker, applyEvReset,
             confirmAbandon, abandonAndReturn, saveAndQuitToMenu, continuePostGame, enterMysteryClimax,
-            openSummary, profOpenSummary, summaryMove, moveInParty, setPartyLead, partyReorder, openPartyModal,
+            openSummary, profOpenSummary, summaryMove, setEvTrainFocus, moveInParty, setPartyLead, partyReorder, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
