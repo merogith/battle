@@ -28510,7 +28510,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (move.self && move.self.boosts && !sheerForceActive) {
                         const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
                         if (_fxRng() * 100 < _selfChance) {
+                            beginStatBatch();
                             Object.entries(move.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
+                            endStatBatch();
                             updateUI();
                         }
                     }
@@ -29479,7 +29481,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 && !(typeof sheerForceActive !== 'undefined' && sheerForceActive)) {
                 const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
                 if (_fxRng() * 100 < _selfChance) {
+                    beginStatBatch();
                     Object.entries(move.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
+                    endStatBatch();
                     updateUI();
                 }
             }
@@ -31546,6 +31550,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const hardBlockAll = new Set(["Clear Body","White Smoke","Full Metal Body"]);
                 const statSpecific = { atk: ["Hyper Cutter"], acc: ["Keen Eye"], def: ["Big Pecks"] };
                 let applied = 0;
+                beginStatBatch();
                 for (const [stat, rawDelta] of Object.entries(move.boosts)) {
                     const delta = Number(rawDelta);
                     if (!delta) continue;
@@ -31569,6 +31574,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     changeStage(target, stat, delta, !selfBoost);
                     applied++;
                 }
+                endStatBatch();
                 if (applied > 0) return;
             }
 
@@ -31581,7 +31587,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Cosmic Power") { changeStage(attacker, 'def', 1); changeStage(attacker, 'spd', 1); return; }
             if (move.name === "Dragon Dance") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'spe', 1); return; }
             if (move.name === "Quiver Dance") { changeStage(attacker, 'spa', 1); changeStage(attacker, 'spd', 1); changeStage(attacker, 'spe', 1); return; }
-            if (move.name === "Shell Smash") { changeStage(attacker, 'atk', 2); changeStage(attacker, 'spa', 2); changeStage(attacker, 'spe', 2); changeStage(attacker, 'def', -1); changeStage(attacker, 'spd', -1); return; }
+            if (move.name === "Shell Smash") { beginStatBatch(); changeStage(attacker, 'atk', 2); changeStage(attacker, 'spa', 2); changeStage(attacker, 'spe', 2); changeStage(attacker, 'def', -1); changeStage(attacker, 'spd', -1); endStatBatch(); return; }
             if (move.name === "Coil") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'def', 1); changeStage(attacker, 'acc', 1); return; }
             if (move.name === "Feather Dance" || move.name === "FeatherDance") { changeStage(defender, 'atk', -2); return; }
             if (move.name === "Belly Drum") {
@@ -32722,6 +32728,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _storyMonHasType(mon, state._typeNullifierType);
         }
 
+        // ---- White Herb batching (Showdown-parity onUpdate timing) ----
+        // White Herb restores ALL of the holder's lowered stats at once and is consumed
+        // once — but only AFTER a move's full stat-change block has resolved. A move that
+        // lowers two stats in sequence (Shell Smash: Def & Sp.Def; Close Combat / Superpower
+        // / V-create via move.self.boosts) must NOT consume the herb on the first drop and
+        // leave the rest lowered. changeStage defers the herb while a batch is open
+        // (beginStatBatch); endStatBatch flushes it exactly once for both active mons.
+        // Single drops (Intimidate, Sticky Web, Overheat, …) run with no batch open and
+        // resolve immediately, exactly as before.
+        let _statBatchDepth = 0;
+        function resolveWhiteHerb(mon) {
+            if (!mon || mon.item !== "White Herb") return;
+            let restored = false;
+            for (let s in mon.stages) {
+                if (mon.stages[s] < 0) { mon.stages[s] = 0; restored = true; }
+            }
+            if (restored) {
+                logMsg(`${mon.name}'s White Herb restored its stats!`, 'heal');
+                mon.item = null; mon.itemConsumed = true;
+            }
+        }
+        function beginStatBatch() { _statBatchDepth++; }
+        function endStatBatch() {
+            if (_statBatchDepth > 0) _statBatchDepth--;
+            if (_statBatchDepth === 0 && typeof state !== 'undefined' && state) {
+                resolveWhiteHerb(state.pActive);
+                resolveWhiteHerb(state.fActive);
+            }
+        }
+
         function changeStage(mon, stat, amount, byOpponent, opts) {
             opts = opts || null;
             // Normalize Showdown-style stat keys from move JSON ("accuracy"/"evasion")
@@ -32810,16 +32846,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Competitive sharply raised its Sp. Atk!`, 'info');
                 mon.stages.spa = Math.min(6, mon.stages.spa + 2);
             }
-            // White Herb: Restore lowered stats, consumed
-            if (amount < 0 && mon.item === "White Herb") {
-                let restored = false;
-                for (let s in mon.stages) {
-                    if (mon.stages[s] < 0) { mon.stages[s] = 0; restored = true; }
-                }
-                if (restored) {
-                    logMsg(`${mon.name}'s White Herb restored its stats!`, 'heal');
-                    mon.item = null; mon.itemConsumed = true;
-                }
+            // White Herb: restore ALL lowered stats at once, then consume. Deferred to
+            // endStatBatch during a multi-stat move so both of Shell Smash's drops (Def +
+            // Sp.Def) are restored together; resolves inline for single, un-batched drops.
+            if (amount < 0 && mon.item === "White Herb" && _statBatchDepth === 0) {
+                resolveWhiteHerb(mon);
             }
             // Mirror Herb: copy foe's stat boost (gated by Magic Room / Embargo / Klutz)
             let foeOfMon = (mon === state.pActive) ? state.fActive : state.pActive;
