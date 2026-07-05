@@ -24979,35 +24979,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Prankster: +1 to status moves; blocked by Dark-type targets
                     if (state.pActive.ability === "Prankster" && pMove.cat === "Status" && state.fActive.type1 !== "Dark" && state.fActive.type2 !== "Dark") pPri += 1;
                     if (state.fActive.ability === "Prankster" && fMove.cat === "Status" && state.pActive.type1 !== "Dark" && state.pActive.type2 !== "Dark") fPri += 1;
-                    // Custap Berry: one-time move-first within same priority bracket (+0.5 tiebreaker)
-                    if (state.pActive.volatile.custapReady) { pPri += 0.5; state.pActive.volatile.custapReady = false; }
-                    if (state.fActive.volatile.custapReady) { fPri += 0.5; state.fActive.volatile.custapReady = false; }
-                    // Quick Claw: ~20% chance to move first in priority bracket
+                    // pPri/fPri above are the INTEGER priority bracket (move priority + integer
+                    // ability mods: Triage, Gale Wings, Prankster, Max-Guard). The within-bracket
+                    // tiebreakers below (Custap, Quick Claw, Lagging Tail, Mycelium Might, Stall)
+                    // are accumulated SEPARATELY into pTie/fTie and only consulted when the two
+                    // integer brackets are equal — so they can only reorder mons already in the
+                    // SAME bracket and can never bleed into an adjacent bracket (a +1 Lagging-Tail
+                    // move still outspeeds a +0 Custap move; stacked Lagging Tail + Mycelium can't
+                    // drop a move into the bracket below).
+                    let pTie = 0, fTie = 0;
+                    // Custap Berry: one-time move-first within bracket
+                    if (state.pActive.volatile.custapReady) { pTie += 0.5; state.pActive.volatile.custapReady = false; }
+                    if (state.fActive.volatile.custapReady) { fTie += 0.5; state.fActive.volatile.custapReady = false; }
+                    // Quick Claw: ~20% chance to move first in bracket
                     const _toRng = storyAwareRng();
                     const _pItemActiveQC = state.magicRoom === 0 && !(state.pActive.volatile.embargo > 0) && state.pActive.ability !== "Klutz";
                     const _fItemActiveQC = state.magicRoom === 0 && !(state.fActive.volatile.embargo > 0) && state.fActive.ability !== "Klutz";
-                    if (_pItemActiveQC && state.pActive.item === "Quick Claw" && _toRng() < 0.2) { pPri += 0.4; logMsg(`${state.pActive.name}'s Quick Claw lets it move first!`, 'info'); }
-                    if (_fItemActiveQC && state.fActive.item === "Quick Claw" && _toRng() < 0.2) { fPri += 0.4; logMsg(`${state.fActive.name}'s Quick Claw lets it move first!`, 'info'); }
+                    if (_pItemActiveQC && state.pActive.item === "Quick Claw" && _toRng() < 0.2) { pTie += 0.4; logMsg(`${state.pActive.name}'s Quick Claw lets it move first!`, 'info'); }
+                    if (_fItemActiveQC && state.fActive.item === "Quick Claw" && _toRng() < 0.2) { fTie += 0.4; logMsg(`${state.fActive.name}'s Quick Claw lets it move first!`, 'info'); }
                     // Lagging Tail / Full Incense: forces holder to move last in bracket
-                    if (_pItemActiveQC && (state.pActive.item === "Lagging Tail" || state.pActive.item === "Full Incense")) pPri -= 0.5;
-                    if (_fItemActiveQC && (state.fActive.item === "Lagging Tail" || state.fActive.item === "Full Incense")) fPri -= 0.5;
+                    if (_pItemActiveQC && (state.pActive.item === "Lagging Tail" || state.pActive.item === "Full Incense")) pTie -= 0.5;
+                    if (_fItemActiveQC && (state.fActive.item === "Lagging Tail" || state.fActive.item === "Full Incense")) fTie -= 0.5;
                     // Mycelium Might: status moves go last in their priority bracket
-                    if (state.pActive.ability === "Mycelium Might" && pMove.cat === "Status") pPri -= 0.5;
-                    if (state.fActive.ability === "Mycelium Might" && fMove.cat === "Status") fPri -= 0.5;
+                    if (state.pActive.ability === "Mycelium Might" && pMove.cat === "Status") pTie -= 0.5;
+                    if (state.fActive.ability === "Mycelium Might" && fMove.cat === "Status") fTie -= 0.5;
                     // Stall: holder always moves last in its priority bracket.
-                    // -0.1 keeps it within-bracket (Mycelium Might -0.5 stacks for "last
-                    // status move at last priority"); a larger offset would bleed into
-                    // the bracket below (e.g. +1 with Stall sorting against +0 Quick Claw).
-                    if (state.pActive.ability === "Stall") pPri -= 0.1;
-                    if (state.fActive.ability === "Stall") fPri -= 0.1;
+                    if (state.pActive.ability === "Stall") pTie -= 0.1;
+                    if (state.fActive.ability === "Stall") fTie -= 0.1;
 
                     let pGoesFirst = true;
                     if (fPri > pPri) pGoesFirst = false;
                     else if (fPri === pPri) {
-                        // Trick Room reverses speed order within same priority bracket
-                        let tr = state.trickRoom > 0;
-                        if (tr ? (fSpe < pSpe) : (fSpe > pSpe)) pGoesFirst = false;
-                        else if (fSpe === pSpe) pGoesFirst = _toRng() > 0.5;
+                        // Same integer bracket → within-bracket tiebreakers, then Speed.
+                        if (fTie > pTie) pGoesFirst = false;
+                        else if (fTie === pTie) {
+                            // Trick Room reverses speed order within same priority bracket
+                            let tr = state.trickRoom > 0;
+                            if (tr ? (fSpe < pSpe) : (fSpe > pSpe)) pGoesFirst = false;
+                            else if (fSpe === pSpe) pGoesFirst = _toRng() > 0.5;
+                        }
                     }
 
                     if (pGoesFirst) { 
