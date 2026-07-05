@@ -109,17 +109,27 @@ test('narrow-pool fallback: fills with a 2nd same-type STAB / status rather than
   assert.ok(movesOf(recs).includes('Bulk Up'), 'the status move also takes a slot');
 });
 
-test('flex slot coverage-fills when status is not more popular, but shows status when it is the only option', () => {
-  // With a spare distinct-type coverage move available and zero usage everywhere,
-  // the tie goes to coverage — a pure attacker gets no unused status move.
-  const withSpareCoverage = ST.txMoveRecsByPurpose(
+test('flex slot on zero-usage species: KNOWN-GOOD status earns the 4th slot; junk status does not (overhaul R5)', () => {
+  // Zero-usage species used to tie-break to damage ALWAYS, so a fresh mon never
+  // saw Swords Dance / recovery suggested. New rule: once three damaging picks
+  // are in, a recognized-good status move (boost/recovery/support per the shared
+  // heuristic) takes the flex slot on a no-data species.
+  const withGoodStatus = ST.txMoveRecsByPurpose(
     ['Earthquake', 'Stone Edge', 'Iron Head', 'Poison Jab', 'Swords Dance'],
     synthMon('Ground', null, 150, 60), { m: [] }, NO_DATA);
-  assert.ok(!purposesOf(withSpareCoverage).includes('Status'), 'status is coverage-filled away on a tie');
-  assert.ok(withSpareCoverage.every((r) => catOf(r.move) !== 'Status'), 'all picks are damaging');
+  assert.ok(movesOf(withGoodStatus).includes('Swords Dance'),
+    'Swords Dance (known-good boost) earns the 4th slot over a redundant 4th coverage move');
+  assert.equal(withGoodStatus.filter((r) => catOf(r.move) !== 'Status').length, 3,
+    'still three damaging picks');
 
-  // Remove the spare coverage: now the only 4th option is the status move, so it
-  // takes the flex slot.
+  // Junk status control: an unrecognized status move never displaces coverage.
+  const withJunkStatus = ST.txMoveRecsByPurpose(
+    ['Earthquake', 'Stone Edge', 'Iron Head', 'Poison Jab', 'Sand Attack'],
+    synthMon('Ground', null, 150, 60), { m: [] }, NO_DATA);
+  assert.ok(!movesOf(withJunkStatus).includes('Sand Attack'), 'junk status is coverage-filled away');
+  assert.ok(withJunkStatus.every((r) => catOf(r.move) !== 'Status'), 'all picks are damaging');
+
+  // Status still fills when it is the only remaining option.
   const statusFills = ST.txMoveRecsByPurpose(
     ['Earthquake', 'Stone Edge', 'Iron Head', 'Swords Dance'],
     synthMon('Ground', null, 150, 60), { m: [] }, NO_DATA);

@@ -9,8 +9,12 @@
 >    the tutor/foe pool filter AND as a hard **battle-time clamp** (`_storyBattleBpCap` /
 >    `_STORY_VARPOW_CLAMP_EXEMPT`): a leaked over-cap move (voucher / preset / CSV /
 >    Return's 102) is clamped to the city cap at damage time. Variable-power moves
->    (Low Kick, Eruption, Flail, Gyro Ball, …) are exempt; **Return/Frustration are clamped.**
->    The tutor TIER gate (Inner/Unleashed/Guru = move CATEGORY) stays `tutor:[0,3,6]`.
+>    (Low Kick, Eruption, Flail, Gyro Ball, …) are ALSO clamped as of 1.6.1
+>    (`_STORY_VARPOW_CLAMP_EXEMPT` ships empty); **Return/Frustration are clamped.**
+>    The tutor TIER gate (Inner/Unleashed/Guru = move CATEGORY) stays `tutor:[0,3,6]`;
+>    as of the move-tutor overhaul, **Unleashed (C3) additionally unlocks Learnt
+>    STATUS moves** (player + foes, shared gate) and the starter's exemption is
+>    formalized as "same Natural filter, BP ≤ city cap + 20" (60-BP clamp floor kept).
 > 2. **4-tier Battle Dojo** (`NPC_STAGE_CITY.dojo` `[2,5,8]` → **`[1,4,6,8]`**):
 >    **White Belt C1** (basic abilities · berry items) → **Black Belt C4** (+Hidden
 >    abilities · +staple items) → **Master C6** (**all items unlocked**, abilities
@@ -114,7 +118,7 @@ four at badge 6** — Colress/City 7, see §2e — so every row with B ≥ 6 is 
 | 3 | 3 | **City1** | C1 | 0 | — | — | — | 2 | 0 | — | Gym unlocked. |
 | 4 | 4 | Battle · Gym Trainer 1 | C1 | 0 | 0/0/10/90 | T1 | 0.82 | 2 | 0 | 1850 | |
 | 5 | 5 | Battle · **Gym Leader 1** | C1 | 0 | 0/0/25/75 | T1 | 0.95 | 2 | 0 | 2350 | **→ Badge 1** (cap→3). Unlocks **Daycare**. Bundle: 3 Poké Balls, vitamins, 500G. |
-| 6 | 6 | City1 (post-gym) | C1 | 1 | — | — | — | 3 | 0 | — | No Professor (slot filled next city). |
+| 6 | 6 | City1 (post-gym) | C1 | 1 | — | — | — | 3 | 0 | — | (One Professor only — C0 starter; team growth from here is wild catches. The lone later professor-screen visit is the C8 legendary gate.) |
 | 7 | 7 | Battle · Basic Trainer | — | 1 | 0/0/25/75 | T1 | 0.92 | 3 | 0 | 1200 | THEMED: cursed. `firstWildRoute` on route between cities. |
 | 8 | 8 | Battle · Basic Trainer | — | 1 | 0/0/35/65 | T1 | 0.92 | 3 | 0 | 1200 | |
 | 9 | 9 | **City2** | C2 | 1 | — | — | — | 3 | 0 | — | Facilities debut: **Cable Link** (`firstCableLink`→`firstStoneSage`), **Evolution/Stone Sage**, **Stone Emporium**. Free Stonewise Token. |
@@ -207,7 +211,7 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 | Gym Leader N | N≥8→**T4**, N≥6→T3, N≥3→T2, else T1 | T1→T4 |
 | E1–E4 / Champion / Victory Road / Mystery | always **T4** | T4 |
 | anything @ badges≥8 | T4 | T4 |
-| Professor gift | matches floor: b≥8→T4, b≥5→T3, b≥2→T2, else T1 (`_storyBuildTierForProfessor` `33540`) | |
+| Professor gift (C0 starter · C8 legendary only) | matches floor: b≥8→T4, b≥5→T3, b≥2→T2, else T1 (`_storyBuildTierForProfessor`) | |
 
 ### 2c. gradeWeights transforms (applied in order before use)
 1. **Difficulty** `applyDifficultyToGradeWeights`: **veryeasy g1×0.80/g4×1.20** (its own gentler skew, distinct from easy); easy g1×0.88/g4×1.12; hard g1×1.12/g4×0.88; challenge g1×1.20/g4×0.80. **Universal nerf:** 8% g1 + 4% g2 → g3. *(2026-06 retune: VE split off from easy; kaizo tiers nudged one notch harder.)*

@@ -35,11 +35,14 @@ Awakened-count distribution:
 
 ## Battle Dojo tier reminder
 
+(4-belt ladder, `NPC_STAGE_CITY.dojo = [1,4,6,8]` — see PROGRESSION_CURVE_MASTER 1.6.0 note.)
+
 | Tier | Stage | Items shown | Abilities shown | Cost (basic / hidden / awakened) |
 |---|---|---|---|---|
-| L1 · White Belt | City 2 | Berries (unlocked); higher tiers locked | Basic (unlocked); Hidden + Awakened **shown locked** | 2 000 G · — · — |
-| L2 · Black Belt | City 5 | Berries + decent staples; best items locked | Basic + Hidden (unlocked); Awakened **shown locked** | 2 000 G · 3 000 G · — |
-| L3 · Grandmaster | City 8 | All items | All abilities | 2 000 G · 3 000 G · 5 000 G |
+| L1 · White Belt | City 1 | Tier-1 (berries, type-boosters); higher tiers locked | Basic (unlocked); Hidden + Awakened **shown locked** | 2 000 G · — · — |
+| L2 · Black Belt | City 4 | + Tier-2 staples (Leftovers, Boots, AV, …); best items locked | Basic + Hidden (unlocked); Awakened **shown locked** | 2 000 G · 3 000 G · — |
+| L3 · Master | City 6 | All items | Basic + Hidden; Awakened **shown locked** | 2 000 G · 3 000 G · — |
+| L4 · Grandmaster | City 8 | All items | All abilities | 2 000 G · 3 000 G · 5 000 G |
 
 ## Spot-checks on iconic species
 

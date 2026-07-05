@@ -22,15 +22,15 @@ function freshSide() {
 }
 
 // Install a full battle state so the AI closures (state.foeParty / pSide / weather …) resolve.
-function setState(eng, { fActive, pActive, foeParty, playerParty, weather = null, trickRoom = 0, mode = 'pve', turnNumber = 3 }) {
+function setState(eng, { fActive, pActive, foeParty, playerParty, weather = null, trickRoom = 0, mode = 'pve', turnNumber = 3, terrain = null }) {
   eng.engine.state = {
     mode, turnNumber, score: 0,
     playerParty: playerParty || [pActive],
     foeParty: foeParty || [fActive],
     pActive, fActive,
     isOver: false, isLocked: false,
-    weather, weatherTurns: weather ? 5 : 0, terrain: null, terrainTurns: 0, trickRoom,
-    fieldLastMove: null,
+    weather, weatherTurns: weather ? 5 : 0, terrain, terrainTurns: terrain ? 5 : 0, trickRoom,
+    fieldLastMove: null, gravity: 0, magicRoom: 0,
     pSide: freshSide(), fSide: freshSide(),
     currentPlayer: 1, p1Action: null, p2Action: null,
   };
@@ -201,4 +201,131 @@ test('getBestMove: does not loop a setup move into an active phazer', async () =
   const pick = engine.getBestMove(dnite, skarm);
   assert.notEqual(pick.name, 'Dragon Dance', 'AI should not loop Dragon Dance into a Whirlwind user');
   assert.equal(pick.name, 'Extreme Speed', `Expected the priority attack vs a phazer, got ${pick.name}`);
+});
+
+// === Enemy-bot nuance: conditional-move preconditions & ability/field immunities (2026-07) ===
+// Regression guards for ISSUE-006/007/008 — the AI scorer must mirror the engine gates so it never
+// clicks a move the engine then fails ("But it failed!" / wasted turn / heals the foe).
+
+test('getBestMove: does not pick Last Resort while sibling moves are unused', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Turn 1, empty moveHistory: the engine fails Last Resort until every other move has been used.
+  const lax = mkMon({ species: 'Snorlax', moves: ['Last Resort', 'Crunch', 'Earthquake', 'Body Slam'] });
+  const target = mkMon({ species: 'Furret', moves: ['Body Slam', 'Knock Off', 'U-turn', 'Coil'] });
+  setState(eng, { fActive: lax, pActive: target, turnNumber: 1 });
+  const pick = engine.getBestMove(lax, target).name;
+  assert.notEqual(pick, 'Last Resort', `Last Resort must not be picked with unused siblings, got ${pick}`);
+});
+
+test('getBestMove: does not click Earthquake into an Earth Eater target (would heal the foe)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const chomp = mkMon({ species: 'Garchomp', moves: ['Earthquake', 'Scale Shot', 'Fire Fang', 'Swords Dance'] });
+  const wall = mkMon({ species: 'Orthworm', ability: 'Earth Eater', moves: ['Iron Head', 'Body Press', 'Coil', 'Rest'] });
+  setState(eng, { fActive: chomp, pActive: wall });
+  const eq = chomp.moves.find(m => m.name === 'Earthquake');
+  assert.equal(engine.aiEstimateDmg(chomp, wall, eq), 0, 'Earthquake vs Earth Eater must estimate 0');
+  assert.notEqual(engine.getBestMove(chomp, wall).name, 'Earthquake', 'AI must not click EQ into Earth Eater');
+});
+
+test('getBestMove: treats an Air Balloon holder as Ground-immune', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const chomp = mkMon({ species: 'Garchomp', moves: ['Earthquake', 'Scale Shot', 'Fire Fang', 'Swords Dance'] });
+  const heatran = mkMon({ species: 'Heatran', item: 'Air Balloon', moves: ['Magma Storm', 'Earth Power', 'Taunt', 'Protect'] });
+  setState(eng, { fActive: chomp, pActive: heatran });
+  const eq = chomp.moves.find(m => m.name === 'Earthquake');
+  assert.equal(engine.aiEstimateDmg(chomp, heatran, eq), 0, 'Earthquake vs Air Balloon must estimate 0');
+  assert.notEqual(engine.getBestMove(chomp, heatran).name, 'Earthquake', 'AI must not click EQ into Air Balloon');
+});
+
+test('getBestMove: does not use Spore into a sleep-immune ability', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const breloom = mkMon({ species: 'Breloom', moves: ['Spore', 'Mach Punch', 'Bullet Seed', 'Swords Dance'] });
+  const insomniac = mkMon({ species: 'Noctowl', ability: 'Insomnia', moves: ['Hyper Voice', 'Roost', 'Defog', 'Heat Wave'] });
+  setState(eng, { fActive: breloom, pActive: insomniac });
+  assert.notEqual(engine.getBestMove(breloom, insomniac).name, 'Spore', 'AI must not Spore an Insomnia mon');
+});
+
+test('getBestMove: Spore is blocked by a Grass-type target (powder immunity, full block not a soft penalty)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const breloom = mkMon({ species: 'Breloom', moves: ['Spore', 'Seed Bomb', 'Swords Dance', 'Protect'] });
+  const grass = mkMon({ species: 'Cradily', moves: ['Recover', 'Giga Drain', 'Stealth Rock', 'Toxic'] });
+  setState(eng, { fActive: breloom, pActive: grass });
+  assert.notEqual(engine.getBestMove(breloom, grass).name, 'Spore', 'Spore must not be used on a Grass-type');
+});
+
+test('getBestMove: does not use a foe-targeting status move into Good as Gold', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const bliss = mkMon({ species: 'Blissey', moves: ['Will-O-Wisp', 'Flamethrower', 'Seismic Toss', 'Soft-Boiled'] });
+  const gold = mkMon({ species: 'Gholdengo', ability: 'Good as Gold', moves: ['Shadow Ball', 'Nasty Plot', 'Recover', 'Thunderbolt'] });
+  setState(eng, { fActive: bliss, pActive: gold });
+  assert.notEqual(engine.getBestMove(bliss, gold).name, 'Will-O-Wisp', 'AI must not WoW into Good as Gold');
+});
+
+test('getBestMove: does not use Fake Out into a priority-blocking ability', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const mien = mkMon({ species: 'Mienshao', moves: ['Fake Out', 'Close Combat', 'U-turn', 'Knock Off'] });
+  mien.fakeOutOk = true;
+  const queen = mkMon({ species: 'Tsareena', ability: 'Queenly Majesty', moves: ['Power Whip', 'U-turn', 'Synthesis', 'Rapid Spin'] });
+  setState(eng, { fActive: mien, pActive: queen, turnNumber: 1 });
+  assert.notEqual(engine.getBestMove(mien, queen).name, 'Fake Out', 'Fake Out must not be picked vs Queenly Majesty');
+});
+
+test('getBestMove: does not use priority into Psychic Terrain vs a grounded target', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const dnite = mkMon({ species: 'Dragonite', moves: ['Extreme Speed', 'Dragon Claw', 'Roost', 'Dragon Dance'] });
+  dnite.currentHp = Math.floor(dnite.maxHp * 0.3);
+  const indeedee = mkMon({ species: 'Indeedee', moves: ['Expanding Force', 'Psychic', 'Calm Mind', 'Healing Wish'] });
+  indeedee.currentHp = Math.floor(indeedee.maxHp * 0.25);
+  setState(eng, { fActive: dnite, pActive: indeedee, terrain: 'Psychic' });
+  assert.notEqual(engine.getBestMove(dnite, indeedee).name, 'Extreme Speed', 'Priority must not be used into Psychic Terrain');
+});
+
+test('getBestMove: a sleeping mon picks Sleep Talk instead of a move it cannot use', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const lax = mkMon({ species: 'Snorlax', moves: ['Rest', 'Sleep Talk', 'Body Slam', 'Crunch'] });
+  lax.status = 'SLP'; lax.statusTurns = 0; lax.sleepDuration = 2;
+  const skarm = mkMon({ species: 'Skarmory', moves: ['Spikes', 'Roost', 'Whirlwind', 'Brave Bird'] });
+  setState(eng, { fActive: lax, pActive: skarm });
+  const pick = engine.getBestMove(lax, skarm).name;
+  assert.ok(pick === 'Sleep Talk' || pick === 'Snore', `Asleep mon must use Sleep Talk/Snore, got ${pick}`);
+});
+
+test('getBestMove: does not use Dream Eater on an awake target', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const hypno = mkMon({ species: 'Hypno', moves: ['Dream Eater', 'Psychic', 'Protect', 'Nasty Plot'] });
+  const slow = mkMon({ species: 'Slowbro', moves: ['Scald', 'Slack Off', 'Calm Mind', 'Psyshock'] });
+  setState(eng, { fActive: hypno, pActive: slow });
+  assert.notEqual(engine.getBestMove(hypno, slow).name, 'Dream Eater', 'Dream Eater must not be used on an awake target');
+});
+
+test('parseMoveEffects gate: Poltergeist fails against an itemless target', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Belch's precondition sibling — assert the AI precondition path zeroes Poltergeist vs no item.
+  const gholdengo = mkMon({ species: 'Gholdengo', moves: ['Poltergeist', 'Make It Rain', 'Nasty Plot', 'Recover'] });
+  const itemless = mkMon({ species: 'Furret', moves: ['Body Slam', 'Knock Off', 'U-turn', 'Coil'] });
+  itemless.item = null;
+  setState(eng, { fActive: gholdengo, pActive: itemless });
+  assert.notEqual(engine.getBestMove(gholdengo, itemless).name, 'Poltergeist', 'Poltergeist must not be used vs an itemless target');
 });

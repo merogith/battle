@@ -6,9 +6,10 @@
 > Assault Vest → tier 2; snowball items stay tier 3; belt unlocks stay C2/C5/C8; resist
 > berry surfaces for any ≥2× worst weakness (4× preferred). Foe parity is automatic
 > (§2) and covered by a regression test. See tests/suites/story-dojo-item-recs.test.js.
-> NOTE: Eviolite → tier 1 means early NFE foes (Chansey/Porygon2/…) can keep Eviolite at
-> White Belt via the mirror — flip it back to tier 2 (remove from `_DOJO_ITEM_TIER1`) if
-> early fights feel too bulky.
+> NOTE (resolved): Eviolite shipped at **tier 2** (the flip-back below was taken —
+> `story-dojo-item-recs.test.js` asserts tier 2). Original option kept for history:
+> Eviolite → tier 1 would mean early NFE foes (Chansey/Porygon2/…) keep Eviolite at
+> White Belt via the mirror.
 
 ## 1. Goals
 

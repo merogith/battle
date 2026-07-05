@@ -6,13 +6,19 @@
 //
 // Run: node --test tests/suites/camp-microgames-30.test.js
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
+
+// The countdown test below intentionally exercises the REAL countdown path,
+// which chains into a live microgame loop (intervals) that never receives
+// input. Close the jsdom window when the suite ends so those timers are torn
+// down — without this, `node --test` (sans --test-force-exit) hangs forever.
+after(() => { try { W.close(); } catch (e) {} });
 
 const PRIMITIVES = [
     'tapTiming', 'holdRelease', 'mash', 'pickMatch', 'dragAim', 'swipeCover', 'track',

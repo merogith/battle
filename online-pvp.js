@@ -579,6 +579,17 @@
                 try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
             }
             channel = null;
+            // removeChannel only unsubscribes the room channel — the cached client's
+            // underlying Realtime websocket (and its heartbeat) stays open for the whole
+            // session otherwise, leaking a live connection per match. Tear the socket down
+            // and drop the cached client so the next room create/join builds a fresh one.
+            try {
+                if (sb) {
+                    if (typeof sb.removeAllChannels === 'function') sb.removeAllChannels();
+                    if (sb.realtime && typeof sb.realtime.disconnect === 'function') sb.realtime.disconnect();
+                }
+            } catch (e) { /* best-effort cleanup */ }
+            client = null;
             roomId = null;
             roomCode = null;
             role = null;

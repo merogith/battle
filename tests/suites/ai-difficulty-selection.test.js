@@ -120,7 +120,11 @@ test('Selection is deterministic under a seeded RNG (replay integrity)', async (
   const choose = (seed) => {
     const attacker = mkMon({ species: 'Charizard', moves: ['Flamethrower', 'Pound', 'Quick Attack', 'Tackle'] });
     const target = mkMon({ species: 'Venusaur', moves: ['Tackle', 'Tackle', 'Tackle', 'Tackle'] });
-    setState(eng, { fActive: attacker, pActive: target });
+    // Replay integrity is a STORY-battle guarantee — AI move choice draws from the seeded
+    // story stream only in a story battle (mode='story'). In a non-story battle (Quick
+    // Battle / Gauntlet / PvP) the selector deliberately uses native RNG so a quick match
+    // can't advance the persisted story replay stream, so pin the story context here.
+    setState(eng, { fActive: attacker, pActive: target, mode: 'story' });
     seedRng(eng, seed);
     return eng.engine.getBestMove(attacker, target).name;
   };
