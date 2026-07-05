@@ -7,7 +7,7 @@ file: battle.html
 agents: [enemy-bot-ai-session]
 fingerprint: ecd0ce7d7e85
 confidence: high
-status: open
+status: fixed-claude/enemy-bot-ai-optimization-i394cm
 ---
 
 **Title**: AI scores conditional moves as unconditional — picks moves the engine then fails (Last Resort, Sucker Punch, Focus Punch, Dream Eater, Belch…)
@@ -42,7 +42,7 @@ file: battle.html
 agents: [enemy-bot-ai-session]
 fingerprint: ffb290c2474a
 confidence: high
-status: open
+status: fixed-claude/enemy-bot-ai-optimization-i394cm
 ---
 
 **Title**: AI damage-immunity table drifted from engine — misses Earth Eater, Well-Baked Body, Wind Rider, Air Balloon, Magnet Rise/Telekinesis
@@ -76,7 +76,7 @@ file: battle.html
 agents: [enemy-bot-ai-session]
 fingerprint: 6e93983e0799
 confidence: high
-status: open
+status: fixed-claude/enemy-bot-ai-optimization-i394cm
 ---
 
 **Title**: AI status-move blocking misses Good as Gold, the whole applyStatus immunity-ability table, and terrain/field blocks
@@ -112,7 +112,7 @@ file: battle.html
 agents: [enemy-bot-ai-session]
 fingerprint: 5253abacd5f7
 confidence: high
-status: open
+status: fixed-claude/enemy-bot-ai-optimization-i394cm
 ---
 
 **Title**: AI ignores priority blockers — Fake Out into Queenly Majesty/Dazzling/Armor Tail, priority into Psychic Terrain
@@ -143,7 +143,7 @@ file: battle.html
 agents: [enemy-bot-ai-session]
 fingerprint: 1444980bfe73
 confidence: high
-status: open
+status: fixed-claude/enemy-bot-ai-optimization-i394cm
 ---
 
 **Title**: Sleeping bot never clicks Sleep Talk/Snore — wastes every sleep turn despite holding the counter-play
@@ -172,7 +172,7 @@ file: battle.html
 agents: [enemy-bot-ai-session]
 fingerprint: ee024174f8a3
 confidence: medium
-status: open
+status: fixed-claude/enemy-bot-ai-optimization-i394cm
 ---
 
 **Title**: Poltergeist has no engine precondition — hits itemless targets (Showdown: fails without a held item)
