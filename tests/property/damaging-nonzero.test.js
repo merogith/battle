@@ -28,6 +28,7 @@ const NEEDS_CONTEXT = new Set([
   'Revenge', 'Avalanche', 'Assurance', // require being hit first
   'Focus Punch', // charges turn first
   'Beat Up',     // depends on full party
+  'Poltergeist', // fails unless the target holds an item (item-less dummy defender = 0 dmg)
   'Magnitude',   // RNG roll for BP, can roll 1 BP = ok but test wants neutral
   'Endeavor',    // sets HP equal; if attacker has more HP, fails
   'Aura Wheel', 'Hyperspace Fury', // species-locked per Showdown (Morpeko / Hoopa-Unbound)

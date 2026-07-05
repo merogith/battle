@@ -1495,7 +1495,8 @@ describe('Physical moves', () => {
 
   it('Poltergeist' + ' [110 BP Ghost Physical]', async () => {
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Poltergeist', 'Splash', 'Splash', 'Splash'] });
-    const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    // Poltergeist fails unless the target is holding an item — give the defender one.
+    const defender = mkMon({ species: 'Sceptile', ability: 'None', item: 'Leftovers', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
     const beforeHp = defender.currentHp;
     await runTurn({ playerMon: attacker, foeMon: defender });
     assert.ok(defender.currentHp < beforeHp, 'Poltergeist should reduce defender HP');
