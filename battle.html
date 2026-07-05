@@ -24918,25 +24918,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_pIsProtect) state.pActive.volatile.protectCount = 0;
                     if (!_fIsProtect) state.fActive.volatile.protectCount = 0;
 
-                    // VGC fidelity: Mega Evolution is declared with move selection and resolves
-                    // BEFORE the turn-order speed comparison. Activate any pending mega here so
-                    // the post-mega Speed stat governs this turn's order (and Mega Lopunny /
-                    // Manectric / Beedrill actually function as designed).
+                    // VGC fidelity: Mega Evolution, Dynamax, and Terastallization are all declared
+                    // with move selection and resolve at the START of the turn — BEFORE the
+                    // turn-order speed comparison AND before either Pokémon's move. Activating them
+                    // here (rather than lazily when the queued mon finally takes its own action in
+                    // performAction) is what lets a SLOWER gimmick user gain its benefit before a
+                    // faster foe hits it: post-mega Speed (Mega), doubled HP (Dynamax), or the new
+                    // defensive typing (Tera). Z-moves are the exception — their activation is bound
+                    // to the move itself, so they stay in performAction. The faster trainer's gimmick
+                    // is announced first (Speed at this point is pre-gimmick; none of the three change
+                    // Speed except Mega, and both resolve before the order calc below either way).
                     {
-                        const _pMegaPending = resolveGimmickIntentForActive(true) === 'MEGA';
-                        const _fMegaPending = resolveGimmickIntentForActive(false) === 'MEGA';
-                        const _canPMega = _pMegaPending && state.pActive.buildData && state.pActive.buildData.gimmick === 'MEGA'
-                            && !state.pActive.megaEvolved && (!settings.classicMode || !state.usedMega);
-                        const _canFMega = _fMegaPending && state.fActive.buildData && state.fActive.buildData.gimmick === 'MEGA'
-                            && !state.fActive.megaEvolved && (!settings.classicMode || !state.fUsedMega);
-                        // Resolve faster-trainer first for visual order (matches canon: faster
-                        // trainer's mega is announced first). Speed at this point is pre-mega.
+                        // True if this side has a pending START-OF-TURN gimmick that is currently legal.
+                        const _canStartGimmick = (isP1) => {
+                            const mon = isP1 ? state.pActive : state.fActive;
+                            const pend = resolveGimmickIntentForActive(isP1);
+                            if (pend === 'MEGA') return !!(mon.buildData && mon.buildData.gimmick === 'MEGA' && !mon.megaEvolved && (!settings.classicMode || !(isP1 ? state.usedMega : state.fUsedMega)));
+                            if (pend === 'DYNAMAX' || pend === 'GMAXDYNAMAX') return !!(mon.buildData && (mon.buildData.gimmick === 'DYNAMAX' || mon.buildData.gimmick === 'GMAXDYNAMAX') && !mon.dynamaxed && !mon.dynamaxUsed && (!settings.classicMode || !(isP1 ? state.usedDyna : state.fUsedDyna)));
+                            if (pend === 'TERA') return !!(mon.buildData && mon.buildData.teraType && !mon.teraActivated && (!settings.classicMode || !(isP1 ? state.usedTera : state.fUsedTera)));
+                            return false; // ZMOVE (move-bound) or no intent
+                        };
+                        const _doStartGimmick = (isP1) => {
+                            const mon = isP1 ? state.pActive : state.fActive;
+                            const pend = resolveGimmickIntentForActive(isP1);
+                            if (pend === 'MEGA') { if (!mon.megaEvolved) activateMega(mon, isP1); }
+                            else if (pend === 'DYNAMAX' || pend === 'GMAXDYNAMAX') { if (!mon.dynamaxed) activateDynamax(mon, isP1); }
+                            else if (pend === 'TERA') { if (!mon.teraActivated) activateTera(mon, isP1); }
+                            clearGimmickIntent(isP1);
+                        };
+                        const _pGim = _canStartGimmick(true);
+                        const _fGim = _canStartGimmick(false);
+                        // Resolve faster-trainer first for visual order (matches canon). Speed here is
+                        // pre-gimmick; the authoritative turn-order Speed is recomputed just below.
                         const _preW = getCurrentWeather();
-                        const _preP = _canPMega ? getEffectiveSpeed(state.pActive, _preW) : -1;
-                        const _preF = _canFMega ? getEffectiveSpeed(state.fActive, _preW) : -1;
+                        const _preP = _pGim ? getEffectiveSpeed(state.pActive, _preW) : -1;
+                        const _preF = _fGim ? getEffectiveSpeed(state.fActive, _preW) : -1;
                         const _pFirst = _preP >= _preF;
-                        const _doP = () => { if (_canPMega) { activateMega(state.pActive, true); clearGimmickIntent(true); } };
-                        const _doF = () => { if (_canFMega) { activateMega(state.fActive, false); clearGimmickIntent(false); } };
+                        const _doP = () => { if (_pGim) _doStartGimmick(true); };
+                        const _doF = () => { if (_fGim) _doStartGimmick(false); };
                         if (_pFirst) { _doP(); _doF(); } else { _doF(); _doP(); }
                     }
 
