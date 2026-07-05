@@ -1,13 +1,17 @@
 // Professor city-0-only (2026-06): the multi-city Professor partner-gift design was
 // cut. The Professor now appears ONLY in City 0 and gives just the starter; later
-// cities grow the team via wild catches / tall grass. The one remaining forced
-// lab-style visit is the City-8 post-Gym-8 Mystery Figure legendary gate.
+// cities grow the team via wild catches / tall grass.
+//
+// 2026-07 (Mystery Figure rework): the one remaining forced lab-style visit — the
+// City-8 post-Gym-8 "legendary gate" — was removed too. The Mystery Figure no
+// longer gifts a legendary or blocks Victory Road; its City-8 presence is the
+// OPTIONAL first-encounter challenge (see mystery-figure-first-encounter.test.js).
 //
 // These tests lock that in so a future edit can't silently re-introduce a Professor
-// partner in cities 1+:
+// partner in cities 1+ or a forced City-8 visit:
 //   - STORY_EVENTS_RAW lists 'Professor' on the City-0 row only (among City rows).
-//   - shouldForceCityProfessor forces a visit ONLY for the City-8 legendary gate.
-//   - isPreLeagueLegendaryMysteryGate stays scoped to City 8 at 8 badges.
+//   - The gate helpers (shouldForceCityProfessor / isPreLeagueLegendaryMysteryGate /
+//     pickStoryLegendaryFromGens) are gone from the test surface.
 //
 // Run: node --test tests/suites/professor-city0-only.test.js
 
@@ -49,39 +53,10 @@ test('STORY_EVENTS_RAW: the City-0 starter Professor is preserved', () => {
     );
 });
 
-test('shouldForceCityProfessor: never forces a Professor in cities 1-7 or 9', () => {
-    for (const c of [1, 2, 3, 4, 5, 6, 7, 9]) {
-        assert.equal(
-            ST.shouldForceCityProfessor(c, []),
-            false,
-            `City ${c} must not force a Professor visit`,
-        );
-    }
-});
-
-test('shouldForceCityProfessor: City-8 only forces a visit once 8 badges are earned', () => {
-    const prevBadges = ST.sm.badges;
-    try {
-        ST.sm.badges = 0;
-        assert.equal(ST.shouldForceCityProfessor(8, []), false, 'pre-8-badges City 8 forces nothing');
-        ST.sm.badges = 8;
-        assert.equal(ST.shouldForceCityProfessor(8, []), true, 'post-Gym-8 City 8 forces the Mystery Figure gate');
-    } finally {
-        ST.sm.badges = prevBadges;
-    }
-});
-
-test('isPreLeagueLegendaryMysteryGate: scoped to City 8 at 8 badges', () => {
-    const prevBadges = ST.sm.badges;
-    try {
-        ST.sm.badges = 8;
-        assert.equal(ST.isPreLeagueLegendaryMysteryGate(8), true, 'City 8 @ 8 badges is the gate');
-        for (const c of [0, 1, 5, 7, 9]) {
-            assert.equal(ST.isPreLeagueLegendaryMysteryGate(c), false, `City ${c} is not the legendary gate`);
-        }
-        ST.sm.badges = 7;
-        assert.equal(ST.isPreLeagueLegendaryMysteryGate(8), false, 'City 8 @ <8 badges is not yet the gate');
-    } finally {
-        ST.sm.badges = prevBadges;
-    }
+test('legendary-gate helpers are fully removed from the story surface', () => {
+    assert.equal(ST.shouldForceCityProfessor, undefined, 'shouldForceCityProfessor removed');
+    assert.equal(ST.isPreLeagueLegendaryMysteryGate, undefined, 'isPreLeagueLegendaryMysteryGate removed');
+    assert.equal(ST.pickStoryLegendaryFromGens, undefined, 'pickStoryLegendaryFromGens removed');
+    assert.equal(ST.preLeagueLegendaryGate, undefined, 'preLeagueLegendaryGate export removed');
+    assert.equal(ST.profLegendaryMysteryMode, undefined, 'profLegendaryMysteryMode export removed');
 });

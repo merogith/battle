@@ -2805,6 +2805,36 @@
             color: #ffe082; font-size: 12px; max-width: 520px; text-align: center;
             font-style: italic; line-height: 1.55;
         }
+        /* Two-stage roaming sighting (2026-07): Signs stage shows the legend as a
+           drifting silhouette; the Reveal stage cuts in with a white flash + a
+           short shake before the existing golden pulse takes over. */
+        .story-legend-sighting-sprite--silhouette {
+            filter: brightness(0) drop-shadow(0 0 18px rgba(130, 140, 190, 0.45));
+            animation: storyLegendDrift 3.2s ease-in-out infinite;
+        }
+        @keyframes storyLegendDrift {
+            0%, 100% { transform: translateX(0) scale(1); opacity: 0.82; }
+            50%      { transform: translateX(10px) scale(1.03); opacity: 1; }
+        }
+        .story-legend-sighting--shake { animation: storyLegendShake 500ms ease-out; }
+        @keyframes storyLegendShake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-6px, 2px); }
+            40% { transform: translate(5px, -3px); }
+            60% { transform: translate(-4px, 2px); }
+            80% { transform: translate(3px, -1px); }
+        }
+        .story-legend-sighting-flash {
+            position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none;
+            animation: storyLegendFlash 700ms ease-out;
+        }
+        @keyframes storyLegendFlash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+            .story-legend-sighting-sprite,
+            .story-legend-sighting-sprite--silhouette { animation: none; }
+            .story-legend-sighting--shake { animation: none; }
+            .story-legend-sighting-flash { animation: none; opacity: 0; }
+        }
         .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
@@ -9676,7 +9706,7 @@
                 <summary>Developer / Story tools</summary>
                 <div class="settings-dev-inner">
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.openTeamTester();">Story team tester</button>
-                    <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.seedDebugMysteryLegendGate && window.StoryMode.seedDebugMysteryLegendGate();" title="localhost or ?debugMystery=1 — City8, 8 badges, full party, then open Mystery Figure">Debug: Mystery legend gate</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.seedDebugMysteryFirstEncounter && window.StoryMode.seedDebugMysteryFirstEncounter();" title="localhost or ?debugMystery=1 — City8, 8 badges, full party, then approach the Mystery Figure first encounter">Debug: Mystery first encounter</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startKoBugTestBattle==='function' && window.startKoBugTestBattle();" title="Opens ?kobugtest=1 sandbox: SR on your field, 2x Shedinja bench (die on switch), Machamp foe — use to repro faint / pendingEoT bugs.">Debug: KO / hazard test</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startChampionTestBattle==='function' && window.startChampionTestBattle('steven');" title="Same as battle.html?championtest=1 — random strong 6 vs Steven’s squad; Mega+Dyna on for builds.">Debug: Champion test (Steven)</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.seedStoryChampionWeakTestFromUrl==='function' && window.StoryMode.seedStoryChampionWeakTestFromUrl();" title="Same as ?storychampionweak=1 — story mode, Champion event, strong team vs weak foe (overwrites story save).">Debug: Story Champion (weak foe)</button>
@@ -10400,6 +10430,7 @@
             <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
                 <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
                 <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
+                <button type="button" id="story-gameover-btn-mystery-accept" onclick="window.StoryMode.acceptMysteryLossAndContinue()" style="display:none;padding:14px;color:#b39ddb;border-color:#b39ddb;font-weight:bold;">Accept the Loss</button>
                 <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
                 <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Delete Run</button>
             </div>
@@ -39617,6 +39648,60 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The board with the two lists gets taken down for repainting and goes back up blank. You kept your own copy of the small list. You're keeping a lot of lists now. Someday, you tell yourself, the lists will be for something. Today they're just for not forgetting." ] }
                             ]
                   },
+                  "main.mfFirst": {
+                            "title": "The Figure at the Edge",
+                            "body": "City 8, after Gym 8. The Mystery Figure waits where the road tips toward Victory Road. Optional first encounter - talk past them, or take the fight they are offering. The fight is a wall: full grade-1 roll, meant to be lost, still winnable.",
+                            "acts": [
+                                { "phase": "intro", "tone": "mystery", "nameplate": "The City's Edge", "lines": [
+                                    "A figure stands where the road tips toward Victory Road - masked, still, unhurried in a way that reads less like patience and more like practice.",
+                                    "They don't ask your name. They look at your badge case instead, like they already know the weight of it." ] },
+                                { "phase": "development", "tone": "mystery", "speaker": "???", "lines": [
+                                    "\"Eight badges. The road behind you is full of trainers who also had eight badges, once. Most of them you'll never hear about again.\"",
+                                    "\"I stand at ends of roads and I sort. The road ahead doesn't need more almosts.\"" ] },
+                                { "phase": "climax", "tone": "mystery", "speaker": "???",
+                                    "lines": [ "\"Prove you're not one of them - here, now, nothing at stake but the knowing. Or walk on. The gate isn't mine to hold. Not anymore.\"" ],
+                                    "choice": {
+                                        "persistKey": "main.mfFirst.approach",
+                                        "options": [
+                                            { "label": "Prove it. Battle me.", "value": "fight", "reply": [
+                                                "\"Good answer. Wrong, probably. But good.\"",
+                                                "They step back, and the air over the road goes tight - like the route itself inhaled." ] },
+                                            { "label": "Who are you to sort anyone?", "value": "walk", "reply": [
+                                                "\"Someone who has watched a hundred of you make it exactly this far.\" They step aside, unbothered, the way a door is unbothered.",
+                                                "\"Walk on, then. We'll finish this conversation at the end of the road. We always do.\"" ] }
+                                        ]
+                                    }
+                                }
+                            ]
+                  },
+                  "main.mfFirstReturn": {
+                            "title": "Still at the Edge",
+                            "body": "Re-approach after declining or losing the City-8 first encounter. Opening act branches on main.mfFirst.result (lost / declined / won-less default). Retakeable, no stakes.",
+                            "acts": [
+                                { "phase": "intro", "tone": "mystery", "speaker": "???", "branches": [
+                                    { "when": { "key": "main.mfFirst.result", "eq": "lost" }, "lines": [
+                                        "The figure is exactly where you left them, as if the city moved and they didn't.",
+                                        "\"Back again. That's the part that matters. The wall doesn't move - you do.\"" ] },
+                                    { "when": { "key": "main.mfFirst.result", "eq": "declined" }, "lines": [
+                                        "The figure hasn't moved. Waiting doesn't seem to cost them anything.",
+                                        "\"Reconsidered? The road ahead is honest about what it does to the unproven. I'm just earlier.\"" ] },
+                                    { "lines": [
+                                        "The figure at the city's edge inclines their head - no greeting, just acknowledgment." ] }
+                                ] },
+                                { "phase": "climax", "tone": "mystery", "speaker": "???",
+                                    "lines": [ "\"So. Here we still are.\"" ],
+                                    "choice": {
+                                        "persistKey": "main.mfFirst.approach",
+                                        "options": [
+                                            { "label": "Battle me.", "value": "fight", "reply": [
+                                                "\"Then stand where you stood.\" The road inhales again." ] },
+                                            { "label": "Not today.", "value": "walk", "reply": [
+                                                "\"There's no today out here. Only the end of the road, and how you arrive at it.\"" ] }
+                                        ]
+                                    }
+                                }
+                            ]
+                  },
                   "main.mfBattle": {
                             "title": "You're Going To Win This One",
                             "body": "The figure's team is YOUR PARTY at Hall of Fame plus one extra slot - a slightly stronger version of your starter. Pre-fight - 'You're going to win this one. The next one too. That's the problem.' Mechanic - HP-Threshold Phases + Immunity Round + Field Lock matched to YOUR starter's type. Post-fight - a long silence.",
@@ -39643,6 +39728,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     "The face under it is yours. Older. Tired in a way that isn't about sleep. Scarred in places you aren't, yet." ] },
                                 { "phase": "development", "lines": [
                                     "'I am The First,' they say. 'You become me. And every time you do, a world is born that was not there before.'" ] },
+                                { "phase": "development", "branches": [
+                                    { "when": { "key": "main.mfFirst.result", "eq": "won" }, "lines": [
+                                        "'Every run ever played is a universe. There are more Professor Oaks than there are stars, more Champions, more of you. Someone has to stand at the end of every road and sort — pass the ones who can beat themselves at their best, stop the ones the next road would eat alive.'",
+                                        "'That someone is us. At the city's edge you beat my wall; today you beat my mirror. Both halves of the exam. Almost no branch passes both.'" ] },
+                                    { "when": { "key": "main.mfFirst.result", "eq": "lost" }, "lines": [
+                                        "'Every run ever played is a universe. There are more Professor Oaks than there are stars, more Champions, more of you. Someone has to stand at the end of every road and sort — pass the ones who can beat themselves at their best, stop the ones the next road would eat alive.'",
+                                        "'That someone is us. You broke against my wall at the city's edge and came back anyway. That coming-back is what I was actually testing. The wall was never the exam.'" ] },
+                                    { "when": { "key": "main.mfFirst.result", "eq": "declined" }, "lines": [
+                                        "'Every run ever played is a universe. There are more Professor Oaks than there are stars, more Champions, more of you. Someone has to stand at the end of every road and sort — pass the ones who can beat themselves at their best, stop the ones the next road would eat alive.'",
+                                        "'That someone is us. You walked past me at the city's edge — proud, or wise, I couldn't tell yet. Now I can.'" ] },
+                                    { "lines": [
+                                        "'Every run ever played is a universe. There are more Professor Oaks than there are stars, more Champions, more of you. Someone has to stand at the end of every road and sort — pass the ones who can beat themselves at their best, stop the ones the next road would eat alive.'",
+                                        "'That someone is us. The weak stop at my table so the roads past it stay survivable. You did not stop. Remember what that cost, and what it bought.'" ] }
+                                ] },
                                 { "phase": "climax", "lines": [
                                     "'Plain words now, no riddle left in them. People picture a loop as a circle - the same road walked again, going nowhere. It is not a circle. Every time you lose and begin again, the road forks, and a whole world buds off the choice and grows on its own, forever. You do not repeat the universe. You seed it with universes.'",
                                     "'I lose to you on purpose because the losing is the seed. You rise; a branch takes; a world that needed you to fall in order to exist locks into place behind you. That is the entire mechanism. Not a wheel turning. A tree growing - and you the thing standing at every fork of it.'",
@@ -39660,6 +39759,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 { "phase": "outro", "lines": [
                                     "They say it like someone setting down a weight carried across more worlds than a mind can hold at once.",
                                     "They don't tell you the rest. They don't have to. You hear it in the gaps, in your own future voice - that every world you make will end the way this one is ending, a you on a bench and a you in a doorway, and a new world budding the instant you reach for the beginning again." ] }
+                            ]
+                  },
+                  "main.mfSpare": {
+                            "title": "The Mask Stays On",
+                            "body": "Accept-the-loss epilogue (2026-07 rework): the player concedes the post-HoF climax. The figure spares them, keeps the mask on, and opens the post-game anyway. Opening act branches on the City-8 first-encounter result. The reveal (main.mfReveal) stays unfired - it remains the prize for a later win (Crucible Mystery encore).",
+                            "acts": [
+                                { "phase": "intro", "tone": "mystery", "nameplate": "???", "branches": [
+                                    { "when": { "key": "main.mfFirst.result", "eq": "won" }, "lines": [
+                                        "The figure recalls their team - your team - without a word, and studies you the way you'd study a photograph that has stopped matching the mirror.",
+                                        "\"At the city's edge you beat me. Here you couldn't. Do you see it now? It was never me you had to get past.\"" ] },
+                                    { "when": { "key": "main.mfFirst.result", "eq": "lost" }, "lines": [
+                                        "The figure recalls their team - your team - without a word.",
+                                        "\"Twice now. Once at the city's edge, once here. And twice you stood up and said the true thing instead of the proud one. That's rarer than winning.\"" ] },
+                                    { "when": { "key": "main.mfFirst.result", "eq": "declined" }, "lines": [
+                                        "The figure recalls their team - your team - without a word.",
+                                        "\"You walked past me once, at the city's edge. There was no walking past this one. Now you know what I was measuring.\"" ] },
+                                    { "lines": [
+                                        "The figure recalls their team - your team - without a word, and for a long moment the hall is just two people breathing." ] }
+                                ] },
+                                { "phase": "development", "tone": "mystery", "speaker": "???", "lines": [
+                                    "\"Saying 'I need more training' out loud, in this room, to this face - most champions would rather lose again. You'll be back. The wall doesn't move; you do.\"",
+                                    "\"I stand at ends of roads and I sort. Not to be cruel - because the roads past this one eat the unproven. Go. The door behind me is open either way; what it opens onto is yours now.\"" ] },
+                                { "phase": "outro", "tone": "mystery", "lines": [
+                                    "They do not remove the cap. Whatever is under it stays theirs — until the day you take this fight back and win it.",
+                                    "As you pass, quietly, almost kindly: \"Train. I'll be at the end of every road you ever walk. I always am.\"" ] }
                             ]
                   },
                   "main.ending": {
@@ -39782,9 +39906,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Professor gift grade mix by city (Sheet 5), indexed by cityIdx. Only [0] is
         // live now: the Professor only hands out the City-0 starter (pure G4 — maintainer-
         // ratified curve anchor). The Professor no longer recruits partners in later
-        // cities, so rows C1–C9 are vestigial and unreachable via the normal gift path;
-        // the City-8 Mystery Figure legendary gate uses mysteryFigureRollsForBadges()
-        // instead. Rows are kept (not deleted) only to preserve cityIdx-based indexing.
+        // cities, so rows C1–C9 are vestigial and unreachable via the normal gift path.
+        // Rows are kept (not deleted) only to preserve cityIdx-based indexing.
         const PROF_ROLLS = [
           // C0 = 100% G4 is maintainer-ratified (2026-06-11, memo #2): the
           // flat-weakest start is a deliberate curve anchor, not an oversight.
@@ -39797,7 +39920,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           {g1:0,  g2:70, g3:30,  g4:0  }, // C6 — vestigial
           {g1:0,  g2:80, g3:20,  g4:0  }, // C7 — vestigial
           {g1:0,  g2:100,g3:0,   g4:0  }, // C8 — Mystery Figure city (overridden by mystery mode)
-          {g1:100,g2:0,  g3:0,   g4:0  }, // C9 — League City (post-G8 legendary gate)
+          {g1:100,g2:0,  g3:0,   g4:0  }, // C9 — League City (vestigial)
         ];
         // Maps each gym leader's name to their in-game city/town
         const GYM_LEADER_CITY_NAMES = {
@@ -39929,7 +40052,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"I was at the gym door before your eighth fight. I came to watch you go in. I stayed to walk back with you."',
                     '"Whatever the road made of you — it\'s yours now. The wall doesn\'t come down for badges. The road just keeps going."',
                     '"Take a few days. Then come find me at the lab. The next part of the journey isn\'t numbered."'
-                ]
+                ],
+                // Appended by _showVariantPostHofEpilogue, keyed on the climax
+                // outcome (sm.mfFinalResult) — the epilogue acknowledges how the
+                // corridor business actually ended.
+                lineByFinalResult: {
+                    won: '"And whoever was waiting past the far corridor — they\'re gone. The staff say you walked out alone. I suspect that\'s not quite the right word for it."',
+                    accepted_loss: '"Whoever waits past the far corridor is still there. You\'ll go back when you\'re ready — I know that look. I\'ve worn it. Somewhere, I probably still do."'
+                }
             }
         };
         /** Show the per-variant post-HoF epilogue once per save. Returns true
@@ -39945,6 +40075,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return false;
             }
             try {
+                // Climax-outcome coda (2026-07 rework): the epilogue's last line
+                // tracks how the Mystery Figure business ended.
+                const _epLines = (entry.lines || []).slice();
+                try {
+                    const _byFinal = entry.lineByFinalResult || {};
+                    const _coda = sm && sm.mfFinalResult ? _byFinal[sm.mfFinalResult] : null;
+                    if (_coda) _epLines.push(_coda);
+                } catch (e) {}
                 _renderNarrativeOverlay({
                     metaKey,
                     banner: entry.banner || '— AFTER THE HALL OF FAME —',
@@ -39952,7 +40090,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sprite: entry.sprite,
                     name: entry.name,
                     nameplate: entry.nameplate,
-                    lines: entry.lines || [],
+                    lines: _epLines,
                     continueLabel: 'Continue →',
                     onDone
                 });
@@ -40038,64 +40176,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const g1 = b >= 7 ? 30 : (b >= 4 ? 20 : 10);
             return { g1, g2: 100 - g1, g3: 0, g4: 0 };
         }
-        function shouldForceCityProfessor(cityIdx, actions) {
-            const c = Math.max(0, cityIdx | 0);
-            if (Array.isArray(actions) && actions.includes('Professor')) return false;
-            // The Professor only gives the City-0 starter (wired via the City-0
-            // 'Professor' action in STORY_EVENTS_RAW, so it never reaches here).
-            // Team growth afterward comes from wild catches / tall grass — the
-            // Professor no longer recruits partners in later cities. The lone
-            // forced visit left is the City-8 post-Gym-8 Mystery Figure legendary
-            // gate, a required swap-in to enter Victory Road.
-            return isPreLeagueLegendaryMysteryGate(c);
-        }
-        function isPreLeagueLegendaryMysteryGate(cityIdx) {
-            const c = Math.max(0, cityIdx | 0);
-            if (c >= 9) return false;
-            return c === 8 && (sm.badges | 0) >= 8;
-        }
-        function pickStoryLegendaryFromGens(enabledGens, usedNames) {
-            const D = getPssDex();
-            const genSet = new Set(normalizeEnabledGens(enabledGens && enabledGens.length ? enabledGens : storySettingsGens()));
-            const pool = [];
-            // Vestigial: these four were the non-legendary G1 overrides that had to be
-            // carved out of the dex-missing "treat G1 as legendary" fallback below. They
-            // are now G2 (see _GRADE1_OVERRIDE), so the set is empty — retained as a guard
-            // hook should a future non-legendary ever be pinned to G1.
-            const MYST_LEG_G1_NONLEGEND = new Set();
-            // Iterate baseStats keys (CamelCase names like "Mewtwo") to avoid the key-format
-            // mismatch that occurs when using D.species.forEach, which provides lowercase IDs.
-            for (const n of Object.keys(baseStats)) {
-                try {
-                    if (!n || usedNames.has(n)) continue;
-                    if (isStoryRollExcluded(n)) continue;
-                    const b = baseStats[n];
-                    const bgen = Number(b.gen);
-                    if (!b || !Number.isFinite(bgen) || !genSet.has(bgen)) continue;
-                    let isLeg = false;
-                    let spForLeg = null;
-                    if (D) {
-                        try {
-                            spForLeg = D.species.get(n);
-                            isLeg = speciesDexIsLegendaryTier(spForLeg);
-                        } catch(e) {}
-                    }
-                    // Dex missing, no species row, or placeholder `exists: false` (offline / load race).
-                    // When we have a real dex row that is not legendary-tier, trust it — do not BST-guess.
-                    const dexRowMissing = !spForLeg || spForLeg.exists === false;
-                    if (!isLeg && (!D || dexRowMissing)) {
-                        if (getMonGrade(n, getBST(n)) === 1 && !PSEUDO_LEGEND.has(n) && !MYST_LEG_G1_NONLEGEND.has(n)) isLeg = true;
-                    }
-                    if (!isLeg) continue;
-                    if (getMonGrade(n, getBST(n)) !== 1) continue;
-                    pool.push(n);
-                } catch (e) { /* skip invalid species */ }
-            }
-            if (!pool.length) {
-                return null;
-            }
-            return pool[Math.floor(storyRngNext() * pool.length)];
-        }
+        // (The old City-8 "legendary gate" helpers — shouldForceCityProfessor,
+        // isPreLeagueLegendaryMysteryGate, pickStoryLegendaryFromGens — were
+        // removed with the Mystery Figure rework: the figure no longer gifts a
+        // legendary or blocks Victory Road. The City-8 presence is now the
+        // optional first-encounter challenge; see mfFirstApproach.)
 
         // POKEMART_ITEMS / DEPT_ITEMS / STONE_SHOP_ITEMS — declared near
         // loadGameData (early-let block) and populated at boot from
@@ -43876,6 +43961,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    storyChoices: {},
                    postHofMysteryClimaxDone: false,
                    hofPartySnapshot: null,
+                   mfEncounter1: null,
+                   mfFinalResult: null,
+                   mfFirstInBattle: false,
+                   mfFirstTeamLock: null,
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
                    flags: {},
@@ -44305,6 +44394,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // already reached the Hall of Fame have no snapshot → the Mystery Figure
                 // team builder falls back to the legacy live-team mirror path.
                 if (sm.hofPartySnapshot === undefined) sm.hofPartySnapshot = null;
+                // Mystery Figure rework back-fills (additive, no SAVE_VER bump). null
+                // reads as "never met" → neutral dialogue branches everywhere. Saves
+                // parked at the removed City-8 legendary gate need no repair: the gate
+                // code is gone, the route is open, and the optional first encounter
+                // offers itself on the next city render. mfFirstInBattle is a battle
+                // transient — never resume into it from a load.
+                if (sm.mfEncounter1 === undefined) sm.mfEncounter1 = null;
+                if (sm.mfFinalResult === undefined) sm.mfFinalResult = null;
+                sm.mfFirstInBattle = false;
+                // Frozen first-encounter six (same pattern as currentEnemyLock) —
+                // drop a malformed lock rather than crash the launch.
+                if (sm.mfFirstTeamLock === undefined) sm.mfFirstTeamLock = null;
+                if (sm.mfFirstTeamLock && (!Array.isArray(sm.mfFirstTeamLock)
+                    || sm.mfFirstTeamLock.some(t => !t || typeof t !== 'object' || !t.name || !t.build))) {
+                    sm.mfFirstTeamLock = null;
+                }
                 // TONE RETIREMENT (2026-06): force every loaded save onto the clean
                 // 'classic' tone. The 8-tone STORYLINE_VARIANTS layer is retired in favor
                 // of the 3-track system (sm.tracks); some tones pointed the player at the
@@ -44881,8 +44986,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (c <= 6) return 1;
             return 2;
         }
-        // Professor gifts (Sheet 5): Basic C0-2 · Stage-1 C3-5 · ALL C6. The C8 Mystery
-        // Figure is a full legendary handled separately (profCap bypass).
+        // Professor gifts (Sheet 5): Basic C0-2 · Stage-1 C3-5 · ALL C6.
         function _professorEvoStageCapForCity(cityIdx) {
             const c = cityIdx | 0;
             if (c <= 2) return 0;
@@ -47065,8 +47169,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get CAMP_ACTIONS() { return CAMP_ACTIONS; },
                     get CAMP_MICROGAMES() { return CAMP_MICROGAMES; },
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
-                    shouldForceCityProfessor: (...a) => shouldForceCityProfessor(...a),
-                    isPreLeagueLegendaryMysteryGate: (...a) => isPreLeagueLegendaryMysteryGate(...a),
+                    rollMysteryGradeOneTeam: (...a) => _rollMysteryGradeOneTeam(...a),
                     daycareDropOff: (...a) => _daycareDropOff(...a),
                     recordHallOfFame: () => _storyRecordHallOfFame(),
                     mysteryFigureSpriteFile: () => _mysteryFigureSpriteFile(),
@@ -47219,8 +47322,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     grantTrackEndReward: (beat, opts) => _storyGrantTrackEndReward(beat, opts),
                     catchIntroSceneId: (st) => _catchIntroSceneId(st),
                     displayTownNameForCityRow: (cityEv) => getStoryDisplayTownNameForCityRow(cityEv),
-                    preLeagueLegendaryGate: (c) => isPreLeagueLegendaryMysteryGate(c),
-                    profLegendaryMysteryMode: () => _profLegendaryMysteryMode,
+                    // Mystery Figure — City-8 first encounter (replaces the old legendary gate).
+                    mfFirstAvailable: () => _mfFirstAvailable(),
+                    mfFirstRollTeam: () => _mfFirstRollTeam(),
+                    mfFirstLaunchFight: () => _mfFirstLaunchFight(),
+                    mfFirstHandleBattleEnd: (w) => _mfFirstHandleBattleEnd(!!w),
+                    mfFirstApproach: () => mfFirstApproach(),
+                    get baseStats() { return baseStats; },
+                    get MYSTERY67_BY_VARIANT() { return _MYSTERY67_BY_VARIANT; },
+                    get POSTHOF_EPILOGUE_BY_VARIANT() { return _POSTHOF_EPILOGUE_BY_VARIANT; },
+                    applyRetreatToCity: () => _storyApplyRetreatToCity(),
+                    refreshStoryGameOverRetreatUI: () => refreshStoryGameOverRetreatUI(),
+                    // Roaming legendary cinematic (2026-07 two-stage rework).
+                    get SUB_LEGENDARY_POOL() { return SUB_LEGENDARY_POOL; },
+                    get LEGENDARY_LORE() { return _LEGENDARY_LORE; },
+                    get LEGENDARY_SIGNS() { return _LEGENDARY_SIGNS; },
+                    showRoamingLegendarySighting: (n, cb) => _showRoamingLegendarySighting(n, cb),
                     battleEntryBusy: () => _storyBattleEntryBusy,
                     setBattleEntryBusy: (v) => { _storyBattleEntryBusy = !!v; },
                     recoverFromEntryFailure: (w, e) => _storyRecoverFromEntryFailure(w, e),
@@ -47407,6 +47524,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return picks;
             }
             // Empty-team fallback: legacy random grade-1 roll.
+            return _rollMysteryGradeOneTeam(partySize, enabledGensIn);
+        }
+
+        /** Full grade-1 (legendary-tier) roll from the enabled generations, at the
+         *  Mystery Figure's full-build pipeline: near-best power target, TOURNAMENT
+         *  tier, every gimmick forced on, heaviest illegal-build injection (3 slots).
+         *  Shared by the post-HoF final-boss fallback (degenerate sm.team) and the
+         *  City-8 first-encounter fight, which rolls its whole wall from here. */
+        function _rollMysteryGradeOneTeam(partySize, enabledGensIn) {
+            const _mysticPower = (sm && sm.active)
+                ? _stagePowerTargetForEvent('Mystery Figure', null, (sm.badges | 0) || 8) : null;
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const genSet = new Set(allowedGens);
@@ -48695,6 +48823,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Mystery Figure. Null until the player wins. See
                 // _storyRecordHallOfFame + rollMysteryFigureFinalBossTeam.
                 hofPartySnapshot: null,
+                // Mystery Figure encounter results: the City-8 first encounter
+                // (null | 'declined' | 'lost' | 'won') and the post-HoF climax
+                // (null | 'won' | 'accepted_loss' | 'declined'). Both recolor
+                // later dialogue; mfFirstInBattle is the off-timeline battle
+                // transient (mirrors sm.pits._inBattle).
+                mfEncounter1: null,
+                mfFinalResult: null,
+                mfFirstInBattle: false,
+                mfFirstTeamLock: null,
                 mysteryIdentity: _storyPickMysteryIdentity(),
                 // Replayability achievement counters (per-run). noItemThisRun
                 // starts true; flipped to false on the first mid-battle item
@@ -48960,12 +49097,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 metaKey: (ev, beat) => 'cold-mystery67-' + ((beat && beat._variantId) || (sm && sm.storyLine) || 'classic'),
                 run(ev, onDone) {
                     const scene = _variantMystery67Scene() || {};
+                    // The figure remembers the City-8 first encounter: append the
+                    // result-keyed line (sm.mfEncounter1) when one is recorded.
+                    const lines = (scene.lines || []).slice();
+                    try {
+                        const byResult = scene.lineByFirstEncounter || {};
+                        const extra = sm && sm.mfEncounter1 ? byResult[sm.mfEncounter1] : null;
+                        if (extra) lines.push(extra);
+                    } catch (e) {}
                     _renderNarrativeOverlay({
                         metaKey: 'cold-mystery67-' + (_storyActiveVariantId() || 'classic'),
                         banner: scene.banner || '— THE FINAL MASK —',
                         toneClass: scene.toneClass || '',
                         nameplate: scene.nameplate || 'The figure in the doorway',
-                        lines: scene.lines || [],
+                        lines: lines,
                         continueLabel: 'Step into the chamber →',
                         sfx: null,
                         onDone
@@ -49487,8 +49632,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     'The Champion\'s chair is empty. Someone stands in front of it — in your colors, under a cap like yours.',
                     'No badge, no name, no announcement. They send out six Pokémon, and you have met all six before.',
-                    '"I\'ve done this before," they say. "You\'ll get the part that matters after. Not before. Never before."'
-                ]
+                    '"The last sorting," they say, like a station being announced. "Show me how good you actually are. Not your team — your team is about to be the problem."',
+                    '"I\'ve done this before. You\'ll get the part that matters after. Not before. Never before."'
+                ],
+                // Extra line keyed on the City-8 first-encounter result
+                // (sm.mfEncounter1) — appended by the mystery67 cold-open at
+                // run time so the figure visibly remembers the city's edge.
+                lineByFirstEncounter: {
+                    won:      '"You beat me once, at the city\'s edge, with borrowed thunder. Beat yourself now — that\'s the whole exam."',
+                    lost:     '"You broke against me once, at the city\'s edge, and stood back up. Show me that was growth and not stubbornness."',
+                    declined: '"You walked past me once, at the city\'s edge. There is no walking past this."'
+                }
             }
         };
         function _variantMystery67Scene() {
@@ -51410,20 +51564,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── CITY SCREEN ───────────────────────────────────────────────────
-        /** Repro pre-League legendary Mystery gate without a long save: localhost, or open battle with ?debugMystery=1 */
-        function seedDebugMysteryLegendGate() {
+        /** Repro the City-8 Mystery Figure first encounter without a long save: localhost, or open battle with ?debugMystery=1 */
+        function seedDebugMysteryFirstEncounter() {
             let allow = false;
             try {
                 if (typeof DEBUG_TELEMETRY !== 'undefined' && DEBUG_TELEMETRY) allow = true;
                 if (!allow && typeof location !== 'undefined' && /(?:^|[?&])debugMystery=1(?:&|$)/.test(String(location.search || ''))) allow = true;
             } catch (e) {}
             if (!allow) {
-                console.warn('[Story debug] seedDebugMysteryLegendGate: use http://127.0.0.1 / localhost, or add ?debugMystery=1 to the URL');
+                console.warn('[Story debug] seedDebugMysteryFirstEncounter: use http://127.0.0.1 / localhost, or add ?debugMystery=1 to the URL');
                 return;
             }
             const filler = ['Bulbasaur','Charmander','Squirtle','Caterpie','Weedle','Pidgey'];
-            if (!sm.profUsed) sm.profUsed = {};
-            delete sm.profUsed[8];
+            sm.mfEncounter1 = null;
+            sm.mfFirstInBattle = false;
+            sm.mfFirstTeamLock = null;
             _pendingProfChoices = null;
             _pendingProfCityIdx = null;
             sm.active = true;
@@ -51454,7 +51609,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyBackfillCitiesArrived(); } catch (e) {}
             save();
             enterCity();
-            console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Open Mystery Figure — Legendary Grade 1 Swap.');
+            console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Approach the Mystery Figure first encounter from the city.');
         }
 
         /**
@@ -51872,19 +52027,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hasTeamRoom = !_storyPartyFullForCatch();
             // The Professor only hands out the City-0 starter (`hasBaseProf` from the
             // City-0 'Professor' action); later cities grow the team via wild catches
-            // / tall grass instead. The lone forced visit left is the City-8 post-Gym-8
-            // legendary gate — a required Mystery Figure swap to enter Victory Road, so
-            // it stays visible even at the 6/6 cap. `hasTeamRoom` keeps the City-0
-            // starter from showing once a slot is already filled.
-            const _legendaryGateHere = isPreLeagueLegendaryMysteryGate(cityIdx);
-            const hasProf = (hasBaseProf || shouldForceCityProfessor(cityIdx, actions)) && (hasTeamRoom || _legendaryGateHere);
+            // / tall grass instead. The old City-8 forced "legendary gate" visit was
+            // removed with the Mystery Figure rework — the figure now offers an
+            // OPTIONAL first-encounter challenge instead (see _mfFirstAvailable).
+            const hasProf = hasBaseProf && hasTeamRoom;
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
-            // Fire the Mystery-Figure legendary gate framing (button label,
-            // objective, route-block) whenever the gate is active and unfinished
-            // — not only for a full party — so a lean party gets the same
-            // "Required" treatment (the legendary is gifted into an open slot
-            // rather than swapped). enterProfessor mirrors this via the gate.
-            const legendMysteryGate = _legendaryGateHere && !profUsedHere;
+            const mfFirstHere = _mfFirstAvailable();
             const _storyNextBatIdx = storyEffectiveNextBattleIndexFromHub();
             const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
             const _storyNextBatId = _storyNextBat ? (_storyNextBat[0] | 0) : -1;
@@ -51912,17 +52060,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 && Array.isArray(sm.rivalEncounterLog) && sm.rivalEncounterLog.length >= 1
                 && !sm.rivalChampionClaimed;
             if (hasProf && !profUsedHere) {
-                if (hasTeamRoom) {
-                    const hub = cityProfessorHubSlot(cityIdx);
-                    speakerLabel = hub.label;
-                    spriteTrainerArg = { spriteFile: hub.spriteFile };
-                } else {
-                    speakerLabel = '???';
-                    // Use the active sm.mysteryIdentity sprite so the city-hub
-                    // tease matches the upcoming reveal (was: hardcoded 'Cyrus').
-                    const _mysteryFace = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
-                    spriteTrainerArg = _mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus';
-                }
+                const hub = cityProfessorHubSlot(cityIdx);
+                speakerLabel = hub.label;
+                spriteTrainerArg = { spriteFile: hub.spriteFile };
+            } else if (mfFirstHere) {
+                // City-8 pre-League tease: the masked figure waits at the edge.
+                // Uses the ambiguous identity sprite so the reveal isn't spoiled.
+                speakerLabel = '???';
+                const _mysteryFace = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
+                spriteTrainerArg = _mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Red';
             } else if (_rivalCameoActive) {
                 speakerLabel = _rivalDisplayName();
                 spriteTrainerArg = { spriteFile: sm.runRivalSpriteFile };
@@ -51948,8 +52094,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _cityHost.classList.remove('narr-tone-warm', 'narr-tone-rival', 'narr-tone-anomaly');
                     let _cityTone = '';
                     if (_rivalCameoActive) _cityTone = 'narr-tone-rival';
-                    else if (hasProf && !profUsedHere && hasTeamRoom) _cityTone = 'narr-tone-warm';
-                    else if (hasProf && !profUsedHere && !hasTeamRoom) _cityTone = 'narr-tone-anomaly';
+                    else if (hasProf && !profUsedHere) _cityTone = 'narr-tone-warm';
+                    else if (mfFirstHere) _cityTone = 'narr-tone-anomaly';
                     if (_cityTone) _cityHost.classList.add(_cityTone);
                 }
             } catch (e) {}
@@ -51968,13 +52114,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // actions[] and sm.gymCleared) so the flavor can't contradict the UI.
             let quoteText = _rivalCameoActive
                 ? _rivalAmbientCityLine(cityIdx)
-                : (cityIdx === 0 && hasProf && !profUsedHere && hasTeamRoom
-                    ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
-                    : _pickCityGuideQuote(cityIdx, {
-                        preGym: actions.includes('Gym Battle') && !((sm.gymCleared || {})[cityIdx]),
-                        postGym: !!((sm.gymCleared || {})[cityIdx]),
-                        rivalAhead: _nextIsAnyRival,
-                    }));
+                : (mfFirstHere
+                    ? (sm.mfEncounter1 === 'lost'
+                        ? '"The wall is still here. So are you. That already puts you past most of them."'
+                        : (sm.mfEncounter1 === 'declined'
+                            ? '"Still walking past? The road ahead is less polite about the unproven than I am."'
+                            : '"Eight badges. Then this is the last quiet stretch you get. Make it count — or prove you don\'t need to."'))
+                    : (cityIdx === 0 && hasProf && !profUsedHere && hasTeamRoom
+                        ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
+                        : _pickCityGuideQuote(cityIdx, {
+                            preGym: actions.includes('Gym Battle') && !((sm.gymCleared || {})[cityIdx]),
+                            postGym: !!((sm.gymCleared || {})[cityIdx]),
+                            rivalAhead: _nextIsAnyRival,
+                        })));
             // City specialty banner — the one-line identity for this city, shown above
             // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
@@ -52123,31 +52275,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _sections = { quest: '', recover: '', shop: '', train: '', utility: '' };
             const _push = (key, html) => { _sections[key] += html; };
 
-            // Professor / Mystery Figure (one visit per city).
+            // Professor (City-0 starter only).
             // After wild catching was added in v15, the Professor's role shifted:
             // wilds are *your* projects (random species, partial build, multi-catch
-            // per route); the Professor is the *curated* path — a fully-built,
-            // story-tier Pokémon, one per city, gating progression to the gym.
-            //
-            // When the player's active party is at the badge-based cap, the
-            // Professor's gift still happens — but it's framed as a "lab
-            // companion swap" (you pick a teammate to send to PC). The
-            // "Mystery Figure" branding is reserved for the City-8 post-Gym-8
-            // legendary gate, which IS a story-mystery event distinct from
-            // the regular Professor flow.
+            // per route); the Professor hands out exactly one curated Pokémon — the
+            // City-0 starter. The old City-8 "legendary gate" visit that reused
+            // this flow is gone; the Mystery Figure's presence at City 8 is the
+            // optional first-encounter challenge below.
             if (hasProf && !profUsedHere) {
-                if (legendMysteryGate) {
-                    // City-8 legendary gate takes precedence over the plain
-                    // gift/swap buttons whether or not the party has room: a full
-                    // party swaps the legendary in, a lean party receives it into
-                    // an open slot — both framed as the required Mystery Figure.
-                    const _legLabel = hasTeamRoom ? '❓ Mystery Figure — Legendary' : '❓ Mystery Figure — Legendary Swap';
-                    _push('quest', makeActionBtn(_legLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta:[{label:'Required',tone:'info'}] }));
-                } else {
-                    // Only the City-0 starter pick reaches here now (the Professor no
-                    // longer recruits partners in later cities).
-                    _push('quest', makeActionBtn('Professor — Pick Your Starter','professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] }));
-                }
+                // Only the City-0 starter pick reaches here now (the Professor no
+                // longer recruits partners in later cities).
+                _push('quest', makeActionBtn('Professor — Pick Your Starter','professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] }));
+            }
+            // Mystery Figure — City-8 optional first encounter (post-Gym-8, until
+            // beaten). Never blocks the route; loss costs nothing; retakeable.
+            if (mfFirstHere) {
+                const _mfLabel = sm.mfEncounter1 === 'lost'
+                    ? '❓ The Figure at the Edge — Rematch'
+                    : (sm.mfEncounter1 === 'declined'
+                        ? '❓ The Figure Is Still Waiting'
+                        : '❓ A Masked Figure Waits at the Edge');
+                _push('quest', makeActionBtn(_mfLabel,'mystery','window.StoryMode.mfFirstApproach()','primary',{ soft:true, meta:[{label:'Optional',tone:'info'}] }));
+                try { _storyShowOneTimeTip('mf-first-encounter',
+                    'A masked figure waits where the road leaves City 8.\n\nTalking to them is optional — so is the fight they offer. It\'s a wall: a full legendary-grade team, tuned above anything on Victory Road. Built to beat you, but not unbeatable.\n\nLosing costs nothing. Retry as often as you like, or walk away and come back any time before the League. Win or lose, the figure remembers — and so does the end of the road.'); } catch (e) {}
             }
             // Battle actions
             const hasGym = actions.includes('Gym Battle');
@@ -52187,20 +52337,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hasLeague) {
                 _push('quest', makeActionBtn('🏆 Enter the Pokémon League','league','window.StoryMode.proceedToNextBattle()','primary'));
             }
-            const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             // Story spec — Professor visits are must-do to leave town. When the Professor
             // is on the board and hasn't been visited yet in this city, the Continue Route
-            // button is locked the same way Gym Battle is. Mystery-gate cities use the
-            // legendary-gate message above; everywhere else falls back to the generic
-            // "Visit Professor first" hint.
-            const routeBlockedByProfessor = gymBlocked && !routeBlockedByMysteryGate;
+            // button is locked the same way Gym Battle is. (The old City-8 Mystery-gate
+            // route block is gone — the first encounter never bars Victory Road.)
+            const routeBlockedByProfessor = gymBlocked;
             // Per docs/EVOLUTION_FLOW_REBUILD.md §8: pending facility intros (computed
             // above as _pendingIntros — first-time debuts + staged tier-ups) block
             // Leave City on that facility's city. Once the player visits it, the gate
             // stops firing. The gym gate already fronts this in gym cities; this is the
             // backstop for gym-less hubs.
             const routeBlockedByIntros = _introsPending
-                && !routeBlockedByMysteryGate && !routeBlockedByProfessor && !gymRoutePending;
+                && !routeBlockedByProfessor && !gymRoutePending;
             if (actions.includes('Leave City')) {
                 if (sm.campReturnPoint) {
                     // Revisiting a prior town via the camp round-trip — the only forward action
@@ -52208,8 +52356,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _push('quest', makeActionBtn('↩ Back to the road','route','window.StoryMode.proceedToNextBattle()','primary'));
                 } else if (gymRoutePending) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
-                } else if (routeBlockedByMysteryGate) {
-                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
                 } else if (routeBlockedByProfessor) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Visit the Professor before leaving" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else if (routeBlockedByIntros) {
@@ -52470,9 +52616,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // leaving — in this order" banner, and the "Next Step (N)" count.
             let objective = null;
             const _profPending = hasProf && !profUsedHere;
-            if (_profPending && legendMysteryGate) {
-                objective = { kicker: 'STORY', icon: 'story_mystery.png', label: 'Talk to the Mystery Figure', click: 'window.StoryMode.enterProfessor()' };
-            } else if (_profPending) {
+            if (_profPending) {
                 // Non-legendary Professor visits are now City-0 only (the starter).
                 objective = { kicker: 'START', icon: 'story_professor.png',
                     label: 'Pick your starter at the Lab',
@@ -54430,7 +54574,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) { console.warn('[Story] retreat team sync', e); }
             _storyFullHealPartySlots();
-            const fee = _storyCalcRetreatGoldFee();
+            // Mystery Figure fights are no-punishment by design (2026-07 rework):
+            // retreating from the pending post-HoF climax is always free, on every
+            // difficulty — "go back, train, return" must never cost gold.
+            const _retreatEv = STORY_EVENTS_RAW[sm.eventIndex];
+            const _mysteryRetreat = !!(_retreatEv && _retreatEv[1] === 'Battle'
+                && String(_retreatEv[2] || '') === 'Mystery Figure');
+            const fee = _mysteryRetreat ? 0 : _storyCalcRetreatGoldFee();
             sm.gold = Math.max(0, (sm.gold | 0) - fee);
             const failedBattleIdx = sm.eventIndex;
             sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
@@ -54455,14 +54605,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btn = document.getElementById('story-gameover-btn-center');
             const hint = document.getElementById('story-gameover-center-hint');
             const concedeBtn = document.getElementById('story-gameover-btn-rival-concede');
+            const mysteryBtn = document.getElementById('story-gameover-btn-mystery-accept');
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const isRivalLoss = !!(ev && ev[1] === 'Battle' && ev[2] === 'Rival');
+            // Post-HoF Mystery Figure climax loss: a third, no-punishment option —
+            // accept the loss ("I need more training"), keep the mask on, and open
+            // the endgame anyway. Distinct from the rival concede: no gold is lost.
+            const isMysteryLoss = !!(ev && ev[1] === 'Battle' && String(ev[2] || '') === 'Mystery Figure' && !sm.postHofMysteryClimaxDone);
             if (concedeBtn) {
                 concedeBtn.style.display = isRivalLoss ? 'block' : 'none';
                 const rp = isRivalLoss ? getRivalEncounterPhase(ev[0] | 0) : null;
                 concedeBtn.innerHTML = rp === 4
                     ? 'Concede to Rival<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">Rival takes the Champion title. Lose all gold and enter Hall of Fame.</span>'
                     : 'Concede to Rival<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">Lose all gold, then continue your journey.</span>';
+            }
+            if (mysteryBtn) {
+                mysteryBtn.style.display = isMysteryLoss ? 'block' : 'none';
+                mysteryBtn.innerHTML = 'Accept the Loss — "I need more training."<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">No cost. The mask stays on; the post-game opens. Rematch any time from the Crucible.</span>';
             }
             if (btn) {
                 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -54471,6 +54630,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hint) {
                 if (isRivalLoss) {
                     hint.textContent = 'Retry, return to the last city, or concede to lose all gold and continue.';
+                } else if (isMysteryLoss) {
+                    hint.textContent = 'Retry the fight, go back to train and return later, or accept the loss — all free. The figure does not punish the unready.';
                 } else {
                     if (_storyDifficultyHasFreeRetreat()) {
                         hint.textContent = 'Heals your party. No gold cost on this difficulty.';
@@ -54866,7 +55027,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _pendingProfCityIdx = null; // city index that owns current choices
         let _pendingProfWasMystery = false; // whether cached choices were rolled in mystery mode
         let _pendingProfBadges = null; // badge count when cached; invalidate when badges change so tier curve refreshes
-        let _profLegendaryMysteryMode = false;
 
         /** In-memory professor draft cache must not survive abandon or a fresh run (same cityIdx would reuse stale picks). */
         function resetProfessorPickSession() {
@@ -54876,7 +55036,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pendingProfCityIdx = null;
             _pendingProfWasMystery = false;
             _pendingProfBadges = null;
-            _profLegendaryMysteryMode = false;
             _profMysteryMode = false;
         }
 
@@ -54969,51 +55128,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyShowOneTimeTip('prof-overview-v3',
                     'Two ways to grow your team: your starter, and the wild.\n\nThe Professor hands you your very first partner right here. After that, every new teammate comes from the wild — tall grass on the routes, your camp, and the Safari (wider species the further you roam).\n\nEvery Pokémon wears a training-tier chip by its name, from Untrained to Tournament. Yours start raw; the Tutor, EV Trainer, Nature Rater, and Dojo walk them up to face the Elite Four.'); } catch (e) {}
             }
-            // City-8 post-Gym-8 legendary gate fires regardless of party
-            // fullness — a lean party must also be offered the "required"
-            // legendary. A full party still gets the swap-to-PC flow (driven by
-            // _profMysteryMode below); a lean party receives the legendary into
-            // an open slot via the normal accept path. Pre-fix a sub-cap party
-            // silently got an ordinary 3-roll gift and could walk Victory Road
-            // with no legendary despite the gate's "Required" framing.
-            _profLegendaryMysteryMode = isPreLeagueLegendaryMysteryGate(cityIdx);
-            // One-time framing for the City-8 legendary gate. Accepting the legendary
-            // either swaps a partner to the PC or parks the legendary in the PC; the
-            // player can also refuse. Spell the options out before they commit.
-            // Cross-run-deduped via story meta.
-            if (_profLegendaryMysteryMode) {
-                try { _storyShowOneTimeTip('legendary-gate',
-                    'No challenger walks Victory Road\'s gate without a legendary in hand — older tradition than the badges.\n\nThe masked figure offers you one of the great ones. Field it (your benched partner walks safely to the PC), stash it in the PC, or refuse and the gate stays shut.\n\nTake your time — this is one of the run\'s biggest calls.'); } catch (e) {}
-            }
-            // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
-            // gate. Other "full party" Professor visits are framed as a normal lab-
-            // companion swap so the player keeps treating the Professor and the
-            // Mystery Figure as distinct mechanics (the latter is a story event).
-            const isSwapWithoutMystery = _profMysteryMode && !_profLegendaryMysteryMode;
-            const rollsBase = _profLegendaryMysteryMode
-                ? {g1:100,g2:0,g3:0,g4:0}
-                : (_profMysteryMode ? mysteryFigureRollsForBadges(sm.badges) : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]));
-            const rolls = !_profLegendaryMysteryMode && sm.team.length >= 4
+            // (The old City-8 post-Gym-8 legendary gate that reused this screen is
+            // gone — the Mystery Figure's City-8 presence is now the optional
+            // first-encounter challenge; see mfFirstApproach.)
+            const isSwapWithoutMystery = _profMysteryMode;
+            const rollsBase = _profMysteryMode ? mysteryFigureRollsForBadges(sm.badges) : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]);
+            const rolls = sm.team.length >= 4
                 ? storyStripGrade4IfPartyMature({ g1: rollsBase.g1 || 0, g2: rollsBase.g2 || 0, g3: rollsBase.g3 || 0, g4: rollsBase.g4 || 0 })
                 : rollsBase;
             _pendingProfRolls = rolls;
 
             const hub = cityProfessorHubSlot(cityIdx);
-            const profName = _profLegendaryMysteryMode ? '??? — Mystery Figure' : hub.label;
+            const profName = hub.label;
             const titleEl = document.getElementById('story-prof-screen-title');
-            if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
+            if (titleEl) titleEl.textContent = isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab";
             document.getElementById('story-prof-name').textContent = profName;
             let _profQuote;
-            if (_profLegendaryMysteryMode) {
-                _profQuote = '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."';
-            } else if (isSwapWithoutMystery) {
+            if (isSwapWithoutMystery) {
                 _profQuote = '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."';
             } else {
                 _profQuote = PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)];
             }
             document.getElementById('story-prof-quote').textContent = _profQuote;
-            const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
-            document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
+            document.getElementById('story-prof-sprite').src = getTrainerSprite({ spriteFile: hub.spriteFile });
 
             const statusEl = document.getElementById('story-prof-status');
             const btnsEl   = document.getElementById('story-prof-buttons');
@@ -55034,7 +55171,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // same lab visit reproduces the same choices after a refresh (the in-memory
                 // _pendingProfChoices cache only covers within-session reuse). try/finally so
                 // the early "no choices" return below still restores the shared RNG stream.
-                const _profSeedKey = 900000 + (cityIdx | 0) * 1000 + ((sm.badges | 0) * 4) + (_profMysteryMode ? 1 : 0) + (_profLegendaryMysteryMode ? 2 : 0);
+                const _profSeedKey = 900000 + (cityIdx | 0) * 1000 + ((sm.badges | 0) * 4) + (_profMysteryMode ? 1 : 0);
                 const _savedProfNext = window.storyRngNext;
                 if (sm && sm.active && sm.runSeed != null) {
                     let _ps = _storyEventSeed(_profSeedKey);
@@ -55048,28 +55185,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const usedNames = new Set(sm.team.filter(t => t && !t.isEgg).map(t => t.name));
                 // Block all forms of families already on the team (e.g. having Arceus blocks Arceus-Fire)
                 const usedFamilies = new Set(sm.team.filter(t => t && !t.isEgg).map(t => _storyBaseFamily(t.name)));
-                const profCap = _profLegendaryMysteryMode ? 99 : _professorEvoStageCapForCity(cityIdx); // Sheet 5: Basic C0-2 · Stage-1 C3-5 · ALL C6 (Mystery Figure bypasses via mystery mode)
+                const profCap = _professorEvoStageCapForCity(cityIdx); // Sheet 5: Basic C0-2 · Stage-1 C3-5 · ALL C6
                 for (let i = 0; i < numChoices; i++) {
                     let name = null;
                     for (let t = 0; t < 24; t++) {
-                        const c = _profLegendaryMysteryMode
-                            ? pickStoryLegendaryFromGens(sg, usedNames)
-                            : weightedPickFromGrades(rolls, sg);
+                        const c = weightedPickFromGrades(rolls, sg);
                         if (c && !usedNames.has(c) && !usedFamilies.has(_storyBaseFamily(c))
-                            && (_profLegendaryMysteryMode || _storyEvoStageOf(c) <= profCap)) { name = c; break; }
+                            && _storyEvoStageOf(c) <= profCap) { name = c; break; }
                     }
                     if (!name) {
                         // Fallback still respects the stage cap (never leak a too-evolved gift);
                         // fail open only if the capped pool is genuinely empty for these gens.
                         for (let t = 0; t < 40 && !name; t++) {
-                            const c = _profLegendaryMysteryMode
-                                ? pickStoryLegendaryFromGens(sg, new Set())
-                                : weightedPickFromGrades(rolls, sg);
-                            if (c && (_profLegendaryMysteryMode || _storyEvoStageOf(c) <= profCap)) name = c;
+                            const c = weightedPickFromGrades(rolls, sg);
+                            if (c && _storyEvoStageOf(c) <= profCap) name = c;
                         }
-                        if (!name) name = _profLegendaryMysteryMode
-                            ? pickStoryLegendaryFromGens(sg, new Set())
-                            : weightedPickFromGrades(rolls, sg);
+                        if (!name) name = weightedPickFromGrades(rolls, sg);
                     }
                     if (!name) continue;
                     usedNames.add(name);
@@ -55086,11 +55217,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!build) continue;
                     // Professor gifts scale with city + badge progression so the player
                     // has real headroom for the Move Tutor / EV Trainer / Nature Rater /
-                    // Battle Dojo upgrade economy. Legendary mystery-gate offers stay at
-                    // tournament tier — they're one-shot story rewards, not raw partners.
-                    const _profTier = _profLegendaryMysteryMode
-                        ? STORY_BUILD_TIER.TOURNAMENT
-                        : _storyBuildTierForProfessor(cityIdx, sm.badges);
+                    // Battle Dojo upgrade economy.
+                    const _profTier = _storyBuildTierForProfessor(cityIdx, sm.badges);
                     // Snapshot the optimized gift before the tier downgrade so the
                     // city opt-gradient can selectively restore it (professor has no
                     // difficulty axis → diff 0).
@@ -55100,32 +55228,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
-                    // City-curve EVs + opt gradient (match trainer curve at diff 0) —
-                    // except legendary mystery offers, which keep their full preset.
-                    if (!_profLegendaryMysteryMode) {
-                        try {
-                            const _pEvBase = (typeof baseStats === 'object') ? baseStats[name] : null;
-                            _distributeEVsToTotal(build, _pEvBase, _storyEvTotalForCity(cityIdx, 0));
-                        } catch (e) {}
-                        try {
-                            const _pr = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-                            if (_pOptN) build.n = (_pr() < _storyNatureOptChance(cityIdx, 0)) ? _pOptN : _NEUTRAL_NATURES_LIST[Math.floor(_pr() * _NEUTRAL_NATURES_LIST.length)];
-                            if (_pOptA && _pr() < _storyAbilityOptChance(cityIdx, 0)) {
-                                const _pbs = (typeof baseStats === 'object') ? baseStats[name] : null;
-                                const _pHidden = !!(_pbs && _pbs.abilities && _pbs.abilities.H && _pOptA === _pbs.abilities.H);
-                                if (!_pHidden || cityIdx >= 4) build.a = _pOptA; // prof hidden opens at Dojo C4
-                            }
-                            if (_pOptM && _pOptM.length && _pr() < _storyMoveOptChance(cityIdx, 0)) build.m = _pOptM.slice();
-                        } catch (e) {}
-                    }
+                    // City-curve EVs + opt gradient (match trainer curve at diff 0).
+                    try {
+                        const _pEvBase = (typeof baseStats === 'object') ? baseStats[name] : null;
+                        _distributeEVsToTotal(build, _pEvBase, _storyEvTotalForCity(cityIdx, 0));
+                    } catch (e) {}
+                    try {
+                        const _pr = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                        if (_pOptN) build.n = (_pr() < _storyNatureOptChance(cityIdx, 0)) ? _pOptN : _NEUTRAL_NATURES_LIST[Math.floor(_pr() * _NEUTRAL_NATURES_LIST.length)];
+                        if (_pOptA && _pr() < _storyAbilityOptChance(cityIdx, 0)) {
+                            const _pbs = (typeof baseStats === 'object') ? baseStats[name] : null;
+                            const _pHidden = !!(_pbs && _pbs.abilities && _pbs.abilities.H && _pOptA === _pbs.abilities.H);
+                            if (!_pHidden || cityIdx >= 4) build.a = _pOptA; // prof hidden opens at Dojo C4
+                        }
+                        if (_pOptM && _pOptM.length && _pr() < _storyMoveOptChance(cityIdx, 0)) build.m = _pOptM.slice();
+                    } catch (e) {}
                     // Professor gifts are player-side mons on the wild/prof city curve
                     // (Sheet 5): a "0..cap" band whose floor rises with the city, so the
-                    // Fan Club / vitamins still have work to do. Legendary mystery offers
-                    // stay perfect (the gimmick is the species, not the stat grind).
+                    // Fan Club / vitamins still have work to do.
                     // force=true: the Professor gift's IVs come from the city wild/prof band
                     // (Sheet 5). The CSV path inside makeBuild defaults every stat to 31, so
                     // without force the band silently never fires and starters/gifts ship 31s.
-                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollCityIVs('wildprof', cityIdx, 0, false), true); } catch (e) {}
+                    try { _ensureBuildIVs(build, _rollCityIVs('wildprof', cityIdx, 0, false), true); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
@@ -55165,7 +55289,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-professor');
             // Lab backdrop for the starter pick; the dramatic villain lair for the
             // Mystery Figure / legendary reveal that reuses this screen.
-            try { syncStorySceneBackground('story-professor-bg-layer', _profLegendaryMysteryMode ? 'villain' : 'lab'); } catch (e) {}
+            try { syncStorySceneBackground('story-professor-bg-layer', 'lab'); } catch (e) {}
         }
 
         function _buildProfPickCardElement(ch, idx) {
@@ -55206,9 +55330,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const statusEl= document.getElementById('story-prof-status');
 
             if (_profMysteryMode) {
-                statusEl.textContent = _profLegendaryMysteryMode
-                    ? 'A legendary Pokémon is offered. Accept it and pick a teammate to swap to PC.'
-                    : 'A Pokémon is offered. Accept it and pick a teammate to swap to PC, or decline.';
+                statusEl.textContent = 'A Pokémon is offered. Accept it and pick a teammate to swap to PC, or decline.';
             } else {
                 statusEl.textContent = 'Choose one Pokémon to join your team:';
             }
@@ -55239,7 +55361,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const backBtn = document.createElement('button');
             if (_profMysteryMode) {
-                backBtn.innerHTML = _profLegendaryMysteryMode ? '← Not Now' : (window.uiSvgX() + ' Decline');
+                backBtn.innerHTML = window.uiSvgX() + ' Decline';
             } else {
                 backBtn.textContent = '← Back to City';
             }
@@ -55323,7 +55445,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Normal professor: append to team
-            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false;
             // First Pokémon ever picked → flagged `starter: true` as a visual
             // reminder ("★ STARTER" badge). No hard restrictions — the player
             // can deposit, swap, daycare, or sell it like any other partner.
@@ -55383,7 +55505,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team[slotIdx] = { name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
-            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false;
             // Pokédex — Mystery Figure legendary now in your party = caught.
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
@@ -55399,25 +55521,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
         }
 
-        // Mystery / legendary-gate alternative to swapping: take the offered mon
-        // straight to the PC, leaving the active party untouched. Mirrors the
-        // catch flow's catchResolveSendToPC. Still flips profUsed so the City-8
-        // legendary gate opens Victory Road on accept (the figure handed you a
-        // legendary; fielding it is your call).
+        // Full-party swap alternative: take the offered mon straight to the PC,
+        // leaving the active party untouched. Mirrors the catch flow's
+        // catchResolveSendToPC. Still flips profUsed so the visit reads as done.
         async function _mysterySendToPc() {
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch) return;
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
-            // Same city move filter as the append/swap paths (defense-in-depth; no-op
-            // at the C8 legendary gate where the tutor is already Guru).
+            // Same city move filter as the append/swap paths (defense-in-depth).
             try { await _storyFilterBuildMovesForCity(ch.build, ch.name, cityIdx, false); } catch (e) {}
             _pcEnsureBoxArray();
             sm.pcBox.push({ name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) });
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
-            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false;
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
             document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' is waiting for you at the PC.';
@@ -55477,6 +55596,184 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 buildPokemon(String(slot.name).trim(), build);
                 return { name: slot.name, build };
             });
+        }
+
+        // ── MYSTERY FIGURE — CITY-8 FIRST ENCOUNTER ─────────────────────
+        // Replaces the old City-8 "legendary gate" gift (removed 2026-07): the
+        // figure no longer hands out a legendary and no longer blocks Victory
+        // Road. Instead they wait at the city's edge with an OPTIONAL challenge —
+        // talk past them, or take a fight built to be lost (full grade-1 roll
+        // from the enabled gens, full builds, the same +30% Mystery stat mult the
+        // post-HoF climax uses) that a top-end pre-League team can still win.
+        // Loss carries no punishment: free unlimited retries, full heal, bag
+        // refunded, no fee, no warp. Retakeable from the city until beaten.
+        // The result (sm.mfEncounter1: null | 'declined' | 'lost' | 'won') is
+        // mirrored into sm.storyChoices['main.mfFirst.result'] so scene-act
+        // `branches` — here and at the post-HoF climax — can read it.
+        const _MF_FIRST_SEED_KEY = 910000; // static-roll seed slot (prof gifts use 900000+)
+        function _mfFirstAvailable() {
+            if (!sm || sm.active !== true) return false;
+            if (sm.mfEncounter1 === 'won') return false; // beaten — the figure has left the edge
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            if (!ev || ev[1] !== 'City') return false;
+            let cityIdx = -1;
+            try { cityIdx = getCityIndex(ev); } catch (e) {}
+            return cityIdx === 8 && (sm.badges | 0) >= 8;
+        }
+        function _mfFirstRecordResult(result) {
+            sm.mfEncounter1 = result;
+            if (!sm.storyChoices || typeof sm.storyChoices !== 'object') sm.storyChoices = {};
+            sm.storyChoices['main.mfFirst.result'] = result;
+            try { save(); } catch (e) { console.warn('[Story] mfFirst result save', e); }
+        }
+        function mfFirstApproach() {
+            if (!_mfFirstAvailable()) { try { enterCity(); } catch (e) {} return; }
+            const sceneKey = (sm.mfEncounter1 == null) ? 'main.mfFirst' : 'main.mfFirstReturn';
+            const scene = (typeof STORY_SCENES === 'object' && STORY_SCENES) ? STORY_SCENES[sceneKey] : null;
+            if (!scene) { _mfFirstLaunchFight(); return; } // scene data missing — never strand the button
+            // baseMeta deliberately null: the encounter is retakeable, so the acts
+            // must never be scenesShown-deduped like one-shot cold opens.
+            _playSceneActs(scene, null, () => {
+                const pick = (sm.storyChoices || {})['main.mfFirst.approach'];
+                if (pick === 'fight') { _mfFirstLaunchFight(); return; }
+                // Walked away. Record the decline, but never downgrade a recorded
+                // loss — "lost, then left" keeps reading as lost at the climax.
+                if (sm.mfEncounter1 == null) _mfFirstRecordResult('declined');
+                enterCity();
+            }, { sceneKey });
+        }
+        /** The first-encounter wall: 6 grade-1 mons from the enabled gens at the
+         *  Mystery full-build pipeline, statically seeded per run — flee, reload,
+         *  retry, and later retakes all face the same six. */
+        function _mfFirstRollTeam() {
+            const sg = storySettingsGens();
+            const saved = window.storyRngNext;
+            if (sm && sm.active && sm.runSeed != null) {
+                let s = _storyEventSeed(_MF_FIRST_SEED_KEY);
+                window.storyRngNext = function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+            }
+            let picks;
+            try { picks = _rollMysteryGradeOneTeam(6, sg); }
+            finally { window.storyRngNext = saved; }
+            // Same resolved multiplier shape as scripted story fights: the Mystery
+            // +30% curve value × the difficulty knob, applied once in buildPokemon.
+            const mult = _storyEnemyStatMult('Mystery Figure', 8, -1)
+                       * _foeDifficultyMult((sm && sm.storyDifficulty) || 'normal');
+            for (const p of picks) {
+                if (!p || !p.build) continue;
+                p.build._storyStatMult = mult;
+            }
+            return picks;
+        }
+        function _mfFirstLaunchFight() {
+            if (_storyCountFighters() === 0) {
+                try { window.showGameAlert('You have no Pokémon able to fight.'); } catch (e) {}
+                enterCity(); return;
+            }
+            // Same-six guarantee (retry / retake / reload all face the same wall):
+            // the first roll is frozen into sm.mfFirstTeamLock — the same pattern
+            // as sm.currentEnemyLock for timeline fights. Seeding alone isn't
+            // enough: warm build caches consume the seeded stream unevenly, so a
+            // re-roll mid-session can drift from the first.
+            let team;
+            try {
+                const lock = sm.mfFirstTeamLock;
+                if (Array.isArray(lock) && lock.length && lock.every(t => t && t.name && t.build)) {
+                    team = storyFreezeFoeTeamForPersistence(deepClone(lock));
+                } else {
+                    team = storyFreezeFoeTeamForPersistence(_mfFirstRollTeam());
+                    sm.mfFirstTeamLock = deepClone(team);
+                }
+            } catch (e) { console.error('[Story] mfFirst team roll failed', e); enterCity(); return; }
+            if (!Array.isArray(team) || !team.length) { enterCity(); return; }
+            // role is deliberately NOT the exact string 'Mystery Figure': that
+            // string attaches the post-HoF boss mechanics (main.mfBattle) at
+            // battle start — the first encounter is a raw-stats wall, no phases.
+            const base = (typeof TRAINER_DATA !== 'undefined' && Array.isArray(TRAINER_DATA))
+                ? TRAINER_DATA.find(t => t && t.role === 'Mystery Figure') : null;
+            const identity = (typeof _storyEnsureMysteryIdentity === 'function') ? _storyEnsureMysteryIdentity() : null;
+            sm.currentTrainerData = Object.assign({}, base || {}, {
+                name: '???',
+                role: 'Mystery Figure (First)',
+                // Pre-reveal tease: the ambiguous identity sprite, never the
+                // player mirror-self (the VS splash silhouettes it anyway).
+                sprite: (identity && identity.sprite) || (base && base.sprite) || 'Red',
+                // VS-splash voice for THIS fight only (getTrainerQuoteForBattle
+                // falls through to introQuotes for unnamed trainers) — the
+                // final-climax identity intros stay unspoiled.
+                introQuotes: [
+                    'Show me the height of you.',
+                    'The road ahead is not this kind. I am the kind version.',
+                    'Every badge is a promise. Keep it.',
+                ],
+            });
+            sm.mfFirstInBattle = true;
+            try { save(); } catch (e) {}
+            showBattleIntro(sm.currentTrainerData, 'Mystery Figure', () => launchBattle(team));
+        }
+        /** onBattleEnd hand-off (fully off-timeline; never touches eventIndex). */
+        function _mfFirstHandleBattleEnd(won) {
+            sm.mfFirstInBattle = false;
+            if (won) {
+                _storyBattleInventorySnapshot = null;
+                sm.storyRetryInventorySnapshot = null;
+                try {
+                    if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
+                        sm.team = _storyTeamSlotsFromBattle(sm.team, state.playerParty);
+                    }
+                } catch (e) {}
+                _mfFirstRecordResult('won');
+                _mfFirstShowWinScene();
+                return;
+            }
+            // No punishment: refund the battle bag, stand the team back up.
+            try { _storyRefundBattleBagItems(); } catch (e) {}
+            try { _storyFullHealPartySlots(); } catch (e) {}
+            _mfFirstRecordResult('lost');
+            _mfFirstShowDefeatOverlay();
+        }
+        function _mfFirstShowWinScene() {
+            _renderNarrativeOverlay({
+                nameplate: '???',
+                sceneKey: 'main.mfFirst',
+                accent: '#b39ddb',
+                typewriter: true,
+                lines: [
+                    'For a long moment the figure just looks at the field — at the wall you were meant to break against, broken.',
+                    '"Good," they say at last, and underneath the word there is something that sounds almost like relief. "Again. Harder. The end of the road will not be this kind."',
+                    'They step aside. This time it reads less like a door opening, and more like a bow.'
+                ],
+                continueLabel: 'Continue →',
+                onDone: () => { try { enterCity(); } catch (e) {} },
+            });
+        }
+        function _mfFirstShowDefeatOverlay() {
+            _mfFirstCloseDefeatOverlay();
+            const ov = document.createElement('div');
+            ov.id = 'story-mf-first-defeat-overlay';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.innerHTML = `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(24,16,44,0.98),rgba(8,4,18,0.98));border:1px solid #b39ddb;padding:22px 24px;color:#d1c4e9;font-family:inherit;font-size:12px;line-height:1.6;box-shadow:0 14px 40px rgba(0,0,0,0.8);">
+                <div style="font-size:15px;color:#b39ddb;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">👁 The Wall Holds</div>
+                <div style="margin-bottom:14px;color:#b39ddb;font-style:italic;">"Down. Good — now you know the exact height of what's ahead. Most trainers never get to measure it. Stand back up whenever you like; I don't count attempts. Or walk on — the road takes the unproven too. It's just less kind about it."</div>
+                <div style="padding:11px 14px;background:rgba(0,0,0,0.5);border-left:3px solid #b39ddb;margin-bottom:16px;font-size:11px;line-height:1.65;">
+                    <div><strong style="color:#fff;">No cost.</strong> Your team is back on its feet, your bag is exactly as it was, and nothing about your run changes.</div>
+                    <div style="margin-top:6px;"><strong style="color:#ffd54f;">Stand back up</strong> refights the same six — free, as many times as you want.</div>
+                    <div style="margin-top:6px;"><strong style="color:#b39ddb;">Walk away</strong> returns to the city. The figure will still be at the edge, any time before the League.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" id="mf-first-defeat-retry" style="flex:1;padding:14px;background:#ffd54f;color:#14092e;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">↻ STAND BACK UP</button>
+                    <button type="button" id="mf-first-defeat-leave" style="flex:1;padding:14px;background:transparent;color:#b39ddb;border:2px solid #b39ddb;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">← WALK AWAY</button>
+                </div>
+            </div>`;
+            document.body.appendChild(ov);
+            const retry = ov.querySelector('#mf-first-defeat-retry');
+            const leave = ov.querySelector('#mf-first-defeat-leave');
+            if (retry) retry.onclick = () => { _mfFirstCloseDefeatOverlay(); _mfFirstLaunchFight(); };
+            if (leave) leave.onclick = () => { _mfFirstCloseDefeatOverlay(); try { enterCity(); } catch (e) {} };
+        }
+        function _mfFirstCloseDefeatOverlay() {
+            const ov = document.getElementById('story-mf-first-defeat-overlay');
+            if (ov) ov.remove();
         }
 
         // ── VICTORY REWARDS, ROAMING LEGENDARIES ────────────────────────
@@ -56463,11 +56760,83 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Munkidori':'"It poisoned a village for laughing at it. It still laughs about it sometimes."',
             'Fezandipiti':'"A peacock with a courtier\'s manners. It is friendly. The friendship has a price."'
         };
+        /** Per-species SIGNS lines for the roaming sighting's silhouette stage
+         *  (2026-07 rework) — what the route does when this legend is near,
+         *  before the player knows what it is. Same never-invented-horror rule
+         *  as _LEGENDARY_LORE; missing species fall back to a generic line. */
+        const _LEGENDARY_SIGNS = {
+            // Gen 1 — Kanto
+            'Articuno': '"The dew on the grass has frozen mid-drip. It is not winter."',
+            'Zapdos':   '"Every hair on your arms is standing. The sky is cloudless and growling anyway."',
+            'Moltres':  '"The air over the road ripples like a heat haze. The morning is cold."',
+            'Mew':      '"Something small keeps giggling from three places at once. The grass is empty each time."',
+            // Gen 2 — Johto
+            'Raikou':   '"Thunder rolled past a minute ahead of any cloud. It sounded like it was running."',
+            'Entei':    '"The ground is warm through your soles. Somewhere below, something paces like a furnace."',
+            'Suicune':  '"The puddles along the road have gone perfectly clear. All of them. At once."',
+            'Celebi':   '"A sapling by the road just grew a season in a breath. The leaves fall upward."',
+            // Gen 3 — Hoenn
+            'Regirock': '"The rocks by the trail are arranged. Not fallen — arranged."',
+            'Regice':   '"Your breath fogs. The thermometer at the ranger post read warm an hour ago."',
+            'Registeel':'"There is a ringing in the rails and fences, low and patient, like struck metal remembering."',
+            'Latias':   '"You keep seeing someone familiar at the edge of your vision. There is no one on this road."',
+            'Latios':   '"A shadow crossed the route heading nowhere, fast, and the rain arrived a moment later."',
+            'Jirachi':  '"Every wish-plaque at the shrine you passed was freshly polished. Nobody maintains that shrine."',
+            // Gen 4 — Sinnoh
+            'Uxie':     '"You have walked this bend twice now without meaning to. The map insists it is straight."',
+            'Mesprit':  '"A grief you cannot place just moved through you and kept going, like weather."',
+            'Azelf':    '"Your grip on the strap has gone white-knuckled. You feel absurdly certain about something."',
+            'Heatran':  '"The stones in the streambed are steaming. The stream doesn\'t seem to mind anymore."',
+            'Cresselia':'"It is midday and the route feels like the moment before sleep. Trainers ahead are yawning."',
+            'Manaphy':  '"The current in the roadside creek has reversed. It is heading somewhere, politely."',
+            'Shaymin':  '"The verge has flowered out of season, in a line, like footprints that bloom."',
+            // Gen 5 — Unova
+            'Cobalion': '"The wild Pokémon along the road have gone still — not afraid. At attention."',
+            'Terrakion':'"There is a hole in the old boundary wall. The rubble was pushed outward."',
+            'Virizion': '"The tall grass is swaying against the wind, in arcs, like something practicing footwork."',
+            'Tornadus': '"A wind with no weather behind it has been circling you for a mile."',
+            'Thundurus':'"The farmer\'s scarecrows are all leaning the same way, scorched at the shoulders."',
+            'Landorus': '"The field on the left of the road is lush. The field on the right is bones. Same seed."',
+            'Keldeo':   '"Hoofprints in the mud end at the river\'s edge — and continue on the water."',
+            'Meloetta': '"You have been humming a tune you don\'t know. So is the trainer behind you."',
+            // Gen 6 — Kalos
+            'Diancie':  '"Something in the cliff face is catching the light in colors the cliff does not have."',
+            'Hoopa':    '"Your bag feels lighter, then heavier, then lighter. Everything is still there. Mostly."',
+            'Volcanion':'"A fog is rolling uphill. It smells like a kettle and moves like it has somewhere to be."',
+            // Gen 7 — Alola
+            'Tapu Koko': '"The air tastes of storms and the route markers are humming like tuning forks."',
+            'Tapu Lele': '"A scattering of glittering scales drifts down the road. Your bruises feel warm."',
+            'Tapu Bulu': '"The wooden fence posts along the road have sprouted. All of them. Overnight."',
+            'Tapu Fini': '"A ribbon of mist is following the ditch water upstream, taking its time."',
+            'Magearna': '"Somewhere under the birdsong there is a soft ticking. It stops when you stop."',
+            'Marshadow':'"Your shadow flinched a half-second before you did. You are almost sure of it."',
+            'Zeraora':  '"The ranger post\'s lights are browning out in slow pulses, like something breathing current."',
+            // Gen 8 — Galar
+            'Kubfu':    '"Small, deliberate strikes have been worn into a trailside trunk. The newest is still bleeding sap."',
+            'Urshifu':  '"One tree along the road is down. One blow did it. There is no storm damage anywhere else."',
+            'Zarude':   '"The canopy is passing whispers along faster than the wind. Something up there has opinions."',
+            'Regieleki':'"Every compass in your bag is pointing down the road. North is behind you."',
+            'Regidrago':'"A sound half-roar, half-yawn rolled out of the hills, and the birds have not come back."',
+            'Enamorus': '"The frost on the north field is retreating in a spiral, like something is unwinding spring."',
+            // Gen 9 — Paldea
+            'Wo-Chien': '"The leaf-litter is drifting against the wind, gathering. It looks almost like a shape resting."',
+            'Chien-Pao':'"There is new snow on the road. Only on the road. It is shaped like footprints, walking."',
+            'Ting-Lu':  '"The ground shivered once — patient, enormous, like something turning over in its sleep."',
+            'Chi-Yu':   '"The roadside pond is warm as bathwater and one goldfish-bright glint keeps circling it."',
+            'Okidogi':  '"You heard chain links dragging over stone, unhurried, keeping pace with you."',
+            'Munkidori':'"The berries along this stretch have gone glossy and wrong. Something upstream is laughing."',
+            'Fezandipiti':'"A perfume drifts down the road — lovely, expensive, and entirely out of place in a hedgerow."'
+        };
         /** Per-variant frame copy for the legendary sighting overlay. Each
          *  variant gets two narrator lines that wrap the species lore line. */
         const _LEGENDARY_SIGHTING_FRAMES = {
             classic:           { banner: 'A LEGENDARY HAS BEEN SIGHTED', narrator: ['Sightings stations across the route have lit up.','Whatever is up there will not stay long. Bring your strongest ball.'] }
         };
+        /** Signs-stage narrator copy (silhouette tease before the reveal). */
+        const _LEGENDARY_SIGNS_NARRATOR = [
+            'The ranger station two routes back went quiet an hour ago. Now you know why.',
+            'Whatever is out there has been keeping pace with you since the last bend.'
+        ];
 
         /** Shared full-screen "a wild thing blocks the road" cinematic. Powers BOTH the
          *  roaming-legendary sighting and the extra-track raid intro — one shell, one
@@ -56477,9 +56846,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  existing menu BGs, existing CSS only — nothing new inlined.
          *    opts = { species, bannerText, loreText, narratorLines:[..], nameplate,
          *             buttonLabel, toneClass, cry:bool, mountSfx:[[key,vol]..],
-         *             dismissSfx:[[key,vol]..], onDone } */
+         *             dismissSfx:[[key,vol]..], onDone,
+         *             // Two-stage mode (2026-07, roaming rework): when `signs` is
+         *             // present (and motion is allowed) a SIGNS stage renders first —
+         *             // the species as a drifting silhouette, its own banner/lore/
+         *             // narrator copy — and the button cuts to the REVEAL stage
+         *             // (white flash + shake + optional cry) with the main copy.
+         *             signs: { bannerText, loreText, narratorLines:[..], buttonLabel } | null,
+         *             _revealCut: bool (internal — reveal stage mounted from signs) } */
         function _showWildEncounterCinematic(opts) {
             const o = opts || {};
+            // Reduced motion collapses the two-stage flow back to the single
+            // classic overlay (no silhouette tease, no flash/shake).
+            const _reducedMotion = (() => {
+                try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+                catch (e) { return false; }
+            })();
+            if (o.signs && !_reducedMotion) {
+                const s = o.signs;
+                const rest = Object.assign({}, o, { signs: null, _revealCut: true });
+                return _showWildEncounterCinematic({
+                    species: o.species,
+                    bannerText: s.bannerText || 'SOMETHING PACES THE ROUTE',
+                    loreText: s.loreText || '',
+                    narratorLines: Array.isArray(s.narratorLines) ? s.narratorLines : [],
+                    nameplate: o.nameplate,
+                    buttonLabel: s.buttonLabel || 'Step closer →',
+                    toneClass: o.toneClass,
+                    // Signs stage keeps the soundscape low — the full mount SFX
+                    // (and the cry) belong to the reveal cut.
+                    mountSfx: s.mountSfx || [['danger', 0.4]],
+                    dismissSfx: null,
+                    _silhouette: true,
+                    onDone: () => { _showWildEncounterCinematic(rest); },
+                });
+            }
             const speciesName = o.species || '';
             let bgImg = 'sprites/bg_psychic.png';
             try {
@@ -56497,12 +56898,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const lines = (Array.isArray(o.narratorLines) ? o.narratorLines : []).filter(Boolean);
             const tone = o.toneClass || '';
             const ov = document.createElement('div');
-            ov.className = 'story-legend-sighting' + (tone ? (' ' + tone) : '');
-            ov.style.backgroundImage = `linear-gradient(180deg, rgba(2,4,10,0.85) 0%, rgba(2,4,10,0.96) 100%), url("${bgImg}")`;
+            ov.className = 'story-legend-sighting' + (tone ? (' ' + tone) : '')
+                + (o._revealCut ? ' story-legend-sighting--shake' : '');
+            ov.style.backgroundImage = o._silhouette
+                ? `linear-gradient(180deg, rgba(2,4,10,0.93) 0%, rgba(2,4,10,0.985) 100%), url("${bgImg}")`
+                : `linear-gradient(180deg, rgba(2,4,10,0.85) 0%, rgba(2,4,10,0.96) 100%), url("${bgImg}")`;
+            const _spriteClass = 'story-legend-sighting-sprite' + (o._silhouette ? ' story-legend-sighting-sprite--silhouette' : '');
             ov.innerHTML = `
+                ${o._revealCut ? '<div class="story-legend-sighting-flash" aria-hidden="true"></div>' : ''}
                 <div class="story-legend-sighting-banner">${_esc(o.bannerText || '')}</div>
-                ${spriteUrl ? `<img class="story-legend-sighting-sprite" src="${spriteUrl}" alt="${_esc(speciesName)}" onerror="this.style.display='none'">` : ''}
-                <div class="story-legend-sighting-name">${_esc(speciesName)}</div>
+                ${spriteUrl ? `<img class="${_spriteClass}" src="${spriteUrl}" alt="${o._silhouette ? '' : _esc(speciesName)}" onerror="this.style.display='none'">` : ''}
+                <div class="story-legend-sighting-name">${o._silhouette ? '— ? —' : _esc(speciesName)}</div>
                 <div class="story-legend-sighting-lore">${lore}</div>
                 <div class="story-dialog-host" style="max-width:560px;">
                     <div class="story-dialog-nameplate">${_esc(o.nameplate || 'The Road')}</div>
@@ -56529,16 +56935,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Optional species cry on mount — raids announce the boss by voice.
             if (o.cry) { try { if (typeof AudioSystem !== 'undefined' && AudioSystem && AudioSystem.playCry) AudioSystem.playCry(speciesName, 0.5); } catch (e) {} }
             document.body.appendChild(ov);
+            // Reveal-cut flourish: a golden sparkle burst as the silhouette lifts
+            // (reuses the shared particle shell; no-op under reduced-motion /
+            // particles-off — FxParticles gates that internally).
+            if (o._revealCut) {
+                try {
+                    if (window.FxParticles) {
+                        window.FxParticles.burst(ov, 'sparkle', {
+                            color: ['#ffd54f', '#fff8e1', '#ffe082'],
+                            duration: 1400, z: 2,
+                        });
+                    }
+                } catch (e) {}
+            }
             return ov;
         }
 
         /** Cinematic overlay that fires *before* the catch screen when a roaming legendary
-         *  is consumed. Now a thin caller of the shared cinematic — behavior preserved 1:1
-         *  (sparkle+danger on mount, shine on dismiss, per-variant tone + label). */
+         *  is consumed. Two stages (2026-07 rework): a SIGNS tease — the legend as a
+         *  drifting silhouette over per-species "the route reacts" copy — then the
+         *  REVEAL cut (flash + shake + species cry + sparkle burst) with the classic
+         *  banner/lore/narrator frame. Reduced-motion collapses to the single classic
+         *  overlay. SFX budget unchanged (existing keys only). */
         function _showRoamingLegendarySighting(speciesName, onDone) {
             const variant = _storyActiveVariant();
             const frame = _LEGENDARY_SIGHTING_FRAMES[variant.id] || _LEGENDARY_SIGHTING_FRAMES.classic;
             const lore = _LEGENDARY_LORE[speciesName] || '"A legend walks the route. The road will not forget what happened next."';
+            const signsLore = _LEGENDARY_SIGNS[speciesName]
+                || '"The birds have gone quiet. The grass is moving against the wind."';
             return _showWildEncounterCinematic({
                 species: speciesName,
                 bannerText: frame.banner,
@@ -56547,6 +56971,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 nameplate: variant.label || 'The Road',
                 buttonLabel: 'Approach the legend →',
                 toneClass: variant.toneClass || '',
+                cry: true,
+                signs: {
+                    bannerText: 'SOMETHING PACES THE ROUTE',
+                    loreText: signsLore,
+                    narratorLines: _LEGENDARY_SIGNS_NARRATOR,
+                    buttonLabel: 'Step closer →',
+                },
                 mountSfx: [['sparkle', 0.6], ['danger', 0.5]],
                 dismissSfx: [['shine', 0.75]],
                 onDone: onDone,
@@ -58695,6 +59126,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // 4-line generic pool so the rolled fight isn't visibly
                     // shorter than the others.
                     introQuotes: (() => {
+                        // First-encounter memory (2026-07 rework): when the City-8
+                        // meeting happened, the splash line is the result-keyed
+                        // callback — guaranteed (single-entry pool), not rolled.
+                        const _mfByResult = {
+                            won: "You beat me once, with borrowed thunder. Now beat yourself.",
+                            lost: "You fell at the city's edge and stood back up. Show me that was growth, not luck.",
+                            declined: "You walked past me once. There is no walking past this.",
+                        };
+                        const _mfCallback = sm && sm.mfEncounter1 ? _mfByResult[sm.mfEncounter1] : null;
+                        if (_mfCallback) return [_mfCallback];
                         if (_mysteryFinalFace && Array.isArray(_mysteryFinalFace.intros) && _mysteryFinalFace.intros.length) {
                             return _mysteryFinalFace.intros;
                         }
@@ -59078,6 +59519,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.pits && sm.pits._inBattle) {
                 document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
                 _pitsHandleBattleEnd(!!won);
+                return;
+            }
+            // City-8 Mystery Figure first encounter — off-timeline, no-punishment
+            // loss (free retry / walk away), result recorded on sm.mfEncounter1.
+            if (sm.mfFirstInBattle) {
+                document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+                _mfFirstHandleBattleEnd(!!won);
                 return;
             }
             if (won) {
@@ -59517,6 +59965,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const msg = rivalSay ? `${baseMsg}\n\n${who}: "${rivalSay}"` : baseMsg;
             try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
             processNextEvent();
+        }
+
+        // Post-HoF Mystery Figure climax — "Accept the Loss" (2026-07 rework).
+        // The third game-over option, and the fight's skip valve: the player
+        // concedes they need more training, the figure spares them, and the
+        // post-game opens anyway. Deliberately NO punishment (unlike the rival
+        // concede's all-gold forfeit): bag refunded, party healed, gold intact.
+        // The mask STAYS ON — main.mfReveal / main.ending stay unfired, so the
+        // reveal remains the prize for finally beating the figure (the Crucible
+        // Mystery encore plays it on a later win). sm.mfFinalResult records the
+        // outcome for epilogue branching.
+        function acceptMysteryLossAndContinue() {
+            if (!sm.active && !load()) { showMenu(true); return; }
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            if (!ev || ev[1] !== 'Battle' || String(ev[2] || '') !== 'Mystery Figure' || sm.postHofMysteryClimaxDone) {
+                window.showGameAlert && window.showGameAlert('There is no Mystery Figure loss to accept.');
+                refreshStoryGameOverRetreatUI();
+                return;
+            }
+            _storyRefundBattleBagItems();
+            _storyFullHealPartySlots();
+            sm.currentEnemyLock = null;
+            sm.crucibleBattleSource = null;
+            sm.mfFinalResult = 'accepted_loss';
+            sm.postHofMysteryClimaxDone = true;
+            try { save(); } catch (e) { console.warn('[Story] mystery accept-loss save', e); }
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            _playStoryBeatScene('main.mfSpare', () => {
+                try { save(); } catch (e) {}
+                continuePostGame();
+            });
         }
 
         // Rebuild story team slots from a just-ended battle's `state.playerParty`.
@@ -61045,6 +61524,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Unmasker (grind): tiered lifetime Mystery-Figure defeats.
                 try { _storyAchievementBumpCount('mystery_defeats', 1); } catch (e) {}
                 sm.postHofMysteryClimaxDone = true;
+                sm.mfFinalResult = 'won';
                 try { save(); } catch (e) {}
                 // The mask comes off: play the reveal + ending beats (moved here from
                 // the league road, where they used to spoil at E1), then the reward
@@ -61065,6 +61545,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // the hub), so the reveal + ending have already fired; the calls below
                 // dedupe via storyEventsFired down to a plain victory toast + hub return.
                 if (won) {
+                    // An accepted-loss run finally taking the fight back: upgrade the
+                    // recorded outcome. (The reveal below fires for the FIRST time on
+                    // this path — accept-loss deliberately kept the mask on.)
+                    if (sm.mfFinalResult !== 'won') { sm.mfFinalResult = 'won'; try { save(); } catch (e) {} }
                     // Reveal, then the deferred finale (this branch never re-enters
                     // continuePostGame, so it plays the ending itself — once, guarded
                     // by storyEventsFired), then back to the Crucible hub.
@@ -62317,8 +62801,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     outcome = 'flee';
                     const fleeMsgs = _catchState.roamingLabel
                         ? [
-                            `${enc.name} broke the ball and fled. Gone for good.`,
-                            `${enc.name} bolted past the treeline. Gone for good.`
+                            `${enc.name} broke the ball and fled. Gone for good.\n\nThe route settles back into being just a route. It remembers you, though.`,
+                            `${enc.name} bolted past the treeline. Gone for good.\n\nSomewhere two routes over, a ranger station will light up tonight — for somebody else.`
                         ]
                         : [
                             `${enc.name} bolted!`,
@@ -62413,7 +62897,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
             const _caughtShiny = !!(caught && caught.build && caught.build._isShiny);
             const _shinyLine = _caughtShiny ? '\n\n✨ It\'s a shiny! One in a hundred — keep it close.' : '';
-            const successMsg = `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
+            // Roaming legendaries get their own aftermath beat — the one-shot
+            // sighting deserves more than the stock "Gotcha!".
+            const successMsg = (_catchState && _catchState.roamingLabel)
+                ? `Caught! ${_caughtShiny ? '✨ ' : ''}${enc.name} stops fighting the ball almost immediately — as if, somewhere in the chase, it had already decided.\n\nThe route exhales. The legend rides with you now.${_shinyLine}`
+                : `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
             _catchFinishWithMessage(successMsg);
         }
         // Holds the just-caught mon while the player picks "send to PC" or
@@ -62538,6 +63026,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function catchRun() {
             if (!_catchState || _catchState.ended) return;
             const cb = _catchState.onComplete;
+            // Walking away from a roaming legendary forfeits it for the run —
+            // give the one-shot decision its own goodbye beat.
+            if (_catchState.roamingLabel && _catchState.encounter && _catchState.encounter.name) {
+                try {
+                    window.showGameAlert && window.showGameAlert(
+                        `You back away, and ${_catchState.encounter.name} watches you do it — unhurried, unafraid.\n\nBy the next bend the route is just a route again. Gone for this run.`);
+                } catch (e) {}
+            }
             _catchState = null;
             if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
             _catchStageEl = null;
@@ -73951,8 +74447,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showBossBanner: (t, a) => _showBossBanner(t, a),
             rollRaidPhaseEffects: (k, m) => _rollRaidPhaseEffects(k, m),
             removeBossStatusIndicator: () => _removeBossStatusIndicator(),
-            showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
+            showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, acceptMysteryLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
+            mfFirstApproach,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterStoneShop, buyStoneItem, redeemStoneToken,
@@ -73985,7 +74482,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
             enterFanClub, renderFanClubRoster,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
-            previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock, devStoryJump,
+            previewHallOfFame, seedDebugMysteryFirstEncounter, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock, devStoryJump,
             openRunSummary,
             // Trainer creation + cross-run collection (Pokédex / achievements / HoF)
             openTrainerCreate, cancelTrainerCreate,

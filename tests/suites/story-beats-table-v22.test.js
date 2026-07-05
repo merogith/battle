@@ -169,7 +169,9 @@ test('road anchors are well-formed (road1..road8 or league)', () => {
     visit(ST.EXTRA_STORY_BEATS);
 });
 
-test('STORY_SCENES has exactly 204 entries (14 main + 110 villain + 80 extra)', () => {
+test('STORY_SCENES has exactly 207 entries (17 main + 110 villain + 80 extra)', () => {
+    // 17 main = the 14 original + the 3 Mystery Figure rework scenes
+    // (main.mfFirst, main.mfFirstReturn, main.mfSpare — 2026-07).
     const scenes = ST.STORY_SCENES;
-    assert.equal(Object.keys(scenes).length, 204);
+    assert.equal(Object.keys(scenes).length, 207);
 });

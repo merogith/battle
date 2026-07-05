@@ -12,6 +12,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
@@ -85,12 +88,24 @@ test('branches are when:{key,eq} entries with a single trailing default', () => 
 
 test('every persisted choice value is reachable by some branch OR is honest FLAVOR', () => {
   // Not every persistKey must be read back (FLAVOR is recorded-not-read by design),
-  // but if a branch references a key, that key must be a real persistKey somewhere —
-  // a `when` pointing at a non-existent key is a silently-dead branch.
+  // but if a branch references a key, that key must be WRITTEN somewhere —
+  // a `when` pointing at a never-written key is a silently-dead branch. Keys are
+  // written two ways: declaratively via a scene's `choice.persistKey`, OR
+  // programmatically in battle.html via `sm.storyChoices['<key>'] = …` (e.g. the
+  // Mystery Figure first-encounter result, set by _mfFirstRecordResult).
   const persistKeys = new Set();
   for (const sc of Object.values(S)) {
     if (!Array.isArray(sc.acts)) continue;
     for (const act of sc.acts) if (act && act.choice) persistKeys.add(act.choice.persistKey);
+  }
+  // Fold in code-written storyChoices keys so a branch keyed on one is not
+  // mistaken for a dead branch.
+  {
+    const html = fs.readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'battle.html'), 'utf8');
+    const re = /storyChoices\[\s*['"]([^'"]+)['"]\s*\]\s*=/g;
+    let m;
+    while ((m = re.exec(html)) !== null) persistKeys.add(m[1]);
   }
   for (const [k, sc] of Object.entries(S)) {
     if (!Array.isArray(sc.acts)) continue;

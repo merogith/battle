@@ -15,9 +15,15 @@ Conflicts are noted inline so old context isn't silently contradicted.
 > - The **8-tone storyline layer** was **RETIRED to `classic`** (kept dormant in code, reversible).
 > - The **multi-city Professor** was **CUT (2026-06)**. The Professor now appears **only in
 >   City 0** and gives **just the starter**; later cities have no Professor. Team growth after
->   the starter comes from **wild catches / tall grass** (routes, camp, Safari), and the
->   end-game **Mystery Figure** (City-8 legendary gate) is the one remaining gifted Pokémon.
+>   the starter comes from **wild catches / tall grass** (routes, camp, Safari).
 >   Sections below that describe a "Professor in each city / next city's Pro" are historical.
+> - The **City-8 legendary gate** was **REMOVED (2026-07, Mystery Figure rework)**. The
+>   Mystery Figure no longer gifts a legendary and no longer blocks Victory Road. Its City-8
+>   presence is now the **optional first encounter** (§14e): a dialogue choice into a
+>   meant-to-lose-but-winnable fight (full grade-1 roll, +30% mult) with **no punishment** on
+>   loss (free retries / walk away, retakeable until beaten). The result
+>   (`sm.mfEncounter1`) recolors the post-HoF climax dialogue. References to the gate
+>   (`isPreLeagueLegendaryMysteryGate`, "required swap-in") anywhere below are historical.
 >
 > Canonical status: `CLAUDE.md` → "Excised vs retired (mid-2026 cleanup)".
 
@@ -269,10 +275,33 @@ All five modes use **full-heal between battles**. The HC-only persistence code a
 
 Still live: row 67 (`Mystery Figure`) is the post-HoF climax. `continuePostGame()` routes the player into it on the first post-HoF reentry.
 
-- **Win** → the mask-drop reveal + the `main.ending` finale play, then the post-game opens **directly into the Crucible**, which becomes the player's **home hub** (`sm.atCrucible = true`). The endgame is **Crucible-only** — the old town hubs are no longer the return point.
-- **Loss** → routed through the **standard story defeat screen** (Retry / Return to last city, normal retreat-fee rules) with the climax left **pending** (`postHofMysteryClimaxDone` stays `false`). The town then shows a **🚪 The Mystery Figure** re-challenge action (`enterMysteryClimax`, gated on `sm.hofPartySnapshot && !postHofMysteryClimaxDone`) so the player can heal, rebuild, and try again. The endgame opens only on an actual win.
+**2026-07 rework:** the climax is framed as **the trial** — every played run is a
+universe; the figure (you, from the first one) stands at the end of every road and
+sorts the challengers, culling the weak. Pre-fight dialogue (row-67 cold-open + VS
+splash) **branches on the City-8 first-encounter result** (`sm.mfEncounter1`), and the
+reveal gains the multiverse-sorting act. The outcome lands on
+`sm.mfFinalResult ∈ null | 'won' | 'accepted_loss'`.
+
+- **Win** → `mfFinalResult='won'`; the mask-drop reveal + the `main.ending` finale play, then the post-game opens **directly into the Crucible**, which becomes the player's **home hub** (`sm.atCrucible = true`). The endgame is **Crucible-only** — the old town hubs are no longer the return point.
+- **Loss** → routed through the **standard story defeat screen** with the climax left **pending** (`postHofMysteryClimaxDone` stays `false`) and **three free options**:
+  1. **Retry** — unchanged (inventory refunded).
+  2. **Return to last city** — the retreat fee is **waived** for the pending climax on
+     every difficulty (`_storyApplyRetreatToCity` zeroes it on the Mystery row). The town
+     shows the **🚪 The Mystery Figure** re-challenge action (`enterMysteryClimax`) so the
+     player can heal, rebuild, and try again.
+  3. **Accept the Loss** (`acceptMysteryLossAndContinue`) — the skip valve: "I need more
+     training." No gold loss (unlike the rival concede). Plays `main.mfSpare` (the figure
+     spares you; opening act branches on `mfEncounter1`), sets
+     `mfFinalResult='accepted_loss'` + `postHofMysteryClimaxDone=true`, and the endgame
+     opens with **the mask still on** — `main.mfReveal`/`main.ending` stay unfired. The
+     reveal remains the prize for finally beating the figure: the Crucible **Mystery
+     encore** plays it on a later win and upgrades `mfFinalResult` to `'won'`.
+
+The post-HoF Oak epilogue appends a coda keyed on `mfFinalResult`
+(`_POSTHOF_EPILOGUE_BY_VARIANT.classic.lineByFinalResult`).
 
 Mystery Figure also remains the Crucible's "Mystery" encore.
+Tests: `tests/suites/mystery-figure-final-rework.test.js`.
 
 ### Trigger and leads
 
@@ -539,9 +568,11 @@ and `processNextEvent` does not advance the main timeline.
 **Exception — `postHofMystery` losses:** the post-HoF Mystery Figure climax is the one
 Crucible-sourced fight whose **loss** is *not* funneled through `_handleCrucibleBattleEnd`.
 `onBattleEnd` clears the source and falls through to the standard story defeat screen, so
-the climax stays pending and the endgame opens only on an actual win. Wins still route
-through `_handleCrucibleBattleEnd`, which plays the reveal + ending and hands off to the
-Crucible (`continuePostGame` → `sm.atCrucible = true`).
+the climax stays pending — the player retries, retreats (fee-free on the Mystery row), or
+accepts the loss (`acceptMysteryLossAndContinue`, §9) to open the endgame with the mask
+still on. Wins still route through `_handleCrucibleBattleEnd`, which stamps
+`mfFinalResult='won'`, plays the reveal + ending, and hands off to the Crucible
+(`continuePostGame` → `sm.atCrucible = true`).
 
 ---
 
@@ -555,16 +586,49 @@ distinct:
 - **Professor** — the City-0 lab visit only. Hands the player their starter
   (button label "Professor — Pick Your Starter"), then never reappears.
 - **Mystery Figure** — reserved for actual story-mystery events:
-  - **City 8 post-Gym 8 legendary gate** (`isPreLeagueLegendaryMysteryGate`)
-    — required swap-in legendary before Victory Road.
+  - **City 8 post-Gym 8 first encounter** (§14e) — optional talk-or-fight
+    challenge at the city's edge. (Replaced the old "legendary gate" —
+    required swap-in legendary — in the 2026-07 rework.)
   - **Post-HoF Mystery Figure battle** (row 67 in `STORY_EVENTS_RAW`)
-    — final masked challenger, repurposed for the Caged God arc.
+    — final masked challenger.
   - **Crucible Mystery encore** — post-game replay button.
 
-The shared backend (`enterProfessor`, `_profMysteryMode`,
-`_profLegendaryMysteryMode`) still drives both flows so we don't
-fork the screen rendering, but the *labels and copy* now keep them
-mentally distinct.
+The Professor screen backend (`enterProfessor`, `_profMysteryMode`) is now
+Professor-only; the Mystery Figure no longer reuses it.
+
+---
+
+## 14e. Mystery Figure — City-8 first encounter (2026-07 rework)
+
+The figure waits at the City-8 edge once Gym 8 falls. Everything is opt-in:
+
+- **Offer**: a `quest`-section city button ("❓ A Masked Figure Waits at the
+  Edge", meta `Optional`) plus the `???` city-hub tease. Shown while
+  `_mfFirstAvailable()` — City 8, ≥8 badges, `sm.mfEncounter1 !== 'won'`.
+- **Scene**: `main.mfFirst` (first approach) / `main.mfFirstReturn`
+  (re-approach; opening act branches on the recorded result). The final act is
+  a choice (`persistKey: 'main.mfFirst.approach'`): **fight** or **walk**.
+- **The fight** (`_mfFirstLaunchFight`): 6 × grade-1 species from the enabled
+  gens via `_rollMysteryGradeOneTeam` (full Mystery build pipeline: near-best
+  power target, TOURNAMENT tier, all gimmicks, 3 illegal-build slots), stamped
+  with the same **+30%** `_storyStatMult` the post-HoF climax uses. Designed
+  to be lost; winnable at the top end. **No boss-phase mechanics** (the exact
+  role string `'Mystery Figure'` is what attaches `main.mfBattle` mechanics,
+  so this fight uses `'Mystery Figure (First)'`).
+- **Same-six guarantee**: the first roll is frozen into `sm.mfFirstTeamLock`
+  (mirrors `currentEnemyLock`) — retry, reload, and later retakes all face the
+  identical team.
+- **Loss = no punishment**: off-timeline (`sm.mfFirstInBattle` short-circuits
+  `onBattleEnd` like the Pits), battle bag refunded, party fully healed, no
+  gold fee, no warp. Defeat overlay offers **Stand back up** (free retry) or
+  **Walk away** (back to the city; retakeable any time before the League).
+- **Result**: `sm.mfEncounter1 ∈ null | 'declined' | 'lost' | 'won'`, mirrored
+  to `sm.storyChoices['main.mfFirst.result']` for scene branches. A decline
+  never downgrades a recorded loss. The post-HoF climax dialogue branches on
+  this value (§9 / Part B of the rework).
+
+Tests: `tests/suites/mystery-figure-first-encounter.test.js`,
+`tests/suites/professor-city0-only.test.js`.
 
 ---
 
