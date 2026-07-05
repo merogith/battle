@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 8fa68fdc12d2
 confidence: high
-status: open
+status: fixed-claude/battle-mechanics-sequencing-u50036
 ---
 
 **Title**: Wish & Future Sight resolve BEFORE weather damage (residual-order inversion) — flips faint outcomes

@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: a0d5437a0dae
 confidence: high
-status: open
+status: fixed-claude/battle-mechanics-sequencing-u50036
 ---
 
 **Title**: Dynamax/Tera activate lazily inside performAction (on the user's action), not at the start of the action phase — slow gimmick users are hit on pre-gimmick HP/typing
@@ -42,7 +42,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 8d2b9918f32a
 confidence: medium
-status: open
+status: fixed-claude/battle-mechanics-sequencing-u50036
 ---
 
 **Title**: Fractional-priority tiebreak hack can bleed across an integer bracket boundary (Custap +0.5 vs Lagging Tail -0.5, or stacked -0.5/-0.5)
