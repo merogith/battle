@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-07-05T09:13:49.605Z
+> **Generated**: 2026-07-05T11:28:45.757Z
 > **Source**: `agent-state/findings/*.md` (203 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -7762,7 +7762,7 @@ if (diff === 'challenge') return 0.90;
 
 ## Retired / Resolved
 
-_320 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
+_326 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
 
 - [fixed] (no title) — `undefined` (P3/test-infra)
 - [fixed-claude/relaxed-bell-2X3Ys] Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog — `__pbsGlobalEscBound` (P3/a11y)
@@ -7848,6 +7848,8 @@ _320 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-claude/bug-performance-investigation-8snuw9] _withEventSeededRng swaps window.storyRngNext but the Math.random patch calls the LOCAL storyRngNext — seeded "static rolls" mix two streams — `_withEventSeededRng` (P1/bug)
 - [fixed-main] Player gimmick gate reads bare IIFE-private `sm` — always sees zero unlocked gimmicks — `_withStoryPlayerGimmickGate` (P1/inconsistency)
 - [fixed-main] CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path — `_withStoryPlayerGimmickGate` (P3/bug)
+- [fixed-claude/enemy-bot-ai-optimization-i394cm] AI damage-immunity table drifted from engine — misses Earth Eater, Well-Baked Body, Wind Rider, Air Balloon, Magnet Rise/Telekinesis — `abilityImmunity` (P1/bug)
+- [fixed-claude/enemy-bot-ai-optimization-i394cm] AI status-move blocking misses Good as Gold, the whole applyStatus immunity-ability table, and terrain/field blocks — `aiAbilityBlocksMoveForAi` (P1/bug)
 - [fixed-claude/ecstatic-gauss-RY5hA] aiDecision early-returns null on any choiceLock — AI cannot switch out of an immune/walled lock — `aiDecision` (P1/bug)
 - [fixed-claude/bug-performance-investigation-8snuw9] aiSelectScoredMove picks window.storyRngNext unconditionally — consumes story stream even when sm.active=false — `aiSelectScoredMove` (P3/bug)
 - [fixed-claude/gifted-fermat-yfnqq5] Anomaly seeds are keyed by row ID but several land on mismatched event types vs their prose — `ANOMALY_SEEDS` (P3/data)
@@ -7924,6 +7926,9 @@ _320 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-claude/ecstatic-gauss-RY5hA] Choice-locked AI re-returns the locked move with zero immunity/wall check — spams 0-dmg moves forever — `getBestMove` (P1/bug)
 - [fixed-claude/ecstatic-gauss-RY5hA] AI spams setup move into an active phazer — `score *= 0.25` penalty loses to near-zero attack scores — `getBestMove` (P1/bug)
 - [fixed-claude/gifted-fermat-yfnqq5] When every damaging move is immune (score 0), AI throws a 0-dmg attack instead of switching/using status — `getBestMove` (P2/inconsistency)
+- [fixed-claude/enemy-bot-ai-optimization-i394cm] AI scores conditional moves as unconditional — picks moves the engine then fails (Last Resort, Sucker Punch, Focus Punch, Dream Eater, Belch…) — `getBestMove` (P1/bug)
+- [fixed-claude/enemy-bot-ai-optimization-i394cm] AI ignores priority blockers — Fake Out into Queenly Majesty/Dazzling/Armor Tail, priority into Psychic Terrain — `getBestMove` (P2/bug)
+- [fixed-claude/enemy-bot-ai-optimization-i394cm] Sleeping bot never clicks Sleep Talk/Snore — wastes every sleep turn despite holding the counter-play — `getBestMove` (P2/bug)
 - [fixed-main] Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior — `getDownStatusLabel` (P3/inconsistency)
 - [fixed-claude/funny-clarke-EnGMv] Salac Berry grants a phantom 1.5x Speed while merely held at <=25% HP (not consumed) — `getEffectiveSpeed` (P2/bug)
 - [fixed-main] Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session — `getSprite` (P3/perf)
@@ -7966,6 +7971,7 @@ _320 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-claude/sharp-keller-eZEDN] Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift — `parseMoveEffects` (P1/bug)
 - [fixed-claude/intelligent-einstein-8ji8nj] Data-driven boost block returns early, bypassing named-branch extra effects (Memento self-faint, Toxic Thread poison) — `parseMoveEffects` (P1/bug)
 - [fixed-claude/intelligent-einstein-8ji8nj] Precondition moves unimplemented — deal damage that should fail (Dream Eater, Thunderclap, Synchronoise) — `parseMoveEffects` (P2/bug)
+- [fixed-claude/enemy-bot-ai-optimization-i394cm] Poltergeist has no engine precondition — hits itemless targets (Showdown: fails without a held item) — `parseMoveEffects` (P3/engine-fidelity)
 - [wontfix-corner-case-common-path-matches-showdown-by-the-hp] Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor — `parseMoveEffects-burn-modifier` (P3/inconsistency)
 - [fixed-claude/sharp-keller-eZEDN] Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites — `parseMoveEffects-damage-core` (P1/bug)
 - [fixed-claude/funny-clarke-EnGMv] Damage formula divides un-truncated (fractional) A/D — Showdown floors atk/def stats first (±1 HP) — `parseMoveEffects-damage-formula` (P1/bug)
