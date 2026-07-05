@@ -240,7 +240,24 @@ export async function loadEngine() {
   };
   window.aiChooseGimmick = () => null;
   window.tryFoeStoryBattleItem = () => false;
-  // Engine references settings global for animation toggles, story flags, etc.
+  // Engine references a `settings` global for animation toggles, story flags, etc.
+  // That binding is the engine's IIFE/global-lexical `let settings`, NOT window.settings —
+  // assigning window.settings.animations here used to be a silent no-op, so every jsdom
+  // benchmark actually ran with animations ON (inflating turn ms and retaining anime.js
+  // cleanup DOM). Mutate the LIVE object through the __engine getter so the override sticks,
+  // then point window.settings at the same object for the few call sites that read it there.
+  // Only force the two toggles the old (no-op) override intended — animations and
+  // moveSfx. Leave every other engine default untouched: forcing e.g. storyBattleItems
+  // off here would change engine behavior the existing suites were written against (the
+  // pre-fix window.settings write never reached the engine, so those defaults held).
+  try {
+    const realSettings = engine.settings;
+    if (realSettings) {
+      realSettings.animations = false;
+      realSettings.moveSfx = false;
+      window.settings = realSettings;
+    }
+  } catch (e) { /* fall through to the window.settings fallback below */ }
   if (!window.settings) {
     window.settings = {
       animations: false,
@@ -248,9 +265,6 @@ export async function loadEngine() {
       moveSfx: false,
       catchAnims: false,
     };
-  } else {
-    window.settings.animations = false;
-    window.settings.moveSfx = false;
   }
 
   // Reasonable damage-dummy partners: Splash slot index. Tests can override.
