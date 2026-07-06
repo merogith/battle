@@ -154,6 +154,71 @@ test('end-to-end: C7 wild EV totals hit the 508 cap (no clamp-overflow undershoo
   ST.sm = null;
 });
 
+test('C1 move bias: dual-typed wilds carry their secondary-type basic STAB (pre-catch)', () => {
+  // Locks in the makeWildBuild secondary-STAB post-pass: a dual-typed wild should
+  // visibly carry its 2nd type's basic STAB more often than never. Measured at the
+  // ROLL layer (where the bias lives). NOTE: the catch-time learnset filter
+  // (_storyFilterBuildMovesForCity) narrows this on the actual caught mon at early
+  // cities — this test guards the mechanism, not the post-filter survival rate.
+  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
+  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+  const T1SEC = W._T1_BASIC_STAB_BY_TYPE;
+  const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  ST.sm = {
+    active: true, badges: 8, team: [],
+    settings: { enabledGens: GENS.slice() },
+    unlockedGimmicks: [], storyDifficulty: 'normal',
+    eventIndex: cityRowFor(7), trainerAssignments: {},
+  };
+  let dual = 0, withSecondary = 0;
+  for (let i = 0; i < 700; i++) {
+    const enc = ST.rollWildEncounter(GENS);
+    if (!enc) continue;
+    const base = baseStats[enc.name];
+    if (!base || !base.t2) continue;
+    const sec = T1SEC && T1SEC[base.t2];
+    if (!sec) continue;
+    dual++;
+    if ((enc.build.m || []).includes(sec)) withSecondary++;
+  }
+  assert.ok(dual > 30, `sampled enough dual-typed wilds (got ${dual})`);
+  // Generous floor — the observed C7 pre-catch rate is ~90%; assert well clear of a
+  // "never surfaces the 2nd type" regression.
+  assert.ok(withSecondary / dual >= 0.4, `dual-types show 2nd-type STAB (${withSecondary}/${dual})`);
+  ST.sm = null;
+});
+
+test('dual-typed wild movesets vary across samples of a species (pre-catch)', () => {
+  // Sample at C3, where the species pool is dense enough that many dual-types reach
+  // a solid sample count (at C7 there are 700+ species, so few reach threshold and
+  // the ones that do are often static-moveset mono-types). Dual-types are the ones
+  // that CAN vary — via the T1 downgrade's secondary roll + the C1 injection.
+  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
+  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+  const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  ST.sm = {
+    active: true, badges: 3, team: [],
+    settings: { enabledGens: GENS.slice() },
+    unlockedGimmicks: [], storyDifficulty: 'normal',
+    eventIndex: cityRowFor(3), trainerAssignments: {},
+  };
+  const byMoves = {};
+  for (let i = 0; i < 2000; i++) {
+    const enc = ST.rollWildEncounter(GENS);
+    if (!enc) continue;
+    const base = baseStats[enc.name];
+    if (!base || !base.t2) continue; // dual-types only
+    (byMoves[enc.name] ||= []).push((enc.build.m || []).join(','));
+  }
+  const big = Object.entries(byMoves).filter(([, v]) => v.length >= 6);
+  assert.ok(big.length >= 5, `enough well-sampled dual-types (got ${big.length})`);
+  const variedFrac = big.filter(([, v]) => new Set(v).size >= 2).length / big.length;
+  // Observed ~98% of well-sampled dual-types vary; assert comfortably clear of a
+  // "every wild of a species is a move clone" regression.
+  assert.ok(variedFrac >= 0.6, `most dual-types show >1 moveset (${(variedFrac * 100).toFixed(0)}%)`);
+  ST.sm = null;
+});
+
 test('end-to-end: repeated wild rolls of a species diversify nature + EVs', () => {
   const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
   const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
