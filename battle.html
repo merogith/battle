@@ -758,6 +758,8 @@
         .tx-role-chip-pill { display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border-radius:999px; font-weight:bold; color:var(--accent); background:rgba(255,203,71,0.12); border:1px solid rgba(255,203,71,0.35); white-space:nowrap; }
         .tx-role-chip-why { color:var(--text-dim,#9fa7b7); white-space:nowrap; }
         /* ⚡ Fast-Build (Auto-Build) */
+        .tx-mentor-banner { font-size:11px; color:var(--text-dim,#9fa7b7); background:rgba(255,203,71,0.06); border:1px solid rgba(255,203,71,0.25); border-radius:8px; padding:8px 10px; margin-bottom:4px; }
+        .tx-mentor-banner strong { color:var(--accent); }
         .tx-fastbuild-bar { margin:6px 0 8px; }
         .tx-fastbuild-bar--done { font-size:11px; color:#9fbf9a; padding:6px 8px; border:1px dashed rgba(129,199,132,0.4); border-radius:8px; background:rgba(129,199,132,0.07); }
         .tx-fastbuild-open { width:100%; min-height:40px; padding:8px 12px; font-family:inherit; font-size:12px; font-weight:bold; cursor:pointer;
@@ -10112,6 +10114,24 @@
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <p id="story-tutor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Tap a move slot to swap it. Available moves come from each Pokémon's learnset.</p>
             <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div class="story-tutor-footer" style="padding:10px;flex-shrink:0;">
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
+    <div id="screen-story-mentor" class="screen hidden story-screen-root" role="region" aria-label="Battle Mentor — Auto-Build">
+        <div id="story-mentor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-mentor-head-title" class="story-screen-head-title fac-train" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">⚡ Battle Mentor</span></h3>
+            <span id="story-mentor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <p id="story-mentor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">One-tap best build for each Pokémon — moves, item, ability, nature &amp; EVs at once. It only offers what you've unlocked, and only charges for changes.</p>
+            <div id="story-mentor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div class="story-tutor-footer" style="padding:10px;flex-shrink:0;">
             <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
@@ -35687,6 +35707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
             colress: 7, daycare: 2, // Daycare Inn debuts at City 2 (first daycare city after the Gym-1 unlock)
             bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
+            mentor: 0, // Battle Mentor (Auto-Build NPC) — present from the start town; adapts to whatever facilities are unlocked
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
         // than dirty every row of the literal above, we splice 'Pokémon Fan Club'
@@ -35701,6 +35722,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // debuts at the first gym city (Layer-1 evolutions); the RNG-negators + Fan
             // Club are present from the start town.
             const ALWAYS_ON = [
+                { fac: 'Battle Mentor', minCity: 0 },     // Auto-Build NPC — present from City 0, adapts to unlocks
                 { fac: 'Move Tutor', minCity: 0 },
                 { fac: 'Nature Rater', minCity: 1 },     // Nature Rater debuts at the first gym city
                 { fac: 'Pokémon Fan Club', minCity: 1 },
@@ -43255,6 +43277,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function syncStoryTutorBackground() {
             applyStoryBgLayer(document.getElementById('story-tutor-bg-layer'), getStoryBgManifest().shopMart || '');
         }
+        function syncStoryMentorBackground() {
+            applyStoryBgLayer(document.getElementById('story-mentor-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
+        }
         function syncStoryColressBackground() {
             applyStoryBgLayer(document.getElementById('story-colress-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
         }
@@ -47775,6 +47800,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     txFastBuildQuote: (...a) => _txFastBuildQuote(...a),
                     txFastBuildSel: () => _txFastBuild,
                     tutorApplyFastBuild: (...a) => tutorApplyFastBuild(...a),
+                    enterMentor: () => enterMentor(),
+                    renderMentorTeam: (...a) => renderMentorTeam(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
                     txNatureRecsByPurpose: (...a) => _txNatureRecsByPurpose(...a),
@@ -49588,6 +49615,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { _storyGrantBundle({ fullRestore: 1 }); save(); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 Full Restore.'); } catch (e) {}
                 }
+            },
+            firstBattleMentor: {
+                metaKey: 'tutorial-first-battle-mentor',
+                sprite: 'Veteran', name: 'Battle Mentor', nameplate: 'Battle Mentor',
+                lines: [
+                    '"New around here? I\'m the shortcut. Pick a partner and I\'ll tune it to a competitive set in one tap — no menus to learn."',
+                    '"I only use what this town has opened to you. Right now that\'s moves; as you unlock the Dojo, the Nature Rater and the rest, I\'ll fold each one in. You only pay for what changes."'
+                ]
             },
             firstMoveTutor: {
                 metaKey: 'tutorial-first-move-tutor',
@@ -52847,6 +52882,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Staged-NPC chip tags — same base name, the tag advances by city as the
             // facility's capability grows (see NPC_STAGE_CITY / NPC_STAGE_NAMES).
             const _stageTag = (key) => { const t = _npcStageName(key); return t ? ' — ' + t : ''; };
+            if (actions.includes('Battle Mentor') && _tutorTeam) {
+                // The Auto-Build NPC — one-tap best set per mon, adapting to what's unlocked.
+                // No fixed price badge (cost is per-mon and only for changes); a soft "Auto-Build" tag.
+                _push('train', makeActionBtn('⚡ Battle Mentor','mentor','window.StoryMode.enterMentor()','training', _facOpts('mentor', [{label:'Auto-Build',tone:'free'}], { soft:true })));
+            }
             if (actions.includes('Move Tutor') && _tutorTeam) {
                 // FLOOR, not the stage ceiling: a natural move (1,000G) is teachable at
                 // every tier, so the "from" price is constant; the stage chip carries the
@@ -53137,6 +53177,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casino:    'sprites/items/amulet-coin.png',
             // Train & evolve
             tutor:     'sprites/pokesprite/items/heart-scale.png',
+            mentor:    'sprites/pokesprite/items/rare-candy.png',
             nature:    'sprites/pokesprite/items/mint.png',
             dojo:      'sprites/items/muscle-band.png',
             evtrainer: 'sprites/pokesprite/items/protein.png',
@@ -53345,6 +53386,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
             bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club', daycare: 'Daycare Inn',
+            mentor: 'Battle Mentor',
         };
         // Facility key → the onclick that opens it, so the single objective line can
         // deep-link to a pending first-visit facility. Mirrors the button onclicks in
@@ -53373,6 +53415,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // them to a long dialogue tree. Lines are cosmetic; they use Math.random so
         // they do not drain the seeded story RNG used for trainer rolls / catches.
         const STORY_FACILITY_QUOTES = {
+            mentor: [
+                'Battle Mentor: "You bring the partner, I bring the plan. One tap and it fights like it was built by someone who\'s done this a while."',
+                'Battle Mentor: "I only work with what this town\'s opened up to you. Early on that\'s the moves — later it\'s the whole kit at once."',
+                'Battle Mentor: "I read the creature\'s own numbers first. A wall wants a wall\'s set; a sweeper wants a sweeper\'s. I don\'t force it."',
+                'Battle Mentor: "You\'re never charged for what\'s already right. Only the changes cost — and a voucher can cover those."',
+                'Battle Mentor: "Tinker after, if you like. I set a strong floor; the ceiling\'s yours to chase."',
+            ],
             moveTutor: [
                 'Move Tutor: "Half who come to me want to win by hitting harder. The other half ask what gap the foe slips through first — and we close it. Only one half keeps winning."',
                 'Move Tutor: "Nothing here is taught wrong forever. Swap a move out, swap it back; the partner forgives. People rarely return the courtesy."',
@@ -67516,6 +67565,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
         function showScreen(id) {
+            // Track whether the Battle Mentor screen is the active surface, so Auto-Build
+            // re-renders route to renderMentorTeam (and never to the Move Tutor).
+            try { _storyMentorActive = (id === 'screen-story-mentor'); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             // Leaving the battle screen → drop its weather particle layer (no orphan canvas).
             if (id !== 'screen-battle' && _battleWeatherFx.id) {
@@ -71097,36 +71149,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
-                // ⚡ Fast-Build (Auto-Build) — open the panel, tune vouchers, apply.
-                const fbOpen = t.closest('[data-fastbuild-open]');
-                if (fbOpen) {
-                    const i = parseInt(fbOpen.dataset.fastbuildOpen, 10);
-                    if (Number.isFinite(i)) { _txFastBuild.open = i; _txFastBuildResetSel(); void renderTutorTeam(true); }
-                    return;
-                }
-                if (t.closest('[data-fastbuild-cancel]')) {
-                    _txFastBuild.open = -1; void renderTutorTeam(true); return;
-                }
-                const fbVouch = t.closest('input[data-fb-vouch]');
-                if (fbVouch) {
-                    const k = fbVouch.dataset.fbVouch;
-                    if (_txFastBuild.sel) _txFastBuild.sel[k] = !_txFastBuild.sel[k];
-                    void renderTutorTeam(true);
-                    return;
-                }
-                const fbHs = t.closest('[data-fb-hs]');
-                if (fbHs) {
-                    const d = parseInt(fbHs.dataset.fbHs, 10) || 0;
-                    if (_txFastBuild.sel) _txFastBuild.sel.heartScale = Math.max(0, (_txFastBuild.sel.heartScale | 0) + d);
-                    void renderTutorTeam(true);
-                    return;
-                }
-                const fbApply = t.closest('[data-fastbuild-apply]');
-                if (fbApply) {
-                    const i = parseInt(fbApply.dataset.fastbuildApply, 10);
-                    if (Number.isFinite(i)) void tutorApplyFastBuild(i);
-                    return;
-                }
 
                 // Recommendation row — set pending selection (same effect as picking
                 // the card from the grid). The data attributes match `.tx-card`, so
@@ -72540,7 +72562,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
-                    ${_txFastBuildBarHtml(t, idx)}
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
                     ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + suggestBlock + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
@@ -72688,7 +72709,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
-                    ${_txFastBuildBarHtml(t, idx)}
                     <div class="tx-tabs" role="group" aria-label="Battle Dojo sections">
                         <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
                         <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability${_txDojoAbilLockedCountBadge(t.name, abils, awakenSet, haSet, _dojoStage)}</button>
@@ -72811,7 +72831,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
-                    ${_txFastBuildBarHtml(t, idx)}
                     ${sparseBanner}
                     <div style="font-size:11px;color:#9aa3b8;margin-bottom:4px;">Tap a cell to preview. Rows raise a stat; columns lower one. ★ marks Smogon-usable picks.</div>
                     <div class="tx-nature-grid" role="grid" aria-label="Nature picker">${cells.join('')}</div>
@@ -72892,6 +72911,109 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // ── ⚡ BATTLE MENTOR — the dedicated Auto-Build NPC (City 0 → endgame) ────────────
+        // A separate facility from the Move Tutor: one screen that runs the Auto-Build for
+        // every party mon, adapting to what's unlocked (City 0 = Move Tutor only → moves
+        // only; each new facility adds its component). The per-mon panel + planner + apply
+        // are the shared _txFastBuild* code; this just hosts them behind their own NPC.
+        function enterMentor() {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                _markFacilitySeen('mentor');
+                _storyMentorActive = true;
+                _txFastBuild.open = -1;
+                const goldEl = document.getElementById('story-mentor-gold');
+                if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+                const el = document.getElementById('story-mentor-team');
+                if (el) el.innerHTML = '<div style="color:#888;font-size:12px;padding:12px;">Loading your team…</div>';
+                syncStoryMentorBackground();
+                showScreen('screen-story-mentor');
+                try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.45); } catch (e) {}
+                void renderMentorTeam();
+                try { _storyShowFacilityQuote('screen-story-mentor', 'mentor'); } catch (e) {}
+                try { _enqueueIntroTutorial('firstBattleMentor'); } catch (e) {}
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+        function _initMentorDelegationOnce() {
+            const el = document.getElementById('story-mentor-team');
+            if (!el || el.__mentorBound) return;
+            el.__mentorBound = true;
+            el.addEventListener('click', function (ev) {
+                const t = ev.target && ev.target.closest ? ev.target : null;
+                if (!t) return;
+                // Tap-info tooltips on coarse pointers for non-actionable labels (role chip,
+                // lock pills, the Heart-Scale note) — never steals a tap meant for a control.
+                const tapInfo = t.closest('.tx-tapinfo[title]');
+                if (tapInfo && typeof window._prefersFinePointerHover === 'function' && !window._prefersFinePointerHover()
+                    && !t.closest('button, input, label, [data-fb-hs]')) {
+                    try { window.showTapInfoTooltip && window.showTapInfoTooltip(tapInfo, ev); } catch (e) {}
+                    return;
+                }
+                if (_handleFastBuildClick(t)) return;
+            });
+        }
+        async function renderMentorTeam(skipFetch) {
+            const el = document.getElementById('story-mentor-team');
+            const goldEl = document.getElementById('story-mentor-gold');
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            if (!el) return;
+            _initMentorDelegationOnce();
+            _txBeginRender();
+            if (!skipFetch) await _txWarmMovePools();
+            if (!sm.team.length) { el.innerHTML = '<div class="tx-grid-empty">No Pokémon in your team yet.</div>'; return; }
+            // City-adaptive banner: what the mentor can tune right now.
+            let city = 0; try { city = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            const can = ['moves'];
+            if (city >= FACILITY_DEBUT_CITY.dojo) can.push('items', 'abilities');
+            if (city >= FACILITY_DEBUT_CITY.nature) can.push('natures');
+            if (city >= FACILITY_DEBUT_CITY.evtrainer) can.push('EV spreads');
+            else if (city >= FACILITY_DEBUT_CITY.party) can.push('EV focus');
+            const banner = `<div class="tx-mentor-banner">Auto-tuning available now: <strong>${_esc(can.join(' · '))}</strong>. More opens as you unlock facilities.</div>`;
+            const cards = sm.team.map((t, idx) => {
+                if (!t || t.isEgg) return '';
+                let mon = null;
+                try { mon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build)); } catch (e) {}
+                const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+                const spriteUrl = getSprite(spriteDisplayName(t));
+                return `<div class="story-tutor-mon">
+                    <div class="story-tutor-mon-main" style="padding:10px 12px;align-items:center;">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;">
+                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${_txRoleChipHtml(t)}
+                        </div>
+                    </div>
+                    <div class="story-tutor-mon-body">${_txFastBuildBarHtml(t, idx)}</div>
+                </div>`;
+            }).join('');
+            el.innerHTML = banner + cards;
+        }
+
+        // Warm the per-mon staged move-pool + acceptance caches (shared by the Move Tutor
+        // and the Battle Mentor screens; both need them for the move recommender/planner).
+        async function _txWarmMovePools() {
+            _txMovePoolCache.clear();
+            _txMoveTier1Cache.clear();
+            for (let ti = 0; ti < sm.team.length; ti++) {
+                try {
+                    const _tm = sm.team[ti];
+                    const _cur = (_tm.build && _tm.build.m) || [];
+                    const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur, !!(_tm.starter || (_tm.build && _tm.build.starter)));
+                    _txMovePoolCache.set(ti, _staged.fullPool || _staged);
+                    const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
+                    _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
+                    _txMoveTier1Cache.set(ti, _t1);
+                } catch (e) {
+                    _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
+                    try {
+                        const _cm = (sm.team[ti] && sm.team[ti].build && sm.team[ti].build.m) || [];
+                        _txMoveTier1Cache.set(ti, new Set(_cm.map(m => String(m).split('/')[0])));
+                    } catch (_e2) { _txMoveTier1Cache.set(ti, new Set()); }
+                }
+            }
+        }
         async function renderTutorTeam(skipFetch) {
             // Perf probe — gated on the debug flag so prod paths stay zero-overhead.
             // Toggle from the console: `window.__txPerf = true`. Each call logs
@@ -72923,38 +73045,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Move pools — fetched once per facility entry, then cached.
             // Partial re-renders (filter / sort changes) pass skipFetch=true and reuse the cache.
-            if (showMoves && !skipFetch) {
-                _txMovePoolCache.clear();
-                _txMoveTier1Cache.clear();
-                for (let ti = 0; ti < sm.team.length; ti++) {
-                    try {
-                        const _tm = sm.team[ti];
-                        const _cur = (_tm.build && _tm.build.m) || [];
-                        const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur, !!(_tm.starter || (_tm.build && _tm.build.starter)));
-                        // The GRID renders the full movepool so off-stage moves show (locked),
-                        // matching the Dojo's all-items roster. The acceptance set below stays
-                        // the GATED/teachable set, so only in-stage moves are selectable.
-                        _txMovePoolCache.set(ti, _staged.fullPool || _staged);
-                        // Phase 2 (BUG A fix): the teachable acceptance set is EXACTLY the
-                        // staged/gated pool (gold AND Heart-Scale paths read it), so the handler
-                        // can never accept a move the gate hides. Built from `_staged` (gated),
-                        // NOT the full pool. currentMoves are already in `_staged`.
-                        const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
-                        _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
-                        _txMoveTier1Cache.set(ti, _t1);
-                    } catch (e) {
-                        _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
-                        // T1 fail-safe: a failed staged-pool fetch must NOT leave the
-                        // acceptance set undefined (the gate would then fall open). Seed it
-                        // with the mon's CURRENT moves only, so no new/unverified move is
-                        // teachable until a later render succeeds.
-                        try {
-                            const _cm = (sm.team[ti] && sm.team[ti].build && sm.team[ti].build.m) || [];
-                            _txMoveTier1Cache.set(ti, new Set(_cm.map(m => String(m).split('/')[0])));
-                        } catch (_e2) { _txMoveTier1Cache.set(ti, new Set()); }
-                    }
-                }
-            }
+            if (showMoves && !skipFetch) await _txWarmMovePools();
             // A newer render started while we awaited the pools — let it own the DOM.
             // If that newer render was a skipFetch partial, it may have painted from a
             // cold cache (no lock pills); queue one cheap cache-backed repaint so the
@@ -73314,6 +73405,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             evs:     { key: 'vitamin',        label: 'EV Voucher' },
         };
         const _txFastBuild = { open: -1, sel: null };
+        // The Auto-Build panel lives on both the Battle Mentor screen (its home) and — as a
+        // fallback — nowhere else now. This flag routes re-renders to the active surface.
+        let _storyMentorActive = false;
+        function _txRerenderActiveTutorSurface() {
+            if (_storyMentorActive) { try { return void renderMentorTeam(true); } catch (e) { return; } }
+            try { return void renderTutorTeam(true); } catch (e) {}
+        }
+        // Shared Auto-Build click handling — used by the Mentor screen delegation (and any
+        // other surface that renders the panel). Returns true if it handled the event.
+        function _handleFastBuildClick(t) {
+            const fbOpen = t.closest('[data-fastbuild-open]');
+            if (fbOpen) {
+                const i = parseInt(fbOpen.dataset.fastbuildOpen, 10);
+                if (Number.isFinite(i)) { _txFastBuild.open = i; _txFastBuildResetSel(); _txRerenderActiveTutorSurface(); }
+                return true;
+            }
+            if (t.closest('[data-fastbuild-cancel]')) { _txFastBuild.open = -1; _txRerenderActiveTutorSurface(); return true; }
+            const fbVouch = t.closest('input[data-fb-vouch]');
+            if (fbVouch) { const k = fbVouch.dataset.fbVouch; if (_txFastBuild.sel) _txFastBuild.sel[k] = !_txFastBuild.sel[k]; _txRerenderActiveTutorSurface(); return true; }
+            const fbHs = t.closest('[data-fb-hs]');
+            if (fbHs) { const d = parseInt(fbHs.dataset.fbHs, 10) || 0; if (_txFastBuild.sel) _txFastBuild.sel.heartScale = Math.max(0, (_txFastBuild.sel.heartScale | 0) + d); _txRerenderActiveTutorSurface(); return true; }
+            const fbApply = t.closest('[data-fastbuild-apply]');
+            if (fbApply) { const i = parseInt(fbApply.dataset.fastbuildApply, 10); if (Number.isFinite(i)) void tutorApplyFastBuild(i); return true; }
+            return false;
+        }
         function _txFastBuildResetSel() {
             _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0 };
         }
@@ -73383,10 +73499,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (ba && ba.evs && !_evsEqual(b.evs || {}, ba.evs)) {
                         parts.push({ kind: 'evs', label: 'EV spread', from: 'current', to: (typeof _evSpreadCompact === 'function' ? _evSpreadCompact(ba.evs) : 'best spread'), cost: EVTRAINER_COST, evs: { ...ba.evs } });
                     }
-                } else {
-                    // EV Trainer locked → set the training FOCUS only (free): which 2 stats
-                    // the mon's post-battle EVs should build toward (Q4 — full spread waits
-                    // for the late-game EV Trainer).
+                } else if (facUnlocked('party')) {
+                    // EV Trainer locked but the Party screen is open → set the training FOCUS
+                    // only (free): which 2 stats the mon's post-battle EVs build toward (Q4 —
+                    // full spread waits for the late-game EV Trainer). Gated on the Party
+                    // facility (City 1) so City 0 stays strictly moves-only.
                     const curFocus = Array.isArray(b.evTrainFocus) ? b.evTrainFocus.slice().sort().join(',') : '';
                     const want = (ba && ba.focusStats) ? ba.focusStats.slice() : [];
                     const wantKey = want.slice().sort().join(',');
@@ -73533,7 +73650,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.7); } catch (e) {}
                 _txFastBuild.open = -1;
                 _txPending = null;
-                void renderTutorTeam(true);
+                _txRerenderActiveTutorSurface();
                 renderTeamPanel();
             } finally {
                 _storyEndInteraction();
@@ -75301,7 +75418,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             confirmAbandon, abandonAndReturn, saveAndQuitToMenu, continuePostGame, enterMysteryClimax,
             openSummary, profOpenSummary, summaryMove, setEvTrainFocus, moveInParty, setPartyLead, partyReorder, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
-            enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
+            enterTutor, enterMentor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,

@@ -12,7 +12,7 @@
 //   node --test tests/suites/story-tutor-fast-build.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
+import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -27,10 +27,11 @@ async function prime(city, build, gold, inventory) {
   let idx = 0;
   for (let ei = 0; ei <= 140; ei++) { let c = -1; try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {} if (c === city) { idx = ei; break; } }
   ST.sm.eventIndex = idx;
+  ST.sm.facilityIntros = {}; ST.sm.facilitiesSeen = {}; ST.sm.scenesShown = {};
   ST.sm.team = [{ name: 'Garchomp', build }];
-  await w.StoryMode.enterTutor('moves');
-  await openTutorMon(doc);
-  for (let i = 0; i < 30; i++) { await wait(40); if (doc.querySelector('.tx-grid')) break; }
+  // Auto-Build now lives on the dedicated Battle Mentor screen, not the Move Tutor.
+  w.StoryMode.enterMentor();
+  for (let i = 0; i < 40; i++) { await wait(40); if (doc.querySelector('#story-mentor-team [data-fastbuild-open], #story-mentor-team .tx-fastbuild-bar--done')) break; }
 }
 
 test('planner: a bare late-game mon gets moves + item + ability + nature + EV parts, total = sum', async () => {
