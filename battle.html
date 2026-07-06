@@ -45454,8 +45454,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // and uses them first; foes pick them up a city later. Bosses that pass an
             // explicit mech ctx (Mystery Figure) and frontier/generator rolls bypass.
             if (storyRowIdx != null && sm && sm.active && !(ctx && ctx.settings)) {
+                // storyRowIdx is a ROW ID, not an array index — resolve it the same way
+                // the rest of the pipeline does (_foeCity uses _cityIndexForStoryRow).
+                // Using cityIndexFromEventIndex here mis-resolved the city (esp. the
+                // reordered mid-rival region), so the "mechanics off until City 8" gate
+                // silently failed and foes fielded ZMOVE gimmicks — and Z-crystals — as
+                // early as C0 (audit #1).
                 let _mechCity = -1;
-                try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
+                try { _mechCity = _cityIndexForStoryRow(storyRowIdx); } catch (e) {}
                 if (_mechCity >= 0 && _mechCity < 8) return team;
             }
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
@@ -46395,8 +46401,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Z-crystals) are left to the gimmick system, which is itself city-gated.
                 if (_foeItemTierCap < 3 && slot.build.i) {
                     const _it = slot.build.i;
-                    const _gimmickBound = (slot.build.gimmick && slot.build.gimmick !== 'STANDARD')
-                        || isMegaStone(_it) || (Z_TYPE_MAP_VALUES && Z_TYPE_MAP_VALUES.has(_it));
+                    // Only exempt a gimmick item when the mon actually has that gimmick
+                    // ACTIVE (gimmick distribution already ran — it is the inner call —
+                    // and enemies field no gimmicks until City 8, so every foe here is
+                    // STANDARD). A stray mega stone / Z-crystal from a CSV set on a
+                    // STANDARD mon is vestigial and leaks the item cap (Flyinium Z on a
+                    // C0 route mon), so it must be clamped like any over-tier item.
+                    const _gimmickBound = slot.build.gimmick && slot.build.gimmick !== 'STANDARD';
                     if (!_gimmickBound && _dojoItemTier(_it) > _foeItemTierCap) {
                         slot.build.i = '';
                     }
@@ -46465,6 +46476,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // is guaranteed role-coherent).
                     if (_abs && slot.build && _natureFightsRole(_abs, slot.build.n)) {
                         try { slot.build.n = _wildPickNature(_abs, rng); } catch (e) {}
+                    }
+                    // Pre-City-8 gimmick cleanup (Spec 1f + audit #1). Enemies field no
+                    // battle mechanics until City 8, but a CSV z-attack/mega set can slip
+                    // its gimmick past the forceGimmick:'STANDARD' request and arrive with
+                    // a ZMOVE/MEGA gimmick + a held Z-crystal / mega stone as early as C0.
+                    // Belt-and-suspenders: revert any pre-City-8 gimmick to STANDARD and
+                    // drop the now-purposeless stone so no route mon fields a Z-move.
+                    if (_foeCity >= 0 && _foeCity < 8 && slot.build && slot.build.gimmick && slot.build.gimmick !== 'STANDARD') {
+                        slot.build.gimmick = 'STANDARD';
+                        const _gi = slot.build.i || '';
+                        const _megaStone = (typeof isMegaStone === 'function') && isMegaStone(_gi);
+                        if (/ium Z$/.test(_gi) || /Z$/.test(_gi) || _megaStone || (typeof _dojoItemTier === 'function' && _dojoItemTier(_gi) > _foeItemTierCap)) {
+                            slot.build.i = '';
+                        }
                     }
                 }
             }
@@ -62583,14 +62608,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             let _wCity = 0;
             try { _wCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
-            // Wild held item by city (sheet: None C0-3, Level-1 items C4-6, Level-2 C7).
-            // Keep the build's item but gate it by the city tier, mirroring the enemy-trainer
-            // item cap: below C4 wilds carry nothing; C4-6 keep up to a staple; C7 keep best.
-            const _wildItemCap = (_wCity <= 3) ? 0 : (_wCity <= 6 ? 2 : 3);
+            // Wild held item ramps by city so the onset is gradual instead of the hard
+            // C3→C4 nothing-to-staple cliff the audit found, and caps at staple tier
+            // below C7 (Expert Belt on a fresh mid-game catch is disproportionate):
+            // C0 none · C1-3 berries · C4-6 staples · C7 best.
+            const _wildItemCap = (_wCity <= 0) ? 0 : (_wCity <= 3 ? 1 : (_wCity <= 6 ? 2 : 3));
             if (!b.i || _wildItemCap === 0 || (typeof _dojoItemTier === 'function' && _dojoItemTier(b.i) > _wildItemCap)) {
                 b.i = 'None';
             }
             const _wRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Small berry chance from C1 (user model): a fresh catch occasionally arrives
+            // with a wild-appropriate berry rather than the abrupt nothing→staple jump —
+            // the low-stakes item tier the player would forage in the wild too. Seeded.
+            if (b.i === 'None' && _wCity >= 1 && _wCity <= 3 && _wRng() < 0.25) {
+                b.i = ['Sitrus Berry', 'Oran Berry', 'Lum Berry'][Math.floor(_wRng() * 3)];
+            }
             // Ability (Sheet 5 wild opt): slot-0 by default; a hidden ability only surfaces
             // on late-route catches (C6+), and even then only sometimes — the wild "you
             // grow it" philosophy applies to the ability slot too.
