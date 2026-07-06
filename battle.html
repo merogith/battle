@@ -757,6 +757,32 @@
         .tx-role-chip { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px; font-size:10px; line-height:1.3; }
         .tx-role-chip-pill { display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border-radius:999px; font-weight:bold; color:var(--accent); background:rgba(255,203,71,0.12); border:1px solid rgba(255,203,71,0.35); white-space:nowrap; }
         .tx-role-chip-why { color:var(--text-dim,#9fa7b7); white-space:nowrap; }
+        /* ⚡ Fast-Build (Auto-Build) */
+        .tx-fastbuild-bar { margin:6px 0 8px; }
+        .tx-fastbuild-bar--done { font-size:11px; color:#9fbf9a; padding:6px 8px; border:1px dashed rgba(129,199,132,0.4); border-radius:8px; background:rgba(129,199,132,0.07); }
+        .tx-fastbuild-open { width:100%; min-height:40px; padding:8px 12px; font-family:inherit; font-size:12px; font-weight:bold; cursor:pointer;
+            color:#1a1200; background:linear-gradient(180deg,#ffd769,#ffbf3d); border:1px solid #d99a1e; border-radius:9px; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
+        .tx-fastbuild-open:hover { filter:brightness(1.06); }
+        .tx-fastbuild-panel { margin:6px 0 10px; padding:10px; border:1px solid rgba(255,203,71,0.4); border-radius:10px; background:rgba(255,203,71,0.06); }
+        .tx-fb-head { font-size:12px; font-weight:bold; color:var(--accent); margin-bottom:6px; }
+        .tx-fb-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid rgba(255,255,255,0.06); font-size:11px; }
+        .tx-fb-row--locked { color:#9aa0aa; font-style:italic; }
+        .tx-fb-row-main { min-width:0; display:flex; flex-direction:column; gap:1px; }
+        .tx-fb-label { font-weight:bold; color:#e0e5ee; }
+        .tx-fb-detail { color:var(--text-dim,#9fa7b7); overflow:hidden; text-overflow:ellipsis; }
+        .tx-fb-row-side { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+        .tx-fb-cost { min-width:52px; text-align:right; color:var(--accent); }
+        .tx-fb-vouch { display:inline-flex; align-items:center; gap:4px; color:#c8e6c9; }
+        .tx-fb-check { width:16px; height:16px; }
+        .tx-fb-step { width:26px; height:26px; font-size:14px; line-height:1; cursor:pointer; border:1px solid #78909c; border-radius:6px; background:rgba(120,144,156,0.18); color:#cfd8dc; }
+        .tx-fb-step:disabled { opacity:0.4; cursor:not-allowed; }
+        .tx-fb-hsval { min-width:44px; text-align:center; }
+        .tx-fb-total { display:flex; justify-content:space-between; font-weight:bold; color:var(--accent); border-top:1px solid rgba(255,203,71,0.35); margin-top:6px; padding-top:6px; font-size:12px; }
+        .tx-fb-actions { display:flex; gap:8px; margin-top:8px; }
+        .tx-fb-apply { flex:1 1 auto; min-height:40px; font-family:inherit; font-size:12px; font-weight:bold; cursor:pointer; color:#1a1200;
+            background:linear-gradient(180deg,#ffd769,#ffbf3d); border:1px solid #d99a1e; border-radius:9px; }
+        .tx-fb-apply:disabled { background:#3a3f4a; color:#8b909b; border-color:#2c3038; cursor:not-allowed; }
+        .tx-fb-cancel { flex:0 0 auto; min-height:40px; padding:0 14px; font-family:inherit; font-size:12px; cursor:pointer; color:#cfd8dc; background:rgba(120,144,156,0.18); border:1px solid #78909c; border-radius:9px; }
         .story-tutor-mon-chev { color:#9aa0aa; font-size:14px; line-height:1; }
         /* Right-side controls cluster in a mon header (info ℹ + chevron, plus any
            cost/tier badge) — keeps them grouped at the end of the space-between row. */
@@ -47743,6 +47769,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
                     txBuildApplySetPlan: (...a) => _txBuildApplySetPlan(...a),
                     tutorApplyRecommendedSet: (...a) => tutorApplyRecommendedSet(...a),
+                    txBuildFastBuildPlan: (...a) => _txBuildFastBuildPlan(...a),
+                    txFastBuildQuote: (...a) => _txFastBuildQuote(...a),
+                    txFastBuildSel: () => _txFastBuild,
+                    tutorApplyFastBuild: (...a) => tutorApplyFastBuild(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
                     txNatureRecsByPurpose: (...a) => _txNatureRecsByPurpose(...a),
@@ -71060,6 +71090,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
+                // ⚡ Fast-Build (Auto-Build) — open the panel, tune vouchers, apply.
+                const fbOpen = t.closest('[data-fastbuild-open]');
+                if (fbOpen) {
+                    const i = parseInt(fbOpen.dataset.fastbuildOpen, 10);
+                    if (Number.isFinite(i)) { _txFastBuild.open = i; _txFastBuildResetSel(); void renderTutorTeam(true); }
+                    return;
+                }
+                if (t.closest('[data-fastbuild-cancel]')) {
+                    _txFastBuild.open = -1; void renderTutorTeam(true); return;
+                }
+                const fbVouch = t.closest('input[data-fb-vouch]');
+                if (fbVouch) {
+                    const k = fbVouch.dataset.fbVouch;
+                    if (_txFastBuild.sel) _txFastBuild.sel[k] = !_txFastBuild.sel[k];
+                    void renderTutorTeam(true);
+                    return;
+                }
+                const fbHs = t.closest('[data-fb-hs]');
+                if (fbHs) {
+                    const d = parseInt(fbHs.dataset.fbHs, 10) || 0;
+                    if (_txFastBuild.sel) _txFastBuild.sel.heartScale = Math.max(0, (_txFastBuild.sel.heartScale | 0) + d);
+                    void renderTutorTeam(true);
+                    return;
+                }
+                const fbApply = t.closest('[data-fastbuild-apply]');
+                if (fbApply) {
+                    const i = parseInt(fbApply.dataset.fastbuildApply, 10);
+                    if (Number.isFinite(i)) void tutorApplyFastBuild(i);
+                    return;
+                }
+
                 // Recommendation row — set pending selection (same effect as picking
                 // the card from the grid). The data attributes match `.tx-card`, so
                 // we just normalize to the card-pick path below.
@@ -72455,6 +72516,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
+                    ${_txFastBuildBarHtml(t, idx)}
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
                     ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + suggestBlock + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
@@ -72602,6 +72664,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
+                    ${_txFastBuildBarHtml(t, idx)}
                     <div class="tx-tabs" role="group" aria-label="Battle Dojo sections">
                         <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
                         <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability${_txDojoAbilLockedCountBadge(t.name, abils, awakenSet, haSet, _dojoStage)}</button>
@@ -72724,6 +72787,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-aside">${_storyMonInfoBtnHtml(idx)}<span class="story-tutor-mon-chev" aria-hidden="true">▴</span></span>
                 </button>
                 <div class="story-tutor-mon-body">
+                    ${_txFastBuildBarHtml(t, idx)}
                     ${sparseBanner}
                     <div style="font-size:11px;color:#9aa3b8;margin-bottom:4px;">Tap a cell to preview. Rows raise a stat; columns lower one. ★ marks Smogon-usable picks.</div>
                     <div class="tx-nature-grid" role="grid" aria-label="Nature picker">${cells.join('')}</div>
@@ -73209,6 +73273,249 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _storyEndInteraction();
             }
         }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // ⚡ FAST-BUILD — one-click "best set": moves + item + ability + nature + EVs in a
+        // single all-or-nothing purchase. Aware of what's already equipped (only changes
+        // are charged) and gated to what's unlocked at the current city (locked components
+        // are shown but never applied). Composes the SAME deterministic recommenders the
+        // individual facilities use. The player can spend vouchers to zero out any part's
+        // gold cost — Heart Scale waives the priciest moves; Mint / Ability Capsule /
+        // Emblem of Honor / EV Voucher each waive their one component.
+        // ─────────────────────────────────────────────────────────────────────────────
+        const _TX_FASTBUILD_VOUCHER = {
+            item:    { key: 'emblemHonor',    label: 'Emblem of Honor' },
+            ability: { key: 'abilityCapsule', label: 'Ability Capsule' },
+            nature:  { key: 'mint',           label: 'Mint' },
+            evs:     { key: 'vitamin',        label: 'EV Voucher' },
+        };
+        const _txFastBuild = { open: -1, sel: null };
+        function _txFastBuildResetSel() {
+            _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0 };
+        }
+        function _txVoucherCount(key) { return (sm && sm.inventory && (sm.inventory[key] | 0)) || 0; }
+        function _txVoucherLabel(key) {
+            for (const k in _TX_FASTBUILD_VOUCHER) if (_TX_FASTBUILD_VOUCHER[k].key === key) return _TX_FASTBUILD_VOUCHER[k].label;
+            return key === 'heartScale' ? 'Heart Scale' : key;
+        }
+
+        // Pure planner — diffs the mon's current build against the best recommendations,
+        // gated to the current city, and prices each change. Never mutates state.
+        function _txBuildFastBuildPlan(teamIdx) {
+            try {
+                const mon = sm.team[teamIdx];
+                if (!mon || mon.isEgg || !mon.build) return null;
+                const b = mon.build, name = mon.name;
+                let dispMon = null;
+                try { dispMon = buildPokemon(name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+                let city = 0; try { city = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+                const facUnlocked = (k) => city >= ((FACILITY_DEBUT_CITY[k] != null) ? FACILITY_DEBUT_CITY[k] : 0);
+                const dojoStage = _npcStage('dojo');
+                const parts = [], locked = [];
+                let pool = null; try { pool = _tutorGetPoolForMon(name); } catch (e) {}
+
+                // Moves — reuse the staged, priced move planner.
+                const movePlan = _txBuildApplySetPlan(teamIdx) || { steps: [], total: 0, skipped: [] };
+
+                // Item (Battle Dojo) — best rec from the tier-unlocked pool.
+                if (facUnlocked('dojo')) {
+                    try {
+                        const items = (pool && pool.items) || [];
+                        const tierCap = dojoStage + 1;
+                        const unlocked = items.filter(it => (typeof _dojoItemTier === 'function' ? _dojoItemTier(it) : 1) <= tierCap);
+                        const cur = b.i || '(none)';
+                        // Use the PRIMARY (headline) rec so "already holds the best item" reads
+                        // as optimized — not a .find() that cycles to the next role slot.
+                        const rec = _txItemRecsByPurpose(unlocked, dispMon, b, name)[0];
+                        if (rec && rec.item && rec.item !== cur) parts.push({ kind: 'item', label: 'Item', from: cur, to: rec.item, cost: _itemCostForTier(rec.item) });
+                    } catch (e) {}
+                } else locked.push({ kind: 'item', label: 'Item', why: 'Battle Dojo opens at City ' + FACILITY_DEBUT_CITY.dojo });
+
+                // Ability (Battle Dojo) — best rec within the current unlock stage.
+                if (facUnlocked('dojo')) {
+                    try {
+                        const abils = (pool && pool.abilities) || [];
+                        const cur = b.a || (dispMon && dispMon.ability) || '(none)';
+                        const unlocked = abils.filter(a => _dojoAbilityUnlockStage(name, a) <= dojoStage);
+                        // Pick by score INCLUDING the current ability (the purpose-recs exclude
+                        // the held ability, which would make Fast-Build oscillate between two
+                        // legal abilities forever). Only change if a strictly better one exists.
+                        let bestA = null, bestScore = -Infinity;
+                        for (const a of unlocked) { const s = _txScoreAbility(a, dispMon, b, name); if (s > bestScore) { bestScore = s; bestA = a; } }
+                        const curScore = (cur && cur !== '(none)') ? _txScoreAbility(cur, dispMon, b, name) : -Infinity;
+                        if (bestA && bestA !== cur && bestScore > curScore) parts.push({ kind: 'ability', label: 'Ability', from: cur, to: bestA, cost: _abilityCostForMon(name, bestA) });
+                    } catch (e) {}
+                }
+
+                // Nature + EVs — from the deterministic best-fit archetype.
+                const ba = _txBestArchetypeFor(name, dispMon);
+                if (facUnlocked('nature')) {
+                    if (ba && ba.nature && ba.nature !== (b.n || 'Hardy')) {
+                        parts.push({ kind: 'nature', label: 'Nature', from: b.n || 'Hardy', to: ba.nature, cost: TUTOR_COST_NATURE });
+                    }
+                } else locked.push({ kind: 'nature', label: 'Nature', why: 'Nature Rater opens at City ' + FACILITY_DEBUT_CITY.nature });
+
+                if (facUnlocked('evtrainer')) {
+                    if (ba && ba.evs && !_evsEqual(b.evs || {}, ba.evs)) {
+                        parts.push({ kind: 'evs', label: 'EV spread', from: 'current', to: (typeof _evSpreadCompact === 'function' ? _evSpreadCompact(ba.evs) : 'best spread'), cost: EVTRAINER_COST, evs: { ...ba.evs } });
+                    }
+                } else {
+                    // EV Trainer locked → set the training FOCUS only (free): which 2 stats
+                    // the mon's post-battle EVs should build toward (Q4 — full spread waits
+                    // for the late-game EV Trainer).
+                    const curFocus = Array.isArray(b.evTrainFocus) ? b.evTrainFocus.slice().sort().join(',') : '';
+                    const want = (ba && ba.focusStats) ? ba.focusStats.slice() : [];
+                    const wantKey = want.slice().sort().join(',');
+                    if (wantKey && wantKey !== curFocus) {
+                        parts.push({ kind: 'evfocus', label: 'EV training focus', from: 'auto', to: want.map(s => _TX_STAT_NAME[s] || s).join(' / '), cost: 0, focus: want });
+                    }
+                }
+
+                const moveTotal = movePlan.total || 0;
+                const partsGold = parts.reduce((s, p) => s + (p.cost | 0), 0);
+                return { teamIdx, name, moveSteps: movePlan.steps || [], moveSkipped: movePlan.skipped || [], moveTotal, parts, locked, total: moveTotal + partsGold };
+            } catch (e) { return null; }
+        }
+        try { window._txBuildFastBuildPlan = _txBuildFastBuildPlan; } catch (e) {}
+
+        // Given a plan + voucher selection, compute the gold owed + the vouchers actually
+        // spent (bounded by what the player owns). Heart Scales waive the priciest moves.
+        function _txFastBuildQuote(plan, sel) {
+            sel = sel || {};
+            const spend = { heartScale: 0, mint: 0, abilityCapsule: 0, emblemHonor: 0, vitamin: 0 };
+            let gold = 0;
+            for (const p of plan.parts) {
+                const v = _TX_FASTBUILD_VOUCHER[p.kind];
+                if (v && sel[v.key] && _txVoucherCount(v.key) > (spend[v.key] || 0)) spend[v.key]++;
+                else gold += p.cost | 0;
+            }
+            const costs = plan.moveSteps.map(s => s.cost | 0).sort((a, b) => b - a);
+            const hs = Math.max(0, Math.min(sel.heartScale | 0, costs.length, _txVoucherCount('heartScale')));
+            for (let i = 0; i < costs.length; i++) { if (i < hs) continue; gold += costs[i]; }
+            spend.heartScale = hs;
+            return { gold, spend };
+        }
+        try { window._txFastBuildQuote = _txFastBuildQuote; } catch (e) {}
+
+        function _txFbRow(label, detail, cost, controlHtml, waived) {
+            const costTxt = cost > 0 ? (waived ? `<s>${cost.toLocaleString()}G</s> free` : `${cost.toLocaleString()}G`) : 'free';
+            return `<div class="tx-fb-row"><div class="tx-fb-row-main"><span class="tx-fb-label">${_esc(label)}</span><span class="tx-fb-detail">${detail}</span></div>`
+                + `<div class="tx-fb-row-side">${controlHtml || ''}<span class="tx-fb-cost">${costTxt}</span></div></div>`;
+        }
+        function _txFastBuildPanelHtml(idx) {
+            const plan = _txBuildFastBuildPlan(idx);
+            if (!plan) { _txFastBuild.open = -1; return ''; }
+            if (!_txFastBuild.sel) _txFastBuildResetSel();
+            const sel = _txFastBuild.sel;
+            const quote = _txFastBuildQuote(plan, sel);
+            const rows = [];
+            if (plan.moveSteps.length) {
+                const hsOwned = _txVoucherCount('heartScale');
+                const hsMax = Math.min(plan.moveSteps.length, hsOwned);
+                const hsUsed = Math.min(sel.heartScale | 0, hsMax);
+                const moves = plan.moveSteps.map(s => _esc(s.move)).join(', ');
+                const stepper = hsOwned > 0
+                    ? `<span class="tx-fb-vouch"><button type="button" class="tx-fb-step" data-fb-hs="-1"${hsUsed <= 0 ? ' disabled' : ''}>−</button>`
+                        + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest move">${hsUsed}/${hsMax} 💗</span>`
+                        + `<button type="button" class="tx-fb-step" data-fb-hs="1"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
+                    : '';
+                rows.push(_txFbRow('Moves', `${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}: ${moves}`, plan.moveTotal, stepper));
+            }
+            for (const p of plan.parts) {
+                if (p.kind === 'evfocus') { rows.push(_txFbRow(p.label, `Train ${_esc(p.to)} from battles — EV Trainer opens later for the full spread`, 0, '')); continue; }
+                const v = _TX_FASTBUILD_VOUCHER[p.kind];
+                const owned = v ? _txVoucherCount(v.key) : 0;
+                const checked = !!(v && sel[v.key]);
+                const vouch = (v && owned > 0)
+                    ? `<span class="tx-fb-vouch"><input type="checkbox" class="tx-fb-check" data-fb-vouch="${v.key}"${checked ? ' checked' : ''}> <span class="tx-fb-vlabel">${_esc(v.label)} (${owned})</span></span>`
+                    : '';
+                rows.push(_txFbRow(p.label, `${_esc(p.from)} → ${_esc(p.to)}`, p.cost, vouch, checked && owned > 0));
+            }
+            for (const l of plan.locked) rows.push(`<div class="tx-fb-row tx-fb-row--locked">🔒 ${_esc(l.label)} — ${_esc(l.why)}</div>`);
+
+            const spendTxt = Object.keys(quote.spend).filter(k => quote.spend[k] > 0).map(k => `${quote.spend[k]} ${_txVoucherLabel(k)}`).join(' · ');
+            const totalRow = `<div class="tx-fb-total"><span>Total</span><span>${quote.gold.toLocaleString()}G${spendTxt ? ` + ${spendTxt}` : ''}</span></div>`;
+            const afford = (sm.gold | 0) >= quote.gold;
+            const applyBtn = `<button type="button" class="tx-fb-apply" data-fastbuild-apply="${idx}"${afford ? '' : ' disabled'}>${afford ? `⚡ Apply best set — ${quote.gold.toLocaleString()}G` : `Need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more`}</button>`;
+            const cancelBtn = `<button type="button" class="tx-fb-cancel" data-fastbuild-cancel="1">Cancel</button>`;
+            return `<div class="tx-fastbuild-panel"><div class="tx-fb-head">⚡ Auto-Build — best set for <strong>${_esc(plan.name)}</strong></div>`
+                + `${rows.join('')}${totalRow}<div class="tx-fb-actions">${applyBtn}${cancelBtn}</div></div>`;
+        }
+        // The bar on the open mon's editor: the Auto-Build button, or the expanded panel.
+        function _txFastBuildBarHtml(t, idx) {
+            if (!t || t.isEgg) return '';
+            if (_txFastBuild.open === idx) return _txFastBuildPanelHtml(idx);
+            let plan = null; try { plan = _txBuildFastBuildPlan(idx); } catch (e) {}
+            const nChanges = plan ? (plan.moveSteps.length + plan.parts.filter(p => p.kind !== 'evfocus').length + plan.parts.filter(p => p.kind === 'evfocus').length) : 0;
+            if (plan && nChanges === 0) {
+                return `<div class="tx-fastbuild-bar tx-fastbuild-bar--done">⚡ <strong>Auto-Build</strong> · ✓ Already optimized for its role</div>`;
+            }
+            const costTxt = plan ? `${plan.total.toLocaleString()}G` : '';
+            return `<div class="tx-fastbuild-bar"><button type="button" class="tx-fastbuild-open" data-fastbuild-open="${idx}">⚡ Auto-Build best set${nChanges ? ` · ${nChanges} change${nChanges === 1 ? '' : 's'} · ${costTxt}` : ''}</button></div>`;
+        }
+
+        // Commit — ONE interaction lock, ONE gold deduction, vouchers consumed, ONE save,
+        // ONE render. Recomputes the plan fresh inside the lock so it can't half-apply.
+        async function tutorApplyFastBuild(teamIdx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx];
+                if (!mon || !mon.build) return;
+                const plan = _txBuildFastBuildPlan(teamIdx);
+                if (!plan || (!plan.moveSteps.length && !plan.parts.length)) return;
+                const sel = _txFastBuild.sel || {};
+                const quote = _txFastBuildQuote(plan, sel);
+                if ((sm.gold | 0) < quote.gold) {
+                    try { window.showGameAlert && window.showGameAlert(`This build costs ${quote.gold.toLocaleString()}G — you need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more (or spend more vouchers).`); } catch (e) {}
+                    return;
+                }
+                // Validate voucher availability (defensive — the quote already bounds them).
+                for (const k of Object.keys(quote.spend)) { if (quote.spend[k] > _txVoucherCount(k)) return; }
+
+                const lines = [];
+                if (plan.moveSteps.length) lines.push(`${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}`);
+                for (const p of plan.parts) lines.push(p.kind === 'evfocus' ? `EV focus → ${p.to}` : `${p.label} → ${p.to}`);
+                const spendTxt = Object.keys(quote.spend).filter(k => quote.spend[k] > 0).map(k => `${quote.spend[k]} ${_txVoucherLabel(k)}`).join(', ');
+                const prompt = `Auto-Build ${mon.name}: ${lines.join(' · ')}.` + (spendTxt ? `\nVouchers: ${spendTxt}.` : '');
+                const ok = await _storyConfirmTutorChange(prompt, quote.gold);
+                if (!ok) return;
+
+                // ── Commit (all-or-nothing; validated above) ──
+                if (quote.gold > 0) { sm.gold -= quote.gold; try { _storyTrackSpend(quote.gold); } catch (e) {} }
+                // Consume vouchers.
+                for (const k of Object.keys(quote.spend)) {
+                    const n = quote.spend[k] | 0;
+                    if (n <= 0) continue;
+                    if (!sm.inventory) sm.inventory = {};
+                    sm.inventory[k] = Math.max(0, (sm.inventory[k] | 0) - n);
+                    if (!sm.inventory[k]) delete sm.inventory[k];
+                }
+                // Moves.
+                if (plan.moveSteps.length) {
+                    const moves = mon.build.m || (mon.build.m = []);
+                    for (const s of plan.moveSteps) { if (s.slot >= moves.length) moves.push(s.move); else moves[s.slot] = s.move; }
+                    mon.build.m = moves.filter(Boolean);
+                }
+                // Item / ability / nature / EVs / EV-focus.
+                for (const p of plan.parts) {
+                    if (p.kind === 'item') mon.build.i = p.to;
+                    else if (p.kind === 'ability') mon.build.a = p.to;
+                    else if (p.kind === 'nature') mon.build.n = p.to;
+                    else if (p.kind === 'evs') mon.build.evs = { ...p.evs };
+                    else if (p.kind === 'evfocus') { if (Array.isArray(p.focus) && p.focus.length) mon.build.evTrainFocus = p.focus.slice(); }
+                }
+                mon.currentHp = null; mon.status = null; mon.pp = null;
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.7); } catch (e) {}
+                _txFastBuild.open = -1;
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+        try { window.tutorApplyFastBuild = tutorApplyFastBuild; } catch (e) {}
 
         // Forget a move — FREE, with confirmation. Removes the move and compacts
         // the array so the engine never sees a gap. A Pokémon must keep at least
