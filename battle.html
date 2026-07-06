@@ -963,6 +963,8 @@
             font-weight: 700; letter-spacing: 0.04em;
             min-height: 36px; padding: 6px 14px;
         }
+        .tx-chip.tx-chip--suitable { font-weight: 700; min-height: 36px; padding: 6px 14px; }
+        .tx-chip.tx-chip--suitable[data-active="1"] { background: rgba(129,199,132,0.22); border-color: #81c784; color: #dff0e0; }
         @media (max-width: 600px) {
             .tx-chip.tx-chip--rec { min-height: 44px; padding: 8px 16px; }
         }
@@ -69011,6 +69013,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // every kind so first-time players see the curated list; toggle
                 // off via the ★ chip to expand to the full option list.
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
+                // ★ Suitable filter (moves only) — when true, the grid shows only
+                // competitive-tagged utility/singleton moves (Parting Shot, Tailwind,
+                // hazards, pivots…) so a player can jump straight to the "good stuff".
+                // Off by default; equipped moves always pass so you never lose one.
+                suitableOnly: { moves: false },
                 // Stage/tier filter — a Set of tier keys per picker. Empty = "All" (no
                 // filter). Lets the player check what unlocks at each belt/tutor tier and
                 // combine several (e.g. T1+T2). Tier keys: moves natural/learnt/awakened,
@@ -71163,6 +71170,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (value && Object.prototype.hasOwnProperty.call(_txState.filter.recOnly, value)) {
                             _txState.filter.recOnly[value] = !_txState.filter.recOnly[value];
                         }
+                    } else if (kind === 'suitableOnly') {
+                        if (value && _txState.filter.suitableOnly && Object.prototype.hasOwnProperty.call(_txState.filter.suitableOnly, value)) {
+                            _txState.filter.suitableOnly[value] = !_txState.filter.suitableOnly[value];
+                        }
                     } else if (kind === 'quick') {
                         // Phase 5 compound presets — overwrite the relevant
                         // axis state in one tap. Tapping the same chip while
@@ -71442,6 +71453,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </span>
                 </span>` : '';
             return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>${legend}`;
+        }
+        // ★ Suitable filter chip (moves only) — narrows the grid to competitive-tagged
+        // utility/singleton moves so the player can jump straight to the good stuff.
+        function _txSuitableChipHtml(monName) {
+            const on = !!(_txState.filter.suitableOnly && _txState.filter.suitableOnly.moves);
+            const title = on
+                ? 'Showing only competitively strong utility moves (Parting Shot, Tailwind, hazards, pivots…). Tap to show all moves.'
+                : 'Show only competitively strong utility moves — the "good stuff" for any Pokémon.';
+            return `<button type="button" class="tx-chip tx-chip--suitable" data-filter-kind="suitableOnly" data-filter-value="moves" data-active="${on?1:0}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">★ Suitable</button>`;
         }
 
         // Sparse-data banner — surfaced above the picker when the species has
@@ -72005,12 +72025,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // An active Stage filter shows the FULL tier (it bypasses ★), so "check what's
             // at each tutor tier" reveals everything, not just the curated subset.
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves && !(tierSel && tierSel.size);
+            const suitableOnly = !!(_txState.filter.suitableOnly && _txState.filter.suitableOnly.moves);
             const filt = allMoves.filter(m => {
                 // Equipped moves (extraInclude) always pass the ★ and Stage filters so the
                 // player never loses sight of a move they currently run — they still obey
                 // the search box + type/category chips, though.
                 const forced = extraInclude && extraInclude.has(m);
                 if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
+                // ★ Suitable: keep only competitive-tagged moves (Parting Shot, Tailwind,
+                // hazards, pivots…) — the base name, so slashed CSV slots resolve.
+                if (suitableOnly && !forced && !_txCompetitiveTag(String(m).split('/')[0])) return false;
                 if (tierSel && tierSel.size && !forced) {
                     const sk = (typeof _txMoveStageKey === 'function') ? _txMoveStageKey(monName, m) : null;
                     if (!sk || !tierSel.has(sk)) return false; // stage keys: inner / unleashed / guru
@@ -72478,7 +72502,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 count: filtered.length,
                 countLabel: 'moves',
                 sparse: sPool.sparse,
-                leadingChipsHtml: _txRecChipHtml('moves', t.name),
+                leadingChipsHtml: _txRecChipHtml('moves', t.name) + _txSuitableChipHtml(t.name),
                 chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml(),
                 belowChipsHtml: _txTierChipsHtml('moves') + _txMoveTypeMenuRowHtml(availTypes),
                 sortOptions: [
