@@ -9678,6 +9678,7 @@
             </div>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
+            <label class="settings-row" for="sw-ambient-particles" title="Ambient particle layer — embers, dust, snow, sparkles in scenes and weather. Off disables the layer. Reduced-motion always disables it."><span>Ambient particles</span><input type="checkbox" class="pbs-switch" id="sw-ambient-particles" role="switch" onchange="window.applySettingSwitch('ambientParticles', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
                 <span>Display</span>
                 <select id="setting-display-mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
@@ -16133,6 +16134,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-animations', 'animations'],
                 ['sw-weather-anim', 'weatherAnimation'],
                 ['sw-terrain-bg', 'terrainBackground'],
+                ['sw-ambient-particles', 'ambientParticles'],
                 ['sw-music', 'musicEnabled'],
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
@@ -16168,6 +16170,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (key === 'soundEnabled') {
                 if (on !== !!settings.soundEnabled) AudioSystem.toggleSound();
+                return;
+            }
+            if (key === 'ambientParticles') {
+                settings.ambientParticles = on;
+                try { window.syncSettingsModalSwitches(); } catch (e) {}
+                try { persistMiscSettings(); } catch (e) {}
+                // Apply live: tear down active layers when disabling; re-arm the battle
+                // weather layer when enabling (scenes re-mount their own on next entry).
+                try { if (!on && window.FxParticles) FxParticles.clearAll(); } catch (e) {}
+                try { if (on && typeof syncBattleWeatherFx === 'function') syncBattleWeatherFx(); } catch (e) {}
                 return;
             }
         };
