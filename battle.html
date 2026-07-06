@@ -45851,6 +45851,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // through the run, not just cosmetic polish.
         const STORY_BUILD_TIER = Object.freeze({ UNTRAINED: 1, NOVICE: 2, COMPETENT: 3, TOURNAMENT: 4 });
         const _NEUTRAL_NATURES_LIST = ['Hardy', 'Docile', 'Serious', 'Bashful', 'Quirky'];
+        // Nature → the stat it LOWERS (neutral natures omitted). Shared by the
+        // role-fighting guards: no build should carry a nature whose minus-stat is the
+        // species' primary attacking stat (a physical mon losing Atk, special losing SpA).
+        const _NATURE_MINUS_STAT = Object.freeze({
+            Adamant: 'spa', Jolly: 'spa', Brave: 'spe', Naughty: 'spd', Lonely: 'def',
+            Modest: 'atk', Timid: 'atk', Quiet: 'spe', Mild: 'def', Rash: 'spd',
+            Bold: 'atk', Impish: 'spa', Relaxed: 'spe', Lax: 'spd',
+            Calm: 'atk', Careful: 'spa', Sassy: 'spe', Gentle: 'def',
+        });
+        // True when a nature lowers the species' clearly-primary attacking stat. Walls
+        // legitimately drop their (unused) offense, so they never count as role-fighting.
+        function _natureFightsRole(base, nature) {
+            if (!base) return false;
+            const minus = _NATURE_MINUS_STAT[nature];
+            if (!minus) return false;
+            const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
+            const hp = base.hp | 0, def = base.def | 0, spd = base.spd | 0;
+            const offense = atk + spa + spe, defense = hp + def + spd;
+            if (defense > offense + 60 && atk + spa < 180) return false; // wall: dropping offense is fine
+            if (minus === 'atk' && atk > spa + 15 && atk >= 80) return true;
+            if (minus === 'spa' && spa > atk + 15 && spa >= 80) return true;
+            return false;
+        }
+        try { window._natureFightsRole = _natureFightsRole; } catch (e) {}
         // T1 / T2 item replacement pools — flavor berries and type-boost stones
         // (universally available in canon, no game-breaking effects). Empty
         // strings in the T1 pool yield "no item" so untrained route mons feel
@@ -46419,6 +46443,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     if (_optM && _optM.length && rng() < _storyMoveOptChance(_foeCity, _diffStep)) {
                         slot.build.m = _optM.slice();
+                    }
+                }
+                // Final ability-legality guard (build-diversity: foes obey their
+                // available build components). Regional/battle formes carry the correct
+                // abilities in baseStats, but a CSV set can ship the BASE forme's
+                // ability (e.g. Vulpix-Alola → Drought, base Vulpix's hidden ability),
+                // which the opt-restore above would re-apply. If the resolved ability is
+                // not in THIS forme's list, fall back to its slot-0 ability so no foe
+                // ever fields an impossible ability. Runs for every foe (story + frontier).
+                {
+                    const _abs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                    if (_abs && _abs.abilities && slot.build && _isBuildAbilityIllegal(slot.name, slot.build.a)) {
+                        const _legal = _abs.abilities['0'] || _abs.abilities['1'] || _abs.abilities.H || '';
+                        if (_legal) slot.build.a = _legal;
+                    }
+                    // Role-fighting nature guard: never let a foe (incl. gym/champ aces)
+                    // carry a nature whose minus-stat is its primary attack — Exeggutor
+                    // Jolly (−SpA on a special attacker), Nidoking Timid (−Atk). Swap to
+                    // an archetype-appropriate nature (reuses the wild nature pool, which
+                    // is guaranteed role-coherent).
+                    if (_abs && slot.build && _natureFightsRole(_abs, slot.build.n)) {
+                        try { slot.build.n = _wildPickNature(_abs, rng); } catch (e) {}
                     }
                 }
             }
