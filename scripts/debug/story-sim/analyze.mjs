@@ -191,6 +191,16 @@ function renderHtml(agg, flags, meta) {
   const line = (sel) => pc.map((d, i) => `${i ? 'L' : 'M'}${xFor(i).toFixed(0)},${yFor(d[sel]).toFixed(0)}`).join(' ');
   const svg = pc.length ? `<svg viewBox="0 0 ${W} ${H}" width="100%"><path d="${line('pPower')}" fill="none" stroke="#4ea1ff" stroke-width="2"/><path d="${line('fPower')}" fill="none" stroke="#ff6b6b" stroke-width="2"/>${pc.map((d, i) => `<text x="${xFor(i)}" y="${H - 8}" font-size="9" text-anchor="middle" fill="#888">C${d.city}</text>`).join('')}</svg>` : '<p>no data</p>';
 
+  // Per-battle-type foe per-mon power table (built here to avoid nested template literals).
+  const ttCities = [...new Set(Object.values(agg.foePowerByType).flat().map(p => p.city))].sort((a, b) => a - b);
+  const ttTypes = Object.keys(agg.foePowerByType).sort();
+  const ttHead = ttCities.map(c => `<th>C${c}</th>`).join('');
+  const ttRows = ttTypes.map(t => {
+    const m = Object.fromEntries((agg.foePowerByType[t] || []).map(p => [p.city, p.perMon]));
+    return `<tr><th style="text-align:left">${esc(t)}</th>${ttCities.map(c => `<td>${m[c] != null ? m[c] : ''}</td>`).join('')}</tr>`;
+  }).join('');
+  const typeTable = `<div style="overflow-x:auto"><table><tr><th></th>${ttHead}</tr>${ttRows}</table></div>`;
+
   const reachRows = Object.entries(agg.reachSummary).map(([k, v]) =>
     `<tr><td>${esc(k)}</td><td>${v.n}</td><td>${v.meanReach?.toFixed(1)}</td><td>${v.minReach}</td><td>${v.maxReach}</td><td>${v.hofRate != null ? (100 * v.hofRate).toFixed(0) + '%' : '—'}</td></tr>`).join('');
   const flagRows = flags.length ? flags.map(f => `<li><b>${esc(f.kind)}</b> ${esc(f.event || '')} ${esc(f.difficulty || '')} ${esc(f.itemMode || '')} — ${esc(f.detail)}</li>`).join('') : '<li>none</li>';
@@ -218,18 +228,9 @@ ul{margin:4px 0}small{color:#888}
 ${svg}
 
 <h2>Foe per-mon power by battle type <small>(party-size-normalized — the gym spine vs filler; totals mislead because filler fields fewer mons)</small></h2>
-${(() => {
-  const cities = [...new Set(Object.values(agg.foePowerByType).flat().map(p => p.city))].sort((a, b) => a - b);
-  const types = Object.keys(agg.foePowerByType).sort();
-  const head = cities.map(c => `<th>C${c}</th>`).join('');
-  const rows = types.map(t => {
-    const m = Object.fromEntries((agg.foePowerByType[t] || []).map(p => [p.city, p.perMon]));
-    return `<tr><th style="text-align:left">${esc(t)}</th>${cities.map(c => `<td>${m[c] != null ? m[c] : ''}</td>`).join('')}</tr>`;
-  }).join('');
-  return `<div style="overflow-x:auto"><table><tr><th></th>${head}</tr>${rows}</table></div>`;
-})()}
+${typeTable}
 
-<h2>Reach summary <small>(how far each cohort gets; hofRate = reached ending)</small></h2>`
+<h2>Reach summary <small>(how far each cohort gets; hofRate = reached ending)</small></h2>
 <table><tr><th>diff|policy|item</th><th>n</th><th>mean pos</th><th>min</th><th>max</th><th>finish%</th></tr>${reachRows}</table>
 
 <h2>Item off→on delta <small>(top 20 by |Δ win-rate|)</small></h2>
