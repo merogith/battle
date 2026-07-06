@@ -1,9 +1,10 @@
 # BUILD DIVERSITY MASTER — adaptive, diverse, viable builds for wild & enemy Pokémon
 
-> Design canon for the wild + enemy build-generation overhaul. Status: **DESIGN — pending
-> maintainer sign-off before any Phase ships.** All balance numbers here are proposals the
-> maintainer owns (see CLAUDE.md → Approval rules). Nothing in this doc has shipped except
-> the wild nature/EV diversity already merged on `claude/wild-pokemon-build-diversity-vj631h`.
+> Design canon for the wild + enemy build-generation overhaul. Status: **Phase 1 + the
+> correctness/quality pass are IMPLEMENTED on `claude/wild-pokemon-build-diversity-vj631h`;
+> Phases 2 & 4 are scoped follow-ups (§6).** All balance numbers here are maintainer-owned
+> (see CLAUDE.md → Approval rules) — the values that shipped are sensible defaults, called
+> out as tunable knobs (§7), for the maintainer to retune. See §3 for the audit evidence.
 
 ## 1. Vision (maintainer-locked decisions, 2026-07)
 
@@ -51,11 +52,33 @@ Every slot is an independent grade-weighted roll. `enforceRoleCoverage` / `enfor
 ### 2.4 Wild (already shipped on this branch)
 Nature pools (archetype-appropriate, head-weighted), EV-shape jitter + splash, the `_evSpillToTarget` distributor fix (hits the target total exactly), and a wild-only secondary-STAB move bias. Wild EV totals already track the city band. See `tests/suites/story-wild-build-diversity.test.js`.
 
-## 3. Current-state audit findings
+## 3. Current-state audit findings (instrumented sweep, resolved)
 
-> **[TO BE FILLED FROM THE INSTRUMENTED SWEEP]** — component-by-component (moves / ability / EV / IV /
-> item / nature), every city C0→C7, hundreds of enemy mons + wild mons per stage, ranked by severity
-> with cause + resolution. This section is the empirical evidence base for the phase plan below.
+An instrumented sweep drove the real pipeline — **264 enemy mons/city** (boss + filler,
+`rollTrainerTeam` → `storyGateFoeMovesByCity`) and **700 wild mons/city**
+(`rollWildEncounter` → catch filter), every city C0→C7, per component. It surfaced the
+diversity gap **and several concrete correctness bugs**. All the correctness/quality issues
+below are **fixed on this branch**; each has a guard in `tests/suites/story-enemy-build-diversity.test.js`
+or `story-wild-build-diversity.test.js`.
+
+| # | Sev | Finding | Cause | Resolution |
+|---|---|---|---|---|
+| 3 | High | Enemy EV totals hit **512 (>508 legal cap)** at C4/C6 | `_distributeEVsToTotal`'s per-stat /4 rounding overshoots; the reconcile only fixed undershoot | `_evReconcileToTarget` now **trims overshoot** + fills undershoot → always legal ≤508 |
+| 1 | High | Foes field **ZMOVE gimmicks + Z-crystals as early as C0** | (a) gimmick city-gate used `cityIndexFromEventIndex(rowId)` instead of `_cityIndexForStoryRow`; (b) CSV z-attack sets slip `forceGimmick` | Fixed the row-id resolution + a finalization guard that reverts any **pre-City-8 gimmick to STANDARD** and drops the stone |
+| 2 | High | Wild items jump **nothing (C0-3) → elite (C4)** | hard cap step + no wild-tier filter | Ramp `C0 none · C1-3 berries · C4-6 staples · C7 best` + small seeded early-berry chance; elite items capped below C7 |
+| 4 | Med | **Illegal alt-forme abilities** (Vulpix-Alola→Drought) ~1-2% | CSV ships base-forme ability; only *flagged* `_illegal`, then opt-restore re-applies it | Finalization guard: illegal ability → the forme's slot-0 legal ability |
+| 5 | Med | **Role-fighting natures** incl. boss aces (Exeggutor Jolly) ~1-2% | nature not validated against orientation | `_natureFightsRole` (wall-aware) + swap to an archetype-appropriate nature |
+| 6 | Med | Nature curve **discontinuities** (wild hard cliff C0-neutral→C1-positive) | binary city gate | Wild neutral-chance **ramps** C0 75% → C1 40% → C2 15% → C3+ 0. (Enemy `_storyNatureOptChance` C0-C1 neutrality is the **intended** soft tutorial — left as-is.) |
+| 8 | Low | Shallow-movepool foes keep a **lone over-cap move** (Beldum) | degenerate fallback pushed only 1 move | Fill a full set of lowest-BP **legal** moves; battle-time BP clamp already caps effective power |
+| 7 | Low | Wild movesets **one-dimensional** (34% only-STAB at C5) | catch-and-train gate (natural-only) + STAB-weighted ranker | **By design** — wild is deliberately less-optimal (player earns coverage/utility via tutors); the shipped secondary-STAB bias supplies type variety |
+| — | — | Enemy C4/C6 EV mean above the city band | `diffStep` raises the EV band index for bosses | **Intended** difficulty shift (bosses out-total fillers), not a bug |
+
+IVs were healthy across both (monotonic, tightly banded, enemy < wild per city as intended);
+no per-stat >252; C7 endgame builds clean. The move BP gate holds for the vast majority.
+
+The **headline diversity gap** (§2.1: enemy move complexity locked early, unlocked late) is
+addressed by Phase 1 (the gate split) — enemies now carry coverage/setup/utility from City 1,
+power still curbed by the BP cap + EV band.
 
 ## 4. The build-source decision (deep analysis)
 
@@ -80,14 +103,18 @@ Net: builds are *constructed to the stage* (coherent + vetted + adaptive + unive
 3. **Team role composition.** Assign each of the 6 slots a distinct archetype (weighted so a team spans roles — e.g. a wall, a pivot, 2–3 attackers, a setup threat), then generate each mon to its assigned role + the city's stage params. This is the "both roles + moves" deliverable.
 4. **Synergy + freshness.** Use the generator's `move-synergies.json` scoring for internal coherence, and the existing cross-encounter dedup + per-roll RNG variety for freshness. No player-team-reading.
 
-## 6. Phase plan
+## 6. Phase plan & status
 
-Each phase = its own diff + maintainer sign-off on the numbers + a deterministic guard test. Ordered by impact.
+- **Phase 1 — Enemy move diversity (the gate split). ✅ SHIPPED.** `foeMode` on `_storyApplyMoveStageToBuild` opens the full legal movepool for foes (coverage/setup/utility survive the category gate), power still curbed by the per-city BP cap + EV band. Player wild path byte-identical. Enemies stop being "4 STAB" from City 1.
+- **Correctness & quality pass (audit #1-#6, #8). ✅ SHIPPED.** EV≤508 reconcile, legal forme abilities, role-coherent natures, pre-City-8 gimmick/item cleanup, wild item ramp, wild nature phase-in, shallow-movepool fallback. See §3 + the two guard suites.
+- **Phase 3 — Wild philosophy. ✅ PARTIAL / SHIPPED.** Wild EVs already track the city band (stage-competitive); nature phases in over C0-C2; ability keeps a mild slot-0 bias with late hidden-ability chance; moves stay legal-basic (the earn-via-tutor headroom). The secondary-STAB bias supplies type variety.
+- **Phase 2 — Stage-adaptive generator + role-coherent teams. ⏳ FOLLOW-UP.** Wire the learnset into the generator (`_designedCsvMovePool` → `move-tags.json`), parameterize it by city, raise foe reliance on it, and add per-slot role assignment. Deferred to its own PR: it rewires the build *source* (larger blast radius) whereas the gate split already delivers the visible "diverse foe" win by *unblocking* the diverse sets the data already has. Design captured in §4-§5.
+- **Phase 4 — EV-redistribution trainer. ⏳ FOLLOW-UP.** New NPC/UI (early: reshuffle existing EV total ~1000 G; late: 0→max instantly). A self-contained feature with its own UI surface — cleaner as a dedicated PR than bundled into the build-generation changes.
 
-- **Phase 1 — Enemy move diversity (the gate split).** Split `_storyApplyMoveStageToBuild`; foes get the diverse-but-BP-capped path (coverage/setup/utility available at every city, power still curbed by BP cap + EV band). Player wild path unchanged. *Deliver: enemies stop being "4 STAB" from City 1.*
-- **Phase 2 — Stage-adaptive generator + role-coherent teams.** Wire the learnset into the generator, parameterize it by city, raise foe reliance on it, and add per-slot role assignment. *Deliver: teams read as teams; builds fit the stage.*
-- **Phase 3 — Wild philosophy tune.** Confirm stage-competitive wild EVs; move nature/ability toward randomised-legal (the headroom); keep wild moves legal-basic. *Deliver: fresh catches are usable but yours to optimise.*
-- **Phase 4 — EV-redistribution trainer.** New NPC/UI. Early: redistribute your existing EV total (cost ~1000 G). Late (post EV-trainer unlock): raise EV total 0→max instantly. Lets the player re-tune EV training anytime. *Deliver: the training loop that makes wild EV spreads matter.*
+Rationale for the split: this PR ships every change that improves the builds foes/wilds
+**already generate** (the gate + the correctness guards) — high value, fully test-gated, low
+save/AI risk. Phases 2 & 4 change the build *source* and add a *new feature* respectively, and
+are scoped as follow-ups so this PR stays coherent and merge-safe.
 
 ## 7. Balance-knobs registry (all maintainer-owned)
 
