@@ -40438,22 +40438,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Reshape a build's EV spread to hit a target total. A build that already has a
         // spread is scaled proportionally (shape preserved); an empty spread invests the
         // target into the species' best two battle stats. 252-per-stat / 508-total safe.
-        // Spill any total lost to the 252-per-stat clamp back into the spread so the
-        // target total is actually hit no matter how lopsided the source shape was.
-        // Without this a heavy-primary spread scaled to a high city total (e.g. a
-        // jittered wild spread at the 508 cap) overflows the cap on its primary and
-        // silently undershoots — the mon ships ~20-70 EVs short of its tier. Spills
-        // into the stats the shape already uses first (identity preserved), then any
-        // non-maxed stat, 4 at a time. Idempotent when already at target.
-        function _evSpillToTarget(out, keys, t) {
-            let sum = 0;
-            for (const k of keys) sum += (out[k] | 0);
-            let deficit = t - sum;
+        // Reconcile a spread to hit the target total EXACTLY (to within one 4-EV step),
+        // in BOTH directions, so the result is always a legal ≤508 spread that matches
+        // its tier:
+        //   • TRIM overshoot — the per-stat /4 rounding in _distributeEVsToTotal can push
+        //     the sum ABOVE the target (each of up to 6 stats can round up), which for a
+        //     508 target produced illegal 512-EV foes. Remove 4 at a time from the
+        //     largest stat until sum ≤ target.
+        //   • FILL undershoot — a heavy-primary spread scaled to a high total overflows
+        //     the 252 cap on its primary and silently ships ~20-70 EVs short. Add 4 at a
+        //     time into the stats the shape already uses (identity preserved), then any
+        //     non-maxed stat.
+        // Idempotent when already at target. Shared by wild / trainer / player builds.
+        function _evReconcileToTarget(out, keys, t) {
+            const sumOf = () => keys.reduce((s, k) => s + (out[k] | 0), 0);
+            let guard = 400;
+            while (sumOf() > t && guard-- > 0) {
+                let best = null, bestV = 0;
+                for (const k of keys) { const v = out[k] | 0; if (v > bestV) { bestV = v; best = k; } }
+                if (!best || bestV <= 0) break;
+                out[best] = Math.max(0, (out[best] | 0) - 4);
+            }
+            let deficit = t - sumOf();
             if (deficit < 4) return;
             const used = keys.filter(k => (out[k] | 0) > 0 && (out[k] | 0) < 252);
             const rest = keys.filter(k => (out[k] | 0) < 252 && used.indexOf(k) === -1);
             const order = used.concat(rest);
-            let guard = 400;
+            guard = 400;
             while (deficit >= 4 && guard-- > 0) {
                 let placed = false;
                 for (const k of order) {
@@ -40478,7 +40489,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const scale = t / cur;
                 const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 for (const k of keys) out[k] = Math.max(0, Math.min(252, Math.round(((src[k] | 0) * scale) / 4) * 4));
-                _evSpillToTarget(out, keys, t);
+                _evReconcileToTarget(out, keys, t);
                 build.evs = out;
                 return;
             }
@@ -40487,7 +40498,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const first = Math.min(252, Math.round((t / 2) / 4) * 4);
             out[pair[0]] = first;
             out[pair[1]] = Math.max(0, Math.min(252, Math.round((t - first) / 4) * 4));
-            _evSpillToTarget(out, keys, t);
+            _evReconcileToTarget(out, keys, t);
             build.evs = out;
         }
         // ── OPTIMIZATION GRADIENTS (Sheet opt curves) ──────────────────────
