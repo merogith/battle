@@ -14262,6 +14262,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 playBattleTheme(mood) { _playBattleTheme(mood); },
                 endBattleTheme(won) { _endBattleTheme(won); },
 
+                // Drop-in battle-music hooks. The mood slots (trainer / leader / rival /
+                // elite / boss) are pre-wired; only content is missing. Drop track files
+                // under music/themes/ (see music/themes/README.md) and register them at
+                // runtime — no monolith edit needed. addBattleTheme appends one file to a
+                // mood; setBattleThemes replaces whole mood lists from a {mood:[files]} map.
+                // Mutates the existing BATTLE_THEMES object in place (never reassigns it).
+                addBattleTheme(mood, file) {
+                    if (!mood || !file || !Object.prototype.hasOwnProperty.call(BATTLE_THEMES, mood)) return false;
+                    if (BATTLE_THEMES[mood].indexOf(file) === -1) BATTLE_THEMES[mood].push(file);
+                    return true;
+                },
+                setBattleThemes(map) {
+                    if (!map || typeof map !== 'object') return false;
+                    Object.keys(map).forEach((mood) => {
+                        if (!Object.prototype.hasOwnProperty.call(BATTLE_THEMES, mood)) return;
+                        const list = map[mood];
+                        BATTLE_THEMES[mood] = Array.isArray(list) ? list.slice() : [];
+                    });
+                    return true;
+                },
+
                 // Character-creation screen theme: a random Theme1–4 jingle that
                 // ducks the field BGM while the player builds their trainer.
                 playIntroTheme() { _playIntroTheme(); },
@@ -14379,6 +14400,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     startBgTrack: (idx, at) => _startBgTrack(idx, at),
                     playBattleTheme: (m) => _playBattleTheme(m),
                     endBattleTheme: (w) => _endBattleTheme(w),
+                    battleThemes: () => JSON.parse(JSON.stringify(BATTLE_THEMES)),
                     playIntroTheme: () => _playIntroTheme(),
                     resumeOrStartBg: () => _resumeOrStartBg(),
                     playOneShot: (src, vol, opts) => _playOneShot(src, vol, opts),
