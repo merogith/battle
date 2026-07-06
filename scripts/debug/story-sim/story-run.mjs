@@ -180,6 +180,7 @@ export async function runStory(E, opts = {}) {
   } = opts;
   const policy = getPolicy(policyId);
   const sm = initRun(E, { seed, difficulty, gens, mech });
+  const startGold = sm.gold; // before any agent spend, for the accounting invariant
   const S = E.window.__storySim;
   const raw = S.STORY_EVENTS_RAW;
   const agent = new PlayerAgent(E, policy, { difficulty, runSeed: uint32(seed) });
@@ -276,7 +277,7 @@ export async function runStory(E, opts = {}) {
   return {
     seed, difficulty, policy: policyId, itemMode,
     outcome, reachedPos, reachedName,
-    badges: sm.badges, gold: sm.gold,
+    badges: sm.badges, gold: sm.gold, startGold,
     villain: sm.tracks && sm.tracks.villain, extra: sm.tracks && sm.tracks.extra,
     finalTeam: (sm.team || []).map(t => t.name),
     battles: battles.length, wins: battles.filter(s => s.won).length,

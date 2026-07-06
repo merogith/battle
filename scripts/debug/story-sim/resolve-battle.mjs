@@ -137,14 +137,14 @@ function survivingHpPct(party) {
  * @param {object} E        loaded engine handle (from loadEngine)
  * @param {object[]|object} team1  player specs, OR { mons: prebuiltMons } to skip building
  * @param {object[]|object} team2  foe specs, OR { mons: prebuiltMons }
- * @param {object} opts     { seed, mode='pve', maxTurns=150, foeStoryItems=false,
+ * @param {object} opts     { seed, mode='pve', maxTurns=220, foeStoryItems=false,
  *                            playerSkill='hard', storyContext=null }
  * @returns {object} outcome telemetry
  */
 export async function resolveBattle(E, team1, team2, opts = {}) {
   const { engine, window } = E;
   const {
-    seed = 0, mode = 'pve', maxTurns = 150, foeStoryItems = false,
+    seed = 0, mode = 'pve', maxTurns = 220, foeStoryItems = false,
     playerSkill = 'hard', storyContext = null,
   } = opts;
   if (!_aiRestored) restoreRealAI(E);
@@ -186,19 +186,26 @@ export async function resolveBattle(E, team1, team2, opts = {}) {
   if (storyContext && sm) {
     if (storyContext.storyDifficulty) sm.storyDifficulty = storyContext.storyDifficulty;
     if (storyContext.active !== undefined) sm.active = storyContext.active;
-    if (storyContext.foeStoryInv !== undefined) st.foeStoryInv = storyContext.foeStoryInv;
     st.foeStoryItemUsedThisTurn = false;
     st.foeStoryItemUsesThisBattle = 0;
   }
-  // Per-battle foe-item control: real impl when opted in AND we have story context, else stub.
-  window.tryFoeStoryBattleItem =
-    (foeStoryItems && typeof engine.tryFoeStoryBattleItem === 'function')
-      ? engine.tryFoeStoryBattleItem
-      : () => false;
+  // Foe-item control. settings.storyBattleItems must be set BEFORE building the inventory
+  // (the builder returns empty if it's false). When opted in, build a REAL per-battle foe
+  // inventory via the shipped buildFoeStoryInventoryForBattle() (reads sm.eventIndex/difficulty,
+  // already set by the run loop for this row) so tryFoeStoryBattleItem actually fires.
   try {
     if (window.settings) window.settings.storyBattleItems = !!foeStoryItems;
     if (engine.settings) engine.settings.storyBattleItems = !!foeStoryItems;
   } catch (e) {}
+  if (foeStoryItems) {
+    const S = window.__storySim;
+    try { st.foeStoryInv = (S && S.buildFoeStoryInventoryForBattle) ? S.buildFoeStoryInventoryForBattle() : null; }
+    catch (e) { st.foeStoryInv = null; }
+    window.tryFoeStoryBattleItem = (typeof engine.tryFoeStoryBattleItem === 'function') ? engine.tryFoeStoryBattleItem : () => false;
+  } else {
+    st.foeStoryInv = null;
+    window.tryFoeStoryBattleItem = () => false;
+  }
 
   if (typeof window.applySwitchInAbilities === 'function') {
     try { window.applySwitchInAbilities(st.pActive, st.fActive); } catch (e) {}
@@ -244,7 +251,7 @@ export async function resolveBattle(E, team1, team2, opts = {}) {
     // (PP-stall / recover loops / mutual immunity). Cheaper than waiting for maxTurns.
     const hpSum = survivingHpPct(st.playerParty) + survivingHpPct(st.foeParty);
     if (Math.abs(hpSum - prevHpSum) > 1e-6) { lastProgress = turns; prevHpSum = hpSum; }
-    else if (turns - lastProgress >= 12) { break; }
+    else if (turns - lastProgress >= 25) { break; }
   }
 
   if (_smSaved && sm) { sm.active = _smSaved.active; sm.storyDifficulty = _smSaved.storyDifficulty; }

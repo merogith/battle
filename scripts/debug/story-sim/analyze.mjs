@@ -54,8 +54,8 @@ function aggregate(runs, stages) {
     const ev = s.event;
     byStage[ev] = byStage[ev] || { event: ev, pos: s.pos, city: s.city, cells: {} };
     const key = `${s.difficulty}|${s.policy}|${s.itemMode}`;
-    const c = (byStage[ev].cells[key] = byStage[ev].cells[key] || { w: 0, n: 0, pPow: [], fPow: [], turns: [] });
-    c.n++; if (s.won) c.w++;
+    const c = (byStage[ev].cells[key] = byStage[ev].cells[key] || { w: 0, n: 0, stalls: 0, pPow: [], fPow: [], turns: [] });
+    c.n++; if (s.won) c.w++; if (s.stalled) c.stalls++;
     c.pPow.push(s.pPower); c.fPow.push(s.fPower); c.turns.push(s.turns);
   }
   const stageList = Object.values(byStage).sort((a, b) => a.pos - b.pos);
@@ -138,6 +138,14 @@ function detectFlags(agg) {
         flags.push({ kind: 'too-hard', event: st.event, pos: st.pos, difficulty, itemMode, detail: `optimal win ${(100 * opt.w / opt.n).toFixed(0)}% (<${100 * FLAGS.tooHardWinRate}%)` });
       if (cas && cas.n >= 3 && cas.w / cas.n > FLAGS.tooEasyWinRate)
         flags.push({ kind: 'too-easy', event: st.event, pos: st.pos, difficulty, itemMode, detail: `casual win ${(100 * cas.w / cas.n).toFixed(0)}% (>${100 * FLAGS.tooEasyWinRate}%)` });
+    }
+  }
+  // High stall rate: a stage the AI often can't finish (unbreakable wall / passive loop). Signals
+  // an AI limitation or a defensively-degenerate foe set, not a sim bug — but worth surfacing.
+  for (const st of agg.stageList) {
+    for (const [key, c] of Object.entries(st.cells)) {
+      if (c.n >= 4 && c.stalls / c.n >= 0.25)
+        flags.push({ kind: 'high-stall', event: st.event, detail: `${key}: ${c.stalls}/${c.n} runs stalled (AI can't break the matchup)` });
     }
   }
   // Power inversion: PER-MON foe power dropping city-to-city (party-size-normalized, so this is

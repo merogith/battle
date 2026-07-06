@@ -58,7 +58,7 @@ export const POLICIES = {
       useGimmicks: true,
       evTargetFrac: 1.0,           // full city EV band
     },
-    catch: { mode: 'aggressive', coverageOnly: false, safariTrips: 2, ballBudgetFrac: 0.25 },
+    catch: { mode: 'aggressive', coverageOnly: true, safariTrips: 2, ballBudgetFrac: 0.25 },
     adapt: { retries: 3, reprepOnLoss: true },
   },
 };

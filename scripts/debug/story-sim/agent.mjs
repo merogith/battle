@@ -28,8 +28,18 @@ export class PlayerAgent {
     this._catchCount = 0;
     this._evolveCount = 0;
     this._adaptCount = 0;
+    this._goldSpent = 0;        // real gold deducted for evolution + training
+    this._blockedEvolve = 0;    // evolutions the player wanted but couldn't afford (economy stress)
+    this._blockedTrain = 0;
+    this._evolveCost = (this.S && this.S.EVOLVE_COST_BY_TARGET) || { 1: 12000, 2: 6000, 3: 3000 };
+    this._evPerMonCost = 500;   // vitamin-equivalent per trained mon per city (economy model)
     this._buildEvoForwardMap();
   }
+
+  // Budget: never spend below the policy's gold reserve.
+  _canSpend(cost) { return (this.sm.gold - Math.round(this.sm.gold * this.policy.reserveFrac)) >= cost; }
+  _spend(cost) { this.sm.gold = Math.max(0, this.sm.gold - cost); this._goldSpent += cost; }
+  _grade(name) { try { return this.engine.getMonGrade(name, this.engine.getBST(name)); } catch (e) { return 4; } }
 
   get sm() { return this.S.sm; }
 
@@ -85,7 +95,7 @@ export class PlayerAgent {
   _maxParty() { try { return this.S.storyMaxPartySize(); } catch (e) { return Math.max(2, Math.min(6, 2 + (this.sm.badges | 0))); } }
 
   // Build a story-tier player build for a species at (city, badges), trained per policy.
-  _makeStoryBuild(species, city, badges) {
+  _makeStoryBuild(species, city, badges, opts = {}) {
     const S = this.S, T = this.T;
     const tier = S.storyBuildTierForProfessor(city, badges);
     const build = S.makeBuild(species);
@@ -94,8 +104,9 @@ export class PlayerAgent {
     } catch (e) {}
     build.powerTier = tier;
     delete build._storyStatMult; // player builds are never foe-scaled
-    // EV training toward the city band, scaled by policy investment.
-    if (this.policy.train.evTrain && this.policy.train.evTargetFrac > 0) {
+    // EV training toward the city band, scaled by policy investment (gated by the caller on gold).
+    const doTrain = opts.train !== undefined ? opts.train : this.policy.train.evTrain;
+    if (doTrain && this.policy.train.evTargetFrac > 0) {
       try {
         let band = 508;
         try { band = S.STORY_EVENTS_RAW && T && T.storyEvTotalForCity ? T.storyEvTotalForCity(city, 0) : 508; } catch (e) {}
@@ -166,16 +177,18 @@ export class PlayerAgent {
   }
 
   doCity(pos) {
-    // City prep: grow team toward cap, evolve/retrain existing mons per policy budget.
-    this._growAndTrain(pos);
+    // The Evo Lab / EV Trainer live in cities, so the full evolve+train pass happens once per
+    // city visit (not before every route battle) — keeps the paid actions from thrashing.
+    this._fillToCap(pos);
+    this._evolveAndTrain(pos);
   }
 
   prepForBattle(pos, eventName) {
-    // Ensure the team is at cap and trained before a fight (covers routes with no city between).
-    this._growAndTrain(pos);
+    // Between cities: only ensure the team is at its badge-cap size (a caught mon fills the slot).
+    this._fillToCap(pos);
   }
 
-  _growAndTrain(pos) {
+  _fillToCap(pos) {
     this._seedAgentRng(pos);
     const city = this._cityForRow(pos);
     const badges = this.S.countGymBadgesBeforeStoryRow(pos);
@@ -190,28 +203,44 @@ export class PlayerAgent {
       this._addMon(sp, city, badges);
       this._catchCount++; added++;
     }
-    // Evolve team members forward to the city's player cap (the dominant power lever), then
-    // retrain EVs/moves toward the current tier. casual still evolves (it's free/on-level) but
-    // trains less; the evolve/train split is what separates the policies.
+  }
+
+  _evolveAndTrain(pos) {
+    this._seedAgentRng(pos + 500);
+    const city = this._cityForRow(pos);
+    const badges = this.S.countGymBadgesBeforeStoryRow(pos);
+    // Evolve team members forward to the city's player cap (the dominant power lever), gated on
+    // gold (paid Evo-Lab action), then retrain EVs toward the tier. The evolve/train affordability
+    // is what separates the policies once the economy binds.
     const evoCap = this._playerEvoCap(city);
     for (const slot of this.sm.team) {
       let species = slot.name;
-      {
-        const evolved = this._evolveForward(species, evoCap); // evolution is free at Lv50; all policies evolve
-        if (evolved !== species) { species = evolved; this._evolveCount++; }
+      // Evolution is a paid Evo-Lab action (EVOLVE_COST_BY_TARGET) — gate it on gold. A
+      // gold-starved player (casual) can't afford to evolve and stays weak; this is the core
+      // economic feedback that separates the policies.
+      const target = this._evolveForward(species, evoCap);
+      if (target !== species) {
+        const cost = this._evolveCost[this._grade(target)] || 3000;
+        if (this._canSpend(cost)) { this._spend(cost); species = target; this._evolveCount++; }
+        else { this._blockedEvolve++; }
       }
       const speciesChanged = species !== slot.name;
-      if (speciesChanged || this.policy.train.evTrain) {
+      // EV training is a paid EV-Trainer action — gate it on gold too.
+      const wantTrain = this.policy.train.evTrain;
+      const canTrain = wantTrain && this._canSpend(this._evPerMonCost);
+      if (wantTrain && !canTrain) this._blockedTrain++;
+      if (speciesChanged || canTrain) {
         try {
-          const rebuilt = this._makeStoryBuild(species, city, badges);
+          const rebuilt = this._makeStoryBuild(species, city, badges, { train: canTrain });
           slot.name = species;
           if (speciesChanged) {
             slot.build = rebuilt;                 // full rebuild on evolution
-          } else {
+          } else if (canTrain) {
             slot.build.evs = rebuilt.evs;         // refresh trainable parts in place
             slot.build.powerTier = rebuilt.powerTier;
             if (this.policy.train.tutorMoves && rebuilt.m) slot.build.m = rebuilt.m;
           }
+          if (canTrain) this._spend(this._evPerMonCost);
         } catch (e) {}
       }
     }
@@ -258,6 +287,7 @@ export class PlayerAgent {
 
   telemetry() {
     return {
+      goldSpent: this._goldSpent, blockedEvolve: this._blockedEvolve, blockedTrain: this._blockedTrain,
       trainCost: this._trainCost, catchCount: this._catchCount,
       evolveCount: this._evolveCount, adaptCount: this._adaptCount,
       teamTypes: [...this._typesSeen],

@@ -41,14 +41,16 @@ test('same inputs reproduce byte-identically (determinism)', async () => {
   assert.deepEqual(checkDeterminism(a, b), [], 'run was non-deterministic');
 });
 
-test('sim is the sole reward authority — no engine double-count', async () => {
+test('gold accounting closes — sim is the sole reward authority', async () => {
   const e = await engine();
-  const rec = await runStory(e, { seed: 8, difficulty: 'normal', policy: 'casual', itemMode: 'off' });
+  const rec = await runStory(e, { seed: 8, difficulty: 'normal', policy: 'recommended', itemMode: 'off' });
   const battles = rec.stages.filter(s => s.kind === 'battle');
-  const startGold = battles.length ? battles[0].goldBefore : rec.gold; // goldBefore is already pre-award
   const sumAward = battles.reduce((a, s) => a + (s.goldAwarded || 0), 0);
-  assert.equal(rec.gold, startGold + sumAward,
-    `gold accounting mismatch: final ${rec.gold} != start ${startGold} + awards ${sumAward} (engine victory path leaked?)`);
+  const spent = rec.agent.goldSpent | 0;
+  // final = start + battle awards - agent spend. If the engine's own onBattleEnd leaked, awards
+  // would roughly double and this would fail.
+  assert.equal(rec.gold, rec.startGold + sumAward - spent,
+    `gold accounting mismatch: final ${rec.gold} != start ${rec.startGold} + awards ${sumAward} - spent ${spent}`);
 });
 
 test('mid-run sm save shape round-trips at current SAVE_VER', async () => {
