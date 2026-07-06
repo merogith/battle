@@ -754,6 +754,37 @@
         .story-tutor-mon-main { display:flex; align-items:center; gap:8px; min-width:0; }
         .story-tutor-mon-name { font-size:14px; font-weight:bold; color:var(--accent); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .story-tutor-mon-meta { font-size:10px; color:#9fa7b7; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50vw; }
+        .tx-role-chip { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px; font-size:10px; line-height:1.3; }
+        .tx-role-chip-pill { display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border-radius:999px; font-weight:bold; color:var(--accent); background:rgba(255,203,71,0.12); border:1px solid rgba(255,203,71,0.35); white-space:nowrap; }
+        .tx-role-chip-why { color:var(--text-dim,#9fa7b7); white-space:nowrap; }
+        /* ⚡ Fast-Build (Auto-Build) */
+        .tx-mentor-banner { font-size:11px; color:var(--text-dim,#9fa7b7); background:rgba(255,203,71,0.06); border:1px solid rgba(255,203,71,0.25); border-radius:8px; padding:8px 10px; margin-bottom:4px; }
+        .tx-mentor-banner strong { color:var(--accent); }
+        .tx-fastbuild-bar { margin:6px 0 8px; }
+        .tx-fastbuild-bar--done { font-size:11px; color:#9fbf9a; padding:6px 8px; border:1px dashed rgba(129,199,132,0.4); border-radius:8px; background:rgba(129,199,132,0.07); }
+        .tx-fastbuild-open { width:100%; min-height:40px; padding:8px 12px; font-family:inherit; font-size:12px; font-weight:bold; cursor:pointer;
+            color:#1a1200; background:linear-gradient(180deg,#ffd769,#ffbf3d); border:1px solid #d99a1e; border-radius:9px; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
+        .tx-fastbuild-open:hover { filter:brightness(1.06); }
+        .tx-fastbuild-panel { margin:6px 0 10px; padding:10px; border:1px solid rgba(255,203,71,0.4); border-radius:10px; background:rgba(255,203,71,0.06); }
+        .tx-fb-head { font-size:12px; font-weight:bold; color:var(--accent); margin-bottom:6px; }
+        .tx-fb-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid rgba(255,255,255,0.06); font-size:11px; }
+        .tx-fb-row--locked { color:#9aa0aa; font-style:italic; }
+        .tx-fb-row-main { min-width:0; display:flex; flex-direction:column; gap:1px; }
+        .tx-fb-label { font-weight:bold; color:#e0e5ee; }
+        .tx-fb-detail { color:var(--text-dim,#9fa7b7); overflow:hidden; text-overflow:ellipsis; }
+        .tx-fb-row-side { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+        .tx-fb-cost { min-width:52px; text-align:right; color:var(--accent); }
+        .tx-fb-vouch { display:inline-flex; align-items:center; gap:4px; color:#c8e6c9; }
+        .tx-fb-check { width:16px; height:16px; }
+        .tx-fb-step { width:26px; height:26px; font-size:14px; line-height:1; cursor:pointer; border:1px solid #78909c; border-radius:6px; background:rgba(120,144,156,0.18); color:#cfd8dc; }
+        .tx-fb-step:disabled { opacity:0.4; cursor:not-allowed; }
+        .tx-fb-hsval { min-width:44px; text-align:center; }
+        .tx-fb-total { display:flex; justify-content:space-between; font-weight:bold; color:var(--accent); border-top:1px solid rgba(255,203,71,0.35); margin-top:6px; padding-top:6px; font-size:12px; }
+        .tx-fb-actions { display:flex; gap:8px; margin-top:8px; }
+        .tx-fb-apply { flex:1 1 auto; min-height:40px; font-family:inherit; font-size:12px; font-weight:bold; cursor:pointer; color:#1a1200;
+            background:linear-gradient(180deg,#ffd769,#ffbf3d); border:1px solid #d99a1e; border-radius:9px; }
+        .tx-fb-apply:disabled { background:#3a3f4a; color:#8b909b; border-color:#2c3038; cursor:not-allowed; }
+        .tx-fb-cancel { flex:0 0 auto; min-height:40px; padding:0 14px; font-family:inherit; font-size:12px; cursor:pointer; color:#cfd8dc; background:rgba(120,144,156,0.18); border:1px solid #78909c; border-radius:9px; }
         .story-tutor-mon-chev { color:#9aa0aa; font-size:14px; line-height:1; }
         /* Right-side controls cluster in a mon header (info ℹ + chevron, plus any
            cost/tier badge) — keeps them grouped at the end of the space-between row. */
@@ -934,6 +965,8 @@
             font-weight: 700; letter-spacing: 0.04em;
             min-height: 36px; padding: 6px 14px;
         }
+        .tx-chip.tx-chip--suitable { font-weight: 700; min-height: 36px; padding: 6px 14px; }
+        .tx-chip.tx-chip--suitable[data-active="1"] { background: rgba(129,199,132,0.22); border-color: #81c784; color: #dff0e0; }
         @media (max-width: 600px) {
             .tx-chip.tx-chip--rec { min-height: 44px; padding: 8px 16px; }
         }
@@ -1538,6 +1571,7 @@
         .tx-pill--cur { background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff3cd; }
         .tx-pill--ha  { background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5; }
         .tx-pill--locked { background: rgba(120,144,156,0.18); border-color: #78909c; color: #cfd8dc; }
+        .tx-pill--suitable { background: rgba(129,199,132,0.18); border-color: #81c784; color: #c8e6c9; font-weight: bold; }
         .tx-card[data-locked="1"] { opacity: 0.5; cursor: not-allowed; }
         .tx-card[data-locked="1"] .tx-card-star { opacity: 0.8; }
         .tx-pill--awaken {
@@ -1836,7 +1870,7 @@
            Row 2 = horizontally scrollable chip strip + sort.
            Active-filter pills appear above the grid to show what's filtering
            without scrolling back into the toolbar. */
-        .tx-search-row-rec { display: inline-flex; align-items: center; }
+        .tx-search-row-rec { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .tx-chips-row {
             display: flex; align-items: center; gap: 8px;
             margin-top: 8px;
@@ -10087,6 +10121,24 @@
         </div>
     </div>
 
+    <div id="screen-story-mentor" class="screen hidden story-screen-root" role="region" aria-label="Battle Mentor — Auto-Build">
+        <div id="story-mentor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-mentor-head-title" class="story-screen-head-title fac-train" style="flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">⚡ Battle Mentor</span></h3>
+            <span id="story-mentor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <p id="story-mentor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">One-tap best build for each Pokémon — moves, item, ability, nature &amp; EVs at once. It only offers what you've unlocked, and only charges for changes.</p>
+            <div id="story-mentor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div class="story-tutor-footer" style="padding:10px;flex-shrink:0;">
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
     <div id="screen-story-colress" class="screen hidden story-screen-root" role="region" aria-label="Colress — battle gimmicks">
         <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
@@ -11521,7 +11573,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _framing, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _framing, _subBridges, _archetypes, _synergies, _banter, _marquee, _competMoves] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -11544,13 +11596,15 @@
                         fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
                         fetch('data/move-synergies.json').then(r => r.json()).catch(() => null),
                         fetch('data/dialogue/banter-attitudes.json').then(r => r.json()).catch(() => null),
-                        fetch('data/dialogue/marquee-entries.json').then(r => r.json()).catch(() => null)
+                        fetch('data/dialogue/marquee-entries.json').then(r => r.json()).catch(() => null),
+                        fetch('data/competitive-moves.json').then(r => r.json()).catch(() => null)
                     ]);
                     // Designed-build archetype engine tables (Object.assign in place so the
                     // module-level BUILD_ARCHETYPES / MOVE_SYNERGIES + their window mirrors see
                     // the data; missing files → empty defaults → legacy designed-build path).
                     if (_archetypes && Array.isArray(_archetypes.archetypes)) Object.assign(BUILD_ARCHETYPES, _archetypes);
                     if (_synergies && (_synergies.pairs || _synergies.moveItem)) Object.assign(MOVE_SYNERGIES, _synergies);
+                    if (_competMoves && _competMoves.moves) Object.assign(COMPETITIVE_MOVES, _competMoves);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
                     // _tutorFetchLearnsetMoveNames only fires for species missing here).
@@ -12220,7 +12274,12 @@
         // designed builds keep the legacy path byte-for-byte.
         let BUILD_ARCHETYPES = { archetypes: [] };
         let MOVE_SYNERGIES = { pairs: [], moveItem: [] };
-        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; } catch (e) {}
+        // Elite competitive/utility moves the tutor surfaces as SUITABLE even at 0% usage
+        // (Parting Shot, Tailwind, hazards, recovery, pivots…). classFloors → per-class
+        // heuristic score floor; moves → move name → {class, note}. Loaded in loadGameData;
+        // consumed by _txCompetitiveTag / _txMoveHeuristic. Player-facing scorer only.
+        let COMPETITIVE_MOVES = { classFloors: {}, moves: {} };
+        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; window.COMPETITIVE_MOVES = COMPETITIVE_MOVES; } catch (e) {}
         const _ARCH_SETUP_MOVES = new Set([
             'Swords Dance', 'Nasty Plot', 'Dragon Dance', 'Calm Mind', 'Shell Smash', 'Quiver Dance',
             'Bulk Up', 'Coil', 'Curse', 'Agility', 'Rock Polish', 'Autotomize', 'Work Up', 'Growth',
@@ -12253,16 +12312,44 @@
             'Toxic', 'Will-O-Wisp', 'Thunder Wave', 'Spore', 'Sleep Powder', 'Stun Spore',
             'Glare', 'Yawn', 'Hypnosis', 'Poison Powder', 'Confuse Ray', 'Leech Seed'
         ]);
-        function _designedInferRole(name) {
-            const b = baseStats[name] || {};
+        // ── CANONICAL base-stats role classifier (single source of truth) ───────────────
+        // One function that maps a base-stat block → role token + coarse role + the 2 EV
+        // stats to train. Everything that used to guess a mon's role from base stats now
+        // routes through here: the foe roller (_designedInferRole / _designedCoarseRole),
+        // the player item recommender (_txItemRecsByPurpose), the post-battle EV-focus
+        // picker (_pickBattleEVStats), and the tutor's surfaced role chip (_txMonRole).
+        // Before this, three separate heuristics with mismatched thresholds classified the
+        // same mon three different ways. The token/coarse logic is byte-identical to the
+        // old _designedInferRole/_designedCoarseRole (same ||50 / |0 defaults, same
+        // thresholds) so FOE ROLLS ARE UNCHANGED. focusStats is deterministic (no story
+        // RNG) — it is a display/suggestion value; the actual grant keeps its own tie-break.
+        function _txRoleForBase(base) {
+            const b = base || {};
+            // token — mirror the historical _designedInferRole (||50 defaults, bulk = def+spd, HP excluded)
             const atk = b.atk || 50, spa = b.spa || 50, def = b.def || 50, spd = b.spd || 50, spe = b.spe || 50;
             const physical = atk >= spa;
             const off = physical ? atk : spa;
-            const bulk = def + spd;
-            if (bulk >= off + 80 && off < 95) return physical ? 'PHYS_WALL' : 'SPEC_WALL';
-            if (spe >= 100 && off >= 100)     return physical ? 'PHYS_SWEEPER' : 'SPEC_SWEEPER';
-            if (bulk >= 160 && off >= 90)     return physical ? 'PHYS_BULKY_ATK' : 'SPEC_BULKY_ATK';
-            return physical ? 'PHYS_ATTACKER' : 'SPEC_ATTACKER';
+            const bulkDS = def + spd;
+            let token;
+            if (bulkDS >= off + 80 && off < 95) token = physical ? 'PHYS_WALL' : 'SPEC_WALL';
+            else if (spe >= 100 && off >= 100)  token = physical ? 'PHYS_SWEEPER' : 'SPEC_SWEEPER';
+            else if (bulkDS >= 160 && off >= 90) token = physical ? 'PHYS_BULKY_ATK' : 'SPEC_BULKY_ATK';
+            else token = physical ? 'PHYS_ATTACKER' : 'SPEC_ATTACKER';
+            // coarse — mirror the historical _designedCoarseRole (HP folded in with |0 defaults)
+            const offC = Math.max(b.atk | 0, b.spa | 0);
+            const bulkFull = (b.hp | 0) + (b.def | 0) + (b.spd | 0);
+            const coarse = (offC < 90 && bulkFull >= 260) ? 'wall' : (token.includes('WALL') ? 'wall' : 'attacker');
+            // focus stats — the 2 stats worth EV-training for this role (deterministic)
+            const offStat = physical ? 'atk' : 'spa';
+            const defStat = (b.def | 0) >= (b.spd | 0) ? 'def' : 'spd';
+            const focusStats = (coarse === 'wall')
+                ? ((offC >= 100) ? ['hp', offStat] : ['hp', defStat])
+                : [offStat, 'spe'];
+            return { token, coarse, physical, off: offC, offStat, defStat, bulkFull, speed: (b.spe | 0), focusStats };
+        }
+        try { window._txRoleForBase = _txRoleForBase; } catch (e) {}
+        function _designedInferRole(name) {
+            return _txRoleForBase(baseStats[name] || {}).token;
         }
         function _designedCsvMovePool(name) {
             const entry = resolveCsvBuildEntry(name);
@@ -12372,11 +12459,7 @@
         // def+spd only, so an HP wall with thin defenses (Blissey, Chansey) reads as an
         // attacker; fold total bulk (incl. HP) in here so those classify correctly.
         function _designedCoarseRole(name) {
-            const b = baseStats[name] || {};
-            const off = Math.max(b.atk | 0, b.spa | 0);
-            const bulk = (b.hp | 0) + (b.def | 0) + (b.spd | 0);
-            if (off < 90 && bulk >= 260) return 'wall';
-            return _designedInferRole(name).includes('WALL') ? 'wall' : 'attacker';
+            return _txRoleForBase(baseStats[name] || {}).coarse;
         }
         function _archEligible(arche, base, coarse) {
             const e = arche.eligible || {};
@@ -12549,6 +12632,8 @@
             window._designedFillFromArchetype = _designedFillFromArchetype;
             window._designedPickArchetype = _designedPickArchetype;
             window._designedSynergyBonus = _designedSynergyBonus;
+            window._designedInferRole = _designedInferRole;   // harness role-parity checks
+            window._designedCoarseRole = _designedCoarseRole;
         } catch (e) {}
 
         // ── Smogon set POWER rating + power-weighted selection ──────────────────────────
@@ -35622,6 +35707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
             colress: 7, daycare: 2, // Daycare Inn debuts at City 2 (first daycare city after the Gym-1 unlock)
             bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
+            mentor: 0, // Battle Mentor (Auto-Build NPC) — present from the start town; adapts to whatever facilities are unlocked
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
         // than dirty every row of the literal above, we splice 'Pokémon Fan Club'
@@ -35636,6 +35722,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // debuts at the first gym city (Layer-1 evolutions); the RNG-negators + Fan
             // Club are present from the start town.
             const ALWAYS_ON = [
+                { fac: 'Battle Mentor', minCity: 0 },     // Auto-Build NPC — present from City 0, adapts to unlocks
                 { fac: 'Move Tutor', minCity: 0 },
                 { fac: 'Nature Rater', minCity: 1 },     // Nature Rater debuts at the first gym city
                 { fac: 'Pokémon Fan Club', minCity: 1 },
@@ -43190,6 +43277,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function syncStoryTutorBackground() {
             applyStoryBgLayer(document.getElementById('story-tutor-bg-layer'), getStoryBgManifest().shopMart || '');
         }
+        function syncStoryMentorBackground() {
+            applyStoryBgLayer(document.getElementById('story-mentor-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
+        }
         function syncStoryColressBackground() {
             applyStoryBgLayer(document.getElementById('story-colress-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
         }
@@ -47706,8 +47796,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     txMoveRecsByPurpose: (...a) => _txMoveRecsByPurpose(...a),
                     txBuildApplySetPlan: (...a) => _txBuildApplySetPlan(...a),
                     tutorApplyRecommendedSet: (...a) => tutorApplyRecommendedSet(...a),
+                    txBuildFastBuildPlan: (...a) => _txBuildFastBuildPlan(...a),
+                    txFastBuildQuote: (...a) => _txFastBuildQuote(...a),
+                    txFastBuildSel: () => _txFastBuild,
+                    tutorApplyFastBuild: (...a) => tutorApplyFastBuild(...a),
+                    enterMentor: () => enterMentor(),
+                    renderMentorTeam: (...a) => renderMentorTeam(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
+                    txNatureRecsByPurpose: (...a) => _txNatureRecsByPurpose(...a),
+                    txBestArchetypeFor: (...a) => _txBestArchetypeFor(...a),
+                    evTrainerRecPreset: (...a) => _evTrainerRecPreset(...a),
+                    natureModifiers: () => natureModifiers,
                     // T1 regression hook: empty the move-acceptance cache to simulate a
                     // cold/errored render and assert the tutor gate then fails SAFE.
                     txClearMoveAcceptance: () => _txMoveTier1Cache.clear(),
@@ -49515,6 +49615,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { _storyGrantBundle({ fullRestore: 1 }); save(); } catch (e) {}
                     try { window.showGameAlert && window.showGameAlert('Received 1 Full Restore.'); } catch (e) {}
                 }
+            },
+            firstBattleMentor: {
+                metaKey: 'tutorial-first-battle-mentor',
+                sprite: 'Veteran', name: 'Battle Mentor', nameplate: 'Battle Mentor',
+                lines: [
+                    '"New around here? I\'m the shortcut. Pick a partner and I\'ll tune it to a competitive set in one tap — no menus to learn."',
+                    '"I only use what this town has opened to you. Right now that\'s moves; as you unlock the Dojo, the Nature Rater and the rest, I\'ll fold each one in. You only pay for what changes."'
+                ]
             },
             firstMoveTutor: {
                 metaKey: 'tutorial-first-move-tutor',
@@ -52774,6 +52882,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Staged-NPC chip tags — same base name, the tag advances by city as the
             // facility's capability grows (see NPC_STAGE_CITY / NPC_STAGE_NAMES).
             const _stageTag = (key) => { const t = _npcStageName(key); return t ? ' — ' + t : ''; };
+            if (actions.includes('Battle Mentor') && _tutorTeam) {
+                // The Auto-Build NPC — one-tap best set per mon, adapting to what's unlocked.
+                // No fixed price badge (cost is per-mon and only for changes); a soft "Auto-Build" tag.
+                _push('train', makeActionBtn('⚡ Battle Mentor','mentor','window.StoryMode.enterMentor()','training', _facOpts('mentor', [{label:'Auto-Build',tone:'free'}], { soft:true })));
+            }
             if (actions.includes('Move Tutor') && _tutorTeam) {
                 // FLOOR, not the stage ceiling: a natural move (1,000G) is teachable at
                 // every tier, so the "from" price is constant; the stage chip carries the
@@ -53064,6 +53177,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casino:    'sprites/items/amulet-coin.png',
             // Train & evolve
             tutor:     'sprites/pokesprite/items/heart-scale.png',
+            mentor:    'sprites/pokesprite/items/rare-candy.png',
             nature:    'sprites/pokesprite/items/mint.png',
             dojo:      'sprites/items/muscle-band.png',
             evtrainer: 'sprites/pokesprite/items/protein.png',
@@ -53272,6 +53386,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
             bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club', daycare: 'Daycare Inn',
+            mentor: 'Battle Mentor',
         };
         // Facility key → the onclick that opens it, so the single objective line can
         // deep-link to a pending first-visit facility. Mirrors the button onclicks in
@@ -53300,6 +53415,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // them to a long dialogue tree. Lines are cosmetic; they use Math.random so
         // they do not drain the seeded story RNG used for trainer rolls / catches.
         const STORY_FACILITY_QUOTES = {
+            mentor: [
+                'Battle Mentor: "You bring the partner, I bring the plan. One tap and it fights like it was built by someone who\'s done this a while."',
+                'Battle Mentor: "I only work with what this town\'s opened up to you. Early on that\'s the moves — later it\'s the whole kit at once."',
+                'Battle Mentor: "I read the creature\'s own numbers first. A wall wants a wall\'s set; a sweeper wants a sweeper\'s. I don\'t force it."',
+                'Battle Mentor: "You\'re never charged for what\'s already right. Only the changes cost — and a voucher can cover those."',
+                'Battle Mentor: "Tinker after, if you like. I set a strong floor; the ceiling\'s yours to chase."',
+            ],
             moveTutor: [
                 'Move Tutor: "Half who come to me want to win by hitting harder. The other half ask what gap the foe slips through first — and we close it. Only one half keeps winning."',
                 'Move Tutor: "Nothing here is taught wrong forever. Swap a move out, swap it back; the partner forgives. People rarely return the courtesy."',
@@ -62497,22 +62619,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // still reproduce. No more random "archetype flip" — training the
         // highest stats was always the intent.
         function _pickBattleEVStats(base) {
+            // Unified with the canonical role classifier (_txRoleForBase) so a mon's
+            // auto-trained EV stats always match the role the tutor surfaces and the item
+            // recommender uses. Deterministic (no RNG draw) — which is what the old code's
+            // own comment said it wanted; the earlier atk==spa / def==spd RNG tie-break is
+            // replaced by a fixed preference (atk over spa, def over spd) inside _txRoleForBase.
             if (!base) return ['atk', 'spe'];
-            const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
-            const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
-            const offense = atk + spa + spe;
-            const defense = hp + def + spd;
-            const rngFn = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const tie = rngFn() < 0.5;
-            const bestAtkStat = (atk > spa) ? 'atk' : (spa > atk) ? 'spa' : (tie ? 'atk' : 'spa');
-            const bestDefStat = (def > spd) ? 'def' : (spd > def) ? 'spd' : (tie ? 'def' : 'spd');
-            const bestAtkVal = Math.max(atk, spa);
-            if (defense > offense + 60 && atk + spa < 180) {
-                // Defensive shell. If it still hits hard, train HP + offense
-                // (bulky attacker); otherwise HP + best defense (pure wall).
-                return (bestAtkVal >= 100) ? ['hp', bestAtkStat] : ['hp', bestDefStat];
-            }
-            return [bestAtkStat, 'spe'];
+            return _txRoleForBase(base).focusStats;
         }
         // Grant battle-training EVs to the player's team after a trainer win.
         // Returns a report array describing what each mon gained, or null if
@@ -67452,6 +67565,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
         function showScreen(id) {
+            // Track whether the Battle Mentor screen is the active surface, so Auto-Build
+            // re-renders route to renderMentorTeam (and never to the Move Tutor).
+            try { _storyMentorActive = (id === 'screen-story-mentor'); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             // Leaving the battle screen → drop its weather particle layer (no orphan canvas).
             if (id !== 'screen-battle' && _battleWeatherFx.id) {
@@ -68949,6 +69065,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // every kind so first-time players see the curated list; toggle
                 // off via the ★ chip to expand to the full option list.
                 recOnly: { moves: true, items: true, abilities: true, natures: true },
+                // ★ Suitable filter (moves only) — when true, the grid shows only
+                // competitive-tagged utility/singleton moves (Parting Shot, Tailwind,
+                // hazards, pivots…) so a player can jump straight to the "good stuff".
+                // Off by default; equipped moves always pass so you never lose one.
+                suitableOnly: { moves: false },
                 // Stage/tier filter — a Set of tier keys per picker. Empty = "All" (no
                 // filter). Lets the player check what unlocks at each belt/tutor tier and
                 // combine several (e.g. T1+T2). Tier keys: moves natural/learnt/awakened,
@@ -69040,6 +69161,80 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 out.spe = b.spe || 0; out.hp  = b.hp  || 0;
             }
             return out;
+        }
+
+        // Player-facing role for the tutor. Wraps the canonical _txRoleForBase with a
+        // readable label + the two stats that define the role, so every recommendation
+        // (moves / item / ability / nature / EVs) can be explained: "this mon is a
+        // Physical Sweeper → here's why." Uses BASE stats (species identity), not the
+        // current build, so the role is stable while the player edits the set.
+        const _TX_ROLE_LABELS = {
+            PHYS_SWEEPER: 'Physical Sweeper', SPEC_SWEEPER: 'Special Sweeper',
+            PHYS_ATTACKER: 'Physical Attacker', SPEC_ATTACKER: 'Special Attacker',
+            PHYS_BULKY_ATK: 'Bulky Physical Attacker', SPEC_BULKY_ATK: 'Bulky Special Attacker',
+            PHYS_WALL: 'Physical Wall', SPEC_WALL: 'Special Wall',
+        };
+        const _TX_STAT_NAME = { hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' };
+        function _txMonRole(mon, monName) {
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
+            const r = _txRoleForBase(base);
+            const label = _TX_ROLE_LABELS[r.token] || 'Attacker';
+            const why = r.focusStats.map(k => `${_TX_STAT_NAME[k]} ${base[k] | 0}`).join(' · ');
+            const focusLabel = r.focusStats.map(k => _TX_STAT_NAME[k]).join(' / ');
+            return Object.assign({}, r, { label, why, focusLabel, base });
+        }
+        try { window._txMonRole = _txMonRole; } catch (e) {}
+
+        // Deterministic best-fit archetype for a PLAYER mon — the shared basis for the
+        // role-anchored nature + EV-spread recommendations and the Fast-Build. Unlike the
+        // foe roller (_designedPickArchetype, weighted-random for variety), this picks the
+        // single highest-weight ELIGIBLE archetype (stable id tie-break) so the "best set"
+        // is reproducible. Yields the recommended nature (from the archetype's phys/spec
+        // pair) and EV spread (from its evShape), plus the canonical role + EV focus stats.
+        function _txBestArchetypeFor(monName, mon) {
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
+            const role = _txRoleForBase(base);
+            const all = (BUILD_ARCHETYPES && BUILD_ARCHETYPES.archetypes) || [];
+            let best = null;
+            for (const a of all) {
+                if (!_archEligible(a, base, role.coarse)) continue;
+                const aw = a.weight || 1, bw = best ? (best.weight || 1) : -1;
+                if (!best || aw > bw || (aw === bw && String(a.id) < String(best.id))) best = a;
+            }
+            const physical = role.physical;
+            const nature = (best && best.nature && best.nature[physical ? 'phys' : 'spec'])
+                || (physical ? 'Adamant' : 'Modest');
+            const evShape = best ? best.evShape : (role.coarse === 'wall' ? 'max_bulk' : 'max_offense_speed');
+            let evs; try { evs = _designedEvSpread(evShape, base); } catch (e) { evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }; }
+            return { archetype: best ? best.id : null, nature, evShape, evs, role, base, physical, focusStats: role.focusStats };
+        }
+        try { window._txBestArchetypeFor = _txBestArchetypeFor; } catch (e) {}
+
+        // The EV Trainer's role-anchored "Recommended" spread, shaped as a preset so it
+        // renders and applies through the existing preset machinery. Deterministic.
+        function _evTrainerRecPreset(monName) {
+            try {
+                const ba = _txBestArchetypeFor(monName, null);
+                if (!ba || !ba.evs) return null;
+                const roleLbl = (_txMonRole(null, monName).label) || 'this role';
+                return { id: 'rec-role', label: 'Recommended · ' + roleLbl, evs: ba.evs, _rec: true };
+            } catch (e) { return null; }
+        }
+        try { window._evTrainerRecPreset = _evTrainerRecPreset; } catch (e) {}
+
+        // Small role pill for the expanded-mon header, shared by all three tutor editors
+        // (moves / loadout / nature). Shows the base-stat role + the two stats that drive it
+        // so every recommendation below reads as "tuned for a Physical Sweeper", not magic.
+        function _txRoleChipHtml(t) {
+            if (!t || !t.name || t.isEgg) return '';
+            let role = null;
+            try { role = _txMonRole(null, t.name); } catch (e) { return ''; }
+            if (!role) return '';
+            const tip = `Role read from base stats (${_esc(role.why)}). Every move / item / ability / nature / EV recommendation below is tuned for this role.`;
+            return `<div class="tx-role-chip" title="${tip}" role="note" aria-label="Role: ${_esc(role.label)} (${_esc(role.why)})">`
+                + `<span class="tx-role-chip-pill"><span aria-hidden="true">⚔</span> ${_esc(role.label)}</span>`
+                + `<span class="tx-role-chip-why">${_esc(role.why)}</span>`
+                + `</div>`;
         }
 
         // ── DATA-DRIVEN META STATS ──────────────────────────────────────
@@ -69810,6 +70005,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // special move no longer outranks a right-stat 80-BP one on a physical mon),
         // ability→move synergy (Technician / Huge Power / -ate / Adaptability), and the
         // short-battle fit factor (hazards/phaze/pivot down-weighted for story fights).
+        // Competitive-move tag lookup: returns { class, note, floor } for an elite
+        // utility/singleton move (Parting Shot, Tailwind, hazards, pivots…), else null.
+        // Feeds both the heuristic score floor and the grid "★ Suitable" badge.
+        function _txCompetitiveTag(moveName) {
+            const tbl = (COMPETITIVE_MOVES && COMPETITIVE_MOVES.moves) || null;
+            if (!tbl) return null;
+            const e = tbl[moveName];
+            if (!e) return null;
+            const floor = (COMPETITIVE_MOVES.classFloors && COMPETITIVE_MOVES.classFloors[e.class]) || 0;
+            return { class: e.class, note: e.note || '', floor };
+        }
+        try { window._txCompetitiveTag = _txCompetitiveTag; } catch (e) {}
         function _txMoveHeuristic(moveName, mon, build, monName) {
             const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
             if (!md) return 0;
@@ -69843,9 +70050,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (boost.includes(moveName))   score = 85;
                 else if (support.includes(moveName)) score = 70;
                 else score = 30;
+                // Rescue elite utility the lists above miss (Parting Shot, Teleport, Baton
+                // Pass, Shed Tail, Memento, Heal Bell…) from the 30 "filler" floor. Never
+                // lowers an already-higher score — Math.max keeps recovery/boost/hazards.
+                const _ct = _txCompetitiveTag(moveName);
+                if (_ct && _ct.floor > score) score = _ct.floor;
             }
             return score * _txShortBattleFactor(moveName);
         }
+        try { window._txMoveHeuristic = _txMoveHeuristic; } catch (e) {}
         // Public scoring — heuristic blended with Smogon popularity per species.
         function _txScoreMove(moveName, mon, build, monName) {
             const heur = _txMoveHeuristic(moveName, mon, build, monName);
@@ -70215,13 +70428,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txItemRecsByPurpose(availItems, mon, build, monName) {
             if (!availItems || !availItems.length) return [];
             const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
-            const bAtk = base.atk | 0, bSpa = base.spa | 0;
-            const isPhys = bAtk >= bSpa;
-            const off = Math.max(bAtk, bSpa);
-            const bulk = (base.hp | 0) + (base.def | 0) + (base.spd | 0);
-            const spe = base.spe | 0;
-            const wall = bulk >= 280 && off < 100;
-            const sweeper = off >= 100 && spe >= 90;
+            // Role read from the canonical classifier so the item panel, the surfaced role
+            // chip, and the EV-focus picker all agree on what this mon IS.
+            const _role = _txRoleForBase(base);
+            const isPhys = _role.physical;
+            const off = _role.off;
+            const bulk = _role.bulkFull;
+            const spe = _role.speed;
+            const wall = _role.coarse === 'wall';
+            const sweeper = _role.token.includes('SWEEPER');
             const frail = bulk < 230;
             const types = [mon && mon.type1, mon && mon.type2].filter(Boolean);
             const isPoison = types.includes('Poison');
@@ -70363,6 +70578,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 used.add(nature);
                 out.push({ purpose, nature, reason, mod });
             };
+
+            // Role-anchored top pick: the nature the best-fit archetype assigns for THIS
+            // mon's role (e.g. a fast setup sweeper wants Jolly/Timid, a wall wants Impish/
+            // Calm). Surfaced first so the headline recommendation matches the role chip.
+            try {
+                const _ba = _txBestArchetypeFor(monName, mon);
+                if (_ba && _ba.nature && pool.includes(_ba.nature)) {
+                    const m = natureModifiers[_ba.nature];
+                    const roleLbl = (_txMonRole(mon, monName).label || 'this role').toLowerCase();
+                    push('Recommended', _ba.nature, `Best for a ${roleLbl}: +${_TX_STAT_LABEL[m.up]} / -${_TX_STAT_LABEL[m.down]}.`);
+                }
+            } catch (e) {}
 
             // For Power — Adamant (phys/-SpA) or Modest (spec/-Atk)
             const powerNat = physical ? 'Adamant' : 'Modest';
@@ -70922,6 +71149,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
+
                 // Recommendation row — set pending selection (same effect as picking
                 // the card from the grid). The data attributes match `.tx-card`, so
                 // we just normalize to the card-pick path below.
@@ -70963,6 +71191,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // value carries the picker kind ('moves'|'items'|'abilities'|'natures')
                         if (value && Object.prototype.hasOwnProperty.call(_txState.filter.recOnly, value)) {
                             _txState.filter.recOnly[value] = !_txState.filter.recOnly[value];
+                        }
+                    } else if (kind === 'suitableOnly') {
+                        if (value && _txState.filter.suitableOnly && Object.prototype.hasOwnProperty.call(_txState.filter.suitableOnly, value)) {
+                            _txState.filter.suitableOnly[value] = !_txState.filter.suitableOnly[value];
                         }
                     } else if (kind === 'quick') {
                         // Phase 5 compound presets — overwrite the relevant
@@ -71244,6 +71476,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </span>` : '';
             return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>${legend}`;
         }
+        // ★ Suitable filter chip (moves only) — narrows the grid to competitive-tagged
+        // utility/singleton moves so the player can jump straight to the good stuff.
+        function _txSuitableChipHtml(monName) {
+            const on = !!(_txState.filter.suitableOnly && _txState.filter.suitableOnly.moves);
+            const title = on
+                ? 'Showing only competitively strong utility moves (Parting Shot, Tailwind, hazards, pivots…). Tap to show all moves.'
+                : 'Show only competitively strong utility moves — the "good stuff" for any Pokémon.';
+            return `<button type="button" class="tx-chip tx-chip--suitable" data-filter-kind="suitableOnly" data-filter-value="moves" data-active="${on?1:0}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">★ Suitable</button>`;
+        }
 
         // Sparse-data banner — surfaced above the picker when the species has
         // fewer than 10 Smogon builds. Tells the player the ★ system is sitting
@@ -71480,8 +71721,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
+            // ★ Suitable — an elite competitive/utility move (Parting Shot, Tailwind,
+            // hazards, pivots…) surfaced as good even when this species' Smogon usage is
+            // thin. The reason rides in the tap-tooltip so touch users get it too.
+            const compet = _txCompetitiveTag(moveName);
+            const competPill = compet
+                ? `<span class="tx-pill tx-pill--suitable tx-tapinfo" role="note" aria-label="Suitable — ${_esc(compet.note || 'a competitively strong utility move')}" title="${_esc(compet.note || 'A competitively strong utility move.')}">★ Suitable</span>`
+                : '';
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
+                competPill,
                 lockPill,
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
@@ -71798,12 +72047,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // An active Stage filter shows the FULL tier (it bypasses ★), so "check what's
             // at each tutor tier" reveals everything, not just the curated subset.
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves && !(tierSel && tierSel.size);
+            const suitableOnly = !!(_txState.filter.suitableOnly && _txState.filter.suitableOnly.moves);
             const filt = allMoves.filter(m => {
                 // Equipped moves (extraInclude) always pass the ★ and Stage filters so the
                 // player never loses sight of a move they currently run — they still obey
                 // the search box + type/category chips, though.
                 const forced = extraInclude && extraInclude.has(m);
                 if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
+                // ★ Suitable: keep only competitive-tagged moves (Parting Shot, Tailwind,
+                // hazards, pivots…) — the base name, so slashed CSV slots resolve.
+                if (suitableOnly && !forced && !_txCompetitiveTag(String(m).split('/')[0])) return false;
                 if (tierSel && tierSel.size && !forced) {
                     const sk = (typeof _txMoveStageKey === 'function') ? _txMoveStageKey(monName, m) : null;
                     if (!sk || !tierSel.has(sk)) return false; // stage keys: inner / unleashed / guru
@@ -72271,7 +72524,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 count: filtered.length,
                 countLabel: 'moves',
                 sparse: sPool.sparse,
-                leadingChipsHtml: _txRecChipHtml('moves', t.name),
+                leadingChipsHtml: _txRecChipHtml('moves', t.name) + _txSuitableChipHtml(t.name),
                 chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml(),
                 belowChipsHtml: _txTierChipsHtml('moves') + _txMoveTypeMenuRowHtml(availTypes),
                 sortOptions: [
@@ -72302,6 +72555,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
                         <div style="min-width:0;">
                             <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${_txRoleChipHtml(t)}
                             ${headerSummary}
                         </div>
                     </div>
@@ -72448,6 +72702,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
                         <div style="min-width:0;">
                             <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${_txRoleChipHtml(t)}
                             ${headerSummary}
                         </div>
                     </div>
@@ -72569,6 +72824,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
                         <div style="min-width:0;">
                             <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${_txRoleChipHtml(t)}
                             ${headerSummary}
                         </div>
                     </div>
@@ -72655,6 +72911,109 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // ── ⚡ BATTLE MENTOR — the dedicated Auto-Build NPC (City 0 → endgame) ────────────
+        // A separate facility from the Move Tutor: one screen that runs the Auto-Build for
+        // every party mon, adapting to what's unlocked (City 0 = Move Tutor only → moves
+        // only; each new facility adds its component). The per-mon panel + planner + apply
+        // are the shared _txFastBuild* code; this just hosts them behind their own NPC.
+        function enterMentor() {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                _markFacilitySeen('mentor');
+                _storyMentorActive = true;
+                _txFastBuild.open = -1;
+                const goldEl = document.getElementById('story-mentor-gold');
+                if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+                const el = document.getElementById('story-mentor-team');
+                if (el) el.innerHTML = '<div style="color:#888;font-size:12px;padding:12px;">Loading your team…</div>';
+                syncStoryMentorBackground();
+                showScreen('screen-story-mentor');
+                try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.45); } catch (e) {}
+                void renderMentorTeam();
+                try { _storyShowFacilityQuote('screen-story-mentor', 'mentor'); } catch (e) {}
+                try { _enqueueIntroTutorial('firstBattleMentor'); } catch (e) {}
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+        function _initMentorDelegationOnce() {
+            const el = document.getElementById('story-mentor-team');
+            if (!el || el.__mentorBound) return;
+            el.__mentorBound = true;
+            el.addEventListener('click', function (ev) {
+                const t = ev.target && ev.target.closest ? ev.target : null;
+                if (!t) return;
+                // Tap-info tooltips on coarse pointers for non-actionable labels (role chip,
+                // lock pills, the Heart-Scale note) — never steals a tap meant for a control.
+                const tapInfo = t.closest('.tx-tapinfo[title]');
+                if (tapInfo && typeof window._prefersFinePointerHover === 'function' && !window._prefersFinePointerHover()
+                    && !t.closest('button, input, label, [data-fb-hs]')) {
+                    try { window.showTapInfoTooltip && window.showTapInfoTooltip(tapInfo, ev); } catch (e) {}
+                    return;
+                }
+                if (_handleFastBuildClick(t)) return;
+            });
+        }
+        async function renderMentorTeam(skipFetch) {
+            const el = document.getElementById('story-mentor-team');
+            const goldEl = document.getElementById('story-mentor-gold');
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            if (!el) return;
+            _initMentorDelegationOnce();
+            _txBeginRender();
+            if (!skipFetch) await _txWarmMovePools();
+            if (!sm.team.length) { el.innerHTML = '<div class="tx-grid-empty">No Pokémon in your team yet.</div>'; return; }
+            // City-adaptive banner: what the mentor can tune right now.
+            let city = 0; try { city = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            const can = ['moves'];
+            if (city >= FACILITY_DEBUT_CITY.dojo) can.push('items', 'abilities');
+            if (city >= FACILITY_DEBUT_CITY.nature) can.push('natures');
+            if (city >= FACILITY_DEBUT_CITY.evtrainer) can.push('EV spreads');
+            else if (city >= FACILITY_DEBUT_CITY.party) can.push('EV focus');
+            const banner = `<div class="tx-mentor-banner">Auto-tuning available now: <strong>${_esc(can.join(' · '))}</strong>. More opens as you unlock facilities.</div>`;
+            const cards = sm.team.map((t, idx) => {
+                if (!t || t.isEgg) return '';
+                let mon = null;
+                try { mon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build)); } catch (e) {}
+                const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+                const spriteUrl = getSprite(spriteDisplayName(t));
+                return `<div class="story-tutor-mon">
+                    <div class="story-tutor-mon-main" style="padding:10px 12px;align-items:center;">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;">
+                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${_txRoleChipHtml(t)}
+                        </div>
+                    </div>
+                    <div class="story-tutor-mon-body">${_txFastBuildBarHtml(t, idx)}</div>
+                </div>`;
+            }).join('');
+            el.innerHTML = banner + cards;
+        }
+
+        // Warm the per-mon staged move-pool + acceptance caches (shared by the Move Tutor
+        // and the Battle Mentor screens; both need them for the move recommender/planner).
+        async function _txWarmMovePools() {
+            _txMovePoolCache.clear();
+            _txMoveTier1Cache.clear();
+            for (let ti = 0; ti < sm.team.length; ti++) {
+                try {
+                    const _tm = sm.team[ti];
+                    const _cur = (_tm.build && _tm.build.m) || [];
+                    const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur, !!(_tm.starter || (_tm.build && _tm.build.starter)));
+                    _txMovePoolCache.set(ti, _staged.fullPool || _staged);
+                    const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
+                    _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
+                    _txMoveTier1Cache.set(ti, _t1);
+                } catch (e) {
+                    _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
+                    try {
+                        const _cm = (sm.team[ti] && sm.team[ti].build && sm.team[ti].build.m) || [];
+                        _txMoveTier1Cache.set(ti, new Set(_cm.map(m => String(m).split('/')[0])));
+                    } catch (_e2) { _txMoveTier1Cache.set(ti, new Set()); }
+                }
+            }
+        }
         async function renderTutorTeam(skipFetch) {
             // Perf probe — gated on the debug flag so prod paths stay zero-overhead.
             // Toggle from the console: `window.__txPerf = true`. Each call logs
@@ -72686,38 +73045,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Move pools — fetched once per facility entry, then cached.
             // Partial re-renders (filter / sort changes) pass skipFetch=true and reuse the cache.
-            if (showMoves && !skipFetch) {
-                _txMovePoolCache.clear();
-                _txMoveTier1Cache.clear();
-                for (let ti = 0; ti < sm.team.length; ti++) {
-                    try {
-                        const _tm = sm.team[ti];
-                        const _cur = (_tm.build && _tm.build.m) || [];
-                        const _staged = await _tutorGetStagedMovePoolAsync(_tm.name, _cur, !!(_tm.starter || (_tm.build && _tm.build.starter)));
-                        // The GRID renders the full movepool so off-stage moves show (locked),
-                        // matching the Dojo's all-items roster. The acceptance set below stays
-                        // the GATED/teachable set, so only in-stage moves are selectable.
-                        _txMovePoolCache.set(ti, _staged.fullPool || _staged);
-                        // Phase 2 (BUG A fix): the teachable acceptance set is EXACTLY the
-                        // staged/gated pool (gold AND Heart-Scale paths read it), so the handler
-                        // can never accept a move the gate hides. Built from `_staged` (gated),
-                        // NOT the full pool. currentMoves are already in `_staged`.
-                        const _t1 = new Set(_staged.map(m => String(m).split('/')[0]));
-                        _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
-                        _txMoveTier1Cache.set(ti, _t1);
-                    } catch (e) {
-                        _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
-                        // T1 fail-safe: a failed staged-pool fetch must NOT leave the
-                        // acceptance set undefined (the gate would then fall open). Seed it
-                        // with the mon's CURRENT moves only, so no new/unverified move is
-                        // teachable until a later render succeeds.
-                        try {
-                            const _cm = (sm.team[ti] && sm.team[ti].build && sm.team[ti].build.m) || [];
-                            _txMoveTier1Cache.set(ti, new Set(_cm.map(m => String(m).split('/')[0])));
-                        } catch (_e2) { _txMoveTier1Cache.set(ti, new Set()); }
-                    }
-                }
-            }
+            if (showMoves && !skipFetch) await _txWarmMovePools();
             // A newer render started while we awaited the pools — let it own the DOM.
             // If that newer render was a skipFetch partial, it may have painted from a
             // cold cache (no lock pills); queue one cheap cache-backed repaint so the
@@ -73060,6 +73388,275 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _storyEndInteraction();
             }
         }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // ⚡ FAST-BUILD — one-click "best set": moves + item + ability + nature + EVs in a
+        // single all-or-nothing purchase. Aware of what's already equipped (only changes
+        // are charged) and gated to what's unlocked at the current city (locked components
+        // are shown but never applied). Composes the SAME deterministic recommenders the
+        // individual facilities use. The player can spend vouchers to zero out any part's
+        // gold cost — Heart Scale waives the priciest moves; Mint / Ability Capsule /
+        // Emblem of Honor / EV Voucher each waive their one component.
+        // ─────────────────────────────────────────────────────────────────────────────
+        const _TX_FASTBUILD_VOUCHER = {
+            item:    { key: 'emblemHonor',    label: 'Emblem of Honor' },
+            ability: { key: 'abilityCapsule', label: 'Ability Capsule' },
+            nature:  { key: 'mint',           label: 'Mint' },
+            evs:     { key: 'vitamin',        label: 'EV Voucher' },
+        };
+        const _txFastBuild = { open: -1, sel: null };
+        // The Auto-Build panel lives on both the Battle Mentor screen (its home) and — as a
+        // fallback — nowhere else now. This flag routes re-renders to the active surface.
+        let _storyMentorActive = false;
+        function _txRerenderActiveTutorSurface() {
+            if (_storyMentorActive) { try { return void renderMentorTeam(true); } catch (e) { return; } }
+            try { return void renderTutorTeam(true); } catch (e) {}
+        }
+        // Shared Auto-Build click handling — used by the Mentor screen delegation (and any
+        // other surface that renders the panel). Returns true if it handled the event.
+        function _handleFastBuildClick(t) {
+            const fbOpen = t.closest('[data-fastbuild-open]');
+            if (fbOpen) {
+                const i = parseInt(fbOpen.dataset.fastbuildOpen, 10);
+                if (Number.isFinite(i)) { _txFastBuild.open = i; _txFastBuildResetSel(); _txRerenderActiveTutorSurface(); }
+                return true;
+            }
+            if (t.closest('[data-fastbuild-cancel]')) { _txFastBuild.open = -1; _txRerenderActiveTutorSurface(); return true; }
+            const fbVouch = t.closest('input[data-fb-vouch]');
+            if (fbVouch) { const k = fbVouch.dataset.fbVouch; if (_txFastBuild.sel) _txFastBuild.sel[k] = !_txFastBuild.sel[k]; _txRerenderActiveTutorSurface(); return true; }
+            const fbHs = t.closest('[data-fb-hs]');
+            if (fbHs) { const d = parseInt(fbHs.dataset.fbHs, 10) || 0; if (_txFastBuild.sel) _txFastBuild.sel.heartScale = Math.max(0, (_txFastBuild.sel.heartScale | 0) + d); _txRerenderActiveTutorSurface(); return true; }
+            const fbApply = t.closest('[data-fastbuild-apply]');
+            if (fbApply) { const i = parseInt(fbApply.dataset.fastbuildApply, 10); if (Number.isFinite(i)) void tutorApplyFastBuild(i); return true; }
+            return false;
+        }
+        function _txFastBuildResetSel() {
+            _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0 };
+        }
+        function _txVoucherCount(key) { return (sm && sm.inventory && (sm.inventory[key] | 0)) || 0; }
+        function _txVoucherLabel(key) {
+            for (const k in _TX_FASTBUILD_VOUCHER) if (_TX_FASTBUILD_VOUCHER[k].key === key) return _TX_FASTBUILD_VOUCHER[k].label;
+            return key === 'heartScale' ? 'Heart Scale' : key;
+        }
+
+        // Pure planner — diffs the mon's current build against the best recommendations,
+        // gated to the current city, and prices each change. Never mutates state.
+        function _txBuildFastBuildPlan(teamIdx) {
+            try {
+                const mon = sm.team[teamIdx];
+                if (!mon || mon.isEgg || !mon.build) return null;
+                const b = mon.build, name = mon.name;
+                let dispMon = null;
+                try { dispMon = buildPokemon(name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+                let city = 0; try { city = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+                const facUnlocked = (k) => city >= ((FACILITY_DEBUT_CITY[k] != null) ? FACILITY_DEBUT_CITY[k] : 0);
+                const dojoStage = _npcStage('dojo');
+                const parts = [], locked = [];
+                let pool = null; try { pool = _tutorGetPoolForMon(name); } catch (e) {}
+
+                // Moves — reuse the staged, priced move planner.
+                const movePlan = _txBuildApplySetPlan(teamIdx) || { steps: [], total: 0, skipped: [] };
+
+                // Item (Battle Dojo) — best rec from the tier-unlocked pool.
+                if (facUnlocked('dojo')) {
+                    try {
+                        const items = (pool && pool.items) || [];
+                        const tierCap = dojoStage + 1;
+                        const unlocked = items.filter(it => (typeof _dojoItemTier === 'function' ? _dojoItemTier(it) : 1) <= tierCap);
+                        const cur = b.i || '(none)';
+                        // Use the PRIMARY (headline) rec so "already holds the best item" reads
+                        // as optimized — not a .find() that cycles to the next role slot.
+                        const rec = _txItemRecsByPurpose(unlocked, dispMon, b, name)[0];
+                        if (rec && rec.item && rec.item !== cur) parts.push({ kind: 'item', label: 'Item', from: cur, to: rec.item, cost: _itemCostForTier(rec.item) });
+                    } catch (e) {}
+                } else locked.push({ kind: 'item', label: 'Item', why: 'Battle Dojo opens at City ' + FACILITY_DEBUT_CITY.dojo });
+
+                // Ability (Battle Dojo) — best rec within the current unlock stage.
+                if (facUnlocked('dojo')) {
+                    try {
+                        const abils = (pool && pool.abilities) || [];
+                        const cur = b.a || (dispMon && dispMon.ability) || '(none)';
+                        const unlocked = abils.filter(a => _dojoAbilityUnlockStage(name, a) <= dojoStage);
+                        // Pick by score INCLUDING the current ability (the purpose-recs exclude
+                        // the held ability, which would make Fast-Build oscillate between two
+                        // legal abilities forever). Only change if a strictly better one exists.
+                        let bestA = null, bestScore = -Infinity;
+                        for (const a of unlocked) { const s = _txScoreAbility(a, dispMon, b, name); if (s > bestScore) { bestScore = s; bestA = a; } }
+                        const curScore = (cur && cur !== '(none)') ? _txScoreAbility(cur, dispMon, b, name) : -Infinity;
+                        if (bestA && bestA !== cur && bestScore > curScore) parts.push({ kind: 'ability', label: 'Ability', from: cur, to: bestA, cost: _abilityCostForMon(name, bestA) });
+                    } catch (e) {}
+                }
+
+                // Nature + EVs — from the deterministic best-fit archetype.
+                const ba = _txBestArchetypeFor(name, dispMon);
+                if (facUnlocked('nature')) {
+                    if (ba && ba.nature && ba.nature !== (b.n || 'Hardy')) {
+                        parts.push({ kind: 'nature', label: 'Nature', from: b.n || 'Hardy', to: ba.nature, cost: TUTOR_COST_NATURE });
+                    }
+                } else locked.push({ kind: 'nature', label: 'Nature', why: 'Nature Rater opens at City ' + FACILITY_DEBUT_CITY.nature });
+
+                if (facUnlocked('evtrainer')) {
+                    if (ba && ba.evs && !_evsEqual(b.evs || {}, ba.evs)) {
+                        parts.push({ kind: 'evs', label: 'EV spread', from: 'current', to: (typeof _evSpreadCompact === 'function' ? _evSpreadCompact(ba.evs) : 'best spread'), cost: EVTRAINER_COST, evs: { ...ba.evs } });
+                    }
+                } else if (facUnlocked('party')) {
+                    // EV Trainer locked but the Party screen is open → set the training FOCUS
+                    // only (free): which 2 stats the mon's post-battle EVs build toward (Q4 —
+                    // full spread waits for the late-game EV Trainer). Gated on the Party
+                    // facility (City 1) so City 0 stays strictly moves-only.
+                    const curFocus = Array.isArray(b.evTrainFocus) ? b.evTrainFocus.slice().sort().join(',') : '';
+                    const want = (ba && ba.focusStats) ? ba.focusStats.slice() : [];
+                    const wantKey = want.slice().sort().join(',');
+                    if (wantKey && wantKey !== curFocus) {
+                        parts.push({ kind: 'evfocus', label: 'EV training focus', from: 'auto', to: want.map(s => _TX_STAT_NAME[s] || s).join(' / '), cost: 0, focus: want });
+                    }
+                }
+
+                const moveTotal = movePlan.total || 0;
+                const partsGold = parts.reduce((s, p) => s + (p.cost | 0), 0);
+                return { teamIdx, name, moveSteps: movePlan.steps || [], moveSkipped: movePlan.skipped || [], moveTotal, parts, locked, total: moveTotal + partsGold };
+            } catch (e) { return null; }
+        }
+        try { window._txBuildFastBuildPlan = _txBuildFastBuildPlan; } catch (e) {}
+
+        // Given a plan + voucher selection, compute the gold owed + the vouchers actually
+        // spent (bounded by what the player owns). Heart Scales waive the priciest moves.
+        function _txFastBuildQuote(plan, sel) {
+            sel = sel || {};
+            const spend = { heartScale: 0, mint: 0, abilityCapsule: 0, emblemHonor: 0, vitamin: 0 };
+            let gold = 0;
+            for (const p of plan.parts) {
+                const v = _TX_FASTBUILD_VOUCHER[p.kind];
+                if (v && sel[v.key] && _txVoucherCount(v.key) > (spend[v.key] || 0)) spend[v.key]++;
+                else gold += p.cost | 0;
+            }
+            const costs = plan.moveSteps.map(s => s.cost | 0).sort((a, b) => b - a);
+            const hs = Math.max(0, Math.min(sel.heartScale | 0, costs.length, _txVoucherCount('heartScale')));
+            for (let i = 0; i < costs.length; i++) { if (i < hs) continue; gold += costs[i]; }
+            spend.heartScale = hs;
+            return { gold, spend };
+        }
+        try { window._txFastBuildQuote = _txFastBuildQuote; } catch (e) {}
+
+        function _txFbRow(label, detail, cost, controlHtml, waived) {
+            const costTxt = cost > 0 ? (waived ? `<s>${cost.toLocaleString()}G</s> free` : `${cost.toLocaleString()}G`) : 'free';
+            return `<div class="tx-fb-row"><div class="tx-fb-row-main"><span class="tx-fb-label">${_esc(label)}</span><span class="tx-fb-detail">${detail}</span></div>`
+                + `<div class="tx-fb-row-side">${controlHtml || ''}<span class="tx-fb-cost">${costTxt}</span></div></div>`;
+        }
+        function _txFastBuildPanelHtml(idx) {
+            const plan = _txBuildFastBuildPlan(idx);
+            if (!plan) { _txFastBuild.open = -1; return ''; }
+            if (!_txFastBuild.sel) _txFastBuildResetSel();
+            const sel = _txFastBuild.sel;
+            const quote = _txFastBuildQuote(plan, sel);
+            const rows = [];
+            if (plan.moveSteps.length) {
+                const hsOwned = _txVoucherCount('heartScale');
+                const hsMax = Math.min(plan.moveSteps.length, hsOwned);
+                const hsUsed = Math.min(sel.heartScale | 0, hsMax);
+                const moves = plan.moveSteps.map(s => _esc(s.move)).join(', ');
+                const stepper = hsOwned > 0
+                    ? `<span class="tx-fb-vouch" role="group" aria-label="Heart Scales to spend"><button type="button" class="tx-fb-step" data-fb-hs="-1" aria-label="Spend one fewer Heart Scale"${hsUsed <= 0 ? ' disabled' : ''}>−</button>`
+                        + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest move" aria-live="polite" aria-label="${hsUsed} of ${hsMax} Heart Scales spent">${hsUsed}/${hsMax} 💗</span>`
+                        + `<button type="button" class="tx-fb-step" data-fb-hs="1" aria-label="Spend one more Heart Scale"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
+                    : '';
+                rows.push(_txFbRow('Moves', `${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}: ${moves}`, plan.moveTotal, stepper));
+            }
+            for (const p of plan.parts) {
+                if (p.kind === 'evfocus') { rows.push(_txFbRow(p.label, `Train ${_esc(p.to)} from battles — EV Trainer opens later for the full spread`, 0, '')); continue; }
+                const v = _TX_FASTBUILD_VOUCHER[p.kind];
+                const owned = v ? _txVoucherCount(v.key) : 0;
+                const checked = !!(v && sel[v.key]);
+                const vouch = (v && owned > 0)
+                    ? `<label class="tx-fb-vouch"><input type="checkbox" class="tx-fb-check" data-fb-vouch="${v.key}"${checked ? ' checked' : ''}> <span class="tx-fb-vlabel">Use ${_esc(v.label)} (${owned})</span></label>`
+                    : '';
+                rows.push(_txFbRow(p.label, `${_esc(p.from)} → ${_esc(p.to)}`, p.cost, vouch, checked && owned > 0));
+            }
+            for (const l of plan.locked) rows.push(`<div class="tx-fb-row tx-fb-row--locked">🔒 ${_esc(l.label)} — ${_esc(l.why)}</div>`);
+
+            const spendTxt = Object.keys(quote.spend).filter(k => quote.spend[k] > 0).map(k => `${quote.spend[k]} ${_txVoucherLabel(k)}`).join(' · ');
+            const totalRow = `<div class="tx-fb-total"><span>Total</span><span>${quote.gold.toLocaleString()}G${spendTxt ? ` + ${spendTxt}` : ''}</span></div>`;
+            const afford = (sm.gold | 0) >= quote.gold;
+            const applyBtn = `<button type="button" class="tx-fb-apply" data-fastbuild-apply="${idx}"${afford ? '' : ' disabled'}>${afford ? `⚡ Apply best set — ${quote.gold.toLocaleString()}G` : `Need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more`}</button>`;
+            const cancelBtn = `<button type="button" class="tx-fb-cancel" data-fastbuild-cancel="1">Cancel</button>`;
+            return `<div class="tx-fastbuild-panel" role="group" aria-label="Auto-Build best set for ${_esc(plan.name)}"><div class="tx-fb-head">⚡ Auto-Build — best set for <strong>${_esc(plan.name)}</strong></div>`
+                + `${rows.join('')}${totalRow}<div class="tx-fb-actions">${applyBtn}${cancelBtn}</div></div>`;
+        }
+        // The bar on the open mon's editor: the Auto-Build button, or the expanded panel.
+        function _txFastBuildBarHtml(t, idx) {
+            if (!t || t.isEgg) return '';
+            if (_txFastBuild.open === idx) return _txFastBuildPanelHtml(idx);
+            let plan = null; try { plan = _txBuildFastBuildPlan(idx); } catch (e) {}
+            const nChanges = plan ? (plan.moveSteps.length + plan.parts.filter(p => p.kind !== 'evfocus').length + plan.parts.filter(p => p.kind === 'evfocus').length) : 0;
+            if (plan && nChanges === 0) {
+                return `<div class="tx-fastbuild-bar tx-fastbuild-bar--done">⚡ <strong>Auto-Build</strong> · ✓ Already optimized for its role</div>`;
+            }
+            const costTxt = plan ? `${plan.total.toLocaleString()}G` : '';
+            return `<div class="tx-fastbuild-bar"><button type="button" class="tx-fastbuild-open" data-fastbuild-open="${idx}">⚡ Auto-Build best set${nChanges ? ` · ${nChanges} change${nChanges === 1 ? '' : 's'} · ${costTxt}` : ''}</button></div>`;
+        }
+
+        // Commit — ONE interaction lock, ONE gold deduction, vouchers consumed, ONE save,
+        // ONE render. Recomputes the plan fresh inside the lock so it can't half-apply.
+        async function tutorApplyFastBuild(teamIdx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx];
+                if (!mon || !mon.build) return;
+                const plan = _txBuildFastBuildPlan(teamIdx);
+                if (!plan || (!plan.moveSteps.length && !plan.parts.length)) return;
+                const sel = _txFastBuild.sel || {};
+                const quote = _txFastBuildQuote(plan, sel);
+                if ((sm.gold | 0) < quote.gold) {
+                    try { window.showGameAlert && window.showGameAlert(`This build costs ${quote.gold.toLocaleString()}G — you need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more (or spend more vouchers).`); } catch (e) {}
+                    return;
+                }
+                // Validate voucher availability (defensive — the quote already bounds them).
+                for (const k of Object.keys(quote.spend)) { if (quote.spend[k] > _txVoucherCount(k)) return; }
+
+                const lines = [];
+                if (plan.moveSteps.length) lines.push(`${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}`);
+                for (const p of plan.parts) lines.push(p.kind === 'evfocus' ? `EV focus → ${p.to}` : `${p.label} → ${p.to}`);
+                const spendTxt = Object.keys(quote.spend).filter(k => quote.spend[k] > 0).map(k => `${quote.spend[k]} ${_txVoucherLabel(k)}`).join(', ');
+                const prompt = `Auto-Build ${mon.name}: ${lines.join(' · ')}.` + (spendTxt ? `\nVouchers: ${spendTxt}.` : '');
+                const ok = await _storyConfirmTutorChange(prompt, quote.gold);
+                if (!ok) return;
+
+                // ── Commit (all-or-nothing; validated above) ──
+                if (quote.gold > 0) { sm.gold -= quote.gold; try { _storyTrackSpend(quote.gold); } catch (e) {} }
+                // Consume vouchers.
+                for (const k of Object.keys(quote.spend)) {
+                    const n = quote.spend[k] | 0;
+                    if (n <= 0) continue;
+                    if (!sm.inventory) sm.inventory = {};
+                    sm.inventory[k] = Math.max(0, (sm.inventory[k] | 0) - n);
+                    if (!sm.inventory[k]) delete sm.inventory[k];
+                }
+                // Moves.
+                if (plan.moveSteps.length) {
+                    const moves = mon.build.m || (mon.build.m = []);
+                    for (const s of plan.moveSteps) { if (s.slot >= moves.length) moves.push(s.move); else moves[s.slot] = s.move; }
+                    mon.build.m = moves.filter(Boolean);
+                }
+                // Item / ability / nature / EVs / EV-focus.
+                for (const p of plan.parts) {
+                    if (p.kind === 'item') mon.build.i = p.to;
+                    else if (p.kind === 'ability') mon.build.a = p.to;
+                    else if (p.kind === 'nature') mon.build.n = p.to;
+                    else if (p.kind === 'evs') mon.build.evs = { ...p.evs };
+                    else if (p.kind === 'evfocus') { if (Array.isArray(p.focus) && p.focus.length) mon.build.evTrainFocus = p.focus.slice(); }
+                }
+                mon.currentHp = null; mon.status = null; mon.pp = null;
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.7); } catch (e) {}
+                _txFastBuild.open = -1;
+                _txPending = null;
+                _txRerenderActiveTutorSurface();
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+        try { window.tutorApplyFastBuild = tutorApplyFastBuild; } catch (e) {}
 
         // Forget a move — FREE, with confirmation. Removes the move and compacts
         // the array so the engine never sees a gap. A Pokémon must keep at least
@@ -74638,6 +75235,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _seenKeys.add(k);
                 return true;
             });
+            // Role-anchored recommendation wins display position over any duplicate in the
+            // Universal/Role/Meta lists (deduped first), and is always starred.
+            const _recPreset = _evTrainerRecPreset(t.name);
+            const dedupedRec = _recPreset ? dedup([_recPreset]) : [];
             const dedupedUniversal = dedup(EV_PRESETS_UNIVERSAL);
             const dedupedRole = dedup(EV_PRESETS_ROLE);
             const dedupedMeta = dedup(meta);
@@ -74645,11 +75246,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const renderRow = (presets) => presets.map(p =>
                 _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p), pctForPreset(p))
             ).join('');
+            const renderRecRow = (presets) => presets.map(p =>
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, true, pctForPreset(p))
+            ).join('');
 
             // Sticky section headers — when the player scrolls through 30+
             // preset cards the section context (Universal / Roles / Meta)
             // would otherwise disappear. Stickying keeps the label visible
             // until the next section's header replaces it.
+            const recommendedSection = dedupedRec.length ? `<div class="tx-ev-section" style="margin-top:10px;">
+                <div class="tx-ev-section-title">Recommended <span class="tx-ev-section-hint">· tuned to this Pokémon's role</span></div>
+                <div class="tx-grid" style="max-height:none;">${renderRecRow(dedupedRec)}</div>
+            </div>` : '';
             const universalSection = dedupedUniversal.length ? `<div class="tx-ev-section" style="margin-top:10px;">
                 <div class="tx-ev-section-title">Universal</div>
                 <div class="tx-grid" style="max-height:none;">${renderRow(dedupedUniversal)}</div>
@@ -74669,7 +75277,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${header}
                 <div class="story-tutor-mon-body" style="padding-top:6px;">
                     ${_evTrainerStatBarsHtml(cur, 'Currently equipped')}
-                    ${universalSection}${roleSection}${metaSection}
+                    ${recommendedSection}${universalSection}${roleSection}${metaSection}
                 </div>
             </div>`;
         }
@@ -74680,7 +75288,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const mon = sm.team[idx];
                 if (!mon || !mon.build) return;
                 const meta = _evTrainerMetaCache[idx] || [];
-                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const _rec = _evTrainerRecPreset(mon.name);
+                const all = [].concat(_rec ? [_rec] : [], EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 // Overwrite: the EV Trainer commits the mon to exactly this
@@ -74713,7 +75322,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 const meta = _evTrainerMetaCache[idx] || [];
-                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const _rec = _evTrainerRecPreset(mon.name);
+                const all = [].concat(_rec ? [_rec] : [], EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
@@ -74808,7 +75418,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             confirmAbandon, abandonAndReturn, saveAndQuitToMenu, continuePostGame, enterMysteryClimax,
             openSummary, profOpenSummary, summaryMove, setEvTrainFocus, moveInParty, setPartyLead, partyReorder, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
-            enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
+            enterTutor, enterMentor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
