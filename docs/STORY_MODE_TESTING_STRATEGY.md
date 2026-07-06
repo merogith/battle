@@ -33,6 +33,63 @@ has a floor and a ceiling.
 
 ---
 
+## 0.5. Feasibility findings & locked decisions
+
+A second verification pass (battle-state model + AI competence) settled the load-bearing
+unknowns. These are now constraints on the build, not open questions.
+
+**Findings that simplify the model**
+- **No HP/status attrition between battles.** `buildPokemon` unconditionally resets
+  `currentHp=maxHp`; `launchBattle` passes only the build, not runtime HP; the Pokémon
+  Center is storage, *not* a heal. Combat is therefore **per-battle-independent given team
+  composition** — no heal economy, no potion budget, no limp-into-the-gym state. Each
+  battle is a pure function of `(playerTeam, foeTeam, seed)`.
+- **Starter + economic actions are reachable headless.** `confirmTrainerAndStart`,
+  `enterProfessor → profSelectChoice → profAccept` (normal branch), and the economic
+  actions (`evoLabEvolve`, `buyItem`, `tutorChangeMove`/`colressApply*`,
+  `evTrainerApplyPreset`) are all exported on `window.StoryMode` and mutate `sm` — no new
+  hooks required, but each is wrapped in async confirm dialogs + trailing re-renders (see
+  the shim requirement below).
+
+**Findings that constrain fidelity (must be handled)**
+- **The player AI is a 1-ply greedy heuristic, not a planner.** `getBestMove` has
+  engine-accurate KO math (`aiEstimateDmg`), rich status/hazard/setup rules, proactive
+  competent switching (`aiBestSwitch`, called at the top of every turn via `aiDecision`),
+  and sensible gimmick timing (`aiChooseGimmick`) — but **no lookahead**. There is **zero
+  prior AI-strength calibration** in the repo. ⇒ Sim win-rates are a **relative difficulty
+  ordering labeled "competent-heuristic win-rate," not an absolute "is it beatable" verdict**,
+  and must be anchored by baselines before trust (new **Phase 0**, §8).
+- **Player skill anchor = `hard` (T=0.15, predict 0.85), not `challenge` (T=0).**
+  `challenge` is a robotic deterministic argmax that flatters mirror matchups and represents
+  no real human. Drive the *player* side at `hard`; let `sm.storyDifficulty` scale only the
+  *foe*, so player skill is a controlled constant.
+- **Foe uses battle items mid-fight (`tryFoeStoryBattleItem`); the AI player side won't**
+  unless driven via `applyBagItem`. Left unmodeled, the sim overstates difficulty.
+- **Team composition is load-bearing.** Rival rows build a *live counter-team* against
+  `sm.team` at roll time (`_rivalBuildCounterTypePool`), and 3-track beats overlay real
+  Battle rows with canon-boss identities (`_activeBattleBeatForCurrentRow` →
+  `BEAT_CANON_TRAINER`) that are *harder* than the generic trainer they replace. ⇒ The
+  player team must be real & populated before those rows, and the beat dispatcher must be
+  allowed to run (don't bypass it). Track beats add **no extra battle count** — they reskin
+  existing rows.
+
+**Locked decisions (maintainer sign-off)**
+1. **Items — run BOTH modes.** Primary sweep = symmetric OFF (`settings.storyBattleItems=false`,
+   no player bag) for the cleanest signal; secondary sweep = faithful ON (foe items + a modeled
+   player heal/X-item policy via `applyBagItem`). **Report the off-vs-on delta per stage** as a
+   first-class finding. Adds an `itemMode` axis to the matrix (§4).
+2. **Model catching.** The player team grows via wild/Safari catches, so each policy carries a
+   **catch policy** (casual: rarely; recommended: opportunistic; optimal: chases strong wilds +
+   the villain-track Master-Ball legendary). Because Safari/route *species* picks use bare
+   `Math.random`, seed `Math.random` at the harness level (`seedRng`) per shard for
+   reproducibility and keep those sites on the determinism allow-list (§6). Catch *success*
+   (ball math) is already seeded.
+3. **DOM-shim adapter.** Build one thin, tested adapter wrapping the `StoryMode.*` economic
+   actions: stub `window.showGameConfirm`/`showGameAlert` → true, tolerate trailing `render*`
+   calls, and warm `enterEVTrainer()` before `evTrainerApplyPreset`. No engine forks.
+
+---
+
 ## 1. What "test the whole story" actually means — five layers
 
 Testing this game is not one activity. Separate the concerns so each has the right tool:
@@ -130,9 +187,14 @@ Every difficulty claim then comes with a floor and a ceiling:
   plays greedy-optimal AI with switching. If `optimal` **loses** before it should
   (e.g. <50% win-rate at Gym 5), the game is too hard even for a tryhard.
 
+Each policy also carries a **catch policy** (decision 2, §0.5): `casual` rarely catches;
+`recommended` catches opportunistically; `optimal` chases strong wilds + the villain-track
+Master-Ball legendary. Caught mons feed the team (and therefore the Rival counter-team and
+party-cap curve), so catching is modeled, not cosmetic.
+
 The three policies share the same battle resolver and telemetry; only their `doCity` /
-`pickStarter` / `postWin` / in-battle choice functions differ. Building `recommended`
-first (it mirrors real UI recommenders) gives the highest-signal single number.
+`pickStarter` / `postWin` / `catchPolicy` / in-battle choice functions differ. Building
+`recommended` first (it mirrors real UI recommenders) gives the highest-signal single number.
 
 ### 2.5 Battle resolver detail
 
@@ -204,12 +266,15 @@ Deterministic seeds make this embarrassingly parallel. Copy the existing
 |---|---|---|
 | `seed` | 0 … S-1 | e.g. 500–2000 |
 | `difficulty` | veryeasy, easy, normal, hard, challenge | 5 |
-| `aiProfile` | aggro, balanced, stall | 3 (or fix to balanced for the main sweep) |
-| `policy` | casual, recommended, optimal | 3 |
+| `aiProfile` | aggro, balanced, stall | fix to balanced for main sweep; sweep separately |
+| `policy` | casual, recommended, optimal (each carries a catch policy) | 3 |
+| `itemMode` | off (primary signal), on (faithful) | 2 |
 | `gens` lock | e.g. all / gen1-only / gen9-only | 1–3 |
 
-A focused nightly sweep = `500 seeds × 5 difficulty × 3 policy = 7,500 full runs`
-(≈ 60 battles each ⇒ ~450k battles). Shard 8–16 ways. Each run is jsdom (no browser),
+The player side always runs at `hard` skill (§0.5); `difficulty` scales only the foe.
+
+A focused nightly sweep = `500 seeds × 5 difficulty × 3 policy × 2 itemMode = 15,000 full
+runs` (≈ 60 battles each ⇒ ~900k battles). Shard 8–16 ways. Each run is jsdom (no browser),
 `window.sleep` is stubbed to `Promise.resolve()`, so a run is battles-bound, not
 wall-clock-bound — target well under a second per run after boot amortization.
 
@@ -303,17 +368,28 @@ regressions in review).
 
 ## 8. Build plan — phases (each independently useful)
 
+0. **Calibration & baselines** — before trusting any win-rate: (a) **flow-parity** — the
+   headless walk hits the same 67 rows in the same order as the Playwright autopilot;
+   (b) **AI-vs-random floor** and (c) **mirror AI-vs-AI ~50% sanity**. Establishes that
+   "competent-heuristic win-rate" means something. *(Unlocks: trust.)*
 1. **Battle resolver** — headless CPU-vs-CPU: take `inhouse-oracle`'s `playTurn` loop, drive
-   the player side with `__engine.getBestMove`, return `{winner, turns, hpLeft, faints,
-   gimmicks}`. Verify against a hand-checked battle. *(Unlocks: any auto-battle.)*
-2. **Player policy layer** — `pickStarter` / `doCity` / `postWin` / `chooseMove` for the
+   the player side with `__engine.getBestMove` at `hard` skill; add the DOM-shim adapter
+   (§0.5 decision 3). Return `{winner, turns, hpLeft, faints, gimmicks, itemsUsed}`. Verify
+   against a hand-checked battle. *(Unlocks: any auto-battle.)*
+2. **Player policy layer** — `pickStarter` / `doCity` / `postWin` / `chooseMove` +
+   **`catchPolicy`** (decision 2) + **item policy** for `itemMode:on` (decision 1) across the
    three policies. Start with `recommended`. *(Unlocks: modelling the player.)*
-3. **Full-run loop** — extend `_simulateStoryRunTeams` to fight (resolver) and grow the team
-   (policy) instead of dry-rolling foe teams. Reach Hall of Fame headlessly for one seed.
-   *(Unlocks: the actual end-to-end run.)*
-4. **Telemetry** — emit the §3 JSONL. *(Unlocks: data.)*
-5. **Sharded runner** — clone `sweep-sharded.mjs`; add the §4 matrix + merge. *(Unlocks: scale.)*
-6. **Analysis + dashboards** — §7 report bundle + red-flag detectors. *(Unlocks: insight.)*
+3. **Full-run loop (vertical slice)** — extend `_simulateStoryRunTeams` to fight (resolver),
+   grow the team (policy + catching), and let the beat dispatcher run so canon-boss/rival rows
+   resolve faithfully. **Reach Hall of Fame headlessly for ONE seed, `normal`, `recommended`,
+   `itemMode:off`, with sane telemetry + verified determinism — the proof-of-life gate before
+   any scale.** *(Unlocks: the actual end-to-end run.)*
+4. **Telemetry** — emit the §3 JSONL (including per-stage `itemMode` and catch records).
+   *(Unlocks: data.)*
+5. **Sharded runner** — clone `sweep-sharded.mjs`; add the §4 matrix (incl. `itemMode` axis) +
+   merge; seed `Math.random` per shard for catch reproducibility. *(Unlocks: scale.)*
+6. **Analysis + dashboards** — §7 report bundle + red-flag detectors + the **item off-vs-on
+   delta** per stage. Thresholds exposed as config for the maintainer. *(Unlocks: insight.)*
 7. **Invariant assertions + save round-trip + determinism check** — §5, wired to
    `emit-finding` → ledger. *(Unlocks: bug-finding.)*
 
