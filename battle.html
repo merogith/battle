@@ -47330,6 +47330,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     filterSigsByGradeCeiling: (...a) => _filterSigsByGradeCeiling(...a),
                     storySigGradeCeiling: (...a) => _storySigGradeCeiling(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
+                    // Wild build-diversity helpers (nature pool / EV shape) — test handles.
+                    wildNaturePool: (...a) => _wildNaturePool(...a),
+                    wildPickNature: (...a) => _wildPickNature(...a),
+                    wildPickEVs: (...a) => _wildPickEVs(...a),
                     // Wander Around (route-exit optional wild search) — test handles.
                     get WANDER_MAX_TAPS() { return WANDER_MAX_TAPS; },
                     get WANDER_BASE_RATE() { return WANDER_BASE_RATE; },
@@ -62199,33 +62203,89 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  or 85/85 on HP + best defensive stat for bulky shells). Held item stays
          *  None so Battle Dojo is still a meaningful upgrade. ~70% battle-ready —
          *  Evolution Tutor / EV Trainer / Move Tutor still meaningfully sharpen them. */
-        function _wildPickNature(base) {
-            if (!base) return 'Hardy';
+        // Curated pool of *useful* natures for a species' stat identity. The first
+        // entry is the textbook pick (what the old deterministic fn returned); the
+        // rest are believable variants that keep the boost on a stat the species
+        // actually uses and drop a genuinely unused stat. Picking head-weighted from
+        // the pool is what turns "every wild Machop is Adamant" into a spread of
+        // partners without ever handing out a nature that fights the species' role.
+        // Pools + head weights are user-owned balance knobs — tune here.
+        function _wildNaturePool(base) {
+            if (!base) return ['Hardy'];
             const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
             const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
             const offense = atk + spa + spe;
             const defense = hp + def + spd;
-            // Defensive shell with weak offense → favor a defensive +stat / −offense nature
+            // Defensive shell with weak offense → +defense natures (drop the unused attack).
             if (defense > offense + 60 && atk + spa < 180) {
-                return def >= spd ? 'Bold' : 'Calm';
+                return def >= spd
+                    ? ['Bold', 'Impish', 'Calm', 'Relaxed']   // +Def variants
+                    : ['Calm', 'Careful', 'Bold', 'Sassy'];   // +SpD variants
             }
             const isFast = spe >= 80;
-            if (atk >= spa) return isFast ? 'Jolly' : 'Adamant';
-            return isFast ? 'Timid' : 'Modest';
+            if (atk >= spa) {
+                // Physical. Fast → speed-positive textbook; slow → power/bulk variants
+                // (Careful/Impish keep Atk while dropping the unused SpA and boosting a
+                // defense — the "bulky physical attacker" flavor).
+                return isFast
+                    ? ['Jolly', 'Adamant', 'Naughty', 'Lonely']
+                    : ['Adamant', 'Brave', 'Careful', 'Impish'];
+            }
+            return isFast
+                ? ['Timid', 'Modest', 'Rash', 'Mild']
+                : ['Modest', 'Quiet', 'Calm', 'Bold'];
         }
-        function _wildPickEVs(base) {
+        // Head-weighted pick from the species' curated nature pool. ~50% textbook,
+        // then a decaying tail so variants surface but the best-fit nature still
+        // dominates ("subtle" variety). Weights are user-owned. Uses the wild RNG
+        // (seeded when a story run is active) so replays reproduce.
+        const _WILD_NATURE_POOL_WEIGHTS = [0.5, 0.25, 0.15, 0.1];
+        function _wildPickNature(base, rng) {
+            const pool = _wildNaturePool(base);
+            const r = (typeof rng === 'function' ? rng : Math.random)();
+            let acc = 0;
+            for (let i = 0; i < pool.length; i++) {
+                acc += _WILD_NATURE_POOL_WEIGHTS[i] || 0;
+                if (r < acc) return pool[i];
+            }
+            return pool[0];
+        }
+        // Seed a wild EV *shape* (not magnitude — _distributeEVsToTotal rescales this
+        // to the city's EV band afterward, so only the ratios between stats matter,
+        // and the balance envelope is untouched). Reuses the shared archetype picker
+        // (_pickBattleEVStats) instead of re-deriving offense/defense, then adds two
+        // sources of variety so two wilds of a species no longer share an identical
+        // spread: (a) a jittered primary/secondary split, (b) an occasional small
+        // third-stat splash (bulk for attackers, the off-defense/HP for walls). Jitter
+        // range + splash chance/amount are user-owned "subtle" knobs.
+        function _wildPickEVs(base, rng) {
             const out = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
             if (!base) return out;
-            const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
-            const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
-            const offense = atk + spa + spe;
-            const defense = hp + def + spd;
-            if (defense > offense + 60 && atk + spa < 180) {
-                out.hp = 85;
-                out[def >= spd ? 'def' : 'spd'] = 85;
-            } else {
-                out[atk >= spa ? 'atk' : 'spa'] = 85;
-                out.spe = 85;
+            const r = (typeof rng === 'function' ? rng : Math.random);
+            const pair = _pickBattleEVStats(base); // [primary, secondary] per species identity
+            const primary = pair[0], secondary = pair[1];
+            // Split jitter: primary carries 46..64 of a ~100 unit shape, secondary the
+            // rest. Ratios only — magnitudes are normalized away by the distributor.
+            const heavy = 46 + Math.floor(r() * 19); // 46..64
+            out[primary] = heavy;
+            if (secondary && secondary !== primary) out[secondary] = 100 - heavy;
+            else out[primary] = 100;
+            // ~1-in-3: a small third-stat splash so some wilds read as "spread" rather
+            // than a clean two-stat build. Attackers splash bulk (HP, or the better
+            // defense if HP is already invested); walls splash the *other* defense or HP.
+            if (r() < 0.34) {
+                const atk = base.atk|0, spa = base.spa|0, spe = base.spe|0;
+                const hp = base.hp|0, def = base.def|0, spd = base.spd|0;
+                const offense = atk + spa + spe, defense = hp + def + spd;
+                const isWall = defense > offense + 60 && atk + spa < 180;
+                let third;
+                if (isWall) {
+                    // Wall already trains HP + one defense → splash the other defense.
+                    third = (out.def && !out.spd) ? 'spd' : (out.spd && !out.def) ? 'def' : 'hp';
+                } else {
+                    third = out.hp ? (def >= spd ? 'def' : 'spd') : 'hp';
+                }
+                if (third && !out[third]) out[third] = 22;
             }
             return out;
         }
@@ -62428,8 +62488,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Nature: neutral on the very first routes (C0), curated-positive from C1.
             b.n = (_wCity <= 0)
                 ? _NEUTRAL_NATURES_LIST[Math.floor(_wRng() * _NEUTRAL_NATURES_LIST.length)]
-                : _wildPickNature(base);
-            b.evs = _wildPickEVs(base);
+                : _wildPickNature(base, _wRng);
+            b.evs = _wildPickEVs(base, _wRng);
             // City-curve EV total (Sheet 5, "match trainer curve"): scale the archetype
             // shape to the city's battle-trained EV level. IVs (the vitamin-trained axis)
             // use the separate "0..cap" band rolled below.
@@ -62447,6 +62507,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 if (typeof _storyDowngradeMovesForTier === 'function' && typeof STORY_BUILD_TIER !== 'undefined') {
                     _storyDowngradeMovesForTier(name, b, STORY_BUILD_TIER.UNTRAINED);
+                }
+            } catch (e) {}
+            // C1 (wild move variety): dual-typed wilds should visibly carry their
+            // SECOND type more often than the shared T1 downgrade's single 30% roll
+            // allows. If the downgraded set shows no secondary-type basic STAB, convert
+            // one primary-STAB slot to it ~40% of the time. Wild-only (post-pass here)
+            // so the shared trainer downgrade path is untouched; seeded via _wRng so
+            // replays reproduce. BP-cap safe — both moves are the same basic-STAB tier.
+            try {
+                const _t2 = base && base.t2;
+                const _secMove = _t2 && (typeof _T1_BASIC_STAB_BY_TYPE !== 'undefined') && _T1_BASIC_STAB_BY_TYPE[_t2];
+                if (_secMove && Array.isArray(b.m) && !b.m.includes(_secMove) && _wRng() < 0.40) {
+                    const _primMove = base.t1 && _T1_BASIC_STAB_BY_TYPE[base.t1];
+                    // Replace the LAST slot holding the primary basic STAB, so a
+                    // 2-primary set keeps one primary and a 1-primary set still swaps.
+                    for (let i = b.m.length - 1; i >= 0; i--) {
+                        if (b.m[i] === _primMove) { b.m[i] = _secMove; break; }
+                    }
                 }
             } catch (e) {}
             if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
