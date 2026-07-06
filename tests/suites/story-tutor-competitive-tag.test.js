@@ -14,6 +14,7 @@ import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
+const ST = w.__storyTest;
 
 // A generic physical mon so the damaging branch never dominates the status picks.
 const mon = { type1: 'Dark', type2: null, stats: { atk: 110, def: 80, spa: 60, spd: 80, spe: 100 }, maxHp: 300 };
@@ -24,6 +25,21 @@ const tag = (name) => w._txCompetitiveTag(name);
 test('data loaded: competitive-moves table is populated', () => {
   assert.ok(w.COMPETITIVE_MOVES && w.COMPETITIVE_MOVES.moves, 'table present');
   assert.ok(Object.keys(w.COMPETITIVE_MOVES.moves).length >= 30, 'has a real set of entries');
+});
+
+test('data integrity: every tagged move resolves in the move DB and its class has a floor', () => {
+  // A typo'd move name or unknown class would make the badge + score floor silently
+  // never fire — this guard fails loudly instead so future edits stay honest.
+  const tbl = w.COMPETITIVE_MOVES.moves;
+  const floors = w.COMPETITIVE_MOVES.classFloors || {};
+  const badName = [], badClass = [];
+  for (const [mv, e] of Object.entries(tbl)) {
+    const md = ST.ensureMoveData(mv);
+    if (!md || !md.type) badName.push(mv);
+    if (!(e.class in floors)) badClass.push(`${mv}:${e.class}`);
+  }
+  assert.equal(badName.join(', '), '', 'all competitive-move names resolve in the DB');
+  assert.equal(badClass.join(', '), '', 'every move class has a defined floor');
 });
 
 test('Parting Shot / Teleport / Baton Pass / Shed Tail escape the 30 filler floor', () => {
