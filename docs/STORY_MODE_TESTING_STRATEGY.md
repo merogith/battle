@@ -10,6 +10,15 @@
 
 ---
 
+> **Status (2026-07): IMPLEMENTED.** The Story Simulator described below is built and lives in
+> [`scripts/debug/story-sim/`](../scripts/debug/story-sim/) (see its README). All seven phases
+> are done: headless CPU-vs-CPU resolver (fair 50/50 mirror baseline), the Player Agent with a
+> training/evolution/catch/adapt loop, the faithful full-run loop (byte-identical determinism,
+> engine victory path suppressed so no reward double-count), JSONL telemetry, the sharded sweep
+> runner, the analysis dashboard + red-flag detectors, and invariant + save-round-trip guards
+> ([`tests/suites/story-sim.test.js`](../tests/suites/story-sim.test.js)). The sections below are
+> the design rationale; the README is the operator's guide.
+
 ## 0. TL;DR — the recommendation
 
 There is no single "run the story" test today. What exists is **three disconnected halves**:
