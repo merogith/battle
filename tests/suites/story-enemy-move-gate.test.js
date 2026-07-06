@@ -1,14 +1,19 @@
-// Enemy move pool is gated by the city's TUTOR STAGE (user model), mirroring what
-// the player can teach at that city. Thresholds tutor:[0,3,6]:
-//   C0–C2 (Inner Strength): Natural only; FOE BP ≤ 60 (tighter than the player's 75 to
-//                           soften the very early game — STORY_FOE_MOVE_BP_CAP_BY_STAGE).
-//   C3–C5 (Unleashed):      ALL Natural (cap lifts; still NO Learnt/TM).
-//   C6+   (Guru):           no gate — full pool (Natural + Learnt + Awakened).
+// Enemy move pool (build-diversity overhaul — "diverse early, power scales"):
+// below Guru the FOE gate keeps the full LEGAL movepool (Natural + Learnt/TM —
+// coverage, setup, hazards, status) subject only to the per-city FOE BP cap, so a
+// foe reads as a real role-coherent build instead of 4 basic STAB. Off-legal
+// "Awakened" CSV moves are still excluded below Guru. Power is curbed by the BP cap
+// + the low EV band, not by stripping move variety. Foe BP cap [40,60,60,80,80,∞].
+//   C0–C2 (Inner):     legal moves, FOE BP ≤ 40/60/60.
+//   C3–C5 (Unleashed): legal moves, BP ≤ 80/80/∞.
+//   C6+   (Guru):      no gate — full pool (incl. Awakened).
+// NOTE: the PLAYER wild/caught/gift gate is UNCHANGED (Natural-only + Learnt status
+// — the catch-and-train headroom) — see story-wild-catch-movecap.test.js.
 //
 // We test by warming the learnset cache for a real species (Garchomp), then
 // running a synthetic enemy team through _storyGateFoeMovesByCity at each stage
-// and asserting the surviving moves all belong to the allowed pool. Cities are
-// resolved via cityAtTutorStage() so the tests survive threshold tuning.
+// and asserting the surviving moves obey the new foe contract. Cities are resolved
+// via cityAtTutorStage() so the tests survive threshold tuning.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -50,38 +55,43 @@ test('foe gate: Guru leaves moves untouched (full pool)', async () => {
   assert.deepEqual(team[0].build.m, ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance'], 'no filtering at Guru tier');
 });
 
-test('foe gate: at Inner, only Natural moves survive (Learnt stripped)', async () => {
+test('foe gate: at Inner, legal moves (Natural + Learnt) survive within the BP cap; Awakened stripped', async () => {
   primeStory();
   const learn = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  assert.ok(learn.natural.length && learn.learnt.length, 'precondition: buckets populated (offline index)');
-  const naturalMove = learn.natural[0];
-  const learntMove  = learn.learnt[0];
-  assert.notEqual(naturalMove, learntMove, 'sample moves come from distinct tag buckets');
-  const team = [{ name: 'Garchomp', build: { m: [naturalMove, learntMove, learntMove, naturalMove] } }];
-  await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(0)));
-  // At Inner (stage 0) every kept move must be Natural AND within the foe BP ceiling (60).
+  assert.ok(learn.natural.length && learn.learnt.length && learn.awakened.length, 'precondition: buckets populated (offline index)');
   const bp = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
+  // Phase 1: a LEGAL Learnt/TM move within the foe BP cap must now be KEPT (the foe
+  // gate opened to coverage/utility). Use C2 — Inner tier (tutor stage 0) with the
+  // 60 BP cap — and prove a ≤60-BP learnt move survives. (C0's cap is 40.)
+  assert.equal(ST.npcStageForCity('tutor', 2) | 0, 0, 'precondition: C2 is Inner-tier');
+  const learntLow = (learn.learnt || []).find((m) => bp(m) <= 60 && bp(m) > 0);
+  const natural = learn.natural[0];
+  const awakened = learn.awakened[0];
+  const team = [{ name: 'Garchomp', build: { m: [natural, learntLow || natural, awakened, awakened] } }];
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(2));
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.ok(tag === 'natural' || tag === 'unknown', `Inner kept move "${m}" should be Natural (was ${tag})`);
-    assert.ok(bp(m) <= 60, `Inner foe kept move "${m}" must be ≤60 BP (was ${bp(m)})`);
+    assert.notEqual(tag, 'awakened', `Inner foe kept move "${m}" must not be Awakened (off-legal)`);
+    assert.ok(bp(m) <= 60, `Inner (C2) foe kept move "${m}" must be ≤60 BP (was ${bp(m)})`);
   }
+  if (learntLow) assert.ok(team[0].build.m.includes(learntLow), `legal ≤60 Learnt move "${learntLow}" should now survive the foe gate`);
 });
 
-test('foe gate: at Unleashed, Learnt AND Awakened are filtered (Natural only)', async () => {
+test('foe gate: at Unleashed, Learnt/TM coverage is kept; Awakened still stripped', async () => {
   primeStory();
   const learn = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   assert.ok(learn.learnt.length && learn.awakened.length, 'precondition: buckets populated (offline index)');
-  const learntMove = learn.learnt[0];
-  const awakened   = learn.awakened[0];
-  const team = [{ name: 'Garchomp', build: { m: [learntMove, awakened, learntMove, awakened] } }];
+  const bp = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
+  const learntLow = (learn.learnt || []).find((m) => bp(m) <= 80) || learn.learnt[0];
+  const awakened = learn.awakened[0];
+  const team = [{ name: 'Garchomp', build: { m: [learntLow, awakened, learntLow, awakened] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(1)));
-  // User model: at Unleashed (stage 1) ONLY Natural is allowed — both Learnt/TM and
-  // Awakened are stripped (TMs unlock only at Guru). The all-Learnt/Awakened set is
-  // fully replaced by Natural backfill.
+  // Phase 1: Learnt/TM is now allowed for foes (subject to BP cap); only off-legal
+  // Awakened is still stripped below Guru.
   for (const m of team[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m);
-    assert.notEqual(tag, 'awakened', `Unleashed kept move "${m}" must not be Awakened`);
-    assert.notEqual(tag, 'learnt', `Unleashed kept move "${m}" must not be Learnt/TM`);
+    assert.notEqual(tag, 'awakened', `Unleashed foe kept move "${m}" must not be Awakened`);
   }
+  assert.ok(team[0].build.m.some((m) => ST.moveTagForSpecies('Garchomp', m) === 'learnt'),
+    'a Learnt/TM move survives the foe gate at Unleashed (Phase 1)');
 });

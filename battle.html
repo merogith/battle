@@ -12351,6 +12351,9 @@
         function _designedInferRole(name) {
             return _txRoleForBase(baseStats[name] || {}).token;
         }
+        // Minimum CSV-union size below which the archetype generator can't build a second
+        // viable role — thin below this get their legal learnset folded in (see below).
+        const _DESIGNED_POOL_AUGMENT_THRESHOLD = 8;
         function _designedCsvMovePool(name) {
             const entry = resolveCsvBuildEntry(name);
             const moves = new Set();
@@ -12378,6 +12381,34 @@
                         }
                     }
                 }
+            }
+            // Targeted learnset augmentation (build-diversity Phase 2b): single-set / LC
+            // species have a CSV union too small for the generator to build a wall vs a
+            // sweeper. For those (and only those — well-covered species keep their vetted
+            // pools untouched) fold in the species' LEGAL learnset (natural + learnt) from
+            // the offline move-tag index so a second role becomes buildable. Read
+            // window.MOVE_TAG_INDEX directly (the tag-index reader _moveTagIndexResultFor
+            // lives in a different scope), decoding move-name indices inline. Sync +
+            // best-effort: a no-op until the index has loaded. Off-legal "awakened" moves
+            // are never added (n/l buckets only), so generated sets stay legal.
+            if (moves.size < _DESIGNED_POOL_AUGMENT_THRESHOLD) {
+                try {
+                    const _mti = (typeof window !== 'undefined' && window.MOVE_TAG_INDEX)
+                        || (typeof MOVE_TAG_INDEX !== 'undefined' ? MOVE_TAG_INDEX : null);
+                    if (_mti && _mti.species && Array.isArray(_mti.moves) && _mti.moves.length) {
+                        let _entry = _mti.species[name];
+                        if (!_entry) {
+                            const _bs = (typeof baseStats === 'object') ? baseStats[name] : null;
+                            const _basef = _bs && (_bs.baseSpecies || _bs.changesFrom);
+                            if (_basef && _mti.species[_basef]) _entry = _mti.species[_basef];
+                        }
+                        if (_entry) {
+                            const _addByIdx = (list) => { if (Array.isArray(list)) for (const i of list) { const nm = _mti.moves[i]; if (nm) moves.add(nm); } };
+                            _addByIdx(_entry.n); // natural (level-up / egg / transfer)
+                            _addByIdx(_entry.l); // learnt (TM / tutor)
+                        }
+                    }
+                } catch (e) {}
             }
             return [...moves];
         }
@@ -18772,6 +18803,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const nb = _rerollBuildForArchetype(pool[i].name, ATTACKERS);
                     if (nb) { pool[i].build = nb; return; }
                 }
+            }
+        }
+        // Role-spread enforcement (build-diversity Phase 2 — "both roles + moves"):
+        // push a foe team toward a SPREAD of roles instead of six near-identical ones.
+        // Beyond enforceRoleCoverage's two extreme-case fixes, this caps any single
+        // archetype at ~half the team and re-rolls over-represented UNLOCKED slots
+        // toward absent roles (a wall, a hazard lead, a setup threat, the other
+        // attacking category), so a team reads as a team rather than clones. Signature/
+        // counter locks are never touched. Best-effort + guarded against spinning. The
+        // reroll reuses makeBuild, so it reproduces when the RNG streams reset (same as
+        // enforceRoleCoverage). Called from rollTrainerTeam only (story foes).
+        function enforceRoleSpread(pool, lockedIndices) {
+            if (!settings.smartDraftPool) return;
+            if (!Array.isArray(pool) || pool.length < 4) return;
+            const locked = lockedIndices instanceof Set ? lockedIndices : new Set();
+            const N = pool.length;
+            const cap = Math.ceil(N / 2);            // no archetype may exceed half the team
+            const targetDistinct = Math.min(3, N);   // aim for >=3 distinct roles
+            const FILL_TARGETS = [
+                new Set(['bulky-support']),          // a wall
+                new Set(['lead-hazards']),           // a hazard lead
+                new Set(['setup-sweeper']),          // a setup threat
+                new Set(['special-attacker']),       // spread the attacking category
+                new Set(['physical-attacker']),
+            ];
+            let guard = N * 3;
+            while (guard-- > 0) {
+                const arche = pool.map(_entryArchetype);
+                const counts = {};
+                for (const a of arche) counts[a] = (counts[a] || 0) + 1;
+                const distinct = Object.keys(counts).length;
+                let over = null, overN = 0;
+                for (const a of Object.keys(counts)) {
+                    if (counts[a] > cap && counts[a] > overN) { over = a; overN = counts[a]; }
+                }
+                if (over == null && distinct >= targetDistinct) break; // already a healthy spread
+                let target = null;
+                for (const t of FILL_TARGETS) {
+                    if (!arche.some(a => t.has(a))) { target = t; break; }
+                }
+                if (!target) break; // all preferred roles already present
+                let src = over;
+                if (src == null) { for (const a of Object.keys(counts)) { if (counts[a] >= 2) { src = a; break; } } }
+                if (src == null) break;
+                let rerolled = false;
+                for (let i = N - 1; i >= 0; i--) {
+                    if (locked.has(i) || arche[i] !== src) continue;
+                    const nb = _rerollBuildForArchetype(pool[i].name, target);
+                    if (nb) { pool[i].build = nb; rerolled = true; break; }
+                }
+                if (!rerolled) break; // no improvement available — stop spinning
             }
         }
 
@@ -35704,7 +35786,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const FACILITY_DEBUT_CITY = {
             mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
             link: 2, stoneShop: 2, evolab: 2,
-            dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
+            dept: 4, casino: 5, dojo: 1, evtrainer: 3, safari: 5, // EV Trainer debuts C3 (reshuffle-only); full mode at C7 via _evTrainerIsFullMode
+
             colress: 7, daycare: 2, // Daycare Inn debuts at City 2 (first daycare city after the Gym-1 unlock)
             bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
             mentor: 0, // Battle Mentor (Auto-Build NPC) — present from the start town; adapts to whatever facilities are unlocked
@@ -35728,6 +35811,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { fac: 'Pokémon Fan Club', minCity: 1 },
                 { fac: 'Battle Dojo', minCity: 1 },       // Battle Dojo (White Belt) debuts at City 1, present C1+
                 { fac: 'Evolution Tutor', minCity: 2 },   // Evolution Tutor debuts at City 2
+                { fac: 'EV Trainer', minCity: 3 },        // EV Trainer debuts C3 in RESHUFFLE-ONLY mode (net-zero re-tune); full "buy any spread" unlocks at C7 (see _evTrainerIsFullMode)
             ];
             for (const row of STORY_EVENTS_RAW) {
                 if (!Array.isArray(row) || row[1] !== 'City') continue;
@@ -40717,6 +40801,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Reshape a build's EV spread to hit a target total. A build that already has a
         // spread is scaled proportionally (shape preserved); an empty spread invests the
         // target into the species' best two battle stats. 252-per-stat / 508-total safe.
+        // Reconcile a spread to hit the target total EXACTLY (to within one 4-EV step),
+        // in BOTH directions, so the result is always a legal ≤508 spread that matches
+        // its tier:
+        //   • TRIM overshoot — the per-stat /4 rounding in _distributeEVsToTotal can push
+        //     the sum ABOVE the target (each of up to 6 stats can round up), which for a
+        //     508 target produced illegal 512-EV foes. Remove 4 at a time from the
+        //     largest stat until sum ≤ target.
+        //   • FILL undershoot — a heavy-primary spread scaled to a high total overflows
+        //     the 252 cap on its primary and silently ships ~20-70 EVs short. Add 4 at a
+        //     time into the stats the shape already uses (identity preserved), then any
+        //     non-maxed stat.
+        // Idempotent when already at target. Shared by wild / trainer / player builds.
+        function _evReconcileToTarget(out, keys, t) {
+            const sumOf = () => keys.reduce((s, k) => s + (out[k] | 0), 0);
+            let guard = 400;
+            while (sumOf() > t && guard-- > 0) {
+                let best = null, bestV = 0;
+                for (const k of keys) { const v = out[k] | 0; if (v > bestV) { bestV = v; best = k; } }
+                if (!best || bestV <= 0) break;
+                out[best] = Math.max(0, (out[best] | 0) - 4);
+            }
+            let deficit = t - sumOf();
+            if (deficit < 4) return;
+            const used = keys.filter(k => (out[k] | 0) > 0 && (out[k] | 0) < 252);
+            const rest = keys.filter(k => (out[k] | 0) < 252 && used.indexOf(k) === -1);
+            const order = used.concat(rest);
+            guard = 400;
+            while (deficit >= 4 && guard-- > 0) {
+                let placed = false;
+                for (const k of order) {
+                    if (deficit < 4) break;
+                    if ((out[k] | 0) >= 252) continue;
+                    out[k] = (out[k] | 0) + 4;
+                    deficit -= 4;
+                    placed = true;
+                }
+                if (!placed) break;
+            }
+        }
         function _distributeEVsToTotal(build, base, target) {
             if (!build) return;
             const keys = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
@@ -40729,6 +40852,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const scale = t / cur;
                 const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 for (const k of keys) out[k] = Math.max(0, Math.min(252, Math.round(((src[k] | 0) * scale) / 4) * 4));
+                _evReconcileToTarget(out, keys, t);
                 build.evs = out;
                 return;
             }
@@ -40737,6 +40861,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const first = Math.min(252, Math.round((t / 2) / 4) * 4);
             out[pair[0]] = first;
             out[pair[1]] = Math.max(0, Math.min(252, Math.round((t - first) / 4) * 4));
+            _evReconcileToTarget(out, keys, t);
             build.evs = out;
         }
         // ── OPTIMIZATION GRADIENTS (Sheet opt curves) ──────────────────────
@@ -45695,8 +45820,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // and uses them first; foes pick them up a city later. Bosses that pass an
             // explicit mech ctx (Mystery Figure) and frontier/generator rolls bypass.
             if (storyRowIdx != null && sm && sm.active && !(ctx && ctx.settings)) {
+                // storyRowIdx is a ROW ID, not an array index — resolve it the same way
+                // the rest of the pipeline does (_foeCity uses _cityIndexForStoryRow).
+                // Using cityIndexFromEventIndex here mis-resolved the city (esp. the
+                // reordered mid-rival region), so the "mechanics off until City 8" gate
+                // silently failed and foes fielded ZMOVE gimmicks — and Z-crystals — as
+                // early as C0 (audit #1).
                 let _mechCity = -1;
-                try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
+                try { _mechCity = _cityIndexForStoryRow(storyRowIdx); } catch (e) {}
                 if (_mechCity >= 0 && _mechCity < 8) return team;
             }
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
@@ -46092,6 +46223,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // through the run, not just cosmetic polish.
         const STORY_BUILD_TIER = Object.freeze({ UNTRAINED: 1, NOVICE: 2, COMPETENT: 3, TOURNAMENT: 4 });
         const _NEUTRAL_NATURES_LIST = ['Hardy', 'Docile', 'Serious', 'Bashful', 'Quirky'];
+        // Nature → the stat it LOWERS (neutral natures omitted). Shared by the
+        // role-fighting guards: no build should carry a nature whose minus-stat is the
+        // species' primary attacking stat (a physical mon losing Atk, special losing SpA).
+        const _NATURE_MINUS_STAT = Object.freeze({
+            Adamant: 'spa', Jolly: 'spa', Brave: 'spe', Naughty: 'spd', Lonely: 'def',
+            Modest: 'atk', Timid: 'atk', Quiet: 'spe', Mild: 'def', Rash: 'spd',
+            Bold: 'atk', Impish: 'spa', Relaxed: 'spe', Lax: 'spd',
+            Calm: 'atk', Careful: 'spa', Sassy: 'spe', Gentle: 'def',
+        });
+        // True when a nature lowers the species' clearly-primary attacking stat. Walls
+        // legitimately drop their (unused) offense, so they never count as role-fighting.
+        function _natureFightsRole(base, nature) {
+            if (!base) return false;
+            const minus = _NATURE_MINUS_STAT[nature];
+            if (!minus) return false;
+            const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
+            const hp = base.hp | 0, def = base.def | 0, spd = base.spd | 0;
+            const offense = atk + spa + spe, defense = hp + def + spd;
+            if (defense > offense + 60 && atk + spa < 180) return false; // wall: dropping offense is fine
+            if (minus === 'atk' && atk > spa + 15 && atk >= 80) return true;
+            if (minus === 'spa' && spa > atk + 15 && spa >= 80) return true;
+            return false;
+        }
+        try { window._natureFightsRole = _natureFightsRole; } catch (e) {}
         // T1 / T2 item replacement pools — flavor berries and type-boost stones
         // (universally available in canon, no game-breaking effects). Empty
         // strings in the T1 pool yield "no item" so untrained route mons feel
@@ -46612,8 +46767,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Z-crystals) are left to the gimmick system, which is itself city-gated.
                 if (_foeItemTierCap < 3 && slot.build.i) {
                     const _it = slot.build.i;
-                    const _gimmickBound = (slot.build.gimmick && slot.build.gimmick !== 'STANDARD')
-                        || isMegaStone(_it) || (Z_TYPE_MAP_VALUES && Z_TYPE_MAP_VALUES.has(_it));
+                    // Only exempt a gimmick item when the mon actually has that gimmick
+                    // ACTIVE (gimmick distribution already ran — it is the inner call —
+                    // and enemies field no gimmicks until City 8, so every foe here is
+                    // STANDARD). A stray mega stone / Z-crystal from a CSV set on a
+                    // STANDARD mon is vestigial and leaks the item cap (Flyinium Z on a
+                    // C0 route mon), so it must be clamped like any over-tier item.
+                    const _gimmickBound = slot.build.gimmick && slot.build.gimmick !== 'STANDARD';
                     if (!_gimmickBound && _dojoItemTier(_it) > _foeItemTierCap) {
                         slot.build.i = '';
                     }
@@ -46660,6 +46820,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     if (_optM && _optM.length && rng() < _storyMoveOptChance(_foeCity, _diffStep)) {
                         slot.build.m = _optM.slice();
+                    }
+                }
+                // Final ability-legality guard (build-diversity: foes obey their
+                // available build components). Regional/battle formes carry the correct
+                // abilities in baseStats, but a CSV set can ship the BASE forme's
+                // ability (e.g. Vulpix-Alola → Drought, base Vulpix's hidden ability),
+                // which the opt-restore above would re-apply. If the resolved ability is
+                // not in THIS forme's list, fall back to its slot-0 ability so no foe
+                // ever fields an impossible ability. Runs for every foe (story + frontier).
+                {
+                    const _abs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                    if (_abs && _abs.abilities && slot.build && _isBuildAbilityIllegal(slot.name, slot.build.a)) {
+                        const _legal = _abs.abilities['0'] || _abs.abilities['1'] || _abs.abilities.H || '';
+                        if (_legal) slot.build.a = _legal;
+                    }
+                    // Role-fighting nature guard: never let a foe (incl. gym/champ aces)
+                    // carry a nature whose minus-stat is its primary attack — Exeggutor
+                    // Jolly (−SpA on a special attacker), Nidoking Timid (−Atk). Swap to
+                    // an archetype-appropriate nature (reuses the wild nature pool, which
+                    // is guaranteed role-coherent).
+                    if (_abs && slot.build && _natureFightsRole(_abs, slot.build.n)) {
+                        try { slot.build.n = _wildPickNature(_abs, rng); } catch (e) {}
+                    }
+                    // Pre-City-8 gimmick cleanup (Spec 1f + audit #1). Enemies field no
+                    // battle mechanics until City 8, but a CSV z-attack/mega set can slip
+                    // its gimmick past the forceGimmick:'STANDARD' request and arrive with
+                    // a ZMOVE/MEGA gimmick + a held Z-crystal / mega stone as early as C0.
+                    // Belt-and-suspenders: revert any pre-City-8 gimmick to STANDARD and
+                    // drop the now-purposeless stone so no route mon fields a Z-move.
+                    if (_foeCity >= 0 && _foeCity < 8 && slot.build && slot.build.gimmick && slot.build.gimmick !== 'STANDARD') {
+                        slot.build.gimmick = 'STANDARD';
+                        const _gi = slot.build.i || '';
+                        const _megaStone = (typeof isMegaStone === 'function') && isMegaStone(_gi);
+                        if (/ium Z$/.test(_gi) || /Z$/.test(_gi) || _megaStone || (typeof _dojoItemTier === 'function' && _dojoItemTier(_gi) > _foeItemTierCap)) {
+                            slot.build.i = '';
+                        }
                     }
                 }
             }
@@ -47201,6 +47397,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (let _i = 0; _i < teamR.length; _i++) if (_origSigsR.has(teamR[_i].name)) _lockedR.add(_i);
                 const _candR = [...T[1], ...T[2], ...T[3], ...T[4]];
                 enforceRoleCoverage(teamR, _lockedR);
+                enforceRoleSpread(teamR, _lockedR);
                 enforceTypeBalance(teamR, _candR, _lockedR);
                 enforceItemClause(teamR, _lockedR);
                 // End-game illegal-build injection (Rival post-G8 → 2 slots).
@@ -47417,6 +47614,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _cand = [];
             for (let g = _fillerCeiling; g <= 4; g++) _cand.push(...T[g]);
             enforceRoleCoverage(team, _locked);
+            enforceRoleSpread(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team, _locked);
             // End-game illegal-build injection (E1-E4 → 1; Champion → 2; Frontier → tiered).
@@ -47612,6 +47810,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     filterSigsByGradeCeiling: (...a) => _filterSigsByGradeCeiling(...a),
                     storySigGradeCeiling: (...a) => _storySigGradeCeiling(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
+                    // Wild build-diversity helpers (nature pool / EV shape) — test handles.
+                    wildNaturePool: (...a) => _wildNaturePool(...a),
+                    wildPickNature: (...a) => _wildPickNature(...a),
+                    wildPickEVs: (...a) => _wildPickEVs(...a),
                     // Wander Around (route-exit optional wild search) — test handles.
                     get WANDER_MAX_TAPS() { return WANDER_MAX_TAPS; },
                     get WANDER_BASE_RATE() { return WANDER_BASE_RATE; },
@@ -52901,7 +53103,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('train', makeActionBtn('🧬 ' + _npcStageName('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(EVOLVE_COST_BY_TARGET[3], '+')])));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
-                _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
+                const _evFull = (typeof _evTrainerIsFullMode === 'function') ? _evTrainerIsFullMode() : true;
+                _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(_evFull ? 5000 : EV_REDISTRIBUTE_COST)], { soft:true })));
             }
             if (actions.includes('Pokémon Fan Club') && _tutorTeam) {
                 const _fcGifted = !!sm.fanClubGiftClaimed;
@@ -57772,20 +57975,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // rankFill(names, monName) orders the backfill candidates (role-aware in Phase 4).
         // bpCapOverride (optional): a resolved cap (number or Infinity) to use instead of
         // the shared player cap — the foe gate passes its tighter foe ceiling here.
-        function _storyApplyMoveStageToBuild(build, monName, stage, rankFill, bpCapOverride) {
+        function _storyApplyMoveStageToBuild(build, monName, stage, rankFill, bpCapOverride, foeMode) {
             if (!build || !Array.isArray(build.m) || !build.m.length) return false;
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
             if (!learn) return false; // cache cold → leave as-is (offline-safe via the index)
-            // Staging (user model, Q2b overhaul): L1 Inner = Natural ≤ BP cap;
-            // L2 Unleashed = ALL Natural (cap lifts) PLUS Learnt STATUS moves — the
-            // mid-game "new builds" unlock (Toxic / Will-O-Wisp / hazards / screens)
-            // without raw-damage inflation; L3 Guru = no gate at all (early return
-            // above). Damaging Learnt moves still wait for Guru. Shared by player,
-            // trainers, wilds, and gifts — never add a player-only branch here.
-            const allowed = new Set(learn.natural || learn.tier1 || []);
-            if ((stage | 0) >= 1) {
-                for (const m of (learn.learnt || [])) { if (_storyIsStatusMoveName(m)) allowed.add(m); }
+            // Two staging models share this function via the `foeMode` flag (threaded
+            // from the caller — never hardcode a player-only branch here):
+            //
+            //  • PLAYER (wild / caught / gift), foeMode falsy — the catch-and-train gate:
+            //    L1 Inner = Natural ≤ BP cap; L2 Unleashed = all Natural (cap lifts) PLUS
+            //    Learnt STATUS moves; damaging Learnt (TM coverage) waits for the Move
+            //    Tutor / Guru. The player EARNS coverage — that headroom is the reward.
+            //
+            //  • FOE (trainers), foeMode truthy — "diverse early, power scales" (build-
+            //    diversity overhaul): the FULL LEGAL movepool is available at every
+            //    pre-Guru city, so coverage / setup / hazards / status all survive the
+            //    category gate and a foe reads as a real, role-coherent build instead of
+            //    4 basic STAB. Power stays curbed by the per-city BP cap below + the low
+            //    EV band, so early foes are CLEVERER, not HARDER. Off-legal "awakened"
+            //    CSV moves are still excluded (foes stay legal).
+            let allowed;
+            if (foeMode) {
+                allowed = new Set([...(learn.natural || []), ...(learn.learnt || [])]);
+                if (!allowed.size && Array.isArray(learn.all)) allowed = new Set(learn.all);
+            } else {
+                allowed = new Set(learn.natural || learn.tier1 || []);
+                if ((stage | 0) >= 1) {
+                    for (const m of (learn.learnt || [])) { if (_storyIsStatusMoveName(m)) allowed.add(m); }
+                }
             }
             if (!allowed.size) return false; // thin learnset → leave alone
             // Callers always pass a city-resolved cap via bpCapOverride; absent one,
@@ -57811,14 +58029,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!kept.length) {
                 // Degenerate: every original move was off-ceiling AND the bp-filtered
                 // backfill is empty — i.e. NO ≤cap move exists in the allowed pool (e.g.
-                // Beldum at stage 0, whose only Natural move is Take Down at 90 BP). Pick
-                // the LOWEST-BP allowed move so the unavoidable over-cap pick is the
-                // smallest one, not an arbitrary Set-order move.
+                // Beldum at stage 0, whose only Natural move is Take Down at 90 BP).
+                // Fill a FULL set from the LOWEST-BP allowed moves (not just one) so the
+                // mon isn't left with a single lonely move. These stay LEGAL rather than
+                // substituting an off-learnset Tackle — the battle-time BP clamp
+                // (_storyBattleBpCap) already caps their effective power to the city
+                // ceiling, so the unavoidable over-cap moves never actually over-hit.
                 const byBp = [...allowed].sort((a, b) => {
                     const ma = ensureMoveData(baseName(a)), mb = ensureMoveData(baseName(b));
                     return (((ma && ma.pow) | 0) - ((mb && mb.pow) | 0));
                 });
-                if (byBp.length) kept.push(byBp[0]);
+                for (const mv of byBp) { if (kept.length >= targetLen) break; kept.push(mv); }
             }
             build.m = kept;
             return true;
@@ -57845,7 +58066,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
-                _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker, foeBpCap);
+                _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker, foeBpCap, true);
             }
         }
         // Apply the per-city moveset pool filter to a SINGLE player-side build (wild
@@ -61699,7 +61920,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${btn(fico('tutor'),     'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
                     ${btn(fico('nature'),    'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
                     ${btn(fico('dojo'),      'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
-                    ${btn(fico('evtrainer'), 'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
+                    ${btn(fico('evtrainer'), 'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Reshuffle EVs (1,000G) — or buy full spreads at City 7.')}
                     ${btn(fico('colress'),   'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
                     ${btn(fico('evolab'),    'Evolution Tutor (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
                 </div>
@@ -62513,33 +62734,108 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  or 85/85 on HP + best defensive stat for bulky shells). Held item stays
          *  None so Battle Dojo is still a meaningful upgrade. ~70% battle-ready —
          *  Evolution Tutor / EV Trainer / Move Tutor still meaningfully sharpen them. */
-        function _wildPickNature(base) {
-            if (!base) return 'Hardy';
+        // Curated pool of *useful* natures for a species' stat identity. The first
+        // entry is the textbook pick (what the old deterministic fn returned); the
+        // rest are believable variants that keep the boost on a stat the species
+        // actually uses and drop a genuinely unused stat. Picking head-weighted from
+        // the pool is what turns "every wild Machop is Adamant" into a spread of
+        // partners without ever handing out a nature that fights the species' role.
+        // A fully-random LEGAL nature (all 25, incl. neutrals) — the "raw catch" slice of
+        // the wild nature blend. Uses the canonical natureModifiers table so it can never
+        // drift from the real nature set.
+        function _randomLegalNature(rng) {
+            const keys = (typeof natureModifiers === 'object' && natureModifiers) ? Object.keys(natureModifiers) : _NEUTRAL_NATURES_LIST;
+            const r = (typeof rng === 'function') ? rng : Math.random;
+            return keys[Math.floor(r() * keys.length)] || 'Hardy';
+        }
+        // Pools + head weights are user-owned balance knobs — tune here.
+        function _wildNaturePool(base) {
+            if (!base) return ['Hardy'];
             const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
             const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
             const offense = atk + spa + spe;
             const defense = hp + def + spd;
-            // Defensive shell with weak offense → favor a defensive +stat / −offense nature
+            // Defensive shell with weak offense → +defense natures. Boost the better
+            // defense and drop the UNUSED attacking stat — never the one carrying the
+            // wall's residual offense (a special-offense wall must not roll Impish/
+            // Careful and lose its only way to threaten). Speed-drop natures
+            // (Relaxed/Sassy) are always safe on a slow wall and fill the tail.
             if (defense > offense + 60 && atk + spa < 180) {
-                return def >= spd ? 'Bold' : 'Calm';
+                const dropSpa = atk >= spa;   // offense is physical (or tied) → SpA is the spare
+                const boostDef = def >= spd;
+                if (dropSpa) {
+                    return boostDef
+                        ? ['Impish', 'Careful', 'Relaxed', 'Sassy']   // +Def −SpA
+                        : ['Careful', 'Impish', 'Sassy', 'Relaxed'];  // +SpD −SpA
+                }
+                return boostDef
+                    ? ['Bold', 'Calm', 'Relaxed', 'Sassy']            // +Def −Atk
+                    : ['Calm', 'Bold', 'Sassy', 'Relaxed'];           // +SpD −Atk
             }
             const isFast = spe >= 80;
-            if (atk >= spa) return isFast ? 'Jolly' : 'Adamant';
-            return isFast ? 'Timid' : 'Modest';
+            if (atk >= spa) {
+                // Physical. Fast → speed-positive textbook; slow → power/bulk variants
+                // (Careful/Impish keep Atk while dropping the unused SpA and boosting a
+                // defense — the "bulky physical attacker" flavor).
+                return isFast
+                    ? ['Jolly', 'Adamant', 'Naughty', 'Lonely']
+                    : ['Adamant', 'Brave', 'Careful', 'Impish'];
+            }
+            return isFast
+                ? ['Timid', 'Modest', 'Rash', 'Mild']
+                : ['Modest', 'Quiet', 'Calm', 'Bold'];
         }
-        function _wildPickEVs(base) {
+        // Head-weighted pick from the species' curated nature pool. ~50% textbook,
+        // then a decaying tail so variants surface but the best-fit nature still
+        // dominates ("subtle" variety). Weights are user-owned. Uses the wild RNG
+        // (seeded when a story run is active) so replays reproduce.
+        const _WILD_NATURE_POOL_WEIGHTS = [0.5, 0.25, 0.15, 0.1];
+        function _wildPickNature(base, rng) {
+            const pool = _wildNaturePool(base);
+            const r = (typeof rng === 'function' ? rng : Math.random)();
+            let acc = 0;
+            for (let i = 0; i < pool.length; i++) {
+                acc += _WILD_NATURE_POOL_WEIGHTS[i] || 0;
+                if (r < acc) return pool[i];
+            }
+            return pool[0];
+        }
+        // Seed a wild EV *shape* (not magnitude — _distributeEVsToTotal rescales this
+        // to the city's EV band afterward, so only the ratios between stats matter,
+        // and the balance envelope is untouched). Reuses the shared archetype picker
+        // (_pickBattleEVStats) instead of re-deriving offense/defense, then adds two
+        // sources of variety so two wilds of a species no longer share an identical
+        // spread: (a) a jittered primary/secondary split, (b) an occasional small
+        // third-stat splash (bulk for attackers, the off-defense/HP for walls). Jitter
+        // range + splash chance/amount are user-owned "subtle" knobs.
+        function _wildPickEVs(base, rng) {
             const out = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
             if (!base) return out;
-            const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
-            const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
-            const offense = atk + spa + spe;
-            const defense = hp + def + spd;
-            if (defense > offense + 60 && atk + spa < 180) {
-                out.hp = 85;
-                out[def >= spd ? 'def' : 'spd'] = 85;
-            } else {
-                out[atk >= spa ? 'atk' : 'spa'] = 85;
-                out.spe = 85;
+            const r = (typeof rng === 'function' ? rng : Math.random);
+            const pair = _pickBattleEVStats(base); // [primary, secondary] per species identity
+            const primary = pair[0], secondary = pair[1];
+            // Split jitter: primary carries 46..64 of a ~100 unit shape, secondary the
+            // rest. Ratios only — magnitudes are normalized away by the distributor.
+            const heavy = 46 + Math.floor(r() * 19); // 46..64
+            out[primary] = heavy;
+            if (secondary && secondary !== primary) out[secondary] = 100 - heavy;
+            else out[primary] = 100;
+            // ~1-in-3: a small third-stat splash so some wilds read as "spread" rather
+            // than a clean two-stat build. Attackers splash bulk (HP, or the better
+            // defense if HP is already invested); walls splash the *other* defense or HP.
+            if (r() < 0.34) {
+                const atk = base.atk|0, spa = base.spa|0, spe = base.spe|0;
+                const hp = base.hp|0, def = base.def|0, spd = base.spd|0;
+                const offense = atk + spa + spe, defense = hp + def + spd;
+                const isWall = defense > offense + 60 && atk + spa < 180;
+                let third;
+                if (isWall) {
+                    // Wall already trains HP + one defense → splash the other defense.
+                    third = (out.def && !out.spd) ? 'spd' : (out.spd && !out.def) ? 'def' : 'hp';
+                } else {
+                    third = out.hp ? (def >= spd ? 'def' : 'spd') : 'hp';
+                }
+                if (third && !out[third]) out[third] = 22;
             }
             return out;
         }
@@ -62715,26 +63011,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             let _wCity = 0;
             try { _wCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
-            // Wild held item by city (sheet: None C0-3, Level-1 items C4-6, Level-2 C7).
-            // Keep the build's item but gate it by the city tier, mirroring the enemy-trainer
-            // item cap: below C4 wilds carry nothing; C4-6 keep up to a staple; C7 keep best.
-            const _wildItemCap = (_wCity <= 3) ? 0 : (_wCity <= 6 ? 2 : 3);
+            // Wild held item ramps by city so the onset is gradual instead of the hard
+            // C3→C4 nothing-to-staple cliff the audit found, and caps at staple tier
+            // below C7 (Expert Belt on a fresh mid-game catch is disproportionate):
+            // C0 none · C1-3 berries · C4-6 staples · C7 best.
+            const _wildItemCap = (_wCity <= 0) ? 0 : (_wCity <= 3 ? 1 : (_wCity <= 6 ? 2 : 3));
             if (!b.i || _wildItemCap === 0 || (typeof _dojoItemTier === 'function' && _dojoItemTier(b.i) > _wildItemCap)) {
                 b.i = 'None';
             }
             const _wRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            // Ability (Sheet 5 wild opt): slot-0 by default; a hidden ability only surfaces
-            // on late-route catches (C6+), and even then only sometimes — the wild "you
-            // grow it" philosophy applies to the ability slot too.
+            // Small berry chance from C1 (user model): a fresh catch occasionally arrives
+            // with a wild-appropriate berry rather than the abrupt nothing→staple jump —
+            // the low-stakes item tier the player would forage in the wild too. Seeded.
+            if (b.i === 'None' && _wCity >= 1 && _wCity <= 3 && _wRng() < 0.25) {
+                b.i = ['Sitrus Berry', 'Oran Berry', 'Lum Berry'][Math.floor(_wRng() * 3)];
+            }
+            // Ability (wild philosophy): random among the species' REGULAR ability slots
+            // (0 / 1) — a raw catch, not always the "best" slot-0. Both are legal and no
+            // regular ability is a power spike. A hidden ability still only surfaces on
+            // late-route catches (C6+), and even then only sometimes (the "you grow it"
+            // headroom). The player re-tunes via the Ability Capsule / Dojo loadout.
             if (base && base.abilities) {
-                if (_wCity >= 6 && base.abilities.H && _wRng() < 0.35) b.a = base.abilities.H;
-                else if (base.abilities['0']) b.a = base.abilities['0'];
+                if (_wCity >= 6 && base.abilities.H && _wRng() < 0.35) {
+                    b.a = base.abilities.H;
+                } else {
+                    const _regAbils = [base.abilities['0'], base.abilities['1']].filter(Boolean);
+                    if (_regAbils.length) b.a = _regAbils[Math.floor(_wRng() * _regAbils.length)];
+                }
             }
             // Nature: neutral on the very first routes (C0), curated-positive from C1.
-            b.n = (_wCity <= 0)
+            // Nature phases in over C0-C2 (audit #6) instead of a hard C0-neutral /
+            // C1-fully-positive cliff: the neutral chance ramps DOWN by city, so early
+            // routes are mostly-but-not-always neutral and curated-positive natures fade
+            // in gradually. C3+ is fully curated. Neutral-chance curve is user-owned.
+            // When NOT rolling the phased-neutral, blend curated + random (user model):
+            // ~70% a role-appropriate curated nature, ~30% a FULLY RANDOM legal nature.
+            // The random slice keeps the "raw catch worth optimizing" feel (re-tune via
+            // the Nature Rater) without the pure-random path handing out only-bad natures.
+            // Random-slice fraction is a user-owned knob.
+            const _wildNeutralChance = (_wCity <= 0) ? 0.75 : (_wCity === 1 ? 0.4 : (_wCity === 2 ? 0.15 : 0));
+            b.n = (_wRng() < _wildNeutralChance)
                 ? _NEUTRAL_NATURES_LIST[Math.floor(_wRng() * _NEUTRAL_NATURES_LIST.length)]
-                : _wildPickNature(base);
-            b.evs = _wildPickEVs(base);
+                : (_wRng() < 0.30 ? _randomLegalNature(_wRng) : _wildPickNature(base, _wRng));
+            b.evs = _wildPickEVs(base, _wRng);
             // City-curve EV total (Sheet 5, "match trainer curve"): scale the archetype
             // shape to the city's battle-trained EV level. IVs (the vitamin-trained axis)
             // use the separate "0..cap" band rolled below.
@@ -62752,6 +63071,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 if (typeof _storyDowngradeMovesForTier === 'function' && typeof STORY_BUILD_TIER !== 'undefined') {
                     _storyDowngradeMovesForTier(name, b, STORY_BUILD_TIER.UNTRAINED);
+                }
+            } catch (e) {}
+            // C1 (wild move variety): dual-typed wilds should visibly carry their
+            // SECOND type more often than the shared T1 downgrade's single 30% roll
+            // allows. If the downgraded set shows no secondary-type basic STAB, convert
+            // one primary-STAB slot to it ~40% of the time. Wild-only (post-pass here)
+            // so the shared trainer downgrade path is untouched; seeded via _wRng so
+            // replays reproduce. BP-cap safe — both moves are the same basic-STAB tier.
+            try {
+                const _t2 = base && base.t2;
+                const _secMove = _t2 && (typeof _T1_BASIC_STAB_BY_TYPE !== 'undefined') && _T1_BASIC_STAB_BY_TYPE[_t2];
+                if (_secMove && Array.isArray(b.m) && !b.m.includes(_secMove) && _wRng() < 0.40) {
+                    const _primMove = base.t1 && _T1_BASIC_STAB_BY_TYPE[base.t1];
+                    // Replace the LAST slot holding the primary basic STAB, so a
+                    // 2-primary set keeps one primary and a 1-primary set still swaps.
+                    for (let i = b.m.length - 1; i >= 0; i--) {
+                        if (b.m[i] === _primMove) { b.m[i] = _secMove; break; }
+                    }
                 }
             } catch (e) {}
             if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
@@ -74463,6 +74800,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── EV TRAINER ────────────────────────────────────────────────────
         const EVTRAINER_COST = 5000;
+        // Reshuffle (redistribute-only) mode — re-points a mon's EXISTING EV total into
+        // a new role shape without changing the total (net-zero). Cheap because it's
+        // re-tuning what you already trained, not injecting new EVs. User-owned knob.
+        const EV_REDISTRIBUTE_COST = 1000;
         const EV_PRESETS_UNIVERSAL = [
             { id:'none',  label:'No EVs',        evs:{ hp:0,  atk:0,  def:0,  spa:0,  spd:0,  spe:0  } },
             { id:'equal', label:'Equal Spread',  evs:{ hp:84, atk:84, def:84, spa:84, spd:84, spe:84 } },
@@ -74653,17 +74994,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return { id: 'meta_'+i, label, evs: m.evs };
             });
         }
-        function _evTrainerCharge() {
-            if (sm.gold < EVTRAINER_COST) {
+        function _evTrainerChargeAmount(amount) {
+            const cost = amount | 0;
+            if (sm.gold < cost) {
                 if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
-                    window.showGameAlert(`EV Trainer charges ${EVTRAINER_COST.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.`);
+                    window.showGameAlert(`That costs ${cost.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.`);
                 }
                 return false;
             }
-            sm.gold -= EVTRAINER_COST;
-            try { _storyTrackSpend(EVTRAINER_COST); } catch (e) {}
+            sm.gold -= cost;
+            try { _storyTrackSpend(cost); } catch (e) {}
             return true;
         }
+        function _evTrainerCharge() { return _evTrainerChargeAmount(EVTRAINER_COST); }
         function _evTrainerFinish() {
             try { save(); } catch (e) {}
             // Stat-up arrow chime — the rolled spread just landed on the mon.
@@ -75150,7 +75493,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Universal / Role / Meta cards all show the star consistently.
         // `pct` (optional) renders the muted "%" badge next to the title so
         // players can tell the meta-#1 spread from the meta-#5.
-        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended, pct) {
+        // Full mode (buy any preset outright, 5000G) unlocks at the EV Trainer's real
+        // debut (Colress, C7) and post-HoF / Frontier. Before that the facility is
+        // reshuffle-only: you can RE-POINT EVs you already trained (net-zero, 1000G) but
+        // not buy a maxed spread — so early access can't shortcut the training economy.
+        function _evTrainerIsFullMode() {
+            if (sm && sm.frontier && sm.frontier.active) return true;
+            if (((sm && sm.badges) | 0) >= 8) return true;
+            let c = -1; try { c = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            return c >= 7;
+        }
+        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended, pct, fullMode) {
             const isCurrent = _evsEqual(currentEvs, p.evs);
             const hasVitamin = ((sm.inventory && sm.inventory.vitamin) | 0) > 0;
             const safeId = String(p.id).replace(/'/g, "\\'");
@@ -75161,15 +75514,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Applied</span>` : '',
                 `<span class="tx-pill">${total} EVs</span>`,
             ].filter(Boolean).join('');
-            const vitaBtn = (hasVitamin && !vitaDisabled)
+            const vitaBtn = (fullMode && hasVitamin && !vitaDisabled)
                 ? `<button type="button" class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 EV Voucher (you have ${vitaCount}) — free preset" style="color:#f8bbd0;border-color:#f8bbd0;font-size:10px;padding:3px 6px;">
                     <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Voucher (${vitaCount})
                 </button>`
                 : '';
             const goldDisabled = cantAfford || isCurrent;
-            const gButton = isCurrent
+            // Full "buy this spread" (overwrite) + voucher path only in full mode (C7+).
+            // Early cities are reshuffle-only (the rButton below).
+            const gButton = !fullMode ? '' : (isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
-                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
+                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`);
+            // Reshuffle (redistribute-only): re-point the mon's CURRENT total into this
+            // shape for a fraction of the cost — no new EVs, just re-tuning what's
+            // already trained. Hidden for the 'none' shape and when the mon has 0 EVs.
+            const curTotalR = (typeof _evTotal === 'function') ? _evTotal(currentEvs) : 0;
+            const canReshuffle = !isCurrent && curTotalR > 0 && total > 0;
+            const rButton = canReshuffle
+                ? `<button type="button" class="story-tutor-btn" ${(sm.gold < EV_REDISTRIBUTE_COST)?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerRedistribute(${idx},'${safeId}')" style="font-size:10px;padding:4px 7px;color:#90caf9;border-color:#90caf9;" title="Reshuffle your current ${curTotalR} EVs into this shape — same total, no new EVs">↔ ${storyGoldHtml(EV_REDISTRIBUTE_COST, false)}</button>`
+                : '';
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
                 ? `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
@@ -75179,7 +75542,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${star}<span class="tx-card-title">${_esc(p.label)}</span>${pctHtml}
                 </div>
                 ${_evTrainerStatBarsHtml(p.evs, null)}
-                <div class="tx-card-foot">${pills}<span style="flex:1;"></span>${gButton} ${vitaBtn}</div>
+                <div class="tx-card-foot">${pills}<span style="flex:1;"></span>${rButton} ${gButton} ${vitaBtn}</div>
             </div>`;
         }
 
@@ -75200,7 +75563,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
+            const evFull = _evTrainerIsFullMode();
+            const headerCostChip = evFull
+                ? `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`
+                : `<span class="story-action-badge cost" title="Reshuffle re-points EVs you've already trained — same total, no new EVs. Buying full spreads unlocks at City 7.">↔ ${EV_REDISTRIBUTE_COST.toLocaleString()}G reshuffle</span>`;
 
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
                 ${storyMonTileMain({
@@ -75244,7 +75610,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const dedupedMeta = dedup(meta);
 
             const renderRow = (presets) => presets.map(p =>
-                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p), pctForPreset(p))
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p), pctForPreset(p), evFull)
             ).join('');
             const renderRecRow = (presets) => presets.map(p =>
                 _evTrainerRenderPresetCard(idx, p, cur, cantAfford, true, pctForPreset(p))
@@ -75304,6 +75670,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ok) return;
                 if (!_evTrainerCharge()) return;
                 mon.build.evs = { ...preset.evs };
+                _evTrainerFinish();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        // Reshuffle (redistribute-only): re-point a mon's EXISTING EV total into the
+        // chosen preset's SHAPE without changing the total (net-zero). Reuses
+        // _distributeEVsToTotal to rescale the preset shape to the mon's current total
+        // (<=252/stat, /4-legal, reconciled to hit the exact total). Costs
+        // EV_REDISTRIBUTE_COST — the early, cheap "re-tune what you trained" option, vs
+        // the full overwrite above. No-op (and no charge) when the mon has 0 EVs.
+        async function evTrainerRedistribute(idx, presetId) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[idx];
+                if (!mon || !mon.build) return;
+                const curTotal = _evTotal(mon.build.evs || {});
+                if (curTotal <= 0) {
+                    if (window.showGameAlert) window.showGameAlert(`${mon.name} has no EVs to reshuffle yet — win battles to train some first.`);
+                    return;
+                }
+                const meta = _evTrainerMetaCache[idx] || [];
+                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const preset = all.find(p => p.id === presetId);
+                if (!preset || _evTotal(preset.evs) <= 0) return; // no shape to reshuffle into
+                const base = (typeof baseStats === 'object') ? (baseStats[mon.name] || {}) : {};
+                const probe = { evs: { ...preset.evs } };
+                try { _distributeEVsToTotal(probe, base, curTotal); } catch (e) { return; }
+                if (_evsEqual(mon.build.evs || {}, probe.evs)) return; // already this shape
+                if ((sm.gold | 0) < EV_REDISTRIBUTE_COST) {
+                    if (window.showGameAlert) window.showGameAlert(`Reshuffle costs ${EV_REDISTRIBUTE_COST.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.`);
+                    return;
+                }
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(probe.evs) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Reshuffle ${mon.name}'s ${curTotal} EVs into a "${preset.label}" shape? Same total, new spread.\n→ ${spreadLabel}`, EV_REDISTRIBUTE_COST);
+                if (!ok) return;
+                if (!_evTrainerChargeAmount(EV_REDISTRIBUTE_COST)) return;
+                mon.build.evs = { ...probe.evs };
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
@@ -75421,7 +75826,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterTutor, enterMentor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
-            enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
+            enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin, evTrainerRedistribute,
             enterFanClub, renderFanClubRoster,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryFirstEncounter, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock, devStoryJump,
