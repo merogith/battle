@@ -2974,6 +2974,15 @@
             animation: storyBadgePulse 1.2s ease-in-out infinite;
         }
         @keyframes storyBadgePulse { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.04); filter: brightness(1.08); } }
+        /* Original badge SVG seated inside the gold victory medallion ring. */
+        .story-victory-v2-medallion .gym-badge-svg { width: 60px; height: 60px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45)); }
+        /* Journal badge case — a row of eight slots, earned filled, rest dim. */
+        .story-badge-case { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin: 8px 0 6px; max-width: 340px; }
+        @media (max-width: 460px) { .story-badge-case { grid-template-columns: repeat(4, 1fr); max-width: 200px; } }
+        .story-badge-cell { aspect-ratio: 1 / 1; padding: 5px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; transition: transform var(--dur-med) var(--ease-out-quart), box-shadow var(--dur-med) var(--ease-out-quart); }
+        .story-badge-cell.is-earned { border-color: rgba(255,255,255,0.28); box-shadow: 0 0 10px rgba(255,255,255,0.08), inset 0 0 12px rgba(255,255,255,0.05); }
+        .story-badge-cell.is-earned:hover { transform: translateY(-2px) scale(1.06); }
+        .story-badge-case-count { font-size: 11px; color: var(--text-muted); margin: 0; }
         .story-hof-plaque {
             border: 3px solid rgba(255,213,79,0.5); border-radius: 12px;
             background: linear-gradient(180deg, rgba(40,32,20,0.95) 0%, rgba(15,12,8,0.98) 100%);
@@ -40486,6 +40495,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Canonical badge name per gym leader (used in the victory overlay flavor line).
         // Falls back to "Gym Badge" for any leader not mapped here.
+        // Gym-badge medallions — original geometric silhouettes (not reproductions of any
+        // existing badge art). Eight distinct shapes + an original accent palette, keyed by
+        // badge index 0..7. Rendered inline as SVG so they scale crisply and theme via fill.
+        // Used by the victory medallion and the journal "badge case".
+        const _GYM_BADGE_DEFS = [
+            { c: '#9aa4ad', s: 'poly', p: '24,4 38,10 44,24 38,38 24,44 10,38 4,24 10,10' },                                   // octagon
+            { c: '#4f9de8', s: 'drop' },                                                                                       // droplet
+            { c: '#f0b429', s: 'poly', p: '24,3 45,24 24,45 3,24' },                                                           // diamond
+            { c: '#5bbf6a', s: 'poly', p: '24,4 44,19 36,43 12,43 4,19' },                                                     // pentagon
+            { c: '#d072c8', s: 'poly', p: '12,6 36,6 46,24 36,42 12,42 2,24' },                                                // hexagon
+            { c: '#b98be0', s: 'poly', p: '24,3 28.5,16.2 42.2,13.5 33,24 42.2,34.5 28.5,31.8 24,45 19.5,31.8 5.8,34.5 15,24 5.8,13.5 19.5,16.2' }, // 6-point star
+            { c: '#e8623f', s: 'shield' },                                                                                     // shield
+            { c: '#35c0b0', s: 'poly', p: '24,3 29.7,18.3 45,24 29.7,29.7 24,45 18.3,29.7 3,24 18.3,18.3' },                   // 4-point star
+        ];
+        function _gymBadgeShapeMarkup(def, fill, stroke) {
+            if (def.s === 'drop') return `<path d="M24 4 C33 15 40 22 40 30 a16 16 0 1 1 -32 0 C8 22 15 15 24 4 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+            if (def.s === 'shield') return `<path d="M24 3 L42 9 V25 C42 36 34 43 24 46 C14 43 6 36 6 25 V9 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+            return `<polygon points="${def.p}" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+        }
+        // Inline SVG for badge index `i` (0..7). earned=false renders a dim, un-won slot.
+        function _gymBadgeSvg(i, earned) {
+            const def = _GYM_BADGE_DEFS[((i % 8) + 8) % 8];
+            const fill = earned ? def.c : '#2b3038';
+            const stroke = earned ? 'rgba(255,255,255,0.55)' : '#454c57';
+            const shine = earned ? '<circle cx="21" cy="19" r="4.5" fill="rgba(255,255,255,0.6)"/>' : '';
+            return `<svg class="gym-badge-svg" viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true" style="display:block;${earned ? '' : 'opacity:0.55;'}">`
+                 + _gymBadgeShapeMarkup(def, fill, stroke) + shine + `</svg>`;
+        }
+
         const LEADER_BADGE_NAMES = {
             'Brock':'Boulder Badge','Misty':'Cascade Badge','Lt. Surge':'Thunder Badge','Erika':'Rainbow Badge',
             'Koga':'Soul Badge','Sabrina':'Marsh Badge','Blaine':'Volcano Badge','Giovanni':'Earth Badge',
@@ -43033,7 +43071,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm) return '';
             const esc = (s) => _esc(String(s == null ? '' : s));
             let h = '';
-            h += '<div class="story-journal-section"><h3>🏅 Badges</h3><p>' + (sm.badges | 0) + ' / 8 earned.</p></div>';
+            let _badgeCells = '';
+            for (let _bi = 0; _bi < 8; _bi++) {
+                const _earned = _bi < (sm.badges | 0);
+                _badgeCells += '<div class="story-badge-cell' + (_earned ? ' is-earned' : '') + '" title="Badge ' + (_bi + 1) + (_earned ? ' — earned' : ' — locked') + '">' + _gymBadgeSvg(_bi, _earned) + '</div>';
+            }
+            h += '<div class="story-journal-section"><h3>Badges</h3><div class="story-badge-case" role="img" aria-label="' + (sm.badges | 0) + ' of 8 gym badges earned">' + _badgeCells + '</div><p class="story-badge-case-count">' + (sm.badges | 0) + ' / 8 earned.</p></div>';
             const fired = sm.storyEventsFired || {};
             // Renders one story track from a resolved beats map (works for the flat
             // MAIN_STORY_BEATS and the per-track VILLAIN_/EXTRA_STORY_BEATS[id]).
@@ -60903,7 +60946,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
                 <div class="story-victory-v2-card">
                     <div class="story-victory-v2-head">
-                        ${gotBadge ? '<div class="story-victory-badge-slot story-victory-v2-medallion" title="Milestone">🏅</div>' : ''}
+                        ${gotBadge ? `<div class="story-victory-badge-slot story-victory-v2-medallion" title="${isGymBadgeEvent ? _badgeName : 'Milestone'}">${isGymBadgeEvent ? _gymBadgeSvg((sm.badges | 0) - 1, true) : '🏅'}</div>` : ''}
                         <div class="story-victory-v2-title">VICTORY!</div>
                         ${_firstClearBanner}
                         ${isGymBadgeEvent?`<div class="story-victory-v2-milestone">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div class="story-victory-v2-milestone">A milestone falls.</div>`:'')}
