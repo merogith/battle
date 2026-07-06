@@ -71704,7 +71704,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // thin. The reason rides in the tap-tooltip so touch users get it too.
             const compet = _txCompetitiveTag(moveName);
             const competPill = compet
-                ? `<span class="tx-pill tx-pill--suitable tx-tapinfo" title="${_esc(compet.note || 'A competitively strong utility move.')}">★ Suitable</span>`
+                ? `<span class="tx-pill tx-pill--suitable tx-tapinfo" role="note" aria-label="Suitable — ${_esc(compet.note || 'a competitively strong utility move')}" title="${_esc(compet.note || 'A competitively strong utility move.')}">★ Suitable</span>`
                 : '';
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
@@ -73439,9 +73439,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const hsUsed = Math.min(sel.heartScale | 0, hsMax);
                 const moves = plan.moveSteps.map(s => _esc(s.move)).join(', ');
                 const stepper = hsOwned > 0
-                    ? `<span class="tx-fb-vouch"><button type="button" class="tx-fb-step" data-fb-hs="-1"${hsUsed <= 0 ? ' disabled' : ''}>−</button>`
-                        + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest move">${hsUsed}/${hsMax} 💗</span>`
-                        + `<button type="button" class="tx-fb-step" data-fb-hs="1"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
+                    ? `<span class="tx-fb-vouch" role="group" aria-label="Heart Scales to spend"><button type="button" class="tx-fb-step" data-fb-hs="-1" aria-label="Spend one fewer Heart Scale"${hsUsed <= 0 ? ' disabled' : ''}>−</button>`
+                        + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest move" aria-live="polite" aria-label="${hsUsed} of ${hsMax} Heart Scales spent">${hsUsed}/${hsMax} 💗</span>`
+                        + `<button type="button" class="tx-fb-step" data-fb-hs="1" aria-label="Spend one more Heart Scale"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
                     : '';
                 rows.push(_txFbRow('Moves', `${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}: ${moves}`, plan.moveTotal, stepper));
             }
@@ -73451,7 +73451,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const owned = v ? _txVoucherCount(v.key) : 0;
                 const checked = !!(v && sel[v.key]);
                 const vouch = (v && owned > 0)
-                    ? `<span class="tx-fb-vouch"><input type="checkbox" class="tx-fb-check" data-fb-vouch="${v.key}"${checked ? ' checked' : ''}> <span class="tx-fb-vlabel">${_esc(v.label)} (${owned})</span></span>`
+                    ? `<label class="tx-fb-vouch"><input type="checkbox" class="tx-fb-check" data-fb-vouch="${v.key}"${checked ? ' checked' : ''}> <span class="tx-fb-vlabel">Use ${_esc(v.label)} (${owned})</span></label>`
                     : '';
                 rows.push(_txFbRow(p.label, `${_esc(p.from)} → ${_esc(p.to)}`, p.cost, vouch, checked && owned > 0));
             }
@@ -73462,7 +73462,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const afford = (sm.gold | 0) >= quote.gold;
             const applyBtn = `<button type="button" class="tx-fb-apply" data-fastbuild-apply="${idx}"${afford ? '' : ' disabled'}>${afford ? `⚡ Apply best set — ${quote.gold.toLocaleString()}G` : `Need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more`}</button>`;
             const cancelBtn = `<button type="button" class="tx-fb-cancel" data-fastbuild-cancel="1">Cancel</button>`;
-            return `<div class="tx-fastbuild-panel"><div class="tx-fb-head">⚡ Auto-Build — best set for <strong>${_esc(plan.name)}</strong></div>`
+            return `<div class="tx-fastbuild-panel" role="group" aria-label="Auto-Build best set for ${_esc(plan.name)}"><div class="tx-fb-head">⚡ Auto-Build — best set for <strong>${_esc(plan.name)}</strong></div>`
                 + `${rows.join('')}${totalRow}<div class="tx-fb-actions">${applyBtn}${cancelBtn}</div></div>`;
         }
         // The bar on the open mon's editor: the Auto-Build button, or the expanded panel.
