@@ -65,6 +65,14 @@ test('Battle Options prefs now survive a reload (weather/terrain/party/grades/ge
     }
     // draftGens is null until the pool count runs, but the key must be serialized.
     assert.ok('draftGens' in raw, 'draftGens key is persisted');
+    // classicMode (once-per-battle gimmicks) now persists for Quick/Gauntlet too.
+    assert.ok('classicMode' in raw, 'classicMode is persisted');
+});
+
+test('Battle Options panel exposes a live re-sync entry point', () => {
+    assert.equal(typeof W.syncBattleOptionsFromSettings, 'function',
+        'syncBattleOptionsFromSettings is callable (repaints the panel from settings)');
+    assert.doesNotThrow(() => W.syncBattleOptionsFromSettings(), 're-sync is safe to call');
 });
 
 test('dead audioBus setting is no longer persisted', () => {

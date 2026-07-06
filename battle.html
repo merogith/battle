@@ -8037,6 +8037,11 @@
             border-top: 1px solid #333;
         }
         .settings-section-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+        /* Section body: single column on phones, two columns on desktop/wide so the
+           650px sheet in the fixed game frame uses its width instead of one long scroll. */
+        .settings-grid { display: grid; grid-template-columns: 1fr; column-gap: 22px; }
+        body:not(.is-mobile) .settings-grid { grid-template-columns: 1fr 1fr; }
+        body:not(.is-mobile) .settings-grid > .settings-row { margin-bottom: 10px; }
         .settings-row {
             display: flex;
             align-items: center;
@@ -9462,6 +9467,43 @@
                 try { inBattle = !!(window.state && window.state.mode && !window.state.isOver); } catch (e) {}
                 if (!inBattle) location.reload();
             });
+            // The SW's background shell-revalidation found newer app code on the server
+            // (a redeploy). Offer a one-tap reload — deferred out of an active battle so a
+            // mis-tap can't nuke unsaved match progress.
+            function _inBattleNow() {
+                try { return !!(window.state && window.state.mode && !window.state.isOver); } catch (e) { return false; }
+            }
+            window.__maybeShowShellUpdate = function () {
+                if (!window.__shellUpdatePending || window.__shellUpdateShown) return;
+                if (_inBattleNow()) return;            // retried when the player returns to a menu
+                window.__shellUpdateShown = true;
+                if (document.getElementById('app-update-banner')) return;
+                var bar = document.createElement('div');
+                bar.id = 'app-update-banner';
+                bar.setAttribute('role', 'status');
+                bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:10px;background:#12241b;border:1px solid var(--hp-green,#7ad17a);box-shadow:0 6px 24px rgba(0,0,0,0.5);font-size:13px;color:#e8f5e9;';
+                var txt = document.createElement('span');
+                txt.textContent = 'A new version is available.';
+                var reload = document.createElement('button');
+                reload.type = 'button';
+                reload.textContent = 'Reload';
+                reload.style.cssText = 'min-height:36px;padding:6px 14px;border-radius:6px;border:1px solid var(--hp-green,#7ad17a);background:var(--hp-green,#7ad17a);color:#06120b;font-weight:bold;cursor:pointer;';
+                reload.onclick = function () { location.reload(); };
+                var dismiss = document.createElement('button');
+                dismiss.type = 'button';
+                dismiss.setAttribute('aria-label', 'Dismiss update notice');
+                dismiss.textContent = '✕';
+                dismiss.style.cssText = 'min-height:36px;min-width:36px;padding:0 8px;border-radius:6px;border:1px solid #3a3a3a;background:transparent;color:#9aa;cursor:pointer;';
+                dismiss.onclick = function () { try { bar.remove(); } catch (e) {} };
+                bar.appendChild(txt); bar.appendChild(reload); bar.appendChild(dismiss);
+                document.body.appendChild(bar);
+            };
+            navigator.serviceWorker.addEventListener('message', function (ev) {
+                var d = (ev && ev.data) || {};
+                if (d.type !== 'SHELL_UPDATED') return;
+                window.__shellUpdatePending = true;
+                window.__maybeShowShellUpdate();
+            });
         }
     </script>
     <script>
@@ -9581,6 +9623,9 @@
                 <label><input type="checkbox" id="mech-dyna-cb" checked onchange="window.updateMechanics()"><span style="color:#ef5350;">Dyna</span></label>
                 <label><input type="checkbox" id="mech-tera-cb" checked onchange="window.updateMechanics()"><span style="color:#4dd0e1;">Tera</span></label>
             </div>
+            <div class="menu-filter-row" style="margin-top:10px;">
+                <label title="On: each gimmick (Mega / Z / Dynamax / Tera) may be used only once per battle, like the main games. Off: unlimited."><input type="checkbox" id="mech-classic-cb" checked onchange="window.updateMechanics()"><span style="color:#b0bec5;">&#9878; Classic (once per battle)</span></label>
+            </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
                 <span style="color:#aaa;">Party:</span>
                 <select id="party-size-select" class="menu-select" onchange="window.updateMechanics()">
@@ -9670,6 +9715,7 @@
                 <button type="button" class="modal-close-x" onclick="window.closeModal('modal-settings')" title="Close" aria-label="Close settings">×</button>
             </div>
             <div class="settings-section-title">Visuals</div>
+            <div class="settings-grid">
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="How fast battle text and pauses play out. Fast halves every pause; Instant skips them.">
                 <span>Battle speed</span>
@@ -9698,7 +9744,9 @@
                     <option value="desktop">Desktop</option>
                 </select>
             </div>
+            </div><!-- /.settings-grid Visuals -->
             <div class="settings-section-title">Audio</div>
+            <div class="settings-grid">
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music volume</span>
@@ -9711,7 +9759,9 @@
                 <input type="range" id="sound-vol-slider" aria-label="Sound effects volume" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
             </div>
+            </div><!-- /.settings-grid Audio -->
             <div class="settings-section-title">Gameplay</div>
+            <div class="settings-grid">
             <div class="settings-row" style="border-bottom:1px solid #444;">
                 <span>vs AI style</span>
                 <select id="setting-ai-profile" aria-label="vs AI style" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
@@ -9728,6 +9778,7 @@
                 <span>Fullscreen</span>
                 <button type="button" id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green); min-height:40px; padding:6px 14px;">ENTER</button>
             </div>
+            </div><!-- /.settings-grid Gameplay -->
             <div class="settings-section-title">App &amp; data</div>
             <div class="settings-row" id="install-app-row" style="display:none;">
                 <span>Install app</span>
@@ -13412,6 +13463,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.randomWeather === 'boolean') settings.randomWeather = _pbs.randomWeather;
             if (typeof _pbs.randomTerrain === 'boolean') settings.randomTerrain = _pbs.randomTerrain;
             if (typeof _pbs.partySize === 'number' && _pbs.partySize >= 1 && _pbs.partySize <= 6) settings.partySize = _pbs.partySize;
+            if (typeof _pbs.classicMode === 'boolean') settings.classicMode = _pbs.classicMode;
             if (Array.isArray(_pbs.draftGrades) && _pbs.draftGrades.length) settings.draftGrades = _pbs.draftGrades.filter((g) => g >= 1 && g <= 4);
             if (Array.isArray(_pbs.draftGens) && _pbs.draftGens.length) settings.draftGens = _pbs.draftGens.filter((g) => g >= 1 && g <= 9);
             if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
@@ -13449,6 +13501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Battle Options panel prefs (now survive a reload).
                     randomWeather: settings.randomWeather,
                     randomTerrain: settings.randomTerrain,
+                    classicMode: settings.classicMode,
                     partySize: settings.partySize,
                     draftGrades: settings.draftGrades,
                     draftGens: settings.draftGens,
@@ -18759,6 +18812,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mzCb = document.getElementById('mech-z-cb');      if (mzCb) settings.mechanics.zmove   = mzCb.checked;
             const mdCb = document.getElementById('mech-dyna-cb');   if (mdCb) settings.mechanics.dynamax = mdCb.checked;
             const mtCb = document.getElementById('mech-tera-cb');   if (mtCb) settings.mechanics.tera    = mtCb.checked;
+            const cmCb = document.getElementById('mech-classic-cb'); if (cmCb) settings.classicMode = cmCb.checked;
             settings.partySize         = parseInt(document.getElementById('party-size-select')?.value) || 3;
             persistMiscSettings();
             try { window.updatePoolCount && window.updatePoolCount(); } catch (e) {}
@@ -18777,8 +18831,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const a = document.getElementById('setting-ai-profile'); if (a) a.value = settings.aiProfile;
             const b = document.getElementById('menu-ai-profile');    if (b) b.value = settings.aiProfile;
         };
-        // Restore Battle Options controls from persisted settings
-        (function() {
+        // Repaint every Battle Options control from the LIVE settings. Runs once at boot
+        // (restore from pbs_settings) and again each time the home menu is shown — the
+        // latter re-syncs the checkboxes after a Story run has forced settings.mechanics /
+        // classicMode, so the panel never lies about the rules the next Quick/Gauntlet uses.
+        window.syncBattleOptionsFromSettings = function() {
             const cb = document.getElementById('smart-draft-cb');
             if (cb) cb.checked = settings.smartDraftPool !== false;
             const gs = document.getElementById('gauntlet-scaling-cb');
@@ -18787,16 +18844,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mz = document.getElementById('mech-z-cb');     if (mz) mz.checked = settings.mechanics.zmove !== false;
             const md = document.getElementById('mech-dyna-cb');  if (md) md.checked = settings.mechanics.dynamax !== false;
             const mt = document.getElementById('mech-tera-cb');  if (mt) mt.checked = settings.mechanics.tera !== false;
+            const cm = document.getElementById('mech-classic-cb'); if (cm) cm.checked = settings.classicMode !== false;
             const ts = document.getElementById('quick-team-source'); if (ts) ts.value = settings.quickTeamSource || 'random';
             const ap = document.getElementById('menu-ai-profile');   if (ap) ap.value = settings.aiProfile || 'balanced';
             const ps = document.getElementById('party-size-select'); if (ps && settings.partySize) ps.value = String(settings.partySize);
-            // Weather / terrain / grades / gens now persist too — restore their checkboxes
+            // Weather / terrain / grades / gens persist too — restore their checkboxes
             // so a returning player's pool + rules aren't silently reset every reload.
             const wc = document.getElementById('mech-weather-cb'); if (wc) wc.checked = !!settings.randomWeather;
             const tc = document.getElementById('mech-terrain-cb'); if (tc) tc.checked = !!settings.randomTerrain;
             for (let g = 1; g <= 4; g++) { const gc = document.getElementById(`grade-${g}-cb`); if (gc) gc.checked = !Array.isArray(settings.draftGrades) || settings.draftGrades.includes(g); }
             if (Array.isArray(settings.draftGens) && settings.draftGens.length) { try { setGenCheckboxesPrefix('draft', settings.draftGens); } catch (e) {} }
-        })();
+        };
+        window.syncBattleOptionsFromSettings();
 
         // Run once after data loads
         document.addEventListener('DOMContentLoaded', () => { if (typeof baseStats !== 'undefined') window.updatePoolCount(); });
@@ -19130,9 +19189,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { localStorage.setItem('pbs_battle_preset', name); } catch (e) {}
             if (custom) return; // custom = whatever the controls currently say
             const P = {
-                casual:      { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: false, weather: false, party: '3' },
-                standard:    { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: true,  weather: false, party: '3' },
-                competitive: { teams: 'draft',  bot: 'stall',    gens: [1,2,3,4,5,6,7,8,9],     gimmicks: true,  weather: true,  party: '6' },
+                casual:      { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: false, weather: false, classic: true, party: '3' },
+                standard:    { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: true,  weather: false, classic: true, party: '3' },
+                competitive: { teams: 'draft',  bot: 'stall',    gens: [1,2,3,4,5,6,7,8,9],     gimmicks: true,  weather: true,  classic: true, party: '6' },
             }[name];
             if (!P) return;
             const ts = byId('quick-team-source'); if (ts) ts.value = P.teams;
@@ -19141,6 +19200,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ['grade-1-cb', 'grade-2-cb', 'grade-3-cb', 'grade-4-cb'].forEach(id => setCb(id, true));
             setCb('mech-mega-cb', P.gimmicks); setCb('mech-z-cb', P.gimmicks);
             setCb('mech-dyna-cb', P.gimmicks); setCb('mech-tera-cb', P.gimmicks);
+            setCb('mech-classic-cb', P.classic);
             setCb('mech-weather-cb', P.weather); setCb('mech-terrain-cb', P.weather);
             setCb('smart-draft-cb', true); setCb('gauntlet-scaling-cb', true);
             const ps = byId('party-size-select'); if (ps) ps.value = P.party;
@@ -67927,6 +67987,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('hidden');
+                // Returning to the home menu → repaint Battle Options from the live settings,
+                // so gimmick/weather/classic checkboxes reflect what the next match will use
+                // (a Story run may have changed settings.mechanics / classicMode meanwhile).
+                if (id === 'screen-menu') {
+                    try { window.syncBattleOptionsFromSettings && window.syncBattleOptionsFromSettings(); } catch (e) {}
+                    try { window.__maybeShowShellUpdate && window.__maybeShowShellUpdate(); } catch (e) {}
+                }
                 // One short fade-in on the newly shown screen (auto-cleared on animationend
                 // so the class never lingers; guarded so child animations don't trip it).
                 if (_screenFadeEnabled()) {
@@ -67978,6 +68045,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // "Back" button → return to main menu
                 document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                 document.getElementById('screen-menu').classList.remove('hidden');
+                try { window.syncBattleOptionsFromSettings && window.syncBattleOptionsFromSettings(); } catch (e) {}
                 try { window.refreshHomeHero && window.refreshHomeHero(); } catch (e) {}
                 return;
             }

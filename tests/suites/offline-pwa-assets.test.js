@@ -139,6 +139,27 @@ test('settings modal is labelled and the ambient-particles toggle is wired', () 
   assert.ok(/applySettingSwitch\('ambientParticles'/.test(HTML), 'toggle wired to applySettingSwitch');
 });
 
+test('app self-updates like an installed app (SW revalidates the shell + page prompts reload)', () => {
+  const sw = read('sw.js');
+  assert.ok(/function revalidateShell/.test(sw), 'SW background shell revalidation exists');
+  assert.ok(sw.includes("cache: 'no-store'"), 'revalidation uses a conditional (no-store) request');
+  assert.ok(/If-None-Match/.test(sw), 'conditional request sends the cached ETag (304 fast path)');
+  assert.ok(/postMessage\(\{ type: 'SHELL_UPDATED' \}\)/.test(sw), 'SW notifies pages when the shell changed');
+  // The page listens and offers a deferred, non-blocking reload (never mid-battle).
+  assert.ok(/d\.type !== 'SHELL_UPDATED'/.test(HTML), 'page handles SHELL_UPDATED');
+  assert.ok(/window\.__maybeShowShellUpdate/.test(HTML), 'reload prompt is gated through __maybeShowShellUpdate');
+  assert.ok(/_inBattleNow\(\)\)\s*return/.test(HTML), 'prompt is suppressed during an active battle');
+  assert.ok(HTML.includes("id = 'app-update-banner'"), 'the reload banner is created');
+});
+
+test('Battle Options: Classic (once-per-battle) toggle is wired + panel re-syncs from live settings', () => {
+  assert.ok(HTML.includes('id="mech-classic-cb"'), 'classic-mode checkbox present');
+  assert.ok(/settings\.classicMode = cmCb\.checked/.test(HTML), 'updateMechanics writes settings.classicMode');
+  assert.ok(/window\.syncBattleOptionsFromSettings = function/.test(HTML), 'panel re-sync fn defined');
+  // The menu chokepoint repaints the panel so a Story run cannot leave it stale.
+  assert.ok(/id === 'screen-menu'[\s\S]{0,160}syncBattleOptionsFromSettings/.test(HTML), 'menu display repaints the panel');
+});
+
 test('client uses differential sync (digest-based), not the old bulk re-download', () => {
   assert.ok(HTML.includes('window.checkOfflineUpdate'), 'launch update-check present');
   assert.ok(/SYNC_ASSETS/.test(HTML), 'client posts SYNC_ASSETS');

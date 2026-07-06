@@ -74,6 +74,46 @@ async function cacheFirst(req) {
   return null;
 }
 
+// Background shell revalidation for navigations. Sends a conditional request for battle.html
+// (If-None-Match / If-Modified-Since from the cached copy), so the common unchanged case
+// returns a bodyless 304 — no 5MB re-download per launch. On a real change it refreshes
+// SHELL_CACHE and notifies open pages so they can offer a "reload for the new version"
+// prompt. Uses the ETag / Last-Modified validators GitHub Pages sends, with a byte compare
+// as a fallback. All best-effort: any failure (offline, etc.) no-ops and keeps the cache.
+let _shellRevalidating = false;
+async function revalidateShell(shell, cached) {
+  if (_shellRevalidating) return;         // one in-flight check is enough per navigation burst
+  _shellRevalidating = true;
+  try {
+    const oldEtag = cached.headers.get('etag') || '';
+    const oldMod = cached.headers.get('last-modified') || '';
+    // Conditional request: on the common "nothing changed" path the server answers 304
+    // with no body, so we do NOT re-download the ~5MB shell on every launch.
+    const headers = {};
+    if (oldEtag) headers['If-None-Match'] = oldEtag;
+    else if (oldMod) headers['If-Modified-Since'] = oldMod;
+    const fresh = await fetch('battle.html', { cache: 'no-store', headers });
+    if (fresh.status === 304) return;        // unchanged — cheap path
+    if (!fresh || !fresh.ok) return;
+    const newEtag = fresh.headers.get('etag') || '';
+    const newMod = fresh.headers.get('last-modified') || '';
+    let changed;
+    if (oldEtag && newEtag) changed = oldEtag !== newEtag;
+    else if (oldMod && newMod) changed = oldMod !== newMod;
+    else if (!oldEtag && !oldMod) changed = false;   // first cache had no validators → seed silently
+    else {                                            // validators dropped → compare bytes as a fallback
+      const [a, b] = await Promise.all([cached.clone().text(), fresh.clone().text()]);
+      changed = a.length !== b.length || a !== b;
+    }
+    await shell.put('battle.html', fresh.clone());
+    if (changed) {
+      const cs = await self.clients.matchAll({ includeUncontrolled: true });
+      cs.forEach((c) => c.postMessage({ type: 'SHELL_UPDATED' }));
+    }
+  } catch (e) { /* offline / network error → keep serving the cached shell */ }
+  finally { _shellRevalidating = false; }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -82,13 +122,20 @@ self.addEventListener('fetch', (event) => {
   // Cross-origin (Supabase, any CDN) → network only, never cached.
   if (url.origin !== self.location.origin) return;
 
-  // Navigations → fresh shell first (SHELL_CACHE), then the downloaded snapshot, then network.
+  // Navigations → serve the cached shell instantly, but revalidate it against the network
+  // in the background (stale-while-revalidate). This is what makes a redeploy reach players
+  // like a normal app update WITHOUT a manual CACHE_VERSION bump: if the live battle.html
+  // changed, we refresh SHELL_CACHE and tell the page so it can offer a one-tap reload.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const shell = await caches.open(SHELL_CACHE);
       const cached = (await shell.match('battle.html'))
         || (await (await caches.open(ASSETS_CACHE)).match('battle.html'));
-      return cached || fetch(req).catch(() => shell.match('./'));
+      if (cached) {
+        event.waitUntil(revalidateShell(shell, cached));
+        return cached;
+      }
+      return fetch(req).catch(() => shell.match('./'));
     })());
     return;
   }
