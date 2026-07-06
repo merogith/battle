@@ -12264,6 +12264,9 @@
             if (bulk >= 160 && off >= 90)     return physical ? 'PHYS_BULKY_ATK' : 'SPEC_BULKY_ATK';
             return physical ? 'PHYS_ATTACKER' : 'SPEC_ATTACKER';
         }
+        // Minimum CSV-union size below which the archetype generator can't build a second
+        // viable role — thin below this get their legal learnset folded in (see below).
+        const _DESIGNED_POOL_AUGMENT_THRESHOLD = 8;
         function _designedCsvMovePool(name) {
             const entry = resolveCsvBuildEntry(name);
             const moves = new Set();
@@ -12281,6 +12284,34 @@
                         }
                     }
                 }
+            }
+            // Targeted learnset augmentation (build-diversity Phase 2b): single-set / LC
+            // species have a CSV union too small for the generator to build a wall vs a
+            // sweeper. For those (and only those — well-covered species keep their vetted
+            // pools untouched) fold in the species' LEGAL learnset (natural + learnt) from
+            // the offline move-tag index so a second role becomes buildable. Read
+            // window.MOVE_TAG_INDEX directly (the tag-index reader _moveTagIndexResultFor
+            // lives in a different scope), decoding move-name indices inline. Sync +
+            // best-effort: a no-op until the index has loaded. Off-legal "awakened" moves
+            // are never added (n/l buckets only), so generated sets stay legal.
+            if (moves.size < _DESIGNED_POOL_AUGMENT_THRESHOLD) {
+                try {
+                    const _mti = (typeof window !== 'undefined' && window.MOVE_TAG_INDEX)
+                        || (typeof MOVE_TAG_INDEX !== 'undefined' ? MOVE_TAG_INDEX : null);
+                    if (_mti && _mti.species && Array.isArray(_mti.moves) && _mti.moves.length) {
+                        let _entry = _mti.species[name];
+                        if (!_entry) {
+                            const _bs = (typeof baseStats === 'object') ? baseStats[name] : null;
+                            const _basef = _bs && (_bs.baseSpecies || _bs.changesFrom);
+                            if (_basef && _mti.species[_basef]) _entry = _mti.species[_basef];
+                        }
+                        if (_entry) {
+                            const _addByIdx = (list) => { if (Array.isArray(list)) for (const i of list) { const nm = _mti.moves[i]; if (nm) moves.add(nm); } };
+                            _addByIdx(_entry.n); // natural (level-up / egg / transfer)
+                            _addByIdx(_entry.l); // learnt (TM / tutor)
+                        }
+                    }
+                } catch (e) {}
             }
             return [...moves];
         }
@@ -61575,7 +61606,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${btn(fico('tutor'),     'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
                     ${btn(fico('nature'),    'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
                     ${btn(fico('dojo'),      'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
-                    ${btn(fico('evtrainer'), 'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
+                    ${btn(fico('evtrainer'), 'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Reshuffle EVs (1,000G) — or buy full spreads at City 7.')}
                     ${btn(fico('colress'),   'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
                     ${btn(fico('evolab'),    'Evolution Tutor (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
                 </div>
@@ -62395,6 +62426,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // actually uses and drop a genuinely unused stat. Picking head-weighted from
         // the pool is what turns "every wild Machop is Adamant" into a spread of
         // partners without ever handing out a nature that fights the species' role.
+        // A fully-random LEGAL nature (all 25, incl. neutrals) — the "raw catch" slice of
+        // the wild nature blend. Uses the canonical natureModifiers table so it can never
+        // drift from the real nature set.
+        function _randomLegalNature(rng) {
+            const keys = (typeof natureModifiers === 'object' && natureModifiers) ? Object.keys(natureModifiers) : _NEUTRAL_NATURES_LIST;
+            const r = (typeof rng === 'function') ? rng : Math.random;
+            return keys[Math.floor(r() * keys.length)] || 'Hardy';
+        }
         // Pools + head weights are user-owned balance knobs — tune here.
         function _wildNaturePool(base) {
             if (!base) return ['Hardy'];
@@ -62682,22 +62721,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (b.i === 'None' && _wCity >= 1 && _wCity <= 3 && _wRng() < 0.25) {
                 b.i = ['Sitrus Berry', 'Oran Berry', 'Lum Berry'][Math.floor(_wRng() * 3)];
             }
-            // Ability (Sheet 5 wild opt): slot-0 by default; a hidden ability only surfaces
-            // on late-route catches (C6+), and even then only sometimes — the wild "you
-            // grow it" philosophy applies to the ability slot too.
+            // Ability (wild philosophy): random among the species' REGULAR ability slots
+            // (0 / 1) — a raw catch, not always the "best" slot-0. Both are legal and no
+            // regular ability is a power spike. A hidden ability still only surfaces on
+            // late-route catches (C6+), and even then only sometimes (the "you grow it"
+            // headroom). The player re-tunes via the Ability Capsule / Dojo loadout.
             if (base && base.abilities) {
-                if (_wCity >= 6 && base.abilities.H && _wRng() < 0.35) b.a = base.abilities.H;
-                else if (base.abilities['0']) b.a = base.abilities['0'];
+                if (_wCity >= 6 && base.abilities.H && _wRng() < 0.35) {
+                    b.a = base.abilities.H;
+                } else {
+                    const _regAbils = [base.abilities['0'], base.abilities['1']].filter(Boolean);
+                    if (_regAbils.length) b.a = _regAbils[Math.floor(_wRng() * _regAbils.length)];
+                }
             }
             // Nature: neutral on the very first routes (C0), curated-positive from C1.
             // Nature phases in over C0-C2 (audit #6) instead of a hard C0-neutral /
             // C1-fully-positive cliff: the neutral chance ramps DOWN by city, so early
             // routes are mostly-but-not-always neutral and curated-positive natures fade
             // in gradually. C3+ is fully curated. Neutral-chance curve is user-owned.
+            // When NOT rolling the phased-neutral, blend curated + random (user model):
+            // ~70% a role-appropriate curated nature, ~30% a FULLY RANDOM legal nature.
+            // The random slice keeps the "raw catch worth optimizing" feel (re-tune via
+            // the Nature Rater) without the pure-random path handing out only-bad natures.
+            // Random-slice fraction is a user-owned knob.
             const _wildNeutralChance = (_wCity <= 0) ? 0.75 : (_wCity === 1 ? 0.4 : (_wCity === 2 ? 0.15 : 0));
             b.n = (_wRng() < _wildNeutralChance)
                 ? _NEUTRAL_NATURES_LIST[Math.floor(_wRng() * _NEUTRAL_NATURES_LIST.length)]
-                : _wildPickNature(base, _wRng);
+                : (_wRng() < 0.30 ? _randomLegalNature(_wRng) : _wildPickNature(base, _wRng));
             b.evs = _wildPickEVs(base, _wRng);
             // City-curve EV total (Sheet 5, "match trainer curve"): scale the archetype
             // shape to the city's battle-trained EV level. IVs (the vitamin-trained axis)

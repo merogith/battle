@@ -219,23 +219,70 @@ test('dual-typed wild movesets vary across samples of a species (pre-catch)', ()
   ST.sm = null;
 });
 
+test('wild nature blend: the random slice surfaces natures beyond the curated pool', () => {
+  // Post-neutral, ~30% of wild natures are fully random legal (all 25), the rest
+  // curated. Over many rolls the observed nature set should exceed any single
+  // species' curated pool (≤4) — proving the random slice fires — while curated
+  // still dominates (most catches remain role-appropriate).
+  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
+  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+  const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  ST.sm = { active: true, badges: 4, team: [], settings: { enabledGens: GENS.slice() }, unlockedGimmicks: [], storyDifficulty: 'normal', eventIndex: cityRowFor(4), trainerAssignments: {} };
+  const seen = new Set();
+  let tot = 0;
+  for (let i = 0; i < 1200; i++) {
+    const enc = ST.rollWildEncounter(GENS);
+    if (!enc) continue;
+    tot++;
+    seen.add(enc.build.n);
+  }
+  assert.ok(tot > 200, 'sampled enough C4 wilds');
+  // The full 25-nature space should be broadly represented (random slice working);
+  // assert well past the curated-pool ceiling.
+  assert.ok(seen.size >= 15, `random slice surfaces many natures (saw ${seen.size}/25)`);
+  ST.sm = null;
+});
+
+test('wild ability: regular slot-1 appears (not always slot-0)', () => {
+  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
+  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+  const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  ST.sm = { active: true, badges: 4, team: [], settings: { enabledGens: GENS.slice() }, unlockedGimmicks: [], storyDifficulty: 'normal', eventIndex: cityRowFor(4), trainerAssignments: {} };
+  let capable = 0, slot1 = 0;
+  for (let i = 0; i < 1200; i++) {
+    const enc = ST.rollWildEncounter(GENS);
+    if (!enc) continue;
+    const b = baseStats[enc.name];
+    if (!b || !b.abilities || !b.abilities['1']) continue; // only species WITH a 2nd regular slot
+    capable++;
+    if (enc.build.a === b.abilities['1']) slot1++;
+  }
+  assert.ok(capable > 100, 'sampled enough slot-1-capable wilds');
+  // Roughly a coin flip between slot-0 and slot-1; assert clearly non-zero and not all.
+  const share = slot1 / capable;
+  assert.ok(share > 0.2 && share < 0.8, `slot-1 appears ~half the time (${(share * 100).toFixed(0)}%)`);
+  ST.sm = null;
+});
+
 test('end-to-end: repeated wild rolls of a species diversify nature + EVs', () => {
   const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
   const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+  // Sample at C3 (denser species pool → reliably well-sampled species, robust to the
+  // unseeded Math.random species pick regardless of prior tests' RNG consumption).
   ST.sm = {
-    active: true, badges: 5, team: [],
+    active: true, badges: 3, team: [],
     settings: { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
     unlockedGimmicks: [], storyDifficulty: 'normal',
-    eventIndex: cityRowFor(5), trainerAssignments: {},
+    eventIndex: cityRowFor(3), trainerAssignments: {},
   };
   const bySpecies = {};
-  for (let i = 0; i < 1500; i++) {
+  for (let i = 0; i < 2500; i++) {
     const enc = ST.rollWildEncounter([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     if (!enc) continue;
     (bySpecies[enc.name] ||= []).push({ n: enc.build.n, ev: JSON.stringify(enc.build.evs) });
   }
   // Find a species with enough samples and assert it isn't a clone factory.
-  const big = Object.entries(bySpecies).filter(([, v]) => v.length >= 8);
+  const big = Object.entries(bySpecies).filter(([, v]) => v.length >= 6);
   assert.ok(big.length > 0, 'sampled at least one species enough times');
   let sawNatureVariety = false, sawEvVariety = false;
   for (const [, arr] of big) {
