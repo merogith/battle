@@ -23864,6 +23864,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // / prediction-dependent moves (Sucker Punch, Focus Punch, Counter, …).
             score *= aiMovePreconditionMult(attacker, defender, move);
 
+            // Self-destruct cost awareness (Explosion / Self-Destruct / Misty Explosion / Final Gambit
+            // all faint the user). Raw damage alone made these the "biggest number" pick even at full
+            // HP behind a Sturdy/Sash buffer — throwing the Pokémon away for a hit a normal move would
+            // land anyway. They are only worth the self-KO as a genuine finisher: fainting WITHOUT a KO
+            // is almost always wrong, and even a KO shouldn't be spent from a healthy mon that isn't
+            // about to die (attack normally now — the buffer/Sturdy keeps us alive — and detonate later
+            // if it's ever actually needed). If it is the ONLY move that KOs, the KO multipliers above
+            // still leave it ahead of a non-KO attack after this discount, so real finishers survive.
+            const _selfKO = (move.name === "Explosion" || move.name === "Self-Destruct" || move.name === "Misty Explosion" || move.name === "Final Gambit");
+            if (_selfKO && score > 0) {
+                const _killsTarget = dmg >= defender.currentHp;
+                if (!_killsTarget) score *= 0.12;                       // faint for nothing → almost never
+                else if (!aboutToBeKOd && hpPct > 0.55) score *= 0.5;   // healthy + not dying: don't throw the mon away
+            }
+
         } else {
             // === STATUS MOVE AI ===
 
@@ -24349,8 +24364,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let switchTargetWalled = newBestDmg < defender.maxHp * 0.08 && newBestDmg < defender.currentHp * 0.12;
             if (walled && switchTargetWalled && !willDieFirst && !(allImmune && newBestDmg > 0)) return null;
 
+            // Anti-juggle / doomed switch-in guard (maintainer-reported "juggling not to die": cycling
+            // fresh Sturdy mons into a faster attacker so each one eats a hit, drops to its 1-HP
+            // Sturdy/Focus-Sash floor, and is switched out again before it ever acts — wasting every
+            // mon's full HP + its once-per-battle survival buffer + eating entry hazards for nothing).
+            // When the ONLY reason to switch is that the CURRENT mon will be KO'd first (willDieFirst,
+            // and we're not walled / all-immune — those want a switch regardless), the incoming mon must
+            // actually break the losing pattern. If it (a) will be outsped by the player, (b) is brought
+            // to a near-KO by the player's best hit — including being saved only by its own Sturdy/Sash
+            // 1-HP floor (switchThreat === currentHp-1) — and (c) can't KO the player back, then switching
+            // just feeds the next mon into the same buzzsaw. Hold position instead so getBestMove can at
+            // least attack (or Explode / fire priority) with the mon that was going to die anyway.
+            if (willDieFirst && !walled && !allImmune) {
+                const _inSpe = getEffectiveSpeed(switchTo, w);
+                const _inOutsped = isTR ? (_inSpe > defSpe) : (defSpe > _inSpe);
+                const _inNearKO = switchThreat >= switchTo.currentHp - 1 || switchThreat >= switchTo.currentHp * 0.88;
+                const _inCantKO = newBestDmg < defender.currentHp;
+                if (_inOutsped && _inNearKO && _inCantKO) return null;
+            }
+
             // Switch if the new mon is meaningfully better, or if we're dying anyway
             if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) { state._aiLastSwitchTurn = state.turnNumber; return switchIdx; }
+        }
+    }
+
+    // === Proactive strategic counter-switch (competence pass 2026-07) ===
+    // Reached only when NO reactive trigger (dying / walled / all-immune) fired. A strong player does
+    // not merely react — when the current matchup is unfavourable (taking a real hit, unable to KO) and
+    // the bench holds a HARD counter to the player's active (immune or strongly resistant to its best
+    // hit AND able to threaten back), pivoting to that counter seizes the matchup. This is the "great
+    // point to switch" the maintainer asked to emphasise — a genuine positional gain, not juggling.
+    // Gated tightly so it never becomes a new over-switch source:
+    //   • decent difficulty only (Very Easy / Easy don't read this),
+    //   • never two turns running (anti-panic hysteresis),
+    //   • not while we can KO or are already set up,
+    //   • the current mon must be a poor answer (not close to a KO itself) AND under real pressure,
+    //   • the incoming mon must survive with REAL HP (not a Sturdy/Sash 1-HP floor) AND hit back hard,
+    //   • and be a clear upgrade over staying (eats far less than we do, hits at least as hard).
+    const _aiDiffPredict = (aiDifficultyParams() || {}).predict || 0;
+    if (!_justSwitched && !canKO && _aiDiffPredict >= 0.5
+        && !(attacker.stages.atk >= 2 || attacker.stages.spa >= 2 || attacker.stages.spe >= 2)) {
+        const _pressured = threat >= attacker.currentHp * 0.5;   // player's best hit ≥ 50% of our current HP
+        const _weAreWeak = myBestDmg < defender.currentHp * 0.5; // we're not close to a KO ourselves
+        if (_pressured && _weAreWeak) {
+            const _foeSide = (state && state.fSide) ? state.fSide : null;
+            const cand = aiBestSwitch(bench, defender);
+            if (cand && cand !== attacker) {
+                const _candThreat = aiThreatScore(defender, cand);                    // player's best on the counter (floored)
+                const _candHaz = _foeSide ? aiHazardDamageOnSwitchIn(cand, _foeSide) : 0;
+                let _candDmg = 0;
+                cand.moves.forEach(m => { if (m && m.cat !== "Status" && m.pp > 0) { const d = aiEstimateDmg(cand, defender, m); if (d > _candDmg) _candDmg = d; } });
+                // Survives entry+hit with real HP to spare — NOT a 1-HP Sturdy/Sash floor survival.
+                const _survivesReal = (_candThreat + _candHaz) < cand.currentHp * 0.5 && _candThreat < cand.currentHp - 1;
+                const _threatensBack = _candDmg >= defender.currentHp * 0.5;          // ≈2HKO or faster KO on the player
+                const _clearUpgrade = _candThreat < threat * 0.6 && _candDmg >= myBestDmg; // strictly better matchup than staying
+                if (_survivesReal && _threatensBack && _clearUpgrade) {
+                    state._aiLastSwitchTurn = state.turnNumber;
+                    return state.foeParty.indexOf(cand);
+                }
+            }
         }
     }
     return null;
