@@ -62631,7 +62631,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (base.abilities['0']) b.a = base.abilities['0'];
             }
             // Nature: neutral on the very first routes (C0), curated-positive from C1.
-            b.n = (_wCity <= 0)
+            // Nature phases in over C0-C2 (audit #6) instead of a hard C0-neutral /
+            // C1-fully-positive cliff: the neutral chance ramps DOWN by city, so early
+            // routes are mostly-but-not-always neutral and curated-positive natures fade
+            // in gradually. C3+ is fully curated. Neutral-chance curve is user-owned.
+            const _wildNeutralChance = (_wCity <= 0) ? 0.75 : (_wCity === 1 ? 0.4 : (_wCity === 2 ? 0.15 : 0));
+            b.n = (_wRng() < _wildNeutralChance)
                 ? _NEUTRAL_NATURES_LIST[Math.floor(_wRng() * _NEUTRAL_NATURES_LIST.length)]
                 : _wildPickNature(base, _wRng);
             b.evs = _wildPickEVs(base, _wRng);

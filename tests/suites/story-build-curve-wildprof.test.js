@@ -29,12 +29,21 @@ const N = RAW.length;
 const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
 const isHidden = (enc) => { const b = baseStats[enc.name]; return !!(b && b.abilities && b.abilities.H && enc.build.a === b.abilities.H); };
 
-test('wild nature is neutral at C0', () => {
+test('wild nature phases in over C0-C2: C0 is mostly (not always) neutral', () => {
+  // Build-diversity overhaul: natures phase in via a descending neutral-chance
+  // ramp (C0 ~75% neutral) instead of a hard C0-always-neutral / C1-always-positive
+  // cliff. Assert C0 leans heavily neutral without requiring 100%.
   setSm({ eventIndex: cityRowFor(0) });
-  for (let i = 0; i < 40; i++) {
+  let neutral = 0, tot = 0;
+  for (let i = 0; i < 200; i++) {
     const enc = ST.rollWildEncounter(GENS);
-    if (enc) assert.ok(NEUTRAL.includes(enc.build.n), `C0 wild ${enc.name} nature ${enc.build.n} should be neutral`);
+    if (!enc) continue;
+    tot++;
+    if (NEUTRAL.includes(enc.build.n)) neutral++;
   }
+  assert.ok(tot > 50, 'sampled enough C0 wilds');
+  assert.ok(neutral / tot >= 0.5, `C0 wild leans neutral (${neutral}/${tot})`);
+  assert.ok(neutral < tot, 'C0 is not a hard 100%-neutral cliff — some curated natures phase in');
   setSm();
 });
 
