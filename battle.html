@@ -35478,7 +35478,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const FACILITY_DEBUT_CITY = {
             mart: 0, tutor: 0, nature: 1, center: 1, relic: 0,
             link: 2, stoneShop: 2, evolab: 2,
-            dept: 4, casino: 5, dojo: 1, evtrainer: 7, safari: 5,
+            dept: 4, casino: 5, dojo: 1, evtrainer: 3, safari: 5, // EV Trainer debuts C3 (reshuffle-only); full mode at C7 via _evTrainerIsFullMode
+
             colress: 7, daycare: 2, // Daycare Inn debuts at City 2 (first daycare city after the Gym-1 unlock)
             bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Pokémon Center / Party / Fan Club debut at the first gym city (C1)
         };
@@ -35500,6 +35501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { fac: 'Pokémon Fan Club', minCity: 1 },
                 { fac: 'Battle Dojo', minCity: 1 },       // Battle Dojo (White Belt) debuts at City 1, present C1+
                 { fac: 'Evolution Tutor', minCity: 2 },   // Evolution Tutor debuts at City 2
+                { fac: 'EV Trainer', minCity: 3 },        // EV Trainer debuts C3 in RESHUFFLE-ONLY mode (net-zero re-tune); full "buy any spread" unlocks at C7 (see _evTrainerIsFullMode)
             ];
             for (const row of STORY_EVENTS_RAW) {
                 if (!Array.isArray(row) || row[1] !== 'City') continue;
@@ -52765,7 +52767,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('train', makeActionBtn('🧬 ' + _npcStageName('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(EVOLVE_COST_BY_TARGET[3], '+')])));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
-                _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
+                const _evFull = (typeof _evTrainerIsFullMode === 'function') ? _evTrainerIsFullMode() : true;
+                _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(_evFull ? 5000 : EV_REDISTRIBUTE_COST)], { soft:true })));
             }
             if (actions.includes('Pokémon Fan Club') && _tutorTeam) {
                 const _fcGifted = !!sm.fanClubGiftClaimed;
@@ -73948,6 +73951,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── EV TRAINER ────────────────────────────────────────────────────
         const EVTRAINER_COST = 5000;
+        // Reshuffle (redistribute-only) mode — re-points a mon's EXISTING EV total into
+        // a new role shape without changing the total (net-zero). Cheap because it's
+        // re-tuning what you already trained, not injecting new EVs. User-owned knob.
+        const EV_REDISTRIBUTE_COST = 1000;
         const EV_PRESETS_UNIVERSAL = [
             { id:'none',  label:'No EVs',        evs:{ hp:0,  atk:0,  def:0,  spa:0,  spd:0,  spe:0  } },
             { id:'equal', label:'Equal Spread',  evs:{ hp:84, atk:84, def:84, spa:84, spd:84, spe:84 } },
@@ -74138,17 +74145,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return { id: 'meta_'+i, label, evs: m.evs };
             });
         }
-        function _evTrainerCharge() {
-            if (sm.gold < EVTRAINER_COST) {
+        function _evTrainerChargeAmount(amount) {
+            const cost = amount | 0;
+            if (sm.gold < cost) {
                 if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
-                    window.showGameAlert(`EV Trainer charges ${EVTRAINER_COST.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.`);
+                    window.showGameAlert(`That costs ${cost.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.`);
                 }
                 return false;
             }
-            sm.gold -= EVTRAINER_COST;
-            try { _storyTrackSpend(EVTRAINER_COST); } catch (e) {}
+            sm.gold -= cost;
+            try { _storyTrackSpend(cost); } catch (e) {}
             return true;
         }
+        function _evTrainerCharge() { return _evTrainerChargeAmount(EVTRAINER_COST); }
         function _evTrainerFinish() {
             try { save(); } catch (e) {}
             // Stat-up arrow chime — the rolled spread just landed on the mon.
@@ -74635,7 +74644,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Universal / Role / Meta cards all show the star consistently.
         // `pct` (optional) renders the muted "%" badge next to the title so
         // players can tell the meta-#1 spread from the meta-#5.
-        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended, pct) {
+        // Full mode (buy any preset outright, 5000G) unlocks at the EV Trainer's real
+        // debut (Colress, C7) and post-HoF / Frontier. Before that the facility is
+        // reshuffle-only: you can RE-POINT EVs you already trained (net-zero, 1000G) but
+        // not buy a maxed spread — so early access can't shortcut the training economy.
+        function _evTrainerIsFullMode() {
+            if (sm && sm.frontier && sm.frontier.active) return true;
+            if (((sm && sm.badges) | 0) >= 8) return true;
+            let c = -1; try { c = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            return c >= 7;
+        }
+        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended, pct, fullMode) {
             const isCurrent = _evsEqual(currentEvs, p.evs);
             const hasVitamin = ((sm.inventory && sm.inventory.vitamin) | 0) > 0;
             const safeId = String(p.id).replace(/'/g, "\\'");
@@ -74646,15 +74665,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Applied</span>` : '',
                 `<span class="tx-pill">${total} EVs</span>`,
             ].filter(Boolean).join('');
-            const vitaBtn = (hasVitamin && !vitaDisabled)
+            const vitaBtn = (fullMode && hasVitamin && !vitaDisabled)
                 ? `<button type="button" class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 EV Voucher (you have ${vitaCount}) — free preset" style="color:#f8bbd0;border-color:#f8bbd0;font-size:10px;padding:3px 6px;">
                     <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Voucher (${vitaCount})
                 </button>`
                 : '';
             const goldDisabled = cantAfford || isCurrent;
-            const gButton = isCurrent
+            // Full "buy this spread" (overwrite) + voucher path only in full mode (C7+).
+            // Early cities are reshuffle-only (the rButton below).
+            const gButton = !fullMode ? '' : (isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
-                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
+                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`);
+            // Reshuffle (redistribute-only): re-point the mon's CURRENT total into this
+            // shape for a fraction of the cost — no new EVs, just re-tuning what's
+            // already trained. Hidden for the 'none' shape and when the mon has 0 EVs.
+            const curTotalR = (typeof _evTotal === 'function') ? _evTotal(currentEvs) : 0;
+            const canReshuffle = !isCurrent && curTotalR > 0 && total > 0;
+            const rButton = canReshuffle
+                ? `<button type="button" class="story-tutor-btn" ${(sm.gold < EV_REDISTRIBUTE_COST)?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerRedistribute(${idx},'${safeId}')" style="font-size:10px;padding:4px 7px;color:#90caf9;border-color:#90caf9;" title="Reshuffle your current ${curTotalR} EVs into this shape — same total, no new EVs">↔ ${storyGoldHtml(EV_REDISTRIBUTE_COST, false)}</button>`
+                : '';
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
                 ? `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
@@ -74664,7 +74693,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${star}<span class="tx-card-title">${_esc(p.label)}</span>${pctHtml}
                 </div>
                 ${_evTrainerStatBarsHtml(p.evs, null)}
-                <div class="tx-card-foot">${pills}<span style="flex:1;"></span>${gButton} ${vitaBtn}</div>
+                <div class="tx-card-foot">${pills}<span style="flex:1;"></span>${rButton} ${gButton} ${vitaBtn}</div>
             </div>`;
         }
 
@@ -74685,7 +74714,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
+            const evFull = _evTrainerIsFullMode();
+            const headerCostChip = evFull
+                ? `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`
+                : `<span class="story-action-badge cost" title="Reshuffle re-points EVs you've already trained — same total, no new EVs. Buying full spreads unlocks at City 7.">↔ ${EV_REDISTRIBUTE_COST.toLocaleString()}G reshuffle</span>`;
 
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
                 ${storyMonTileMain({
@@ -74725,7 +74757,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const dedupedMeta = dedup(meta);
 
             const renderRow = (presets) => presets.map(p =>
-                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p), pctForPreset(p))
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p), pctForPreset(p), evFull)
             ).join('');
 
             // Sticky section headers — when the player scrolls through 30+
@@ -74777,6 +74809,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ok) return;
                 if (!_evTrainerCharge()) return;
                 mon.build.evs = { ...preset.evs };
+                _evTrainerFinish();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        // Reshuffle (redistribute-only): re-point a mon's EXISTING EV total into the
+        // chosen preset's SHAPE without changing the total (net-zero). Reuses
+        // _distributeEVsToTotal to rescale the preset shape to the mon's current total
+        // (<=252/stat, /4-legal, reconciled to hit the exact total). Costs
+        // EV_REDISTRIBUTE_COST — the early, cheap "re-tune what you trained" option, vs
+        // the full overwrite above. No-op (and no charge) when the mon has 0 EVs.
+        async function evTrainerRedistribute(idx, presetId) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[idx];
+                if (!mon || !mon.build) return;
+                const curTotal = _evTotal(mon.build.evs || {});
+                if (curTotal <= 0) {
+                    if (window.showGameAlert) window.showGameAlert(`${mon.name} has no EVs to reshuffle yet — win battles to train some first.`);
+                    return;
+                }
+                const meta = _evTrainerMetaCache[idx] || [];
+                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const preset = all.find(p => p.id === presetId);
+                if (!preset || _evTotal(preset.evs) <= 0) return; // no shape to reshuffle into
+                const base = (typeof baseStats === 'object') ? (baseStats[mon.name] || {}) : {};
+                const probe = { evs: { ...preset.evs } };
+                try { _distributeEVsToTotal(probe, base, curTotal); } catch (e) { return; }
+                if (_evsEqual(mon.build.evs || {}, probe.evs)) return; // already this shape
+                if ((sm.gold | 0) < EV_REDISTRIBUTE_COST) {
+                    if (window.showGameAlert) window.showGameAlert(`Reshuffle costs ${EV_REDISTRIBUTE_COST.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.`);
+                    return;
+                }
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(probe.evs) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Reshuffle ${mon.name}'s ${curTotal} EVs into a "${preset.label}" shape? Same total, new spread.\n→ ${spreadLabel}`, EV_REDISTRIBUTE_COST);
+                if (!ok) return;
+                if (!_evTrainerChargeAmount(EV_REDISTRIBUTE_COST)) return;
+                mon.build.evs = { ...probe.evs };
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
@@ -74893,7 +74964,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
-            enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
+            enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin, evTrainerRedistribute,
             enterFanClub, renderFanClubRoster,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryFirstEncounter, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock, devStoryJump,
