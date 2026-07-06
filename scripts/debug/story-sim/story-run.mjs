@@ -22,6 +22,25 @@ const BASE_START_GOLD = 2000;
 
 function uint32(n) { return (n >>> 0); }
 
+// PowerIndex = summed base+trained stat totals of the built team (apples-to-apples player vs foe;
+// foe mons already carry the stamped _storyStatMult, so the gap reflects real difficulty).
+function powerIndex(mons) {
+  let sum = 0;
+  for (const m of mons || []) {
+    if (!m || !m.stats) continue;
+    sum += (m.maxHp | 0) + (m.stats.atk | 0) + (m.stats.def | 0) + (m.stats.spa | 0) + (m.stats.spd | 0) + (m.stats.spe | 0);
+  }
+  return sum;
+}
+function teamEvTotal(team) {
+  let t = 0;
+  for (const s of team || []) {
+    const evs = s && s.build && s.build.evs;
+    if (evs) for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) t += (evs[k] | 0);
+  }
+  return t;
+}
+
 // --- Run init -------------------------------------------------------------------------------
 // Set sm fields directly (confirmTrainerAndStart reads the DOM form, so we mirror startNewRun).
 export function initRun(E, opts) {
@@ -199,10 +218,10 @@ export async function runStory(E, opts = {}) {
 
     // Build both sides fresh (HP resets each battle regardless).
     const foeMons = rolled.foeSpecs.map(s => S.buildPokemon(s.name, s.build));
-    let result = null, retries = 0;
+    let result = null, retries = 0, playerMons = [];
     const maxRetries = policy.adapt.retries;
     for (;;) {
-      const playerMons = agent.buildBattleTeam(pos, eventName);
+      playerMons = agent.buildBattleTeam(pos, eventName);
       result = await resolveBattle(E, { mons: playerMons }, { mons: foeMons }, {
         seed: uint32(seed) ^ (pos * 2654435761),
         mode: 'story',
@@ -230,9 +249,13 @@ export async function runStory(E, opts = {}) {
 
     const stage = {
       pos, eid: rolled.eid, event: eventName, kind: 'battle',
+      city: (() => { try { return S.cityIndexForStoryRow(rolled.eid); } catch (e) { return -1; } })(),
       isRival: rolled.isRival, beatKey: rolled.beatKey || null,
       trainer: rolled.trainerName, badgesBefore: S.countGymBadgesBeforeStoryRow(pos),
-      foeMult: rolled.foeMult || 1, foeSize: foeMons.length, playerSize: (sm.team || []).length,
+      foeMult: rolled.foeMult || 1, foeSize: foeMons.length, playerSize: playerMons.length,
+      pPower: powerIndex(playerMons), fPower: powerIndex(foeMons),
+      pEvTotal: teamEvTotal(sm.team), pSpecies: playerMons.map(m => m.name),
+      fSpecies: foeMons.map(m => m.name),
       result: result.result, won, retries, turns: result.turns, stalled: result.stalled,
       pHpRemainingPct: result.pHpRemainingPct, pFaints: result.pFaints, fFaints: result.fFaints,
       goldBefore: sm.gold - goldAwarded, goldAfter: sm.gold, goldAwarded,
@@ -248,12 +271,15 @@ export async function runStory(E, opts = {}) {
     }
   }
 
+  const battles = stages.filter(s => s.kind === 'battle');
   return {
     seed, difficulty, policy: policyId, itemMode,
     outcome, reachedPos, reachedName,
     badges: sm.badges, gold: sm.gold,
     villain: sm.tracks && sm.tracks.villain, extra: sm.tracks && sm.tracks.extra,
     finalTeam: (sm.team || []).map(t => t.name),
+    battles: battles.length, wins: battles.filter(s => s.won).length,
+    agent: agent.telemetry(),
     stages,
   };
 }
