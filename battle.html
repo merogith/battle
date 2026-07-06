@@ -31874,6 +31874,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic
 
+            // Clear Smog: guaranteed additional effect — resets ALL of the target's stat
+            // stages back to 0 (both raised and lowered). This is NOT a chance-based
+            // secondary, so Serene Grace / Shield Dust / Covert Cloak don't factor in, and
+            // Clear Body / White Smoke / Full Metal Body do NOT prevent the reset (canon:
+            // a full reset isn't treated as "lowering"). Substitute blocks it — the
+            // damaging-move gate in performAction already skips this call while the target's
+            // sub is up, and the guard here also covers direct/Magic-Bounce call paths.
+            if (move.name === "Clear Smog" && defender.currentHp > 0
+                && !(defender.volatile && defender.volatile.sub > 0)) {
+                let _csAny = false;
+                for (const s of ['atk','def','spa','spd','spe','acc','eva']) {
+                    if ((defender.stages[s] || 0) !== 0) { defender.stages[s] = 0; _csAny = true; }
+                }
+                if (_csAny) logMsg(`${defender.name}'s stat changes were eliminated!`, 'info');
+            }
+
             // Sparkling Aria: cures target's burn
             if (move.name === "Sparkling Aria" && defender.status === "BRN") {
                 defender.status = null; defender.statusTurns = 0;
