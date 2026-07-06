@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. Bump CACHE_VERSION when the shell/code changes.
  */
-const CACHE_VERSION = 'battle-v3';
+const CACHE_VERSION = 'battle-v4';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -203,13 +203,18 @@ self.addEventListener('message', (event) => {
     event.waitUntil((async () => {
       await caches.delete(ASSETS_CACHE);
       await caches.open(ASSETS_CACHE); // recreate empty (also drops the applied-manifest snapshot)
-      reply({ type: 'CACHE_CLEARED' });
+      reply({ type: 'CACHE_CLEARED', batchId: msg.batchId });
     })());
   } else if (msg.type === 'CACHE_STATE') {
     event.waitUntil((async () => {
       const cache = await caches.open(ASSETS_CACHE);
       const keys = await cache.keys();
-      reply({ type: 'CACHE_STATE', cachedCount: Math.max(0, keys.length - 1) }); // minus the manifest snapshot
+      const applied = await readAppliedHashes(cache);
+      const appliedCount = Object.keys(applied).length;
+      // cachedCount excludes the manifest snapshot entry; appliedCount = files the
+      // last-applied manifest recorded (0 when nothing was ever downloaded).
+      reply({ type: 'CACHE_STATE', batchId: msg.batchId,
+        cachedCount: Math.max(0, keys.length - 1), appliedCount });
     })());
   }
 });

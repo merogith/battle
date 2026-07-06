@@ -8008,8 +8008,8 @@
         }
         .menu-collection-sub {
             grid-area: sub;
-            font-size: 9px;
-            color: #607d8b;
+            font-size: 10px;
+            color: #90a4ae;
             letter-spacing: 0.05em;
             text-transform: uppercase;
         }
@@ -8031,7 +8031,7 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #888;
+            color: #a3a3a3;
             margin: 14px 0 8px;
             padding-top: 8px;
             border-top: 1px solid #333;
@@ -8045,7 +8045,7 @@
             margin-bottom: 12px;
             padding-bottom: 10px;
             border-bottom: 1px solid #333;
-            min-height: 36px;
+            min-height: 44px;
         }
         .settings-row > span:first-child { font-size: 13px; color: #ddd; }
         .pbs-switch {
@@ -8084,11 +8084,25 @@
         }
         body.is-mobile .modal.modal--bottom-sheet .modal-content {
             width: 100%;
-            max-width: none;
-            margin: 0;
+            /* Cap the sheet so "Phone" display-mode on a wide screen (or a large tablet)
+               doesn't stretch the panel edge-to-edge; keep it centered above the fold. */
+            max-width: 620px;
+            margin: 0 auto;
             border-radius: 16px 16px 0 0;
             max-height: min(88dvh, 100%);
             animation: modalSheetUp 0.28s ease-out;
+        }
+        /* Tablet / any touch device (iPad portrait ≈ 820px, landscape ≈ 1024px) falls
+           between the phone (≤600/768) breakpoints and the desktop hover model, so the
+           44px touch minimums never fired there. Apply them on any coarse pointer. */
+        @media (hover: none) and (pointer: coarse) {
+            .settings-row { min-height: 44px; }
+            #screen-menu .menu-filter-row label { min-height: 44px; }
+            .menu-preset-chip, .menu-lb-link, .menu-offline-entry { min-height: 44px; }
+            #modal-settings select, #offline-dl-start, #offline-dl-btn { min-height: 44px; }
+            .pbs-switch { width: 52px; height: 30px; }
+            .pbs-switch::after { width: 22px; height: 22px; }
+            .pbs-switch:checked::after { transform: translateX(22px); }
         }
         @keyframes modalSheetUp {
             from { transform: translateY(100%); opacity: 0.9; }
@@ -9429,6 +9443,11 @@
                     if (typeof window.checkOfflineUpdate === 'function') {
                         setTimeout(function () { window.checkOfflineUpdate(); }, 1500);
                     }
+                    // Restore the "already downloaded" label on the home-menu entry so it
+                    // doesn't invite a fresh download every visit once the SW is ready.
+                    if (typeof window.refreshOfflineDownloadUI === 'function') {
+                        setTimeout(function () { window.refreshOfflineDownloadUI(); }, 1600);
+                    }
                 }).catch(function () {});
             });
             // A NEW SW replaced an existing one → fresh app code is live. Reload ONCE to pick it up,
@@ -9644,17 +9663,17 @@
 
     <div id="move-tooltip" class="white-outline hidden"></div>
 
-    <div id="modal-settings" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
+    <div id="modal-settings" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
         <div class="modal-content white-outline" onclick="event.stopPropagation()">
             <div class="modal-header-row">
-                <h2 style="color:var(--hp-yellow); text-align:center;">Settings</h2>
+                <h2 id="modal-settings-title" style="color:var(--hp-yellow); text-align:center;">Settings</h2>
                 <button type="button" class="modal-close-x" onclick="window.closeModal('modal-settings')" title="Close" aria-label="Close settings">×</button>
             </div>
             <div class="settings-section-title">Visuals</div>
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="How fast battle text and pauses play out. Fast halves every pause; Instant skips them.">
                 <span>Battle speed</span>
-                <select id="setting-battle-speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-battle-speed" aria-label="Battle speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="normal">Normal</option>
                     <option value="fast">Fast (2×)</option>
                     <option value="instant">Instant</option>
@@ -9662,7 +9681,7 @@
             </div>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Length of Mega Evolution / Dynamax / Tera / Z-Move activation animations.">
                 <span>Gimmick anim speed</span>
-                <select id="setting-gimmick-anim-speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-gimmick-anim-speed" aria-label="Gimmick animation speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="normal">Normal</option>
                     <option value="fast">Fast (0.5×)</option>
                     <option value="instant">Instant</option>
@@ -9670,9 +9689,10 @@
             </div>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
+            <label class="settings-row" for="sw-ambient-particles" title="Floating embers, dust, leaves and other ambient particle effects. Turn off to save battery on phones."><span>Ambient particles</span><input type="checkbox" class="pbs-switch" id="sw-ambient-particles" role="switch" onchange="window.applySettingSwitch('ambientParticles', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
                 <span>Display</span>
-                <select id="setting-display-mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-display-mode" aria-label="Display mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="auto">Auto (detect)</option>
                     <option value="phone">Phone</option>
                     <option value="desktop">Desktop</option>
@@ -9682,19 +9702,19 @@
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music volume</span>
-                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="music-vol-slider" aria-label="Music volume" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="music-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">45%</span>
             </div>
             <label class="settings-row" for="sw-sound"><span>Sound effects</span><input type="checkbox" class="pbs-switch" id="sw-sound" role="switch" onchange="window.applySettingSwitch('soundEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
                 <span style="white-space:nowrap; font-size:12px; color:#aaa;">SFX volume</span>
-                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
+                <input type="range" id="sound-vol-slider" aria-label="Sound effects volume" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
                 <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
             </div>
             <div class="settings-section-title">Gameplay</div>
             <div class="settings-row" style="border-bottom:1px solid #444;">
                 <span>vs AI style</span>
-                <select id="setting-ai-profile" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-ai-profile" aria-label="vs AI style" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="balanced">Balanced</option>
                     <option value="aggro">Aggressive</option>
                     <option value="stall">Stall-aware</option>
@@ -9715,17 +9735,17 @@
             </div>
             <div class="settings-row" id="offline-dl-row">
                 <span>Download for offline <span id="offline-dl-update-note" style="display:none; color:var(--hp-amber,#ffb74d); font-size:10px;">• update available</span></span>
-                <button type="button" id="offline-dl-btn" onclick="window.openDownloadOfflineFlow()" style="color: var(--accent); min-height:40px; padding:6px 14px;">SET UP</button>
+                <button type="button" id="offline-dl-btn" aria-expanded="false" aria-controls="offline-dl-panel" onclick="window.openDownloadOfflineFlow()" style="color: var(--accent); min-height:44px; padding:6px 14px;">SET UP</button>
             </div>
             <div id="offline-dl-panel" class="hidden" style="padding:8px 4px 4px; border-top:1px solid #333; margin-bottom:6px;">
-                <div id="offline-dl-size" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:6px;">Checking size…</div>
-                <div style="height:10px; background:var(--surface2,#222); border-radius:5px; overflow:hidden; margin-bottom:6px;">
+                <div id="offline-dl-size" aria-live="polite" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:6px;">Checking size…</div>
+                <div role="progressbar" aria-label="Offline download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="height:10px; background:var(--surface2,#222); border-radius:5px; overflow:hidden; margin-bottom:6px;">
                     <div id="offline-dl-bar-fill" style="height:100%; width:0%; background:var(--hp-green,#7ad17a); transition:width .2s;"></div>
                 </div>
-                <div id="offline-dl-status" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:8px; min-height:14px;"></div>
+                <div id="offline-dl-status" aria-live="polite" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:8px; min-height:14px;"></div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" id="offline-dl-start" onclick="window.startOfflineDownload()" style="color:var(--hp-green); min-height:36px; padding:6px 14px;">Download all</button>
-                    <button type="button" onclick="window.clearOfflineCache()" style="color:var(--hp-amber,#ffb74d); min-height:36px; padding:6px 14px;">Clear cache</button>
+                    <button type="button" id="offline-dl-start" onclick="window.startOfflineDownload()" style="color:var(--hp-green); min-height:44px; padding:6px 14px;">Download all</button>
+                    <button type="button" onclick="window.clearOfflineCache()" style="color:var(--hp-amber,#ffb74d); min-height:44px; padding:6px 14px;">Clear cache</button>
                 </div>
             </div>
             <div class="settings-row">
@@ -13279,7 +13299,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, audioBus: false, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, storyTypewriter: true, draftGrades: [1,2,3,4], draftGens: null, mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, randomTerrain: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
@@ -13388,7 +13408,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
             if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
             if (typeof _pbs.ambientParticles === 'boolean') settings.ambientParticles = _pbs.ambientParticles;
-            if (typeof _pbs.audioBus === 'boolean') settings.audioBus = _pbs.audioBus;
+            // Battle Options panel prefs (previously session-only — a reload silently wiped them).
+            if (typeof _pbs.randomWeather === 'boolean') settings.randomWeather = _pbs.randomWeather;
+            if (typeof _pbs.randomTerrain === 'boolean') settings.randomTerrain = _pbs.randomTerrain;
+            if (typeof _pbs.partySize === 'number' && _pbs.partySize >= 1 && _pbs.partySize <= 6) settings.partySize = _pbs.partySize;
+            if (Array.isArray(_pbs.draftGrades) && _pbs.draftGrades.length) settings.draftGrades = _pbs.draftGrades.filter((g) => g >= 1 && g <= 4);
+            if (Array.isArray(_pbs.draftGens) && _pbs.draftGens.length) settings.draftGens = _pbs.draftGens.filter((g) => g >= 1 && g <= 9);
             if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
             if (typeof _pbs.soundVol === 'number' && _pbs.soundVol >= 0 && _pbs.soundVol <= 1) _initSoundVol = _pbs.soundVol;
             if (_pbs.offlineDownload && typeof _pbs.offlineDownload === 'object') Object.assign(settings.offlineDownload, _pbs.offlineDownload);
@@ -13421,7 +13446,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     weatherAnimation: settings.weatherAnimation,
                     terrainBackground: settings.terrainBackground,
                     ambientParticles: settings.ambientParticles,
-                    audioBus: settings.audioBus,
+                    // Battle Options panel prefs (now survive a reload).
+                    randomWeather: settings.randomWeather,
+                    randomTerrain: settings.randomTerrain,
+                    partySize: settings.partySize,
+                    draftGrades: settings.draftGrades,
+                    draftGens: settings.draftGens,
                     musicVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : _initMusicVol,
                     soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol,
                     offlineDownload: settings.offlineDownload
@@ -13487,6 +13517,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const startBtn = document.getElementById('offline-dl-start');
             if (!panel) return;
             panel.classList.remove('hidden');
+            try { const b = document.getElementById('offline-dl-btn'); if (b) b.setAttribute('aria-expanded', 'true'); } catch (e) {}
             if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) {
                 if (sizeEl) sizeEl.textContent = 'Offline download needs the installed/HTTPS app — not available here.';
                 if (startBtn) startBtn.disabled = true;
@@ -13531,17 +13562,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { manifest = await _getOfflineManifest(true); } catch (e) { setStatus('Could not load asset list.'); return; }
             if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Working…'; }
             setStatus('Starting…');
+            const setBar = (pct) => { if (fillEl) { fillEl.style.width = pct + '%'; fillEl.parentElement && fillEl.parentElement.setAttribute('aria-valuenow', String(pct)); } };
             const done = await _swRequest(sw, { type: 'SYNC_ASSETS', manifest }, 'SYNC_DONE', (d) => {
                 const pct = d.total ? Math.round(d.done / d.total * 100) : 100;
-                if (fillEl) fillEl.style.width = pct + '%';
+                setBar(pct);
                 setStatus(`${d.done} / ${d.total} files${d.failed ? ' · ' + d.failed + ' failed' : ''}…`);
             });
-            if (fillEl) fillEl.style.width = '100%';
+            setBar(100);
             setStatus(`Done — ${done.done} fetched${done.removed ? ', ' + done.removed + ' removed' : ''}${done.failed ? ', ' + done.failed + ' failed (storage may be full)' : ''}.`);
             Object.assign(settings.offlineDownload, { completed: true, digest: manifest.digest, at: new Date().toISOString() });
             persistMiscSettings();
-            const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'DONE';
             window.refreshOfflineUpdateBadge && window.refreshOfflineUpdateBadge(false);
+            try { window.refreshOfflineDownloadUI && window.refreshOfflineDownloadUI(); } catch (e) {}
             if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Re-check'; }
         };
         window.clearOfflineCache = async function() {
@@ -13551,10 +13583,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sw) sw.postMessage({ type: 'CLEAR_CACHE' });
             Object.assign(settings.offlineDownload, { completed: false, digest: null, at: null });
             persistMiscSettings();
-            if (fillEl) fillEl.style.width = '0%';
+            if (fillEl) { fillEl.style.width = '0%'; fillEl.parentElement && fillEl.parentElement.setAttribute('aria-valuenow', '0'); }
             if (statusEl) statusEl.textContent = 'Offline cache cleared.';
-            const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'SET UP';
             window.refreshOfflineUpdateBadge && window.refreshOfflineUpdateBadge(false);
+            try { window.refreshOfflineDownloadUI && window.refreshOfflineDownloadUI(); } catch (e) {}
         };
         // Launch-time auto-detect: if the player has a download and the live manifest digest differs,
         // surface a non-intrusive "update available" badge on the Settings button + offline row.
@@ -13581,6 +13613,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!od.completed || !('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
                 const manifest = await _getOfflineManifest(true);
                 window.refreshOfflineUpdateBadge(!!manifest.digest && manifest.digest !== od.digest);
+            } catch (e) {}
+        };
+        // Ask the SW how many asset files are actually cached, so we can reconcile the
+        // persisted "completed" flag with reality (a browser can evict the Cache while
+        // keeping localStorage). 3s cap so a non-responding/old SW never hangs the UI.
+        async function _swCacheState() {
+            const sw = await _offlineActiveSW();
+            if (!sw) return null;
+            try {
+                return await Promise.race([
+                    _swRequest(sw, { type: 'CACHE_STATE' }, 'CACHE_STATE'),
+                    new Promise((r) => setTimeout(() => r(null), 3000)),
+                ]);
+            } catch (e) { return null; }
+        }
+        // Restore the "already downloaded" state on load and whenever Settings opens, so a
+        // returning player is never asked to download from scratch again. The button label
+        // and the home-menu subtitle are set synchronously from the persisted flag (they
+        // can't lie about it), then best-effort reconciled against the live cache.
+        window.refreshOfflineDownloadUI = async function() {
+            const btn = document.getElementById('offline-dl-btn');
+            const entrySub = document.querySelector('#menu-offline-entry .menu-offline-entry-sub');
+            const applyLabels = (done) => {
+                if (btn) btn.textContent = done ? 'MANAGE' : 'SET UP';
+                if (entrySub) entrySub.textContent = done
+                    ? 'Downloaded ✓ — tap to update or manage'
+                    : 'Play with no internet — saves on your device';
+            };
+            const od = settings.offlineDownload || {};
+            applyLabels(!!od.completed);
+            if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http') || !od.completed) return;
+            try {
+                const st = await _swCacheState();
+                if (st && typeof st.cachedCount === 'number' && st.cachedCount === 0 && (st.appliedCount || 0) === 0) {
+                    // Cache was evicted out from under us — stop claiming it's downloaded.
+                    Object.assign(settings.offlineDownload, { completed: false, digest: null, at: null });
+                    try { persistMiscSettings(); } catch (e) {}
+                    applyLabels(false);
+                }
             } catch (e) {}
         };
 
@@ -16125,6 +16196,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-animations', 'animations'],
                 ['sw-weather-anim', 'weatherAnimation'],
                 ['sw-terrain-bg', 'terrainBackground'],
+                ['sw-ambient-particles', 'ambientParticles'],
                 ['sw-music', 'musicEnabled'],
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
@@ -16160,6 +16232,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (key === 'soundEnabled') {
                 if (on !== !!settings.soundEnabled) AudioSystem.toggleSound();
+                return;
+            }
+            if (key === 'ambientParticles') {
+                settings.ambientParticles = on;
+                // Tear down any live ambient layer immediately when switched off.
+                if (!on) { try { window.FxParticles && window.FxParticles.clearAll && window.FxParticles.clearAll(); } catch (e) {} }
+                try { window.syncSettingsModalSwitches(); } catch (e) {}
+                try { persistMiscSettings(); } catch (e) {}
                 return;
             }
         };
@@ -16312,6 +16392,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
+            try { window.refreshOfflineDownloadUI && window.refreshOfflineDownloadUI(); } catch (e) {}
             window.openModal('modal-settings');
         };
         window.applyBattleLogDockClass = function() {
@@ -18655,6 +18736,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let enabledGrades = [];
             for (let g = 1; g <= 4; g++) { let cb = document.getElementById(`grade-${g}-cb`); if (!cb || cb.checked) enabledGrades.push(g); }
             settings.draftGrades = enabledGrades.length > 0 ? enabledGrades : [1,2,3,4];
+            // Remember the pool selection so it survives a reload (was session-only before).
+            settings.draftGens = enabledGens;
+            try { persistMiscSettings(); } catch (e) {}
             let eligible = new Set();
             let rb9 = _randbatsCache[9] || {};
             for (let name of Object.keys(rb9)) { let b = baseStats[name]; if (b && genSet.has(b.gen) && settings.draftGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) eligible.add(name); }
@@ -18706,6 +18790,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ts = document.getElementById('quick-team-source'); if (ts) ts.value = settings.quickTeamSource || 'random';
             const ap = document.getElementById('menu-ai-profile');   if (ap) ap.value = settings.aiProfile || 'balanced';
             const ps = document.getElementById('party-size-select'); if (ps && settings.partySize) ps.value = String(settings.partySize);
+            // Weather / terrain / grades / gens now persist too — restore their checkboxes
+            // so a returning player's pool + rules aren't silently reset every reload.
+            const wc = document.getElementById('mech-weather-cb'); if (wc) wc.checked = !!settings.randomWeather;
+            const tc = document.getElementById('mech-terrain-cb'); if (tc) tc.checked = !!settings.randomTerrain;
+            for (let g = 1; g <= 4; g++) { const gc = document.getElementById(`grade-${g}-cb`); if (gc) gc.checked = !Array.isArray(settings.draftGrades) || settings.draftGrades.includes(g); }
+            if (Array.isArray(settings.draftGens) && settings.draftGens.length) { try { setGenCheckboxesPrefix('draft', settings.draftGens); } catch (e) {} }
         })();
 
         // Run once after data loads
@@ -35051,85 +35141,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         })();
 
-        // ===================================================================
-        // ===== AudioBus — lazy Howler wrapper for BGM crossfades (vendor/howler.min.js)
-        // ===================================================================
-        // Scoped to the MUSIC layer only (background loops + scene themes). Cries, move-SFX
-        // and UI-SFX stay on AudioSystem. Built behind settings.audioBus so the existing
-        // AudioSystem _fade path stays the default until the transition seams are wired.
-        // No-op under the harness or when music is disabled.
-        window.AudioBus = (function () {
-            let _libPromise = null;
-            let _current = null;     // { howl, src }
-            function _enabled() {
-                try {
-                    if (typeof window !== 'undefined' && window.__testHarness === true) return false;
-                    if (typeof settings === 'undefined' || !settings) return false;
-                    if (settings.audioBus !== true) return false;       // dormant until opted in
-                    if (settings.musicEnabled === false) return false;
-                } catch (e) { return false; }
-                return true;
-            }
-            function _loadLib() {
-                if (typeof window !== 'undefined' && window.Howl) return Promise.resolve(window.Howl);
-                if (_libPromise) return _libPromise;
-                _libPromise = new Promise(resolve => {
-                    try {
-                        const s = document.createElement('script');
-                        s.src = 'vendor/howler.min.js';
-                        s.dataset.howlerBundle = '1';
-                        s.onload = () => resolve(window.Howl || null);
-                        s.onerror = () => { _libPromise = null; resolve(null); };
-                        document.head.appendChild(s);
-                    } catch (e) { _libPromise = null; resolve(null); }
-                });
-                return _libPromise;
-            }
-            function _musicVol() {
-                try { return (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : 0.45; }
-                catch (e) { return 0.45; }
-            }
-            // Crossfade the background track to `src` (looping by default). No-op if already on it.
-            async function crossfadeTo(src, o) {
-                o = o || {};
-                if (!_enabled() || !src) return null;
-                const Howl = await _loadLib();
-                if (!Howl) return null;
-                if (_current && _current.src === src) return _current.howl;
-                const target = _musicVol() * (o.vol == null ? 1 : o.vol);
-                const ms = (o.fadeMs == null ? 900 : o.fadeMs);
-                const prev = _current;
-                const howl = new Howl({ src: [src], loop: o.loop !== false, html5: true, volume: 0 });
-                howl.play();
-                try { howl.fade(0, target, ms); } catch (e) {}
-                _current = { howl: howl, src: src };
-                if (prev && prev.howl) {
-                    try {
-                        prev.howl.fade(prev.howl.volume(), 0, ms);
-                        setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80);
-                    } catch (e) {}
-                }
-                return howl;
-            }
-            function stop(o) {
-                o = o || {};
-                const prev = _current; _current = null;
-                if (!prev || !prev.howl) return;
-                const ms = (o.fadeMs == null ? 700 : o.fadeMs);
-                try { prev.howl.fade(prev.howl.volume(), 0, ms); setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80); }
-                catch (e) { try { prev.howl.stop(); prev.howl.unload(); } catch (e2) {} }
-            }
-            function duck(level, ms) {
-                if (!_current || !_current.howl) return;
-                try { _current.howl.fade(_current.howl.volume(), _musicVol() * (level == null ? 0.35 : level), ms == null ? 250 : ms); } catch (e) {}
-            }
-            function unduck(ms) {
-                if (!_current || !_current.howl) return;
-                try { _current.howl.fade(_current.howl.volume(), _musicVol(), ms == null ? 350 : ms); } catch (e) {}
-            }
-            function current() { return _current ? _current.src : null; }
-            return { crossfadeTo, stop, duck, unduck, current, isEnabled: _enabled };
-        })();
+        // AudioBus (dead Howler BGM wrapper, zero callers) removed 2026-07 — revive via git history.
 
         // Battle weather → particle layer. The render loop calls this every frame, so it
         // change-detects on the weather TYPE and only re-mounts when it actually changes

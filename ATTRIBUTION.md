@@ -48,7 +48,7 @@ If you are a rights holder and want something removed, please open an issue.
 | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | CC0 1.0 | Sprite source (compilation). |
 | [anime.js](https://github.com/juliangarnier/anime) (`vendor/anime.min.js`) | MIT | Tween engine for per-move battle animations. |
 | [tsParticles](https://github.com/tsparticles/tsparticles) slim bundle (`vendor/tsparticles.slim.min.js`) | MIT | Lazy-loaded ambient scene particles, particle weather, and celebration bursts (`window.FxParticles`). |
-| [howler.js](https://github.com/goldfire/howler.js) (`vendor/howler.min.js`) | MIT | Lazy-loaded BGM crossfade / scene-ambience layer (`window.AudioBus`). |
+| [howler.js](https://github.com/goldfire/howler.js) (`vendor/howler.min.js`) | MIT | Vendored for a BGM crossfade layer; the `window.AudioBus` consumer was removed as dead code in 2026-07, so the lib is currently unused (retained for a future revival). |
 
 ---
 
