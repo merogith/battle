@@ -3462,6 +3462,20 @@
             border-color: #ffd54f;
             box-shadow: 0 0 7px rgba(255,213,79,0.55);
         }
+        /* Journey route track — 8 city nodes + a League node, marking run position. */
+        .story-city-route { display: flex; align-items: center; gap: 0; padding: 4px 0 8px; }
+        .story-route-node { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .story-route-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.28); box-shadow: inset 0 0 3px rgba(0,0,0,0.6); transition: all var(--dur-med) var(--ease-out-quart); }
+        .story-route-node.is-done .story-route-dot { background: linear-gradient(135deg, #ffe082, #ffb300); border-color: #ffd54f; box-shadow: 0 0 6px rgba(255,213,79,0.5); }
+        .story-route-node.is-current .story-route-dot { width: 13px; height: 13px; background: radial-gradient(circle at 40% 35%, #fff 0%, #ffd54f 55%, #ff8f00 100%); border-color: #fff; box-shadow: 0 0 10px rgba(255,213,79,0.75); animation: storyRoutePulse 1.5s ease-in-out infinite; }
+        .story-route-node.is-future .story-route-dot { opacity: 0.5; }
+        .story-route-link { width: 14px; height: 2px; flex-shrink: 0; background: rgba(255,255,255,0.18); }
+        .story-route-link.is-done { background: linear-gradient(90deg, #ffb300, #ffd54f); }
+        .story-route-league { font-size: 12px; margin-left: 1px; }
+        .story-route-crown { color: rgba(255,255,255,0.35); text-shadow: 0 0 6px rgba(0,0,0,0.6); }
+        .story-route-league.is-current .story-route-crown { color: #ffd54f; text-shadow: 0 0 9px rgba(255,213,79,0.7); animation: storyRoutePulse 1.5s ease-in-out infinite; }
+        @keyframes storyRoutePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+        @media (prefers-reduced-motion: reduce) { .story-route-node.is-current .story-route-dot, .story-route-league.is-current .story-route-crown { animation: none; } }
         /* The band is the hero copy of the town name — drop the small HUD chip
            on desktop so the same fact isn't printed twice in adjacent rows. */
         body:not(.is-mobile) #screen-story-city #story-hud-city { display: none; }
@@ -10028,6 +10042,7 @@
                 <div id="story-city-identity-name" class="story-city-identity-name"></div>
             </div>
             <div id="story-city-identity-badges" class="story-city-identity-badges" title="Gym badges earned"></div>
+            <div id="story-city-route" class="story-city-route" title="Your journey" aria-hidden="true"></div>
         </div>
         <!-- Main content -->
         <div class="story-city-main-row">
@@ -53459,6 +53474,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let _pips = '';
                     for (let i = 0; i < 8; i++) _pips += `<span class="story-city-badge-pip${i < (sm.badges | 0) ? ' earned' : ''}"></span>`;
                     _idPipsEl.innerHTML = _pips;
+                }
+                // Journey progress — an 8-city route track (+ League node) marking where the
+                // run sits on the path. Cleared cities fill, the current city pulses, the rest
+                // dim. Presentation only; mirrors cityIdx + sm.gymCleared already resolved above.
+                const _routeEl = document.getElementById('story-city-route');
+                if (_routeEl) {
+                    const _gc = sm.gymCleared || {};
+                    let _r = '';
+                    for (let i = 1; i <= 8; i++) {
+                        const _done = !!_gc[i] || i < (cityIdx | 0);
+                        const _cur = i === (cityIdx | 0);
+                        const _cls = _cur ? 'is-current' : (_done ? 'is-done' : 'is-future');
+                        if (i > 1) _r += `<span class="story-route-link${_done ? ' is-done' : ''}"></span>`;
+                        _r += `<span class="story-route-node ${_cls}"><span class="story-route-dot"></span></span>`;
+                    }
+                    const _leagueReady = (sm.badges | 0) >= 8;
+                    _r += `<span class="story-route-link${_leagueReady ? ' is-done' : ''}"></span>`;
+                    _r += `<span class="story-route-node story-route-league ${_leagueReady ? 'is-current' : 'is-future'}" title="Pokémon League"><span class="story-route-crown">★</span></span>`;
+                    _routeEl.innerHTML = _r;
                 }
             } catch (e) {}
             // Restore the pre-rebuild scroll offset and focused facility button.
