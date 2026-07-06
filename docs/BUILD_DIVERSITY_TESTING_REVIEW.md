@@ -82,9 +82,20 @@ no-ops with no charge; odd (non-multiple-of-4) totals stay within one 4-EV step.
 (C3+) is reshuffle-only — it re-tunes battle-trained EVs, never adds them, so it can't shortcut
 the training economy; full "buy any spread" stays gated to C7+/post-HoF/Frontier.
 
-## 6. Scope note
+## 6. Wild nature/ability blend + generator augmentation
 
-Phase 2b (generator learnset feed for the ~95 single-set species) is a documented follow-up:
-it rewires the build *source* and needs its own differential sweep. Phase 1 already delivers foe
-move diversity for the 92% of species with multiple curated sets, so it is not on the critical
-path for this PR.
+- **Nature blend** — post-neutral, ~30% of wild natures are fully random legal (all 25 surfaced across
+  a sweep) and ~70% curated role-appropriate. The late-city neutral share (~5–8%) is the random
+  slice occasionally rolling a neutral, by design. Locked by `story-wild-build-diversity` (blend +
+  slot-1 ability assertions).
+- **Ability** — regular slot-1 now appears ~half the time on slot-1-capable species (was ~0%); hidden
+  stays late-gated.
+- **Generator augmentation** — thin-CSV species (< 8 CSV moves) get their legal learnset folded in
+  (Sunkern 5→65); well-covered species untouched (Garchomp/Blissey/Luvdisc unchanged). Guarded by
+  `story-generator-augment.test.js` (index-poll + augment-thin / leave-covered).
+
+## 7. Manual-verification note
+
+The EV-Trainer reshuffle **UI** (Phase 4) has backend tests + a regenerated city-hub golden, but the
+preset-card render itself was not driven in a live browser. A one-time visual pass of the EV-Trainer
+screen at C3 (reshuffle-only) and C7 (full + reshuffle) is the remaining manual check before merge.

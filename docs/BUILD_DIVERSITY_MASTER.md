@@ -110,10 +110,10 @@ Net: builds are *constructed to the stage* (coherent + vetted + adaptive + unive
 - **Phase 3 — Wild philosophy. ✅ SHIPPED.** Wild EVs track the city band (stage-competitive); nature phases in over C0-C2; ability keeps a mild slot-0 bias with late hidden-ability chance; moves stay legal-basic (the earn-via-tutor headroom). The secondary-STAB bias supplies type variety.
 - **Phase 2 (roles) — role-coherent foe teams. ✅ SHIPPED.** `enforceRoleSpread` caps any single archetype at ~half the team and re-rolls over-represented unlocked slots toward absent roles (wall / hazard lead / setup / the other attacking category). Teams span ~4.6 distinct roles/6, 0% monotone. smartDraftPool-gated, story-foe-only, locks respected.
 - **Phase 4 — EV-redistribution trainer. ✅ SHIPPED.** Net-zero "reshuffle" re-points a mon's existing EV total into a role shape for 1000 G (reuses `_distributeEVsToTotal`); full "buy any spread" stays 5000 G. EV Trainer now debuts at **City 3 in reshuffle-only mode** (`_evTrainerIsFullMode` gates full mode to C7+/post-HoF/Frontier) — economy-safe because reshuffle never adds EVs.
-- **Phase 2b — stage-adaptive generator (learnset-fed). ⏳ FOLLOW-UP.** Wire the learnset into `makeDesignedBuild` (`_designedCsvMovePool` → `move-tags.json`) so the ~95 single-set species get role-diverse sets. Deferred to its own PR: it rewires the build *source* for *all* generated builds (regression surface) and needs the async-warmed learnset at build time; Phase 1 already delivers foe move diversity for the 92% multi-set species.
+- **Phase 2b — generator learnset augmentation (targeted). ✅ SHIPPED.** `_designedCsvMovePool` folds the legal learnset (natural + learnt, from `window.MOVE_TAG_INDEX`) into the pool **only for thin-CSV species** (union < 8) so single-set / LC mons get a buildable second role; well-covered species are untouched (Sunkern 5→65; Garchomp/Blissey unchanged). Best-effort (no-op until the async index loads).
+- **Wild nature/ability (blend).** ✅ Nature: ~70% curated role-appropriate + ~30% fully random legal (raw-catch feel; Nature Rater is the fix path). Ability: random among the species' regular slots (0/1), hidden still late-gated.
 
-This PR lands Phases 1–4 (moves, correctness, wild, roles, EV trainer); only the generator-source
-rewire (2b) is held back so it can get its own differential sweep without gating this merge.
+This PR lands **all phases** (moves, correctness, wild diversity + philosophy, roles, EV trainer, generator).
 Full verification record: `BUILD_DIVERSITY_TESTING_REVIEW.md`.
 
 ## 7. Balance-knobs registry (all maintainer-owned)
