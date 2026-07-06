@@ -70,19 +70,34 @@ function aggregate(runs, stages) {
     [k, { n: v.length, meanReach: mean(v), minReach: Math.min(...v), maxReach: Math.max(...v),
       hofRate: pctOr(runs.filter(r => `${r.difficulty}|${r.policy}|${r.itemMode}` === k && /hof|mystery/.test(r.outcome)).length, v.length) }]));
 
-  // Power curve per city (player vs foe), averaged over runs, per policy/difficulty.
-  const powerByCity = {}; // "diff|policy" -> city -> {p:[],f:[]}
+  // Power curve per city (player vs foe). Use PER-MON power (total / party size) so the curve
+  // is not distorted by party-size differences across cities (a per-city *total* average dips
+  // at city 4 purely because filler-trainer party size drops there — a metric artifact, not a
+  // difficulty inversion). Per-mon power is the apples-to-apples difficulty spine.
+  const powerByCity = {}; // "diff|policy|item" -> city -> {p:[],f:[]}
   for (const s of stages) {
     const k = `${s.difficulty}|${s.policy}|${s.itemMode}`;
     powerByCity[k] = powerByCity[k] || {};
     const c = (powerByCity[k][s.city] = powerByCity[k][s.city] || { p: [], f: [] });
-    c.p.push(s.pPower); c.f.push(s.fPower);
+    if (s.playerSize > 0) c.p.push(s.pPower / s.playerSize);
+    if (s.foeSize > 0) c.f.push(s.fPower / s.foeSize);
   }
   const powerCurve = {};
   for (const [k, cities] of Object.entries(powerByCity)) {
-    powerCurve[k] = Object.entries(cities).map(([city, v]) => ({ city: +city, pPower: Math.round(mean(v.p)), fPower: Math.round(mean(v.f)) }))
+    powerCurve[k] = Object.entries(cities).map(([city, v]) => ({ city: +city, pPower: Math.round(mean(v.p) || 0), fPower: Math.round(mean(v.f) || 0) }))
       .sort((a, b) => a.city - b.city);
   }
+
+  // Per-battle-TYPE foe power by city (surfaces filler-trainer scaling vs the gym spine).
+  const byType = {}; // typeKey -> city -> [fPower/size]
+  for (const s of stages) {
+    const type = s.event.replace(/ \d+$/, '');
+    byType[type] = byType[type] || {};
+    if (s.foeSize > 0) (byType[type][s.city] = byType[type][s.city] || []).push(s.fPower / s.foeSize);
+  }
+  const foePowerByType = {};
+  for (const [type, cities] of Object.entries(byType))
+    foePowerByType[type] = Object.entries(cities).map(([city, v]) => ({ city: +city, perMon: Math.round(mean(v)) })).sort((a, b) => a.city - b.city);
 
   // Economy: mean gold curve by battle position, per policy/difficulty.
   const goldByPos = {};
@@ -110,7 +125,7 @@ function aggregate(runs, stages) {
     }
   }
 
-  return { policies, diffs, items, stageList, reachSummary, powerCurve, economy, itemDelta };
+  return { policies, diffs, items, stageList, reachSummary, powerCurve, foePowerByType, economy, itemDelta };
 }
 
 function detectFlags(agg) {
@@ -125,11 +140,25 @@ function detectFlags(agg) {
         flags.push({ kind: 'too-easy', event: st.event, pos: st.pos, difficulty, itemMode, detail: `casual win ${(100 * cas.w / cas.n).toFixed(0)}% (>${100 * FLAGS.tooEasyWinRate}%)` });
     }
   }
-  // Power inversion: foe PowerIndex dropping city-to-city (curve bug).
+  // Power inversion: PER-MON foe power dropping city-to-city (party-size-normalized, so this is
+  // a real difficulty inversion, not a filler-mix artifact). Tolerance 3% to ignore noise.
   for (const [k, curve] of Object.entries(agg.powerCurve)) {
     for (let i = 1; i < curve.length; i++) {
-      if (curve[i].fPower < curve[i - 1].fPower - 5)
-        flags.push({ kind: 'power-inversion', detail: `${k}: foe power drops city ${curve[i - 1].city}->${curve[i].city} (${curve[i - 1].fPower}->${curve[i].fPower})` });
+      if (curve[i].fPower < curve[i - 1].fPower * 0.97)
+        flags.push({ kind: 'power-inversion', detail: `${k}: per-mon foe power drops city ${curve[i - 1].city}->${curve[i].city} (${curve[i - 1].fPower}->${curve[i].fPower})` });
+    }
+  }
+  // Filler-trivial: filler trainer types (Basic/Elite) whose per-mon power falls far below the
+  // Gym Leader spine at the same late city — late-game route battles become trivial speed-bumps.
+  const spine = agg.foePowerByType['Gym Leader'] || [];
+  const spineAt = (c) => { const e = spine.find(x => x.city === c); return e ? e.perMon : null; };
+  for (const type of ['Basic Trainer', 'Elite Trainer']) {
+    const curve = agg.foePowerByType[type] || [];
+    for (const pt of curve) {
+      if (pt.city < 4) continue;
+      const g = spineAt(pt.city);
+      if (g && pt.perMon < 0.45 * g)
+        flags.push({ kind: 'filler-trivial', detail: `${type} @ city ${pt.city}: per-mon power ${pt.perMon} is ${Math.round(100 * pt.perMon / g)}% of the Gym Leader ${g} — trivial vs the spine` });
     }
   }
   return flags;
@@ -188,7 +217,19 @@ ul{margin:4px 0}small{color:#888}
 <h2>Power curve <small>(${esc(pcKey || '')} — <span style="color:#4ea1ff">player</span> vs <span style="color:#ff6b6b">foe</span> PowerIndex by city)</small></h2>
 ${svg}
 
-<h2>Reach summary <small>(how far each cohort gets; hofRate = reached ending)</small></h2>
+<h2>Foe per-mon power by battle type <small>(party-size-normalized — the gym spine vs filler; totals mislead because filler fields fewer mons)</small></h2>
+${(() => {
+  const cities = [...new Set(Object.values(agg.foePowerByType).flat().map(p => p.city))].sort((a, b) => a - b);
+  const types = Object.keys(agg.foePowerByType).sort();
+  const head = cities.map(c => `<th>C${c}</th>`).join('');
+  const rows = types.map(t => {
+    const m = Object.fromEntries((agg.foePowerByType[t] || []).map(p => [p.city, p.perMon]));
+    return `<tr><th style="text-align:left">${esc(t)}</th>${cities.map(c => `<td>${m[c] != null ? m[c] : ''}</td>`).join('')}</tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto"><table><tr><th></th>${head}</tr>${rows}</table></div>`;
+})()}
+
+<h2>Reach summary <small>(how far each cohort gets; hofRate = reached ending)</small></h2>`
 <table><tr><th>diff|policy|item</th><th>n</th><th>mean pos</th><th>min</th><th>max</th><th>finish%</th></tr>${reachRows}</table>
 
 <h2>Item off→on delta <small>(top 20 by |Δ win-rate|)</small></h2>
