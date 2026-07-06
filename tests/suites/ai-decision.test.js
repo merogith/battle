@@ -329,3 +329,84 @@ test('parseMoveEffects gate: Poltergeist fails against an itemless target', asyn
   setState(eng, { fActive: gholdengo, pActive: itemless });
   assert.notEqual(engine.getBestMove(gholdengo, itemless).name, 'Poltergeist', 'Poltergeist must not be used vs an itemless target');
 });
+
+// === Switch competence pass (2026-07): anti-juggle, self-destruct cost, proactive counter-switch ===
+// Guards for the maintainer-reported "juggling not to die" bug and the strategic-switch emphasis.
+
+test('aiDecision: does not juggle fresh Sturdy mons into a faster OHKO attacker (anti-juggle)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Fast Starmie OHKOs 4x-weak Rock/Ground Sturdy mons (Surf floors each to 1 HP via Sturdy). A 1-HP
+  // Golem must HOLD and attack rather than switch to a fresh Rhydon that would itself just be chipped
+  // to 1 and never act — the reported juggling. Rhydon can't KO Starmie back and is outsped.
+  const starmie = mkMon({ species: 'Starmie', moves: ['Surf', 'Ice Beam', 'Thunderbolt', 'Psychic'] });
+  const golem = mkMon({ species: 'Golem', ability: 'Sturdy', moves: ['Earthquake', 'Rock Slide', 'Stone Edge', 'Fire Punch'] });
+  const rhydon = mkMon({ species: 'Rhydon', ability: 'Sturdy', moves: ['Earthquake', 'Rock Slide', 'Megahorn', 'Stone Edge'] });
+  golem.currentHp = 1; // Sturdy already spent last turn
+  setState(eng, { fActive: golem, pActive: starmie, foeParty: [golem, rhydon], playerParty: [starmie], turnNumber: 4 });
+  assert.equal(engine.aiDecision(), null, 'A doomed 1-HP mon must not feed a fresh Sturdy mon into the same OHKO');
+});
+
+test('aiDecision: still switches a dying mon into a REAL answer (resists + survives with HP to spare)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Same pressure, but the bench answer (Toxapex) genuinely resists Water and survives with real HP —
+  // this is a good switch and must NOT be suppressed by the anti-juggle guard.
+  const starmie = mkMon({ species: 'Starmie', moves: ['Surf', 'Ice Beam', 'Thunderbolt', 'Psychic'] });
+  const golem = mkMon({ species: 'Golem', ability: 'Sturdy', moves: ['Earthquake', 'Rock Slide', 'Stone Edge', 'Fire Punch'] });
+  golem.currentHp = 1;
+  const pex = mkMon({ species: 'Toxapex', ability: 'Regenerator', moves: ['Scald', 'Toxic', 'Recover', 'Haze'] });
+  setState(eng, { fActive: golem, pActive: starmie, foeParty: [golem, pex], playerParty: [starmie], turnNumber: 4 });
+  assert.notEqual(engine.aiDecision(), null, 'A dying mon should still pivot to a bench mon that actually walls the threat');
+});
+
+test('getBestMove: does not throw a healthy mon away on Explosion when a normal move also KOs', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Full-HP Golem vs a frail Flying target: Rock Slide (2x) already KOs, so self-destructing is wasteful.
+  const golem = mkMon({ species: 'Golem', moves: ['Rock Slide', 'Explosion', 'Earthquake', 'Body Slam'] });
+  const frail = mkMon({ species: 'Pidgey', moves: ['Tackle', 'Tackle', 'Tackle', 'Tackle'] });
+  frail.maxHp = 60; frail.currentHp = 60;
+  setState(eng, { fActive: golem, pActive: frail, turnNumber: 2 });
+  assert.notEqual(engine.getBestMove(golem, frail).name, 'Explosion', 'A healthy mon should not Explode when a normal attack KOs');
+});
+
+test('getBestMove: never self-destructs when the move cannot even KO', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  const golem = mkMon({ species: 'Golem', moves: ['Rock Slide', 'Explosion', 'Mud-Slap', 'Body Slam'] });
+  const tank = mkMon({ species: 'Snorlax', moves: ['Body Slam', 'Splash', 'Splash', 'Splash'] });
+  setState(eng, { fActive: golem, pActive: tank, turnNumber: 3 });
+  assert.notEqual(engine.getBestMove(golem, tank).name, 'Explosion', 'Fainting for a non-KO is (almost) never correct');
+});
+
+test('aiDecision: proactively pivots a can\'t-retaliate mon into a hard counter (immune + threatens back)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Jolteon can't touch Rhyperior (Thunderbolt is Ground-immune) and eats a big Earthquake; the bench
+  // Gyarados is Flying (immune to EQ) and hits back with 4x Waterfall — the "great point to switch".
+  const rhyperior = mkMon({ species: 'Rhyperior', moves: ['Earthquake', 'Splash', 'Splash', 'Splash'] });
+  const jolteon = mkMon({ species: 'Jolteon', moves: ['Thunderbolt', 'Shadow Ball', 'Splash', 'Splash'] });
+  const gyarados = mkMon({ species: 'Gyarados', moves: ['Waterfall', 'Ice Fang', 'Earthquake', 'Dragon Dance'] });
+  setState(eng, { fActive: jolteon, pActive: rhyperior, foeParty: [jolteon, gyarados], playerParty: [rhyperior], turnNumber: 3 });
+  const dec = engine.aiDecision();
+  assert.ok(dec !== null && engine.state.foeParty[dec] && engine.state.foeParty[dec].name === 'Gyarados',
+    `Expected a proactive pivot to the Gyarados hard counter, got ${dec === null ? 'no switch' : engine.state.foeParty[dec]?.name}`);
+});
+
+test('aiDecision: does NOT proactively switch when the current mon is comfortable', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Skarmory is under no pressure from a weak Furret — a proactive pivot here would be needless churn.
+  const furret = mkMon({ species: 'Furret', moves: ['Tackle', 'Quick Attack', 'Splash', 'Splash'] });
+  const skarm = mkMon({ species: 'Skarmory', moves: ['Body Press', 'Brave Bird', 'Roost', 'Iron Head'] });
+  const pex = mkMon({ species: 'Toxapex', moves: ['Scald', 'Toxic', 'Recover', 'Haze'] });
+  setState(eng, { fActive: skarm, pActive: furret, foeParty: [skarm, pex], playerParty: [furret], turnNumber: 3 });
+  assert.equal(engine.aiDecision(), null, 'A comfortable matchup must not trigger a proactive switch');
+});
