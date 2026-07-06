@@ -5,8 +5,9 @@
 > **every** Pokémon surface a **single-battle-viable** recommendation — for both the foe roller
 > and the player-facing recommendation UI (Move Tutor / Battle Dojo / Nature Rater / Colress).
 >
-> Nothing here changes behaviour yet. Build selection and recommendation logic are game-behaviour
-> per `CLAUDE.md` → **needs maintainer sign-off before implementing.** This doc is the proposal.
+> **Status: IMPLEMENTED (2026-07, maintainer-approved "do all").** Paths A, B, C, D, E shipped,
+> plus a follow-on fix (D2) the deeper investigation surfaced. Guard test:
+> `tests/suites/smogon-info-gaps.test.js`. See "What shipped" at the bottom.
 
 ## TL;DR
 
@@ -68,10 +69,17 @@ Union across all gens, after the default singles filter (drop `doubles` + `EXOTI
 | Zero usable singles sets — **real draftable** species | **7** |
 
 The 7: `Greninja-Ash`, `Greninja-Bond`, `Zygarde-Complete`, `Darmanitan-Zen`, `Marill`,
-`Eevee-Starter`, `Pikachu-Starter` — all edge formes. Most (`Greninja-Ash`, `Zygarde-Complete`, …)
-still appear in gen-9 randbats, so online they roll a viable set. Mega/Gmax/Primal names are excluded
+`Eevee-Starter`, `Pikachu-Starter` — all edge formes. Mega/Gmax/Primal names are excluded
 from the draft pool anyway (handled as base + gimmick); CAP fakemons (`Aurumoth`, `Colossoil`, …) are
 not real species.
+
+**Deeper finding (this is the real severity):** these 7 do *not* fall to the Tackle-junk build —
+`resolveCsvBuildEntry` / `_designedCsvMovePool` fall back to their **only** stored set, which is
+exotic. So at runtime they roll **illegal-in-singles movesets** — Ash-Greninja with Urshifu's
+`Surging Strikes` / `Wicked Blow` + Maushold's `Flower Trick` (a balancedhackmons "Sniper" set with
+5×252 EVs); Zen Darmanitan / Complete Zygarde with Marshadow's `Spectral Thief` + Zygarde's
+`Core Enforcer`; the Let's-Go starters with `Sparkly Swirl` / `Zippy Zap`. Viable-looking, but
+nonsense — exactly the "not polished for singles" symptom. Fixed by D + D2 below.
 
 ### G2 — Recommendation meta counts exotic sets the roller excludes (HEADLINE / MEDIUM-HIGH)
 
@@ -149,64 +157,66 @@ power-weighting have nothing to choose from. Not a viability problem — a *vari
 
 ---
 
-## Optimization paths (proposed — pick which to implement)
+## What shipped
 
-Ordered by value ÷ risk. All are consistency/quality/polish, none invents new balance numbers except
-where noted (maintainer-owned).
+All changes live in `battle.html` unless noted; guard test `tests/suites/smogon-info-gaps.test.js`.
 
-### Path A — Filter exotic sets out of the recommendation meta *(RECOMMENDED, fixes G2)*
+### A — Exotic sets excluded from the recommendation meta *(fixes G2)*
 
-Make `_txAccumulateBuilds` respect `settings.allowExoticFormats` exactly as the roller does, mirroring
-the existing `_category === 'doubles'` guard:
+`_txAccumulateBuilds` (`battle.html:68926`) now skips `_isExoticFormat(b._format)` sets unless
+`settings.allowExoticFormats`, mirroring the existing `_category === 'doubles'` guard and the roller's
+`_filterBuildPool` policy. The ~25 contaminated species drop below the sparse gate and show the honest
+"no/limited competitive data" banner + heuristic-synthesized singles set instead of confident recs
+sourced from GodlyGift / StabMons / AAA. `_format` was already stored on every build object, and the
+existing `_pbsInvalidateTxMeta()` call after `loadBuildsCSV` rebuilds the cache after settings load, so
+no extra wiring was needed. Verified live: 14 species flip `sparse` when the setting is toggled
+(Zamazenta, Palafin, Flutter Mane, Scream Tail, …); Garchomp's ability usage tightened from 94.5 % →
+95.4 % (exotic noise removed) — the tutor-card snapshot baseline was regenerated to match.
 
-```js
-// battle.html:68918 area, inside the per-build loop
-if (b._illegal) continue;
-if (b._category === 'doubles' && !settings.allowDoublesBuilds) continue;   // (align w/ roller too)
-if (!settings.allowExoticFormats && _isExoticFormat(b._format)) continue;   // NEW
-```
+### B — `_SMOGON_FORMAT_POWER` recognises 5 more singles formats *(fixes G3)*
 
-- Loader already stores `_format` on every build object (`:11961`), so no data change needed.
-- Effect: the ~25 contaminated species drop below the sparse gate and correctly show the honest banner
-  + heuristic-synthesized single-battle set instead of illegal ★ recs. Recs become **consistent** with
-  what the foe roller actually uses.
-- Must also invalidate `_txMetaCache` when `allowExoticFormats` / `allowDoublesBuilds` toggles (call
-  `window._pbsInvalidateTxMeta()` from the settings handler) so recs update live.
-- Risk: low. It's a consistency fix, but it *does* change what the player sees → **sign-off required.**
-- Test: add a suite asserting a known exotic-only species (e.g. `Regieleki` with exotic sets stripped)
-  shows `sparse:true` and the "no competitive data" banner.
+Added to the frozen table (`battle.html:12559`): `nationaldexag: 1.00`, `monotype`/`nationaldexmonotype`/
+`battlestadiumsingles`/`battlespotsingles`: `0.60`. Fixes the `nationaldexag` under-rating and gives the
+monotype / Battle Stadium/Spot sets deliberate (not accidental-neutral) weighting. *Balance numbers —
+tune in that table.*
 
-### Path B — Teach `_SMOGON_FORMAT_POWER` the 5 missing singles formats *(fixes G3)*
+### C — Offline-safe randbats mechanism *(fixes G4)*
 
-Add the numbers from G3's table (maintainer owns the exact values). One-line-per-format addition to the
-frozen table at `:12551`. Fixes `nationaldexag` under-rating and gives `monotype`/BSS/BSpot deliberate
-(rather than accidental-neutral) weighting. **Balance numbers → maintainer picks the values.**
+`fetchRandbatsForGen` (`battle.html:14513`) now tries a local `data/randbats/genN.json` snapshot first,
+then falls back to the live pkmn.cc API (same local-then-API shape as `fetchSmogonSetsForGen`). Behaviour
+is unchanged wherever the snapshot isn't present. `scripts/fetch-randbats.mjs` bakes the snapshot.
+**Data step deferred:** this session's egress policy blocks `data.pkmn.cc` (403), so the snapshot file
+itself is not committed — run `node scripts/fetch-randbats.mjs [--all]` on a machine/CI with pkmn.cc
+access and commit `data/randbats/`.
 
-### Path C — Commit a local randbats snapshot so the fallback is offline-safe *(fixes G4)*
+### D — Curated single-battle floor for the no-clean-set formes *(fixes G1 tail)*
 
-Bake `data/randbats/gen9.json` (and optionally 4–8) into the repo and have `fetchRandbatsForGen` try the
-local path first (same local-then-API pattern `fetchSmogonSetsForGen` already uses at `:14494`). Removes
-the last-resort Tackle junk for every offline zero-data species. Pure data + loader change; the roller
-logic is untouched. (Adds ~1–2 MB to the repo — confirm that's acceptable.)
+`_CURATED_SINGLES_SETS` (`battle.html:12606`) hand-authors one legal singles set for each of the 7 formes.
+`makeBuild` prefers it whenever a species has **no clean** (non-exotic, non-doubles, non-illegal) set in
+its resolved pool — which is exactly these formes, since `_filterBuildPool` otherwise falls back to their
+exotic set. It's a *floor*, not a draft entry: `getDraftPool` reads `csvBuilds` keys, not this table, so
+draftability is unchanged. Result: Ash-Greninja now rolls Hydro Pump / Dark Pulse / Water Shuriken /
+Ice Beam + Battle Bond instead of the illegal Sniper hackmons set.
 
-### Path D — Guarantee a curated single-battle set for the 7 zero-data formes *(fixes G1 tail)*
+### D2 — Designed-build move pool respects the exotic/doubles policy *(follow-on, the crucial one)*
 
-For `Greninja-Ash`, `Greninja-Bond`, `Zygarde-Complete`, `Darmanitan-Zen`, `Marill`, `Eevee-Starter`,
-`Pikachu-Starter`: either (a) rely on Path C's randbats (covers most), or (b) hand-author a single legal
-"regular" set each so they never depend on the network. Small, safe, and makes the guarantee absolute.
+The investigation showed D alone was insufficient: `_designedCsvMovePool` (`battle.html:12267`) seeded the
+designed engine's legal-move pool from **all** csv sets including exotic ones, so ~30–50 % of the time the
+"designed" foe re-introduced the exact illegal moves (Spectral Thief, Surging Strikes, Sparkly Swirl…).
+It now skips exotic/doubles sets under the same policy. For an exotic-only species the pool goes empty →
+`makeDesignedBuild` bails (its `<3` guard) → the curated floor (D) takes over. Net: across CSV **and**
+designed paths, the 7 formes never roll another species' signature move (locked by the guard test).
 
-### Path E — (Optional) Variety pad for single-set species *(G5, lowest priority)*
+### E — Variety pad for single-set species *(fixes G5)*
 
-Let the designed-build engine contribute an alternate set for the 73 single-set species so drafts/rolls
-aren't identical every time. The engine already exists; this is just widening its eligibility. Cosmetic.
+`makeBuild` (`battle.html:12643`) raises the designed-build probability to ≥50 % for a species whose
+usable standard pool is ≤1 set, so it isn't frozen to one identical build every roll. Pure variety — it
+changes neither which sets exist nor their power, only how often the (already-legal) designed alternate
+appears.
 
----
+## Follow-ups left open
 
-## Recommended sequencing
-
-1. **Path A** — highest value, closes the one genuinely misleading UX path, aligns recs with the roller.
-2. **Path C** — removes the only true "garbage" foe outcome (offline).
-3. **Path B** — cheap fidelity win once the maintainer picks the numbers.
-4. **Path D / E** — completeness polish; optional.
-
-Each ships with a jsdom guard test per the repo's sustainability rule.
+- **Commit the randbats snapshot** (C's data half) from a network-allowed environment.
+- **G5 tail:** 73 single-set species now get designed variety, but a maintainer could still curate a
+  second Smogon-style set for the most-played of them if more flavour is wanted.
+- Balance numbers in B (`0.60` mid-tier) are first-pass — retune to taste.
