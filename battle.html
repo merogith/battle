@@ -34584,6 +34584,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         flash.classList.remove('flash');
                         flash.classList.add('fadeout');
                         sprite.classList.add('reveal');
+                        // Particle burst at the reveal — the scene had only a white flash.
+                        // FxParticles self-gates on the harness / reduced motion / the
+                        // ambient-particles setting, so this is a no-op in those cases.
+                        try {
+                            if (window.FxParticles && typeof FxParticles.burst === 'function') {
+                                FxParticles.burst(ov, opts && opts.shiny ? 'confetti' : 'sparkle', { color: '#ffd54f', density: 1, duration: 1200 });
+                            }
+                        } catch (e) {}
                         _sfx('shing', 0.7);
                         _cry(toName, 0.6);
                         if (cancel) { cancel.disabled = true; cancel.textContent = ''; }
