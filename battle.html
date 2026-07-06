@@ -18610,6 +18610,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
         }
+        // Role-spread enforcement (build-diversity Phase 2 — "both roles + moves"):
+        // push a foe team toward a SPREAD of roles instead of six near-identical ones.
+        // Beyond enforceRoleCoverage's two extreme-case fixes, this caps any single
+        // archetype at ~half the team and re-rolls over-represented UNLOCKED slots
+        // toward absent roles (a wall, a hazard lead, a setup threat, the other
+        // attacking category), so a team reads as a team rather than clones. Signature/
+        // counter locks are never touched. Best-effort + guarded against spinning. The
+        // reroll reuses makeBuild, so it reproduces when the RNG streams reset (same as
+        // enforceRoleCoverage). Called from rollTrainerTeam only (story foes).
+        function enforceRoleSpread(pool, lockedIndices) {
+            if (!settings.smartDraftPool) return;
+            if (!Array.isArray(pool) || pool.length < 4) return;
+            const locked = lockedIndices instanceof Set ? lockedIndices : new Set();
+            const N = pool.length;
+            const cap = Math.ceil(N / 2);            // no archetype may exceed half the team
+            const targetDistinct = Math.min(3, N);   // aim for >=3 distinct roles
+            const FILL_TARGETS = [
+                new Set(['bulky-support']),          // a wall
+                new Set(['lead-hazards']),           // a hazard lead
+                new Set(['setup-sweeper']),          // a setup threat
+                new Set(['special-attacker']),       // spread the attacking category
+                new Set(['physical-attacker']),
+            ];
+            let guard = N * 3;
+            while (guard-- > 0) {
+                const arche = pool.map(_entryArchetype);
+                const counts = {};
+                for (const a of arche) counts[a] = (counts[a] || 0) + 1;
+                const distinct = Object.keys(counts).length;
+                let over = null, overN = 0;
+                for (const a of Object.keys(counts)) {
+                    if (counts[a] > cap && counts[a] > overN) { over = a; overN = counts[a]; }
+                }
+                if (over == null && distinct >= targetDistinct) break; // already a healthy spread
+                let target = null;
+                for (const t of FILL_TARGETS) {
+                    if (!arche.some(a => t.has(a))) { target = t; break; }
+                }
+                if (!target) break; // all preferred roles already present
+                let src = over;
+                if (src == null) { for (const a of Object.keys(counts)) { if (counts[a] >= 2) { src = a; break; } } }
+                if (src == null) break;
+                let rerolled = false;
+                for (let i = N - 1; i >= 0; i--) {
+                    if (locked.has(i) || arche[i] !== src) continue;
+                    const nb = _rerollBuildForArchetype(pool[i].name, target);
+                    if (nb) { pool[i].build = nb; rerolled = true; break; }
+                }
+                if (!rerolled) break; // no improvement available — stop spinning
+            }
+        }
 
         // Type-balance enforcement: if 3+ team members share a type weakness, swap
         // one unlocked slot with a re-rolled species from candidateNames that lacks
@@ -47031,6 +47082,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (let _i = 0; _i < teamR.length; _i++) if (_origSigsR.has(teamR[_i].name)) _lockedR.add(_i);
                 const _candR = [...T[1], ...T[2], ...T[3], ...T[4]];
                 enforceRoleCoverage(teamR, _lockedR);
+                enforceRoleSpread(teamR, _lockedR);
                 enforceTypeBalance(teamR, _candR, _lockedR);
                 enforceItemClause(teamR, _lockedR);
                 // End-game illegal-build injection (Rival post-G8 → 2 slots).
@@ -47247,6 +47299,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _cand = [];
             for (let g = _fillerCeiling; g <= 4; g++) _cand.push(...T[g]);
             enforceRoleCoverage(team, _locked);
+            enforceRoleSpread(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team, _locked);
             // End-game illegal-build injection (E1-E4 → 1; Champion → 2; Frontier → tiered).
