@@ -1,7 +1,10 @@
 # Fast-Build + Role/Nature/EV/Competitive-Move Delta — Plan (proposal)
 
-> **Status: PROPOSAL — pending maintainer sign-off** (touches scoring, gold flow,
-> and role thresholds → game behavior per CLAUDE.md approval rules).
+> **Status: SHIPPED (2026-07-06)** — maintainer signed off on the four decisions in §5
+> (build-on-top-of the smogon-info-gaps branch; unify roles; EVs gate-dependent; voucher
+> chooser). All four features implemented with deterministic tests; full `tests/suites`
+> battery green (1310/1310). Touches scoring, gold flow, and role thresholds → game
+> behavior per CLAUDE.md approval rules, approved before commit.
 >
 > Built **on top of** `claude/pokemon-smogon-info-gaps-hc160y` (the big tutor/dojo
 > overhaul: filters, recommender quality, item tiers, moves quick-apply, responsive
