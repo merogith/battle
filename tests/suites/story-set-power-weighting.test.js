@@ -24,8 +24,13 @@ test('_smogonSetPower maps Smogon tiers to a power ordering; unknown → neutral
   assert.equal(power({ _format: 'lc' }), 0.25);
   assert.ok(power({ _format: 'ou' }) > power({ _format: 'uu' }), 'OU > UU');
   assert.ok(power({ _format: 'uu' }) > power({ _format: 'pu' }), 'UU > PU');
-  // Exotic / unknown singles formats score neutral so they neither dominate nor vanish.
-  assert.equal(power({ _format: 'monotype' }), 0.5);
+  // Recognised off-standard singles formats score deliberately (see docs/SMOGON_INFO_GAPS.md B):
+  // Anything Goes is top strength; monotype / Battle Stadium-Spot Singles sit mid.
+  assert.equal(power({ _format: 'nationaldexag' }), 1.00);
+  assert.equal(power({ _format: 'monotype' }), 0.60);
+  assert.equal(power({ _format: 'battlestadiumsingles' }), 0.60);
+  // Genuinely unknown / exotic / empty formats still score neutral so they neither dominate nor vanish.
+  assert.equal(power({ _format: 'balancedhackmons' }), 0.5);
   assert.equal(power({ _format: '' }), 0.5);
   assert.equal(power(null), 0.5);
 });

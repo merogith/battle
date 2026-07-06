@@ -12267,11 +12267,21 @@
         function _designedCsvMovePool(name) {
             const entry = resolveCsvBuildEntry(name);
             const moves = new Set();
+            // Mirror the roller/rec exotic+doubles policy (docs/SMOGON_INFO_GAPS.md):
+            // never seed the designed move pool from exotic-format (BH/StabMons/GodlyGift/
+            // Let's Go) or doubles sets, or the "designed" build re-introduces the very
+            // illegal-in-singles moves (Spectral Thief, Surging Strikes, Sparkly Swirl…)
+            // the exotic filter exists to keep out. Exotic-only species then yield an empty
+            // pool → makeDesignedBuild bails (its <3 guard) → the curated floor takes over.
+            const _allowExotic  = !!(typeof settings === 'object' && settings && settings.allowExoticFormats);
+            const _allowDoubles = !!(typeof settings === 'object' && settings && settings.allowDoublesBuilds);
             for (const tag of ['regular', 'weather', 'mega', 'z-attack', 'tera']) {
                 const arr = entry[tag];
                 if (!Array.isArray(arr)) continue;
                 for (const b of arr) {
                     if (!b || !Array.isArray(b.m)) continue;
+                    if (!_allowDoubles && b._category === 'doubles') continue;
+                    if (!_allowExotic && typeof _isExoticFormat === 'function' && _isExoticFormat(b._format)) continue;
                     for (const m of b.m) {
                         if (!m) continue;
                         if (m.includes('/')) {
@@ -12558,6 +12568,13 @@
             zu: 0.30,
             nfe: 0.28, lc: 0.25,
             '1v1': 0.68,
+            // Additional recognised SINGLES formats (previously scored neutral 0.5).
+            // nationaldexag = Anything Goes ⇒ top strength (no clause/ban). Monotype &
+            // Battle Stadium/Spot Singles are legit singles but built around off-standard
+            // constraints (type-locked teams / Lv50 flat, restricted spreads) ⇒ mid-power.
+            nationaldexag: 1.00,
+            monotype: 0.60, nationaldexmonotype: 0.60,
+            battlestadiumsingles: 0.60, battlespotsingles: 0.60,
         });
         function _smogonSetPower(b) {
             if (!b) return 0.5;
@@ -12587,6 +12604,26 @@
         }
         try { window._smogonSetPower = _smogonSetPower; window._pickSetByPower = _pickSetByPower; } catch (e) {}
 
+        // Curated single-battle sets for the handful of formes that have NO usable
+        // Smogon singles set anywhere (see docs/SMOGON_INFO_GAPS.md G1) — mostly
+        // transformation states (Ash-Greninja, Complete-Zygarde, Zen Darmanitan) and
+        // the Let's Go partner formes, which also aren't in Random-Battle data. This
+        // is the LAST-RESORT floor only: it is consulted in makeBuild after the CSV
+        // pool AND the randbats fallback both come up empty, and it is NOT part of the
+        // draft pool (getDraftPool reads csvBuilds keys, not this table), so it makes
+        // these formes viable if ever rolled without turning them into draft picks.
+        // Display-name convention matches the CSV; ensureMoveData resolves at build time.
+        const _CURATED_SINGLES_SETS = Object.freeze({
+            'Greninja-Ash':      { i: 'Choice Specs', a: 'Battle Bond', n: 'Timid',   m: ['Hydro Pump', 'Dark Pulse', 'Water Shuriken', 'Ice Beam'],      evs: { spa: 252, spe: 252, hp: 4 } },
+            'Greninja-Bond':     { i: 'Life Orb',     a: 'Battle Bond', n: 'Timid',   m: ['Surf', 'Dark Pulse', 'Water Shuriken', 'Ice Beam'],            evs: { spa: 252, spe: 252, hp: 4 } },
+            'Zygarde-Complete':  { i: 'Leftovers',    a: 'Power Construct', n: 'Adamant', m: ['Thousand Arrows', 'Dragon Dance', 'Extreme Speed', 'Substitute'], evs: { hp: 252, atk: 252, spe: 4 } },
+            'Darmanitan-Zen':    { i: 'Assault Vest', a: 'Zen Mode',    n: 'Modest',  m: ['Overheat', 'Psychic', 'Focus Blast', 'Earth Power'],           evs: { hp: 252, spa: 252, spd: 4 } },
+            'Marill':            { i: 'Sitrus Berry', a: 'Huge Power',  n: 'Adamant', m: ['Belly Drum', 'Aqua Jet', 'Play Rough', 'Knock Off'],           evs: { hp: 252, atk: 252, def: 4 } },
+            'Eevee-Starter':     { i: 'Life Orb',     a: 'Adaptability', n: 'Jolly',  m: ['Double-Edge', 'Quick Attack', 'Bite', 'Swift'],                evs: { atk: 252, spe: 252, hp: 4 } },
+            'Pikachu-Starter':   { i: 'Light Ball',   a: 'Static',      n: 'Jolly',   m: ['Volt Tackle', 'Thunderbolt', 'Iron Tail', 'Quick Attack'],     evs: { atk: 252, spe: 252, hp: 4 } },
+        });
+        try { window._CURATED_SINGLES_SETS = _CURATED_SINGLES_SETS; } catch (e) {}
+
         // Central build factory — used by draft, gauntlet rounds, and draw recovery.
         //   gimmickOpts.forceGimmick   — pin to MEGA / ZMOVE / TERA / STANDARD
         //   gimmickOpts.allowIllegal   — let illegal builds into the pool (default: false; story end-game opts in)
@@ -12601,20 +12638,32 @@
             const forced = gimmickOpts && gimmickOpts.forceGimmick;
             const allowIllegal = !!(gimmickOpts && gimmickOpts.allowIllegal);
             const forceIllegal = !!(gimmickOpts && gimmickOpts.forceIllegal);
+            const base    = baseStats[name] || {};
+            const entry   = resolveCsvBuildEntry(name);
             if (!forced || forced === 'STANDARD') {
                 const mix = (typeof settings.csvBuildMix === 'number')
                     ? Math.max(0, Math.min(1, settings.csvBuildMix))
                     : 0.7;
+                // Variety pad (docs/SMOGON_INFO_GAPS.md G5): species with ≤1 usable
+                // standard singles set would otherwise roll the identical build every
+                // time on the ~70% CSV branch. Raise the designed-build probability for
+                // them (to ≥50%) so the designed engine supplies an alternate flavour.
+                // Pure variety — it changes neither the CSV sets nor their power, only
+                // how often the (already-legal) designed alternate appears.
+                let effMix = mix;
+                try {
+                    const stdUsable = _filterBuildPool((entry.regular || []).concat(entry.weather || []))
+                        .filter(bd => !bd || !bd._illegal);
+                    if (stdUsable.length <= 1) effMix = Math.min(mix, 0.5);
+                } catch (e) {}
                 // Designed builds bypass illegal logic entirely (they're never flagged) —
                 // but if the caller is forcing an illegal pick (end-game), skip the designed path.
-                if (mix < 1.0 && Math.random() >= mix && !forceIllegal) {
+                if (effMix < 1.0 && Math.random() >= effMix && !forceIllegal) {
                     const designed = makeDesignedBuild(name);
                     if (designed) return designed;
                 }
             }
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
-            const base    = baseStats[name] || {};
-            const entry   = resolveCsvBuildEntry(name);
             let b = null;
 
             // Select pool by gimmick tag
@@ -12651,7 +12700,24 @@
                 }
             }
 
-            if (pool.length) {
+            // Curated single-battle floor (docs/SMOGON_INFO_GAPS.md G1): a few gap formes
+            // (Ash/Bond Greninja, Complete Zygarde, Zen Darmanitan, Marill, Let's Go
+            // starters) have NO clean standard-singles set — only exotic/doubles sets that
+            // _filterBuildPool falls back to. Prefer the hand-authored singles set for them
+            // over an off-format hackmons/GodlyGift build. Also catches a species with no
+            // CSV set at all (empty pool → no clean set). Draft is unaffected: getDraftPool
+            // reads csvBuilds keys, not this table.
+            if (!b && _CURATED_SINGLES_SETS[name]) {
+                const hasClean = pool.some(bd => bd && bd._category !== 'doubles'
+                    && !(typeof _isExoticFormat === 'function' && _isExoticFormat(bd._format)) && !bd._illegal);
+                if (!hasClean) {
+                    const cur = _CURATED_SINGLES_SETS[name];
+                    cur.m.forEach(m => ensureMoveData(m));
+                    b = { i: cur.i, a: cur.a, n: cur.n, m: [...cur.m], evs: { ...cur.evs } };
+                }
+            }
+
+            if (pool.length && !b) {
                 const _spt = gimmickOpts && typeof gimmickOpts.setPowerTarget === 'number' ? gimmickOpts.setPowerTarget : null;
                 if (_spt != null && pool.length > 1) {
                     // Story foe: power-weighted pick toward the stage's target strength
@@ -14512,6 +14578,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         async function fetchRandbatsForGen(gen) {
             if (_randbatsCache[gen]) return _randbatsCache[gen];
+            // Prefer a locally-committed snapshot (data/randbats/genN.json) so the
+            // Random-Battle safety net — the last line of defence before the
+            // Tackle/Growl/Leer junk build for a species with no Smogon set — works
+            // OFFLINE. Regenerate the snapshot with scripts/fetch-randbats.mjs.
+            // Falls back to the live pkmn.cc API when no local file is present, so
+            // behaviour is unchanged wherever the snapshot hasn't been baked yet.
+            try {
+                let r = await fetch(`data/randbats/gen${gen}.json`);
+                if (!r.ok) throw new Error('local not found');
+                _randbatsCache[gen] = await r.json();
+                if (window.__DEBUG_LOADS) console.log(`[Randbats] Loaded gen${gen} sets from local snapshot`);
+                return _randbatsCache[gen];
+            } catch(e) { /* fall through to API */ }
             try {
                 let r = await fetch(`https://data.pkmn.cc/randbats/gen${gen}randombattle.json`);
                 if (!r.ok) throw new Error('not found');
@@ -68995,6 +69074,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Fake Out / Follow Me / Rage Powder / Trick Room support sets
                 // inflating "recommended" moves that are weak or fail in singles.
                 if (b._category === 'doubles' && !(typeof settings === 'object' && settings && settings.allowDoublesBuilds)) continue;
+                // Exotic side-format recs (Q: single-battle polish): GodlyGift / StabMons /
+                // Almost Any Ability / Mix-and-Mega / Inheritance / Camomons / … sets are
+                // excluded from usage counting unless the roll-side setting opts them in —
+                // the same policy _filterBuildPool applies to rolled teams. Without this,
+                // exotic-only species (Regieleki, Magearna, Zamazenta, Iron Hands, …) cross
+                // the sparse gate on illegal-in-singles data and show confident ★ recs for
+                // StabMons coverage / GodlyGift spreads / Mix-and-Mega stones they can't hold,
+                // instead of the honest "no competitive data" banner + heuristic set.
+                if (typeof _isExoticFormat === 'function' && _isExoticFormat(b._format)
+                    && !(typeof settings === 'object' && settings && settings.allowExoticFormats)) continue;
                 const w = _txGenWeight(b._gen);
                 out.total++;
                 out.weightedTotal += w;
