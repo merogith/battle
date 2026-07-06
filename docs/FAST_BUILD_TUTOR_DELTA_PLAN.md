@@ -132,6 +132,19 @@ No new balance numbers — spreads/natures come from the existing archetype data
 
 ---
 
+> **Update (2026-07-06, post-review):** Auto-Build was moved OUT of the Move Tutor into a
+> **dedicated "Battle Mentor" NPC facility** available from **City 0** (like the Professor),
+> per maintainer direction. It **adapts to what's unlocked**: City 0 (Move Tutor only) →
+> moves only; the Dojo folds in item + ability, the Nature Rater adds nature, and the EV
+> Trainer swaps the free EV-training-focus for a full spread. The in-tutor Auto-Build bar
+> was removed. Each individual facility keeps its own recommendation panel, all driven by the
+> SAME recommenders the Mentor aggregates (`_txBestArchetypeFor` for nature/EV,
+> `_txMoveRecsByPurpose` for moves, `_txItemRecsByPurpose` for item) so they stay consistent.
+> New: `enterMentor` / `renderMentorTeam` / `screen-story-mentor` / facility wiring;
+> `_txWarmMovePools` + `_handleFastBuildClick` + `_txRerenderActiveTutorSurface` extracted for
+> reuse. Tests: `story-mentor-stages.test.js` (Bulbasaur→Ivysaur→Venusaur→endgame + City-0
+> button + apply at both ends). The §4 planner below is unchanged; only its host moved.
+
 ## 4. Feature 4 — Unified Fast-Build (the headline)
 
 **Planner `_txBuildFastBuildPlan(teamIdx)`** — pure, no state change, mirrors
