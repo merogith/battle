@@ -2401,6 +2401,11 @@
             padding: 12px 14px;
             min-height: 48px;
         }
+        /* Entrance rise for the in-city quote box — parity with the narrative overlay's
+           dialog-rise. Applied by _cityQuoteReveal only when motion is allowed. */
+        .story-city-quote-in { animation: storyCityQuoteIn var(--dur-slow) var(--ease-out-quart) both; }
+        @keyframes storyCityQuoteIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { .story-city-quote-in { animation: none; } }
         .story-dialog-box .story-dialog-text {
             margin: 0;
             font-size: 12px;
@@ -52697,6 +52702,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // In-city dialogue reveal — brings the hub quote box toward the full-screen
+        // narrative overlay's polish: a subtle entrance rise + a typewriter reveal that
+        // reuses the same gate as the overlay. Full text is written SYNCHRONOUSLY first
+        // (so the jsdom harness and any a11y/test reader always see the complete line),
+        // then the animated re-type runs only in a real browser — suppressed under the
+        // harness, reduced motion, or when the Story text-reveal setting is off.
+        function _cityQuoteReveal(el, text) {
+            if (!el) return;
+            el.textContent = text; // full text first — harness / a11y safe
+            const animate = (
+                typeof requestAnimationFrame === 'function' &&
+                window.__testHarness !== true &&
+                settings.storyTypewriter !== false &&
+                !(window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion())
+            );
+            try {
+                const box = el.closest ? el.closest('.story-dialog-box') : null;
+                if (box && animate) { box.classList.remove('story-city-quote-in'); void box.offsetWidth; box.classList.add('story-city-quote-in'); }
+            } catch (e) {}
+            if (el._cityTwTimer) { clearTimeout(el._cityTwTimer); el._cityTwTimer = null; }
+            if (!animate) return;
+            requestAnimationFrame(function () {
+                let ci = 0;
+                el.textContent = '';
+                const step = function () {
+                    ci += Math.max(1, Math.round(text.length / 140));
+                    el.textContent = text.slice(0, Math.min(ci, text.length));
+                    if (ci < text.length) { el._cityTwTimer = setTimeout(step, 16); }
+                    else { el.textContent = text; el._cityTwTimer = null; }
+                };
+                step();
+            });
+        }
+
         function renderCityActions(ev) {
             // Step into a "clean street" — auto-release bonded Pit mons + run any queued
             // unlock toasts. Both are idempotent (state mutations short-circuit when nothing
@@ -52820,7 +52859,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
             if (_cityBlurb) quoteText = '📍 ' + _cityBlurb + '\n\n' + quoteText;
-            if (quoteEl) quoteEl.textContent = quoteText;
+            if (quoteEl) _cityQuoteReveal(quoteEl, quoteText);
 
             // Milestone tips fire once per save as a calm toast on entry — no permanent
             // quote-box clutter. Rival gate / route-blocker hints become tip-rail items below.
