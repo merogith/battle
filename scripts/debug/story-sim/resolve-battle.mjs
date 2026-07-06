@@ -55,6 +55,15 @@ export function restoreRealAI(E) {
   if (engine.aiDecision) window.aiDecision = engine.aiDecision;
   if (engine.getBestMove) window.getBestMove = engine.getBestMove;
   if (engine.aiChooseGimmick) window.aiChooseGimmick = engine.aiChooseGimmick;
+  // CRITICAL: in mode='story' the engine's own victory path (showEndScreen -> victory overlay ->
+  // onBattleEnd) fires when a battle ends and awards coins / advances eventIndex+badges — which
+  // would DOUBLE-COUNT against the Story Sim's own advance (and its async overlay wobbles gold on
+  // the first run of a process). Stub the victory-UI + onBattleEnd to no-ops so the sim's run loop
+  // is the sole authority on rewards/advancement. checkFaints sets state.isOver BEFORE calling
+  // these, so the resolver still detects battle end correctly.
+  window.showEndScreen = () => {};
+  window.showVictoryOverlay = () => {};
+  window.onBattleEnd = () => {};
   _aiRestored = true;
 }
 
