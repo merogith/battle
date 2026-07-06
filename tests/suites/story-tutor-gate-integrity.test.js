@@ -74,19 +74,27 @@ test('Q2b player pool: Inner still excludes Learnt status (unlock is C3, not C0)
   assert.ok(!pool.includes('Protect'), 'Protect locked at Inner');
 });
 
-test('Q2b foe gate: foes field Learnt STATUS moves from C3 on the same clock', async () => {
+test('foe gate: foes keep legal moves at C3; over-cap damage stripped', async () => {
+  // Build-diversity overhaul: foes keep the full LEGAL pool subject only to the
+  // per-city BP cap (no player-style category gate). At C3 (cap 80): Toxic (status)
+  // and Dragon Claw (80) survive; Earthquake (100) is stripped as over-cap.
   primeStory(3);
   const team = [{ name: 'Garchomp', build: { m: ['Toxic', 'Bulldoze', 'Earthquake', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(3));
-  assert.ok(team[0].build.m.includes('Toxic'), 'foe keeps Toxic at Unleashed (player parity)');
-  assert.ok(!team[0].build.m.includes('Earthquake'), 'foe loses Learnt damaging pre-Guru');
+  assert.ok(team[0].build.m.includes('Toxic'), 'foe keeps legal status Toxic at C3');
+  assert.ok(!team[0].build.m.includes('Earthquake'), 'foe loses Earthquake (100 BP) — over the C3 cap (80)');
 });
 
-test('Q2b foe gate: at Inner (C0) foes lose Learnt status too', async () => {
+test('foe gate: at Inner (C0) foes keep legal status but strip over-cap damage (Phase 1)', async () => {
+  // Phase 1 (build-diversity): the foe gate is BP-capped, not category-gated — Toxic
+  // (legal, 0-BP status) survives even at Inner; Bulldoze (60 BP) exceeds the C0 cap
+  // (40) and is stripped. (The PLAYER gate still withholds Learnt status until C3 —
+  // see the player-pool tests above; the two models diverge here by design.)
   primeStory(0);
   const team = [{ name: 'Garchomp', build: { m: ['Toxic', 'Bulldoze'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(0));
-  assert.ok(!team[0].build.m.includes('Toxic'), 'Toxic stripped at C0');
+  assert.ok(team[0].build.m.includes('Toxic'), 'foe keeps legal status Toxic at C0 (Phase 1)');
+  assert.ok(!team[0].build.m.includes('Bulldoze'), 'Bulldoze (60 BP) stripped over the C0 cap (40)');
 });
 
 test('Q4 crucible: an off-timeline Crucible battle skips the historical city gate', async () => {
