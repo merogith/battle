@@ -50,26 +50,28 @@ async function setup(page, mode) {
       for (const k of keys) ST.sm.scenesShown[k] = true;
     } catch (e) {}
     // Belt-and-braces for the move-tutor + dojo + nature + ev scenes by known metaKey.
-    for (const k of ['tutorial-first-move-tutor', 'tutorial-first-battle-dojo', 'tutorial-first-nature-rater', 'tutorial-first-ev-trainer', 'tutorial-hidden-power-mentor']) ST.sm.scenesShown[k] = true;
+    for (const k of ['tutorial-first-move-tutor', 'tutorial-first-battle-dojo', 'tutorial-first-nature-rater', 'tutorial-first-ev-trainer', 'tutorial-hidden-power-mentor', 'tutorial-first-battle-mentor']) ST.sm.scenesShown[k] = true;
     let idx = 0;
     for (let ei = 0; ei <= 140; ei++) { let c = -1; try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {} if (c === 7) { idx = ei; break; } }
     ST.sm.eventIndex = idx;
     ST.sm.team = [{ name: 'Garchomp', build: { m: ['Tackle'], n: 'Hardy', a: 'Rough Skin', evs: { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 } } }];
     if (mode === 'ev') { window.StoryMode.enterEVTrainer(); }
+    else if (mode === 'mentor') { window.StoryMode.enterMentor(); }
     else { await window.StoryMode.enterTutor(mode); }
   }, mode);
   await waitFor(500);
-  const teamSel = mode === 'ev' ? '#story-evtrainer-team' : '#story-tutor-team';
+  const teamSel = mode === 'ev' ? '#story-evtrainer-team' : mode === 'mentor' ? '#story-mentor-team' : '#story-tutor-team';
   // Click through every intro / tutorial / stage-gift overlay until the editor is reachable.
+  const readySel = mode === 'mentor' ? `${teamSel} [data-fastbuild-open], ${teamSel} .tx-fastbuild-bar--done` : `${teamSel} .story-tutor-mon-toggle`;
   for (let i = 0; i < 16; i++) {
-    // Ready when a mon toggle is present AND no blocking dialog button is visible.
-    const tog = page.locator(`${teamSel} .story-tutor-mon-toggle`).first();
+    // Ready when the surface's anchor is present AND no blocking dialog button is visible.
     const cont = page.locator('button:has-text("Continue"), button:has-text("Next"), button:has-text("Got it"), button:has-text("OK"), button:has-text("Close")').first();
     const dialogUp = (await cont.count()) && (await cont.isVisible().catch(() => false));
     if (dialogUp) { await cont.click().catch(() => {}); await waitFor(350); continue; }
-    if (await tog.count()) break;
+    if (await page.locator(readySel).first().count()) break;
     await waitFor(300);
   }
+  if (mode === 'mentor') return; // mentor auto-renders per-mon panels; no mon-open step
   // Open the mon editor.
   const tog = page.locator(`${teamSel} .story-tutor-mon-toggle`).first();
   if (await tog.count()) {
@@ -100,6 +102,11 @@ try {
     // Open the Auto-Build panel
     const ab = page.locator('[data-fastbuild-open]').first();
     if (await ab.count()) { await ab.click().catch(() => {}); await waitFor(500); await page.screenshot({ path: join(OUT, `${vp.id}-autobuild.png`) }); }
+    // Battle Mentor screen — collapsed list, then one panel open.
+    await setup(page, 'mentor');
+    await page.screenshot({ path: join(OUT, `${vp.id}-mentor.png`) });
+    const mab = page.locator('#story-mentor-team [data-fastbuild-open]').first();
+    if (await mab.count()) { await mab.click().catch(() => {}); await waitFor(500); await page.screenshot({ path: join(OUT, `${vp.id}-mentor-panel.png`) }); }
     // Toggle Suitable filter (close any open Auto-Build panel first for a clean shot)
     await setup(page, 'moves');
     const cancel = page.locator('.tx-fb-cancel').first();
