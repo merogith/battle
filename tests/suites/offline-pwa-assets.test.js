@@ -157,7 +157,36 @@ test('Battle Options: Classic (once-per-battle) toggle is wired + panel re-syncs
   assert.ok(/settings\.classicMode = cmCb\.checked/.test(HTML), 'updateMechanics writes settings.classicMode');
   assert.ok(/window\.syncBattleOptionsFromSettings = function/.test(HTML), 'panel re-sync fn defined');
   // The menu chokepoint repaints the panel so a Story run cannot leave it stale.
-  assert.ok(/id === 'screen-menu'[\s\S]{0,160}syncBattleOptionsFromSettings/.test(HTML), 'menu display repaints the panel');
+  assert.ok(/id === 'screen-menu'[\s\S]{0,240}syncBattleOptionsFromSettings/.test(HTML), 'menu display repaints the panel');
+});
+
+test('offline/SW hardening: request watchdog + full-shell refresh + reload retry', () => {
+  const sw = read('sw.js');
+  assert.ok(/async function precacheShell/.test(sw), 'precacheShell helper exists');
+  assert.ok(/precacheShell\(SHELL\.filter\(/.test(sw), 'revalidation re-precaches sibling shell files on change');
+  // App-side request watchdog (idle timeout that resets on progress) — no more hang-forever.
+  assert.ok(/function _swRequest\(sw, message, doneType, onProgress, idleMs\)/.test(HTML), '_swRequest takes an idle timeout');
+  assert.ok(/\}, 45000\);/.test(HTML), 'bulk download passes a 45s idle watchdog to _swRequest');
+  assert.ok(/'SYNC_PLAN', null, 12000/.test(HTML), 'dry-run plan has a 12s timeout');
+  assert.ok(/'CACHE_CLEARED', null, 5000/.test(HTML), 'clear-cache is awaited (no fire-and-forget race)');
+  // Mid-battle controllerchange no longer strands the player on old code.
+  assert.ok(/window\.__maybeSwReload/.test(HTML), 'controllerchange reload retries via __maybeSwReload');
+  assert.ok(/window\.__swReloadPending/.test(HTML), 'reload is deferred (pending) mid-battle');
+});
+
+test('boot perf: heavy scripts deferred + howler kept out of the download', () => {
+  assert.ok(/<script src="move-sfx-map\.js" defer><\/script>/.test(HTML), 'move-sfx-map deferred');
+  assert.ok(/<script src="move-anim-map\.js" defer><\/script>/.test(HTML), 'move-anim-map deferred');
+  assert.ok(/<script src="online-pvp\.js" defer><\/script>/.test(HTML), 'online-pvp deferred');
+  const m = JSON.parse(read('offline-assets.json'));
+  assert.ok(!m.files.some((f) => f.u === 'vendor/howler.min.js'), 'dead howler.min.js not shipped in the offline manifest');
+});
+
+test('Story→Quick mechanics decoupling + honest particle label', () => {
+  assert.ok(/window\.restoreQuickMechSnapshot = function/.test(HTML), 'snapshot-restore defined');
+  assert.ok(/restoreQuickMechSnapshot\(\)/.test(HTML), 'restore is invoked (menu return)');
+  assert.ok(/_quickMechSnapshot/.test(HTML), 'quick-mode gimmick prefs are snapshotted before a Story run overrides them');
+  assert.ok(HTML.includes('>Particle effects<'), 'ambient toggle relabelled to cover all particle FX honestly');
 });
 
 test('client uses differential sync (digest-based), not the old bulk re-download', () => {

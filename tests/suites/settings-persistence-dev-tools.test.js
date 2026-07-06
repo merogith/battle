@@ -75,6 +75,13 @@ test('Battle Options panel exposes a live re-sync entry point', () => {
     assert.doesNotThrow(() => W.syncBattleOptionsFromSettings(), 're-sync is safe to call');
 });
 
+test('Story→Quick mechanics snapshot/restore is exposed and safe to call', () => {
+    assert.equal(typeof W.restoreQuickMechSnapshot, 'function',
+        'restoreQuickMechSnapshot is callable');
+    // No snapshot taken yet → restore is a harmless no-op.
+    assert.doesNotThrow(() => W.restoreQuickMechSnapshot());
+});
+
 test('dead audioBus setting is no longer persisted', () => {
     W.persistMiscSettings();
     const raw = JSON.parse(STORE.get('pbs_settings') || '{}');

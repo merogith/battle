@@ -39,18 +39,21 @@ const SHELL = [
   'icons/app-icon.svg',
 ];
 
+// (Re)precache the shell. {cache:'reload'} bypasses the HTTP cache so a new deploy's shell
+// is never stale. Tolerates individual 404s so one missing optional file can't break it.
+// `list` lets the background revalidation refresh the siblings without re-fetching the 5MB
+// battle.html (already re-cached from the conditional response it just read).
+async function precacheShell(list) {
+  const cache = await caches.open(SHELL_CACHE);
+  await Promise.all((list || SHELL).map((u) =>
+    fetch(u, { cache: 'reload' })
+      .then((res) => (res && res.ok ? cache.put(u, res) : null))
+      .catch(() => {})
+  ));
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) =>
-      // {cache:'reload'} bypasses the HTTP cache so a new deploy's shell is never stale.
-      // Tolerate individual 404s so one missing optional file can't break the whole install.
-      Promise.all(SHELL.map((u) =>
-        fetch(u, { cache: 'reload' })
-          .then((res) => (res && res.ok ? cache.put(u, res) : null))
-          .catch(() => {})
-      ))
-    ).then(() => self.skipWaiting())
-  );
+  event.waitUntil(precacheShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -107,6 +110,10 @@ async function revalidateShell(shell, cached) {
     }
     await shell.put('battle.html', fresh.clone());
     if (changed) {
+      // A content-only redeploy (no CACHE_VERSION bump) also changes sibling shell files
+      // (move-*-map.js, online-pvp.js, manifest…). Refresh them too so we never serve a new
+      // battle.html against stale JS. battle.html is already re-cached above, so skip it here.
+      await precacheShell(SHELL.filter((u) => u !== 'battle.html'));
       const cs = await self.clients.matchAll({ includeUncontrolled: true });
       cs.forEach((c) => c.postMessage({ type: 'SHELL_UPDATED' }));
     }
