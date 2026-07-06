@@ -57628,14 +57628,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!kept.length) {
                 // Degenerate: every original move was off-ceiling AND the bp-filtered
                 // backfill is empty — i.e. NO ≤cap move exists in the allowed pool (e.g.
-                // Beldum at stage 0, whose only Natural move is Take Down at 90 BP). Pick
-                // the LOWEST-BP allowed move so the unavoidable over-cap pick is the
-                // smallest one, not an arbitrary Set-order move.
+                // Beldum at stage 0, whose only Natural move is Take Down at 90 BP).
+                // Fill a FULL set from the LOWEST-BP allowed moves (not just one) so the
+                // mon isn't left with a single lonely move. These stay LEGAL rather than
+                // substituting an off-learnset Tackle — the battle-time BP clamp
+                // (_storyBattleBpCap) already caps their effective power to the city
+                // ceiling, so the unavoidable over-cap moves never actually over-hit.
                 const byBp = [...allowed].sort((a, b) => {
                     const ma = ensureMoveData(baseName(a)), mb = ensureMoveData(baseName(b));
                     return (((ma && ma.pow) | 0) - ((mb && mb.pow) | 0));
                 });
-                if (byBp.length) kept.push(byBp[0]);
+                for (const mv of byBp) { if (kept.length >= targetLen) break; kept.push(mv); }
             }
             build.m = kept;
             return true;
