@@ -27419,7 +27419,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Spectral Thief: steals target's positive stat boosts before damage is dealt.
                 // Negative stages stay on the target. Stolen stages stack on the attacker (clamped to ±6).
-                if (move.name === "Spectral Thief") {
+                // Only steal if the move actually connects — a type-immune target (e.g. a Normal
+                // type vs this Ghost move) is untouched. The general immunity check runs later in
+                // the damage path, so this guards the steal that happens up front. (Steals through
+                // a Substitute, matching the move's bypasssub flag.)
+                if (move.name === "Spectral Thief"
+                    && getMoveEffectiveness(move.type || "Ghost", defender.type1, defender.type2) !== 0) {
                     const _ssStats = ['atk','def','spa','spd','spe','acc','eva'];
                     let _stolenAny = false;
                     for (const s of _ssStats) {
@@ -31055,7 +31060,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Substitute: blocks opponent-targeting status moves ===
-            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap","Powder"]);
+            // Moves that pass through a target's Substitute (Showdown `bypasssub` flag):
+            // sound moves plus the stat-stage swap family (Psych Up copies, Heart/Power/
+            // Guard/Speed Swap swap) — all carry bypasssub:1 and must reach the target
+            // even behind a sub.
+            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap","Powder","Psych Up","Heart Swap","Power Swap","Guard Swap","Speed Swap"]);
             const _selfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song","Laser Focus"]);
             // === Good as Gold: immune to opponent's status moves (still allows the attacker's self-targeting status moves)
             if (defender.ability === "Good as Gold" && move.cat === "Status" && !_selfTargetMoves.has(move.name)) {
@@ -31606,7 +31615,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const target = selfBoost ? attacker : defender;
                 // Stat-drop-blocking abilities (opponent-sourced drops only)
                 const hardBlockAll = new Set(["Clear Body","White Smoke","Full Metal Body"]);
-                const statSpecific = { atk: ["Hyper Cutter"], acc: ["Keen Eye"], def: ["Big Pecks"] };
+                // Keyed by the Showdown boost key as it arrives from moves.json ("accuracy",
+                // not the internal "acc" — changeStage normalizes later). A prior "acc" key
+                // here was dead (never matched), so accuracy drops fell through; the real guard
+                // now lives in changeStage, and this mirror is kept correct for clarity.
+                const statSpecific = { atk: ["Hyper Cutter"], accuracy: ["Keen Eye", "Illuminate"], def: ["Big Pecks"] };
                 let applied = 0;
                 beginStatBatch();
                 for (const [stat, rawDelta] of Object.entries(move.boosts)) {
@@ -32229,9 +32242,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); return;
             }
 
-            // === PSYCH UP: copy all of foe's stat stages ===
+            // === PSYCH UP: copy all of the target's stat stages onto the user ===
+            // Also copies the target's crit-rate boost (Focus Energy). Because it is a full
+            // copy, a user that already has Focus Energy loses it when the target has none —
+            // so mirror the target's flag rather than only copying it when present.
             if (move.name === "Psych Up") {
                 attacker.stages = { ...defender.stages };
+                if (attacker.volatile && defender.volatile) {
+                    attacker.volatile.focusEnergy = !!defender.volatile.focusEnergy;
+                }
                 logMsg(`${attacker.name} copied all of ${defender.name}'s stat changes!`, 'info');
                 updateUI(); return;
             }
@@ -32574,14 +32593,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            // === PSYCH UP: copy all of target's stat stages onto user ===
-            if (move.name === "Psych Up") {
-                const _puStats = ['atk','def','spa','spd','spe','acc','eva'];
-                for (const s of _puStats) attacker.stages[s] = defender.stages[s] || 0;
-                if (defender.volatile.focusEnergy) attacker.volatile.focusEnergy = defender.volatile.focusEnergy;
-                logMsg(`${attacker.name} copied ${defender.name}'s stat changes!`, 'info');
-                return;
-            }
+            // (Psych Up is handled earlier in this function — the duplicate handler that
+            // once lived here was unreachable dead code and has been removed.)
 
             // === REVIVAL BLESSING: revive one fainted ally to half HP ===
             if (move.name === "Revival Blessing") {
@@ -32889,6 +32902,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Big Pecks: Defense cannot be lowered by opponent
             if (amount < 0 && byOpponent && stat === 'def' && mon.ability === "Big Pecks") {
                 logMsg(`${mon.name}'s Big Pecks prevents Defense loss!`, 'info'); return;
+            }
+            // Keen Eye / Illuminate: accuracy cannot be lowered by opponent (Sand Attack,
+            // Mud-Slap secondary, Flash, etc.). This is the single authoritative guard —
+            // both the status-move boosts loop and damaging-move secondaries funnel through
+            // changeStage, so covering it here fixes every accuracy-drop path at once.
+            if (amount < 0 && byOpponent && stat === 'acc' && (mon.ability === "Keen Eye" || mon.ability === "Illuminate")) {
+                logMsg(`${mon.name}'s ${mon.ability} prevents its accuracy from being lowered!`, 'info'); return;
             }
             let oldStage = mon.stages[stat];
             mon.stages[stat] = Math.max(-6, Math.min(6, mon.stages[stat] + amount));
