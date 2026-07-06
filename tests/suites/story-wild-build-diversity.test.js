@@ -49,6 +49,20 @@ test('wall pool boosts a defensive stat (never an offensive-drop that hurts the 
   }
 });
 
+test('wall pool preserves the wall\'s residual offense (no −SpA on a special wall)', () => {
+  // A defensive shell whose only offense is special must never roll a −SpA nature,
+  // and a physical-offense wall must never roll −Atk — the pool drops the *unused*
+  // attack, not the one that carries the wall's threat.
+  const specialWall = { hp: 100, atk: 30, def: 120, spa: 95, spd: 120, spe: 20 };
+  for (const n of ST.wildNaturePool(specialWall)) {
+    assert.notEqual(NATURE_MINUS[n], 'spa', `special wall nature ${n} must not drop SpA`);
+  }
+  const physicalWall = { hp: 100, atk: 95, def: 120, spa: 30, spd: 120, spe: 20 };
+  for (const n of ST.wildNaturePool(physicalWall)) {
+    assert.notEqual(NATURE_MINUS[n], 'atk', `physical wall nature ${n} must not drop Atk`);
+  }
+});
+
 test('wildPickNature covers the whole pool head-weighted (textbook first, variants in the tail)', () => {
   const b = baseStats['Machop'];
   const pool = ST.wildNaturePool(b);
@@ -99,6 +113,45 @@ test('EV shape stays within the per-stat / total envelope (balance-neutral)', ()
       assert.ok(total > 0 && total <= 252, `${name} shape total ${total} is sane`);
     }
   }
+});
+
+test('distributor hits the target total even for a lopsided shape at the 508 cap', () => {
+  // The jittered wild shapes are deliberately lopsided; scaling one to a high city
+  // total must not overflow the 252 clamp and undershoot. Every target is hit within
+  // rounding (≤4), and per-stat cap is respected.
+  const KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+  const sum = (o) => KEYS.reduce((s, k) => s + (o[k] | 0), 0);
+  const base = baseStats['Machop'];
+  for (const target of [200, 300, 400, 508]) {
+    // A heavy 64/36 primary/secondary shape — the worst case for clamp overflow.
+    const build = { evs: { hp: 0, atk: 64, def: 0, spa: 0, spd: 0, spe: 36 } };
+    ST.distributeEVsToTotal(build, base, target);
+    assert.ok(Math.abs(sum(build.evs) - target) <= 4, `target ${target}: got ${sum(build.evs)}`);
+    for (const k of KEYS) assert.ok((build.evs[k] | 0) <= 252, `${k}=${build.evs[k]} ≤ 252`);
+  }
+});
+
+test('end-to-end: C7 wild EV totals hit the 508 cap (no clamp-overflow undershoot)', () => {
+  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
+  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
+  ST.sm = {
+    active: true, badges: 8, team: [],
+    settings: { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+    unlockedGimmicks: [], storyDifficulty: 'normal',
+    eventIndex: cityRowFor(7), trainerAssignments: {},
+  };
+  const KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+  let checked = 0, undershot = 0;
+  for (let i = 0; i < 400; i++) {
+    const enc = ST.rollWildEncounter([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    if (!enc) continue;
+    checked++;
+    const total = KEYS.reduce((s, k) => s + (enc.build.evs[k] | 0), 0);
+    if (total < 500) undershot++; // 508 cap, allow ≤8 for /4 rounding
+  }
+  assert.ok(checked > 50, 'sampled enough C7 wilds');
+  assert.equal(undershot, 0, `no C7 wild should undershoot 508 (got ${undershot}/${checked})`);
+  ST.sm = null;
 });
 
 test('end-to-end: repeated wild rolls of a species diversify nature + EVs', () => {

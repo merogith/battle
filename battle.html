@@ -40438,6 +40438,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Reshape a build's EV spread to hit a target total. A build that already has a
         // spread is scaled proportionally (shape preserved); an empty spread invests the
         // target into the species' best two battle stats. 252-per-stat / 508-total safe.
+        // Spill any total lost to the 252-per-stat clamp back into the spread so the
+        // target total is actually hit no matter how lopsided the source shape was.
+        // Without this a heavy-primary spread scaled to a high city total (e.g. a
+        // jittered wild spread at the 508 cap) overflows the cap on its primary and
+        // silently undershoots — the mon ships ~20-70 EVs short of its tier. Spills
+        // into the stats the shape already uses first (identity preserved), then any
+        // non-maxed stat, 4 at a time. Idempotent when already at target.
+        function _evSpillToTarget(out, keys, t) {
+            let sum = 0;
+            for (const k of keys) sum += (out[k] | 0);
+            let deficit = t - sum;
+            if (deficit < 4) return;
+            const used = keys.filter(k => (out[k] | 0) > 0 && (out[k] | 0) < 252);
+            const rest = keys.filter(k => (out[k] | 0) < 252 && used.indexOf(k) === -1);
+            const order = used.concat(rest);
+            let guard = 400;
+            while (deficit >= 4 && guard-- > 0) {
+                let placed = false;
+                for (const k of order) {
+                    if (deficit < 4) break;
+                    if ((out[k] | 0) >= 252) continue;
+                    out[k] = (out[k] | 0) + 4;
+                    deficit -= 4;
+                    placed = true;
+                }
+                if (!placed) break;
+            }
+        }
         function _distributeEVsToTotal(build, base, target) {
             if (!build) return;
             const keys = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
@@ -40450,6 +40478,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const scale = t / cur;
                 const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 for (const k of keys) out[k] = Math.max(0, Math.min(252, Math.round(((src[k] | 0) * scale) / 4) * 4));
+                _evSpillToTarget(out, keys, t);
                 build.evs = out;
                 return;
             }
@@ -40458,6 +40487,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const first = Math.min(252, Math.round((t / 2) / 4) * 4);
             out[pair[0]] = first;
             out[pair[1]] = Math.max(0, Math.min(252, Math.round((t - first) / 4) * 4));
+            _evSpillToTarget(out, keys, t);
             build.evs = out;
         }
         // ── OPTIMIZATION GRADIENTS (Sheet opt curves) ──────────────────────
@@ -62216,11 +62246,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
             const offense = atk + spa + spe;
             const defense = hp + def + spd;
-            // Defensive shell with weak offense → +defense natures (drop the unused attack).
+            // Defensive shell with weak offense → +defense natures. Boost the better
+            // defense and drop the UNUSED attacking stat — never the one carrying the
+            // wall's residual offense (a special-offense wall must not roll Impish/
+            // Careful and lose its only way to threaten). Speed-drop natures
+            // (Relaxed/Sassy) are always safe on a slow wall and fill the tail.
             if (defense > offense + 60 && atk + spa < 180) {
-                return def >= spd
-                    ? ['Bold', 'Impish', 'Calm', 'Relaxed']   // +Def variants
-                    : ['Calm', 'Careful', 'Bold', 'Sassy'];   // +SpD variants
+                const dropSpa = atk >= spa;   // offense is physical (or tied) → SpA is the spare
+                const boostDef = def >= spd;
+                if (dropSpa) {
+                    return boostDef
+                        ? ['Impish', 'Careful', 'Relaxed', 'Sassy']   // +Def −SpA
+                        : ['Careful', 'Impish', 'Sassy', 'Relaxed'];  // +SpD −SpA
+                }
+                return boostDef
+                    ? ['Bold', 'Calm', 'Relaxed', 'Sassy']            // +Def −Atk
+                    : ['Calm', 'Bold', 'Sassy', 'Relaxed'];           // +SpD −Atk
             }
             const isFast = spe >= 80;
             if (atk >= spa) {
