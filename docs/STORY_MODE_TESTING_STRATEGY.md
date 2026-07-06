@@ -196,6 +196,41 @@ The three policies share the same battle resolver and telemetry; only their `doC
 `pickStarter` / `postWin` / `catchPolicy` / in-battle choice functions differ. Building
 `recommended` first (it mirrors real UI recommenders) gives the highest-signal single number.
 
+### 2.4a The Player Agent — modeling real play, including training
+
+The three policies are *investment levels* of one shared **Player Agent** that runs a real
+**prep → fight → adapt** loop at every node — the actual thing a human does, not a fixed
+script. This is what "simulate the full player experience" means.
+
+**Prep loop (the city / training phase).** On arriving at a city, the agent:
+1. **Assesses the team** — per mon: EV total vs the city band (`STORY_EV_CITY_TOTAL`), move
+   quality vs the BP cap (`_storyMoveBpCapForCity`), evolution stage, nature/ability fit; and
+   team-level **type coverage** — offensive gaps (types nothing hits hard) and defensive holes
+   (types nothing resists). This produces a ranked "shopping list" of upgrades.
+2. **Trains & builds against a gold budget.** Priority order (policy-weighted, with a reserve
+   buffer): **evolve** (`evoLabEvolve` — biggest single power jump) → **EV-train** toward the
+   city band (`evTrainerApplyPreset`, seeded by `_evTrainerRecPreset` for the `recommended`
+   policy) → **tutor better moves** as caps lift (`tutorChangeMove`) → **vitamins** → stock
+   **heal items / balls** (`buyItem`) → **Colress gimmicks** at C7 (`colressApply*`) →
+   nature/ability fixes. Each policy sets different weights and reserve %; `casual` does almost
+   none of this, `optimal` maxes it, `recommended` follows the game's own recommenders.
+3. **Catches for coverage** — if a type gap exists and a suitable wild/Safari mon is catchable,
+   spends balls / a Safari trip to fill it (per catch policy). Not random — coverage-driven.
+4. **Box management** — keeps the best `_storyMaxPartySize(badges)`, boxes the rest.
+
+**Fight** — the battle resolver (§2.5), player AI at `hard` skill, using the *trained* team.
+
+**Adapt (on loss)** — re-prep against the *specific* foe that won: buy/teach a targeted
+coverage move, shift EVs (bulk vs speed), or swap in a caught counter; then retry up to N. If
+still losing, mark the stage a **wall** and record why (out-sped / walled / out-teamed). This
+models the real "I lost — let me adjust and try again" loop, and its intensity is a key output
+(§7): stages that force many adapt cycles are the game's genuine difficulty spikes.
+
+**Training is first-class, not a footnote.** Because the game is flat-Lv50, "training" *is*
+the EV/IV/move/evolution investment loop — the primary way a player grows power between badges.
+Modeling it faithfully is what makes the player-power curve (and therefore every difficulty
+number) real rather than a lower bound of "starter with default moves."
+
 ### 2.5 Battle resolver detail
 
 Reuse the `inhouse-oracle.mjs` battle-driving loop, with **one change**: instead of
@@ -359,6 +394,22 @@ Aggregate the JSONL into a small report bundle (mirror `differential/` which wri
    intros actually fired across the sweep (unfired content = untested content).
 7. **Red-flag ledger** — every §5 violation, deduped by fingerprint into `ISSUE_LEDGER.md`
    via the existing `scripts/debug/issue-ledger.mjs` pipeline.
+
+**Player-experience metrics (from the Player Agent, §2.4a) — the "is it *fun*" signal:**
+8. **Training-intensity index** — gold + facility actions the agent had to spend on training to
+   clear each stage. High values = grindy walls; a flat-then-spike shape is a pacing problem.
+9. **Readiness gap & necessity** — player power *after training* vs foe power per stage, plus
+   whether training was **necessary** to pass (did `recommended` clear on default builds, or
+   only after investment?). Distinguishes "engaging prep" from "mandatory grind."
+10. **Economy stress** — stages where the agent *wanted* an upgrade (evolution/EV/tutor) but
+    **couldn't afford it**; the count and which upgrade was blocked. Surfaces gold starvation.
+11. **Adaptation load** — retries + re-prep cycles per stage, and the failure reason
+    (out-sped / walled / out-teamed). The map of where players get genuinely stuck.
+12. **Team trajectory** — the actual party composition + build completeness + type-coverage
+    health at each city. Answers "what does a real player's team look like at Gym 5?" and shows
+    whether the game *lets* players build a coherent team or forces incoherent scrambling.
+13. **First-try vs after-training clear rate** per stage — the cleanest single "difficulty
+    texture" number: stages high on one but low on the other are where prep is the real gate.
 
 Render the heatmap + curves as an HTML/SVG dashboard (self-contained) for eyeballing;
 keep the JSON as the source of truth so numbers are diffable across commits (catch balance
