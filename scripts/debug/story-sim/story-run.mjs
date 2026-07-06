@@ -80,6 +80,7 @@ export function initRun(E, opts) {
     villain: S.pickTrack ? S.pickTrack(S.VILLAIN_TRACKS) : 'rocket',
     extra: S.pickTrack ? S.pickTrack(S.EXTRA_TRACKS) : 'cubone',
   };
+  sm.version = (window.__STORY_SAVE_VER | 0) || sm.version || 0;
   sm.stats = sm.stats || { battlesLost: 0, rivalBattlesLost: 0 };
   sm.inventory = sm.inventory || {};
   sm.balls = sm.balls || { poke: 5, great: 0, ultra: 0, master: 0 };
