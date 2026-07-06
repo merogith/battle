@@ -107,29 +107,30 @@ Net: builds are *constructed to the stage* (coherent + vetted + adaptive + unive
 
 - **Phase 1 — Enemy move diversity (the gate split). ✅ SHIPPED.** `foeMode` on `_storyApplyMoveStageToBuild` opens the full legal movepool for foes (coverage/setup/utility survive the category gate), power still curbed by the per-city BP cap + EV band. Player wild path byte-identical. Enemies stop being "4 STAB" from City 1.
 - **Correctness & quality pass (audit #1-#6, #8). ✅ SHIPPED.** EV≤508 reconcile, legal forme abilities, role-coherent natures, pre-City-8 gimmick/item cleanup, wild item ramp, wild nature phase-in, shallow-movepool fallback. See §3 + the two guard suites.
-- **Phase 3 — Wild philosophy. ✅ PARTIAL / SHIPPED.** Wild EVs already track the city band (stage-competitive); nature phases in over C0-C2; ability keeps a mild slot-0 bias with late hidden-ability chance; moves stay legal-basic (the earn-via-tutor headroom). The secondary-STAB bias supplies type variety.
-- **Phase 2 — Stage-adaptive generator + role-coherent teams. ⏳ FOLLOW-UP.** Wire the learnset into the generator (`_designedCsvMovePool` → `move-tags.json`), parameterize it by city, raise foe reliance on it, and add per-slot role assignment. Deferred to its own PR: it rewires the build *source* (larger blast radius) whereas the gate split already delivers the visible "diverse foe" win by *unblocking* the diverse sets the data already has. Design captured in §4-§5.
-- **Phase 4 — EV-redistribution trainer. ⏳ FOLLOW-UP.** New NPC/UI (early: reshuffle existing EV total ~1000 G; late: 0→max instantly). A self-contained feature with its own UI surface — cleaner as a dedicated PR than bundled into the build-generation changes.
+- **Phase 3 — Wild philosophy. ✅ SHIPPED.** Wild EVs track the city band (stage-competitive); nature phases in over C0-C2; ability keeps a mild slot-0 bias with late hidden-ability chance; moves stay legal-basic (the earn-via-tutor headroom). The secondary-STAB bias supplies type variety.
+- **Phase 2 (roles) — role-coherent foe teams. ✅ SHIPPED.** `enforceRoleSpread` caps any single archetype at ~half the team and re-rolls over-represented unlocked slots toward absent roles (wall / hazard lead / setup / the other attacking category). Teams span ~4.6 distinct roles/6, 0% monotone. smartDraftPool-gated, story-foe-only, locks respected.
+- **Phase 4 — EV-redistribution trainer. ✅ SHIPPED.** Net-zero "reshuffle" re-points a mon's existing EV total into a role shape for 1000 G (reuses `_distributeEVsToTotal`); full "buy any spread" stays 5000 G. EV Trainer now debuts at **City 3 in reshuffle-only mode** (`_evTrainerIsFullMode` gates full mode to C7+/post-HoF/Frontier) — economy-safe because reshuffle never adds EVs.
+- **Phase 2b — stage-adaptive generator (learnset-fed). ⏳ FOLLOW-UP.** Wire the learnset into `makeDesignedBuild` (`_designedCsvMovePool` → `move-tags.json`) so the ~95 single-set species get role-diverse sets. Deferred to its own PR: it rewires the build *source* for *all* generated builds (regression surface) and needs the async-warmed learnset at build time; Phase 1 already delivers foe move diversity for the 92% multi-set species.
 
-Rationale for the split: this PR ships every change that improves the builds foes/wilds
-**already generate** (the gate + the correctness guards) — high value, fully test-gated, low
-save/AI risk. Phases 2 & 4 change the build *source* and add a *new feature* respectively, and
-are scoped as follow-ups so this PR stays coherent and merge-safe.
+This PR lands Phases 1–4 (moves, correctness, wild, roles, EV trainer); only the generator-source
+rewire (2b) is held back so it can get its own differential sweep without gating this merge.
+Full verification record: `BUILD_DIVERSITY_TESTING_REVIEW.md`.
 
 ## 7. Balance-knobs registry (all maintainer-owned)
 
-| Knob | Where | Proposed default | Notes |
+| Knob | Where | Shipped value | Notes |
 |---|---|---|---|
-| Foe BP cap by city | `STORY_FOE_MOVE_BP_CAP_BY_CITY` | keep `[40,60,60,80,80,0]` | the "power" lever; unchanged |
-| Foe utility-slot density by stage | new | 1 non-damaging slot early → 2 late | keeps early fights readable ("cleverer not harder") |
-| Foe coverage-slot minimum | new | ≥1 non-STAB damaging where legal | kills the "4 STAB" feel |
-| Team role spread | new | e.g. ≥3 distinct roles / 6 | "both roles + moves" |
-| `csvBuildMix` / generator reliance | `settings.csvBuildMix` | raise generator share for foes | |
-| CSV-attested move weight | new | bias, not hard filter | inherits Smogon vetting |
-| Wild EV total by city | `STORY_EV_CITY_TOTAL` | keep (already stage-competitive) | |
-| Wild nature randomness | `_wildPickNature` weights | more random per new wild philosophy | |
-| Wild ability randomness | `makeWildBuild` ability roll | more random-legal | |
-| EV-redistribution cost | new | ~1000 G early | |
+| Foe BP cap by city | `STORY_FOE_MOVE_BP_CAP_BY_CITY` | `[40,60,60,80,80,0]` | the "power" lever; unchanged |
+| Foe move gate (legal pool) | `_storyApplyMoveStageToBuild` `foeMode` | full legal pool + BP cap | coverage/setup/utility survive early |
+| Team role spread | `enforceRoleSpread` (cap ⌈N/2⌉, ≥3 distinct) | on (smartDraftPool) | "both roles + moves" |
+| Wild EV total by city | `STORY_EV_CITY_TOTAL` | `[[0,50]…[508,508]]` | stage-competitive; unchanged |
+| Wild nature phase-in | `makeWildBuild` neutral-chance | C0 .75 · C1 .40 · C2 .15 · C3+ 0 | smooths the cliff |
+| Wild item ramp | `makeWildBuild` `_wildItemCap` + berry chance | C0 none · C1-3 berries (25%) · C4-6 staples · C7 best | smooths the cliff |
+| Wild ability | `makeWildBuild` ability roll | slot-0 bias; hidden C6+ @35% | mild-random-legal |
+| EV reshuffle cost | `EV_REDISTRIBUTE_COST` | 1000 G | net-zero re-tune |
+| EV full-optimize cost | `EVTRAINER_COST` | 5000 G | unchanged |
+| EV Trainer debut / full-mode gate | `FACILITY_DEBUT_CITY.evtrainer` / `_evTrainerIsFullMode` | C3 reshuffle-only · C7+ full | economy-safe early access |
+| Enemy EV distributor | `_evReconcileToTarget` | trims overshoot + fills undershoot | always legal ≤508 |
 
 ## 8. Testing strategy
 
