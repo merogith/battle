@@ -47745,6 +47745,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorApplyRecommendedSet: (...a) => tutorApplyRecommendedSet(...a),
                     txItemRecsByPurpose: (...a) => _txItemRecsByPurpose(...a),
                     txAbilityRecsByPurpose: (...a) => _txAbilityRecsByPurpose(...a),
+                    txNatureRecsByPurpose: (...a) => _txNatureRecsByPurpose(...a),
+                    txBestArchetypeFor: (...a) => _txBestArchetypeFor(...a),
+                    evTrainerRecPreset: (...a) => _evTrainerRecPreset(...a),
+                    natureModifiers: () => natureModifiers,
                     // T1 regression hook: empty the move-acceptance cache to simulate a
                     // cold/errored render and assert the tutor gate then fails SAFE.
                     txClearMoveAcceptance: () => _txMoveTier1Cache.clear(),
@@ -69092,6 +69096,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         try { window._txMonRole = _txMonRole; } catch (e) {}
 
+        // Deterministic best-fit archetype for a PLAYER mon — the shared basis for the
+        // role-anchored nature + EV-spread recommendations and the Fast-Build. Unlike the
+        // foe roller (_designedPickArchetype, weighted-random for variety), this picks the
+        // single highest-weight ELIGIBLE archetype (stable id tie-break) so the "best set"
+        // is reproducible. Yields the recommended nature (from the archetype's phys/spec
+        // pair) and EV spread (from its evShape), plus the canonical role + EV focus stats.
+        function _txBestArchetypeFor(monName, mon) {
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : _txMonStats(mon, monName);
+            const role = _txRoleForBase(base);
+            const all = (BUILD_ARCHETYPES && BUILD_ARCHETYPES.archetypes) || [];
+            let best = null;
+            for (const a of all) {
+                if (!_archEligible(a, base, role.coarse)) continue;
+                const aw = a.weight || 1, bw = best ? (best.weight || 1) : -1;
+                if (!best || aw > bw || (aw === bw && String(a.id) < String(best.id))) best = a;
+            }
+            const physical = role.physical;
+            const nature = (best && best.nature && best.nature[physical ? 'phys' : 'spec'])
+                || (physical ? 'Adamant' : 'Modest');
+            const evShape = best ? best.evShape : (role.coarse === 'wall' ? 'max_bulk' : 'max_offense_speed');
+            let evs; try { evs = _designedEvSpread(evShape, base); } catch (e) { evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }; }
+            return { archetype: best ? best.id : null, nature, evShape, evs, role, base, physical, focusStats: role.focusStats };
+        }
+        try { window._txBestArchetypeFor = _txBestArchetypeFor; } catch (e) {}
+
+        // The EV Trainer's role-anchored "Recommended" spread, shaped as a preset so it
+        // renders and applies through the existing preset machinery. Deterministic.
+        function _evTrainerRecPreset(monName) {
+            try {
+                const ba = _txBestArchetypeFor(monName, null);
+                if (!ba || !ba.evs) return null;
+                const roleLbl = (_txMonRole(null, monName).label) || 'this role';
+                return { id: 'rec-role', label: 'Recommended · ' + roleLbl, evs: ba.evs, _rec: true };
+            } catch (e) { return null; }
+        }
+        try { window._evTrainerRecPreset = _evTrainerRecPreset; } catch (e) {}
+
         // Small role pill for the expanded-mon header, shared by all three tutor editors
         // (moves / loadout / nature). Shows the base-stat role + the two stats that drive it
         // so every recommendation below reads as "tuned for a Physical Sweeper", not magic.
@@ -70448,6 +70489,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 used.add(nature);
                 out.push({ purpose, nature, reason, mod });
             };
+
+            // Role-anchored top pick: the nature the best-fit archetype assigns for THIS
+            // mon's role (e.g. a fast setup sweeper wants Jolly/Timid, a wall wants Impish/
+            // Calm). Surfaced first so the headline recommendation matches the role chip.
+            try {
+                const _ba = _txBestArchetypeFor(monName, mon);
+                if (_ba && _ba.nature && pool.includes(_ba.nature)) {
+                    const m = natureModifiers[_ba.nature];
+                    const roleLbl = (_txMonRole(mon, monName).label || 'this role').toLowerCase();
+                    push('Recommended', _ba.nature, `Best for a ${roleLbl}: +${_TX_STAT_LABEL[m.up]} / -${_TX_STAT_LABEL[m.down]}.`);
+                }
+            } catch (e) {}
 
             // For Power — Adamant (phys/-SpA) or Modest (spec/-Atk)
             const powerNat = physical ? 'Adamant' : 'Modest';
@@ -74734,6 +74787,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _seenKeys.add(k);
                 return true;
             });
+            // Role-anchored recommendation wins display position over any duplicate in the
+            // Universal/Role/Meta lists (deduped first), and is always starred.
+            const _recPreset = _evTrainerRecPreset(t.name);
+            const dedupedRec = _recPreset ? dedup([_recPreset]) : [];
             const dedupedUniversal = dedup(EV_PRESETS_UNIVERSAL);
             const dedupedRole = dedup(EV_PRESETS_ROLE);
             const dedupedMeta = dedup(meta);
@@ -74741,11 +74798,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const renderRow = (presets) => presets.map(p =>
                 _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p), pctForPreset(p))
             ).join('');
+            const renderRecRow = (presets) => presets.map(p =>
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, true, pctForPreset(p))
+            ).join('');
 
             // Sticky section headers — when the player scrolls through 30+
             // preset cards the section context (Universal / Roles / Meta)
             // would otherwise disappear. Stickying keeps the label visible
             // until the next section's header replaces it.
+            const recommendedSection = dedupedRec.length ? `<div class="tx-ev-section" style="margin-top:10px;">
+                <div class="tx-ev-section-title">Recommended <span class="tx-ev-section-hint">· tuned to this Pokémon's role</span></div>
+                <div class="tx-grid" style="max-height:none;">${renderRecRow(dedupedRec)}</div>
+            </div>` : '';
             const universalSection = dedupedUniversal.length ? `<div class="tx-ev-section" style="margin-top:10px;">
                 <div class="tx-ev-section-title">Universal</div>
                 <div class="tx-grid" style="max-height:none;">${renderRow(dedupedUniversal)}</div>
@@ -74765,7 +74829,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${header}
                 <div class="story-tutor-mon-body" style="padding-top:6px;">
                     ${_evTrainerStatBarsHtml(cur, 'Currently equipped')}
-                    ${universalSection}${roleSection}${metaSection}
+                    ${recommendedSection}${universalSection}${roleSection}${metaSection}
                 </div>
             </div>`;
         }
@@ -74776,7 +74840,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const mon = sm.team[idx];
                 if (!mon || !mon.build) return;
                 const meta = _evTrainerMetaCache[idx] || [];
-                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const _rec = _evTrainerRecPreset(mon.name);
+                const all = [].concat(_rec ? [_rec] : [], EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 // Overwrite: the EV Trainer commits the mon to exactly this
@@ -74809,7 +74874,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 const meta = _evTrainerMetaCache[idx] || [];
-                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const _rec = _evTrainerRecPreset(mon.name);
+                const all = [].concat(_rec ? [_rec] : [], EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
