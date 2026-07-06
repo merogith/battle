@@ -57492,20 +57492,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // rankFill(names, monName) orders the backfill candidates (role-aware in Phase 4).
         // bpCapOverride (optional): a resolved cap (number or Infinity) to use instead of
         // the shared player cap — the foe gate passes its tighter foe ceiling here.
-        function _storyApplyMoveStageToBuild(build, monName, stage, rankFill, bpCapOverride) {
+        function _storyApplyMoveStageToBuild(build, monName, stage, rankFill, bpCapOverride, foeMode) {
             if (!build || !Array.isArray(build.m) || !build.m.length) return false;
             if ((stage | 0) >= 2) return false; // Guru — no gate
             const learn = _tutorLearnsetCache.get(monName);
             if (!learn) return false; // cache cold → leave as-is (offline-safe via the index)
-            // Staging (user model, Q2b overhaul): L1 Inner = Natural ≤ BP cap;
-            // L2 Unleashed = ALL Natural (cap lifts) PLUS Learnt STATUS moves — the
-            // mid-game "new builds" unlock (Toxic / Will-O-Wisp / hazards / screens)
-            // without raw-damage inflation; L3 Guru = no gate at all (early return
-            // above). Damaging Learnt moves still wait for Guru. Shared by player,
-            // trainers, wilds, and gifts — never add a player-only branch here.
-            const allowed = new Set(learn.natural || learn.tier1 || []);
-            if ((stage | 0) >= 1) {
-                for (const m of (learn.learnt || [])) { if (_storyIsStatusMoveName(m)) allowed.add(m); }
+            // Two staging models share this function via the `foeMode` flag (threaded
+            // from the caller — never hardcode a player-only branch here):
+            //
+            //  • PLAYER (wild / caught / gift), foeMode falsy — the catch-and-train gate:
+            //    L1 Inner = Natural ≤ BP cap; L2 Unleashed = all Natural (cap lifts) PLUS
+            //    Learnt STATUS moves; damaging Learnt (TM coverage) waits for the Move
+            //    Tutor / Guru. The player EARNS coverage — that headroom is the reward.
+            //
+            //  • FOE (trainers), foeMode truthy — "diverse early, power scales" (build-
+            //    diversity overhaul): the FULL LEGAL movepool is available at every
+            //    pre-Guru city, so coverage / setup / hazards / status all survive the
+            //    category gate and a foe reads as a real, role-coherent build instead of
+            //    4 basic STAB. Power stays curbed by the per-city BP cap below + the low
+            //    EV band, so early foes are CLEVERER, not HARDER. Off-legal "awakened"
+            //    CSV moves are still excluded (foes stay legal).
+            let allowed;
+            if (foeMode) {
+                allowed = new Set([...(learn.natural || []), ...(learn.learnt || [])]);
+                if (!allowed.size && Array.isArray(learn.all)) allowed = new Set(learn.all);
+            } else {
+                allowed = new Set(learn.natural || learn.tier1 || []);
+                if ((stage | 0) >= 1) {
+                    for (const m of (learn.learnt || [])) { if (_storyIsStatusMoveName(m)) allowed.add(m); }
+                }
             }
             if (!allowed.size) return false; // thin learnset → leave alone
             // Callers always pass a city-resolved cap via bpCapOverride; absent one,
@@ -57565,7 +57580,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
-                _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker, foeBpCap);
+                _storyApplyMoveStageToBuild(slot.build, slot.name, tutorStage, _storyCoherentMoveRanker, foeBpCap, true);
             }
         }
         // Apply the per-city moveset pool filter to a SINGLE player-side build (wild

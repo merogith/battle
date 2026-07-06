@@ -78,33 +78,38 @@ test('Phase 1: per-city BP-cap table — 40/60/60/80/80/∞ (player & foe equal)
   assert.equal(ST.storyMoveBpCapForCity(5, true), Infinity, 'starter bonus never changes an uncapped city');
 });
 
-test('Phase 1: foe gate per-city — C3 caps at 80 (Dragon Claw kept, Outrage stripped); C0 ≤40', async () => {
+test('Phase 1: foe gate per-city — C3 caps at 80 (legal ≤80 kept, over-cap stripped); C0 ≤40', async () => {
   primeStory();
-  // C3 (cap 80): Dragon Claw(80,nat) survives; Outrage(120,nat) is stripped; TMs stay stripped.
+  // Build-diversity overhaul: Learnt/TM moves are now ALLOWED for foes if ≤ the city
+  // BP cap — only the BP cap + off-legal Awakened gate them. C3 (cap 80): Dragon
+  // Claw(80,nat) survives; Outrage(120)/Earthquake(100) stripped as over-cap.
   const t3 = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(t3, cityRowIdx(3));
   assert.ok(!t3[0].build.m.includes('Outrage'), 'C3 (cap 80) strips Outrage (120)');
+  assert.ok(!t3[0].build.m.includes('Earthquake'), 'C3 (cap 80) strips Earthquake (100)');
+  assert.ok(t3[0].build.m.includes('Dragon Claw'), 'C3 keeps the ≤80 Natural Dragon Claw');
   for (const m of t3[0].build.m) {
     const tag = ST.moveTagForSpecies('Garchomp', m.split('/')[0]);
-    assert.notEqual(tag, 'learnt', `C3 must not keep a Learnt/TM move ("${m}")`);
+    assert.notEqual(tag, 'awakened', `C3 must not keep an off-legal Awakened move ("${m}")`);
     assert.ok(bp(m.split('/')[0]) <= 80, `C3 foe kept "${m}" must be ≤80 BP (was ${bp(m.split('/')[0])})`);
   }
-  // C0 (cap 40): every kept Natural move sits at or below 40.
+  // C0 (cap 40): every original move is >40 BP → all stripped, backfilled ≤40.
   const t0 = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(t0, cityRowIdx(0));
   assert.ok(!t0[0].build.m.includes('Outrage') && !t0[0].build.m.includes('Dragon Claw'), 'C0 (cap 40) strips both 120/80 BP moves');
+  for (const m of t0[0].build.m) assert.ok(bp(m.split('/')[0]) <= 40, `C0 foe kept "${m}" must be ≤40 BP`);
 });
 
-test('Phase 1: foe gate at C5 lifts the BP cap (high-BP Natural kept; TMs still stripped)', async () => {
+test('Phase 1: foe gate at C5 lifts the BP cap and keeps the full LEGAL set (Learnt included)', async () => {
   primeStory();
-  // C5 is the first city where the per-city cap is ∞ while the tutor tier is still
-  // Unleashed (Natural-only). Outrage(120,nat) is KEPT; Earthquake/Stone Edge (TMs) stripped.
+  // C5: per-city cap is ∞. Under the foe gate all LEGAL moves (Natural + Learnt/TM)
+  // are kept — coverage is no longer stripped. Only off-legal Awakened stays gated.
   const team = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(5));
   const kept = team[0].build.m;
-  assert.ok(kept.includes('Outrage'), 'C5 keeps high-BP Natural (Outrage 120) — cap is lifted');
-  for (const m of kept) assert.notEqual(ST.moveTagForSpecies('Garchomp', m), 'learnt', `C5 must not keep a TM ("${m}")`);
-  assert.ok(!kept.includes('Earthquake') && !kept.includes('Stone Edge'), 'C5 still strips TMs (Unleashed tier, no Learnt yet)');
+  assert.ok(kept.includes('Outrage'), 'C5 keeps high-BP Natural (Outrage 120) — cap lifted');
+  assert.ok(kept.includes('Earthquake') && kept.includes('Stone Edge'), 'C5 now keeps legal Learnt/TM coverage (Phase 1)');
+  for (const m of kept) assert.notEqual(ST.moveTagForSpecies('Garchomp', m), 'awakened', `C5 must not keep an Awakened move ("${m}")`);
 });
 
 test('Phase 1: stage 2 (Guru) leaves moves untouched', async () => {
