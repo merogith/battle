@@ -21002,6 +21002,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return parts.join('');
         }
 
+        // HP numeric readout tween. The bar already eases (width 0.8s ease-out); the
+        // number used to snap instantly, which read as a jump next to the sliding bar.
+        // This counts the displayed number toward its target over ~0.6s so bar + number
+        // move together. Snaps immediately (no rAF) under the jsdom harness, reduced
+        // motion, or when battle animations are off — so the DOM always lands on the
+        // exact final "cur/max" string a reader (or test) expects.
+        function _setHpText(node, cur, max) {
+            if (!node) return;
+            const target = `${cur}/${max}`;
+            const animate = (
+                typeof requestAnimationFrame === 'function' &&
+                window.__testHarness !== true &&
+                settings.animations !== false &&
+                !(window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion())
+            );
+            // Cancel any in-flight tween on this node.
+            if (node._hpTweenRaf) { try { cancelAnimationFrame(node._hpTweenRaf); } catch (e) {} node._hpTweenRaf = null; }
+            const from = (typeof node._hpShown === 'number') ? node._hpShown : cur;
+            node._hpShown = cur;
+            if (!animate || from === cur) { node.innerText = target; return; }
+            const dur = 600, start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const ease = (t) => 1 - Math.pow(1 - t, 4); // quart-out, matches --ease-out-quart intent
+            const step = (now) => {
+                const t = Math.min(1, ((now || Date.now()) - start) / dur);
+                const val = Math.round(from + (cur - from) * ease(t));
+                node.innerText = `${val}/${max}`;
+                if (t < 1) { node._hpTweenRaf = requestAnimationFrame(step); }
+                else { node._hpTweenRaf = null; node.innerText = target; }
+            };
+            node._hpTweenRaf = requestAnimationFrame(step);
+        }
+
         function updateUI() {
             if (!battleEls.player || !battleEls.player.name) cacheBattleEls();
             const be = battleEls;
@@ -21106,7 +21138,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     teraIndicator = `<span class="tera-tip-hover" style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:pointer;text-decoration:underline dotted;" data-tera="${encodeURIComponent(tt)}" data-o1="${encodeURIComponent(origT1)}" data-o2="${encodeURIComponent(origT2||'')}" onclick="window.showTeraFromEl(event)" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
                 }
                 el.types.innerHTML = getTypeHTML(dispType1, dispType2) + teraIndicator;
-                el.hpText.innerText = `${mon.currentHp}/${mon.maxHp}`;
+                _setHpText(el.hpText, mon.currentHp, mon.maxHp);
                 // Status icon on sprite
                 let sIcon = el.statusIcon;
                 if (mon.status) {
