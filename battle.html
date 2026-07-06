@@ -1541,6 +1541,7 @@
         .tx-pill--cur { background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff3cd; }
         .tx-pill--ha  { background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5; }
         .tx-pill--locked { background: rgba(120,144,156,0.18); border-color: #78909c; color: #cfd8dc; }
+        .tx-pill--suitable { background: rgba(129,199,132,0.18); border-color: #81c784; color: #c8e6c9; font-weight: bold; }
         .tx-card[data-locked="1"] { opacity: 0.5; cursor: not-allowed; }
         .tx-card[data-locked="1"] .tx-card-star { opacity: 0.8; }
         .tx-pill--awaken {
@@ -11524,7 +11525,7 @@
             // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
                 _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _framing, _subBridges, _archetypes, _synergies, _banter, _marquee] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _barks, _tc, _bm, _sh, _mti, _routes, _errands, _branches, _minigames, _interactions, _framing, _subBridges, _archetypes, _synergies, _banter, _marquee, _competMoves] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -11547,13 +11548,15 @@
                         fetch('data/build-archetypes.json').then(r => r.json()).catch(() => null),
                         fetch('data/move-synergies.json').then(r => r.json()).catch(() => null),
                         fetch('data/dialogue/banter-attitudes.json').then(r => r.json()).catch(() => null),
-                        fetch('data/dialogue/marquee-entries.json').then(r => r.json()).catch(() => null)
+                        fetch('data/dialogue/marquee-entries.json').then(r => r.json()).catch(() => null),
+                        fetch('data/competitive-moves.json').then(r => r.json()).catch(() => null)
                     ]);
                     // Designed-build archetype engine tables (Object.assign in place so the
                     // module-level BUILD_ARCHETYPES / MOVE_SYNERGIES + their window mirrors see
                     // the data; missing files → empty defaults → legacy designed-build path).
                     if (_archetypes && Array.isArray(_archetypes.archetypes)) Object.assign(BUILD_ARCHETYPES, _archetypes);
                     if (_synergies && (_synergies.pairs || _synergies.moveItem)) Object.assign(MOVE_SYNERGIES, _synergies);
+                    if (_competMoves && _competMoves.moves) Object.assign(COMPETITIVE_MOVES, _competMoves);
                     // Precomputed move-tag index (Object.assign onto the stable
                     // window-mirrored object so the live-dex fallback in
                     // _tutorFetchLearnsetMoveNames only fires for species missing here).
@@ -12223,7 +12226,12 @@
         // designed builds keep the legacy path byte-for-byte.
         let BUILD_ARCHETYPES = { archetypes: [] };
         let MOVE_SYNERGIES = { pairs: [], moveItem: [] };
-        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; } catch (e) {}
+        // Elite competitive/utility moves the tutor surfaces as SUITABLE even at 0% usage
+        // (Parting Shot, Tailwind, hazards, recovery, pivots…). classFloors → per-class
+        // heuristic score floor; moves → move name → {class, note}. Loaded in loadGameData;
+        // consumed by _txCompetitiveTag / _txMoveHeuristic. Player-facing scorer only.
+        let COMPETITIVE_MOVES = { classFloors: {}, moves: {} };
+        try { window.BUILD_ARCHETYPES = BUILD_ARCHETYPES; window.MOVE_SYNERGIES = MOVE_SYNERGIES; window.COMPETITIVE_MOVES = COMPETITIVE_MOVES; } catch (e) {}
         const _ARCH_SETUP_MOVES = new Set([
             'Swords Dance', 'Nasty Plot', 'Dragon Dance', 'Calm Mind', 'Shell Smash', 'Quiver Dance',
             'Bulk Up', 'Coil', 'Curse', 'Agility', 'Rock Polish', 'Autotomize', 'Work Up', 'Growth',
@@ -69867,6 +69875,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // special move no longer outranks a right-stat 80-BP one on a physical mon),
         // ability→move synergy (Technician / Huge Power / -ate / Adaptability), and the
         // short-battle fit factor (hazards/phaze/pivot down-weighted for story fights).
+        // Competitive-move tag lookup: returns { class, note, floor } for an elite
+        // utility/singleton move (Parting Shot, Tailwind, hazards, pivots…), else null.
+        // Feeds both the heuristic score floor and the grid "★ Suitable" badge.
+        function _txCompetitiveTag(moveName) {
+            const tbl = (COMPETITIVE_MOVES && COMPETITIVE_MOVES.moves) || null;
+            if (!tbl) return null;
+            const e = tbl[moveName];
+            if (!e) return null;
+            const floor = (COMPETITIVE_MOVES.classFloors && COMPETITIVE_MOVES.classFloors[e.class]) || 0;
+            return { class: e.class, note: e.note || '', floor };
+        }
+        try { window._txCompetitiveTag = _txCompetitiveTag; } catch (e) {}
         function _txMoveHeuristic(moveName, mon, build, monName) {
             const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
             if (!md) return 0;
@@ -69900,9 +69920,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (boost.includes(moveName))   score = 85;
                 else if (support.includes(moveName)) score = 70;
                 else score = 30;
+                // Rescue elite utility the lists above miss (Parting Shot, Teleport, Baton
+                // Pass, Shed Tail, Memento, Heal Bell…) from the 30 "filler" floor. Never
+                // lowers an already-higher score — Math.max keeps recovery/boost/hazards.
+                const _ct = _txCompetitiveTag(moveName);
+                if (_ct && _ct.floor > score) score = _ct.floor;
             }
             return score * _txShortBattleFactor(moveName);
         }
+        try { window._txMoveHeuristic = _txMoveHeuristic; } catch (e) {}
         // Public scoring — heuristic blended with Smogon popularity per species.
         function _txScoreMove(moveName, mon, build, monName) {
             const heur = _txMoveHeuristic(moveName, mon, build, monName);
@@ -71539,8 +71565,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
+            // ★ Suitable — an elite competitive/utility move (Parting Shot, Tailwind,
+            // hazards, pivots…) surfaced as good even when this species' Smogon usage is
+            // thin. The reason rides in the tap-tooltip so touch users get it too.
+            const compet = _txCompetitiveTag(moveName);
+            const competPill = compet
+                ? `<span class="tx-pill tx-pill--suitable tx-tapinfo" title="${_esc(compet.note || 'A competitively strong utility move.')}">★ Suitable</span>`
+                : '';
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
+                competPill,
                 lockPill,
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
