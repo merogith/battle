@@ -130,3 +130,34 @@ test('Spectral Thief still steals boosts from a non-immune target', async () => 
   assert.equal(user.stages.atk, 2, 'boosts stolen from a hittable target');
   assert.equal(foe.stages.atk, 0, 'target loses its boosts');
 });
+
+// ── 5. Contrary is applied before the reduction guards (Substitute / Mist) ────
+// Showdown order: onChangeBoost (Contrary/Simple) THEN onTryBoost (Mist/Substitute/
+// Clear Body). A Contrary mon's opponent-sourced "drop" becomes a boost, which those
+// guards must not block.
+test('Contrary turns an opponent drop into a boost even behind a Substitute', () => {
+  const { foe } = arena(
+    { species: 'Mew', moves: ['Splash', 'Splash', 'Splash', 'Splash'] },
+    { species: 'Malamar', ability: 'Contrary', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  foe.volatile.sub = Math.floor(foe.maxHp / 4);
+  eng.engine.changeStage(foe, 'atk', -1, true); // opponent-sourced drop (e.g. Intimidate)
+  assert.equal(foe.stages.atk, 1, 'Contrary flips the drop to a boost; the sub does not block it');
+});
+
+test('Substitute still blocks a genuine opponent drop on a non-Contrary mon', () => {
+  const { foe } = arena(
+    { species: 'Mew', moves: ['Splash', 'Splash', 'Splash', 'Splash'] },
+    { species: 'Snorlax', ability: 'Thick Fat', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  foe.volatile.sub = Math.floor(foe.maxHp / 4);
+  eng.engine.changeStage(foe, 'atk', -1, true);
+  assert.equal(foe.stages.atk, 0, 'genuine reduction is still blocked by the sub');
+});
+
+test('Contrary flips an opponent drop into a boost under Mist', () => {
+  const { st, foe } = arena(
+    { species: 'Mew', moves: ['Splash', 'Splash', 'Splash', 'Splash'] },
+    { species: 'Malamar', ability: 'Contrary', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  if (st.fSide) st.fSide.mist = 5;
+  eng.engine.changeStage(foe, 'atk', -1, true);
+  assert.equal(foe.stages.atk, 1, 'Contrary boost is not blocked by Mist');
+});
