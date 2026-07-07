@@ -44477,9 +44477,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    banterByRow: {},
                    banterStats: { flirty: 0, positive: 0, negative: 0, stoic: 0 },
                    banterPersona: { id: 'wildcard', tier: 0 },
-                   // Hidden Power mentor (early road encounter before City 1): once met,
-                   // the Move Tutor can teach Hidden Power to any Pokémon for the rest of
-                   // the run. `choosePending` is the one-time token the mentor grants —
+                   // Hidden Power mentor (the Diviner — a one-time road scene on the
+                   // approach to City 3, see enterCity): once met, the Move Tutor can
+                   // teach Hidden Power to any Pokémon for the rest of the run.
+                   // `choosePending` is the one-time token the mentor grants —
                    // consumed at the first Hidden Power lesson to let the player pick that
                    // mon's type; every later mon uses its own (stable, auto-assigned) type.
                    hiddenPowerUnlocked: false, hiddenPowerChoosePending: false,
@@ -46065,6 +46066,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _moveCostForStage: (...a) => _moveCostForStage(...a),
                 _tutorGetStagedMovePoolAsync: (...a) => _tutorGetStagedMovePoolAsync(...a),
                 _hpTutorApply: (...a) => _hpTutorApply(...a),
+                _hpTutorPreteach: (...a) => _hpTutorPreteach(...a),
+                chooseHiddenPowerType: (...a) => _chooseHiddenPowerType(...a),
             };
             // Narration-system test surface (structured scenes, overlay queue,
             // preview/dispatch parity) — exposed in the same inner scope as the
@@ -52499,9 +52502,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.storyCityVisit = cidx;
                 try { save(); } catch (e) { console.warn('[Story] enterCity save', e); }
             }
-            // Hidden Power Mentor (one-time, on the approach to City 1): a wandering
-            // diviner stops the player just after their first route trainer — before
-            // the tall grass and the city hub. Fires once per run via its own scene
+            // Hidden Power Mentor (one-time, on the approach to City 3 — see the UX
+            // pacing note below): a wandering diviner stops the player just before the
+            // city hub. Fires once per run via its own scene
             // dedupe; on dismiss it re-enters enterCity so wander / arrival / hub flow
             // normally. Unlocks Hidden Power at every Move Tutor for the rest of the run.
             // UX pacing (2026-07): deferred from the City-1 approach to the City-3
@@ -73503,23 +73506,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const finish = (val) => { if (done) return; done = true; try { document.removeEventListener('keydown', onKey); } catch (e) {} try { ov.remove(); } catch (e) {} resolve(val); };
                 const ov = document.createElement('div');
                 ov.className = 'story-tutorial-overlay';
+                // a11y: this picker is a modal dialog just like _showStoryTutorialScene,
+                // and must earn the same keyboard/screen-reader treatment — a labeled
+                // dialog, an autofocused first choice, a Tab loop pinned to its own
+                // controls, and Escape → cancel. Before this it had only Escape, so
+                // keyboard users had no entry point and Tab walked the live tutor
+                // screen underneath.
                 ov.setAttribute('role', 'dialog');
                 ov.setAttribute('aria-modal', 'true');
                 ov.setAttribute('aria-label', 'Choose Hidden Power type');
+                ov.tabIndex = -1;
                 const types = (window.HP_TYPES || []);
                 const btns = types.map(t =>
-                    `<button type="button" class="type-badge type-${t}" data-hp="${t}" style="font-size:13px;padding:7px 12px;border:none;border-radius:5px;cursor:pointer;">${t}</button>`
+                    `<button type="button" class="type-badge type-${t}" data-hp="${t}" aria-label="Choose ${t}" style="font-size:13px;padding:7px 12px;border:none;border-radius:5px;cursor:pointer;">${t}</button>`
                 ).join('');
                 ov.innerHTML = `
                     <div class="story-dialog-host story-tutorial-dialog-host" style="max-width:520px;">
                         <div class="story-dialog-nameplate">The Diviner</div>
                         <div class="story-dialog-box">
-                            <p class="story-dialog-text">Which element sleeps in ${_esc(mon && mon.name || 'your Pokémon')}? Choose its Hidden Power — this once.</p>
-                            <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:12px;">${btns}</div>
+                            <p class="story-dialog-text">Which element sleeps in ${_esc(mon && mon.name || 'your Pokémon')}? Choose its Hidden Power — this once. It fixes the element for good; every later Pokémon keeps its own.</p>
+                            <div class="hp-type-grid" role="group" aria-label="Hidden Power type" style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:12px;">${btns}</div>
                         </div>
                     </div>
                     <button type="button" class="story-tutorial-continue" data-hp-cancel="1">Not now</button>`;
-                const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); finish(null); } };
+                // The picker's own tabbable controls, in visual order: the 16 type
+                // badges, then "Not now". Tab/Shift+Tab cycle within this set.
+                const _focusable = () => [...ov.querySelectorAll('button[data-hp], button[data-hp-cancel]')];
+                const onKey = (e) => {
+                    if (e.key === 'Escape') { e.preventDefault(); finish(null); return; }
+                    if (e.key === 'Tab') {
+                        const items = _focusable();
+                        if (!items.length) return;
+                        e.preventDefault();
+                        const cur = items.indexOf(document.activeElement);
+                        const dir = e.shiftKey ? -1 : 1;
+                        (items[(cur + dir + items.length) % items.length] || items[0]).focus();
+                    }
+                };
                 document.addEventListener('keydown', onKey);
                 ov.addEventListener('click', (e) => {
                     const b = e.target.closest('[data-hp]');
@@ -73527,6 +73550,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (e.target.closest('[data-hp-cancel]') || e.target === ov) { e.stopPropagation(); finish(null); }
                 });
                 document.body.appendChild(ov);
+                // Land keyboard/SR focus on the first element choice (Enter/Space then
+                // commits it) instead of leaving focus stranded on the screen below.
+                try { const first = ov.querySelector('button[data-hp]'); setTimeout(() => { if (first) first.focus(); }, 0); } catch (e) {}
             });
         }
         // Pre-teach guard for Hidden Power: blocks a second Hidden Power (any element)
