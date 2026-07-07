@@ -368,7 +368,10 @@
             scrollbar-gutter: stable;
         }
         .modal-content::-webkit-scrollbar { width: 8px; }
-        .modal-header-row { display: flex; align-items: center; justify-content: flex-end; position: relative; min-height: 40px; margin: -4px 0 10px; gap: 8px; }
+        /* Sticky header bar so the close "×" is always reachable on long, scrolling modals
+           (party / summary / settings on a phone). Negative margins + matching padding pull it
+           to the edges of the 16px-padded .modal-content and cover the content scrolling under it. */
+        .modal-header-row { display: flex; align-items: center; justify-content: flex-end; position: sticky; top: 0; z-index: 3; min-height: 40px; margin: -16px -16px 10px; padding: 12px 16px 8px; gap: 8px; background: var(--surface); border-bottom: 1px solid #2a2a2a; }
         .modal-header-row h2 { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; pointer-events: none; }
         .modal-close-x {
             flex-shrink: 0; width: 40px; height: 40px; min-width: 40px; min-height: 40px; margin-left: auto;
@@ -418,7 +421,7 @@
         .story-prof-actions { width: 100%; max-width: 920px; justify-content: center !important; }
         #story-prof-rolled-card .prof-pick-card { flex: 1 1 200px; max-width: 300px; min-width: 0; }
         .prof-pick-header { flex-wrap: wrap; gap: 4px; align-items: center; }
-        .prof-pick-card .prof-full-summary-btn { margin-top: 6px; width: 100%; font-size: 11px; padding: 6px; color: var(--accent); border-color: #555; background: #1a1a1a; }
+        .prof-pick-card .prof-full-summary-btn { margin-top: 6px; width: 100%; font-size: 11px; padding: 6px; color: var(--accent); border-color: #888; background: #1a1a1a; }
         .prof-pick-card .prof-summary-icon-btn {
             display: none; flex-shrink: 0; width: 36px; height: 36px; min-width: 36px; min-height: 36px;
             align-items: center; justify-content: center; border-radius: 50%;
@@ -4416,10 +4419,10 @@
             flex: 1 1 auto; min-width: 0; min-height: 0; box-sizing: border-box;
         }
         .command-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        button { background: var(--surface); color: var(--text-color); border: 2px solid #444; border-top-color: #555; border-left-color: #555; border-bottom-color: #1a1a1a; border-right-color: #1a1a1a; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: bold; padding: 6px; border-radius: 5px; box-shadow: 0 2px 0 rgba(0,0,0,0.3); transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease, transform 0.06s ease, opacity 0.1s ease, box-shadow 0.06s ease; }
+        button { background: var(--surface); color: var(--text-color); border: 2px solid #444; border-top-color: #888; border-left-color: #888; border-bottom-color: #1a1a1a; border-right-color: #1a1a1a; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: bold; padding: 6px; border-radius: 5px; box-shadow: 0 2px 0 rgba(0,0,0,0.3); transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease, transform 0.06s ease, opacity 0.1s ease, box-shadow 0.06s ease; }
         button:hover:not(:disabled) { background: var(--surface2); border-top-color: #666; border-left-color: #666; }
-        button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 0 0 transparent; border-top-color: #1a1a1a; border-left-color: #1a1a1a; border-bottom-color: #555; border-right-color: #555; }
-        button:disabled { opacity: 0.25; cursor: not-allowed; border-color: #222; color: #555; box-shadow: none; }
+        button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 0 0 transparent; border-top-color: #1a1a1a; border-left-color: #1a1a1a; border-bottom-color: #888; border-right-color: #888; }
+        button:disabled { opacity: 0.25; cursor: not-allowed; border-color: #222; color: #888; box-shadow: none; }
         #move-menu.move-menu-layout { display: flex; flex-direction: column; gap: 4px; flex: 1; min-height: 0; overflow: hidden; }
         #move-menu button { -webkit-touch-callout: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; box-sizing: border-box; min-height: 0; }
         #move-menu .move-menu-scroll {
@@ -4438,7 +4441,7 @@
             text-align: center; padding: 8px 10px;
             color: #c0b8a8; background: #1a1a22; border-radius: 6px;
             border: 2px solid #3a3a3a;
-            border-top-color: #555; border-left-color: #555;
+            border-top-color: #888; border-left-color: #888;
             border-bottom-color: #111; border-right-color: #111;
             box-shadow: inset 1px 1px 0 rgba(255,255,255,0.06), 0 2px 0 #080810;
             font-weight: bold; letter-spacing: 0.08em;
@@ -4449,7 +4452,7 @@
             transform: translateY(1px);
             box-shadow: inset 2px 2px 4px rgba(0,0,0,0.3);
             border-top-color: #111; border-left-color: #111;
-            border-bottom-color: #555; border-right-color: #555;
+            border-bottom-color: #888; border-right-color: #888;
         }
 
         /* ── Arena: row command bar — log on one side, actions on the other ──
@@ -4589,7 +4592,7 @@
             flex-direction: row; align-items: stretch; justify-content: flex-start;
             min-height: 0; padding: 7px 10px; border-radius: 6px;
             border: 2px solid #3a3a3a;
-            border-top-color: #555; border-left-color: #555;
+            border-top-color: #888; border-left-color: #888;
             border-bottom-color: #111; border-right-color: #111;
             background: #1a1a22;
             box-shadow: inset 1px 1px 0 rgba(255,255,255,0.06), inset -1px -1px 0 rgba(0,0,0,0.25),
@@ -4695,7 +4698,7 @@
         .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 10px; line-height: 1; }
         .battle-btn-move .move-tile-meta { margin-top: 3px; font-size: 9px; color: #8a8a8a; opacity: 0.85; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
         .battle-btn-move .move-tile-meta strong { color: #ddd; font-weight: 600; }
-        .battle-btn-move .move-tile-sep { color: #555; margin: 0 4px; user-select: none; }
+        .battle-btn-move .move-tile-sep { color: #888; margin: 0 4px; user-select: none; }
         .battle-btn-move .move-info-hit { align-self: center; margin: 0; width: 28px; height: 28px; font-size: 12px; opacity: 0.55; }
         .battle-btn-move .move-info-hit:hover { opacity: 1; }
         #screen-battle[data-battle-layout="arena"] .battle-btn-move .move-info-hit { display: none; }
@@ -5123,8 +5126,9 @@
             .draft-card-header { font-size: 12px; gap: 4px; }
             .draft-card-details { font-size: 10px; line-height: 1.25; }
             .draft-card-moves { font-size: 10px; gap: 2px; }
-            .draft-card-moves > div { padding: 2px 3px; min-height: 32px; }
-            .draft-card-info-btn { width: 24px; height: 24px; min-width: 24px; font-size: 12px; }
+            .draft-card-moves > div { padding: 2px 3px; min-height: 40px; }
+            /* Keep the "ⓘ full summary" button a real ≥40px touch target on phones (was 24px). */
+            .draft-card-info-btn { width: 40px; height: 40px; min-width: 40px; min-height: 40px; font-size: 14px; }
             .modal-content { width: 98%; padding: 12px; }
             button { min-height: 44px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
             /* Stack move tiles sized by data-battle-layout="stack" rules above */
@@ -6526,7 +6530,7 @@
         .casino-go-btn:disabled {
             color: rgba(255,245,208,0.5);
             background: linear-gradient(180deg, #6a6a6a 0%, #3a3a3a 100%);
-            border-color: #555;
+            border-color: #888;
             cursor: not-allowed;
             filter: none;
             animation: none;
@@ -7046,7 +7050,7 @@
         .casino-roul-action.go:disabled {
             color: rgba(255,245,208,0.5);
             background: linear-gradient(180deg, #6a6a6a 0%, #3a3a3a 100%);
-            border-color: #555;
+            border-color: #888;
             cursor: not-allowed;
             filter: none;
         }
@@ -8008,8 +8012,8 @@
         }
         .menu-collection-sub {
             grid-area: sub;
-            font-size: 9px;
-            color: #607d8b;
+            font-size: 10px;
+            color: #90a4ae;
             letter-spacing: 0.05em;
             text-transform: uppercase;
         }
@@ -8031,12 +8035,17 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #888;
+            color: #a3a3a3;
             margin: 14px 0 8px;
             padding-top: 8px;
             border-top: 1px solid #333;
         }
         .settings-section-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+        /* Section body: single column on phones, two columns on desktop/wide so the
+           650px sheet in the fixed game frame uses its width instead of one long scroll. */
+        .settings-grid { display: grid; grid-template-columns: 1fr; column-gap: 22px; }
+        body:not(.is-mobile) .settings-grid { grid-template-columns: 1fr 1fr; }
+        body:not(.is-mobile) .settings-grid > .settings-row { margin-bottom: 10px; }
         .settings-row {
             display: flex;
             align-items: center;
@@ -8045,7 +8054,7 @@
             margin-bottom: 12px;
             padding-bottom: 10px;
             border-bottom: 1px solid #333;
-            min-height: 36px;
+            min-height: 44px;
         }
         .settings-row > span:first-child { font-size: 13px; color: #ddd; }
         .pbs-switch {
@@ -8084,11 +8093,55 @@
         }
         body.is-mobile .modal.modal--bottom-sheet .modal-content {
             width: 100%;
-            max-width: none;
-            margin: 0;
+            /* Cap the sheet so "Phone" display-mode on a wide screen (or a large tablet)
+               doesn't stretch the panel edge-to-edge; keep it centered above the fold. */
+            max-width: 620px;
+            margin: 0 auto;
             border-radius: 16px 16px 0 0;
             max-height: min(88dvh, 100%);
             animation: modalSheetUp 0.28s ease-out;
+        }
+        /* Tablet / any touch device (iPad portrait ≈ 820px, landscape ≈ 1024px) falls
+           between the phone (≤600/768) breakpoints and the desktop hover model, so the
+           44px touch minimums never fired there. Apply them on any coarse pointer. */
+        @media (hover: none) and (pointer: coarse) {
+            .settings-row { min-height: 44px; }
+            #screen-menu .menu-filter-row label { min-height: 44px; }
+            .menu-preset-chip, .menu-lb-link, .menu-offline-entry { min-height: 44px; }
+            #modal-settings select, #offline-dl-start, #offline-dl-btn { min-height: 44px; }
+            .pbs-switch { width: 52px; height: 30px; }
+            .pbs-switch::after { width: 22px; height: 22px; }
+            .pbs-switch:checked::after { transform: translateX(22px); }
+            /* Secondary icon-control family — small glyph buttons that were 24–34px. Pad the hit
+               area to ~40px on touch without forcing the glyph bigger (keeps the visual compact). */
+            .icon-btn, .move-info-hit, .story-mon-info-btn, .party-sort-btn, .party-lead-btn,
+            .draft-card-info-btn, .prof-summary-icon-btn { min-width: 40px; min-height: 40px; }
+            .draft-card-moves > div { min-height: 44px; }
+            #screen-story-city .story-action-btn, #screen-story-casino .story-action-btn { min-height: 44px; }
+            #command-menu .battle-cmd-btn { min-height: clamp(44px, 10cqh, 64px); }
+        }
+        /* Volume/slider (and other explicitly-wide) settings rows span both desktop columns so
+           the label + slider + % never crowd into a single ~300px cell. */
+        body:not(.is-mobile) .settings-grid > .settings-row--wide { grid-column: 1 / -1; }
+        /* Notched phones in LANDSCAPE (notch left/right, home indicator bottom): generic modals
+           only got safe-area padding in portrait before, so content could slide under the notch. */
+        @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
+            .modal-content {
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+                padding-bottom: max(16px, env(safe-area-inset-bottom));
+            }
+        }
+        /* iPad/tablet in PORTRAIT (769–1024px, touch) fell between the phone story-stack (≤768px)
+           and the desktop identity-band (non-mobile) rules — leaving the story city on the base
+           side-by-side layout with a fixed narrow sidebar. Re-apply the phone vertical stack here
+           (scoped to the story city so nothing else on tablets is touched). */
+        @media (orientation: portrait) and (min-width: 769px) and (max-width: 1024px) and (pointer: coarse) {
+            #screen-story-city .story-city-main-row { flex-direction: column !important; flex: 1 1 0% !important; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+            #screen-story-city #story-city-left { width: 100% !important; max-width: 100%; border-right: none !important; border-bottom: 1px solid rgba(34,34,34,0.9); flex-shrink: 0; box-sizing: border-box; flex-direction: row !important; align-items: center !important; justify-content: flex-start !important; gap: 14px !important; padding: 10px 14px !important; }
+            #screen-story-city #story-city-left .story-city-portrait-wrap { width: 84px; height: 84px; max-width: none; }
+            #screen-story-city #story-city-left .story-city-portrait-wrap img { width: 76px; height: 76px; }
+            #screen-story-city #story-city-npc-name { text-align: left !important; }
         }
         @keyframes modalSheetUp {
             from { transform: translateY(100%); opacity: 0.9; }
@@ -9232,7 +9285,7 @@
             font-size: 9px; color: #b3c2d6; text-align: center; line-height: 1.2;
             max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .pdex-cell--unknown .pdex-cell-name { color: #555; }
+        .pdex-cell--unknown .pdex-cell-name { color: #888; }
         .pdex-cell-bst {
             font-family: var(--battle-font) !important;
             font-size: 8px; color: #7e8aa0; letter-spacing: 0.3px;
@@ -9416,9 +9469,12 @@
     <!-- Supabase JS SDK is loaded lazily by OnlineBattle.ensureSdk() only when Online PvP is
          entered, so the offline/first-paint boot path carries no third-party script. -->
     <script src="online-config.js"></script>
-    <script src="online-pvp.js"></script>
-    <script src="move-sfx-map.js"></script>
-    <script src="move-anim-map.js"></script>
+    <!-- Deferred: only consumed in-battle / when entering Online PvP (all references are
+         inside functions with typeof guards), so they don't need to block first paint. defer
+         preserves order and runs them before DOMContentLoaded. -->
+    <script src="online-pvp.js" defer></script>
+    <script src="move-sfx-map.js" defer></script>
+    <script src="move-anim-map.js" defer></script>
     <script>
         // Register the offline service worker (no-op on file:// or unsupported browsers).
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
@@ -9429,6 +9485,11 @@
                     if (typeof window.checkOfflineUpdate === 'function') {
                         setTimeout(function () { window.checkOfflineUpdate(); }, 1500);
                     }
+                    // Restore the "already downloaded" label on the home-menu entry so it
+                    // doesn't invite a fresh download every visit once the SW is ready.
+                    if (typeof window.refreshOfflineDownloadUI === 'function') {
+                        setTimeout(function () { window.refreshOfflineDownloadUI(); }, 1600);
+                    }
                 }).catch(function () {});
             });
             // A NEW SW replaced an existing one → fresh app code is live. Reload ONCE to pick it up,
@@ -9436,12 +9497,56 @@
             // play). _hadController distinguishes an update from initial control via clients.claim().
             var _swReloaded = false;
             var _hadController = !!navigator.serviceWorker.controller;
+            // Reload to pick up the new code, but never mid-battle. If a battle is in progress
+            // we DON'T latch — we mark it pending and retry when the player next hits a menu,
+            // so they aren't stranded on old code until a manual refresh.
+            window.__maybeSwReload = function () {
+                if (_swReloaded || !window.__swReloadPending) return;
+                if (_inBattleNow()) return;
+                _swReloaded = true;
+                location.reload();
+            };
             navigator.serviceWorker.addEventListener('controllerchange', function () {
                 if (_swReloaded || !_hadController) return;
-                _swReloaded = true;
-                var inBattle = false;
-                try { inBattle = !!(window.state && window.state.mode && !window.state.isOver); } catch (e) {}
-                if (!inBattle) location.reload();
+                window.__swReloadPending = true;
+                window.__maybeSwReload();
+            });
+            // The SW's background shell-revalidation found newer app code on the server
+            // (a redeploy). Offer a one-tap reload — deferred out of an active battle so a
+            // mis-tap can't nuke unsaved match progress.
+            function _inBattleNow() {
+                try { return !!(window.state && window.state.mode && !window.state.isOver); } catch (e) { return false; }
+            }
+            window.__maybeShowShellUpdate = function () {
+                if (!window.__shellUpdatePending || window.__shellUpdateShown) return;
+                if (_inBattleNow()) return;            // retried when the player returns to a menu
+                window.__shellUpdateShown = true;
+                if (document.getElementById('app-update-banner')) return;
+                var bar = document.createElement('div');
+                bar.id = 'app-update-banner';
+                bar.setAttribute('role', 'status');
+                bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:10px;background:#12241b;border:1px solid var(--hp-green,#7ad17a);box-shadow:0 6px 24px rgba(0,0,0,0.5);font-size:13px;color:#e8f5e9;';
+                var txt = document.createElement('span');
+                txt.textContent = 'A new version is available.';
+                var reload = document.createElement('button');
+                reload.type = 'button';
+                reload.textContent = 'Reload';
+                reload.style.cssText = 'min-height:36px;padding:6px 14px;border-radius:6px;border:1px solid var(--hp-green,#7ad17a);background:var(--hp-green,#7ad17a);color:#06120b;font-weight:bold;cursor:pointer;';
+                reload.onclick = function () { location.reload(); };
+                var dismiss = document.createElement('button');
+                dismiss.type = 'button';
+                dismiss.setAttribute('aria-label', 'Dismiss update notice');
+                dismiss.textContent = '✕';
+                dismiss.style.cssText = 'min-height:36px;min-width:36px;padding:0 8px;border-radius:6px;border:1px solid #3a3a3a;background:transparent;color:#9aa;cursor:pointer;';
+                dismiss.onclick = function () { try { bar.remove(); } catch (e) {} };
+                bar.appendChild(txt); bar.appendChild(reload); bar.appendChild(dismiss);
+                document.body.appendChild(bar);
+            };
+            navigator.serviceWorker.addEventListener('message', function (ev) {
+                var d = (ev && ev.data) || {};
+                if (d.type !== 'SHELL_UPDATED') return;
+                window.__shellUpdatePending = true;
+                window.__maybeShowShellUpdate();
             });
         }
     </script>
@@ -9562,6 +9667,9 @@
                 <label><input type="checkbox" id="mech-dyna-cb" checked onchange="window.updateMechanics()"><span style="color:#ef5350;">Dyna</span></label>
                 <label><input type="checkbox" id="mech-tera-cb" checked onchange="window.updateMechanics()"><span style="color:#4dd0e1;">Tera</span></label>
             </div>
+            <div class="menu-filter-row" style="margin-top:10px;">
+                <label title="On: each gimmick (Mega / Z / Dynamax / Tera) may be used only once per battle, like the main games. Off: unlimited."><input type="checkbox" id="mech-classic-cb" checked onchange="window.updateMechanics()"><span style="color:#b0bec5;">&#9878; Classic (once per battle)</span></label>
+            </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
                 <span style="color:#aaa;">Party:</span>
                 <select id="party-size-select" class="menu-select" onchange="window.updateMechanics()">
@@ -9637,24 +9745,25 @@
                 <button type="button" onclick="(function(){const c=window.OnlineBattle&&window.OnlineBattle.getCode?window.OnlineBattle.getCode():'';if(c&&navigator.clipboard)navigator.clipboard.writeText(c).then(function(){window.logMsg('Code copied!','info')}).catch(function(){});})()" style="padding:5px 14px;font-size:11px;background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7;border-radius:4px;margin-top:2px;">Copy code</button>
             </div>
             <button type="button" onclick="window.copyOnlineInviteLink && window.copyOnlineInviteLink()" style="padding:10px 16px;max-width:280px;width:100%;">Copy full invite link</button>
-            <p style="margin:0;color:#555;font-size:10px;">Your friend can also open the invite link directly to auto-join.</p>
+            <p style="margin:0;color:#9aa3b2;font-size:10px;">Your friend can also open the invite link directly to auto-join.</p>
             <button type="button" onclick="window.exitCurrentContext()" style="padding:8px 16px;font-size:11px;color:var(--hp-red);border-color:var(--hp-red);background:transparent;" aria-label="Cancel and close the room">&#10006; Cancel — close the room</button>
         </div>
     </div>
 
     <div id="move-tooltip" class="white-outline hidden"></div>
 
-    <div id="modal-settings" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
+    <div id="modal-settings" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
         <div class="modal-content white-outline" onclick="event.stopPropagation()">
             <div class="modal-header-row">
-                <h2 style="color:var(--hp-yellow); text-align:center;">Settings</h2>
+                <h2 id="modal-settings-title" style="color:var(--hp-yellow); text-align:center;">Settings</h2>
                 <button type="button" class="modal-close-x" onclick="window.closeModal('modal-settings')" title="Close" aria-label="Close settings">×</button>
             </div>
             <div class="settings-section-title">Visuals</div>
+            <div class="settings-grid">
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="How fast battle text and pauses play out. Fast halves every pause; Instant skips them.">
                 <span>Battle speed</span>
-                <select id="setting-battle-speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-battle-speed" aria-label="Battle speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="normal">Normal</option>
                     <option value="fast">Fast (2×)</option>
                     <option value="instant">Instant</option>
@@ -9662,7 +9771,7 @@
             </div>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Length of Mega Evolution / Dynamax / Tera / Z-Move activation animations.">
                 <span>Gimmick anim speed</span>
-                <select id="setting-gimmick-anim-speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-gimmick-anim-speed" aria-label="Gimmick animation speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="normal">Normal</option>
                     <option value="fast">Fast (0.5×)</option>
                     <option value="instant">Instant</option>
@@ -9670,31 +9779,36 @@
             </div>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
-            <div class="settings-row" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
+            <label class="settings-row" for="sw-ambient-particles" title="All particle effects: ambient embers/dust/leaves, weather precipitation, and hit/crit sparkle bursts. Turn off to save battery on phones."><span>Particle effects</span><input type="checkbox" class="pbs-switch" id="sw-ambient-particles" role="switch" onchange="window.applySettingSwitch('ambientParticles', this.checked)"></label>
+            <div class="settings-row settings-row--wide" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
                 <span>Display</span>
-                <select id="setting-display-mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-display-mode" aria-label="Display mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="auto">Auto (detect)</option>
                     <option value="phone">Phone</option>
                     <option value="desktop">Desktop</option>
                 </select>
             </div>
+            </div><!-- /.settings-grid Visuals -->
             <div class="settings-section-title">Audio</div>
+            <div class="settings-grid">
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
-            <div class="settings-row" style="flex-wrap:wrap;">
-                <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music volume</span>
-                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
-                <span id="music-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">45%</span>
-            </div>
             <label class="settings-row" for="sw-sound"><span>Sound effects</span><input type="checkbox" class="pbs-switch" id="sw-sound" role="switch" onchange="window.applySettingSwitch('soundEnabled', this.checked)"></label>
-            <div class="settings-row" style="flex-wrap:wrap;">
-                <span style="white-space:nowrap; font-size:12px; color:#aaa;">SFX volume</span>
-                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:120px; accent-color:var(--hp-green); cursor:pointer;">
-                <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
+            <div class="settings-row settings-row--wide">
+                <span style="white-space:nowrap; font-size:12px; color:#bbb;">Music volume</span>
+                <input type="range" id="music-vol-slider" aria-label="Music volume" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:140px; accent-color:var(--hp-green); cursor:pointer;">
+                <span id="music-vol-pct" style="font-size:12px; color:#bbb; min-width:36px; text-align:right;">45%</span>
             </div>
+            <div class="settings-row settings-row--wide">
+                <span style="white-space:nowrap; font-size:12px; color:#bbb;">SFX volume</span>
+                <input type="range" id="sound-vol-slider" aria-label="Sound effects volume" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:140px; accent-color:var(--hp-green); cursor:pointer;">
+                <span id="sound-vol-pct" style="font-size:12px; color:#bbb; min-width:36px; text-align:right;">55%</span>
+            </div>
+            </div><!-- /.settings-grid Audio -->
             <div class="settings-section-title">Gameplay</div>
+            <div class="settings-grid">
             <div class="settings-row" style="border-bottom:1px solid #444;">
                 <span>vs AI style</span>
-                <select id="setting-ai-profile" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-ai-profile" aria-label="vs AI style" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="balanced">Balanced</option>
                     <option value="aggro">Aggressive</option>
                     <option value="stall">Stall-aware</option>
@@ -9706,35 +9820,36 @@
             <label class="settings-row" for="sw-log-dock" title="Wide windows only"><span>Dock battle log (side)</span><input type="checkbox" class="pbs-switch" id="sw-log-dock" role="switch" onchange="settings.battleLogDock=this.checked; persistMiscSettings(); window.applyBattleLogDockClass&&window.applyBattleLogDockClass();"></label>
             <div class="settings-row">
                 <span>Fullscreen</span>
-                <button type="button" id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green); min-height:40px; padding:6px 14px;">ENTER</button>
+                <button type="button" id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green); min-height:44px; padding:8px 14px;">ENTER</button>
             </div>
+            </div><!-- /.settings-grid Gameplay -->
             <div class="settings-section-title">App &amp; data</div>
             <div class="settings-row" id="install-app-row" style="display:none;">
                 <span>Install app</span>
-                <button type="button" id="install-app-btn" onclick="window.promptInstallApp()" style="color: var(--accent); min-height:40px; padding:6px 14px;">INSTALL</button>
+                <button type="button" id="install-app-btn" onclick="window.promptInstallApp()" style="color: var(--accent); min-height:44px; padding:8px 14px;">INSTALL</button>
             </div>
             <div class="settings-row" id="offline-dl-row">
                 <span>Download for offline <span id="offline-dl-update-note" style="display:none; color:var(--hp-amber,#ffb74d); font-size:10px;">• update available</span></span>
-                <button type="button" id="offline-dl-btn" onclick="window.openDownloadOfflineFlow()" style="color: var(--accent); min-height:40px; padding:6px 14px;">SET UP</button>
+                <button type="button" id="offline-dl-btn" aria-expanded="false" aria-controls="offline-dl-panel" onclick="window.openDownloadOfflineFlow()" style="color: var(--accent); min-height:44px; padding:6px 14px;">SET UP</button>
             </div>
             <div id="offline-dl-panel" class="hidden" style="padding:8px 4px 4px; border-top:1px solid #333; margin-bottom:6px;">
-                <div id="offline-dl-size" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:6px;">Checking size…</div>
-                <div style="height:10px; background:var(--surface2,#222); border-radius:5px; overflow:hidden; margin-bottom:6px;">
+                <div id="offline-dl-size" aria-live="polite" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:6px;">Checking size…</div>
+                <div role="progressbar" aria-label="Offline download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="height:10px; background:var(--surface2,#222); border-radius:5px; overflow:hidden; margin-bottom:6px;">
                     <div id="offline-dl-bar-fill" style="height:100%; width:0%; background:var(--hp-green,#7ad17a); transition:width .2s;"></div>
                 </div>
-                <div id="offline-dl-status" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:8px; min-height:14px;"></div>
+                <div id="offline-dl-status" aria-live="polite" style="font-size:11px; color:var(--text-muted, #aaa); margin-bottom:8px; min-height:14px;"></div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" id="offline-dl-start" onclick="window.startOfflineDownload()" style="color:var(--hp-green); min-height:36px; padding:6px 14px;">Download all</button>
-                    <button type="button" onclick="window.clearOfflineCache()" style="color:var(--hp-amber,#ffb74d); min-height:36px; padding:6px 14px;">Clear cache</button>
+                    <button type="button" id="offline-dl-start" onclick="window.startOfflineDownload()" style="color:var(--hp-green); min-height:44px; padding:6px 14px;">Download all</button>
+                    <button type="button" onclick="window.clearOfflineCache()" style="color:var(--hp-amber,#ffb74d); min-height:44px; padding:6px 14px;">Clear cache</button>
                 </div>
             </div>
             <div class="settings-row">
                 <span>Help &amp; controls</span>
-                <button type="button" onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent); min-height:40px; padding:6px 14px;">VIEW</button>
+                <button type="button" onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent); min-height:44px; padding:8px 14px;">VIEW</button>
             </div>
             <div class="settings-row">
                 <span>Frozen battle (continue safely)</span>
-                <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__forceBattleContinue==='function' && window.__forceBattleContinue();" style="color: var(--hp-amber, #ffb74d); min-height:40px; padding:6px 14px;" title="Checks faint/end/switch/menu state and forces the safest next battle UI. Console: __forceBattleContinue()">Force Continue</button>
+                <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__forceBattleContinue==='function' && window.__forceBattleContinue();" style="color: var(--hp-amber, #ffb74d); min-height:44px; padding:8px 14px;" title="Checks faint/end/switch/menu state and forces the safest next battle UI. Console: __forceBattleContinue()">Force Continue</button>
             </div>
             <details class="settings-dev-block">
                 <summary>Developer / Story tools</summary>
@@ -9889,7 +10004,7 @@
                         <div id="online-p1-name" style="font-size:11px;color:#aaa;margin-bottom:2px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Host</div>
                         <span id="online-p1-wins" style="color:var(--hp-green);">0</span>
                     </div>
-                    <span style="color:#555;font-size:18px;">—</span>
+                    <span style="color:#888;font-size:18px;">—</span>
                     <div style="text-align:center;">
                         <div id="online-p2-name" style="font-size:11px;color:#aaa;margin-bottom:2px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Guest</div>
                         <span id="online-p2-wins" style="color:var(--hp-green);">0</span>
@@ -9967,7 +10082,7 @@
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Delete Run</button>
             <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Collection</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
-            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
+            <p style="font-size:10px;color:#9aa3b2;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
         </div>
     </div>
 
@@ -10738,10 +10853,10 @@
         <div id="online-battle-score" class="hidden" style="position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:8;background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:12px;padding:3px 12px;font-size:11px;color:#ccc;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:8px;">
             <span id="obs-p1-name" style="color:var(--hp-green);font-weight:bold;">P1</span>
             <span id="obs-p1-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
-            <span style="color:#555;">–</span>
+            <span style="color:#888;">–</span>
             <span id="obs-p2-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
             <span id="obs-p2-name" style="color:#81d4fa;font-weight:bold;">P2</span>
-            <span id="obs-round-info" style="color:#555;font-size:10px;"></span>
+            <span id="obs-round-info" style="color:#9aa3b2;font-size:10px;"></span>
         </div>
 
         <!-- Side-matched HUD: foe column + global field pills (stacked below foe strip in portrait). -->
@@ -11034,26 +11149,20 @@
         // applyDesktopGameScale + applyBattleLogDockClass — so it is the single relayout entry
         // point on resize. Binding applyBattleLayoutMode directly here too would relayout twice
         // per resize (once with a stale .is-mobile); let applyDisplayMode own the sequence.
+        // applyDisplayMode is the SINGLE relayout entry point: it re-toggles .is-mobile and then
+        // re-runs applyBattleLayoutMode + applyDesktopGameScale + applyBattleLogDockClass. So we
+        // bind ONLY it on resize/orientation — binding applyDesktopGameScale (or the layout/dock
+        // helpers) separately just did the same work twice per event.
         window.addEventListener('resize', function() { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} });
-        window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         window.addEventListener('orientationchange', () => setTimeout(() => { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} }, 150));
         window.isMobile = isMobile;
 
-        // Show/hide rotate overlay: portrait + narrow screen (any device)
+        // The rotate-overlay is retired (portrait + landscape are both fully supported); keep a
+        // one-shot hide at boot for any stale markup, but don't re-run it on every resize.
         function checkOrientation() {
             const overlay = document.getElementById('rotate-overlay');
-            if (!overlay) return;
-            const isPortrait = window.innerHeight > window.innerWidth;
-            const isNarrow = window.innerWidth <= 900;
-            // Use inline style only to show; CSS handles the default hide
-            // Both portrait and landscape are now fully supported
-            overlay.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
         }
-        window.addEventListener('resize', checkOrientation);
-        window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 150));
-        // applyDisplayMode (bound to orientationchange above) re-runs applyBattleLayoutMode with
-        // a fresh .is-mobile, so no separate applyBattleLayoutMode binding here (avoids a double relayout).
-        window.addEventListener('orientationchange', () => setTimeout(() => { try { applyDesktopGameScale(); } catch(e) {} }, 150));
         document.addEventListener('DOMContentLoaded', function() {
             checkOrientation();
             try { applyDesktopGameScale(); } catch (e) {}
@@ -12776,7 +12885,12 @@
                 // but if the caller is forcing an illegal pick (end-game), skip the designed path.
                 if (effMix < 1.0 && Math.random() >= effMix && !forceIllegal) {
                     const designed = makeDesignedBuild(name);
-                    if (designed) return designed;
+                    if (designed) {
+                        // Gap formes carry a fixed legal ability even on the designed path
+                        // (Marill → Huge Power, Greninja-Ash → Battle Bond …) — see the curated pin below.
+                        if (_CURATED_SINGLES_SETS[name] && _CURATED_SINGLES_SETS[name].a) designed.a = _CURATED_SINGLES_SETS[name].a;
+                        return designed;
+                    }
                 }
             }
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
@@ -12911,6 +13025,15 @@
                 if (!b.a || b.a === '') b.a = 'None';
             }
 
+            // Gap formes with a curated single-battle set carry a fixed legal ability
+            // (Marill → Huge Power, Greninja-Ash → Battle Bond, Zygarde-Complete → Power
+            // Construct, Darmanitan-Zen → Zen Mode …). When a "clean" set supplies the moves
+            // instead of the curated fallback, its multi-ability options could otherwise
+            // surface the off-meta ability (Thick Fat) — pin it back to the curated one.
+            if (_CURATED_SINGLES_SETS[name] && _CURATED_SINGLES_SETS[name].a && b && b.a !== _CURATED_SINGLES_SETS[name].a) {
+                b.a = _CURATED_SINGLES_SETS[name].a;
+            }
+
             // Assign gimmick item and tag build
             assignGimmickToBuild(name, b, gimmick);
 
@@ -12945,6 +13068,7 @@
                         }
                         if (!fb.a) fb.a = 'None';
                     }
+                    if (_CURATED_SINGLES_SETS[name] && _CURATED_SINGLES_SETS[name].a) fb.a = _CURATED_SINGLES_SETS[name].a;
                     return fb;
                 }
             }
@@ -13057,7 +13181,7 @@ All four are always on. In Classic mode each team gets one per battle; in Unlimi
 <b style="color:#b71c1c;">▼ DYNAMAX / G-MAX</b> — Three turns of giant size. Every move becomes a stronger Max Move with a side effect, and HP doubles for the duration. Bypasses Protect.<br>
 <b style="color:#0277bd;">◆ TERA</b> — Locks the Pokémon to a single type for the rest of the battle. STAB stacks when you Tera into your original type. Once per Pokémon — even in Unlimited.<br>
 <b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a matching Z-Crystal unleashes one colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
-The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
+The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#888;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
 Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 5 runs as a self-contained session with its own balls, Bait, and Rocks. The Master Ball — a guaranteed catch from the villain story-track boss — is best saved for a roaming legendary.<br>
 A better ball gives a better chance, and a <b>Master Ball</b> never fails. The rarer the Pokémon, the tougher the catch — and the likelier it is to bolt on a missed throw.</div>
@@ -13117,7 +13241,7 @@ Build a balanced team. Watch type coverage, speed tiers, and offensive vs. defen
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Effectiveness</h3>
 <span style="color:var(--hp-green);font-weight:bold;">▲</span> Super Effective (2x or 4x damage)<br>
 <span style="color:var(--hp-red);font-weight:bold;">▼</span> Not Very Effective (0.5x or 0.25x damage)<br>
-<span style="color:#555;font-weight:bold;">⊘</span> No Effect (immune, 0x damage)</div>
+<span style="color:#888;font-weight:bold;">⊘</span> No Effect (immune, 0x damage)</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Status Conditions</h3>
 <span style="color:#e65100;">BRN</span> — Halves Physical damage, takes 1/16 HP per turn<br>
 <span style="color:#7b1fa2;">PSN/TOX</span> — Poison deals 1/8 HP; Toxic escalates each turn<br>
@@ -13279,7 +13403,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, audioBus: false, storyTypewriter: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, storyTypewriter: true, draftGrades: [1,2,3,4], draftGens: null, mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, randomTerrain: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
@@ -13388,7 +13512,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
             if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
             if (typeof _pbs.ambientParticles === 'boolean') settings.ambientParticles = _pbs.ambientParticles;
-            if (typeof _pbs.audioBus === 'boolean') settings.audioBus = _pbs.audioBus;
+            // Battle Options panel prefs (previously session-only — a reload silently wiped them).
+            if (typeof _pbs.randomWeather === 'boolean') settings.randomWeather = _pbs.randomWeather;
+            if (typeof _pbs.randomTerrain === 'boolean') settings.randomTerrain = _pbs.randomTerrain;
+            if (typeof _pbs.partySize === 'number' && _pbs.partySize >= 1 && _pbs.partySize <= 6) settings.partySize = _pbs.partySize;
+            if (typeof _pbs.classicMode === 'boolean') settings.classicMode = _pbs.classicMode;
+            if (Array.isArray(_pbs.draftGrades) && _pbs.draftGrades.length) settings.draftGrades = _pbs.draftGrades.filter((g) => g >= 1 && g <= 4);
+            if (Array.isArray(_pbs.draftGens) && _pbs.draftGens.length) settings.draftGens = _pbs.draftGens.filter((g) => g >= 1 && g <= 9);
             if (typeof _pbs.musicVol === 'number' && _pbs.musicVol >= 0 && _pbs.musicVol <= 1) _initMusicVol = _pbs.musicVol;
             if (typeof _pbs.soundVol === 'number' && _pbs.soundVol >= 0 && _pbs.soundVol <= 1) _initSoundVol = _pbs.soundVol;
             if (_pbs.offlineDownload && typeof _pbs.offlineDownload === 'object') Object.assign(settings.offlineDownload, _pbs.offlineDownload);
@@ -13421,7 +13551,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     weatherAnimation: settings.weatherAnimation,
                     terrainBackground: settings.terrainBackground,
                     ambientParticles: settings.ambientParticles,
-                    audioBus: settings.audioBus,
+                    // Battle Options panel prefs (now survive a reload).
+                    randomWeather: settings.randomWeather,
+                    randomTerrain: settings.randomTerrain,
+                    classicMode: settings.classicMode,
+                    partySize: settings.partySize,
+                    draftGrades: settings.draftGrades,
+                    draftGens: settings.draftGens,
                     musicVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : _initMusicVol,
                     soundVol: (typeof AudioSystem !== 'undefined' && AudioSystem.getSoundVolume) ? AudioSystem.getSoundVolume() : _initSoundVol,
                     offlineDownload: settings.offlineDownload
@@ -13454,16 +13590,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Post a message to the SW and resolve on the matching reply (by batchId), optionally
         // forwarding intermediate SYNC_PROGRESS to onProgress. Resolves on doneType.
-        function _swRequest(sw, message, doneType, onProgress) {
+        // idleMs (optional) is a watchdog: if no matching reply/progress arrives within that
+        // window the promise resolves null and the listener is removed — so a SW that was
+        // killed/replaced between postMessage and reply can never hang the UI forever. The
+        // watchdog RESETS on each SYNC_PROGRESS tick, so a legitimately long bulk download
+        // (minutes) is fine as long as it keeps reporting progress.
+        let _swReqSeq = 0;
+        function _swRequest(sw, message, doneType, onProgress, idleMs) {
             return new Promise((resolve) => {
-                const batchId = message.batchId || Date.now();
+                const batchId = message.batchId || ('r' + (++_swReqSeq) + '-' + Date.now());
+                let timer = null;
+                const cleanup = () => { if (timer) { clearTimeout(timer); timer = null; } navigator.serviceWorker.removeEventListener('message', onMsg); };
+                const arm = () => { if (!idleMs) return; if (timer) clearTimeout(timer); timer = setTimeout(() => { cleanup(); resolve(null); }, idleMs); };
                 const onMsg = (ev) => {
                     const d = ev.data || {};
                     if (d.batchId !== batchId) return;
-                    if (d.type === 'SYNC_PROGRESS' && onProgress) onProgress(d);
-                    else if (d.type === doneType) { navigator.serviceWorker.removeEventListener('message', onMsg); resolve(d); }
+                    if (d.type === 'SYNC_PROGRESS') { if (onProgress) onProgress(d); arm(); }
+                    else if (d.type === doneType) { cleanup(); resolve(d); }
                 };
                 navigator.serviceWorker.addEventListener('message', onMsg);
+                arm();
                 sw.postMessage({ ...message, batchId });
             });
         }
@@ -13472,7 +13618,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sw = await _offlineActiveSW();
             if (!sw) return null;
             const manifest = await _getOfflineManifest(true);
-            const plan = await _swRequest(sw, { type: 'SYNC_ASSETS', manifest, dryRun: true }, 'SYNC_PLAN');
+            const plan = await _swRequest(sw, { type: 'SYNC_ASSETS', manifest, dryRun: true }, 'SYNC_PLAN', null, 12000);
+            if (!plan) return null;   // SW didn't answer in time — caller shows a retry hint
             const od = settings.offlineDownload || {};
             return {
                 manifest,
@@ -13487,6 +13634,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const startBtn = document.getElementById('offline-dl-start');
             if (!panel) return;
             panel.classList.remove('hidden');
+            try { const b = document.getElementById('offline-dl-btn'); if (b) b.setAttribute('aria-expanded', 'true'); } catch (e) {}
             if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) {
                 if (sizeEl) sizeEl.textContent = 'Offline download needs the installed/HTTPS app — not available here.';
                 if (startBtn) startBtn.disabled = true;
@@ -13531,30 +13679,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { manifest = await _getOfflineManifest(true); } catch (e) { setStatus('Could not load asset list.'); return; }
             if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Working…'; }
             setStatus('Starting…');
+            const setBar = (pct) => { if (fillEl) { fillEl.style.width = pct + '%'; fillEl.parentElement && fillEl.parentElement.setAttribute('aria-valuenow', String(pct)); } };
+            // 45s idle watchdog: resets on every progress tick, so a multi-minute bulk fetch
+            // is fine; only a truly stalled/dead SW (no progress for 45s) times out.
             const done = await _swRequest(sw, { type: 'SYNC_ASSETS', manifest }, 'SYNC_DONE', (d) => {
                 const pct = d.total ? Math.round(d.done / d.total * 100) : 100;
-                if (fillEl) fillEl.style.width = pct + '%';
+                setBar(pct);
                 setStatus(`${d.done} / ${d.total} files${d.failed ? ' · ' + d.failed + ' failed' : ''}…`);
-            });
-            if (fillEl) fillEl.style.width = '100%';
+            }, 45000);
+            if (!done) {
+                setStatus('Download stalled — check your connection and try again.');
+                if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Retry'; }
+                return;
+            }
+            setBar(100);
             setStatus(`Done — ${done.done} fetched${done.removed ? ', ' + done.removed + ' removed' : ''}${done.failed ? ', ' + done.failed + ' failed (storage may be full)' : ''}.`);
             Object.assign(settings.offlineDownload, { completed: true, digest: manifest.digest, at: new Date().toISOString() });
             persistMiscSettings();
-            const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'DONE';
             window.refreshOfflineUpdateBadge && window.refreshOfflineUpdateBadge(false);
+            try { window.refreshOfflineDownloadUI && window.refreshOfflineDownloadUI(); } catch (e) {}
             if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Re-check'; }
         };
         window.clearOfflineCache = async function() {
             const statusEl = document.getElementById('offline-dl-status');
             const fillEl = document.getElementById('offline-dl-bar-fill');
             const sw = await _offlineActiveSW();
-            if (sw) sw.postMessage({ type: 'CLEAR_CACHE' });
+            // Await the delete so a follow-up Download/Re-check can't race the still-in-flight
+            // cache wipe (both SW message handlers otherwise run concurrently).
+            if (sw) await _swRequest(sw, { type: 'CLEAR_CACHE' }, 'CACHE_CLEARED', null, 5000);
             Object.assign(settings.offlineDownload, { completed: false, digest: null, at: null });
             persistMiscSettings();
-            if (fillEl) fillEl.style.width = '0%';
+            window.__offlineReconciled = true;   // we know the true state now
+            if (fillEl) { fillEl.style.width = '0%'; fillEl.parentElement && fillEl.parentElement.setAttribute('aria-valuenow', '0'); }
             if (statusEl) statusEl.textContent = 'Offline cache cleared.';
-            const btn = document.getElementById('offline-dl-btn'); if (btn) btn.textContent = 'SET UP';
             window.refreshOfflineUpdateBadge && window.refreshOfflineUpdateBadge(false);
+            try { window.refreshOfflineDownloadUI && window.refreshOfflineDownloadUI(); } catch (e) {}
         };
         // Launch-time auto-detect: if the player has a download and the live manifest digest differs,
         // surface a non-intrusive "update available" badge on the Settings button + offline row.
@@ -13581,6 +13740,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!od.completed || !('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
                 const manifest = await _getOfflineManifest(true);
                 window.refreshOfflineUpdateBadge(!!manifest.digest && manifest.digest !== od.digest);
+            } catch (e) {}
+        };
+        // Ask the SW how many asset files are actually cached, so we can reconcile the
+        // persisted "completed" flag with reality (a browser can evict the Cache while
+        // keeping localStorage). 3s idle cap so a non-responding/old SW never hangs the UI
+        // (and _swRequest removes its own listener on timeout — no leak).
+        async function _swCacheState() {
+            const sw = await _offlineActiveSW();
+            if (!sw) return null;
+            try { return await _swRequest(sw, { type: 'CACHE_STATE' }, 'CACHE_STATE', null, 3000); }
+            catch (e) { return null; }
+        }
+        // Restore the "already downloaded" state on load and whenever Settings opens, so a
+        // returning player is never asked to download from scratch again. The button label
+        // and the home-menu subtitle are set synchronously from the persisted flag (they
+        // can't lie about it), then best-effort reconciled against the live cache.
+        window.refreshOfflineDownloadUI = async function() {
+            const btn = document.getElementById('offline-dl-btn');
+            const entrySub = document.querySelector('#menu-offline-entry .menu-offline-entry-sub');
+            const applyLabels = (done) => {
+                if (btn) btn.textContent = done ? 'MANAGE' : 'SET UP';
+                if (entrySub) entrySub.textContent = done
+                    ? 'Downloaded ✓ — tap to update or manage'
+                    : 'Play with no internet — saves on your device';
+            };
+            const od = settings.offlineDownload || {};
+            applyLabels(!!od.completed);
+            if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http') || !od.completed) return;
+            // Reconcile against the live cache only once per session — no SW round-trip on
+            // every unrelated Settings open once we've confirmed the state.
+            if (window.__offlineReconciled) return;
+            try {
+                const st = await _swCacheState();
+                if (!st || typeof st.cachedCount !== 'number') return;   // couldn't verify — leave as-is, retry next time
+                window.__offlineReconciled = true;
+                if (st.cachedCount === 0) {
+                    // No asset files actually cached (evicted, or only the manifest snapshot
+                    // survived) — stop claiming it's downloaded.
+                    Object.assign(settings.offlineDownload, { completed: false, digest: null, at: null });
+                    try { persistMiscSettings(); } catch (e) {}
+                    applyLabels(false);
+                }
             } catch (e) {}
         };
 
@@ -16125,6 +16326,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-animations', 'animations'],
                 ['sw-weather-anim', 'weatherAnimation'],
                 ['sw-terrain-bg', 'terrainBackground'],
+                ['sw-ambient-particles', 'ambientParticles'],
                 ['sw-music', 'musicEnabled'],
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
@@ -16160,6 +16362,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (key === 'soundEnabled') {
                 if (on !== !!settings.soundEnabled) AudioSystem.toggleSound();
+                return;
+            }
+            if (key === 'ambientParticles') {
+                settings.ambientParticles = on;
+                // Tear down any live ambient layer immediately when switched off.
+                if (!on) { try { window.FxParticles && window.FxParticles.clearAll && window.FxParticles.clearAll(); } catch (e) {} }
+                try { window.syncSettingsModalSwitches(); } catch (e) {}
+                try { persistMiscSettings(); } catch (e) {}
                 return;
             }
         };
@@ -16312,6 +16522,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } catch (e) {}
+            try { window.refreshOfflineDownloadUI && window.refreshOfflineDownloadUI(); } catch (e) {}
             window.openModal('modal-settings');
         };
         window.applyBattleLogDockClass = function() {
@@ -16321,7 +16532,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const on = settings.battleLogDock && window.innerWidth >= 768 && window.innerHeight >= 560;
             sb.classList.toggle('battle-log-dock', !!on);
         };
-        window.addEventListener('resize', () => { try { window.applyBattleLogDockClass(); window.trimBattleLogToCap && window.trimBattleLogToCap(); } catch(e) {} });
+        // applyBattleLogDockClass already runs inside applyDisplayMode's resize handler; here we
+        // only need to re-trim the log to its cap on resize.
+        window.addEventListener('resize', () => { try { window.trimBattleLogToCap && window.trimBattleLogToCap(); } catch(e) {} });
         function _syncBattleLogDockFromSettings() {
             try { window.applyBattleLogDockClass(); } catch (e) {}
             try { window.syncSettingsModalSwitches(); } catch (e) {}
@@ -16737,7 +16950,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (let [defType, mult] of Object.entries(tchart)) {
                 if (mult > 1) se.push(defType); else if (mult === 0) immune.push(defType); else if (mult < 1) nve.push(defType);
             }
-            let fmtTypes = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}" style="font-size:9px;">${t}</span>`).join(' ') : '<span style="color:#555;">—</span>';
+            let fmtTypes = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}" style="font-size:9px;">${t}</span>`).join(' ') : '<span style="color:#888;">—</span>';
             let html = `<div style="font-weight:bold;color:#4fc3f7;margin-bottom:5px;">◆ Tera ${teraType} Type</div>`
                 + `<div style="margin-bottom:3px;font-size:11px;">${stabNote}</div>`
                 + `<div style="font-size:10px;color:#888;margin-bottom:4px;">Pokémon becomes pure ${teraType}-type. All other types are shed.</div>`
@@ -18655,6 +18868,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let enabledGrades = [];
             for (let g = 1; g <= 4; g++) { let cb = document.getElementById(`grade-${g}-cb`); if (!cb || cb.checked) enabledGrades.push(g); }
             settings.draftGrades = enabledGrades.length > 0 ? enabledGrades : [1,2,3,4];
+            // Remember the pool selection so it survives a reload (was session-only before).
+            settings.draftGens = enabledGens;
+            try { persistMiscSettings(); } catch (e) {}
             let eligible = new Set();
             let rb9 = _randbatsCache[9] || {};
             for (let name of Object.keys(rb9)) { let b = baseStats[name]; if (b && genSet.has(b.gen) && settings.draftGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) eligible.add(name); }
@@ -18675,9 +18891,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mzCb = document.getElementById('mech-z-cb');      if (mzCb) settings.mechanics.zmove   = mzCb.checked;
             const mdCb = document.getElementById('mech-dyna-cb');   if (mdCb) settings.mechanics.dynamax = mdCb.checked;
             const mtCb = document.getElementById('mech-tera-cb');   if (mtCb) settings.mechanics.tera    = mtCb.checked;
+            const cmCb = document.getElementById('mech-classic-cb'); if (cmCb) settings.classicMode = cmCb.checked;
             settings.partySize         = parseInt(document.getElementById('party-size-select')?.value) || 3;
-            persistMiscSettings();
-            try { window.updatePoolCount && window.updatePoolCount(); } catch (e) {}
+            // updatePoolCount() persists (single write). Fall back to a direct persist only if
+            // it can't run yet (baseStats not loaded) — avoids the old double JSON.stringify.
+            try { window.updatePoolCount ? window.updatePoolCount() : persistMiscSettings(); }
+            catch (e) { try { persistMiscSettings(); } catch (e2) {} }
             try { applyBattleLayoutMode(); } catch (e) {}
         };
         // Quick Battle prefs: team source select (+ mirror to settings).
@@ -18693,8 +18912,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const a = document.getElementById('setting-ai-profile'); if (a) a.value = settings.aiProfile;
             const b = document.getElementById('menu-ai-profile');    if (b) b.value = settings.aiProfile;
         };
-        // Restore Battle Options controls from persisted settings
-        (function() {
+        // Repaint every Battle Options control from the LIVE settings. Runs once at boot
+        // (restore from pbs_settings) and again each time the home menu is shown — the
+        // latter re-syncs the checkboxes after a Story run has forced settings.mechanics /
+        // classicMode, so the panel never lies about the rules the next Quick/Gauntlet uses.
+        window.syncBattleOptionsFromSettings = function() {
             const cb = document.getElementById('smart-draft-cb');
             if (cb) cb.checked = settings.smartDraftPool !== false;
             const gs = document.getElementById('gauntlet-scaling-cb');
@@ -18703,10 +18925,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mz = document.getElementById('mech-z-cb');     if (mz) mz.checked = settings.mechanics.zmove !== false;
             const md = document.getElementById('mech-dyna-cb');  if (md) md.checked = settings.mechanics.dynamax !== false;
             const mt = document.getElementById('mech-tera-cb');  if (mt) mt.checked = settings.mechanics.tera !== false;
+            const cm = document.getElementById('mech-classic-cb'); if (cm) cm.checked = settings.classicMode !== false;
             const ts = document.getElementById('quick-team-source'); if (ts) ts.value = settings.quickTeamSource || 'random';
             const ap = document.getElementById('menu-ai-profile');   if (ap) ap.value = settings.aiProfile || 'balanced';
             const ps = document.getElementById('party-size-select'); if (ps && settings.partySize) ps.value = String(settings.partySize);
-        })();
+            // Weather / terrain / grades / gens persist too — restore their checkboxes
+            // so a returning player's pool + rules aren't silently reset every reload.
+            const wc = document.getElementById('mech-weather-cb'); if (wc) wc.checked = !!settings.randomWeather;
+            const tc = document.getElementById('mech-terrain-cb'); if (tc) tc.checked = !!settings.randomTerrain;
+            for (let g = 1; g <= 4; g++) { const gc = document.getElementById(`grade-${g}-cb`); if (gc) gc.checked = !Array.isArray(settings.draftGrades) || settings.draftGrades.includes(g); }
+            if (Array.isArray(settings.draftGens) && settings.draftGens.length) { try { setGenCheckboxesPrefix('draft', settings.draftGens); } catch (e) {} }
+            // Keep the "Draft Pool: N" label truthful after the gens/grades were repainted.
+            try { window.updatePoolCount && window.updatePoolCount(); } catch (e) {}
+        };
+        window.syncBattleOptionsFromSettings();
 
         // Run once after data loads
         document.addEventListener('DOMContentLoaded', () => { if (typeof baseStats !== 'undefined') window.updatePoolCount(); });
@@ -19040,9 +19272,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { localStorage.setItem('pbs_battle_preset', name); } catch (e) {}
             if (custom) return; // custom = whatever the controls currently say
             const P = {
-                casual:      { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: false, weather: false, party: '3' },
-                standard:    { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: true,  weather: false, party: '3' },
-                competitive: { teams: 'draft',  bot: 'stall',    gens: [1,2,3,4,5,6,7,8,9],     gimmicks: true,  weather: true,  party: '6' },
+                casual:      { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: false, weather: false, classic: true, party: '3' },
+                standard:    { teams: 'random', bot: 'balanced', gens: [1, 2],                  gimmicks: true,  weather: false, classic: true, party: '3' },
+                competitive: { teams: 'draft',  bot: 'stall',    gens: [1,2,3,4,5,6,7,8,9],     gimmicks: true,  weather: true,  classic: true, party: '6' },
             }[name];
             if (!P) return;
             const ts = byId('quick-team-source'); if (ts) ts.value = P.teams;
@@ -19051,6 +19283,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ['grade-1-cb', 'grade-2-cb', 'grade-3-cb', 'grade-4-cb'].forEach(id => setCb(id, true));
             setCb('mech-mega-cb', P.gimmicks); setCb('mech-z-cb', P.gimmicks);
             setCb('mech-dyna-cb', P.gimmicks); setCb('mech-tera-cb', P.gimmicks);
+            setCb('mech-classic-cb', P.classic);
             setCb('mech-weather-cb', P.weather); setCb('mech-terrain-cb', P.weather);
             setCb('smart-draft-cb', true); setCb('gauntlet-scaling-cb', true);
             const ps = byId('party-size-select'); if (ps) ps.value = P.party;
@@ -19826,7 +20059,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.onmouseleave = () => slot.style.opacity = '1';
                     slot.onclick = () => undraftPokemon(i);
                 } else {
-                    slot.innerHTML = `<div style="width:40px;height:40px;border:1px dashed #444;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px;">?</div><span style="font-size:9px;color:#555;">empty</span>`;
+                    slot.innerHTML = `<div style="width:40px;height:40px;border:1px dashed #444;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">?</div><span style="font-size:9px;color:#888;">empty</span>`;
                 }
                 slotsEl.appendChild(slot);
             }
@@ -21951,7 +22184,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (m <= 0.25) x025.push(t);
                 else if (m === 0) x0.push(t);
             }
-            let typeList = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}">${t}</span>`).join('') : '<span style="color:#555;font-size:10px;">None</span>';
+            let typeList = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}">${t}</span>`).join('') : '<span style="color:#888;font-size:10px;">None</span>';
             return `<div class="sum-matchup-section">
                 <div class="sum-matchup-title">${label}</div>
                 ${x4.length ? `<div class="sum-matchup-row"><span class="sum-matchup-label" style="color:#f44336;">4× Weak</span><div class="sum-matchup-types">${typeList(x4)}</div></div>` : ''}
@@ -21959,7 +22192,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${x05.length ? `<div class="sum-matchup-row"><span class="sum-matchup-label" style="color:#8bc34a;"> Resist</span><div class="sum-matchup-types">${typeList(x05)}</div></div>` : ''}
                 ${x025.length ? `<div class="sum-matchup-row"><span class="sum-matchup-label" style="color:#4caf50;">¼ Resist</span><div class="sum-matchup-types">${typeList(x025)}</div></div>` : ''}
                 ${x0.length ? `<div class="sum-matchup-row"><span class="sum-matchup-label" style="color:#607d8b;">Immune</span><div class="sum-matchup-types">${typeList(x0)}</div></div>` : ''}
-                ${(!x4.length && !x2.length && !x05.length && !x025.length && !x0.length) ? '<div style="color:#555;font-size:11px;padding:4px 0;">Balanced — no notable weaknesses or resistances.</div>' : ''}
+                ${(!x4.length && !x2.length && !x05.length && !x025.length && !x0.length) ? '<div style="color:#888;font-size:11px;padding:4px 0;">Balanced — no notable weaknesses or resistances.</div>' : ''}
             </div>`;
         }
 
@@ -22509,7 +22742,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const allTypes = Object.keys(typeChart);
                 const covHtml = s.moves.map(m => {
                     if (m.cat === 'Status' || !m.pow || m.pow <= 0) {
-                        return `<div class="sum-cov-card"><div class="sum-cov-move-name">${getTypeHTML(m.type, null)} <span>${m.name}</span> <span style="color:#555;font-size:10px;">(Status)</span></div></div>`;
+                        return `<div class="sum-cov-card"><div class="sum-cov-move-name">${getTypeHTML(m.type, null)} <span>${m.name}</span> <span style="color:#888;font-size:10px;">(Status)</span></div></div>`;
                     }
                     const se = [], res = [], immune = [];
                     for (const defType of allTypes) {
@@ -22520,7 +22753,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     const typeList = arr => arr.length
                         ? arr.map(t => `<span class="type-badge type-${t}">${t}</span>`).join('')
-                        : '<span style="color:#555;font-size:10px;">None</span>';
+                        : '<span style="color:#888;font-size:10px;">None</span>';
                     return `<div class="sum-cov-card">
                         <div class="sum-cov-move-name">${getTypeHTML(m.type, null)} <span>${m.name}</span> <span style="color:#888;font-size:10px;">${m.pow} BP</span></div>
                         ${se.length ? `<div class="sum-cov-row"><span class="sum-cov-label" style="color:#4caf50;">Super Eff.</span><div style="display:flex;flex-wrap:wrap;gap:2px;">${typeList(se)}</div></div>` : ''}
@@ -22621,7 +22854,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         b.className = 'battle-btn-move';
                         b.style.opacity = '0.35';
                         b.style.filter = 'grayscale(0.7)';
-                        b.innerHTML = `<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-${mv.type||'Normal'}">${typeShort}</span><span class="move-tile-name">${mv.name}</span><span class="move-tile-cat" style="color:${catColor}">${catG}</span></div><div class="move-tile-meta" style="color:#555;">—</div></div></div>`;
+                        b.innerHTML = `<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-${mv.type||'Normal'}">${typeShort}</span><span class="move-tile-name">${mv.name}</span><span class="move-tile-cat" style="color:${catColor}">${catG}</span></div><div class="move-tile-meta" style="color:#888;">—</div></div></div>`;
                     }
                     scroll.appendChild(b);
                 });
@@ -22688,7 +22921,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let ppDisplay = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let ppColor = !isDynaDisplay && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
-                let effLabelShort = eff > 1 ? `<span style="color:var(--hp-green);font-weight:bold;">▲</span>` : eff === 0 ? `<span style="color:#555;">⊘</span>` : eff < 1 ? `<span style="color:var(--hp-red);">▼</span>` : '';
+                let effLabelShort = eff > 1 ? `<span style="color:var(--hp-green);font-weight:bold;">▲</span>` : eff === 0 ? `<span style="color:#888;">⊘</span>` : eff < 1 ? `<span style="color:var(--hp-red);">▼</span>` : '';
                 let priStr = formatMovePriority(shownMove.pri);
                 let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
@@ -35051,85 +35284,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         })();
 
-        // ===================================================================
-        // ===== AudioBus — lazy Howler wrapper for BGM crossfades (vendor/howler.min.js)
-        // ===================================================================
-        // Scoped to the MUSIC layer only (background loops + scene themes). Cries, move-SFX
-        // and UI-SFX stay on AudioSystem. Built behind settings.audioBus so the existing
-        // AudioSystem _fade path stays the default until the transition seams are wired.
-        // No-op under the harness or when music is disabled.
-        window.AudioBus = (function () {
-            let _libPromise = null;
-            let _current = null;     // { howl, src }
-            function _enabled() {
-                try {
-                    if (typeof window !== 'undefined' && window.__testHarness === true) return false;
-                    if (typeof settings === 'undefined' || !settings) return false;
-                    if (settings.audioBus !== true) return false;       // dormant until opted in
-                    if (settings.musicEnabled === false) return false;
-                } catch (e) { return false; }
-                return true;
-            }
-            function _loadLib() {
-                if (typeof window !== 'undefined' && window.Howl) return Promise.resolve(window.Howl);
-                if (_libPromise) return _libPromise;
-                _libPromise = new Promise(resolve => {
-                    try {
-                        const s = document.createElement('script');
-                        s.src = 'vendor/howler.min.js';
-                        s.dataset.howlerBundle = '1';
-                        s.onload = () => resolve(window.Howl || null);
-                        s.onerror = () => { _libPromise = null; resolve(null); };
-                        document.head.appendChild(s);
-                    } catch (e) { _libPromise = null; resolve(null); }
-                });
-                return _libPromise;
-            }
-            function _musicVol() {
-                try { return (typeof AudioSystem !== 'undefined' && AudioSystem.getMusicVolume) ? AudioSystem.getMusicVolume() : 0.45; }
-                catch (e) { return 0.45; }
-            }
-            // Crossfade the background track to `src` (looping by default). No-op if already on it.
-            async function crossfadeTo(src, o) {
-                o = o || {};
-                if (!_enabled() || !src) return null;
-                const Howl = await _loadLib();
-                if (!Howl) return null;
-                if (_current && _current.src === src) return _current.howl;
-                const target = _musicVol() * (o.vol == null ? 1 : o.vol);
-                const ms = (o.fadeMs == null ? 900 : o.fadeMs);
-                const prev = _current;
-                const howl = new Howl({ src: [src], loop: o.loop !== false, html5: true, volume: 0 });
-                howl.play();
-                try { howl.fade(0, target, ms); } catch (e) {}
-                _current = { howl: howl, src: src };
-                if (prev && prev.howl) {
-                    try {
-                        prev.howl.fade(prev.howl.volume(), 0, ms);
-                        setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80);
-                    } catch (e) {}
-                }
-                return howl;
-            }
-            function stop(o) {
-                o = o || {};
-                const prev = _current; _current = null;
-                if (!prev || !prev.howl) return;
-                const ms = (o.fadeMs == null ? 700 : o.fadeMs);
-                try { prev.howl.fade(prev.howl.volume(), 0, ms); setTimeout(() => { try { prev.howl.stop(); prev.howl.unload(); } catch (e) {} }, ms + 80); }
-                catch (e) { try { prev.howl.stop(); prev.howl.unload(); } catch (e2) {} }
-            }
-            function duck(level, ms) {
-                if (!_current || !_current.howl) return;
-                try { _current.howl.fade(_current.howl.volume(), _musicVol() * (level == null ? 0.35 : level), ms == null ? 250 : ms); } catch (e) {}
-            }
-            function unduck(ms) {
-                if (!_current || !_current.howl) return;
-                try { _current.howl.fade(_current.howl.volume(), _musicVol(), ms == null ? 350 : ms); } catch (e) {}
-            }
-            function current() { return _current ? _current.src : null; }
-            return { crossfadeTo, stop, duck, unduck, current, isEnabled: _enabled };
-        })();
+        // AudioBus (dead Howler BGM wrapper, zero callers) removed 2026-07 — revive via git history.
 
         // Battle weather → particle layer. The render loop calls this every frame, so it
         // change-detects on the weather TYPE and only re-mounts when it actually changes
@@ -49459,13 +49614,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
+        // A Story run drives the SHARED settings.mechanics / classicMode that Quick Battle &
+        // Gauntlet also read (story battles consume the global). To keep the two modes from
+        // bleeding into each other, snapshot the player's Quick/Gauntlet gimmick prefs the
+        // first time a run overrides them, and restore that snapshot when they return to the
+        // home menu (see restoreQuickMechSnapshot, called from showScreen('screen-menu')).
+        let _quickMechSnapshot = null;
         function applyMechanicsToSettings() {
+            if (!_quickMechSnapshot) {
+                _quickMechSnapshot = {
+                    mechanics: { mega: settings.mechanics.mega, zmove: settings.mechanics.zmove,
+                                 dynamax: settings.mechanics.dynamax, tera: settings.mechanics.tera },
+                    classicMode: settings.classicMode,
+                };
+            }
             settings.mechanics.mega    = sm.settings.megaOn;
             settings.mechanics.zmove   = sm.settings.zOn;
             settings.mechanics.dynamax = sm.settings.dynaOn;
             settings.mechanics.tera    = sm.settings.teraOn;
             settings.classicMode       = sm.settings.classicMode !== false;
         }
+        // Restore the pre-Story Quick/Gauntlet gimmick prefs (no-op if a run never touched them).
+        window.restoreQuickMechSnapshot = function() {
+            if (!_quickMechSnapshot) return;
+            settings.mechanics.mega    = _quickMechSnapshot.mechanics.mega;
+            settings.mechanics.zmove   = _quickMechSnapshot.mechanics.zmove;
+            settings.mechanics.dynamax = _quickMechSnapshot.mechanics.dynamax;
+            settings.mechanics.tera    = _quickMechSnapshot.mechanics.tera;
+            settings.classicMode       = _quickMechSnapshot.classicMode;
+            _quickMechSnapshot = null;
+            try { persistMiscSettings(); } catch (e) {}
+        };
 
         // ── STORY MODE — EVENT REGISTRY ───────────────────────────────────
         // Each unique event in STORY_EVENTS_RAW is modeled as a "beat". A beat
@@ -55309,7 +55488,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 countEl.textContent = sm.team.length ? `(${sm.team.length}/${_capForDisplay})` : '';
             }
             if (!sm.team.length) {
-                panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
+                panel.innerHTML='<div style="font-size:11px;color:#888;padding:4px;">Empty — visit the Professor!</div>';
                 return;
             }
             // Lead slot = battle order index 0. Drag the grip handle (mouse or touch)
@@ -55615,7 +55794,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const label = art ? art.name : id;
                     const desc = art ? art.desc : '';
                     const statusChip = off
-                        ? '<span class="story-action-badge info" style="color:#888;border-color:#555;">Inactive</span>'
+                        ? '<span class="story-action-badge info" style="color:#888;border-color:#888;">Inactive</span>'
                         : '<span class="story-action-badge free">Active</span>';
                     const sidesBadge = id === 'cursedCoinPouch' ? _playerOnlyBadgeHtml : _bothSidesBadgeHtml;
                     return `<div style="border:1px solid #444;border-radius:6px;padding:10px;margin-bottom:8px;background:#0d0013;">
@@ -55629,7 +55808,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${off ? 'Enable Relic' : 'Disable Relic'}
                         </button>
                     </div>`;
-                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Browse tab sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
+                }).join('') || '<div style="color:#888;font-size:12px;padding:12px;">No relics yet — the Browse tab sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
             }
             showScreen('screen-story-artifacts');
         }
@@ -60082,7 +60261,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${isRivalBattle ? `<p class="story-dialog-text" style="margin-top:10px;font-size:14px;opacity:0.92;">"${extraLine}"</p>` : ''}
                         </div>
                     </div>
-                    <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
+                    <div style="font-size:11px;color:#888;margin-top:8px;">Battle starting…</div>`;
                 document.body.appendChild(overlay);
                 try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
                 const introMs = isRivalBattle ? 3400 : (vsIsMajor ? 2900 : 2200);
@@ -65619,7 +65798,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 setOpenIdx: function (n) { _storyLinkOpenIdx = n; },
                 rerender: renderLinkTeam
             });
-            if (!sm.team.length) { el.innerHTML='<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>'; return; }
+            if (!sm.team.length) { el.innerHTML='<div style="color:#888;font-size:12px;">No Pokémon in your party.</div>'; return; }
             if (_storyLinkOpenIdx >= sm.team.length) _storyLinkOpenIdx = -1;
             const _prevSwitcherScrollLeft = (function () {
                 try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
@@ -66316,7 +66495,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 setOpenIdx: function (n) { _storyEvoLabOpenIdx = n; },
                 rerender: renderEvoLabTeam
             });
-            if (!sm.team.length) { el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in your party. Visit the Professor to get one.</div>'; return; }
+            if (!sm.team.length) { el.innerHTML = '<div style="color:#888;font-size:12px;">No Pokémon in your party. Visit the Professor to get one.</div>'; return; }
             if (_storyEvoLabOpenIdx >= sm.team.length) _storyEvoLabOpenIdx = -1;
             const sg = storySettingsGens();
             const sgList = Array.isArray(sg) ? sg : normalizeEnabledGens(sg);
@@ -66813,7 +66992,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.onclick = () => selectBagItem(item, div);
                 bagEl.appendChild(div);
             });
-            if (!hasAny) bagEl.innerHTML='<div style="color:#555;font-size:12px;grid-column:1/-1;">No items in bag.</div>';
+            if (!hasAny) bagEl.innerHTML='<div style="color:#888;font-size:12px;grid-column:1/-1;">No items in bag.</div>';
             document.getElementById('modal-story-bag').classList.remove('hidden');
         }
 
@@ -67124,7 +67303,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 bagEl.appendChild(div);
             });
             if (!hasAny) {
-                bagEl.innerHTML = '<div style="color:#555;font-size:12px;grid-column:1/-1;padding:12px;text-align:center;">Your bag is empty. Visit a Pokémart or Department Store to buy items.</div>';
+                bagEl.innerHTML = '<div style="color:#888;font-size:12px;grid-column:1/-1;padding:12px;text-align:center;">Your bag is empty. Visit a Pokémart or Department Store to buy items.</div>';
             }
             modal.classList.remove('hidden');
             // The bag is a modal overlay (closing it doesn't re-render the hub) and
@@ -67239,7 +67418,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ← Back to Bag
                 </button>
                 <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
-                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No Pokémon in your party.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#888;font-size:11px;">No Pokémon in your party.</div>'}</div>
                 ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
                 <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
             `;
@@ -67372,7 +67551,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ← Back to Bag
                 </button>
                 <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
-                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No Pokémon in your party.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#888;font-size:11px;">No Pokémon in your party.</div>'}</div>
                 ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
                 <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
             `;
@@ -67429,7 +67608,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ← Back to Bag
                 </button>
                 <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
-                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No Pokémon in your party.</div>'}</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#888;font-size:11px;">No Pokémon in your party.</div>'}</div>
                 ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
                 <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
             `;
@@ -67915,6 +68094,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('hidden');
+                // Returning to the home menu → repaint Battle Options from the live settings,
+                // so gimmick/weather/classic checkboxes reflect what the next match will use
+                // (a Story run may have changed settings.mechanics / classicMode meanwhile).
+                if (id === 'screen-menu') {
+                    try { window.restoreQuickMechSnapshot && window.restoreQuickMechSnapshot(); } catch (e) {}
+                    try { window.syncBattleOptionsFromSettings && window.syncBattleOptionsFromSettings(); } catch (e) {}
+                    try { window.__maybeShowShellUpdate && window.__maybeShowShellUpdate(); } catch (e) {}
+                    try { window.__maybeSwReload && window.__maybeSwReload(); } catch (e) {}
+                }
                 // One short fade-in on the newly shown screen (auto-cleared on animationend
                 // so the class never lingers; guarded so child animations don't trip it).
                 if (_screenFadeEnabled()) {
@@ -67966,6 +68154,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // "Back" button → return to main menu
                 document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                 document.getElementById('screen-menu').classList.remove('hidden');
+                try { window.restoreQuickMechSnapshot && window.restoreQuickMechSnapshot(); } catch (e) {}
+                try { window.syncBattleOptionsFromSettings && window.syncBattleOptionsFromSettings(); } catch (e) {}
                 try { window.refreshHomeHero && window.refreshHomeHero(); } catch (e) {}
                 return;
             }
@@ -73220,7 +73410,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             if (!sm.team.length) {
-                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
+                el.innerHTML = '<div style="color:#888;font-size:12px;">No Pokémon in your party.</div>';
                 syncStoryTutorBackground();
                 showScreen('screen-story-tutor');
                 return;
@@ -73832,7 +74022,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } else locked.push({ kind: 'nature', label: 'Nature', why: 'Nature Rater opens at City ' + FACILITY_DEBUT_CITY.nature });
 
-                if (facUnlocked('evtrainer')) {
+                // Full "buy any spread" only once the EV Trainer is in FULL mode (City 7+).
+                // The Trainer debuts at City 3 in reshuffle-only mode, where auto-build still
+                // stages EVs as a free training FOCUS — not the full spread (see _evTrainerIsFullMode).
+                if (facUnlocked('evtrainer') && (typeof _evTrainerIsFullMode !== 'function' || _evTrainerIsFullMode())) {
                     if (ba && ba.evs && !_evsEqual(b.evs || {}, ba.evs)) {
                         parts.push({ kind: 'evs', label: 'EV spread', from: 'current', to: (typeof _evSpreadCompact === 'function' ? _evSpreadCompact(ba.evs) : 'best spread'), cost: EVTRAINER_COST, evs: { ...ba.evs } });
                     }
@@ -74382,7 +74575,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 rerender: renderColressTeam
             });
             if (!sm.team || !sm.team.length) {
-                el.innerHTML = _colressVoucherBanner() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
+                el.innerHTML = _colressVoucherBanner() + '<div style="color:#888;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
             // Clamp open idx to a valid range (defends against shrinking parties)
@@ -75409,7 +75602,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!el) return;
             _initEvTrainerDelegationOnce();
             if (!sm.team || !sm.team.length) {
-                el.innerHTML = _evTrainerHelpBannerHtml() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
+                el.innerHTML = _evTrainerHelpBannerHtml() + '<div style="color:#888;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
             // Clamp open index to valid range (or collapse all)

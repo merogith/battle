@@ -1,12 +1,14 @@
-// FX foundation (Stage 0) — locks the two lazy-loaded library wrappers added for the
+// FX foundation (Stage 0) — locks the lazy-loaded FxParticles wrapper added for the
 // visual-immersion pass so a later session can't silently regress the self-disabling
 // contract that keeps battles, the a11y guards, and the jsdom suite deterministic:
 //
 //   1. window.FxParticles (tsParticles) — surface, preset library, and the
 //      harness/reduced-motion/setting no-op (must NOT fetch the lib or append a canvas).
-//   2. window.AudioBus (Howler) — surface and the dormant-by-default no-op.
 //
-// Surface under test: window.FxParticles + window.AudioBus, jsdom harness only.
+// (The dormant window.AudioBus Howler wrapper was dead code — zero callers — and was
+//  removed in 2026-07; its surface test went with it.)
+//
+// Surface under test: window.FxParticles, jsdom harness only.
 
 import { test, before } from 'node:test';
 import assert from 'node:assert';
@@ -67,18 +69,7 @@ test('clear() on an unknown id is a harmless no-op', () => {
   assert.doesNotThrow(() => window.FxParticles.clearAll());
 });
 
-// ── 3. AudioBus surface + dormant no-op ──────────────────────────────────────
-test('AudioBus is exposed and dormant under the harness', async () => {
-  const ab = window.AudioBus;
-  assert.ok(ab, 'window.AudioBus exists');
-  ['crossfadeTo', 'stop', 'duck', 'unduck', 'current', 'isEnabled']
-    .forEach(m => assert.equal(typeof ab[m], 'function', `AudioBus.${m} is a function`));
-  assert.equal(ab.isEnabled(), false, 'AudioBus is disabled under the harness (and dormant by default)');
-  const scriptsBefore = document.querySelectorAll('script[data-howler-bundle]').length;
-  const r = await ab.crossfadeTo('music/background/background1.mp3', {});
-  assert.equal(r, null, 'crossfadeTo no-ops when disabled');
-  assert.equal(ab.current(), null, 'no current track is set');
-  assert.equal(document.querySelectorAll('script[data-howler-bundle]').length, scriptsBefore,
-    'the Howler library is never fetched while disabled');
-  assert.doesNotThrow(() => { ab.stop(); ab.duck(); ab.unduck(); }, 'transport calls are safe no-ops when idle');
+// ── 3. AudioBus removed ──────────────────────────────────────────────────────
+test('the dead AudioBus wrapper is gone (no longer shipped)', () => {
+  assert.equal(window.AudioBus, undefined, 'window.AudioBus was removed as dead code');
 });

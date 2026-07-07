@@ -57,6 +57,38 @@ test('removed out-of-scope pvpBattleItems is not persisted', () => {
     assert.equal('pvpBattleItems' in raw, false);
 });
 
+test('Battle Options prefs now survive a reload (weather/terrain/party/grades/gens)', () => {
+    W.persistMiscSettings();
+    const raw = JSON.parse(STORE.get('pbs_settings') || '{}');
+    for (const key of ['randomWeather', 'randomTerrain', 'partySize', 'draftGrades']) {
+        assert.ok(key in raw, `expected persisted settings to include "${key}"`);
+    }
+    // draftGens is null until the pool count runs, but the key must be serialized.
+    assert.ok('draftGens' in raw, 'draftGens key is persisted');
+    // classicMode (once-per-battle gimmicks) now persists for Quick/Gauntlet too.
+    assert.ok('classicMode' in raw, 'classicMode is persisted');
+});
+
+test('Battle Options panel exposes a live re-sync entry point', () => {
+    assert.equal(typeof W.syncBattleOptionsFromSettings, 'function',
+        'syncBattleOptionsFromSettings is callable (repaints the panel from settings)');
+    assert.doesNotThrow(() => W.syncBattleOptionsFromSettings(), 're-sync is safe to call');
+});
+
+test('Story→Quick mechanics snapshot/restore is exposed and safe to call', () => {
+    assert.equal(typeof W.restoreQuickMechSnapshot, 'function',
+        'restoreQuickMechSnapshot is callable');
+    // No snapshot taken yet → restore is a harmless no-op.
+    assert.doesNotThrow(() => W.restoreQuickMechSnapshot());
+});
+
+test('dead audioBus setting is no longer persisted', () => {
+    W.persistMiscSettings();
+    const raw = JSON.parse(STORE.get('pbs_settings') || '{}');
+    assert.equal('audioBus' in raw, false, 'audioBus was removed as dead code');
+    assert.equal(typeof W.AudioBus, 'undefined', 'window.AudioBus dead wrapper removed');
+});
+
 test('developer tools: auto-win kept, plus the four new helpers exist', () => {
     assert.equal(typeof W.__devAutoWinBattle, 'function');
     assert.equal(typeof W.__devLoseBattle, 'function');
