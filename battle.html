@@ -48588,6 +48588,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     foeCanKOPlayerFirst: (...a) => _foeCanKOPlayerFirst(...a),
                     tryFoeStoryBattleItem: tryFoeStoryBattleItem, // captured by REFERENCE here (before the harness stubs the global) so tests reach the real logic
                 };
+                // Story Simulator surface (scripts/debug/story-sim/*) — read-only references to
+                // existing internals so a headless full-run walk can reconstruct a faithful story
+                // battle (foe teams, stat-mult, run init, victory advance). Test-only; changes no
+                // game behaviour. Gated behind __testHarness like __storyTest/__engine above.
+                window.__storySim = {
+                    get sm() { return sm; },
+                    get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
+                    get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
+                    get STORY_RIVAL_ROW_INTRO() { return STORY_RIVAL_ROW_INTRO; },
+                    get STORY_RIVAL_ROW_LEAGUE() { return STORY_RIVAL_ROW_LEAGUE; },
+                    countGymBadgesBeforeStoryRow: (...a) => countGymBadgesBeforeStoryRow(...a),
+                    cityIndexForStoryRow: (...a) => _cityIndexForStoryRow(...a),
+                    assignTrainers: (...a) => assignTrainers(...a),
+                    applyMechanicsToSettings: () => applyMechanicsToSettings(),
+                    findTrainerDataByName: (...a) => findTrainerDataByName(...a),
+                    selectTrainerForRole: (...a) => selectTrainerForRole(...a),
+                    storySettingsGens: () => storySettingsGens(),
+                    storyEnemyPartySize: (...a) => _storyEnemyPartySize(...a),
+                    storyMaxPartySize: () => _storyMaxPartySize(),
+                    storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
+                    foeDifficultyMult: (...a) => _foeDifficultyMult(...a),
+                    withEventSeededRng: (idx, fn) => _withEventSeededRng(idx, fn),
+                    makeBuild: (...a) => makeBuild(...a),
+                    storyBuildTierForProfessor: (...a) => _storyBuildTierForProfessor(...a),
+                    storyDowngradeBuildForTier: (...a) => _storyDowngradeBuildForTier(...a),
+                    storyDifficultyCoinMult: () => storyDifficultyCoinMult(),
+                    storyProgressCoinMultForEventIndex: (...a) => storyProgressCoinMultForEventIndex(...a),
+                    storyStartingGoldBonus: (...a) => _storyStartingGoldBonus(...a),
+                    storyCityFoeSeen: (...a) => { try { return _storyCityFoeSeen(...a); } catch (e) { return null; } },
+                    pickTrack: (pool) => _pickTrack(pool),
+                    get VILLAIN_TRACKS() { return VILLAIN_TRACKS; },
+                    get EXTRA_TRACKS() { return EXTRA_TRACKS; },
+                    get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
+                    get BEAT_FACTION_TRAINER() { return BEAT_FACTION_TRAINER; },
+                    activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
+                    rollTrainerTeam: (...a) => rollTrainerTeam(...a),
+                    rollExtraRaidBossTeam: (k) => _rollExtraRaidBossTeam(k),
+                    buildPokemon: (...a) => buildPokemon(...a),
+                    buildFoeStoryInventoryForBattle: () => buildFoeStoryInventoryForBattle(),
+                    get EVOLVE_COST_BY_TARGET() { return EVOLVE_COST_BY_TARGET; },
+                    get EVTRAINER_COST() { return EVTRAINER_COST; },
+                };
             } catch (e) {}
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
