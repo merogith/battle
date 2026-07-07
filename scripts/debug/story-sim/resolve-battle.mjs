@@ -201,7 +201,12 @@ export async function resolveBattle(E, team1, team2, opts = {}) {
     const S = window.__storySim;
     try { st.foeStoryInv = (S && S.buildFoeStoryInventoryForBattle) ? S.buildFoeStoryInventoryForBattle() : null; }
     catch (e) { st.foeStoryInv = null; }
-    window.tryFoeStoryBattleItem = (typeof engine.tryFoeStoryBattleItem === 'function') ? engine.tryFoeStoryBattleItem : () => false;
+    // The REAL tryFoeStoryBattleItem lives on __storyTest (captured by reference before the harness
+    // stubbed the window global); it is NOT on __engine. Using engine.tryFoeStoryBattleItem here
+    // (undefined) silently fell back to a no-op stub — disabling the whole item-on axis.
+    const realFoeItem = (window.__storyTest && window.__storyTest.tryFoeStoryBattleItem)
+      || (typeof engine.tryFoeStoryBattleItem === 'function' ? engine.tryFoeStoryBattleItem : null);
+    window.tryFoeStoryBattleItem = realFoeItem || (() => false);
   } else {
     st.foeStoryInv = null;
     window.tryFoeStoryBattleItem = () => false;
