@@ -97,7 +97,7 @@ export function initRun(E, opts) {
 
 // --- Faithful foe-team generation for a Battle row -----------------------------------------
 // Reproduces enterBattleEvent's roll+stamp; returns { foeSpecs, trainerName, isRival, beatKey }.
-function rollFoeForRow(E, pos) {
+export function rollFoeForRow(E, pos) {
   const S = E.window.__storySim;
   const sm = S.sm;
   const raw = S.STORY_EVENTS_RAW;
@@ -134,7 +134,7 @@ function rollFoeForRow(E, pos) {
     }
   } catch (e) {}
 
-  if (raidTeam) return { foeSpecs: raidTeam, trainerName: '(raid)', isRival: false, beatKey, eventName, eid, coins };
+  if (raidTeam) return { foeSpecs: raidTeam, trainer: null, trainerName: '(raid)', isRival: false, beatKey, eventName, eid, coins };
 
   const trainer = (trainerName && S.findTrainerDataByName(trainerName, eventName))
     || S.selectTrainerForRole(eventName, sg, null, null);
@@ -153,7 +153,7 @@ function rollFoeForRow(E, pos) {
     if (s.build._bossStatMult > 1 || s.build._bossHpScale > 1) continue;
     s.build._storyStatMult = mult;
   }
-  return { foeSpecs, trainerName: trainer.name, isRival, beatKey, eventName, eid, coins, foeMult: mult };
+  return { foeSpecs, trainer, trainerName: trainer.name, isRival, beatKey, eventName, eid, coins, foeMult: mult };
 }
 
 // Replicate onBattleEnd's win-branch state mutations (minus the DOM overlay + processNextEvent).
