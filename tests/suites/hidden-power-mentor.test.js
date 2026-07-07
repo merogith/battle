@@ -1,5 +1,5 @@
 // Hidden Power mentor + Move Tutor integration (2026-06). The Diviner (a one-time
-// road scene on the approach to City 1) sets sm.hiddenPowerUnlocked and grants a
+// road scene on the approach to City 3) sets sm.hiddenPowerUnlocked and grants a
 // one-time sm.hiddenPowerChoosePending token. Once unlocked, the Move Tutor can
 // teach bare "Hidden Power" to ANY Pokémon; on teach it projects to that mon's
 // hpType (chosen via a picker on the first lesson, assigned/random thereafter).
