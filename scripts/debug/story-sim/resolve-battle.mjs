@@ -23,7 +23,6 @@
 //
 // Determinism: verified byte-identical for repeated same-seed runs.
 
-import { loadEngine } from '../../../tests/helpers/load-engine.js';
 
 const FULL_IVS = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
 const ZERO_EVS = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
@@ -76,7 +75,6 @@ function smHandle(window) {
 // sets state.p1GimmickIntent as a side-effect (survives the swap restore — it's a scalar).
 function buildPlayerAction(E, { playerSkill = 'hard' } = {}) {
   const { window } = E;
-  const st = window.__engine ? window.__engine.state : E.engine.state;
   const state = E.engine.state;
   const sm = smHandle(window);
   const _savedDiff = sm ? sm.storyDifficulty : undefined;
@@ -264,7 +262,6 @@ export async function resolveBattle(E, team1, team2, opts = {}) {
   const logs = E.logs.slice(startLog).map(x => x.text);
   const pAlive = aliveCount(st.playerParty);
   const fAlive = aliveCount(st.foeParty);
-  const stalled = turns >= maxTurns || (pAlive > 0 && fAlive > 0);
   let winner = null;
   if (pAlive > 0 && fAlive === 0) winner = 'player';
   else if (fAlive > 0 && pAlive === 0) winner = 'foe';

@@ -122,7 +122,7 @@ export class PlayerAgent {
   }
 
   // Pick a species to "catch" for the team. Coverage-aware for recommended/optimal, else random.
-  _pickCatchSpecies(city, badges) {
+  _pickCatchSpecies(_city, _badges) {
     const S = this.S;
     const sg = S.storySettingsGens();
     // Use the real wild pool as the catch source (faithful to what's actually encounterable).
@@ -183,7 +183,7 @@ export class PlayerAgent {
     this._evolveAndTrain(pos);
   }
 
-  prepForBattle(pos, eventName) {
+  prepForBattle(pos, _eventName) {
     // Between cities: only ensure the team is at its badge-cap size (a caught mon fills the slot).
     this._fillToCap(pos);
   }
@@ -247,7 +247,7 @@ export class PlayerAgent {
   }
 
   // Build the actual battle team (fresh mons). Trim to party cap.
-  buildBattleTeam(pos, eventName) {
+  buildBattleTeam(pos, _eventName) {
     const S = this.S;
     const cap = this._maxParty();
     const specs = (this.sm.team || []).slice(0, cap);
@@ -265,7 +265,7 @@ export class PlayerAgent {
     return mons;
   }
 
-  adaptAfterLoss(pos, eventName, foeMons, result) {
+  adaptAfterLoss(pos, _eventName, _foeMons, _result) {
     this._seedAgentRng(pos + 1000);
     this._adaptCount++;
     // Re-prep against the foe: bump training a notch and (optimal/recommended) catch a counter.
@@ -283,7 +283,7 @@ export class PlayerAgent {
     }
   }
 
-  postWin(pos, eventName) { /* team persists; evolutions/growth handled at next city */ }
+  postWin(_pos, _eventName) { /* team persists; evolutions/growth handled at next city */ }
 
   telemetry() {
     return {

@@ -13,7 +13,7 @@
 
 import { loadEngine } from '../../../tests/helpers/load-engine.js';
 import { resolveBattle, restoreRealAI } from './resolve-battle.mjs';
-import { installShims, getSm } from './dom-shim.mjs';
+import { installShims } from './dom-shim.mjs';
 import { getPolicy } from './policies.mjs';
 import { PlayerAgent } from './agent.mjs';
 
