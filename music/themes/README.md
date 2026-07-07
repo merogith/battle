@@ -54,6 +54,20 @@ files are the field rotation.
    (search for `const BATTLE_THEMES`) — the arrays accept multiple files per
    mood and one is chosen per fight.
 
+## No files? Turn on generative music
+
+If you don't want to source any track files, enable **Settings → Generative music
+(chiptune)**. That runs `ChiptuneEngine` — an original procedural music engine that
+composes background music live (scales + chord progressions via the Web Audio API,
+no sample files). It has a distinct mood per screen and battle
+(menu / town / route / battle / boss / victory / Hall of Fame / Safari / casino /
+Crucible). While it's on, the file-based tracks below stand down so the two never
+overlap; turn it off to go back to the bundled tracks. It honours the Music toggle
+and volume like everything else.
+
+The two systems are complementary: drop in real tracks for curated fidelity, or flip
+on the generative engine for always-on, zero-file music.
+
 ## Format notes
 
 - Prefer seamless-looping `.mp3`; keep files reasonably small (the field tracks
