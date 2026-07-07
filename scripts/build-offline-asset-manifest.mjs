@@ -36,6 +36,10 @@ function hashFile(full) {
 
 // Directories walked recursively (every file inside is cacheable media/data).
 const WALK_DIRS = ['sprites', 'music', 'data', 'fonts', 'icons', 'vendor'];
+// Vendored-but-unused libs — kept in-repo (see ATTRIBUTION.md) for a future revival, but
+// NOT shipped into the offline download. howler.min.js lost its only consumer (window.AudioBus)
+// when that dead wrapper was removed in 2026-07.
+const EXCLUDE_URLS = new Set(['vendor/howler.min.js']);
 // Top-level boot files (explicit — not walked).
 const BOOT_FILES = [
   'battle.html', 'index.html', 'manifest.webmanifest',
@@ -72,6 +76,7 @@ const files = [];
 for (const full of paths) {
   const url = toUrl(path.relative(ROOT, full));
   if (seen.has(url)) continue;
+  if (EXCLUDE_URLS.has(url)) continue;
   seen.add(url);
   const bytes = fs.statSync(full).size;
   totalBytes += bytes;

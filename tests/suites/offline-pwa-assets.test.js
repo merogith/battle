@@ -112,6 +112,83 @@ test('sw.js implements the differential-sync message protocol + stable assets ca
   assert.ok(/k !== ASSETS_CACHE/.test(sw), 'activate preserves ASSETS_CACHE');
 });
 
+test('the download "remembers" its state — restore fn + reconciliation exist', () => {
+  // The button/menu label must be restorable from the persisted completed flag so a
+  // returning player is not asked to download from scratch every visit.
+  assert.ok(/window\.refreshOfflineDownloadUI\s*=\s*async function/.test(HTML), 'refreshOfflineDownloadUI defined');
+  assert.ok(HTML.includes('refreshOfflineDownloadUI()'), 'restore fn is actually called (load/open)');
+  // Reconciliation queries the SW cache so a wiped cache does not keep claiming "downloaded".
+  assert.ok(/_swCacheState/.test(HTML), 'app queries CACHE_STATE via _swCacheState');
+  const sw = read('sw.js');
+  assert.ok(/CACHE_STATE'[\s\S]*batchId: msg\.batchId/.test(sw), 'CACHE_STATE reply echoes batchId (awaitable)');
+  assert.ok(/CACHE_CLEARED', batchId: msg\.batchId/.test(sw), 'CACHE_CLEARED reply echoes batchId');
+});
+
+test('offline download panel is screen-reader friendly (progressbar + live regions)', () => {
+  assert.ok(/role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="100"/.test(HTML), 'progressbar role + range');
+  assert.ok(/id="offline-dl-status"[^>]*aria-live="polite"/.test(HTML), 'status is a polite live region');
+  assert.ok(/id="offline-dl-size"[^>]*aria-live="polite"/.test(HTML), 'size line is a polite live region');
+  assert.ok(/id="offline-dl-btn"[^>]*aria-controls="offline-dl-panel"/.test(HTML), 'button controls the panel');
+});
+
+test('settings modal is labelled and the ambient-particles toggle is wired', () => {
+  assert.ok(/id="modal-settings"[^>]*aria-labelledby="modal-settings-title"/.test(HTML), 'dialog is named');
+  assert.ok(HTML.includes('id="modal-settings-title"'), 'title carries the referenced id');
+  // The previously-orphaned ambientParticles pref now has a real control.
+  assert.ok(HTML.includes('id="sw-ambient-particles"'), 'ambient particles toggle present');
+  assert.ok(/applySettingSwitch\('ambientParticles'/.test(HTML), 'toggle wired to applySettingSwitch');
+});
+
+test('app self-updates like an installed app (SW revalidates the shell + page prompts reload)', () => {
+  const sw = read('sw.js');
+  assert.ok(/function revalidateShell/.test(sw), 'SW background shell revalidation exists');
+  assert.ok(sw.includes("cache: 'no-store'"), 'revalidation uses a conditional (no-store) request');
+  assert.ok(/If-None-Match/.test(sw), 'conditional request sends the cached ETag (304 fast path)');
+  assert.ok(/postMessage\(\{ type: 'SHELL_UPDATED' \}\)/.test(sw), 'SW notifies pages when the shell changed');
+  // The page listens and offers a deferred, non-blocking reload (never mid-battle).
+  assert.ok(/d\.type !== 'SHELL_UPDATED'/.test(HTML), 'page handles SHELL_UPDATED');
+  assert.ok(/window\.__maybeShowShellUpdate/.test(HTML), 'reload prompt is gated through __maybeShowShellUpdate');
+  assert.ok(/_inBattleNow\(\)\)\s*return/.test(HTML), 'prompt is suppressed during an active battle');
+  assert.ok(HTML.includes("id = 'app-update-banner'"), 'the reload banner is created');
+});
+
+test('Battle Options: Classic (once-per-battle) toggle is wired + panel re-syncs from live settings', () => {
+  assert.ok(HTML.includes('id="mech-classic-cb"'), 'classic-mode checkbox present');
+  assert.ok(/settings\.classicMode = cmCb\.checked/.test(HTML), 'updateMechanics writes settings.classicMode');
+  assert.ok(/window\.syncBattleOptionsFromSettings = function/.test(HTML), 'panel re-sync fn defined');
+  // The menu chokepoint repaints the panel so a Story run cannot leave it stale.
+  assert.ok(/id === 'screen-menu'[\s\S]{0,240}syncBattleOptionsFromSettings/.test(HTML), 'menu display repaints the panel');
+});
+
+test('offline/SW hardening: request watchdog + full-shell refresh + reload retry', () => {
+  const sw = read('sw.js');
+  assert.ok(/async function precacheShell/.test(sw), 'precacheShell helper exists');
+  assert.ok(/precacheShell\(SHELL\.filter\(/.test(sw), 'revalidation re-precaches sibling shell files on change');
+  // App-side request watchdog (idle timeout that resets on progress) — no more hang-forever.
+  assert.ok(/function _swRequest\(sw, message, doneType, onProgress, idleMs\)/.test(HTML), '_swRequest takes an idle timeout');
+  assert.ok(/\}, 45000\);/.test(HTML), 'bulk download passes a 45s idle watchdog to _swRequest');
+  assert.ok(/'SYNC_PLAN', null, 12000/.test(HTML), 'dry-run plan has a 12s timeout');
+  assert.ok(/'CACHE_CLEARED', null, 5000/.test(HTML), 'clear-cache is awaited (no fire-and-forget race)');
+  // Mid-battle controllerchange no longer strands the player on old code.
+  assert.ok(/window\.__maybeSwReload/.test(HTML), 'controllerchange reload retries via __maybeSwReload');
+  assert.ok(/window\.__swReloadPending/.test(HTML), 'reload is deferred (pending) mid-battle');
+});
+
+test('boot perf: heavy scripts deferred + howler kept out of the download', () => {
+  assert.ok(/<script src="move-sfx-map\.js" defer><\/script>/.test(HTML), 'move-sfx-map deferred');
+  assert.ok(/<script src="move-anim-map\.js" defer><\/script>/.test(HTML), 'move-anim-map deferred');
+  assert.ok(/<script src="online-pvp\.js" defer><\/script>/.test(HTML), 'online-pvp deferred');
+  const m = JSON.parse(read('offline-assets.json'));
+  assert.ok(!m.files.some((f) => f.u === 'vendor/howler.min.js'), 'dead howler.min.js not shipped in the offline manifest');
+});
+
+test('Story→Quick mechanics decoupling + honest particle label', () => {
+  assert.ok(/window\.restoreQuickMechSnapshot = function/.test(HTML), 'snapshot-restore defined');
+  assert.ok(/restoreQuickMechSnapshot\(\)/.test(HTML), 'restore is invoked (menu return)');
+  assert.ok(/_quickMechSnapshot/.test(HTML), 'quick-mode gimmick prefs are snapshotted before a Story run overrides them');
+  assert.ok(HTML.includes('>Particle effects<'), 'ambient toggle relabelled to cover all particle FX honestly');
+});
+
 test('client uses differential sync (digest-based), not the old bulk re-download', () => {
   assert.ok(HTML.includes('window.checkOfflineUpdate'), 'launch update-check present');
   assert.ok(/SYNC_ASSETS/.test(HTML), 'client posts SYNC_ASSETS');

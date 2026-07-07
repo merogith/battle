@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. Bump CACHE_VERSION when the shell/code changes.
  */
-const CACHE_VERSION = 'battle-v3';
+const CACHE_VERSION = 'battle-v4';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -39,18 +39,21 @@ const SHELL = [
   'icons/app-icon.svg',
 ];
 
+// (Re)precache the shell. {cache:'reload'} bypasses the HTTP cache so a new deploy's shell
+// is never stale. Tolerates individual 404s so one missing optional file can't break it.
+// `list` lets the background revalidation refresh the siblings without re-fetching the 5MB
+// battle.html (already re-cached from the conditional response it just read).
+async function precacheShell(list) {
+  const cache = await caches.open(SHELL_CACHE);
+  await Promise.all((list || SHELL).map((u) =>
+    fetch(u, { cache: 'reload' })
+      .then((res) => (res && res.ok ? cache.put(u, res) : null))
+      .catch(() => {})
+  ));
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) =>
-      // {cache:'reload'} bypasses the HTTP cache so a new deploy's shell is never stale.
-      // Tolerate individual 404s so one missing optional file can't break the whole install.
-      Promise.all(SHELL.map((u) =>
-        fetch(u, { cache: 'reload' })
-          .then((res) => (res && res.ok ? cache.put(u, res) : null))
-          .catch(() => {})
-      ))
-    ).then(() => self.skipWaiting())
-  );
+  event.waitUntil(precacheShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -74,6 +77,50 @@ async function cacheFirst(req) {
   return null;
 }
 
+// Background shell revalidation for navigations. Sends a conditional request for battle.html
+// (If-None-Match / If-Modified-Since from the cached copy), so the common unchanged case
+// returns a bodyless 304 — no 5MB re-download per launch. On a real change it refreshes
+// SHELL_CACHE and notifies open pages so they can offer a "reload for the new version"
+// prompt. Uses the ETag / Last-Modified validators GitHub Pages sends, with a byte compare
+// as a fallback. All best-effort: any failure (offline, etc.) no-ops and keeps the cache.
+let _shellRevalidating = false;
+async function revalidateShell(shell, cached) {
+  if (_shellRevalidating) return;         // one in-flight check is enough per navigation burst
+  _shellRevalidating = true;
+  try {
+    const oldEtag = cached.headers.get('etag') || '';
+    const oldMod = cached.headers.get('last-modified') || '';
+    // Conditional request: on the common "nothing changed" path the server answers 304
+    // with no body, so we do NOT re-download the ~5MB shell on every launch.
+    const headers = {};
+    if (oldEtag) headers['If-None-Match'] = oldEtag;
+    else if (oldMod) headers['If-Modified-Since'] = oldMod;
+    const fresh = await fetch('battle.html', { cache: 'no-store', headers });
+    if (fresh.status === 304) return;        // unchanged — cheap path
+    if (!fresh || !fresh.ok) return;
+    const newEtag = fresh.headers.get('etag') || '';
+    const newMod = fresh.headers.get('last-modified') || '';
+    let changed;
+    if (oldEtag && newEtag) changed = oldEtag !== newEtag;
+    else if (oldMod && newMod) changed = oldMod !== newMod;
+    else if (!oldEtag && !oldMod) changed = false;   // first cache had no validators → seed silently
+    else {                                            // validators dropped → compare bytes as a fallback
+      const [a, b] = await Promise.all([cached.clone().text(), fresh.clone().text()]);
+      changed = a.length !== b.length || a !== b;
+    }
+    await shell.put('battle.html', fresh.clone());
+    if (changed) {
+      // A content-only redeploy (no CACHE_VERSION bump) also changes sibling shell files
+      // (move-*-map.js, online-pvp.js, manifest…). Refresh them too so we never serve a new
+      // battle.html against stale JS. battle.html is already re-cached above, so skip it here.
+      await precacheShell(SHELL.filter((u) => u !== 'battle.html'));
+      const cs = await self.clients.matchAll({ includeUncontrolled: true });
+      cs.forEach((c) => c.postMessage({ type: 'SHELL_UPDATED' }));
+    }
+  } catch (e) { /* offline / network error → keep serving the cached shell */ }
+  finally { _shellRevalidating = false; }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -82,13 +129,20 @@ self.addEventListener('fetch', (event) => {
   // Cross-origin (Supabase, any CDN) → network only, never cached.
   if (url.origin !== self.location.origin) return;
 
-  // Navigations → fresh shell first (SHELL_CACHE), then the downloaded snapshot, then network.
+  // Navigations → serve the cached shell instantly, but revalidate it against the network
+  // in the background (stale-while-revalidate). This is what makes a redeploy reach players
+  // like a normal app update WITHOUT a manual CACHE_VERSION bump: if the live battle.html
+  // changed, we refresh SHELL_CACHE and tell the page so it can offer a one-tap reload.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const shell = await caches.open(SHELL_CACHE);
       const cached = (await shell.match('battle.html'))
         || (await (await caches.open(ASSETS_CACHE)).match('battle.html'));
-      return cached || fetch(req).catch(() => shell.match('./'));
+      if (cached) {
+        event.waitUntil(revalidateShell(shell, cached));
+        return cached;
+      }
+      return fetch(req).catch(() => shell.match('./'));
     })());
     return;
   }
@@ -203,13 +257,18 @@ self.addEventListener('message', (event) => {
     event.waitUntil((async () => {
       await caches.delete(ASSETS_CACHE);
       await caches.open(ASSETS_CACHE); // recreate empty (also drops the applied-manifest snapshot)
-      reply({ type: 'CACHE_CLEARED' });
+      reply({ type: 'CACHE_CLEARED', batchId: msg.batchId });
     })());
   } else if (msg.type === 'CACHE_STATE') {
     event.waitUntil((async () => {
       const cache = await caches.open(ASSETS_CACHE);
       const keys = await cache.keys();
-      reply({ type: 'CACHE_STATE', cachedCount: Math.max(0, keys.length - 1) }); // minus the manifest snapshot
+      const applied = await readAppliedHashes(cache);
+      const appliedCount = Object.keys(applied).length;
+      // cachedCount excludes the manifest snapshot entry; appliedCount = files the
+      // last-applied manifest recorded (0 when nothing was ever downloaded).
+      reply({ type: 'CACHE_STATE', batchId: msg.batchId,
+        cachedCount: Math.max(0, keys.length - 1), appliedCount });
     })());
   }
 });
