@@ -3,10 +3,14 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Story text reveal & per-speaker dialogue tones (branch claude/story-text-reveal-and-speaker-tones)
+## 1.7.0 — Story text reveal, speaker dialogue tones & build-generation engine 2026-07-07
 
-Story-mode (normal) presentation polish, following the visual art-direction review. No
-mechanics, balance, saves, or out-of-scope modes touched — presentation only, all gated by
+Story-mode (normal) presentation polish and a balance pass on enemy/player build generation.
+Out-of-scope modes (Quick Play / PvP / draft) are unchanged.
+
+### Story text reveal & per-speaker dialogue tones (branch claude/story-text-reveal-and-speaker-tones)
+
+Presentation only — no mechanics, balance, saves, or out-of-scope modes touched, all gated by
 reduced-motion.
 
 - **Story dialogue now reveals with reading tempo.** Narrative beats type out letter-by-letter
@@ -19,11 +23,10 @@ reduced-motion.
   who's talking at a glance. Applies to both the full-screen story overlay and the city hub
   quote box. Default gold-on-dark is unchanged where no speaker tone applies.
 
-## Unreleased — Build-generation engine & early-game balance (branch claude/jolly-lovelace-gwa2b7)
+### Build-generation engine & early-game balance (branch claude/jolly-lovelace-gwa2b7)
 
 Story-mode (normal) balance pass focused on enemy/player build generation and the
-early-game curve. Out-of-scope modes (Quick Play / PvP / draft) are unchanged — every new
-path is gated behind an active story run or an opt-in flag.
+early-game curve. Every new path is gated behind an active story run or an opt-in flag.
 
 - **No more early power spikes.** Added an early-game enemy **grade ceiling** that tracks
   your evolution availability — enemies can't field a G3 (evolved-tier) Pokémon before
