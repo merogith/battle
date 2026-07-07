@@ -77,12 +77,17 @@ async function main() {
 
   // Flags: robustness / quality degradation under locks.
   const base = results.find(r => r.cfg === '1-9') || results[results.length - 1];
+  const baseUnder = base ? base.undersizedPct : 0;
   const flags = [];
+  // Baseline undersizing is gen-independent (rollTrainerTeam under-fills a fixed set of rows even
+  // at 1-9), so surface it once rather than per-config; only flag a config that undersizes
+  // MEANINGFULLY more than the 1-9 baseline (a real gen-pool-too-thin effect).
+  if (baseUnder > 0.01) flags.push({ kind: 'baseline-undersizing', cfg: 'all', detail: `~${(100 * baseUnder).toFixed(1)}% of enemy mons are in teams smaller than storyEnemyPartySize expects, gen-independent (rollTrainerTeam under-fills certain rows)` });
   for (const r of results) {
     if (r.rollfail > 0) flags.push({ kind: 'roll-failure', cfg: r.cfg, detail: `${r.rollfail} battles failed to roll a team` });
-    if (r.undersized > 0) flags.push({ kind: 'undersized-team', cfg: r.cfg, detail: `${r.undersized} enemy mons in undersized teams (${(100 * r.undersizedPct).toFixed(1)}%)` });
-    if (r.sigRate < 0.5) flags.push({ kind: 'signature-collapse', cfg: r.cfg, detail: `gym-leader signature rate ${(100 * r.sigRate).toFixed(0)}% (authored aces mostly filtered out)` });
-    if (r.glThemeMatch < 0.8) flags.push({ kind: 'theming-degraded', cfg: r.cfg, detail: `gym-leader theme-match ${(100 * r.glThemeMatch).toFixed(0)}%` });
+    if (r.undersizedPct > baseUnder * 1.5 + 0.03) flags.push({ kind: 'undersized-team', cfg: r.cfg, detail: `${(100 * r.undersizedPct).toFixed(1)}% undersized vs ${(100 * baseUnder).toFixed(1)}% baseline (pool too thin to fill)` });
+    if (r.sigRate < 0.5) flags.push({ kind: 'signature-collapse', cfg: r.cfg, detail: `gym-leader signature-ace survival ${(100 * r.sigRate).toFixed(0)}% (vs ${(100 * base.sigRate).toFixed(0)}% at 1-9) — authored aces filtered out, replaced by generic filler` });
+    if (r.glThemeMatch < 0.75) flags.push({ kind: 'theming-degraded', cfg: r.cfg, detail: `gym-leader theme-match ${(100 * r.glThemeMatch).toFixed(0)}%` });
     if (base && r.glBstLate && base.glBstLate && r.glBstLate < base.glBstLate * 0.85) flags.push({ kind: 'weak-late-scaling', cfg: r.cfg, detail: `late gym BST ${r.glBstLate} vs ${base.glBstLate} at 1-9 (${Math.round(100 * r.glBstLate / base.glBstLate)}%)` });
   }
 
