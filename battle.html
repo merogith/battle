@@ -72003,13 +72003,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _txMoveCardHtml(moveName, ctx) {
             const md = movesDB[moveName] || ensureMoveData(moveName);
-            const typ = md.type || 'Normal';
+            // Unified "Hidden Power": the bare, mentor-unlocked card. movesDB types it
+            // Normal/BP60 (the IV-form default), which misleads — on teach it becomes THIS
+            // mon's own fixed element. Show that element (and BP 60) so the card is honest,
+            // and explain the mechanic in the desc. Purely presentational: the actual teach
+            // still runs through _hpTutorApply → resolveHiddenPowerForBuild unchanged.
+            const isUnifiedHP = moveName === 'Hidden Power';
+            let typ = md.type || 'Normal';
+            let hpDesc = '';
+            if (isUnifiedHP) {
+                const hpT = ctx && ctx.hpType;
+                if (ctx && ctx.hpChoosePending) {
+                    hpDesc = 'This Pokémon\'s secret element. The Diviner\'s first lesson lets you choose its type — every later Pokémon keeps its own, fixed from birth.';
+                } else if (hpT) {
+                    typ = hpT;
+                    hpDesc = `Wakes this Pokémon\'s own hidden element — ${hpT}. Each Pokémon\'s Hidden Power type is fixed to itself.`;
+                } else {
+                    hpDesc = 'Wakes this Pokémon\'s own hidden element, fixed to it and revealed when you teach it.';
+                }
+            }
             const cat = md.cat || 'Status';
-            const pow = md.pow > 0 ? md.pow : '—';
-            const acc = md.acc > 0 ? (md.acc + '%') : '—';
-            const pp  = md.pp || '—';
+            const pow = (isUnifiedHP && !(md.pow > 0)) ? 60 : (md.pow > 0 ? md.pow : '—');
+            const acc = md.acc > 0 ? (md.acc + '%') : (isUnifiedHP ? '100%' : '—');
+            const pp  = md.pp || (isUnifiedHP ? 15 : '—');
             const pri = formatMovePriority(md.pri);
-            const eff = md.eff ? md.eff : '';
+            const eff = isUnifiedHP ? hpDesc : (md.eff ? md.eff : '');
             const isPending = ctx && ctx.pending === moveName;
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(moveName);
             const stab      = ctx && ctx.stabTypes && ctx.stabTypes.has(typ);
@@ -72624,6 +72642,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slotOf,
                 monName: t.name,
                 tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
+                // Hidden Power discoverability: the unified "Hidden Power" card is the
+                // bare, mentor-unlocked entry — movesDB types it Normal/BP60, which hides
+                // what the player actually gets. Carry this mon's own fixed element (always
+                // assigned by buildPokemon → resolveHiddenPowerForBuild) plus the one-time
+                // "you choose" token so the card can tell the truth. Read-only; no mutation.
+                hpType: (b && HP_TYPE_SET.has(b.hpType)) ? b.hpType : null,
+                hpChoosePending: !!(sm && sm.hiddenPowerChoosePending),
                 // Teachable set (gated) — the card locks any move NOT in it, authoritatively
                 // (matches the gate incl. the Inner BP cap). Undefined → no locks (safe).
                 acceptSet: acceptSet || null,
