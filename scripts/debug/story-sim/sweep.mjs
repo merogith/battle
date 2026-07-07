@@ -14,7 +14,7 @@
 // Determinism: each run seeds its own RNG streams (see story-run/agent), so a given
 // (seed,difficulty,policy,item) reproduces byte-identically regardless of shard/order.
 
-import { mkdirSync, createWriteStream } from 'node:fs';
+import { mkdirSync, appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEngine } from '../../../tests/helpers/load-engine.js';
 import { runStory } from './story-run.mjs';
@@ -56,34 +56,44 @@ async function main() {
 
   mkdirSync(A.out, { recursive: true });
   const suffix = A.shard ? `.shard${shardI}` : '';
-  const runsOut = createWriteStream(join(A.out, `runs${suffix}.jsonl`), { flags: 'w' });
-  const stagesOut = createWriteStream(join(A.out, `stages${suffix}.jsonl`), { flags: 'w' });
+  const runsPath = join(A.out, `runs${suffix}.jsonl`);
+  const stagesPath = join(A.out, `stages${suffix}.jsonl`);
+  // RESUMABLE: synchronous per-run appends keep completed runs durable across a container restart
+  // (the working dir survives; only processes die). On relaunch, skip combos already in runs.jsonl
+  // so the sweep continues where it left off. analyze.mjs derives stages from runs.jsonl.
+  const doneKeys = new Set();
+  if (existsSync(runsPath)) {
+    for (const line of readFileSync(runsPath, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      try { const r = JSON.parse(line); doneKeys.add(`${r.seed}|${r.difficulty}|${r.policy}|${r.itemMode}`); } catch (e) {}
+    }
+  }
+  const todo = mine.filter(c => !doneKeys.has(`${c.seed}|${c.difficulty}|${c.policy}|${c.itemMode}`));
 
+  if (!todo.length) { console.log(`[shard ${shardI}/${shardN}] nothing to do — all ${mine.length} combos already complete in ${runsPath}`); return; }
   const _l = console.log; console.log = () => {};
   const E = await loadEngine();
   console.log = _l;
+  _l(`[shard ${shardI}/${shardN}] ${todo.length} of ${mine.length} combos to run (${doneKeys.size} already done)`);
 
   const t0 = Date.now();
   let done = 0;
-  for (const c of mine) {
+  for (const c of todo) {
     const rec = await runStory(E, { ...c, gens, endpoint: A.endpoint });
     const runKey = { seed: c.seed, difficulty: c.difficulty, policy: c.policy, itemMode: c.itemMode };
-    // Per-stage lines (flattened).
-    for (const s of rec.stages) {
-      if (s.kind !== 'battle') continue;
-      stagesOut.write(JSON.stringify({ ...runKey, ...s }) + '\n');
-    }
-    // Per-run summary line (keep stages nested too for convenience).
-    runsOut.write(JSON.stringify(rec) + '\n');
+    // Per-stage lines (flattened) + per-run summary — synchronous appends for durability.
+    let stageLines = '';
+    for (const s of rec.stages) { if (s.kind === 'battle') stageLines += JSON.stringify({ ...runKey, ...s }) + '\n'; }
+    if (stageLines) appendFileSync(stagesPath, stageLines);
+    appendFileSync(runsPath, JSON.stringify(rec) + '\n');
     done++;
-    if (!A.quiet && (done % 5 === 0 || done === mine.length)) {
+    if (!A.quiet && (done % 5 === 0 || done === todo.length)) {
       const ms = Date.now() - t0;
-      _l(`[shard ${shardI}/${shardN}] ${done}/${mine.length}  ${(ms / done / 1000).toFixed(1)}s/run  last: ` +
+      _l(`[shard ${shardI}/${shardN}] ${done}/${todo.length}  ${(ms / done / 1000).toFixed(1)}s/run  last: ` +
         `s${c.seed} ${c.difficulty}/${c.policy}/${c.itemMode} -> ${rec.outcome} (${rec.wins}/${rec.battles}W, ${rec.badges}b)`);
     }
   }
-  runsOut.end(); stagesOut.end();
-  _l(`\n[shard ${shardI}/${shardN}] complete: ${done} runs in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${A.out}/runs${suffix}.jsonl`);
+  _l(`\n[shard ${shardI}/${shardN}] complete: ${done} runs in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${runsPath}`);
   E.teardown();
 }
 

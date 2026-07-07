@@ -252,8 +252,14 @@ ${deltaRows ? `<table><tr><th>event</th><th>diff/policy</th><th>off</th><th>on</
 function main() {
   const A = parseArgs(process.argv.slice(2));
   const runs = readJsonl(A.in, 'runs');
-  const stages = readJsonl(A.in, 'stages');
   if (!runs.length) { console.error('no runs found in', A.in); process.exit(1); }
+  // Derive stages from the runs' nested stages (runs.jsonl flushes per-run, so this survives an
+  // interrupted sweep; the separate stages.jsonl can lose its tail buffer on a crash/restart).
+  const stages = [];
+  for (const r of runs) {
+    const key = { seed: r.seed, difficulty: r.difficulty, policy: r.policy, itemMode: r.itemMode };
+    for (const s of r.stages || []) { if (s.kind === 'battle') stages.push({ ...key, ...s }); }
+  }
   const agg = aggregate(runs, stages);
   const flags = detectFlags(agg);
   const meta = { runs: runs.length, stages: stages.length };
