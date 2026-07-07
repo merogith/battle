@@ -136,8 +136,10 @@ function detectFlags(agg) {
       const cas = st.cells[`${difficulty}|casual|${itemMode}`];
       if (opt && opt.n >= 3 && opt.w / opt.n < FLAGS.tooHardWinRate)
         flags.push({ kind: 'too-hard', event: st.event, pos: st.pos, difficulty, itemMode, detail: `optimal win ${(100 * opt.w / opt.n).toFixed(0)}% (<${100 * FLAGS.tooHardWinRate}%)` });
-      if (cas && cas.n >= 3 && cas.w / cas.n > FLAGS.tooEasyWinRate)
-        flags.push({ kind: 'too-easy', event: st.event, pos: st.pos, difficulty, itemMode, detail: `casual win ${(100 * cas.w / cas.n).toFixed(0)}% (>${100 * FLAGS.tooEasyWinRate}%)` });
+      // too-easy only matters mid/late (city >= 4): early filler being trivial on easy modes is
+      // expected, not a finding.
+      if (cas && cas.n >= 3 && st.city >= 4 && cas.w / cas.n > FLAGS.tooEasyWinRate)
+        flags.push({ kind: 'too-easy', event: st.event, pos: st.pos, difficulty, itemMode, detail: `casual win ${(100 * cas.w / cas.n).toFixed(0)}% at city ${st.city} (>${100 * FLAGS.tooEasyWinRate}%)` });
     }
   }
   // High stall rate: a stage the AI often can't finish (unbreakable wall / passive loop). Signals
