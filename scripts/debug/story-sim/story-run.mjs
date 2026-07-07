@@ -242,6 +242,9 @@ export async function runStory(E, opts = {}) {
     }
 
     const won = result.winner === 'player';
+    // Mark any fired track beat so it doesn't re-fire on the next eligible row (the real game does
+    // this in onBattleEnd). Only on a win — a lost beat re-appears on retry, as in the game.
+    if (won && rolled.beatKey) { try { sm.storyEventsFired[rolled.beatKey] = true; } catch (e) {} }
     // Coin reward reads the shared global sm.storyDifficulty (which the per-turn player-skill pin
     // flips to 'hard'); force it back to the run difficulty so rewards are exact & deterministic.
     sm.storyDifficulty = difficulty;

@@ -99,6 +99,10 @@ export function censusSeed(E, seed, opts, onRecord) {
     try { expectedSize = S.storyEnemyPartySize(String(ev[2] || ''), Math.max(1, (sm.team || []).length), ev[0]); } catch (e) {}
     const rolled = rollFoeForRow(E, pos);
     if (!rolled) { onRecord({ tag, seed, kind: 'rollfail', pos, event: String(ev[2] || '') }); continue; }
+    // Mark any fired track beat so it does NOT re-fire on the next eligible row — the real game
+    // does this in onBattleEnd (storyEventsFired dedupe). Without it, raids/bosses flood every
+    // route/Elite row and pollute the census (fake "undersized" + fake "weak Elite").
+    if (rolled.beatKey) { try { S.sm.storyEventsFired[rolled.beatKey] = true; } catch (e) {} }
     const eventName = rolled.eventName, role = roleOf(eventName);
     let city = -1; try { city = S.cityIndexForStoryRow(rolled.eid); } catch (e) {}
     const themeTypes = parseThemeTypes(rolled.trainer && rolled.trainer.type);
