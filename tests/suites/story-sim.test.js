@@ -14,6 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
 import { runStory } from '../../scripts/debug/story-sim/story-run.mjs';
+import { resolveBattle } from '../../scripts/debug/story-sim/resolve-battle.mjs';
 import { checkRun, checkDeterminism } from '../../scripts/debug/story-sim/invariants.mjs';
 
 let E;
@@ -51,6 +52,22 @@ test('gold accounting closes — sim is the sole reward authority', async () => 
   // would roughly double and this would fail.
   assert.equal(rec.gold, rec.startGold + sumAward - spent,
     `gold accounting mismatch: final ${rec.gold} != start ${rec.startGold} + awards ${sumAward} - spent ${spent}`);
+});
+
+test('item-on actually fires foe battle items (regression: was a silent no-op)', async () => {
+  const e = await engine();
+  const S = e.window.__storySim, sm = S.sm;
+  sm.active = true; sm.runSeed = 1; sm._strngState = null; sm.storyDifficulty = 'normal';
+  sm.settings = { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9], megaOn: true, zOn: true, dynaOn: true, teraOn: true, classicMode: true };
+  sm.eventIndex = 46; // Gym Leader 7 row -> tier-3 foe items
+  const mk = (s) => S.buildPokemon(s.species, { m: s.moves, i: s.item, a: s.ability, n: s.nature, evs: s.evs, ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 } });
+  // a bulky foe that survives hits and thus reaches its heal threshold
+  const foe = [{ species: 'Blissey', moves: ['Seismic Toss', 'Soft-Boiled', 'Toxic', 'Protect'], nature: 'Calm', ability: 'Natural Cure', item: 'Leftovers', evs: { hp: 252, def: 252 } }];
+  const ply = [{ species: 'Gengar', moves: ['Shadow Ball', 'Sludge Bomb', 'Focus Blast', 'Thunderbolt'], nature: 'Timid', ability: 'Levitate', item: 'Life Orb', evs: { spa: 252, spe: 252 } }];
+  await resolveBattle(e, { mons: ply.map(mk) }, { mons: foe.map(mk) },
+    { seed: 1, mode: 'story', foeStoryItems: true, storyContext: { active: true, storyDifficulty: 'normal' } });
+  assert.ok((e.engine.state.foeStoryItemUsesThisBattle | 0) > 0,
+    'foe used 0 items with itemMode on at a tier-3 gym — the item-on axis is a no-op again');
 });
 
 test('mid-run sm save shape round-trips at current SAVE_VER', async () => {
