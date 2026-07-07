@@ -48,6 +48,14 @@
                durations; new CSS should reach for the tokens instead of raw values. */
             --dur-fast: 0.12s;
             --dur-med: 0.15s;
+            --dur-slow: 0.32s;   /* screen/cinematic-beat tier — pairs with the easing scale below */
+            /* Easing scale — one named ramp for all new motion. Entrances decelerate
+               (ease-out), exits accelerate (ease-in), moves are symmetric, and pop/overshoot
+               adds a spring. These replace hand-inlined cubic-bezier() literals going forward. */
+            --ease-out-quart: cubic-bezier(0.16, 1, 0.30, 1);   /* entrances, reveals, slide-ins */
+            --ease-in-quart:  cubic-bezier(0.50, 0, 0.75, 0);   /* exits, dismissals */
+            --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);   /* attack lunges, symmetric moves */
+            --ease-back:      cubic-bezier(0.34, 1.56, 0.64, 1);/* pop / materialize / badge-in overshoot */
             /* Story facility accent palette — category-coded (see docs/story-design/UI_VISUAL_SYSTEM_AUDIT.md).
                Facility titles are recolored by function so hue signals the facility type. */
             --fac-quest: #ffab40;      /* quest & battle flow (professor/gym/league/VR/crucible) */
@@ -2396,6 +2404,11 @@
             padding: 12px 14px;
             min-height: 48px;
         }
+        /* Entrance rise for the in-city quote box — parity with the narrative overlay's
+           dialog-rise. Applied by _cityQuoteReveal only when motion is allowed. */
+        .story-city-quote-in { animation: storyCityQuoteIn var(--dur-slow) var(--ease-out-quart) both; }
+        @keyframes storyCityQuoteIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { .story-city-quote-in { animation: none; } }
         .story-dialog-box .story-dialog-text {
             margin: 0;
             font-size: 12px;
@@ -2969,6 +2982,15 @@
             animation: storyBadgePulse 1.2s ease-in-out infinite;
         }
         @keyframes storyBadgePulse { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.04); filter: brightness(1.08); } }
+        /* Original badge SVG seated inside the gold victory medallion ring. */
+        .story-victory-v2-medallion .gym-badge-svg { width: 60px; height: 60px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45)); }
+        /* Journal badge case — a row of eight slots, earned filled, rest dim. */
+        .story-badge-case { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin: 8px 0 6px; max-width: 340px; }
+        @media (max-width: 460px) { .story-badge-case { grid-template-columns: repeat(4, 1fr); max-width: 200px; } }
+        .story-badge-cell { aspect-ratio: 1 / 1; padding: 5px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; transition: transform var(--dur-med) var(--ease-out-quart), box-shadow var(--dur-med) var(--ease-out-quart); }
+        .story-badge-cell.is-earned { border-color: rgba(255,255,255,0.28); box-shadow: 0 0 10px rgba(255,255,255,0.08), inset 0 0 12px rgba(255,255,255,0.05); }
+        .story-badge-cell.is-earned:hover { transform: translateY(-2px) scale(1.06); }
+        .story-badge-case-count { font-size: 11px; color: var(--text-muted); margin: 0; }
         .story-hof-plaque {
             border: 3px solid rgba(255,213,79,0.5); border-radius: 12px;
             background: linear-gradient(180deg, rgba(40,32,20,0.95) 0%, rgba(15,12,8,0.98) 100%);
@@ -3443,6 +3465,20 @@
             border-color: #ffd54f;
             box-shadow: 0 0 7px rgba(255,213,79,0.55);
         }
+        /* Journey route track — 8 city nodes + a League node, marking run position. */
+        .story-city-route { display: flex; align-items: center; gap: 0; padding: 4px 0 8px; }
+        .story-route-node { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .story-route-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.28); box-shadow: inset 0 0 3px rgba(0,0,0,0.6); transition: all var(--dur-med) var(--ease-out-quart); }
+        .story-route-node.is-done .story-route-dot { background: linear-gradient(135deg, #ffe082, #ffb300); border-color: #ffd54f; box-shadow: 0 0 6px rgba(255,213,79,0.5); }
+        .story-route-node.is-current .story-route-dot { width: 13px; height: 13px; background: radial-gradient(circle at 40% 35%, #fff 0%, #ffd54f 55%, #ff8f00 100%); border-color: #fff; box-shadow: 0 0 10px rgba(255,213,79,0.75); animation: storyRoutePulse 1.5s ease-in-out infinite; }
+        .story-route-node.is-future .story-route-dot { opacity: 0.5; }
+        .story-route-link { width: 14px; height: 2px; flex-shrink: 0; background: rgba(255,255,255,0.18); }
+        .story-route-link.is-done { background: linear-gradient(90deg, #ffb300, #ffd54f); }
+        .story-route-league { font-size: 12px; margin-left: 1px; }
+        .story-route-crown { color: rgba(255,255,255,0.35); text-shadow: 0 0 6px rgba(0,0,0,0.6); }
+        .story-route-league.is-current .story-route-crown { color: #ffd54f; text-shadow: 0 0 9px rgba(255,213,79,0.7); animation: storyRoutePulse 1.5s ease-in-out infinite; }
+        @keyframes storyRoutePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+        @media (prefers-reduced-motion: reduce) { .story-route-node.is-current .story-route-dot, .story-route-league.is-current .story-route-crown { animation: none; } }
         /* The band is the hero copy of the town name — drop the small HUD chip
            on desktop so the same fact isn't printed twice in adjacent rows. */
         body:not(.is-mobile) #screen-story-city #story-hud-city { display: none; }
@@ -4291,6 +4327,29 @@
         /* ── Type badges ──────────────────────────────────────────────────── */
         .type-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-right: 3px; border: none; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); text-transform: uppercase; font-weight: bold; display: inline-block; letter-spacing: 0.5px; }
         .type-Normal { background: #A8A878; color: #fff; } .type-Fire { background: #F08030; color: #fff; } .type-Water { background: #6890F0; color: #fff; } .type-Grass { background: #78C850; color: #fff; } .type-Electric { background: #F8D030; color: #000; } .type-Ice { background: #98D8D8; color: #000; } .type-Fighting { background: #C03028; color: #fff; } .type-Poison { background: #A040A0; color: #fff; } .type-Ground { background: #E0C068; color: #000; } .type-Flying { background: #A890F0; color: #fff; } .type-Psychic { background: #F85888; color: #fff; } .type-Bug { background: #A8B820; color: #fff; } .type-Rock { background: #B8A038; color: #fff; } .type-Ghost { background: #705898; color: #fff; } .type-Dragon { background: #7038F8; color: #fff; } .type-Dark { background: #705848; color: #fff; } .type-Steel { background: #B8B8D0; color: #000; } .type-Fairy { background: #EE99AC; color: #000; }
+        /* Original per-type emblem glyphs — a CSS-only mask layer on .type-badge.
+           Solid-fill SVGs masked in currentColor so they read on any chip background;
+           pseudo-element only, so type-chip innerHTML (and golden snapshots) is unchanged. */
+        .type-badge::before{content:'';display:inline-block;width:0.85em;height:0.85em;margin-right:2px;vertical-align:-0.09em;background-color:currentColor;-webkit-mask:var(--tg) center/contain no-repeat;mask:var(--tg) center/contain no-repeat;}
+        .type-badge:not([class*="type-"])::before,.type-badge.type-::before{content:none;}
+        .type-Normal{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PGNpcmNsZSBjeD0nMTInIGN5PScxMicgcj0nNycvPjwvc3ZnPg==");}
+        .type-Fire{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEyIDJjMyA0IDUgNiA1IDEwYTUgNSAwIDAgMS0xMCAwYzAtMiAxLTQgMi01IC4yIDIgMS4yIDMgMyAzLTEuNS0zLTEtNiAwLTh6Jy8+PC9zdmc+");}
+        .type-Water{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEyIDNjMyA0IDYgNyA2IDExYTYgNiAwIDAgMS0xMiAwYzAtNCAzLTcgNi0xMXonLz48L3N2Zz4=");}
+        .type-Grass{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTUgMTlDNSAxMCAxMSA1IDE5IDVDMTkgMTQgMTMgMTkgNSAxOVonLz48L3N2Zz4=");}
+        .type-Electric{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEzIDJMNSAxM2g1bC0yIDkgMTAtMTNoLTZ6Jy8+PC9zdmc+");}
+        .type-Ice{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEyIDJsMiA2IDYtMi00IDYgNCA2LTYtMi0yIDYtMi02LTYgMiA0LTYtNC02IDYgMnonLz48L3N2Zz4=");}
+        .type-Fighting{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTcgOGg4YTMgMyAwIDAgMSAzIDN2M2EzIDMgMCAwIDEtMyAzSDd6Jy8+PHJlY3QgeD0nNycgeT0nNS41JyB3aWR0aD0nMi41JyBoZWlnaHQ9JzQnLz48cmVjdCB4PScxMC4yJyB5PSc1JyB3aWR0aD0nMi41JyBoZWlnaHQ9JzQuNScvPjxyZWN0IHg9JzEzLjQnIHk9JzUuNScgd2lkdGg9JzIuNScgaGVpZ2h0PSc0Jy8+PC9zdmc+");}
+        .type-Poison{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PGNpcmNsZSBjeD0nOS41JyBjeT0nMTMnIHI9JzQnLz48Y2lyY2xlIGN4PScxNScgY3k9JzEwLjUnIHI9JzMnLz48Y2lyY2xlIGN4PScxNC41JyBjeT0nMTYnIHI9JzIuNScvPjwvc3ZnPg==");}
+        .type-Ground{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHJlY3QgeD0nMycgeT0nOC41JyB3aWR0aD0nMTgnIGhlaWdodD0nMy40JyByeD0nMS4yJy8+PHJlY3QgeD0nMycgeT0nMTMuNicgd2lkdGg9JzE4JyBoZWlnaHQ9JzMuNCcgcng9JzEuMicvPjwvc3ZnPg==");}
+        .type-Flying{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTMgOC41bDkgNCA5LTQtOSAzLjJ6Jy8+PHBhdGggZD0nTTMgMTRsOSA0IDktNC05IDMuMnonLz48L3N2Zz4=");}
+        .type-Psychic{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEyIDNhOSA5IDAgMSAwIDkgOSA0LjQgNC40IDAgMCAxLTguOCAwIDQuNCA0LjQgMCAwIDAtLjItOXonLz48L3N2Zz4=");}
+        .type-Bug{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PGNpcmNsZSBjeD0nMTInIGN5PScxNCcgcj0nNScvPjxwYXRoIGQ9J004LjUgNWwzIDQuMi0xLjYgMS4yek0xNS41IDVsLTMgNC4yIDEuNiAxLjJ6Jy8+PC9zdmc+");}
+        .type-Rock{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTUgMTVsMy03IDctMiA1IDUtMiA3LTkgMnonLz48L3N2Zz4=");}
+        .type-Ghost{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTUgMjBWMTFhNyA3IDAgMCAxIDE0IDB2OWwtMi4zLTItMi4zIDItMi40LTItMi4zIDItMi40LTJ6Jy8+PC9zdmc+");}
+        .type-Dragon{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTQgMjBjMi0xMCA4LTE1IDE2LTE2LTMgMy00IDYtNCA5IDAgNS02IDgtMTIgN3onLz48L3N2Zz4=");}
+        .type-Dark{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTE2IDNhOSA5IDAgMSAwIDQgMTNBNyA3IDAgMCAxIDE2IDN6Jy8+PC9zdmc+");}
+        .type-Steel{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEyIDNsNyA0djEwbC03IDQtNy00Vjd6Jy8+PC9zdmc+");}
+        .type-Fairy{--tg:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTEyIDJsMi4zIDcuN0wyMiAxMmwtNy43IDIuM0wxMiAyMmwtMi4zLTcuN0wyIDEybDcuNy0yLjN6Jy8+PC9zdmc+");}
         .cat-Physical { color: #ff6b6b; } .cat-Special { color: #6b9fff; } .cat-Status { color: #999; }
 
         /* ── Bottom chrome ────────────────────────────────────────────────── */
@@ -5154,17 +5213,13 @@
         }
 
                 /* Animations */
-        .anim-attack { transform: translateX(40px); transition: 0.12s ease-out; }
-        .anim-attack-foe { transform: translateX(-40px); transition: 0.12s ease-out; }
         .anim-damage { animation: takeDamage 0.15s 3; }
         .anim-shake { animation: shakeScreen 0.4s ease-out; }
-        .anim-faint { animation: faintAnim 0.8s forwards; }
         .anim-switch-in { animation: switchIn 0.4s ease-out; }
         .anim-switch-out { animation: switchOut 0.3s forwards; }
         .anim-hit-flash { animation: hitFlash 0.4s; }
         @keyframes takeDamage { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
         @keyframes shakeScreen { 0% { transform: translate(0,0); } 20% { transform: translate(-6px, 4px); } 40% { transform: translate(6px, -4px); } 60% { transform: translate(-4px, -3px); } 80% { transform: translate(3px, 2px); } 100% { transform: translate(0,0); } }
-        @keyframes faintAnim { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(40px); filter: brightness(0); } }
         @keyframes switchIn { 0% { opacity: 0; transform: scale(0.3); } 60% { opacity: 1; transform: scale(1.05); } 100% { transform: scale(1); } }
         @keyframes switchOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.3); } }
         @keyframes hitFlash { 0% { filter: brightness(1); } 15% { filter: brightness(3) saturate(0); } 30% { filter: brightness(1); } 45% { filter: brightness(2) saturate(0); } 60% { filter: brightness(1); } }
@@ -7136,22 +7191,6 @@
             .casino-prize-banner.tier-jackpot { animation: casinoPrizeSlide 0.2s ease-out forwards, casinoPrizeFade 0.4s ease-in 3s forwards; }
             .casino-jackpot-overlay { animation-duration: 0.6s; }
             .casino-jackpot-confetti { display: none; }
-        }
-
-        /* Improved attack sequencing animation */
-        .anim-lunge-player { animation: lungePlayer 0.25s ease-in-out; }
-        .anim-lunge-foe { animation: lungeFoe 0.25s ease-in-out; }
-        @keyframes lungePlayer { 0% { transform: translateX(0); } 40% { transform: translateX(50px) translateY(-10px); } 100% { transform: translateX(0); } }
-        @keyframes lungeFoe { 0% { transform: translateX(0); } 40% { transform: translateX(-50px) translateY(10px); } 100% { transform: translateX(0); } }
-        .anim-hit-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 50; border-radius: 50%; opacity: 0;
-        }
-        .anim-hit-overlay.active { animation: hitOverlayFlash 0.35s ease-out forwards; }
-        @keyframes hitOverlayFlash {
-            0% { opacity: 0; transform: scale(0.5); }
-            30% { opacity: 0.8; transform: scale(1.1); }
-            100% { opacity: 0; transform: scale(1.3); }
         }
 
         /* Type-specific attack animations */
@@ -9781,6 +9820,7 @@
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
             <label class="settings-row" for="sw-ambient-particles" title="All particle effects: ambient embers/dust/leaves, weather precipitation, and hit/crit sparkle bursts. Turn off to save battery on phones."><span>Particle effects</span><input type="checkbox" class="pbs-switch" id="sw-ambient-particles" role="switch" onchange="window.applySettingSwitch('ambientParticles', this.checked)"></label>
             <div class="settings-row settings-row--wide" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
+
                 <span>Display</span>
                 <select id="setting-display-mode" aria-label="Display mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
                     <option value="auto">Auto (detect)</option>
@@ -9793,6 +9833,7 @@
             <div class="settings-grid">
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <label class="settings-row" for="sw-sound"><span>Sound effects</span><input type="checkbox" class="pbs-switch" id="sw-sound" role="switch" onchange="window.applySettingSwitch('soundEnabled', this.checked)"></label>
+            <label class="settings-row" for="sw-generative-music" title="Generative music — an original chiptune engine that composes background music live per screen and battle. Off uses the bundled looping tracks. Honours the Music toggle + volume."><span>Generative music <span style="font-size:9px;color:#888;font-weight:normal;">(chiptune)</span></span><input type="checkbox" class="pbs-switch" id="sw-generative-music" role="switch" onchange="window.applySettingSwitch('generativeMusic', this.checked)"></label>
             <div class="settings-row settings-row--wide">
                 <span style="white-space:nowrap; font-size:12px; color:#bbb;">Music volume</span>
                 <input type="range" id="music-vol-slider" aria-label="Music volume" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'; clearTimeout(window.__volPersistT); window.__volPersistT=setTimeout(persistMiscSettings,300)" onchange="persistMiscSettings()" style="flex:1; min-width:140px; accent-color:var(--hp-green); cursor:pointer;">
@@ -10117,6 +10158,7 @@
                 <div id="story-city-identity-name" class="story-city-identity-name"></div>
             </div>
             <div id="story-city-identity-badges" class="story-city-identity-badges" title="Gym badges earned"></div>
+            <div id="story-city-route" class="story-city-route" title="Your journey" aria-hidden="true"></div>
         </div>
         <!-- Main content -->
         <div class="story-city-main-row">
@@ -13403,7 +13445,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, storyTypewriter: true, draftGrades: [1,2,3,4], draftGens: null, mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, randomTerrain: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, ambientParticles: true, generativeMusic: false, storyTypewriter: true, draftGrades: [1,2,3,4], draftGens: null, mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, randomTerrain: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             quickTeamSource: 'random', /* 'random' = instant random teams · 'draft' = pick your own (Quick Battle) */
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
@@ -13512,6 +13554,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
             if (typeof _pbs.terrainBackground === 'boolean') settings.terrainBackground = _pbs.terrainBackground;
             if (typeof _pbs.ambientParticles === 'boolean') settings.ambientParticles = _pbs.ambientParticles;
+            if (typeof _pbs.generativeMusic === 'boolean') settings.generativeMusic = _pbs.generativeMusic;
             // Battle Options panel prefs (previously session-only — a reload silently wiped them).
             if (typeof _pbs.randomWeather === 'boolean') settings.randomWeather = _pbs.randomWeather;
             if (typeof _pbs.randomTerrain === 'boolean') settings.randomTerrain = _pbs.randomTerrain;
@@ -13551,6 +13594,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     weatherAnimation: settings.weatherAnimation,
                     terrainBackground: settings.terrainBackground,
                     ambientParticles: settings.ambientParticles,
+                    generativeMusic: settings.generativeMusic,
                     // Battle Options panel prefs (now survive a reload).
                     randomWeather: settings.randomWeather,
                     randomTerrain: settings.randomTerrain,
@@ -14165,6 +14209,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             function _resumeOrStartBg() {
                 if (!settings.musicEnabled) return;
+                // Generative BGM owns the background layer while enabled — don't start
+                // the file-based field track underneath it.
+                if (settings.generativeMusic) return;
                 // An override layer (battle theme, victory sting, or char-creation
                 // jingle) owns the foreground — it restores the field track itself
                 // when it ends. Resuming the (ducked, paused) field track here would
@@ -14248,6 +14295,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function _playBattleTheme(mood) {
                 mood = mood || 'trainer';
                 if (!settings.musicEnabled) { _battleMood = mood; return; }
+                // Generative BGM handles battle moods itself (via MusicDirector) — skip
+                // the file-based battle theme so the two layers never stack.
+                if (settings.generativeMusic) { _battleMood = mood; return; }
                 const list = BATTLE_THEMES[mood] || BATTLE_THEMES.trainer;
                 if (!list || !list.length) return;
                 if (_battleMood === mood && _battleAudio && !_battleAudio.paused) return;
@@ -14422,6 +14472,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 playBattleTheme(mood) { _playBattleTheme(mood); },
                 endBattleTheme(won) { _endBattleTheme(won); },
 
+                // Resume the file-based field BGM (used when generative music is toggled
+                // off). No-ops while an override layer owns the foreground or music is off.
+                resumeField() { _resumeOrStartBg(); },
+
+                // Drop-in battle-music hooks. The mood slots (trainer / leader / rival /
+                // elite / boss) are pre-wired; only content is missing. Drop track files
+                // under music/themes/ (see music/themes/README.md) and register them at
+                // runtime — no monolith edit needed. addBattleTheme appends one file to a
+                // mood; setBattleThemes replaces whole mood lists from a {mood:[files]} map.
+                // Mutates the existing BATTLE_THEMES object in place (never reassigns it).
+                addBattleTheme(mood, file) {
+                    if (!mood || !file || !Object.prototype.hasOwnProperty.call(BATTLE_THEMES, mood)) return false;
+                    if (BATTLE_THEMES[mood].indexOf(file) === -1) BATTLE_THEMES[mood].push(file);
+                    return true;
+                },
+                setBattleThemes(map) {
+                    if (!map || typeof map !== 'object') return false;
+                    Object.keys(map).forEach((mood) => {
+                        if (!Object.prototype.hasOwnProperty.call(BATTLE_THEMES, mood)) return;
+                        const list = map[mood];
+                        BATTLE_THEMES[mood] = Array.isArray(list) ? list.slice() : [];
+                    });
+                    return true;
+                },
+
                 // Character-creation screen theme: a random Theme1–4 jingle that
                 // ducks the field BGM while the player builds their trainer.
                 playIntroTheme() { _playIntroTheme(); },
@@ -14539,6 +14614,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     startBgTrack: (idx, at) => _startBgTrack(idx, at),
                     playBattleTheme: (m) => _playBattleTheme(m),
                     endBattleTheme: (w) => _endBattleTheme(w),
+                    battleThemes: () => JSON.parse(JSON.stringify(BATTLE_THEMES)),
                     playIntroTheme: () => _playIntroTheme(),
                     resumeOrStartBg: () => _resumeOrStartBg(),
                     playOneShot: (src, vol, opts) => _playOneShot(src, vol, opts),
@@ -16327,6 +16403,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['sw-weather-anim', 'weatherAnimation'],
                 ['sw-terrain-bg', 'terrainBackground'],
                 ['sw-ambient-particles', 'ambientParticles'],
+                ['sw-generative-music', 'generativeMusic'],
                 ['sw-music', 'musicEnabled'],
                 ['sw-sound', 'soundEnabled'],
                 ['sw-story-bag', 'storyBattleItems'],
@@ -16370,6 +16447,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!on) { try { window.FxParticles && window.FxParticles.clearAll && window.FxParticles.clearAll(); } catch (e) {} }
                 try { window.syncSettingsModalSwitches(); } catch (e) {}
                 try { persistMiscSettings(); } catch (e) {}
+                return;
+            }
+            if (key === 'generativeMusic') {
+                settings.generativeMusic = on;
+                try { window.syncSettingsModalSwitches(); } catch (e) {}
+                try { persistMiscSettings(); } catch (e) {}
+                // Apply live. On → hand the background to the generative engine for the
+                // current screen (file BGM + battle themes now early-return). Off → stop
+                // the engine and resume the file-based field BGM.
+                try {
+                    if (on) {
+                        if (window.MusicDirector) MusicDirector.refresh();
+                    } else {
+                        if (window.ChiptuneEngine && ChiptuneEngine.isPlaying()) ChiptuneEngine.stop();
+                        if (typeof AudioSystem !== 'undefined' && AudioSystem.resumeField) AudioSystem.resumeField();
+                    }
+                } catch (e) {}
                 return;
             }
         };
@@ -21227,6 +21321,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return parts.join('');
         }
 
+        // HP numeric readout tween. The bar already eases (width 0.8s ease-out); the
+        // number used to snap instantly, which read as a jump next to the sliding bar.
+        // This counts the displayed number toward its target over ~0.6s so bar + number
+        // move together. Snaps immediately (no rAF) under the jsdom harness, reduced
+        // motion, or when battle animations are off — so the DOM always lands on the
+        // exact final "cur/max" string a reader (or test) expects.
+        function _setHpText(node, cur, max) {
+            if (!node) return;
+            const target = `${cur}/${max}`;
+            const animate = (
+                typeof requestAnimationFrame === 'function' &&
+                window.__testHarness !== true &&
+                settings.animations !== false &&
+                !(window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion())
+            );
+            // Cancel any in-flight tween on this node.
+            if (node._hpTweenRaf) { try { cancelAnimationFrame(node._hpTweenRaf); } catch (e) {} node._hpTweenRaf = null; }
+            const from = (typeof node._hpShown === 'number') ? node._hpShown : cur;
+            node._hpShown = cur;
+            if (!animate || from === cur) { node.innerText = target; return; }
+            const dur = 600, start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const ease = (t) => 1 - Math.pow(1 - t, 4); // quart-out, matches --ease-out-quart intent
+            const step = (now) => {
+                const t = Math.min(1, ((now || Date.now()) - start) / dur);
+                const val = Math.round(from + (cur - from) * ease(t));
+                node.innerText = `${val}/${max}`;
+                if (t < 1) { node._hpTweenRaf = requestAnimationFrame(step); }
+                else { node._hpTweenRaf = null; node.innerText = target; }
+            };
+            node._hpTweenRaf = requestAnimationFrame(step);
+        }
+
         function updateUI() {
             if (!battleEls.player || !battleEls.player.name) cacheBattleEls();
             const be = battleEls;
@@ -21331,7 +21457,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     teraIndicator = `<span class="tera-tip-hover" style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:pointer;text-decoration:underline dotted;" data-tera="${encodeURIComponent(tt)}" data-o1="${encodeURIComponent(origT1)}" data-o2="${encodeURIComponent(origT2||'')}" onclick="window.showTeraFromEl(event)" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
                 }
                 el.types.innerHTML = getTypeHTML(dispType1, dispType2) + teraIndicator;
-                el.hpText.innerText = `${mon.currentHp}/${mon.maxHp}`;
+                _setHpText(el.hpText, mon.currentHp, mon.maxHp);
                 // Status icon on sprite
                 let sIcon = el.statusIcon;
                 if (mon.status) {
@@ -34733,6 +34859,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         flash.classList.remove('flash');
                         flash.classList.add('fadeout');
                         sprite.classList.add('reveal');
+                        // Particle burst at the reveal — the scene had only a white flash.
+                        // FxParticles self-gates on the harness / reduced motion / the
+                        // ambient-particles setting, so this is a no-op in those cases.
+                        try {
+                            if (window.FxParticles && typeof FxParticles.burst === 'function') {
+                                FxParticles.burst(ov, opts && opts.shiny ? 'confetti' : 'sparkle', { color: '#ffd54f', density: 1, duration: 1200 });
+                            }
+                        } catch (e) {}
                         _sfx('shing', 0.7);
                         _cry(toName, 0.6);
                         if (cancel) { cancel.disabled = true; cancel.textContent = ''; }
@@ -35282,6 +35416,215 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 isEnabled: _enabled, settingOn: _settingOn,
                 presets: () => Object.keys(PRESETS), liveCount: () => _live.size
             };
+        })();
+
+        // ===================================================================
+        // ===== ChiptuneEngine — original procedural chiptune BGM (Web Audio)
+        // ===================================================================
+        // A fully original, generative music engine: it composes background music
+        // LIVE from scales + chord progressions via oscillators — no sample files and
+        // no copyrighted material of any kind. Each "mood" is a parameter set (root,
+        // scale, tempo, progression, timbre) that yields a distinct, endlessly-looping
+        // track. Melodies come from an ISOLATED cosmetic RNG (never the story seed, so
+        // deterministic replays are untouched — same pattern as MoveAnimEngine).
+        //
+        // Harness / no-Web-Audio safe: every audio path no-ops when there's no
+        // AudioContext (jsdom) so the API stays callable in tests without making sound.
+        // Honours settings.musicEnabled + settings.musicVol.
+        window.ChiptuneEngine = (function () {
+            let _ctx = null, _master = null, _timer = null, _gestureArmed = false;
+            let _current = null, _nextTime = 0, _step = 0, _rng = null, _vol = 0.32;
+
+            // mulberry32 — isolated cosmetic RNG, seeded per mood. NOT storyRngNext.
+            function _mkRng(seed) {
+                let s = seed >>> 0;
+                return function () {
+                    s = (s + 0x6D2B79F5) | 0;
+                    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+                    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+            }
+            const SCALES = {
+                major:      [0,2,4,5,7,9,11], minor:  [0,2,3,5,7,8,10], dorian: [0,2,3,5,7,9,10],
+                pentaMajor: [0,2,4,7,9],      pentaMinor: [0,3,5,7,10], lydian: [0,2,4,6,7,9,11],
+                phrygian:   [0,1,3,5,7,8,10],
+            };
+            const _freq = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+
+            // Context → mood parameters. Keys map from MusicDirector contexts.
+            const MOODS = {
+                menu:     { root: 57, scale: 'lydian',     bpm: 92,  prog: [0,4,5,3], wave: 'triangle', bass: 'sine',     density: 0.5,  perc: 0.15, seed: 101 },
+                field:    { root: 60, scale: 'major',      bpm: 108, prog: [0,5,3,4], wave: 'square',   bass: 'triangle', density: 0.68, perc: 0.35, seed: 202 },
+                town:     { root: 62, scale: 'pentaMajor', bpm: 96,  prog: [0,3,4,0], wave: 'triangle', bass: 'triangle', density: 0.58, perc: 0.22, seed: 303 },
+                route:    { root: 59, scale: 'dorian',     bpm: 118, prog: [0,3,4,5], wave: 'square',   bass: 'triangle', density: 0.74, perc: 0.42, seed: 404 },
+                battle:   { root: 57, scale: 'minor',      bpm: 150, prog: [0,5,3,4], wave: 'square',   bass: 'sawtooth', density: 0.9,  perc: 0.62, seed: 505 },
+                boss:     { root: 52, scale: 'phrygian',   bpm: 164, prog: [0,1,0,5], wave: 'sawtooth', bass: 'sawtooth', density: 0.95, perc: 0.78, seed: 606 },
+                victory:  { root: 64, scale: 'major',      bpm: 132, prog: [0,4,5,0], wave: 'square',   bass: 'triangle', density: 0.82, perc: 0.5,  seed: 707 },
+                hof:      { root: 60, scale: 'lydian',     bpm: 80,  prog: [0,3,5,4], wave: 'triangle', bass: 'sine',     density: 0.48, perc: 0.12, seed: 808 },
+                safari:   { root: 55, scale: 'pentaMinor', bpm: 100, prog: [0,3,0,4], wave: 'triangle', bass: 'triangle', density: 0.6,  perc: 0.3,  seed: 909 },
+                casino:   { root: 61, scale: 'major',      bpm: 128, prog: [0,4,5,3], wave: 'square',   bass: 'triangle', density: 0.85, perc: 0.55, seed: 111 },
+                crucible: { root: 50, scale: 'phrygian',   bpm: 142, prog: [0,5,1,0], wave: 'sawtooth', bass: 'sawtooth', density: 0.9,  perc: 0.66, seed: 222 },
+            };
+
+            function _canAudio() {
+                return typeof window !== 'undefined' && window.__testHarness !== true &&
+                    (typeof window.AudioContext === 'function' || typeof window.webkitAudioContext === 'function');
+            }
+            function _ensureCtx() {
+                if (_ctx) return _ctx;
+                if (!_canAudio()) return null;
+                try {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    _ctx = new AC();
+                    _master = _ctx.createGain();
+                    _master.gain.value = 0;
+                    _master.connect(_ctx.destination);
+                } catch (e) { _ctx = null; }
+                return _ctx;
+            }
+            // Browsers suspend the context until a user gesture; resume on the first one.
+            function _armGesture() {
+                if (_gestureArmed || typeof document === 'undefined') return;
+                _gestureArmed = true;
+                const resume = function () {
+                    try { if (_ctx && _ctx.state === 'suspended') _ctx.resume(); } catch (e) {}
+                };
+                ['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+                    document.addEventListener(ev, resume, { passive: true }));
+            }
+
+            function _chord(mood, bar) {
+                const scale = SCALES[mood.scale] || SCALES.major;
+                const deg = mood.prog[bar % mood.prog.length];
+                return [0, 2, 4].map(k => {
+                    const idx = deg + k;
+                    return mood.root + scale[idx % scale.length] + 12 * Math.floor(idx / scale.length);
+                });
+            }
+            // Schedule one voice: oscillator + short AD envelope.
+            function _voice(midi, at, dur, wave, peak) {
+                if (!_ctx) return;
+                const osc = _ctx.createOscillator();
+                const g = _ctx.createGain();
+                osc.type = wave; osc.frequency.value = _freq(midi);
+                g.gain.setValueAtTime(0.0001, at);
+                g.gain.exponentialRampToValueAtTime(Math.max(0.001, peak), at + 0.012);
+                g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+                osc.connect(g); g.connect(_master);
+                osc.start(at); osc.stop(at + dur + 0.02);
+            }
+            // Noise-burst percussion (kick = low-passed, hat = high-passed).
+            function _perc(at, kind) {
+                if (!_ctx) return;
+                const len = Math.floor(_ctx.sampleRate * 0.08);
+                const buf = _ctx.createBuffer(1, len, _ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                const src = _ctx.createBufferSource(); src.buffer = buf;
+                const filt = _ctx.createBiquadFilter();
+                filt.type = kind === 'kick' ? 'lowpass' : 'highpass';
+                filt.frequency.value = kind === 'kick' ? 180 : 6500;
+                const g = _ctx.createGain();
+                g.gain.setValueAtTime(kind === 'kick' ? 0.5 : 0.16, at);
+                g.gain.exponentialRampToValueAtTime(0.0001, at + (kind === 'kick' ? 0.14 : 0.05));
+                src.connect(filt); filt.connect(g); g.connect(_master);
+                src.start(at); src.stop(at + 0.12);
+            }
+            function _scheduleStep(mood, step, at) {
+                const bar = Math.floor(step / 16), b16 = step % 16;
+                const chord = _chord(mood, bar);
+                const scale = SCALES[mood.scale] || SCALES.major;
+                // Bass on each half-note.
+                if (b16 % 8 === 0) _voice(chord[0] - 12, at, (60 / mood.bpm) * 0.9, mood.bass, 0.22);
+                // Lead arpeggio — pick chord/scale tones, gated by density.
+                if (_rng() < mood.density) {
+                    const pick = _rng();
+                    let note;
+                    if (pick < 0.6) note = chord[Math.floor(_rng() * chord.length)] + 12;
+                    else note = mood.root + 12 + scale[Math.floor(_rng() * scale.length)];
+                    _voice(note, at, (60 / mood.bpm) / 4 * 1.4, mood.wave, 0.15);
+                }
+                // Percussion.
+                if (b16 % 4 === 0) _perc(at, 'kick');
+                if (b16 % 2 === 1 && _rng() < mood.perc) _perc(at, 'hat');
+            }
+            function _tick() {
+                const mood = MOODS[_current]; if (!mood || !_ctx) return;
+                const sp16 = (60 / mood.bpm) / 4;
+                while (_nextTime < _ctx.currentTime + 0.12) {
+                    _scheduleStep(mood, _step, _nextTime);
+                    _nextTime += sp16;
+                    _step = (_step + 1) % 64; // 4 bars × 16 sixteenths
+                }
+            }
+            function _applyVol() {
+                if (!_ctx || !_master) return;
+                const mv = (typeof settings !== 'undefined' && settings && typeof settings.musicVol === 'number') ? settings.musicVol : 1;
+                const on = (typeof settings === 'undefined' || !settings) ? true : settings.musicEnabled !== false;
+                const target = on ? _vol * Math.max(0, Math.min(1, mv)) : 0;
+                try { _master.gain.setTargetAtTime(target, _ctx.currentTime, 0.15); } catch (e) { _master.gain.value = target; }
+            }
+
+            // ---- public API ----
+            // start(moodKey): begin (or switch to) a mood. No-op audio under the harness.
+            function start(moodKey) {
+                if (!MOODS[moodKey]) moodKey = 'field';
+                _current = moodKey;
+                if (!_ensureCtx()) return false;   // harness / no Web Audio → API-only
+                _armGesture();
+                try { if (_ctx.state === 'suspended') _ctx.resume(); } catch (e) {}
+                _rng = _mkRng(MOODS[moodKey].seed);
+                _step = 0; _nextTime = _ctx.currentTime + 0.05;
+                _applyVol();
+                if (!_timer) _timer = setInterval(_tick, 25);
+                return true;
+            }
+            function stop() {
+                _current = null;
+                if (_timer) { clearInterval(_timer); _timer = null; }
+                if (_master && _ctx) { try { _master.gain.setTargetAtTime(0, _ctx.currentTime, 0.1); } catch (e) {} }
+            }
+            function setVolume(v) { _vol = Math.max(0, Math.min(1, Number(v) || 0)); _applyVol(); }
+            function refreshVolume() { _applyVol(); }
+            return {
+                start, stop, setVolume, refreshVolume,
+                isPlaying: () => !!_timer,
+                currentMood: () => _current,
+                moods: () => Object.keys(MOODS),
+                canAudio: _canAudio,
+            };
+        })();
+
+        // ===================================================================
+        // ===== MusicDirector — maps UI context → ChiptuneEngine mood
+        // ===================================================================
+        // Thin conductor: translates the current screen / battle into a generative
+        // mood and drives ChiptuneEngine — but ONLY when settings.generativeMusic is on.
+        // When the setting is off it stays dormant and the file-based AudioSystem BGM
+        // behaves exactly as before (the two never overlap: AudioSystem's field-BGM and
+        // battle-theme paths early-return while generative music is active).
+        window.MusicDirector = (function () {
+            const SCREEN_CTX = {
+                'screen-menu': 'menu', 'screen-story-menu': 'menu', 'screen-collection': 'menu',
+                'screen-story-trainercreate': 'menu', 'screen-story-professor': 'town',
+                'screen-story-city': 'town', 'screen-story-pokemoncenter': 'town',
+                'screen-battle': 'battle',
+                'screen-story-catch': 'safari',
+                'screen-story-crucible': 'crucible', 'screen-story-frontier': 'crucible',
+                'screen-story-casino': 'casino',
+            };
+            let _ctx = 'field';
+            function _apply() {
+                const on = !(typeof settings === 'undefined' || !settings) && settings.generativeMusic === true;
+                if (!window.ChiptuneEngine) return;
+                if (!on) { if (ChiptuneEngine.isPlaying()) ChiptuneEngine.stop(); return; }
+                ChiptuneEngine.start(_ctx || 'field');
+            }
+            function setContext(key) { if (key) { _ctx = key; } _apply(); }
+            function setScreen(id) { setContext(SCREEN_CTX[id] || 'field'); }
+            function refresh() { _apply(); }
+            return { setContext, setScreen, refresh, current: () => _ctx };
         })();
 
         // AudioBus (dead Howler BGM wrapper, zero callers) removed 2026-07 — revive via git history.
@@ -40609,6 +40952,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Canonical badge name per gym leader (used in the victory overlay flavor line).
         // Falls back to "Gym Badge" for any leader not mapped here.
+        // Gym-badge medallions — original geometric silhouettes (not reproductions of any
+        // existing badge art). Eight distinct shapes + an original accent palette, keyed by
+        // badge index 0..7. Rendered inline as SVG so they scale crisply and theme via fill.
+        // Used by the victory medallion and the journal "badge case".
+        const _GYM_BADGE_DEFS = [
+            { c: '#9aa4ad', s: 'poly', p: '24,4 38,10 44,24 38,38 24,44 10,38 4,24 10,10' },                                   // octagon
+            { c: '#4f9de8', s: 'drop' },                                                                                       // droplet
+            { c: '#f0b429', s: 'poly', p: '24,3 45,24 24,45 3,24' },                                                           // diamond
+            { c: '#5bbf6a', s: 'poly', p: '24,4 44,19 36,43 12,43 4,19' },                                                     // pentagon
+            { c: '#d072c8', s: 'poly', p: '12,6 36,6 46,24 36,42 12,42 2,24' },                                                // hexagon
+            { c: '#b98be0', s: 'poly', p: '24,3 28.5,16.2 42.2,13.5 33,24 42.2,34.5 28.5,31.8 24,45 19.5,31.8 5.8,34.5 15,24 5.8,13.5 19.5,16.2' }, // 6-point star
+            { c: '#e8623f', s: 'shield' },                                                                                     // shield
+            { c: '#35c0b0', s: 'poly', p: '24,3 29.7,18.3 45,24 29.7,29.7 24,45 18.3,29.7 3,24 18.3,18.3' },                   // 4-point star
+        ];
+        function _gymBadgeShapeMarkup(def, fill, stroke) {
+            if (def.s === 'drop') return `<path d="M24 4 C33 15 40 22 40 30 a16 16 0 1 1 -32 0 C8 22 15 15 24 4 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+            if (def.s === 'shield') return `<path d="M24 3 L42 9 V25 C42 36 34 43 24 46 C14 43 6 36 6 25 V9 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+            return `<polygon points="${def.p}" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+        }
+        // Inline SVG for badge index `i` (0..7). earned=false renders a dim, un-won slot.
+        function _gymBadgeSvg(i, earned) {
+            const def = _GYM_BADGE_DEFS[((i % 8) + 8) % 8];
+            const fill = earned ? def.c : '#2b3038';
+            const stroke = earned ? 'rgba(255,255,255,0.55)' : '#454c57';
+            const shine = earned ? '<circle cx="21" cy="19" r="4.5" fill="rgba(255,255,255,0.6)"/>' : '';
+            return `<svg class="gym-badge-svg" viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true" style="display:block;${earned ? '' : 'opacity:0.55;'}">`
+                 + _gymBadgeShapeMarkup(def, fill, stroke) + shine + `</svg>`;
+        }
+
         const LEADER_BADGE_NAMES = {
             'Brock':'Boulder Badge','Misty':'Cascade Badge','Lt. Surge':'Thunder Badge','Erika':'Rainbow Badge',
             'Koga':'Soul Badge','Sabrina':'Marsh Badge','Blaine':'Volcano Badge','Giovanni':'Earth Badge',
@@ -43156,7 +43528,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm) return '';
             const esc = (s) => _esc(String(s == null ? '' : s));
             let h = '';
-            h += '<div class="story-journal-section"><h3>🏅 Badges</h3><p>' + (sm.badges | 0) + ' / 8 earned.</p></div>';
+            let _badgeCells = '';
+            for (let _bi = 0; _bi < 8; _bi++) {
+                const _earned = _bi < (sm.badges | 0);
+                _badgeCells += '<div class="story-badge-cell' + (_earned ? ' is-earned' : '') + '" title="Badge ' + (_bi + 1) + (_earned ? ' — earned' : ' — locked') + '">' + _gymBadgeSvg(_bi, _earned) + '</div>';
+            }
+            h += '<div class="story-journal-section"><h3>Badges</h3><div class="story-badge-case" role="img" aria-label="' + (sm.badges | 0) + ' of 8 gym badges earned">' + _badgeCells + '</div><p class="story-badge-case-count">' + (sm.badges | 0) + ' / 8 earned.</p></div>';
             const fired = sm.storyEventsFired || {};
             // Renders one story track from a resolved beats map (works for the flat
             // MAIN_STORY_BEATS and the per-track VILLAIN_/EXTRA_STORY_BEATS[id]).
@@ -52778,6 +53155,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // In-city dialogue reveal — brings the hub quote box toward the full-screen
+        // narrative overlay's polish: a subtle entrance rise + a typewriter reveal that
+        // reuses the same gate as the overlay. Full text is written SYNCHRONOUSLY first
+        // (so the jsdom harness and any a11y/test reader always see the complete line),
+        // then the animated re-type runs only in a real browser — suppressed under the
+        // harness, reduced motion, or when the Story text-reveal setting is off.
+        function _cityQuoteReveal(el, text) {
+            if (!el) return;
+            el.textContent = text; // full text first — harness / a11y safe
+            const animate = (
+                typeof requestAnimationFrame === 'function' &&
+                window.__testHarness !== true &&
+                settings.storyTypewriter !== false &&
+                !(window.StoryFx && typeof StoryFx.isReducedMotion === 'function' && StoryFx.isReducedMotion())
+            );
+            try {
+                const box = el.closest ? el.closest('.story-dialog-box') : null;
+                if (box && animate) { box.classList.remove('story-city-quote-in'); void box.offsetWidth; box.classList.add('story-city-quote-in'); }
+            } catch (e) {}
+            if (el._cityTwTimer) { clearTimeout(el._cityTwTimer); el._cityTwTimer = null; }
+            if (!animate) return;
+            requestAnimationFrame(function () {
+                let ci = 0;
+                el.textContent = '';
+                const step = function () {
+                    ci += Math.max(1, Math.round(text.length / 140));
+                    el.textContent = text.slice(0, Math.min(ci, text.length));
+                    if (ci < text.length) { el._cityTwTimer = setTimeout(step, 16); }
+                    else { el.textContent = text; el._cityTwTimer = null; }
+                };
+                step();
+            });
+        }
+
         function renderCityActions(ev) {
             // Step into a "clean street" — auto-release bonded Pit mons + run any queued
             // unlock toasts. Both are idempotent (state mutations short-circuit when nothing
@@ -52901,7 +53312,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
             if (_cityBlurb) quoteText = '📍 ' + _cityBlurb + '\n\n' + quoteText;
-            if (quoteEl) quoteEl.textContent = quoteText;
+            if (quoteEl) _cityQuoteReveal(quoteEl, quoteText);
 
             // Milestone tips fire once per save as a calm toast on entry — no permanent
             // quote-box clutter. Rival gate / route-blocker hints become tip-rail items below.
@@ -53501,6 +53912,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let _pips = '';
                     for (let i = 0; i < 8; i++) _pips += `<span class="story-city-badge-pip${i < (sm.badges | 0) ? ' earned' : ''}"></span>`;
                     _idPipsEl.innerHTML = _pips;
+                }
+                // Journey progress — an 8-city route track (+ League node) marking where the
+                // run sits on the path. Cleared cities fill, the current city pulses, the rest
+                // dim. Presentation only; mirrors cityIdx + sm.gymCleared already resolved above.
+                const _routeEl = document.getElementById('story-city-route');
+                if (_routeEl) {
+                    const _gc = sm.gymCleared || {};
+                    let _r = '';
+                    for (let i = 1; i <= 8; i++) {
+                        const _done = !!_gc[i] || i < (cityIdx | 0);
+                        const _cur = i === (cityIdx | 0);
+                        const _cls = _cur ? 'is-current' : (_done ? 'is-done' : 'is-future');
+                        if (i > 1) _r += `<span class="story-route-link${_done ? ' is-done' : ''}"></span>`;
+                        _r += `<span class="story-route-node ${_cls}"><span class="story-route-dot"></span></span>`;
+                    }
+                    const _leagueReady = (sm.badges | 0) >= 8;
+                    _r += `<span class="story-route-link${_leagueReady ? ' is-done' : ''}"></span>`;
+                    _r += `<span class="story-route-node story-route-league ${_leagueReady ? 'is-current' : 'is-future'}" title="Pokémon League"><span class="story-route-crown">★</span></span>`;
+                    _routeEl.innerHTML = _r;
                 }
             } catch (e) {}
             // Restore the pre-rebuild scroll offset and focused facility button.
@@ -60168,7 +60598,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                         <div style="font-size:10px;color:#667;letter-spacing:0.06em;">Read them right for an edge — or skip straight to battle.</div>`;
                     document.body.appendChild(overlay);
-                    try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                    try { const _bm = _storyBattleMoodFor(eventType); AudioSystem.playBattleTheme(_bm); if (window.MusicDirector) MusicDirector.setContext(_bm === 'trainer' ? 'battle' : 'boss'); } catch (e) {}
                     const armAt = Date.now() + _armMs();
                     overlay.querySelectorAll('button[data-vs2-pick]').forEach(btn => {
                         btn.onclick = () => {
@@ -60216,7 +60646,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                         <button type="button" class="vs2-battle-btn" data-vs2-battle="1">Face them →</button>`;
                     document.body.appendChild(overlay);
-                    try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                    try { const _bm = _storyBattleMoodFor(eventType); AudioSystem.playBattleTheme(_bm); if (window.MusicDirector) MusicDirector.setContext(_bm === 'trainer' ? 'battle' : 'boss'); } catch (e) {}
                     const armAt = Date.now() + _armMs();
                     const bb = overlay.querySelector('button[data-vs2-battle="1"]');
                     if (bb) bb.onclick = () => { if (Date.now() < armAt) return; _startBattleFrom(overlay); };
@@ -60263,7 +60693,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <div style="font-size:11px;color:#888;margin-top:8px;">Battle starting…</div>`;
                 document.body.appendChild(overlay);
-                try { AudioSystem.playBattleTheme(_storyBattleMoodFor(eventType)); } catch (e) {}
+                try { const _bm = _storyBattleMoodFor(eventType); AudioSystem.playBattleTheme(_bm); if (window.MusicDirector) MusicDirector.setContext(_bm === 'trainer' ? 'battle' : 'boss'); } catch (e) {}
                 const introMs = isRivalBattle ? 3400 : (vsIsMajor ? 2900 : 2200);
                 setTimeout(() => { _startBattleFrom(overlay); }, introMs);
             };
@@ -61050,7 +61480,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
                 <div class="story-victory-v2-card">
                     <div class="story-victory-v2-head">
-                        ${gotBadge ? '<div class="story-victory-badge-slot story-victory-v2-medallion" title="Milestone">🏅</div>' : ''}
+                        ${gotBadge ? `<div class="story-victory-badge-slot story-victory-v2-medallion" title="${isGymBadgeEvent ? _badgeName : 'Milestone'}">${isGymBadgeEvent ? _gymBadgeSvg((sm.badges | 0) - 1, true) : '🏅'}</div>` : ''}
                         <div class="story-victory-v2-title">VICTORY!</div>
                         ${_firstClearBanner}
                         ${isGymBadgeEvent?`<div class="story-victory-v2-milestone">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div class="story-victory-v2-milestone">A milestone falls.</div>`:'')}
@@ -68091,6 +68521,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _battleWeatherFx.id = null; _battleWeatherFx.key = '';
             }
             _syncFacilityAmbient(id);   // shop dust / tutor shimmer / city leaves (or clear)
+            // Generative BGM: switch the mood to match the screen (no-op unless
+            // settings.generativeMusic is on). The battle screen refines to boss mood
+            // separately at the intro; here it lands on the base 'battle' mood.
+            try { if (window.MusicDirector) MusicDirector.setScreen(id); } catch (e) {}
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('hidden');
