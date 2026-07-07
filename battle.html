@@ -44483,7 +44483,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    // `choosePending` is the one-time token the mentor grants —
                    // consumed at the first Hidden Power lesson to let the player pick that
                    // mon's type; every later mon uses its own (stable, auto-assigned) type.
-                   hiddenPowerUnlocked: false, hiddenPowerChoosePending: false,
+                   // Availability also derives from story progress (City 3+), so a skipped
+                   // Diviner never locks the mechanic out; `hpChooseGranted` records that
+                   // the one-time token was issued (by the Diviner or the lazy back-fill)
+                   // so it is never re-granted after being spent (see _hpEnsureUnlockState).
+                   hiddenPowerUnlocked: false, hiddenPowerChoosePending: false, hpChooseGranted: false,
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -44756,9 +44760,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // a mid-run load doesn't suppress beats it hasn't actually shown.
                 if (!sm.scenesShown || typeof sm.scenesShown !== 'object') sm.scenesShown = {};
                 // Hidden Power mentor flags — absent on saves predating the feature;
-                // default false so the mentor still fires on the approach to City 1.
+                // default false. Availability self-heals from story progress on the next
+                // tutor render (_hpEnsureUnlockState), so an old save already past City 3
+                // — including one that missed the Diviner entirely — gets the mechanic
+                // (and its one-time first-pick token) back-filled without a migration bump.
                 if (typeof sm.hiddenPowerUnlocked !== 'boolean') sm.hiddenPowerUnlocked = false;
                 if (typeof sm.hiddenPowerChoosePending !== 'boolean') sm.hiddenPowerChoosePending = false;
+                if (typeof sm.hpChooseGranted !== 'boolean') sm.hpChooseGranted = false;
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -46068,6 +46076,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _hpTutorApply: (...a) => _hpTutorApply(...a),
                 _hpTutorPreteach: (...a) => _hpTutorPreteach(...a),
                 chooseHiddenPowerType: (...a) => _chooseHiddenPowerType(...a),
+                hpAvailable: (...a) => _hpAvailable(...a),
+                hpEnsureUnlockState: (...a) => _hpEnsureUnlockState(...a),
             };
             // Narration-system test surface (structured scenes, overlay queue,
             // preview/dispatch parity) — exposed in the same inner scope as the
@@ -69287,7 +69297,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // hpType (chosen once at the first lesson, random thereafter), projected on
             // teach. (An already-equipped Hidden Power still shows in the loadout panel.)
             for (let i = full.length - 1; i >= 0; i--) { if (/^Hidden Power/.test(full[i])) full.splice(i, 1); }
-            if (sm && sm.hiddenPowerUnlocked) full.push('Hidden Power');
+            if (_hpAvailable()) full.push('Hidden Power');
             const stage = (typeof _npcStage === 'function') ? _npcStage('tutor') : 0;
             // Phase 2 (BUG B fix): a Heart Scale no longer unlocks the full pool — it
             // only waives the GOLD cost of an IN-stage teach. The staged gate below
@@ -69350,7 +69360,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Hidden Power: strip any learnset variant from the teachable set; the only
             // teachable Hidden Power is the unified, mentor-unlocked one (see above).
             for (const m of [...allow]) { if (/^Hidden Power/.test(m)) allow.delete(m); }
-            if (sm && sm.hiddenPowerUnlocked) allow.add('Hidden Power');
+            if (_hpAvailable()) allow.add('Hidden Power');
             // Barren-species floor (e.g. Beldum, whose only Natural move is Take Down at
             // 90 BP): if the BP cap leaves NO teachable Natural move at L1, admit the single
             // lowest-BP Natural move so the picker is never empty. Mirrors the foe gate's
@@ -71335,7 +71345,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const tapInfo = t.closest('.tx-tapinfo[title]');
                 if (tapInfo && typeof window._prefersFinePointerHover === 'function' && !window._prefersFinePointerHover()) {
                     const cardHost = tapInfo.closest('.tx-card');
-                    if (!cardHost || cardHost.dataset.disabled === '1' || cardHost.dataset.equipped === '1') {
+                    // tx-tapinfo--force always shows its info (even inside an enabled card)
+                    // — for explicit "?" affordances whose whole job is to explain, not act.
+                    const forced = tapInfo.classList.contains('tx-tapinfo--force');
+                    if (forced || !cardHost || cardHost.dataset.disabled === '1' || cardHost.dataset.equipped === '1') {
                         try { window.showTapInfoTooltip && window.showTapInfoTooltip(tapInfo, ev); } catch (e) {}
                         return;
                     }
@@ -72086,9 +72099,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const competPill = compet
                 ? `<span class="tx-pill tx-pill--suitable tx-tapinfo" role="note" aria-label="Suitable — ${_esc(compet.note || 'a competitively strong utility move')}" title="${_esc(compet.note || 'A competitively strong utility move.')}">★ Suitable</span>`
                 : '';
+            // Hidden Power progressive disclosure: a compact "?" pill carrying the full
+            // system explanation. It's a non-focusable span (valid inside the card
+            // <button>) so it never creates nested-interactive; the always-visible desc
+            // above carries the same meaning for screen readers. tx-tapinfo--force makes
+            // the tap tooltip fire even inside this enabled card (see the grid click
+            // handler), and title serves hover — so touch, mouse, and SR are all covered.
+            const HP_EXPLAINER = 'Every Pokémon carries one secret element, fixed to it from birth. This wakes it as a 60-power special move of that element. Your first lesson lets you choose the type; every Pokémon after keeps its own.';
+            const hpInfoPill = isUnifiedHP
+                ? `<span class="tx-pill tx-tapinfo tx-tapinfo--force" role="note" aria-label="About Hidden Power. ${_esc(HP_EXPLAINER)}" title="${_esc(HP_EXPLAINER)}">ⓘ What\'s this?</span>`
+                : '';
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
                 competPill,
+                hpInfoPill,
                 lockPill,
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
@@ -73394,6 +73418,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Fresh per-render memo so score / pool / tag lookups within this
             // cycle are O(1) after the first hit. See _txRender comment block.
             _txBeginRender();
+            // Self-heal Hidden Power availability at the point of use: if the run has
+            // reached the availability threshold, this back-fills the unlock flag +
+            // one-time choose token before the pool is built, so the card can never be
+            // missing because a Diviner scene was skipped or fast-tracked.
+            try { _hpEnsureUnlockState(); } catch (e) {}
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
@@ -73522,6 +73551,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── Hidden Power at the Move Tutor ──────────────────────────────────────
+        // Availability — the SINGLE source of truth. The Diviner (City-3 road scene)
+        // sets sm.hiddenPowerUnlocked as the narrative reveal, but availability ALSO
+        // derives from story progress (City 3+). So a Diviner scene that was skipped,
+        // fast-tracked on a replay run, or predates this feature can NEVER silently
+        // lock the player out of a mechanic the rest of the run is balanced around.
+        // Point-of-use + state-driven, not one-shot-event-driven.
+        const HP_AVAILABLE_CITY = 3;
+        function _hpAvailable() {
+            if (!sm) return false;
+            if (sm.hiddenPowerUnlocked) return true;
+            let city = 0;
+            try { city = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) { city = 0; }
+            return city >= HP_AVAILABLE_CITY;
+        }
+        // Self-heal on read: whenever Hidden Power is available, back-fill the persisted
+        // unlock flag and — if the reveal never granted it and no Hidden Power has been
+        // taught yet this run — lazily grant the one-time "shape your first element"
+        // token, so that beat survives a missed Diviner. `hpChooseGranted` guards against
+        // re-granting after the token is spent. Idempotent; saves only on a real change.
+        function _hpEnsureUnlockState() {
+            if (!sm || !_hpAvailable()) return;
+            let changed = false;
+            if (!sm.hiddenPowerUnlocked) { sm.hiddenPowerUnlocked = true; changed = true; }
+            if (!sm.hpChooseGranted) {
+                const taught = Array.isArray(sm.team) && sm.team.some(m =>
+                    m && m.build && Array.isArray(m.build.m) && m.build.m.some(x => /^Hidden Power/.test(String(x))));
+                if (!taught && !sm.hiddenPowerChoosePending) { sm.hiddenPowerChoosePending = true; }
+                sm.hpChooseGranted = true; changed = true;
+            }
+            if (changed) { try { save(); } catch (e) {} }
+        }
         // One-time type picker the Diviner's lesson grants. Resolves to a type string
         // or null (cancelled). Built from the 16 legal HP types; styled with the same
         // type-badge colours used everywhere else.
@@ -73585,6 +73645,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // { proceed, chosenType }; chosenType is applied post-commit by _hpTutorApply.
         async function _hpTutorPreteach(mon, newMove) {
             if (String(newMove).split('/')[0] !== 'Hidden Power') return { proceed: true, chosenType: null };
+            try { _hpEnsureUnlockState(); } catch (e) {}
             const moves = (mon.build && mon.build.m) || [];
             if (moves.some(m => /^Hidden Power/.test(String(m)))) {
                 try { window.showGameAlert && window.showGameAlert(`${mon.name} already knows Hidden Power.`); } catch (e) {}

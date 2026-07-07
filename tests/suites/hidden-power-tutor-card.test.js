@@ -30,6 +30,10 @@ function prime({ choose }) {
   ST.sm.settings = { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] };
   ST.sm.badges = 6; ST.sm.gold = 99999; ST.sm.inventory = {};
   ST.sm.hiddenPowerUnlocked = true;
+  // The one-time first-pick token has been ISSUED (hpChooseGranted) — otherwise the
+  // point-of-use self-heal would lazily grant it and every card would read "you
+  // choose". `choose` then models whether it is still pending (first lesson) or spent.
+  ST.sm.hpChooseGranted = true;
   ST.sm.hiddenPowerChoosePending = !!choose;
   // A high-city (Guru) tutor so nothing gates the card; pick a mon and pin its element.
   let idx = 0;
@@ -56,6 +60,22 @@ test('the unified Hidden Power card shows the mon\'s own element, not Normal', a
   const desc = card.querySelector('.tx-card-desc');
   assert.ok(desc && /hidden element/i.test(desc.textContent), 'desc explains the hidden-element mechanic');
   assert.ok(/Ice/.test(desc.textContent), 'desc names the resolved element');
+});
+
+test('the card carries an accessible "?" explainer (hover + touch + SR labelled)', async () => {
+  prime({ choose: false });
+  await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w);
+  await settle('tx-grid');
+  await showAll();
+  const card = hpCard();
+  const info = card.querySelector('.tx-tapinfo--force');
+  assert.ok(info, 'a forced tap-info affordance is present on the Hidden Power card');
+  assert.ok(info.getAttribute('title') && /secret element/i.test(info.getAttribute('title')), 'hover text explains the mechanic');
+  assert.ok(info.getAttribute('aria-label') && /Hidden Power/i.test(info.getAttribute('aria-label')), 'screen-reader label present');
+  // It must NOT be independently focusable — nested interactive content inside the
+  // card <button> would be invalid; the always-visible desc carries SR meaning.
+  assert.ok(!info.hasAttribute('tabindex'), 'not a nested focusable (valid button content)');
 });
 
 test('with the one-time token, the card says the player chooses the element', async () => {
