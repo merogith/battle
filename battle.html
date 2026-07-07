@@ -12885,7 +12885,12 @@
                 // but if the caller is forcing an illegal pick (end-game), skip the designed path.
                 if (effMix < 1.0 && Math.random() >= effMix && !forceIllegal) {
                     const designed = makeDesignedBuild(name);
-                    if (designed) return designed;
+                    if (designed) {
+                        // Gap formes carry a fixed legal ability even on the designed path
+                        // (Marill → Huge Power, Greninja-Ash → Battle Bond …) — see the curated pin below.
+                        if (_CURATED_SINGLES_SETS[name] && _CURATED_SINGLES_SETS[name].a) designed.a = _CURATED_SINGLES_SETS[name].a;
+                        return designed;
+                    }
                 }
             }
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
@@ -13020,6 +13025,15 @@
                 if (!b.a || b.a === '') b.a = 'None';
             }
 
+            // Gap formes with a curated single-battle set carry a fixed legal ability
+            // (Marill → Huge Power, Greninja-Ash → Battle Bond, Zygarde-Complete → Power
+            // Construct, Darmanitan-Zen → Zen Mode …). When a "clean" set supplies the moves
+            // instead of the curated fallback, its multi-ability options could otherwise
+            // surface the off-meta ability (Thick Fat) — pin it back to the curated one.
+            if (_CURATED_SINGLES_SETS[name] && _CURATED_SINGLES_SETS[name].a && b && b.a !== _CURATED_SINGLES_SETS[name].a) {
+                b.a = _CURATED_SINGLES_SETS[name].a;
+            }
+
             // Assign gimmick item and tag build
             assignGimmickToBuild(name, b, gimmick);
 
@@ -13054,6 +13068,7 @@
                         }
                         if (!fb.a) fb.a = 'None';
                     }
+                    if (_CURATED_SINGLES_SETS[name] && _CURATED_SINGLES_SETS[name].a) fb.a = _CURATED_SINGLES_SETS[name].a;
                     return fb;
                 }
             }
@@ -74007,7 +74022,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } else locked.push({ kind: 'nature', label: 'Nature', why: 'Nature Rater opens at City ' + FACILITY_DEBUT_CITY.nature });
 
-                if (facUnlocked('evtrainer')) {
+                // Full "buy any spread" only once the EV Trainer is in FULL mode (City 7+).
+                // The Trainer debuts at City 3 in reshuffle-only mode, where auto-build still
+                // stages EVs as a free training FOCUS — not the full spread (see _evTrainerIsFullMode).
+                if (facUnlocked('evtrainer') && (typeof _evTrainerIsFullMode !== 'function' || _evTrainerIsFullMode())) {
                     if (ba && ba.evs && !_evsEqual(b.evs || {}, ba.evs)) {
                         parts.push({ kind: 'evs', label: 'EV spread', from: 'current', to: (typeof _evSpreadCompact === 'function' ? _evSpreadCompact(ba.evs) : 'best spread'), cost: EVTRAINER_COST, evs: { ...ba.evs } });
                     }
