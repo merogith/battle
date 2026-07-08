@@ -1,7 +1,22 @@
 # UI Polish Master Plan — "Player-Ready" Visual & Accessibility Update
 
-> **Status:** PROPOSAL — awaiting maintainer sign-off on direction (per CLAUDE.md approval
-> rules). Nothing in this document is implemented yet.
+> **Status:** APPROVED (maintainer, 2026-07-08) — see §Decisions. Phase A greenlit in full;
+> Phase B type-ramp / badge-ink / 6-button-family consolidation approved with the enforced
+> style-budget guard; two flagged product items resolved as "keep as-is". Implementation of
+> Phase A begins on this branch.
+>
+> ### Decisions (maintainer, 2026-07-08)
+> | Topic | Decision | Note |
+> |---|---|---|
+> | Phase A scope | **Do all ~30 fixes** | greenlit as one pass; inline copy/label sign-offs flagged in the diff |
+> | Type scale (B3) | **10px floor + 8-step ramp** | smallest text grows; 82% already fits |
+> | Type badges (B4) | **Dark ink on the 7 light types** | canonical colors unchanged, only text color |
+> | First rival fight | **Keep as-is** | intended difficulty; NOT teaching arrows, NOT softening. The journey "four game-overs" finding is acknowledged and accepted. |
+> | Button families (B5) | **Consolidate 94 → 6** | per-screen themes override `--btn-*` vars |
+> | Rival banter ±5% | **Keep hidden gamble** | no tell, no first-duel flavor-cap — left unchanged |
+> | PC card buttons (A16) | **Stack vertically** on narrow cards | not shortened labels; cards get taller |
+> | Style-budget guard (B9) | **Yes — enforce in CI** | committed test fails on new drift |
+
 > **Method (2026-07-08):** 22-agent audit — 9 visual screen-clusters driven in real headless
 > Chromium at up to 7 viewports each (desktop 1440×900, laptop 1280×720, tablet 820×1180 ±
 > landscape, phone 390×844 / 360×740 / 844×390, touch on/off), a no-harness **new-player
@@ -247,7 +262,7 @@ Every item is a verified defect with a known one-to-few-line cause. Ordered by p
 | A13 | Revert/scope the `.type-X` flat override poisoning tutor chips | S · [BP] (restores documented design) |
 | A14 | Opaque sticky facility chrome (confirm bar, switcher, toolbar) + scroll-padding | S-M · [BP] |
 | A15 | EV-Trainer/Colress cost-badge stack on ≤480px; Colress/FanClub phone header demotion (shared facility-header truncation rule) | M · [BP] |
-| A16 | PC buttons: "Take"/"Free" (or icon+aria) so labels fit; `.sum-cov-label` min-width 84px ("Resisted") | S · [SIGN-OFF] (label copy) |
+| A16 | PC buttons: **stack Withdraw/Release vertically** on narrow cards (maintainer choice — keeps full labels, cards grow taller); `.sum-cov-label` min-width 84px ("Resisted") | S · [BP] |
 | A17 | Battle: command grid `flex-shrink:0` priority over log (tablet); HUD name-first flex (min 90px); move-tile `hyphens:auto`, never break-word+clamp | M · [BP] |
 | A18 | Sequence pads: glyphs (▲●■★) + aria-labels + non-opacity flash; fix "Previous/Next" labels in Dodge/Berry-Catch; minigame shell: focus-on-mount, Esc, ✕ Give up | S-M · [BP] |
 | A19 | HoF: queue/collapse simultaneous achievement toasts; suppress while ceremony overlay is up | S · [BP] |
@@ -329,14 +344,13 @@ Do these as ONE coordinated sweep — each alone re-decays. Order within the pha
   (mostly falls out of C1); drop duplicate speaker labels; move "Unstick"/seed debug copy out
   of the new-player funnel; retime the "First Catch" quest toast. [SIGN-OFF] (copy) S-M
 
-### Flagged for maintainer, deliberately NOT in scope of this plan
+### Flagged for maintainer — RESOLVED 2026-07-08
 
-- **First rival fight difficulty** (journey P1): 4 consecutive naive-play game-overs.
-  Options (pick one): soften the gate duel on Normal [NUM]; teach the ▲/▼ arrows concretely
-  in the "First Fight" scene [SIGN-OFF copy]; or accept as intended Soulslike-opening.
-- **Banter ±5% hidden gamble before that same fight** — surface a readable tell, cap to
-  flavor on the first duel, or keep [NUM].
-- **Typewriter default** (VISUAL_ART_DIRECTION_REVIEW P2-8) — unchanged recommendation.
+- **First rival fight difficulty** (journey P1): **keep as-is** — intended difficulty accepted;
+  no softening, no arrow-teaching scene. (The playtest churn risk is acknowledged; retry is
+  cheap and the defeat card is well-designed.)
+- **Banter ±5% hidden gamble before that fight**: **keep as-is** — left an unlabeled roll.
+- **Typewriter default** (VISUAL_ART_DIRECTION_REVIEW P2-8) — still open; not part of this plan.
 
 ---
 
