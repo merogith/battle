@@ -5535,6 +5535,12 @@
             display: flex; align-items: center; justify-content: center;
             overflow: hidden; pointer-events: none;
         }
+        /* Short viewports (phone landscape): the 4:3 stage otherwise pushes the catch
+           ball buttons (and, in Safari, all actions) below an unscrollable fold. Cap its
+           height so the action row stays on-screen; aspect-ratio narrows width to match. */
+        @media (max-height: 520px) {
+            .storyfx-stage { max-height: 42vh; width: auto; }
+        }
         .storyfx-stage-bg {
             position: absolute; inset: 0; z-index: 0;
             background: radial-gradient(ellipse at 50% 70%, rgba(120,180,90,0.35) 0%, rgba(8,20,12,0.0) 60%),
@@ -8906,7 +8912,12 @@
         /* Portrait phone: bigger logo — must be AFTER base .title-pokemon/.title-arena to win cascade */
         @media (max-width: 600px) {
             .title-pokemon {
-                font-size: clamp(2.8rem, 13vw, 4.5rem) !important;
+                /* nowrap + a fit-guaranteed clamp: the 7-glyph word must never break
+                   mid-word ("POKéM / ON") on portrait phones. 11.5vw keeps it one line
+                   with the reduced letter-spacing down to ~320px. */
+                font-size: clamp(2.4rem, 11.5vw, 4.5rem) !important;
+                letter-spacing: 2px;
+                white-space: nowrap;
                 -webkit-text-stroke: 2px #3c5aa6;
                 text-shadow: 1px 1px 0 #3c5aa6, 3px 3px 0 #3c5aa6, 5px 5px 0 #1c3266;
             }
@@ -8959,7 +8970,10 @@
         .story-create-shell {
             width: 100%; max-width: 640px;
             display: flex; flex-direction: column; gap: 16px;
-            padding-bottom: 20px;
+            /* Scroll clearance for the sticky "Begin" footer: without it, expanding the
+               Advanced section pushes its tail (Dynamax/Tera/No-Item toggles) under the
+               pinned footer with no way to scroll them clear. ~1.2x footer height. */
+            padding-bottom: 120px;
         }
         .story-create-head {
             display: grid;
@@ -9105,12 +9119,12 @@
         .story-create-diff-card[data-diff="hard"].story-create-diff-card--active .story-create-diff-sub,
         .story-create-diff-card[data-diff="challenge"].story-create-diff-card--active .story-create-diff-sub { color: #ffccbc; }
         .story-create-diff-name { font-size: 11px; letter-spacing: 1px; }
-        .story-create-diff-sub { font-size: 8px; color: #8c97a4; text-align: center; letter-spacing: 0.5px; font-family: var(--ui-font) !important; line-height: 1.35; }
+        .story-create-diff-sub { font-size: 10px; color: #8c97a4; text-align: center; letter-spacing: 0.3px; font-family: var(--ui-font) !important; line-height: 1.35; }
         .story-create-diff-card--active .story-create-diff-sub { color: #c5e1a5; }
         .story-create-diff-badge {
             position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
             background: #4caf50; color: #0a1a0c;
-            font-family: var(--ui-font) !important; font-size: 8px; font-weight: bold;
+            font-family: var(--ui-font) !important; font-size: 10px; font-weight: bold;
             letter-spacing: 0.5px; white-space: nowrap;
             padding: 2px 7px; border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.4);
@@ -9125,7 +9139,7 @@
         @media (max-width: 420px) {
             .story-create-diff-grid { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; }
             .story-create-diff-card { padding: 14px 6px 8px; min-height: 72px; }
-            .story-create-diff-sub { font-size: 7.5px; }
+            .story-create-diff-sub { font-size: 10px; }
         }
         .story-create-gen-presets { display: flex; gap: 8px; flex-wrap: wrap; }
         .story-create-gen-preset {
@@ -9152,6 +9166,10 @@
             border: 1px dashed #555;
             background: rgba(15,15,26,0.6);
         }
+        /* Honour the [hidden] attribute the preset toggler sets — display:grid above
+           otherwise defeats the UA rule, leaving the custom grid permanently visible and
+           letting the active preset chip silently contradict the live checkboxes. */
+        .story-create-gen-custom[hidden] { display: none; }
         .story-create-gen-cb { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #ccc; cursor: pointer; }
         .story-create-gen-cb input { accent-color: #4caf50; }
         .story-create-advanced {
@@ -9185,8 +9203,11 @@
         .story-create-footer {
             display: flex; flex-direction: column; gap: 8px;
             position: sticky; bottom: 0;
-            padding: 10px 0 4px;
-            background: linear-gradient(180deg, transparent 0%, rgba(8,10,14,0.95) 30%, rgba(8,10,14,0.98) 100%);
+            padding: 12px 0 6px;
+            /* Opaque from the top edge: the old transparent-to-solid gradient let scrolled
+               option rows bleed through and read as a layout collision. */
+            background: rgba(8,10,14,0.98);
+            box-shadow: 0 -8px 12px rgba(8,10,14,0.98);
         }
         .story-create-warning {
             margin: 0;
@@ -10644,7 +10665,7 @@
         </div>
     </div>
 
-    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="Defeat" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;font-family:var(--battle-font);">
+    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="Defeat" style="display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;padding:20px;font-family:var(--battle-font);">
         <!-- P2d: compact defeat card. Every element id and button onclick is
              unchanged — only the card wrapper + the foe's parting line are new. -->
         <div class="story-defeat-card">
@@ -16775,12 +16796,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // explicit [data-modal-autofocus] target, else the first tabbable
         // control, else the dialog box itself (so its label is announced).
         function _a11yFocusIntoModal(el) {
-            const target = el.querySelector('[data-modal-autofocus]') || window._modalFocusablesIn(el)[0];
+            const explicit = el.querySelector('[data-modal-autofocus]');
+            const target = explicit || window._modalFocusablesIn(el)[0];
+            // preventScroll: focusing a trailing control (e.g. the Help modal's only
+            // focusable is its final "Got it!" button) must NOT scroll-anchor the content
+            // to the bottom — a first-time reader would land on the last line.
             if (target && typeof target.focus === 'function') {
-                target.focus();
+                target.focus({ preventScroll: true });
             } else if (typeof el.focus === 'function') {
                 if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
-                el.focus();
+                el.focus({ preventScroll: true });
+            }
+            // Open reading modals at their top, unless the modal declares its own
+            // mid-content autofocus target.
+            if (!explicit) {
+                const sc = el.querySelector('.modal-content, .modal-summary-shell') || el;
+                try { sc.scrollTop = 0; } catch (e) {}
             }
         }
         // Global Tab focus-trap (ISSUE-190): keep keyboard focus inside the
@@ -53074,7 +53105,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_coldSeen) {
                         _storyRunSceneMark('city0-coldopen');
                         const _coldOv = document.createElement('div');
-                        _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
+                        // safe center + overflow-y:auto: on short viewports (phone landscape)
+                        // the prose + Begin button exceed the height; plain center would push
+                        // the button below an unscrollable fold. safe center aligns to the top
+                        // and scrolls when it overflows, centers when it fits.
+                        _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
                         _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on the bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
@@ -54547,7 +54582,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = sceneId;
-                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;' + 'flex-direction:column;gap:12px;';
+                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;' + 'flex-direction:column;gap:12px;';
                     document.body.appendChild(ov);
                 }
                 // P3 backdrop — recomputed per beat (the element is reused across
@@ -54887,7 +54922,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _daycareClose(); // never stack two daycare overlays on re-entry
             const ov = document.createElement('div');
             ov.id = 'story-daycare-overlay';
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;';
             ov.innerHTML = _daycareRenderHTML();
             document.body.appendChild(ov);
             ov.addEventListener('click', e => { if (e.target === ov) _daycareClose(); });
@@ -55287,7 +55322,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _pitsCloseDraftOverlay(); } catch (_) {} // clear any stale round draft too
             const ov = document.createElement('div');
             ov.id = 'story-pits-overlay';
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9990;display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;';
             ov.innerHTML = _pitsRenderHTML();
             document.body.appendChild(ov);
             ov.addEventListener('click', e => { if (e.target === ov) _pitsClose(); });
@@ -55440,7 +55475,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pitsCloseDraftOverlay();
             const ov = document.createElement('div');
             ov.id = 'story-pits-draft-overlay';
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9992;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9992;display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;';
             ov.innerHTML = _pitsRenderDraftHTML(round, trio, idx, total);
             document.body.appendChild(ov);
             const go = ov.querySelector('#pits-draft-go');
@@ -55613,7 +55648,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rounds = ((sm.pits && sm.pits._enemyRoster) || []).length || 5;
             const ov = document.createElement('div');
             ov.id = 'story-pits-defeat-overlay';
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;';
             ov.innerHTML = `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(40,8,8,0.98),rgba(15,2,2,0.98));border:1px solid #ff5252;padding:22px 24px;color:#ffcdd2;font-family:inherit;font-size:12px;line-height:1.6;box-shadow:0 14px 40px rgba(0,0,0,0.8);">
                 <div style="font-size:15px;color:#ff5252;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">☠ On the Floor</div>
                 <div style="margin-bottom:14px;color:#ef9a9a;font-style:italic;">"They're dragging your fighter off the mat. The crowd hasn't even thinned. You can step back in — or you can walk away. But you don't walk away from here whole."</div>
@@ -57026,7 +57061,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _mfFirstCloseDefeatOverlay();
             const ov = document.createElement('div');
             ov.id = 'story-mf-first-defeat-overlay';
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;';
             ov.innerHTML = `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(24,16,44,0.98),rgba(8,4,18,0.98));border:1px solid #b39ddb;padding:22px 24px;color:#d1c4e9;font-family:inherit;font-size:12px;line-height:1.6;box-shadow:0 14px 40px rgba(0,0,0,0.8);">
                 <div style="font-size:15px;color:#b39ddb;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">👁 The Wall Holds</div>
                 <div style="margin-bottom:14px;color:#b39ddb;font-style:italic;">"Down. Good — now you know the exact height of what's ahead. Most trainers never get to measure it. Stand back up whenever you like; I don't count attempts. Or walk on — the road takes the unproven too. It's just less kind about it."</div>
