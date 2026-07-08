@@ -796,6 +796,32 @@
             background:linear-gradient(180deg,#ffd769,#ffbf3d); border:1px solid #d99a1e; border-radius:9px; }
         .tx-fb-apply:disabled { background:#3a3f4a; color:#8b909b; border-color:#2c3038; cursor:not-allowed; }
         .tx-fb-cancel { flex:0 0 auto; min-height:40px; padding:0 14px; font-family:inherit; font-size:12px; cursor:pointer; color:#cfd8dc; background:rgba(120,144,156,0.18); border:1px solid #78909c; border-radius:9px; }
+        /* Per-component "pick what to apply" chooser (include checkboxes + All/None). */
+        .tx-fb-pick { display:flex; align-items:center; gap:8px; margin:2px 0 2px; font-size:10px; color:#8b92a4; text-transform:uppercase; letter-spacing:0.05em; }
+        .tx-fb-pick-lbl { flex:1 1 auto; min-width:0; }
+        .tx-fb-pick-btn { flex:0 0 auto; min-height:30px; padding:4px 12px; font-family:inherit; font-size:11px; cursor:pointer; color:#cfd8dc; background:rgba(120,144,156,0.18); border:1px solid #78909c; border-radius:7px; text-transform:none; }
+        .tx-fb-pick-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .tx-fb-group-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0 2px; border-top:1px solid rgba(255,255,255,0.06); }
+        .tx-fb-group-title { font-size:10px; color:#8b92a4; text-transform:uppercase; letter-spacing:0.06em; }
+        .tx-fb-inc { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; margin-right:2px; cursor:pointer; min-width:28px; min-height:28px; }
+        .tx-fb-incbox { width:18px; height:18px; cursor:pointer; accent-color:var(--accent,#ffd54f); }
+        .tx-fb-row--off { opacity:0.5; }
+        .tx-fb-row--off .tx-fb-detail { text-decoration:line-through; }
+        .tx-fb-repl { color:#e6a4a4; }
+        .tx-fb-open { color:#9fbf9a; }
+        @media (hover: none) and (pointer: coarse) {
+            .tx-fb-incbox { width:20px; height:20px; }
+            .tx-fb-inc { min-width:34px; min-height:34px; }
+        }
+        /* Phone: the voucher control + cost on the right used to squeeze the "from → to"
+           suggestion on the left into an unreadable sliver. Drop the side cluster onto
+           its own line under the suggestion so both read fully. */
+        @media (max-width: 600px) {
+            .tx-fb-row { flex-wrap:wrap; }
+            .tx-fb-row-main { flex:1 1 60%; }
+            .tx-fb-row-side { flex:1 1 100%; justify-content:flex-end; margin-top:2px; }
+            .tx-fb-vouch { flex-wrap:wrap; }
+        }
         .story-tutor-mon-chev { color:#9aa0aa; font-size:14px; line-height:1; }
         /* Right-side controls cluster in a mon header (info ℹ + chevron, plus any
            cost/tier badge) — keeps them grouped at the end of the space-between row. */
@@ -7716,6 +7742,14 @@
             /* Scale small inline icons up for phone legibility */
             .story-action-section-header .story-action-section-icon { width: 18px; height: 18px; }
             .story-city-tip .story-city-tip-ico { width: 18px; height: 18px; }
+            /* Suggested-tip chips: on phone the "— free with your <voucher>" suffix made
+               the chip overflow and clip the actionable text. Give each suggestion its
+               own full-width line, top-align the icon, and let the label wrap freely. */
+            #story-city-tips .story-city-tip { flex: 1 1 100%; align-items: flex-start; }
+            #story-city-tips .story-city-tip .story-city-tip-ico { margin-top: 1px; }
+            #story-city-tips .story-city-tip > span:not(.story-city-tip-ico) {
+                min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; white-space: normal;
+            }
         }
         @media screen and (min-width: 769px) { #pwa-install-hint { display: none !important; } }
 
@@ -74539,6 +74573,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (t.closest('[data-fastbuild-cancel]')) { _txFastBuild.open = -1; _txRerenderActiveTutorSurface(); return true; }
             const fbVouch = t.closest('input[data-fb-vouch]');
             if (fbVouch) { const k = fbVouch.dataset.fbVouch; if (_txFastBuild.sel) _txFastBuild.sel[k] = !_txFastBuild.sel[k]; _txRerenderActiveTutorSurface(); return true; }
+            // Per-component opt-out: toggle one part (item/ability/nature/EVs/EV-focus).
+            const fbPart = t.closest('input[data-fb-part-toggle]');
+            if (fbPart) { const k = fbPart.dataset.fbPartToggle; if (_txFastBuild.sel) { const po = _txFastBuild.sel.partOff = _txFastBuild.sel.partOff || {}; po[k] = !po[k]; } _txRerenderActiveTutorSurface(); return true; }
+            // Per-move opt-out: toggle a single suggested move (keyed by its target slot).
+            const fbMove = t.closest('input[data-fb-move-toggle]');
+            if (fbMove) { const k = fbMove.dataset.fbMoveToggle; if (_txFastBuild.sel) { const mo = _txFastBuild.sel.moveOff = _txFastBuild.sel.moveOff || {}; mo[k] = !mo[k]; } _txRerenderActiveTutorSurface(); return true; }
+            // Select-all / clear-all convenience.
+            const fbAll = t.closest('[data-fb-all]');
+            if (fbAll) { if (_txFastBuild.sel) { _txFastBuild.sel.partOff = {}; _txFastBuild.sel.moveOff = {}; } _txRerenderActiveTutorSurface(); return true; }
+            const fbNone = t.closest('[data-fb-none]');
+            if (fbNone) {
+                const i = parseInt(fbNone.dataset.fbNone, 10);
+                let pl = null; try { if (Number.isFinite(i)) pl = _txBuildFastBuildPlan(i); } catch (e) {}
+                if (_txFastBuild.sel && pl) {
+                    const po = {}, mo = {};
+                    for (const p of pl.parts) po[p.kind] = true;
+                    for (const s of pl.moveSteps) mo[s.slot] = true;
+                    _txFastBuild.sel.partOff = po; _txFastBuild.sel.moveOff = mo;
+                }
+                _txRerenderActiveTutorSurface(); return true;
+            }
             const fbHs = t.closest('[data-fb-hs]');
             if (fbHs) { const d = parseInt(fbHs.dataset.fbHs, 10) || 0; if (_txFastBuild.sel) _txFastBuild.sel.heartScale = Math.max(0, (_txFastBuild.sel.heartScale | 0) + d); _txRerenderActiveTutorSurface(); return true; }
             const fbApply = t.closest('[data-fastbuild-apply]');
@@ -74546,7 +74601,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         }
         function _txFastBuildResetSel() {
-            _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0 };
+            // partOff / moveOff drive per-component opt-out: the player can cherry-pick
+            // which parts of the "best set" to buy (e.g. one move + the item, skip nature).
+            // Keyed by part.kind and by move step slot; absent/false ⇒ included.
+            _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0, partOff: {}, moveOff: {} };
+        }
+        // Included-move steps for the currently-selected mon, honouring per-move opt-out.
+        function _txFbIncludedMoveSteps(plan, sel) {
+            const moveOff = (sel && sel.moveOff) || {};
+            return plan.moveSteps.filter(s => !moveOff[s.slot]);
         }
         function _txVoucherCount(key) { return (sm && sm.inventory && (sm.inventory[key] | 0)) || 0; }
         function _txVoucherLabel(key) {
@@ -74641,14 +74704,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // spent (bounded by what the player owns). Heart Scales waive the priciest moves.
         function _txFastBuildQuote(plan, sel) {
             sel = sel || {};
+            const partOff = sel.partOff || {};
             const spend = { heartScale: 0, mint: 0, abilityCapsule: 0, emblemHonor: 0, vitamin: 0 };
             let gold = 0;
             for (const p of plan.parts) {
+                if (partOff[p.kind]) continue; // opted out — no gold, no voucher spent
                 const v = _TX_FASTBUILD_VOUCHER[p.kind];
                 if (v && sel[v.key] && _txVoucherCount(v.key) > (spend[v.key] || 0)) spend[v.key]++;
                 else gold += p.cost | 0;
             }
-            const costs = plan.moveSteps.map(s => s.cost | 0).sort((a, b) => b - a);
+            // Heart Scales waive the priciest of the *included* moves only.
+            const costs = _txFbIncludedMoveSteps(plan, sel).map(s => s.cost | 0).sort((a, b) => b - a);
             const hs = Math.max(0, Math.min(sel.heartScale | 0, costs.length, _txVoucherCount('heartScale')));
             for (let i = 0; i < costs.length; i++) { if (i < hs) continue; gold += costs[i]; }
             spend.heartScale = hs;
@@ -74656,56 +74722,97 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         try { window._txFastBuildQuote = _txFastBuildQuote; } catch (e) {}
 
-        function _txFbRow(label, detail, cost, controlHtml, waived) {
-            const costTxt = cost > 0 ? (waived ? `<s>${cost.toLocaleString()}G</s> free` : `${cost.toLocaleString()}G`) : 'free';
-            return `<div class="tx-fb-row"><div class="tx-fb-row-main"><span class="tx-fb-label">${_esc(label)}</span><span class="tx-fb-detail">${detail}</span></div>`
+        function _txFbRow(label, detail, cost, controlHtml, waived, incHtml, off) {
+            const costTxt = off
+                ? (cost > 0 ? `<s>${cost.toLocaleString()}G</s>` : '—')
+                : (cost > 0 ? (waived ? `<s>${cost.toLocaleString()}G</s> free` : `${cost.toLocaleString()}G`) : 'free');
+            return `<div class="tx-fb-row${off ? ' tx-fb-row--off' : ''}">${incHtml || ''}<div class="tx-fb-row-main"><span class="tx-fb-label">${_esc(label)}</span><span class="tx-fb-detail">${detail}</span></div>`
                 + `<div class="tx-fb-row-side">${controlHtml || ''}<span class="tx-fb-cost">${costTxt}</span></div></div>`;
+        }
+        // Include checkbox rendered at the head of a selectable row. `key`+`attr` route
+        // the toggle in the delegated click handler; `on` is the current include state.
+        function _txFbIncBox(attr, key, on, aria) {
+            return `<label class="tx-fb-inc" title="${on ? 'Included — tap to skip' : 'Skipped — tap to include'}">`
+                + `<input type="checkbox" class="tx-fb-incbox" ${attr}="${key}"${on ? ' checked' : ''} aria-label="${_esc(aria)}"></label>`;
         }
         function _txFastBuildPanelHtml(idx) {
             const plan = _txBuildFastBuildPlan(idx);
             if (!plan) { _txFastBuild.open = -1; return ''; }
             if (!_txFastBuild.sel) _txFastBuildResetSel();
             const sel = _txFastBuild.sel;
+            const partOff = sel.partOff = sel.partOff || {};
+            const moveOff = sel.moveOff = sel.moveOff || {};
             const quote = _txFastBuildQuote(plan, sel);
             const rows = [];
             if (plan.moveSteps.length) {
+                const included = _txFbIncludedMoveSteps(plan, sel);
                 const hsOwned = _txVoucherCount('heartScale');
-                const hsMax = Math.min(plan.moveSteps.length, hsOwned);
+                const hsMax = Math.min(included.length, hsOwned);
                 const hsUsed = Math.min(sel.heartScale | 0, hsMax);
-                const moves = plan.moveSteps.map(s => _esc(s.move)).join(', ');
-                const stepper = hsOwned > 0
+                // Which included steps are Heart-Scale-waived: the hsUsed priciest.
+                const waivedSlots = new Set(included.slice().sort((a, b) => (b.cost | 0) - (a.cost | 0)).slice(0, hsUsed).map(s => s.slot));
+                const stepper = (hsOwned > 0 && included.length > 0)
                     ? `<span class="tx-fb-vouch" role="group" aria-label="Heart Scales to spend"><button type="button" class="tx-fb-step" data-fb-hs="-1" aria-label="Spend one fewer Heart Scale"${hsUsed <= 0 ? ' disabled' : ''}>−</button>`
-                        + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest move" aria-live="polite" aria-label="${hsUsed} of ${hsMax} Heart Scales spent">${hsUsed}/${hsMax} 💗</span>`
+                        + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest included move" aria-live="polite" aria-label="${hsUsed} of ${hsMax} Heart Scales spent">${hsUsed}/${hsMax} 💗</span>`
                         + `<button type="button" class="tx-fb-step" data-fb-hs="1" aria-label="Spend one more Heart Scale"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
                     : '';
-                rows.push(_txFbRow('Moves', `${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}: ${moves}`, plan.moveTotal, stepper));
+                rows.push(`<div class="tx-fb-group-head"><span class="tx-fb-group-title">Moves · ${included.length}/${plan.moveSteps.length} chosen</span>${stepper}</div>`);
+                // One selectable row per suggested move — the "how does it replace" is spelled
+                // out (which current move it overwrites, or an open slot), and each is opt-out.
+                for (const s of plan.moveSteps) {
+                    const base = String(s.move).split('/')[0];
+                    const off = !!moveOff[s.slot];
+                    const detail = s.replaces
+                        ? `<span class="tx-fb-repl">replaces <strong>${_esc(s.replaces)}</strong></span>`
+                        : `<span class="tx-fb-open">open slot</span>`;
+                    const inc = _txFbIncBox('data-fb-move-toggle', s.slot, !off, `Include ${base}`);
+                    rows.push(_txFbRow(base, detail, s.cost | 0, '', !off && waivedSlots.has(s.slot), inc, off));
+                }
             }
             for (const p of plan.parts) {
-                if (p.kind === 'evfocus') { rows.push(_txFbRow(p.label, `Train ${_esc(p.to)} from battles — EV Trainer opens later for the full spread`, 0, '')); continue; }
+                const off = !!partOff[p.kind];
+                if (p.kind === 'evfocus') {
+                    const inc = _txFbIncBox('data-fb-part-toggle', p.kind, !off, `Include ${p.label}`);
+                    rows.push(_txFbRow(p.label, `Train ${_esc(p.to)} from battles — EV Trainer opens later for the full spread`, 0, '', false, inc, off));
+                    continue;
+                }
                 const v = _TX_FASTBUILD_VOUCHER[p.kind];
                 const owned = v ? _txVoucherCount(v.key) : 0;
                 const checked = !!(v && sel[v.key]);
-                const vouch = (v && owned > 0)
+                const vouch = (v && owned > 0 && !off)
                     ? `<label class="tx-fb-vouch"><input type="checkbox" class="tx-fb-check" data-fb-vouch="${v.key}"${checked ? ' checked' : ''}> <span class="tx-fb-vlabel">Use ${_esc(v.label)} (${owned})</span></label>`
                     : '';
-                rows.push(_txFbRow(p.label, `${_esc(p.from)} → ${_esc(p.to)}`, p.cost, vouch, checked && owned > 0));
+                const inc = _txFbIncBox('data-fb-part-toggle', p.kind, !off, `Include ${p.label}`);
+                rows.push(_txFbRow(p.label, `${_esc(p.from)} → ${_esc(p.to)}`, p.cost, vouch, !off && checked && owned > 0, inc, off));
             }
             for (const l of plan.locked) rows.push(`<div class="tx-fb-row tx-fb-row--locked">🔒 ${_esc(l.label)} — ${_esc(l.why)}</div>`);
 
+            const nMovesInc = _txFbIncludedMoveSteps(plan, sel).length;
+            const nPartsInc = plan.parts.filter(p => !partOff[p.kind]).length;
+            const nSel = nMovesInc + nPartsInc;
+            const nTotal = plan.moveSteps.length + plan.parts.length;
+            // "Pick what to apply" header with All / None shortcuts (only when there's a choice).
+            const pickBar = nTotal > 1
+                ? `<div class="tx-fb-pick"><span class="tx-fb-pick-lbl">Pick what to apply</span>`
+                    + `<button type="button" class="tx-fb-pick-btn" data-fb-all="1">All</button>`
+                    + `<button type="button" class="tx-fb-pick-btn" data-fb-none="${idx}">None</button></div>`
+                : '';
             const spendTxt = Object.keys(quote.spend).filter(k => quote.spend[k] > 0).map(k => `${quote.spend[k]} ${_txVoucherLabel(k)}`).join(' · ');
             const totalRow = `<div class="tx-fb-total"><span>Total</span><span>${quote.gold.toLocaleString()}G${spendTxt ? ` + ${spendTxt}` : ''}</span></div>`;
             const afford = (sm.gold | 0) >= quote.gold;
-            const applyBtn = `<button type="button" class="tx-fb-apply" data-fastbuild-apply="${idx}"${afford ? '' : ' disabled'}>${afford ? `⚡ Apply best set — ${quote.gold.toLocaleString()}G` : `Need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more`}</button>`;
+            const applyBtn = nSel === 0
+                ? `<button type="button" class="tx-fb-apply" disabled>Choose at least one change</button>`
+                : `<button type="button" class="tx-fb-apply" data-fastbuild-apply="${idx}"${afford ? '' : ' disabled'}>${afford ? `⚡ Apply ${nSel} change${nSel === 1 ? '' : 's'} — ${quote.gold.toLocaleString()}G` : `Need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more`}</button>`;
             const cancelBtn = `<button type="button" class="tx-fb-cancel" data-fastbuild-cancel="1">Cancel</button>`;
             return `<div class="tx-fastbuild-panel" role="group" aria-label="Auto-Build best set for ${_esc(plan.name)}"><div class="tx-fb-head">⚡ Auto-Build — best set for <strong>${_esc(plan.name)}</strong></div>`
-                + `${rows.join('')}${totalRow}<div class="tx-fb-actions">${applyBtn}${cancelBtn}</div></div>`;
+                + `${pickBar}${rows.join('')}${totalRow}<div class="tx-fb-actions">${applyBtn}${cancelBtn}</div></div>`;
         }
         // The bar on the open mon's editor: the Auto-Build button, or the expanded panel.
         function _txFastBuildBarHtml(t, idx) {
             if (!t || t.isEgg) return '';
             if (_txFastBuild.open === idx) return _txFastBuildPanelHtml(idx);
             let plan = null; try { plan = _txBuildFastBuildPlan(idx); } catch (e) {}
-            const nChanges = plan ? (plan.moveSteps.length + plan.parts.filter(p => p.kind !== 'evfocus').length + plan.parts.filter(p => p.kind === 'evfocus').length) : 0;
+            const nChanges = plan ? (plan.moveSteps.length + plan.parts.length) : 0;
             if (plan && nChanges === 0) {
                 return `<div class="tx-fastbuild-bar tx-fastbuild-bar--done">⚡ <strong>Auto-Build</strong> · ✓ Already optimized for its role</div>`;
             }
@@ -74723,6 +74830,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const plan = _txBuildFastBuildPlan(teamIdx);
                 if (!plan || (!plan.moveSteps.length && !plan.parts.length)) return;
                 const sel = _txFastBuild.sel || {};
+                const partOff = sel.partOff || {};
+                // Honour per-component / per-move opt-out: only included work is applied.
+                const moveSteps = _txFbIncludedMoveSteps(plan, sel);
+                const activeParts = plan.parts.filter(p => !partOff[p.kind]);
+                if (!moveSteps.length && !activeParts.length) {
+                    try { window.showGameAlert && window.showGameAlert('Choose at least one change to apply.'); } catch (e) {}
+                    return;
+                }
                 const quote = _txFastBuildQuote(plan, sel);
                 if ((sm.gold | 0) < quote.gold) {
                     try { window.showGameAlert && window.showGameAlert(`This build costs ${quote.gold.toLocaleString()}G — you need ${(quote.gold - (sm.gold | 0)).toLocaleString()}G more (or spend more vouchers).`); } catch (e) {}
@@ -74732,8 +74847,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (const k of Object.keys(quote.spend)) { if (quote.spend[k] > _txVoucherCount(k)) return; }
 
                 const lines = [];
-                if (plan.moveSteps.length) lines.push(`${plan.moveSteps.length} move${plan.moveSteps.length === 1 ? '' : 's'}`);
-                for (const p of plan.parts) lines.push(p.kind === 'evfocus' ? `EV focus → ${p.to}` : `${p.label} → ${p.to}`);
+                if (moveSteps.length) lines.push(`${moveSteps.length} move${moveSteps.length === 1 ? '' : 's'}`);
+                for (const p of activeParts) lines.push(p.kind === 'evfocus' ? `EV focus → ${p.to}` : `${p.label} → ${p.to}`);
                 const spendTxt = Object.keys(quote.spend).filter(k => quote.spend[k] > 0).map(k => `${quote.spend[k]} ${_txVoucherLabel(k)}`).join(', ');
                 const prompt = `Auto-Build ${mon.name}: ${lines.join(' · ')}.` + (spendTxt ? `\nVouchers: ${spendTxt}.` : '');
                 const ok = await _storyConfirmTutorChange(prompt, quote.gold);
@@ -74749,14 +74864,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.inventory[k] = Math.max(0, (sm.inventory[k] | 0) - n);
                     if (!sm.inventory[k]) delete sm.inventory[k];
                 }
-                // Moves.
-                if (plan.moveSteps.length) {
+                // Moves (only the included steps).
+                if (moveSteps.length) {
                     const moves = mon.build.m || (mon.build.m = []);
-                    for (const s of plan.moveSteps) { if (s.slot >= moves.length) moves.push(s.move); else moves[s.slot] = s.move; }
+                    for (const s of moveSteps) { if (s.slot >= moves.length) moves.push(s.move); else moves[s.slot] = s.move; }
                     mon.build.m = moves.filter(Boolean);
                 }
-                // Item / ability / nature / EVs / EV-focus.
-                for (const p of plan.parts) {
+                // Item / ability / nature / EVs / EV-focus (only the included parts).
+                for (const p of activeParts) {
                     if (p.kind === 'item') mon.build.i = p.to;
                     else if (p.kind === 'ability') mon.build.a = p.to;
                     else if (p.kind === 'nature') mon.build.n = p.to;
