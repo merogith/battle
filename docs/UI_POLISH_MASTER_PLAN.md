@@ -241,7 +241,19 @@ Gate legend (per CLAUDE.md): **[BP]** behavior-preserving (direction approval on
 **[SIGN-OFF]** pixels/flow/copy change needing explicit approval · **[NUM]** maintainer-owned
 numbers. Effort: S ≤half day · M 1-2 days · L multi-day.
 
-### Phase A — "Nothing broken" (the 30 mechanical fixes; ~1 week; mostly [BP])
+### Phase A — "Nothing broken" (the 30 mechanical fixes; mostly [BP]) — ✅ SHIPPED 2026-07-08
+
+**Status: implemented and verified on this branch.** All items below landed across 5 commits;
+each fix was reproduced-then-confirmed in real headless Chromium (P0 player-plate, summary
+close, prof keyboard; wordmark, help scroll, gen grid, difficulty copy, sticky footer,
+overlay scroll-safety; HUD wrap, tips rail, shop overflow, tutor chip, PC vertical buttons,
+Resisted label, move tiles, sequence pads; version tag, dead BAG, journal backdrop, turn
+pill, fainted status, tab scroll, HoF toasts, professor quote, Ranger sprite). Full jsdom
+suite green (1438/1438; one overlay z-token guard updated for the A9 scroll-safe change).
+**Two items intentionally deferred to a focused battle/professor pass** (flagged inline):
+A17b (arena compact HUD name-width — cosmetic truncation in the sensitive 211px landscape
+card) and the A20 professor duplicate-back + post-accept dead-space (the quote-contrast part
+shipped). Everything else is done.
 
 Every item is a verified defect with a known one-to-few-line cause. Ordered by player impact:
 
