@@ -303,7 +303,12 @@
                 height: auto;
                 background: radial-gradient(ellipse 120% 90% at 50% 100%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.11) 100%);
             }
-            body.is-mobile #screen-battle .battle-bottom-stack,
+            /* Clip the command region, but NOT the stack in arena layout: the arena
+               player HUD row floats above the stack via absolute positioning, so an
+               overflow:hidden here erases the player's own HP/status card for the whole
+               battle (touch-landscape always resolves to arena). Scope the stack clip to
+               the stack template, where the HUD is in-flow and safe to clip. */
+            body.is-mobile #screen-battle[data-battle-layout="stack"] .battle-bottom-stack,
             body.is-mobile #screen-battle .ui-bottom {
                 overflow: hidden;
             }
@@ -485,12 +490,24 @@
            current battle whenever it's opened mid-game.
            ────────────────────────────────────────────────────────────── */
         #modal-summary .modal-summary-shell {
+            position: relative;
             display: flex; flex-direction: column;
             max-height: min(92dvh, 920px); padding: 10px;
             box-sizing: border-box; overflow-y: hidden; min-height: 0;
             width: 100%; max-width: min(460px, 96vw);
             margin-left: auto; margin-right: auto;
             gap: 8px;
+        }
+        /* Corner close — shown ONLY in compact-landscape, where the bottom "Close" button is
+           hidden (the reorder row owns that slot) and the party nav is gone, previously
+           leaving touch users with no way out. Hidden elsewhere to avoid overlapping the
+           header's party-nav buttons (the bottom Close covers those layouts). */
+        #modal-summary .sum-corner-close {
+            display: none;
+            position: absolute; top: 4px; right: 4px; z-index: 3;
+            width: 40px; height: 40px; min-height: 40px; padding: 0;
+            align-items: center; justify-content: center;
+            font-size: 18px; line-height: 1; border-radius: 6px;
         }
 
         /* === Persistent header === */
@@ -721,6 +738,8 @@
                reorder row owns the bottom slot). :not(.hidden) is needed because the adjacent-
                sibling selector matches regardless of computed display state otherwise. */
             #modal-summary .sum-reorder-row:not(.hidden) + .sum-close-btn { display: none; }
+            /* …but the corner close then becomes the only dismissal affordance — show it. */
+            #modal-summary .sum-corner-close { display: flex; }
             .sum-header-main { grid-template-columns: 56px minmax(0, 1fr); gap: 4px 6px; }
             .sum-header-sprite-wrap, .sum-header-sprite { width: 56px; height: 56px; }
             .sum-header-name { font-size: 13px; }
@@ -10077,8 +10096,10 @@
         </div>
     </div>
 
-    <div id="modal-summary" class="modal hidden" role="dialog" aria-labelledby="sum-header-name" aria-modal="true">
+    <div id="modal-summary" class="modal hidden" role="dialog" aria-labelledby="sum-header-name" aria-modal="true" onclick="if(event.target===event.currentTarget)window.closeModal('modal-summary')">
         <div class="modal-content white-outline modal-summary-shell">
+            <!-- Always-present corner close (bottom Close is hidden in compact landscape) -->
+            <button type="button" class="sum-corner-close" aria-label="Close summary" title="Close" onclick="window.closeModal('modal-summary')">&times;</button>
             <!-- Persistent header: sprite, name, types, gimmicks, live battle state, party nav -->
             <div class="sum-header" id="sum-header"></div>
             <!-- Tab strip -->
@@ -56564,6 +56585,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="draft-card-moves">${movesHtml}</div>
                 </div>`;
             card.onclick = (e) => { if (e.target.closest('button, .hover-text, .type-badge, .draft-card-moves')) return; profSelectChoice(idx); };
+            // Keyboard parity (was mouse-only — hard-blocked keyboard players at the first
+            // mandatory Story beat). Enter/Space selects, mirroring the draft-card pattern.
+            card.setAttribute('role', 'button');
+            card.tabIndex = 0;
+            card.setAttribute('aria-label', `Choose ${ch.name}`);
+            card.onkeydown = (e) => {
+                if (e.target.closest('button, .hover-text, .type-badge, .draft-card-moves')) return;
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); profSelectChoice(idx); }
+            };
             return card;
         }
 
@@ -56623,6 +56653,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _profSelectedIdx = idx;
             document.getElementById('story-prof-rolled-card')?.querySelectorAll('.prof-pick-card').forEach((c, i) => {
                 c.classList.toggle('prof-pick-card-selected', i === idx);
+                c.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
             });
             const ch = _pendingProfChoices[idx];
             document.getElementById('story-prof-status').textContent = `Selected: ${ch.name} (Grade ${ch.g})`;
