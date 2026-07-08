@@ -809,6 +809,11 @@
         .tx-fb-row--off .tx-fb-detail { text-decoration:line-through; }
         .tx-fb-repl { color:#e6a4a4; }
         .tx-fb-open { color:#9fbf9a; }
+        .tx-fb-target { max-width:100%; font-family:inherit; font-size:11px; color:#e6a4a4; background:rgba(0,0,0,0.35);
+            border:1px solid #6a4b4b; border-radius:5px; padding:2px 4px; min-height:26px; cursor:pointer; vertical-align:baseline; }
+        .tx-fb-target:hover { border-color:#e6a4a4; }
+        .tx-fb-target:focus-visible { outline:2px solid var(--accent,#ffd54f); outline-offset:1px; }
+        @media (hover: none) and (pointer: coarse) { .tx-fb-target { min-height:32px; font-size:12px; } }
         @media (hover: none) and (pointer: coarse) {
             .tx-fb-incbox { width:20px; height:20px; }
             .tx-fb-inc { min-width:34px; min-height:34px; }
@@ -74036,11 +74041,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // lock pills, the Heart-Scale note) — never steals a tap meant for a control.
                 const tapInfo = t.closest('.tx-tapinfo[title]');
                 if (tapInfo && typeof window._prefersFinePointerHover === 'function' && !window._prefersFinePointerHover()
-                    && !t.closest('button, input, label, [data-fb-hs]')) {
+                    && !t.closest('button, input, label, select, [data-fb-hs]')) {
                     try { window.showTapInfoTooltip && window.showTapInfoTooltip(tapInfo, ev); } catch (e) {}
                     return;
                 }
                 if (_handleFastBuildClick(t)) return;
+            });
+            // Re-aim a replacing move at a different current move (the target dropdown).
+            el.addEventListener('change', function (ev) {
+                const sl = ev.target && ev.target.closest ? ev.target.closest('select[data-fb-move-target]') : null;
+                if (!sl) return;
+                const key = sl.dataset.fbMoveTarget;
+                const val = parseInt(sl.value, 10);
+                if (_txFastBuild.sel && Number.isFinite(val)) {
+                    _txFastBuild.sel.moveTarget = _txFastBuild.sel.moveTarget || {};
+                    _txFastBuild.sel.moveTarget[key] = val;
+                }
+                _txRerenderActiveTutorSurface();
             });
         }
         async function renderMentorTeam(skipFetch) {
@@ -74604,12 +74621,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // partOff / moveOff drive per-component opt-out: the player can cherry-pick
             // which parts of the "best set" to buy (e.g. one move + the item, skip nature).
             // Keyed by part.kind and by move step slot; absent/false ⇒ included.
-            _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0, partOff: {}, moveOff: {} };
+            // moveTarget lets the player re-aim a replacing move at a DIFFERENT current
+            // move than the planner picked: { [step.slot]: chosenCurrentMoveSlot }.
+            _txFastBuild.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0, partOff: {}, moveOff: {}, moveTarget: {} };
         }
         // Included-move steps for the currently-selected mon, honouring per-move opt-out.
         function _txFbIncludedMoveSteps(plan, sel) {
             const moveOff = (sel && sel.moveOff) || {};
             return plan.moveSteps.filter(s => !moveOff[s.slot]);
+        }
+        // Resolve where a move step actually lands, honouring a player re-target. Only
+        // *replacing* steps (s.replaces truthy) are re-aimable; open-slot appends keep
+        // their planner slot. `curLen` bounds a valid current-move override.
+        function _txFbMoveDest(s, sel, curLen) {
+            if (s.replaces) {
+                const ov = (sel && sel.moveTarget && sel.moveTarget[s.slot]);
+                if (Number.isFinite(ov) && ov >= 0 && ov < curLen) return ov;
+            }
+            return s.slot;
         }
         function _txVoucherCount(key) { return (sm && sm.inventory && (sm.inventory[key] | 0)) || 0; }
         function _txVoucherLabel(key) {
@@ -74742,6 +74771,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sel = _txFastBuild.sel;
             const partOff = sel.partOff = sel.partOff || {};
             const moveOff = sel.moveOff = sel.moveOff || {};
+            sel.moveTarget = sel.moveTarget || {};
             const quote = _txFastBuildQuote(plan, sel);
             const rows = [];
             if (plan.moveSteps.length) {
@@ -74757,14 +74787,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         + `<button type="button" class="tx-fb-step" data-fb-hs="1" aria-label="Spend one more Heart Scale"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
                     : '';
                 rows.push(`<div class="tx-fb-group-head"><span class="tx-fb-group-title">Moves · ${included.length}/${plan.moveSteps.length} chosen</span>${stepper}</div>`);
+                // Current moves — the pool a replacing suggestion can be re-aimed at.
+                let curMoves = [];
+                try { curMoves = ((sm.team[idx] && sm.team[idx].build && sm.team[idx].build.m) || []).filter(Boolean).map(m => String(m).split('/')[0]); } catch (e) {}
+                const curLen = curMoves.length;
+                // Current-move slots already claimed by another INCLUDED replacing step —
+                // disabled in every other step's picker so no two suggestions collide.
+                const takenBy = {};
+                for (const s of included) { if (s.replaces) { const d = _txFbMoveDest(s, sel, curLen); takenBy[d] = s.slot; } }
                 // One selectable row per suggested move — the "how does it replace" is spelled
                 // out (which current move it overwrites, or an open slot), and each is opt-out.
                 for (const s of plan.moveSteps) {
                     const base = String(s.move).split('/')[0];
                     const off = !!moveOff[s.slot];
-                    const detail = s.replaces
-                        ? `<span class="tx-fb-repl">replaces <strong>${_esc(s.replaces)}</strong></span>`
-                        : `<span class="tx-fb-open">open slot</span>`;
+                    let detail;
+                    if (!s.replaces) {
+                        detail = `<span class="tx-fb-open">open slot</span>`;
+                    } else if (off) {
+                        // Opted out → static text, no interactive picker.
+                        const dest = _txFbMoveDest(s, sel, curLen);
+                        detail = `<span class="tx-fb-repl">replaces <strong>${_esc(curMoves[dest] || s.replaces)}</strong></span>`;
+                    } else {
+                        // Included replacing step → dropdown to pick which current move to drop.
+                        const dest = _txFbMoveDest(s, sel, curLen);
+                        const opts = curMoves.map((mv, i) => {
+                            const claimedByOther = (takenBy[i] != null && takenBy[i] !== s.slot);
+                            return `<option value="${i}"${i === dest ? ' selected' : ''}${claimedByOther ? ' disabled' : ''}>${_esc(mv)}</option>`;
+                        }).join('');
+                        detail = `<span class="tx-fb-repl">replaces </span><select class="tx-fb-target" data-fb-move-target="${s.slot}" aria-label="Which of ${_esc(base)}'s target — the current move it replaces">${opts}</select>`;
+                    }
                     const inc = _txFbIncBox('data-fb-move-toggle', s.slot, !off, `Include ${base}`);
                     rows.push(_txFbRow(base, detail, s.cost | 0, '', !off && waivedSlots.has(s.slot), inc, off));
                 }
@@ -74864,10 +74915,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.inventory[k] = Math.max(0, (sm.inventory[k] | 0) - n);
                     if (!sm.inventory[k]) delete sm.inventory[k];
                 }
-                // Moves (only the included steps).
+                // Moves (only the included steps). Replacing steps honour a player
+                // re-target; a defensive collision guard appends rather than clobber
+                // a slot another step already wrote this pass.
                 if (moveSteps.length) {
                     const moves = mon.build.m || (mon.build.m = []);
-                    for (const s of moveSteps) { if (s.slot >= moves.length) moves.push(s.move); else moves[s.slot] = s.move; }
+                    const curLen = moves.length;
+                    const used = new Set();
+                    for (const s of moveSteps) {
+                        let dest = _txFbMoveDest(s, sel, curLen);
+                        if (dest < moves.length && used.has(dest)) dest = moves.length; // avoid double-drop
+                        if (dest >= moves.length) { moves.push(s.move); used.add(moves.length - 1); }
+                        else { moves[dest] = s.move; used.add(dest); }
+                    }
                     mon.build.m = moves.filter(Boolean);
                 }
                 // Item / ability / nature / EVs / EV-focus (only the included parts).

@@ -97,3 +97,57 @@ test('commit: an all-off selection is a no-op (no gold spent)', async () => {
   assert.equal(ST.sm.gold, goldBefore, 'no gold spent on an empty selection');
   assert.ok(alerted, 'the player is told to choose at least one change');
 });
+
+// ── Move-target re-aim: choose WHICH current move a suggestion replaces ──────
+
+test('picker: a replacing move exposes a target dropdown of the current moves', async () => {
+  // 3 strong + 1 junk ⇒ one replacing step with free targets to re-aim at.
+  await prime(7, { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Splash'], n: 'Adamant', a: 'Rough Skin', evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 4, spe: 252 } }, 999999);
+  const doc = w.document;
+  doc.querySelector('#story-mentor-team [data-fastbuild-open]').click();
+  await wait(60);
+  const selects = doc.querySelectorAll('#story-mentor-team select[data-fb-move-target]');
+  assert.ok(selects.length >= 1, 'at least one target dropdown rendered for a replacing move');
+  const opts = [...selects[0].options].map((o) => o.text);
+  for (const mv of ['Earthquake', 'Outrage', 'Stone Edge', 'Splash']) assert.ok(opts.includes(mv), `picker lists current move ${mv}`);
+});
+
+test('re-aim: overriding moveTarget drops the chosen current move, keeps the planner default', async () => {
+  await prime(7, { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Splash'], n: 'Adamant', a: 'Rough Skin', evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 4, spe: 252 } }, 999999);
+  const plan = ST.txBuildFastBuildPlan(0);
+  const rep = plan.moveSteps.find((s) => s.replaces);
+  assert.ok(rep, 'a replacing step exists');
+  const before = ST.sm.team[0].build.m.slice();
+  const defaultDrop = before[rep.slot]; // what the planner would have dropped
+  // Re-aim onto a different current move (index 0 unless that IS the default).
+  const aimAt = rep.slot === 0 ? 1 : 0;
+  const chosenDrop = before[aimAt];
+  const sel = ST.txFastBuildSel(); sel.open = 0;
+  sel.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0, partOff: {}, moveOff: {}, moveTarget: { [rep.slot]: aimAt } };
+  // keep only this one move, drop every other part/move so the assertion is clean
+  for (const p of plan.parts) sel.sel.partOff[p.kind] = true;
+  for (const s of plan.moveSteps) if (s.slot !== rep.slot) sel.sel.moveOff[s.slot] = true;
+  w.showGameConfirm = async () => true;
+  await ST.tutorApplyFastBuild(0);
+  const after = ST.sm.team[0].build.m;
+  assert.ok(!after.includes(chosenDrop), `the re-aimed current move (${chosenDrop}) was dropped`);
+  assert.ok(after.includes(defaultDrop), `the planner's default target (${defaultDrop}) was kept`);
+  assert.ok(after.includes(rep.move.split('/')[0]), 'the suggested move was taught');
+  assert.equal(new Set(after).size, after.length, 'no duplicate moves after re-aim');
+});
+
+test('re-aim: an out-of-range override safely falls back to the planner slot', async () => {
+  await prime(7, { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Splash'], n: 'Adamant', a: 'Rough Skin', evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 4, spe: 252 } }, 999999);
+  const plan = ST.txBuildFastBuildPlan(0);
+  const rep = plan.moveSteps.find((s) => s.replaces);
+  const before = ST.sm.team[0].build.m.slice();
+  const sel = ST.txFastBuildSel(); sel.open = 0;
+  sel.sel = { emblemHonor: false, abilityCapsule: false, mint: false, vitamin: false, heartScale: 0, partOff: {}, moveOff: {}, moveTarget: { [rep.slot]: 99 } };
+  for (const p of plan.parts) sel.sel.partOff[p.kind] = true;
+  for (const s of plan.moveSteps) if (s.slot !== rep.slot) sel.sel.moveOff[s.slot] = true;
+  w.showGameConfirm = async () => true;
+  await ST.tutorApplyFastBuild(0);
+  const after = ST.sm.team[0].build.m;
+  assert.ok(!after.includes(before[rep.slot]), 'the planner default slot was replaced (override ignored)');
+  assert.equal(new Set(after).size, after.length, 'no duplicate moves');
+});
