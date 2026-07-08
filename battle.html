@@ -74751,7 +74751,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const hsUsed = Math.min(sel.heartScale | 0, hsMax);
                 // Which included steps are Heart-Scale-waived: the hsUsed priciest.
                 const waivedSlots = new Set(included.slice().sort((a, b) => (b.cost | 0) - (a.cost | 0)).slice(0, hsUsed).map(s => s.slot));
-                const stepper = hsOwned > 0
+                const stepper = (hsOwned > 0 && included.length > 0)
                     ? `<span class="tx-fb-vouch" role="group" aria-label="Heart Scales to spend"><button type="button" class="tx-fb-step" data-fb-hs="-1" aria-label="Spend one fewer Heart Scale"${hsUsed <= 0 ? ' disabled' : ''}>−</button>`
                         + `<span class="tx-fb-hsval tx-tapinfo" title="Each Heart Scale waives the priciest included move" aria-live="polite" aria-label="${hsUsed} of ${hsMax} Heart Scales spent">${hsUsed}/${hsMax} 💗</span>`
                         + `<button type="button" class="tx-fb-step" data-fb-hs="1" aria-label="Spend one more Heart Scale"${hsUsed >= hsMax ? ' disabled' : ''}>+</button></span>`
