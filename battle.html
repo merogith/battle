@@ -668,13 +668,13 @@
         .sum-matchup-section { margin-bottom: 10px; }
         .sum-matchup-title { font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px; }
         .sum-matchup-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; font-size: 10px; }
-        .sum-matchup-label { color: #888; width: 70px; flex-shrink: 0; text-align: right; font-weight: bold; }
+        .sum-matchup-label { color: #888; width: 84px; flex-shrink: 0; text-align: right; font-weight: bold; white-space: nowrap; }
         .sum-matchup-types { display: flex; flex-wrap: wrap; gap: 2px; }
         .sum-cov-card { border: 1px solid #2a2a2a; border-radius: 4px; padding: 6px 8px; margin-bottom: 5px; background: var(--surface); }
         .sum-cov-move-name { font-size: 11px; font-weight: bold; color: #ddd; margin-bottom: 4px; line-height: 1.35; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
         .sum-cov-row { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 2px; font-size: 10px; }
         .sum-cov-row .type-badge { font-size: 9px; padding: 1px 4px; }
-        .sum-cov-label { color: #888; width: 70px; flex-shrink: 0; text-align: right; font-weight: bold; }
+        .sum-cov-label { color: #888; width: 84px; flex-shrink: 0; text-align: right; font-weight: bold; white-space: nowrap; }
         .tera-note { font-size: 10px; color: #b3e5fc; background: #011824; border: 1px solid #0277bd; border-radius: 3px; padding: 5px 8px; margin-bottom: 8px; line-height: 1.35; }
 
         /* === Footer reorder row + close === */
@@ -1241,6 +1241,15 @@
             cursor: pointer; transition: all 0.12s; text-align: left;
             font-family: inherit; color: inherit;
             min-height: 44px; font-size: 12px;
+        }
+        /* The generic flat .type-X rules (defined far below, for .type-badge fills) would
+           otherwise repaint the whole chip in the type colour and bury the slot number at
+           ~1:1 contrast. The type colour belongs to the ::before stripe only — reassert the
+           dark chip body here. Higher specificity than bare .type-X; placed before the
+           active/hover rules so those (equal specificity) still win by source order. */
+        .tx-slot-chip[class*="type-"] {
+            background: linear-gradient(180deg, rgba(22,26,38,0.85), rgba(12,15,23,0.85));
+            color: inherit;
         }
         @media (min-width: 720px) {
             .tx-slot-chip { flex: 1 1 0; min-width: 0; }
@@ -2616,7 +2625,12 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            flex-shrink: 0;
+            /* wrap (not nowrap+shrink:0): on phones the 6 controls total ~571px and were
+               pushed off the right edge of the 390px hub with no way to scroll to Settings/
+               Help. Wrapping keeps every control on-canvas. */
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            flex-shrink: 1;
         }
         #story-hud-city,
         #story-hud-gold,
@@ -2904,7 +2918,17 @@
             .story-legend-sighting--shake { animation: none; }
             .story-legend-sighting-flash { animation: none; opacity: 0; }
         }
-        .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
+        .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+        /* Overflow guard for relic/stone/mart cards: without min-width:0 the nowrap
+           status badge (AFFECTS BOTH SIDES / TRADE ITEM) inflates the grid track past the
+           viewport and the card, Buy button and tabs clip off the right edge on phones. */
+        .story-artifact-card, .story-shop-item, #story-stone-shop-grid > * { min-width: 0; }
+        .story-shop-item-row > * { min-width: 0; }
+        @media (max-width: 480px) {
+            .story-artifact-card .story-action-badge,
+            .story-shop-item .story-action-badge,
+            #story-stone-shop-grid .story-action-badge { white-space: normal; text-align: center; }
+        }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
             border-radius: 6px; background: rgba(0,0,0,0.35); border: 1px solid #333;
@@ -3541,7 +3565,10 @@
         }
         body:not(.is-mobile) #screen-story-city #story-city-tips {
             grid-area: tips;
-            display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+            /* nowrap: the base rule sets flex-wrap:wrap; in this column rail that wraps
+               overflow into a phantom second column (clipped, unclickable). Force the
+               overflow into the rail's own vertical scroll instead. */
+            display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px;
             overflow-y: auto; min-height: 0; padding-right: 2px;
         }
         body:not(.is-mobile) #screen-story-city #story-city-tips .story-city-tip { width: 100%; box-sizing: border-box; }
@@ -3719,6 +3746,13 @@
             display:flex; flex-direction:column; gap:5px; padding:8px; min-width:0;
             border:1px solid #2c2c30; border-radius:6px; box-sizing:border-box;
             background:linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+            container-type: inline-size;
+        }
+        /* Narrow cards: 'Withdraw' (10px) overflows a ~72px half-width button and paints
+           under 'Release'. Stack the two actions vertically when the card is too narrow to
+           hold them side by side (maintainer choice — keep full labels, card grows taller). */
+        @container (max-width: 184px) {
+            .pc-card-actions { flex-direction: column; }
         }
         .pc-card.is-shiny { border-color:#a47800; box-shadow:inset 0 0 0 1px rgba(255,213,79,0.25); }
         .pc-card--egg { border-style:dashed; border-color:#ffd54f; }
@@ -4764,7 +4798,10 @@
         .battle-btn-move .move-tile-name {
             flex: 1; min-width: 0; font-weight: 700; font-size: 12px; line-height: 1.2;
             text-align: left; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; word-break: break-word;
+            /* overflow-wrap:break-word (not word-break:break-word): break at the SPACE first
+               ("Solar / Beam"), only mid-word when a single word can't fit — avoids the
+               "Sola r…" / "Flam eth…" garbling on narrow phone tiles. */
+            -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word;
             -webkit-font-smoothing: antialiased; letter-spacing: 0.03em;
             color: #e8e0d0; text-shadow: 0 1px 2px rgba(0,0,0,0.6);
         }
@@ -4803,6 +4840,15 @@
         }
         #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-name {
             font-size: 11px; line-height: 1.2; -webkit-line-clamp: 2; line-clamp: 2;
+        }
+        /* Narrow phones: the inline type badge steals the name's width, so even short names
+           ("Solar Beam") break mid-word ("Sola r…"). Stack the badge ABOVE the name so the
+           name gets the full tile width and wraps at the space instead. */
+        @media (max-width: 430px) {
+            #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-head {
+                flex-direction: column; align-items: flex-start; gap: 3px;
+            }
+            #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-head .move-tile-cat { padding-top: 0; }
         }
         #screen-battle[data-battle-layout="stack"] .battle-btn-move .move-tile-meta {
             margin-top: 4px; font-size: 9px; gap: 2px 5px; opacity: 1; color: #bbb;
@@ -5089,6 +5135,13 @@
         }
         #screen-battle[data-battle-layout="stack"].battle-phase-moves .ui-bottom #battle-log {
             max-height: calc(1.5em * 5 + 28px); max-width: 100%;
+        }
+        /* Command phase: cap the log shorter so a chatty send-out (Intimidate/Defiant lines)
+           can't fill 5 lines and squeeze the 2×68px command grid into mid-label clipping on
+           tablet-portrait, where --battle-ui-h is at its 250px max. The full log returns in
+           the moves/resolution phase; here it scrolls. */
+        #screen-battle[data-battle-layout="stack"]:not(.battle-phase-moves) .ui-bottom #battle-log {
+            max-height: calc(1.5em * 3 + 20px);
         }
         #screen-battle[data-battle-layout="stack"] .ui-bottom-menus {
             flex: 1 1 0;
@@ -10279,7 +10332,7 @@
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
-        <div id="story-artifact-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr;gap:12px;min-height:0;"></div>
+        <div id="story-artifact-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-height:0;"></div>
         <div style="padding:10px;flex-shrink:0;">
             <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
@@ -59675,18 +59728,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const flashMs = Math.max(120, (game.flashMs | 0) || 350);   // flash on-time — shorter = harder
             const gapMs = Math.max(60, (game.gapMs | 0) || 170);        // gap between flashes
             const pads = ['#ef9a9a', '#aed581', '#90caf9', '#ffd54f'];
+            // Distinguish pads by SHAPE + a11y name, not colour alone (red/green is the classic
+            // colour-blind confusion pair and the game is pure colour-recall). The flash adds a
+            // ring + scale channel so a lit pad is legible without relying on the opacity shift.
+            const glyphs = ['▲', '●', '■', '★'];
+            const padNames = ['triangle', 'circle', 'square', 'star'];
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const target = _campSeqGen(len, pads.length, rng);
-            const padHtml = pads.map((c, i) => `<button type="button" data-camp-sq="${i}" style="width:64px;height:64px;border-radius:10px;background:${c};opacity:0.35;border:2px solid #0a1417;cursor:pointer;"></button>`).join('');
+            const padHtml = pads.map((c, i) => `<button type="button" data-camp-sq="${i}" aria-label="Pad ${i + 1}, ${padNames[i]}" style="width:64px;height:64px;border-radius:10px;background:${c};opacity:0.35;border:2px solid #0a1417;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;color:#0a1417;transition:opacity 0.08s,box-shadow 0.08s,transform 0.08s;">${glyphs[i]}</button>`).join('');
             const ov = _campMicrogameShell(game, `<div id="camp-sq-msg" style="font-size:13px;color:#aed581;">Watch…</div><div style="display:grid;grid-template-columns:repeat(2,64px);gap:10px;">${padHtml}</div>`);
             const padEls = Array.from(ov.querySelectorAll('[data-camp-sq]')), msg = ov.querySelector('#camp-sq-msg');
             let finished = false, accepting = false, k = 0; const input = [];
             const settle = (won) => { if (finished) return; finished = true; if (ov.parentNode) ov.remove(); done(won); };
-            const flash = (i, cb) => { const el = padEls[i]; if (!el) { cb(); return; } el.style.opacity = '1'; setTimeout(() => { el.style.opacity = '0.35'; setTimeout(cb, gapMs); }, flashMs); };
+            const setOn = (el, on) => { el.style.opacity = on ? '1' : '0.35'; el.style.boxShadow = on ? '0 0 0 4px #fff, 0 0 12px rgba(255,255,255,0.6)' : 'none'; el.style.transform = on ? 'scale(1.08)' : 'scale(1)'; };
+            const flash = (i, cb) => { const el = padEls[i]; if (!el) { cb(); return; } setOn(el, true); setTimeout(() => { setOn(el, false); setTimeout(cb, gapMs); }, flashMs); };
             const playNext = () => { if (finished) return; if (k >= target.length) { accepting = true; msg.textContent = 'Repeat it!'; return; } flash(target[k], () => { k++; playNext(); }); };
             padEls.forEach((el, i) => { el.onclick = () => {
                 if (!accepting || finished) return;
-                input.push(i); el.style.opacity = '1'; setTimeout(() => { el.style.opacity = '0.35'; }, 130);
+                input.push(i); setOn(el, true); setTimeout(() => { setOn(el, false); }, 130);
                 const j = input.length - 1;
                 if (input[j] !== target[j]) { settle(false); return; }
                 if (input.length === target.length) settle(_campScoreSequence(input, target));
@@ -59709,8 +59768,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-size:13px;color:#aed581;">Ignore the fakes — tap the way it really darts!</div>
                 <div id="camp-dg-mon" style="font-size:52px;line-height:1;transition:transform 0.08s;">😼</div>
                 <div style="display:flex;gap:18px;">
-                    <button type="button" data-camp-dg="L" aria-label="Previous" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">◀</button>
-                    <button type="button" data-camp-dg="R" aria-label="Next" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">▶</button>
+                    <button type="button" data-camp-dg="L" aria-label="Dodge left" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">◀</button>
+                    <button type="button" data-camp-dg="R" aria-label="Dodge right" style="font-size:26px;padding:10px 22px;background:#10242a;border:1px solid #2e6e7a;border-radius:10px;cursor:pointer;color:#ffd54f;">▶</button>
                 </div>`);
             const mon = ov.querySelector('#camp-dg-mon');
             let finished = false, phase = 'wait', realDir = DIRS[Math.floor(rng() * 2)], realStart = 0; const timers = [];
@@ -59880,9 +59939,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div id="camp-bk-shield" style="position:absolute;bottom:8px;font-size:30px;transform:translateX(-50%);transition:left 0.08s;">🛡️</div>
                 </div>
                 <div style="display:flex;gap:14px;">
-                    <button type="button" data-camp-bk="L" aria-label="Previous" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">◀</button>
-                    <button type="button" data-camp-bk="C" aria-label="Up" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▲</button>
-                    <button type="button" data-camp-bk="R" aria-label="Next" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▶</button>
+                    <button type="button" data-camp-bk="L" aria-label="Move basket left" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">◀</button>
+                    <button type="button" data-camp-bk="C" aria-label="Move basket centre" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▲</button>
+                    <button type="button" data-camp-bk="R" aria-label="Move basket right" style="font-size:18px;padding:8px 18px;background:#10242a;border:1px solid #2e6e7a;border-radius:8px;cursor:pointer;color:#ffd54f;">▶</button>
                 </div>
                 <div id="camp-bk-n" style="font-size:11px;color:#9fb;opacity:0.8;">0 / ${hits}</div>`);
             const hitEl = ov.querySelector('#camp-bk-hit'), shieldEl = ov.querySelector('#camp-bk-shield'), nEl = ov.querySelector('#camp-bk-n');
