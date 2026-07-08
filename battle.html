@@ -101,7 +101,6 @@
         @media (prefers-reduced-motion: reduce) {
             .story-fx-confetti span { animation: none !important; opacity: 0; }
             .story-victory-badge-slot { animation: none !important; }
-            #rotate-overlay .rotate-icon { animation: none !important; }
             .hp-fill.hp-critical { animation: none !important; }
         }
         /* Full-viewport underlay: softens letterboxing around the fixed 1280×720 frame on wide displays */
@@ -121,9 +120,9 @@
             position: fixed;
             top: calc(2px + var(--safe-top));
             left: calc(2px + var(--safe-left));
-            z-index: 2147483646;
+            z-index: var(--sn-z-toast, 10001);
             font-family: var(--ui-font);
-            font-size: 8px;
+            font-size: 9px;
             line-height: 1;
             color: rgba(200, 200, 200, 0.38);
             pointer-events: none;
@@ -132,6 +131,10 @@
             display: none;
         }
         body:has(#screen-menu:not(.hidden)) .deploy-version-patch { display: block; }
+        /* …but never over a modal/loading scrim — it read as stray debug text on top of
+           the settings sheet and boot screen. */
+        body:has(.modal:not(.hidden)) .deploy-version-patch,
+        body:has(#app-loading-overlay:not(.hidden)) .deploy-version-patch { display: none !important; }
         body { background-color: #000; color: var(--text-color); font-family: var(--ui-font); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; min-height: 100svh; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
         .screen { width: 100%; max-width: 1280px; height: 100vh; max-height: 720px; position: relative; background: var(--bg-color); overflow: hidden; }
         /* Desktop: outer box matches scaled 1280×720 footprint so the game centers and fills the window */
@@ -5031,17 +5034,6 @@
         #screen-battle #move-menu .move-menu-back:active:not(:disabled) { filter: brightness(0.9); }
 
         /* ── Rotate overlay ───────────────────────────────────────────────── */
-        #rotate-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999;
-            flex-direction: column; align-items: center; justify-content: center;
-            color: #fff; text-align: center; font-family: var(--battle-font);
-        }
-        #rotate-overlay .rotate-icon { font-size: 72px; margin-bottom: 20px; animation: rotateHint 1.8s ease-in-out infinite; }
-        @keyframes rotateHint { 0%, 100% { transform: rotate(0deg); } 40% { transform: rotate(-90deg); } 60% { transform: rotate(-90deg); } }
-        #rotate-overlay h2 { font-size: 22px; margin: 0 0 10px; color: var(--accent); }
-        #rotate-overlay p { font-size: 14px; color: #e0e0e0; margin: 0; }
-        @media screen and (max-width: 768px) and (orientation: portrait) { #rotate-overlay { display: none; } }
 
         /* ── Story screens: keep top-right clear for settings button ──────── */
         body:has([id^="screen-story"]:not(.hidden)) #story-hud,
@@ -7829,11 +7821,22 @@
            The confirm bar itself is ~56px tall plus the install-app pinned
            tip strip, so 84px clears both. */
         body:has(#screen-story-tutor:not(.hidden)) #toast-host,
-        body:has(#screen-story-evtrainer:not(.hidden)) #toast-host {
+        body:has(#screen-story-evtrainer:not(.hidden)) #toast-host,
+        body:has(#screen-story-shop:not(.hidden)) #toast-host,
+        body:has(#screen-story-stone-shop:not(.hidden)) #toast-host,
+        body:has(#screen-story-artifact-shop:not(.hidden)) #toast-host,
+        body:has(#screen-story-artifacts:not(.hidden)) #toast-host,
+        body:has(#screen-story-colress:not(.hidden)) #toast-host,
+        body:has(#screen-story-link:not(.hidden)) #toast-host,
+        body:has(#screen-story-fanclub:not(.hidden)) #toast-host,
+        body:has(#screen-story-evolab:not(.hidden)) #toast-host {
             bottom: calc(84px + env(safe-area-inset-bottom, 0px));
         }
         .toast-item {
-            pointer-events: auto;
+            /* non-blocking: toasts are informational; pointer-events:auto let a stack of
+               achievement toasts intercept taps meant for the CONTINUE button beneath them
+               (worst at the Hall of Fame, which grants up to 5 at once). */
+            pointer-events: none;
             align-self: center;
             max-width: min(100%, 400px);
             padding: 12px 16px;
@@ -8560,6 +8563,9 @@
         #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"] {
             background: linear-gradient(180deg, #1a2235 0%, #0e1422 100%) !important;
             border-color: #4a6a9a !important;
+        }
+        #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"]:disabled {
+            opacity: 0.4 !important; cursor: not-allowed !important; box-shadow: none !important;
         }
         #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"]:hover:not(:disabled) {
             background: linear-gradient(180deg, #223045 0%, #141a2a 100%) !important;
@@ -9695,12 +9701,6 @@
 </head>
 <body>
     <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.6.1</div>
-    <!-- Rotate overlay (portrait phones only) -->
-    <div id="rotate-overlay">
-        <div class="rotate-icon">▒</div>
-        <h2>Rotate Your Device</h2>
-        <p>This game is best played in<br><strong>landscape mode</strong></p>
-    </div>
 
     <div id="text-tooltip" class="white-outline hidden" style="background:#111; border:1px solid #fff; padding:8px; font-size:12px; max-width:250px; pointer-events:none; color: #ffd700;"></div>
     <div id="toast-host" aria-live="polite"></div>
@@ -9803,8 +9803,8 @@
                 <label title="On: each gimmick (Mega / Z / Dynamax / Tera) may be used only once per battle, like the main games. Off: unlimited."><input type="checkbox" id="mech-classic-cb" checked onchange="window.updateMechanics()"><span style="color:#b0bec5;">&#9878; Classic (once per battle)</span></label>
             </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
-                <span style="color:#aaa;">Party:</span>
-                <select id="party-size-select" class="menu-select" onchange="window.updateMechanics()">
+                <span style="color:#aaa;" id="party-size-label">Party:</span>
+                <select id="party-size-select" class="menu-select" aria-labelledby="party-size-label" onchange="window.updateMechanics()">
                     <option value="1">1v1</option>
                     <option value="2">2v2</option>
                     <option value="3" selected>3v3</option>
@@ -9895,7 +9895,7 @@
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="How fast battle text and pauses play out. Fast halves every pause; Instant skips them.">
                 <span>Battle speed</span>
-                <select id="setting-battle-speed" aria-label="Battle speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-battle-speed" aria-label="Battle speed" onchange="settings.battleSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:200px;">
                     <option value="normal">Normal</option>
                     <option value="fast">Fast (2×)</option>
                     <option value="instant">Instant</option>
@@ -9903,7 +9903,7 @@
             </div>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Length of Mega Evolution / Dynamax / Tera / Z-Move activation animations.">
                 <span>Gimmick anim speed</span>
-                <select id="setting-gimmick-anim-speed" aria-label="Gimmick animation speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-gimmick-anim-speed" aria-label="Gimmick animation speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:200px;">
                     <option value="normal">Normal</option>
                     <option value="fast">Fast (0.5×)</option>
                     <option value="instant">Instant</option>
@@ -9915,7 +9915,7 @@
             <div class="settings-row settings-row--wide" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
 
                 <span>Display</span>
-                <select id="setting-display-mode" aria-label="Display mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-display-mode" aria-label="Display mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:200px;">
                     <option value="auto">Auto (detect)</option>
                     <option value="phone">Phone</option>
                     <option value="desktop">Desktop</option>
@@ -9942,7 +9942,7 @@
             <div class="settings-grid">
             <div class="settings-row" style="border-bottom:1px solid #444;">
                 <span>vs AI style</span>
-                <select id="setting-ai-profile" aria-label="vs AI style" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                <select id="setting-ai-profile" aria-label="vs AI style" onchange="window.setMenuAiProfile ? window.setMenuAiProfile(this.value) : (settings.aiProfile=this.value, persistMiscSettings());" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:200px;">
                     <option value="balanced">Balanced</option>
                     <option value="aggro">Aggressive</option>
                     <option value="stall">Stall-aware</option>
@@ -10292,7 +10292,7 @@
                 <img id="story-prof-sprite" src="" onerror="this.style.display='none'" style="width:120px;height:120px;object-fit:contain;image-rendering:pixelated;border:none;background:transparent;">
                 <div style="text-align:center;">
                     <div id="story-prof-name" style="color:var(--accent);font-size:14px;font-weight:bold;"></div>
-                    <div id="story-prof-quote" style="font-size:12px;color:#aaa;font-style:italic;max-width:260px;margin-top:4px;"></div>
+                    <div id="story-prof-quote" style="font-size:12px;color:#e8eaf0;font-style:italic;max-width:260px;margin-top:4px;background:rgba(8,10,16,0.82);border-radius:6px;padding:6px 10px;"></div>
                 </div>
             </div>
             <!-- Status text -->
@@ -11264,19 +11264,30 @@
                 t.setAttribute('aria-expanded', 'false');
             }
         };
+        // Cap concurrent toasts so a burst (e.g. Hall of Fame granting up to 5 achievements
+        // in one tick) can't stack a wall over the ceremony + CONTINUE button. Extras queue
+        // and appear as slots free up.
+        window.__toastQueue = window.__toastQueue || [];
+        const _TOAST_MAX = 3;
         window.showToast = function(msg, ms) {
             const host = document.getElementById('toast-host');
             if (!host || msg == null) return;
+            const dur = typeof ms === 'number' ? ms : 2600;
+            const visible = host.querySelectorAll('.toast-item').length;
+            if (visible >= _TOAST_MAX) { window.__toastQueue.push({ msg: String(msg), ms: dur }); return; }
             const el = document.createElement('div');
             el.className = 'toast-item';
             el.textContent = String(msg);
             host.appendChild(el);
             requestAnimationFrame(function() { el.classList.add('toast-item--in'); });
-            const dur = typeof ms === 'number' ? ms : 2600;
             setTimeout(function() {
                 el.classList.remove('toast-item--in');
                 el.classList.add('toast-item--out');
-                setTimeout(function() { try { el.remove(); } catch (e) {} }, 240);
+                setTimeout(function() {
+                    try { el.remove(); } catch (e) {}
+                    const next = window.__toastQueue.shift();
+                    if (next) window.showToast(next.msg, next.ms);
+                }, 240);
             }, dur);
         };
         applyBattleLayoutMode();
@@ -21461,6 +21472,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function updateUI() {
             if (!battleEls.player || !battleEls.player.name) cacheBattleEls();
             const be = battleEls;
+            // BAG only works in Story battles; disable + dim it elsewhere so a primary
+            // command slot isn't a dead alert-on-tap (Quick Play / Gauntlet / PvP).
+            try {
+                const _bag = document.querySelector('#command-menu .battle-cmd-btn[data-cmd="bag"]');
+                if (_bag) {
+                    const _dead = state.mode !== 'story';
+                    _bag.disabled = _dead;
+                    _bag.setAttribute('aria-disabled', _dead ? 'true' : 'false');
+                    _bag.title = _dead ? 'Bag is only available in Story mode battles' : 'Bag (keyboard: B)';
+                }
+            } catch (e) {}
             ['p', 'f'].forEach(s => {
                 const sideKey = s === 'p' ? 'player' : 'foe';
                 const el = be[sideKey];
@@ -21671,7 +21693,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((state.turnNumber | 0) > 0 && !state.isOver) {
                     const _tn = state.turnNumber | 0;
                     const _nearDraw = _tn >= 180;
-                    pills.push(mkPill(`T${_tn}`, 0, _nearDraw ? '#ff8a65' : '#9aa0aa', 'rgba(255,255,255,0.06)',
+                    pills.push(mkPill(`⏱ ${_tn}`, 0, _nearDraw ? '#ff8a65' : '#9aa0aa', 'rgba(255,255,255,0.06)',
                         _nearDraw ? `<b>Turn ${_tn}</b><br>At turn 200 the battle is called as a draw!` : `<b>Turn ${_tn}</b><br>One turn = both sides act once.`));
                 }
                 // Hot-seat PvP: persistent whose-turn pill (the log line scrolls away).
@@ -22185,7 +22207,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div style="flex: 1;">
                         <div style="font-weight: bold; margin-bottom: 5px;">${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${isActive ? '<span style="color:var(--hp-yellow); font-size:10px;">(ACTIVE)</span>' : ''}</div>
                         <div class="hp-bar-container border-white" style="width: 80%;"><div class="hp-fill" style="width: ${pct}%; background: ${color};"></div></div>
-                        <div style="font-size: 10px; margin-top: 3px;">HP: ${mon.currentHp}/${mon.maxHp} | Status: ${mon.status || 'OK'}</div>
+                        <div style="font-size: 10px; margin-top: 3px;">HP: ${mon.currentHp}/${mon.maxHp} | Status: ${mon.currentHp <= 0 ? '<span style="color:var(--hp-red,#f44336);">Fainted</span>' : (mon.status || 'OK')}</div>
                     </div>
                     <div class="party-actions">
                         <button onclick="window.showSummary(${index}, ${isP1}); event.stopPropagation();">Summary</button>
@@ -42606,7 +42628,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
               deliverLines:['Poolside, the sister flips through the notes and exhales.','"He actually sent them. Tell him—no, don’t tell him anything. Here, take this. Hit the tables on me."'],
               reward:{ gold:2000 } },
             { id:'recover_trail_pouch', kind:'recover', fromCity:4, toCity:4, route:'city4to5',
-              npc:{ id:'npc_warden4', name:'Safari Warden', sprite:'Ranger' },
+              npc:{ id:'npc_warden4', name:'Safari Warden', sprite:'Poke__0301mon_Ranger' },
               item:{ name:'Warden’s Pouch', icon:'sprites/items/black-belt.png' },
               offerLines:['The Safari warden stops you at the gate, embarrassed.','"Dropped my field pouch somewhere on the lakeside road this morning. Bring it back and the next Ball’s on the house."'],
               deliverLines:['You hand over the pouch, mud and all. The warden checks it twice.','"Everything’s here. You’re alright, kid. Take this—you’ll want it up the climb."'],
@@ -43709,7 +43731,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.setAttribute('aria-modal', 'true');
             ov.setAttribute('aria-label', 'Adventure Journal');
             ov.className = 'story-journal-overlay';
-            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(6,8,14,0.97);z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;padding:24px 16px;box-sizing:border-box;overflow-y:auto;';
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#06080e;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;padding:24px 16px;box-sizing:border-box;overflow-y:auto;';
             ov.innerHTML =
                 '<div style="color:#ffd54f;font-size:18px;font-weight:bold;letter-spacing:0.06em;margin-bottom:14px;">📓 Adventure Journal</div>' +
                 '<div class="story-journal-body" style="max-width:560px;width:100%;">' + _journalRenderHTML() + '</div>' +
@@ -49548,6 +49570,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (_collectionTab === 'signatures') body.innerHTML = _renderSignaturesTab();
             else if (_collectionTab === 'memorial') body.innerHTML = _renderMemorialTab();
             else body.innerHTML = _renderPokedexTab(_collectionDexGen);
+            // Reset scroll on every (re)render so switching tabs doesn't open the new tab
+            // mid-list with its top rows clipped under the sticky tab bar.
+            try { body.scrollTop = 0; } catch (e) {}
         }
 
         function _collectionAllSpeciesList() {
@@ -61758,6 +61783,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function pcSwitchTab(tab) {
             _pcCurrentTab = (tab === 'underground') ? tab : 'storage';
             _pcRefresh();
+            // Reset scroll on tab change so Storage/Underground don't open mid-list with the
+            // first rows clipped under the sticky tab bar (in-place _pcRefresh keeps scroll).
+            try { document.getElementById('story-pc-body').scrollTop = 0; } catch (e) {}
         }
         /** Display label for the run's rival. The rival is presented generically as
          *  "Rival" — the sprite is a visual filler, not a fixed canonical character —
