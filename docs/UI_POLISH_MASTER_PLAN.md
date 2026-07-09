@@ -284,9 +284,30 @@ Every item is a verified defect with a known one-to-few-line cause. Ordered by p
 **Exit test:** re-run the audit rig across all 7 viewports → zero `viewport-overflow-x`,
 zero clipped-text hits on the fixed anchors, keyboard run of story start → first battle.
 
-### Phase B — "One system" (the enforced consolidation; ~2 weeks; [BP] with 2 [SIGN-OFF])
+### Phase B — "One system" (the enforced consolidation) — B1–B4 + B9 ✅ SHIPPED 2026-07-08
 
-Do these as ONE coordinated sweep — each alone re-decays. Order within the phase:
+**Status (this branch `claude/game-ui-ux-phase-b`, stacked on Phase A):** the entire
+**player-visible** half of Phase B plus its enforcement shipped and is verified —
+**B1** color-token adoption (~450 raw hexes → tokens, proven byte-identical computed styles
+across 583 elements), **B2** gray-ramp contrast fix (286 gray text colors → `--text-muted`/
+`--text-dim`; low-contrast findings → 0 on shop/settings), **B3** 10px type floor (132
+sub-10px + 8 half-pixel sizes lifted; zero overflow regressions across menu/city/shop/tutor ×
+desktop/phone/phoneS), **B4** accessible per-type badge ink (8 light types → dark text, now
+6.06–9.15:1, all WCAG AA), and **B9** the `tests/suites/style-budget.test.js` guard that makes
+it permanent (hard rules at 0: no sub-10px/half-px font, no raw gray text, no token-equal raw
+hex, no Arial; ratchets: inline styles ≤1600, font-size !important ≤60, breakpoints ≤20).
+Full jsdom suite green (1448/1448; three goldens regenerated for the intentional
+color/size changes).
+
+**Remaining (B5, B6, B7, B8) — pure-maintainability structural refactors, no player-visible
+change — deferred to a focused follow-up.** These are the high-churn, multi-day items the
+plan already rated `[SIGN-OFF]`/`L`; rushing a 94→6 button-class refactor or an 18→4 breakpoint
+re-home on the 4 MB monolith risks silent regressions for zero visual payoff. Critically, **the
+B9 ratchets already prevent these numbers from growing and create pressure to reduce them** —
+so they can be driven down safely, incrementally, in their own reviewed pass rather than
+gambled here. The per-item plan below is unchanged; treat B1–B4+B9 as done.
+
+Order within the phase (B1–B4 + B9 complete):
 
 1. **B1 Zero-risk mechanical session (an afternoon):** exact-hex→token sed (510 occurrences),
    `0.12s/0.15s`→`--dur-*` (99), round the 23 half-pixel font sizes. Headline numbers drop
