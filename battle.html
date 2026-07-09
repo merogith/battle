@@ -16198,7 +16198,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (s === 'sucker_punch') {
                     // Sucker Punch — brief "!" surprise spark, then a single sharp dark punch lands suddenly
                     const exclaim = document.createElement('div');
-                    exclaim.style.cssText = `position:absolute;left:42%;top:18%;font-size:22px;font-weight:bold;color:${c2};text-shadow:0 0 6px ${c1};font-family:Arial,sans-serif;pointer-events:none;opacity:0;`;
+                    exclaim.style.cssText = `position:absolute;left:42%;top:18%;font-size:22px;font-weight:bold;color:${c2};text-shadow:0 0 6px ${c1};font-family:var(--ui-font);pointer-events:none;opacity:0;`;
                     exclaim.textContent = '!';
                     wrapper.appendChild(exclaim);
                     anime({ targets: exclaim, opacity: [0,1,0], scale: [0.4,1.4,1], translateY: [0,-10], duration: 280, easing: 'easeOutBack' });
@@ -16209,7 +16209,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (s === 'heal_rest') {
                     // Rest — a soft blue "Z" floats up + sleep glow
                     const z = document.createElement('div');
-                    z.style.cssText = `position:absolute;left:48%;top:40%;font-size:24px;font-weight:bold;color:${c2};text-shadow:0 0 8px ${c1};font-family:Arial,sans-serif;pointer-events:none;opacity:0;`;
+                    z.style.cssText = `position:absolute;left:48%;top:40%;font-size:24px;font-weight:bold;color:${c2};text-shadow:0 0 8px ${c1};font-family:var(--ui-font);pointer-events:none;opacity:0;`;
                     z.textContent = 'Z';
                     wrapper.appendChild(z);
                     anime({ targets: z, opacity: [0,1,1,0], translateY: [0,-30,-60], translateX: [0, 10, -5], scale: [0.5,1.2,1], duration: dur+200, easing: 'easeOutQuad' });
@@ -21349,8 +21349,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let val = mon.stats[key];
                 let stage = mon.stages[key];
                 let stageStr = '';
-                if (stage > 0) stageStr = ` <span style="color:#4caf50">+${stage}</span>`;
-                else if (stage < 0) stageStr = ` <span style="color:#f44336">${stage}</span>`;
+                if (stage > 0) stageStr = ` <span style="color:var(--hp-green)">+${stage}</span>`;
+                else if (stage < 0) stageStr = ` <span style="color:var(--hp-red)">${stage}</span>`;
                 lines.push(`${stageNames[key]}: ${val}${stageStr}`);
             }
             // Phase 4.5 — surface EV total, IV average, and the per-event story stat % so
@@ -59309,7 +59309,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!slot || slot.isEgg) return;
                 const title = campTitleFor(slot);
                 const mastered = campMasteredPaths(slot).length;
-                const tag = title ? ` — <span style="color:#ce93d8">${_esc(title)}</span>`
+                const tag = title ? ` — <span style="color:var(--fac-train)">${_esc(title)}</span>`
                                   : (mastered ? ` — <span style="opacity:0.7">${mastered}/6 bonded</span>` : '');
                 options.push({ label: `${_esc(slot.name)}${tag}`, onPick: () => _campDefer(() => _campMon(ctx, i)) });
             });
