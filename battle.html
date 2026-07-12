@@ -8639,6 +8639,10 @@
             display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 320px; overflow-y: auto;
         }
         #modal-story-bag .story-bag-hint { font-size: 10px !important; color: var(--text-muted) !important; margin-bottom: 8px; letter-spacing: 0.5px; }
+        /* Small shared utilities (C4) — keep new captions/sub-labels out of inline styles. */
+        .story-scope-note { text-align: center; font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin: 2px 0 0; }
+        .story-inline-muted { color: var(--text-muted); }
+        .crucible-btn-sub { color: var(--text-muted); font-size: 10px; font-weight: normal; line-height: 1.35; }
         #modal-story-bag .story-bag-target-label { font-family: var(--battle-font) !important; font-size: 10px !important; color: #b0b8c0 !important; margin-bottom: 6px; letter-spacing: 1px; }
         .story-bag-close-btn {
             width: 100% !important;
@@ -10507,7 +10511,7 @@
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div id="story-pc-pokedex-strip" aria-live="polite" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:var(--text-muted);flex-shrink:0;">
-                <span>📖 Pokédex — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
+                <span>📖 Pokédex <span class="story-inline-muted">(this run)</span> — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
                 <span id="story-pc-balls-summary" style="color:var(--text-muted);display:inline-flex;align-items:center;gap:0;"></span>
             </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
@@ -10797,7 +10801,7 @@
     <div id="modal-story-bag" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline story-bag-modal-content">
             <h3 class="story-bag-modal-title"><img class="story-screen-head-ico" src="icons/story/story_bag.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span>Battle Bag</span></h3>
-            <p class="story-bag-hint">Select an item to use</p>
+            <p class="story-bag-hint" id="story-bag-hint">Select an item to use</p>
             <div id="story-bag-grid" class="story-bag-grid"></div>
             <div id="story-bag-target" style="display:none;margin-bottom:12px;">
                 <div class="story-bag-target-label">Select target Pokémon</div>
@@ -49828,7 +49832,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // View toggle — Regular | Shiny. Single source of truth for the
             // Pokédex tab; gen filter applies to whichever view is active.
-            const viewToggleHtml = `<div class="pdex-view-toggle" style="display:flex;gap:6px;justify-content:center;margin:6px 0 10px;">
+            // Scope caption: this dex is lifetime/all-run, unlike the Center's per-run strip.
+            const scopeCaption = `<div class="story-scope-note">All-time · across every run</div>`;
+            const viewToggleHtml = scopeCaption + `<div class="pdex-view-toggle" style="display:flex;gap:6px;justify-content:center;margin:6px 0 10px;">
                 <button type="button" class="pdex-view-btn${!shinyView ? ' pdex-view-btn--active' : ''}" onclick="window.StoryMode.pokedexSetShinyView(false)" style="padding:6px 14px;background:${!shinyView ? '#37474f' : 'rgba(20,28,40,0.6)'};border:1px solid ${!shinyView ? '#90caf9' : '#2c3a52'};color:${!shinyView ? '#90caf9' : '#aaa'};font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.04em;">&#128218; Regular</button>
                 <button type="button" class="pdex-view-btn${shinyView ? ' pdex-view-btn--active' : ''}" onclick="window.StoryMode.pokedexSetShinyView(true)" style="padding:6px 14px;background:${shinyView ? '#4a3a14' : 'rgba(20,28,40,0.6)'};border:1px solid ${shinyView ? '#ffd54f' : '#2c3a52'};color:${shinyView ? '#ffd54f' : '#aaa'};font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.04em;">&#10024; Shiny</button>
             </div>`;
@@ -62792,8 +62798,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Facility buttons pull from the canonical registry so the hub matches
             // the city menu and each facility's interior title exactly.
             const fico = (key) => storyFacilityIconHtml(key, { size: 24, cls: '' });
+            // The per-battle help was title-only — invisible on touch and to most keyboard/SR
+            // users. Render it as a visible sub-label under the button name (keep the title too).
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
-                <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
+                <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;"><span>${label}</span>${tip ? `<span class="crucible-btn-sub">${_esc(tip)}</span>` : ''}</span>
             </button>`;
             const hardOn = !!sm.crucibleHardMode;
             body.innerHTML = `
@@ -67690,6 +67698,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _battleBagModal = document.getElementById('modal-story-bag');
             const _battleBagH3 = _battleBagModal && _battleBagModal.querySelector('h3');
             if (_battleBagH3) _battleBagH3.textContent = 'Battle Bag';
+            { const _h = document.getElementById('story-bag-hint'); if (_h) _h.textContent = 'Select an item to use'; }
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -67884,6 +67893,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             bagEl.style.gridTemplateColumns = '1fr';
             const h3 = modal.querySelector('h3');
             if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Your Bag';
+            { const _h = document.getElementById('story-bag-hint'); if (_h) _h.textContent = 'Sell spares for gold — battle items are used mid-fight.'; }
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -68236,6 +68246,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             bagEl.style.gridTemplateColumns = '1fr';
             const h3 = modal.querySelector('h3');
             if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">EXP Share — ' + wallet + ' unit' + (wallet === 1 ? '' : 's') + ' left';
+            { const _h = document.getElementById('story-bag-hint'); if (_h) _h.textContent = 'Choose which Pokémon gets the level.'; }
             const rowHtml = (mon, idx, source) => {
                 if (!mon || !mon.build) return '';
                 const used = Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, mon.build.expShareLevels | 0));
