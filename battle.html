@@ -53310,7 +53310,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
                         _coldOv.onclick = function (e) { if (e.target === _coldOv) _coldDismiss(); };
+                        // Keyboard (C1): focus the Begin button on open, and let Escape/Enter
+                        // dismiss — this first-run overlay was pointer-only.
+                        _coldOv.setAttribute('role', 'dialog');
+                        _coldOv.setAttribute('aria-modal', 'true');
+                        _coldOv.addEventListener('keydown', function (e) {
+                            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _coldDismiss(); }
+                        });
                         document.body.appendChild(_coldOv);
+                        try { requestAnimationFrame(function () { try { _coldOv.querySelector('button').focus({ preventScroll: true }); } catch (e) {} }); } catch (e) {}
                         return;
                     }
                 } catch (e) { console.warn('[Story] city0 cold-open failed, continuing', e); }
