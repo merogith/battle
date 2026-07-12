@@ -10308,7 +10308,7 @@
                 <div class="story-dialog-host">
                     <div class="story-dialog-nameplate" id="story-city-dialog-name"></div>
                     <div class="story-dialog-box">
-                        <p class="story-dialog-text" id="story-city-quote"></p>
+                        <p class="story-dialog-text" id="story-city-quote" aria-live="polite"></p>
                     </div>
                 </div>
                 <div id="story-city-tips" class="story-city-tips"></div>
@@ -10560,7 +10560,7 @@
                 <h3 class="story-screen-head-title fac-recover" style="flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
                 <span style="width:32px;"></span>
             </div>
-            <div id="story-catch-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
+            <div id="story-catch-body" aria-live="polite" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
             <div style="padding:10px;flex-shrink:0;display:flex;gap:8px;">
                 <button type="button" id="story-catch-run-btn" onclick="window.StoryMode.catchRun()" style="flex:1;color:#ef9a9a;border-color:#ef9a9a;" title="Run from this Pokémon">&#8617; Run</button>
             </div>
@@ -13693,7 +13693,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof _pbs.mechanics.tera === 'boolean') settings.mechanics.tera = _pbs.mechanics.tera;
             }
             // Audio + visual toggles now persist too (previously reset every reload).
+            // First boot (no saved choice): honour the OS "reduce motion" preference so
+            // motion-sensitive users aren't hit with full animation before they find the
+            // toggle. Their own saved choice always wins on later loads.
             if (typeof _pbs.animations === 'boolean') settings.animations = _pbs.animations;
+            else if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) settings.animations = false;
             if (typeof _pbs.musicEnabled === 'boolean') settings.musicEnabled = _pbs.musicEnabled;
             if (typeof _pbs.soundEnabled === 'boolean') settings.soundEnabled = _pbs.soundEnabled;
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
@@ -53430,7 +53434,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (box && animate) { box.classList.remove('story-city-quote-in'); void box.offsetWidth; box.classList.add('story-city-quote-in'); }
             } catch (e) {}
             if (el._cityTwTimer) { clearTimeout(el._cityTwTimer); el._cityTwTimer = null; }
-            if (!animate) return;
+            if (!animate) { el.setAttribute('aria-busy', 'false'); return; }
+            // aria-busy while typewriting so the live region announces the finished line
+            // once, not one fragment per frame.
+            el.setAttribute('aria-busy', 'true');
             requestAnimationFrame(function () {
                 let ci = 0;
                 el.textContent = '';
@@ -53438,7 +53445,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ci += Math.max(1, Math.round(text.length / 140));
                     el.textContent = text.slice(0, Math.min(ci, text.length));
                     if (ci < text.length) { el._cityTwTimer = setTimeout(step, 16); }
-                    else { el.textContent = text; el._cityTwTimer = null; }
+                    else { el.textContent = text; el._cityTwTimer = null; el.setAttribute('aria-busy', 'false'); }
                 };
                 step();
             });
