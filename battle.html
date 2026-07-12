@@ -4141,7 +4141,7 @@
         .stat-box-header { display: flex; align-items: center; gap: 5px; }
         .stat-box .stat-hp-text { font-size: 11px; color: var(--text-dim); flex-shrink: 0; line-height: 1.2; font-variant-numeric: tabular-nums; }
         .stat-box-header .stat-box-name { flex: 1 1 auto; min-width: 0; max-width: 100%; cursor: pointer; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; word-break: break-word; line-height: 1.25; }
-        #screen-battle[data-battle-layout="arena"] .stat-box-header .stat-box-name { display: block; white-space: nowrap; text-overflow: ellipsis; }
+        #screen-battle[data-battle-layout="arena"] .stat-box-header .stat-box-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; word-break: break-word; }
         .stat-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 4px; min-height: 0; }
         .stat-volatile-row {
             display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px;
@@ -57054,7 +57054,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
             document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' replaced ' + _esc(replaced) + ' (sent to the PC)!';
-            document.getElementById('story-prof-rolled-card').innerHTML = '';
+            { const _rc = document.getElementById('story-prof-rolled-card'); _rc.innerHTML = ''; _rc.style.display = 'none'; }
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
             const backBtn = document.createElement('button');
@@ -57084,7 +57084,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
             document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' is waiting for you at the PC.';
-            document.getElementById('story-prof-rolled-card').innerHTML = '';
+            { const _rc = document.getElementById('story-prof-rolled-card'); _rc.innerHTML = ''; _rc.style.display = 'none'; }
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
             const backBtn = document.createElement('button');
@@ -59426,7 +59426,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _campBondHexSvg(slot, size) {
             size = size || 132;
             const cx = size / 2, cy = size / 2, R = size / 2 - 16;
-            const order = ['praise', 'intimidate', 'devotion', 'nurture', 'mimicry', 'discipline'];
+            // Spoke order matches the bond-meter row order (CAMP_ACTIONS iteration) so a
+            // player can map the top-to-bottom meters onto the clockwise-from-top hexagon.
+            const order = ['praise', 'nurture', 'discipline', 'intimidate', 'mimicry', 'devotion'];
             const TONE = { praise: '#aed581', nurture: '#aed581', discipline: '#ef9a9a', intimidate: '#ef9a9a', mimicry: '#ce93d8', devotion: '#f48fb1' };
             const pt = (i, r) => { const a = -Math.PI / 2 + i * (Math.PI / 3); return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
             const guide = [], vals = []; let spokes = '', dots = '';
