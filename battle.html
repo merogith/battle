@@ -181,6 +181,14 @@
             background-repeat: no-repeat;
         }
 
+        /* Mobile/tall viewports: center the menu column vertically instead of pinning it to
+           the top with the bottom half of a tablet left empty. safe center scrolls from the
+           top when the content is taller than the viewport. */
+        body.is-mobile #screen-menu:not(.hidden) {
+            display: flex; flex-direction: column; justify-content: safe center;
+            overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain; box-sizing: border-box;
+        }
         /* Desktop: menu content can exceed the 720px design height — scroll inside the frame */
         body:not(.is-mobile) #screen-menu:not(.hidden) {
             overflow-y: auto;
@@ -8658,6 +8666,9 @@
         .story-bag-close-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 
         #modal-story-party .story-party-modal-content { max-width: 460px; }
+        /* Wider on desktop so the build line (item · ability · nature) stops ellipsizing
+           while 1000px of viewport sits unused. */
+        @media (min-width: 900px) { #modal-story-party .story-party-modal-content { max-width: 640px; } }
         #modal-story-party .story-party-modal-title {
             font-family: var(--battle-font) !important;
             font-size: 12px !important;
