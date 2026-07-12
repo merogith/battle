@@ -10211,6 +10211,7 @@
             </div>
             <button id="btn-online-rematch" class="hidden" onclick="window.requestOnlineRematch()" style="width:100%;margin-bottom:8px;color:var(--hp-yellow);border-color:var(--hp-yellow);">▶ Next Round</button>
             <div id="online-rematch-waiting" class="hidden" style="font-size:12px;color:var(--text-muted);margin-bottom:10px;padding:8px;border:1px solid #333;border-radius:4px;">Waiting for host to start next round…</div>
+            <button id="btn-play-again" class="hidden" onclick="window.playAgainFromEndScreen()" style="width:100%;margin-bottom:8px;color:var(--hp-green);border-color:var(--hp-green);">▶ Play Again</button>
             <button onclick="window.returnToHome()" style="width: 100%;">Return to Main Menu</button>
         </div>
     </div>
@@ -22052,6 +22053,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (rematchBtn) rematchBtn.classList.add('hidden');
             if (rematchWait) rematchWait.classList.add('hidden');
             if (scorePanel) scorePanel.classList.add('hidden');
+            // Quick Battle: offer "Play Again" so the loop closes here instead of always
+            // bouncing to the main menu. Only for local pve (not online / gauntlet-run-end).
+            const playAgainBtn = document.getElementById('btn-play-again');
+            if (playAgainBtn) {
+                const canReplay = state.mode === 'pve' && !(window.OnlineBattle && window.OnlineBattle.isActive && window.OnlineBattle.isActive());
+                playAgainBtn.classList.toggle('hidden', !canReplay);
+            }
             if (window.OnlineBattle && window.OnlineBattle.isActive() && state.mode === 'pvp') {
                 // Personalize desc for online
                 const p1n = window.__onlineHostName || 'Host';
@@ -22064,6 +22072,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             document.getElementById('modal-end-screen').classList.remove('hidden');
         }
+        // Quick Battle "Play Again": dismiss the end screen and start another match with the
+        // same options; fall back to the menu if a fresh battle can't start.
+        window.playAgainFromEndScreen = function () {
+            try { document.getElementById('modal-end-screen').classList.add('hidden'); } catch (e) {}
+            try { window.startQuickBattle(); } catch (e) { try { window.returnToHome(); } catch (e2) {} }
+        };
 
         /**
          * Developer: end the current fight as a win (same handoff as a normal KO win), including Story Mode
