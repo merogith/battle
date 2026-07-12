@@ -2990,9 +2990,12 @@
             0% { transform: translateY(0) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
-        @keyframes storySaveToastIn {
-            0% { transform: translate(-50%, 14px); opacity: 0; }
-            100% { transform: translate(-50%, 0); opacity: 1; }
+        /* The "Saved" pill lives inside #toast-host (so it inherits the footer-clearance
+           offset) instead of being independently fixed at bottom-center on top of
+           Back/Confirm CTAs. No X translate — the host flex-centers it. */
+        @keyframes storySaveToastInFlow {
+            0% { transform: translateY(14px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
         }
         /* Master Ball — the guaranteed-catch throw should read distinct from
            the Poké/Great/Ultra buttons before the player even clicks. Subtle
@@ -7863,20 +7866,12 @@
             gap: 8px;
             pointer-events: none;
         }
-        /* Bump toasts above the tutor/dojo/nature/EV-trainer confirm bars so
-           the "Saved" indicator never sits on top of the gold Confirm button.
-           The confirm bar itself is ~56px tall plus the install-app pinned
-           tip strip, so 84px clears both. */
-        body:has(#screen-story-tutor:not(.hidden)) #toast-host,
-        body:has(#screen-story-evtrainer:not(.hidden)) #toast-host,
-        body:has(#screen-story-shop:not(.hidden)) #toast-host,
-        body:has(#screen-story-stone-shop:not(.hidden)) #toast-host,
-        body:has(#screen-story-artifact-shop:not(.hidden)) #toast-host,
-        body:has(#screen-story-artifacts:not(.hidden)) #toast-host,
-        body:has(#screen-story-colress:not(.hidden)) #toast-host,
-        body:has(#screen-story-link:not(.hidden)) #toast-host,
-        body:has(#screen-story-fanclub:not(.hidden)) #toast-host,
-        body:has(#screen-story-evolab:not(.hidden)) #toast-host {
+        /* Lift the toast column clear of story-screen bottom chrome — confirm bars
+           (~56px + install-tip strip), Back-to-City footers, catch ball/Run rows —
+           so the "💾 Saved" pill and quest toasts never land on a footer CTA. One rule
+           for every story screen (was an enumerated per-facility list that missed the
+           professor / catch / hub / post-game footers). 84px clears the tallest case. */
+        body:has([id^="screen-story-"]:not(.hidden)) #toast-host {
             bottom: calc(84px + env(safe-area-inset-bottom, 0px));
         }
         .toast-item {
@@ -7983,11 +7978,11 @@
         .menu-btn-quickplay:hover { filter: brightness(1.08); }
         .menu-customize-toggle {
             width: 100%;
-            max-width: 320px;
+            max-width: 340px;
             margin: 0 auto 10px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             gap: 8px;
             min-height: 44px;
             padding: 8px 12px;
@@ -7995,12 +7990,16 @@
             border: 1px solid #444;
             background: var(--surface);
             color: var(--text-dim);
-            font-size: 13px;
+            font-size: 12px;
+            line-height: 1.35;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
         }
-        .menu-customize-toggle .chev { transition: transform 0.2s ease; display: inline-block; }
+        /* Label takes the remaining width and stays centered within it; the chevron is
+           pinned to the right edge so a wrapped label can never collide with it. */
+        .menu-customize-toggle > span:first-child { flex: 1 1 auto; min-width: 0; text-align: center; }
+        .menu-customize-toggle .chev { transition: transform 0.2s ease; display: inline-block; flex: 0 0 auto; }
         .menu-customize-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
         .menu-customize-panel { width: 100%; max-width: 400px; margin: 0 auto 12px; }
         .menu-customize-panel[hidden] { display: none !important; }
@@ -8286,6 +8285,12 @@
             .draft-card-moves > div { min-height: 44px; }
             #screen-story-city .story-action-btn, #screen-story-casino .story-action-btn { min-height: 44px; }
             #command-menu .battle-cmd-btn { min-height: clamp(44px, 10cqh, 64px); }
+            /* Trainer-create mechanic toggles (Mega/Z/Dyna/Tera, Classic/Unlimited) were
+               ~19px-tall label rows around a native 13px checkbox. Give each the 44px touch row. */
+            .story-create-mech-cb { min-height: 44px; }
+            /* Volume sliders shipped a 16px-tall grab band; widen the vertical hit area so the
+               thumb is draggable on touch (native accent-color look is preserved). */
+            #music-vol-slider, #sound-vol-slider { height: 26px; }
         }
         /* Volume/slider (and other explicitly-wide) settings rows span both desktop columns so
            the label + slider + % never crowd into a single ~300px cell. */
@@ -8745,6 +8750,13 @@
         }
         #modal-story-party .party-lead-btn { grid-column:1; grid-row:1 / span 2; width:30px; min-height:0; height:auto; font-size:14px; }
         #modal-story-party .party-sort-btn { grid-column:2; width:30px; min-height:25px; font-size:11px; }
+        /* Touch: widen the reorder controls to a 40px column and give each ▲/▼ a taller hit
+           band. Placed AFTER the sizing above (matching id-specificity) so it wins on coarse
+           pointers, where the single-class coarse minimum could not. */
+        @media (hover: none) and (pointer: coarse) {
+            #modal-story-party .party-lead-btn { width: 40px; min-height: 44px; align-self: stretch; }
+            #modal-story-party .party-sort-btn { width: 40px; min-height: 34px; }
+        }
 
         /* --- Move buttons: type-colored with pixel border --- */
         #move-menu .move-menu-scroll button.battle-btn-move {
@@ -9199,6 +9211,12 @@
             grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
             gap: 8px;
         }
+        /* Phones: two wider cards instead of three crammed columns, so the long
+           run-defining descriptions ("Foes hit much softer • …") wrap roughly half
+           as much and stay readable on a 360–430px screen. Tablet+ keep auto-fit. */
+        @media (max-width: 600px) {
+            .story-create-diff-grid { grid-template-columns: 1fr 1fr; }
+        }
         .story-create-diff-card {
             position: relative;
             display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -9250,7 +9268,9 @@
         }
         .story-create-diff-hint strong { color: #ffab91; }
         @media (max-width: 420px) {
-            .story-create-diff-grid { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; }
+            /* Two columns (not three) keeps each card wide enough for its description
+               to read as prose instead of a stack of 1–2-word lines. */
+            .story-create-diff-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
             .story-create-diff-card { padding: 14px 6px 8px; min-height: 72px; }
             .story-create-diff-sub { font-size: 10px; }
         }
@@ -45446,12 +45466,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             el.setAttribute('role', 'status');
             el.setAttribute('aria-live', 'polite');
             el.textContent = '💾 Saved';
-            el.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);'
+            // Flow child of #toast-host (centered pill) — inherits the host's bottom offset
+            // and footer-clearance so it never lands on a Back/Confirm/Run CTA on phones.
+            el.style.cssText = 'align-self:center;max-width:max-content;'
                 + 'background:rgba(20,30,40,0.92);color:#aed581;border:1px solid rgba(174,213,129,0.35);'
                 + 'padding:6px 14px;border-radius:18px;font-family:inherit;font-size:11px;'
                 + 'letter-spacing:0.06em;z-index:var(--sn-z-toast);pointer-events:none;'
                 + 'box-shadow:0 4px 14px rgba(0,0,0,0.45);'
-                + 'animation:storySaveToastIn 240ms ease-out;';
+                + 'animation:storySaveToastInFlow 240ms ease-out;';
             // Append inside the polite live region (#toast-host) so screen
             // readers announce the save; pre-fix the toast went to body and
             // was invisible to AT. Falls back to body if the host is missing.
