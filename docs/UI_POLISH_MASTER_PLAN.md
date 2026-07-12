@@ -376,7 +376,19 @@ Original per-item plan:
   scope labels ("This run" / "All-time"); bag-modal contextual hint; camp sub-scenes keep the
   campfire backdrop; bond hex spoke order = meter order + vertex initials. [SIGN-OFF] (copy) M
 
-### Phase D — cohesion & delight (opportunistic; each independently shippable)
+### Phase D — cohesion & delight — ✅ SHIPPED 2026-07-09 (clear wins; larger restyles deferred)
+
+**Status (branch `claude/game-ux-phase-d`):** the verifiable, low-risk cohesion wins shipped —
+**D3** space usage (home menu vertically centered on tablet/tall viewports instead of
+top-pinned; story party modal 460→640px on desktop), **D5** dropped the developer-jargon
+"Unstick / Developer section" rescue copy from the new-player story menu, and **D1 (partial)**
+a "▶ Play Again" CTA on the Quick Battle end screen so the loop closes there instead of always
+bouncing to the menu (verified restart). **Deferred (larger cohesion / asset work):** the full
+D1 quick-play restyle (porting story-era chrome onto draft / gauntlet-swap + a gauntlet streak
+recap), **D2** camp emoji→pixel art (asset creation), **D4** shop card-grammar unification, and
+the deeper D5 text pass. Suite green 1458/1458; style-budget guard green.
+
+Original per-item plan:
 
 - **D1 Quick-play era restyle:** draft / gauntlet swap / end screen adopt the story-era
   header/card/chrome language (biggest "one product" win; the end screen also earns a
