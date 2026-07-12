@@ -342,7 +342,22 @@ Order within the phase (B1–B4 + B9 complete):
    no new `font-size !important`, no `Arial`. Every future PR that adds entropy fails CI
    with a message pointing at the token to use. This is what makes Phase B permanent. [BP]
 
-### Phase C — flows & full keyboard/SR parity (~1 week)
+### Phase C — flows & full keyboard/SR parity — ✅ SHIPPED 2026-07-09 (a11y-critical subset)
+
+**Status (branch `claude/game-ux-phase-c`, off `main`):** the accessibility-critical work
+shipped and is verified — **Story mode is now completable keyboard-only end to end**.
+**C2** keyboard completion (battle bag items+targets, Pits picks, draft undraft, story
+minigame overlays get focus+Tab-trap+restore, battle command menu focuses on turn 1 —
+verified FIGHT focused → Enter opens moves → move tile focused). **C3** live regions
+(catch outcomes + city-guide quote via aria-live with an aria-busy typewriter guard) +
+first-boot reduced-motion seeding from the OS query. **C4** info-scent (Crucible's 19
+title-only tips → visible sub-labels, contextual bag hint ×3, "this run"/"all-time" dex
+scope labels). **C1** cold-open overlay keyboard access (focus Begin + Escape/Enter).
+Full suite green 1458/1458; style-budget guard green. **Remaining:** the full E1
+"one openOverlay() contract" migration (structural, no functional gap left) and minor camp
+polish (backdrop continuity, bond-hex spoke order) — deferred like B5–B8.
+
+Original per-item plan:
 
 - **C1 Overlay registry (the deferred E1):** migrate the DIY fixed divs (cold open, arrival,
   recap, errands, journal, wander, daycare, Fight Club, HoF, camp shell, minigames) onto one
