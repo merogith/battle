@@ -250,10 +250,13 @@ overlay scroll-safety; HUD wrap, tips rail, shop overflow, tutor chip, PC vertic
 Resisted label, move tiles, sequence pads; version tag, dead BAG, journal backdrop, turn
 pill, fainted status, tab scroll, HoF toasts, professor quote, Ranger sprite). Full jsdom
 suite green (1438/1438; one overlay z-token guard updated for the A9 scroll-safe change).
-**Two items intentionally deferred to a focused battle/professor pass** (flagged inline):
-A17b (arena compact HUD name-width — cosmetic truncation in the sensitive 211px landscape
-card) and the A20 professor duplicate-back + post-accept dead-space (the quote-contrast part
-shipped). Everything else is done.
+**A17b and the A20 post-accept dead-space shipped in the final-polish pass** (2026-07-12):
+A17b — the arena compact HUD name now wraps to 2 lines (webkit-line-clamp) instead of hard
+truncating in the 211px landscape card; A20 — the now-empty rolled-card container is hidden
+after a professor pick is accepted/swapped/PC-sent so it no longer leaves a stray gap above
+the Back button. The A20 duplicate-back affordance was left as-is: the header-arrow + footer
+Back pattern is shared across every story facility screen (shop/tutor), so single-ing it out
+for the professor would break that consistency. Everything else in Phase A is done.
 
 Every item is a verified defect with a known one-to-few-line cause. Ordered by player impact:
 
@@ -299,13 +302,20 @@ hex, no Arial; ratchets: inline styles ≤1600, font-size !important ≤60, brea
 Full jsdom suite green (1448/1448; three goldens regenerated for the intentional
 color/size changes).
 
-**Remaining (B5, B6, B7, B8) — pure-maintainability structural refactors, no player-visible
+**B7 shipped in the final-polish pass** (2026-07-12): 140 raw `border-radius` literals swept
+onto `--radius-sm/-md/-lg`, proven zero visual change by a computed-style before/after snapshot
+diff across menu/settings/city/shop/tutor (583 elements, 0 non-battle diffs). B7's bevel/shadow
+token work was NOT taken (higher-churn, needs per-theme hi/lo pairs — kept with B5/B6/B8).
+
+**Remaining (B5, B6, B8) — pure-maintainability structural refactors, no player-visible
 change — deferred to a focused follow-up.** These are the high-churn, multi-day items the
 plan already rated `[SIGN-OFF]`/`L`; rushing a 94→6 button-class refactor or an 18→4 breakpoint
-re-home on the 4 MB monolith risks silent regressions for zero visual payoff. Critically, **the
+re-home on the 4 MB monolith risks silent regressions for zero visual payoff. B8 (inline-style
+class-ify) is held for the same reason — the guard already caps inline `style="` at 1600 and
+merging class attributes onto existing elements is breakage-prone. Critically, **the
 B9 ratchets already prevent these numbers from growing and create pressure to reduce them** —
 so they can be driven down safely, incrementally, in their own reviewed pass rather than
-gambled here. The per-item plan below is unchanged; treat B1–B4+B9 as done.
+gambled here. The per-item plan below is unchanged; treat B1–B4+B7+B9 as done.
 
 Order within the phase (B1–B4 + B9 complete):
 
@@ -353,9 +363,11 @@ verified FIGHT focused → Enter opens moves → move tile focused). **C3** live
 first-boot reduced-motion seeding from the OS query. **C4** info-scent (Crucible's 19
 title-only tips → visible sub-labels, contextual bag hint ×3, "this run"/"all-time" dex
 scope labels). **C1** cold-open overlay keyboard access (focus Begin + Escape/Enter).
-Full suite green 1458/1458; style-budget guard green. **Remaining:** the full E1
-"one openOverlay() contract" migration (structural, no functional gap left) and minor camp
-polish (backdrop continuity, bond-hex spoke order) — deferred like B5–B8.
+Full suite green 1458/1458; style-budget guard green. **Camp bond-hex spoke order shipped
+in the final-polish pass** (2026-07-12) — the 6 radar spokes now follow the bond-meter row
+order so top-to-bottom meters map onto the clockwise-from-top hexagon. **Remaining:** the
+full E1 "one openOverlay() contract" migration (structural, no functional gap left) and the
+camp backdrop-continuity polish — deferred like B5/B6/B8.
 
 Original per-item plan:
 
