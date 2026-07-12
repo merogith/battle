@@ -70,11 +70,11 @@ const MIGRATED = [
   ['z-index: var(--sn-z-battle-banner);', null, '.gimmick-banner'],
   // overlay tier (9998)
   ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px', null, '_showCityArrivalScreen'],
-  ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px', null, 'city0 cold-open (enterCity)'],
+  ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:18px;padding:20px', null, 'city0 cold-open (enterCity)'],
   ['height:100%;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;background:linear-gradient', null, '_showWanderScreen'],
   // overlay tier — formerly off-scale (z10000 / z9990), folded onto the scale here
-  ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
-  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.92);z-index:9990', '_daycareOpenDropOff (was z9990)'],
+  ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
+  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.92);z-index:9990', '_daycareOpenDropOff (was z9990)'],
   // spotlight tier (9999)
   ['z-index:var(--sn-z-spotlight);pointer-events:none;opacity:0;', null, '_showBossBanner'],
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-spotlight);', null, '_showFirstSightingLoreOverlay'],
