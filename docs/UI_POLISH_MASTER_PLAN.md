@@ -342,7 +342,22 @@ Order within the phase (B1–B4 + B9 complete):
    no new `font-size !important`, no `Arial`. Every future PR that adds entropy fails CI
    with a message pointing at the token to use. This is what makes Phase B permanent. [BP]
 
-### Phase C — flows & full keyboard/SR parity (~1 week)
+### Phase C — flows & full keyboard/SR parity — ✅ SHIPPED 2026-07-09 (a11y-critical subset)
+
+**Status (branch `claude/game-ux-phase-c`, off `main`):** the accessibility-critical work
+shipped and is verified — **Story mode is now completable keyboard-only end to end**.
+**C2** keyboard completion (battle bag items+targets, Pits picks, draft undraft, story
+minigame overlays get focus+Tab-trap+restore, battle command menu focuses on turn 1 —
+verified FIGHT focused → Enter opens moves → move tile focused). **C3** live regions
+(catch outcomes + city-guide quote via aria-live with an aria-busy typewriter guard) +
+first-boot reduced-motion seeding from the OS query. **C4** info-scent (Crucible's 19
+title-only tips → visible sub-labels, contextual bag hint ×3, "this run"/"all-time" dex
+scope labels). **C1** cold-open overlay keyboard access (focus Begin + Escape/Enter).
+Full suite green 1458/1458; style-budget guard green. **Remaining:** the full E1
+"one openOverlay() contract" migration (structural, no functional gap left) and minor camp
+polish (backdrop continuity, bond-hex spoke order) — deferred like B5–B8.
+
+Original per-item plan:
 
 - **C1 Overlay registry (the deferred E1):** migrate the DIY fixed divs (cold open, arrival,
   recap, errands, journal, wander, daycare, Fight Club, HoF, camp shell, minigames) onto one
@@ -361,7 +376,19 @@ Order within the phase (B1–B4 + B9 complete):
   scope labels ("This run" / "All-time"); bag-modal contextual hint; camp sub-scenes keep the
   campfire backdrop; bond hex spoke order = meter order + vertex initials. [SIGN-OFF] (copy) M
 
-### Phase D — cohesion & delight (opportunistic; each independently shippable)
+### Phase D — cohesion & delight — ✅ SHIPPED 2026-07-09 (clear wins; larger restyles deferred)
+
+**Status (branch `claude/game-ux-phase-d`):** the verifiable, low-risk cohesion wins shipped —
+**D3** space usage (home menu vertically centered on tablet/tall viewports instead of
+top-pinned; story party modal 460→640px on desktop), **D5** dropped the developer-jargon
+"Unstick / Developer section" rescue copy from the new-player story menu, and **D1 (partial)**
+a "▶ Play Again" CTA on the Quick Battle end screen so the loop closes there instead of always
+bouncing to the menu (verified restart). **Deferred (larger cohesion / asset work):** the full
+D1 quick-play restyle (porting story-era chrome onto draft / gauntlet-swap + a gauntlet streak
+recap), **D2** camp emoji→pixel art (asset creation), **D4** shop card-grammar unification, and
+the deeper D5 text pass. Suite green 1458/1458; style-budget guard green.
+
+Original per-item plan:
 
 - **D1 Quick-play era restyle:** draft / gauntlet swap / end screen adopt the story-era
   header/card/chrome language (biggest "one product" win; the end screen also earns a

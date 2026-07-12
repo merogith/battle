@@ -181,6 +181,14 @@
             background-repeat: no-repeat;
         }
 
+        /* Mobile/tall viewports: center the menu column vertically instead of pinning it to
+           the top with the bottom half of a tablet left empty. safe center scrolls from the
+           top when the content is taller than the viewport. */
+        body.is-mobile #screen-menu:not(.hidden) {
+            display: flex; flex-direction: column; justify-content: safe center;
+            overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain; box-sizing: border-box;
+        }
         /* Desktop: menu content can exceed the 720px design height — scroll inside the frame */
         body:not(.is-mobile) #screen-menu:not(.hidden) {
             overflow-y: auto;
@@ -8639,6 +8647,10 @@
             display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 320px; overflow-y: auto;
         }
         #modal-story-bag .story-bag-hint { font-size: 10px !important; color: var(--text-muted) !important; margin-bottom: 8px; letter-spacing: 0.5px; }
+        /* Small shared utilities (C4) — keep new captions/sub-labels out of inline styles. */
+        .story-scope-note { text-align: center; font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin: 2px 0 0; }
+        .story-inline-muted { color: var(--text-muted); }
+        .crucible-btn-sub { color: var(--text-muted); font-size: 10px; font-weight: normal; line-height: 1.35; }
         #modal-story-bag .story-bag-target-label { font-family: var(--battle-font) !important; font-size: 10px !important; color: #b0b8c0 !important; margin-bottom: 6px; letter-spacing: 1px; }
         .story-bag-close-btn {
             width: 100% !important;
@@ -8654,6 +8666,9 @@
         .story-bag-close-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 
         #modal-story-party .story-party-modal-content { max-width: 460px; }
+        /* Wider on desktop so the build line (item · ability · nature) stops ellipsizing
+           while 1000px of viewport sits unused. */
+        @media (min-width: 900px) { #modal-story-party .story-party-modal-content { max-width: 640px; } }
         #modal-story-party .story-party-modal-title {
             font-family: var(--battle-font) !important;
             font-size: 12px !important;
@@ -10196,6 +10211,7 @@
             </div>
             <button id="btn-online-rematch" class="hidden" onclick="window.requestOnlineRematch()" style="width:100%;margin-bottom:8px;color:var(--hp-yellow);border-color:var(--hp-yellow);">▶ Next Round</button>
             <div id="online-rematch-waiting" class="hidden" style="font-size:12px;color:var(--text-muted);margin-bottom:10px;padding:8px;border:1px solid #333;border-radius:4px;">Waiting for host to start next round…</div>
+            <button id="btn-play-again" class="hidden" onclick="window.playAgainFromEndScreen()" style="width:100%;margin-bottom:8px;color:var(--hp-green);border-color:var(--hp-green);">▶ Play Again</button>
             <button onclick="window.returnToHome()" style="width: 100%;">Return to Main Menu</button>
         </div>
     </div>
@@ -10257,7 +10273,7 @@
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Delete Run</button>
             <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Collection</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
-            <p style="font-size:10px;color:#9aa3b2;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
+            <p style="font-size:10px;color:#9aa3b2;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick.</p>
         </div>
     </div>
 
@@ -10308,7 +10324,7 @@
                 <div class="story-dialog-host">
                     <div class="story-dialog-nameplate" id="story-city-dialog-name"></div>
                     <div class="story-dialog-box">
-                        <p class="story-dialog-text" id="story-city-quote"></p>
+                        <p class="story-dialog-text" id="story-city-quote" aria-live="polite"></p>
                     </div>
                 </div>
                 <div id="story-city-tips" class="story-city-tips"></div>
@@ -10507,7 +10523,7 @@
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div id="story-pc-pokedex-strip" aria-live="polite" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:var(--text-muted);flex-shrink:0;">
-                <span>📖 Pokédex — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
+                <span>📖 Pokédex <span class="story-inline-muted">(this run)</span> — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
                 <span id="story-pc-balls-summary" style="color:var(--text-muted);display:inline-flex;align-items:center;gap:0;"></span>
             </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
@@ -10560,7 +10576,7 @@
                 <h3 class="story-screen-head-title fac-recover" style="flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
                 <span style="width:32px;"></span>
             </div>
-            <div id="story-catch-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
+            <div id="story-catch-body" aria-live="polite" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
             <div style="padding:10px;flex-shrink:0;display:flex;gap:8px;">
                 <button type="button" id="story-catch-run-btn" onclick="window.StoryMode.catchRun()" style="flex:1;color:#ef9a9a;border-color:#ef9a9a;" title="Run from this Pokémon">&#8617; Run</button>
             </div>
@@ -10797,7 +10813,7 @@
     <div id="modal-story-bag" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline story-bag-modal-content">
             <h3 class="story-bag-modal-title"><img class="story-screen-head-ico" src="icons/story/story_bag.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span>Battle Bag</span></h3>
-            <p class="story-bag-hint">Select an item to use</p>
+            <p class="story-bag-hint" id="story-bag-hint">Select an item to use</p>
             <div id="story-bag-grid" class="story-bag-grid"></div>
             <div id="story-bag-target" style="display:none;margin-bottom:12px;">
                 <div class="story-bag-target-label">Select target Pokémon</div>
@@ -13693,7 +13709,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof _pbs.mechanics.tera === 'boolean') settings.mechanics.tera = _pbs.mechanics.tera;
             }
             // Audio + visual toggles now persist too (previously reset every reload).
+            // First boot (no saved choice): honour the OS "reduce motion" preference so
+            // motion-sensitive users aren't hit with full animation before they find the
+            // toggle. Their own saved choice always wins on later loads.
             if (typeof _pbs.animations === 'boolean') settings.animations = _pbs.animations;
+            else if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) settings.animations = false;
             if (typeof _pbs.musicEnabled === 'boolean') settings.musicEnabled = _pbs.musicEnabled;
             if (typeof _pbs.soundEnabled === 'boolean') settings.soundEnabled = _pbs.soundEnabled;
             if (typeof _pbs.weatherAnimation === 'boolean') settings.weatherAnimation = _pbs.weatherAnimation;
@@ -20306,7 +20326,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.innerHTML = `<img src="${getSprite(spriteDisplayName(tempM), tempM.isShiny)}" alt="${d.name}" onerror="handleSpriteError(this)" style="width:40px;height:40px;image-rendering:pixelated;border:none;background:transparent;"><span style="font-size:10px;color:var(--text-dim);text-align:center;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</span><span style="font-size:10px;color:var(--hp-red);">✖</span>`;
                     slot.onmouseenter = () => slot.style.opacity = '0.7';
                     slot.onmouseleave = () => slot.style.opacity = '1';
+                    slot.setAttribute('role', 'button');
+                    slot.tabIndex = 0;
+                    slot.setAttribute('aria-label', `Remove ${d.name} from team`);
                     slot.onclick = () => undraftPokemon(i);
+                    slot.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); undraftPokemon(i); } };
                 } else {
                     slot.innerHTML = `<div style="width:40px;height:40px;border:1px dashed #444;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:18px;">?</div><span style="font-size:10px;color:var(--text-muted);">empty</span>`;
                 }
@@ -20884,6 +20908,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
             try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
             try { syncBattleActiveHighlight(); } catch (e) {}
+            // Focus continuity at battle START (C2): the turn loop delivers focus to the
+            // command menu on every subsequent turn, but the very first reveal after the
+            // intro left focus on <body>, so a keyboard player pressed Enter into nothing.
+            try { requestAnimationFrame(() => { try { window._battleFocusCommandMenu && window._battleFocusCommandMenu(); } catch (e) {} }); } catch (e) {}
             if (typeof window.applyBattleLogDockClass === 'function') window.applyBattleLogDockClass();
             if (typeof window.updateOnlineBattleScoreOverlay === 'function') window.updateOnlineBattleScoreOverlay();
             if (typeof window.OnlineBattle !== 'undefined' && window.OnlineBattle.isHost && window.OnlineBattle.isHost()) {
@@ -22025,6 +22053,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (rematchBtn) rematchBtn.classList.add('hidden');
             if (rematchWait) rematchWait.classList.add('hidden');
             if (scorePanel) scorePanel.classList.add('hidden');
+            // Quick Battle: offer "Play Again" so the loop closes here instead of always
+            // bouncing to the main menu. Only for local pve (not online / gauntlet-run-end).
+            const playAgainBtn = document.getElementById('btn-play-again');
+            if (playAgainBtn) {
+                const canReplay = state.mode === 'pve' && !(window.OnlineBattle && window.OnlineBattle.isActive && window.OnlineBattle.isActive());
+                playAgainBtn.classList.toggle('hidden', !canReplay);
+            }
             if (window.OnlineBattle && window.OnlineBattle.isActive() && state.mode === 'pvp') {
                 // Personalize desc for online
                 const p1n = window.__onlineHostName || 'Host';
@@ -22037,6 +22072,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             document.getElementById('modal-end-screen').classList.remove('hidden');
         }
+        // Quick Battle "Play Again": dismiss the end screen and start another match with the
+        // same options; fall back to the menu if a fresh battle can't start.
+        window.playAgainFromEndScreen = function () {
+            try { document.getElementById('modal-end-screen').classList.add('hidden'); } catch (e) {}
+            try { window.startQuickBattle(); } catch (e) { try { window.returnToHome(); } catch (e2) {} }
+        };
 
         /**
          * Developer: end the current fight as a win (same handoff as a normal KO win), including Story Mode
@@ -42965,10 +43006,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.setAttribute('role', 'dialog');
             ov.setAttribute('aria-modal', 'true');
             ov.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;box-sizing:border-box;background:linear-gradient(180deg,rgba(4,6,12,0.92),rgba(4,6,12,0.97));color:var(--text-color);font-family:inherit;text-align:center;';
+            ov.setAttribute('tabindex', '-1');
             try { document.body.appendChild(ov); } catch (e) {}
+            // Keyboard/SR access (C2): the dialog declared aria-modal but never received
+            // focus and didn't trap Tab, so a keyboard user heard/saw nothing when it opened
+            // and could Tab out to the page behind. Deliver focus inside (after the caller
+            // appends its buttons) and contain Tab; restore focus on teardown.
+            ov._mgPrevFocus = document.activeElement;
+            try {
+                requestAnimationFrame(() => { try { const f = ov.querySelector('button, [role="button"], [tabindex]:not([tabindex="-1"])') || ov; f.focus({ preventScroll: true }); } catch (e) {} });
+            } catch (e) {}
+            ov._mgTrap = (e) => {
+                if (e.key !== 'Tab') return;
+                const foc = [...ov.querySelectorAll('button, [href], input, select, [role="button"], [tabindex]:not([tabindex="-1"])')].filter(el => el.offsetParent !== null);
+                if (!foc.length) { e.preventDefault(); try { ov.focus(); } catch (_) {} return; }
+                const first = foc[0], last = foc[foc.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                else if (!ov.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+            };
+            ov.addEventListener('keydown', ov._mgTrap);
             return ov;
         }
-        function _mgTeardown(ov) { try { ov && ov.remove(); } catch (e) {} }
+        function _mgTeardown(ov) { try { if (ov) { const pf = ov._mgPrevFocus; ov.remove(); if (pf && typeof pf.focus === 'function') { try { pf.focus({ preventScroll: true }); } catch (e) {} } } } catch (e) {} }
         function _mgBtn(label, big) {
             const b = document.createElement('button');
             b.type = 'button';
@@ -49797,7 +49857,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // View toggle — Regular | Shiny. Single source of truth for the
             // Pokédex tab; gen filter applies to whichever view is active.
-            const viewToggleHtml = `<div class="pdex-view-toggle" style="display:flex;gap:6px;justify-content:center;margin:6px 0 10px;">
+            // Scope caption: this dex is lifetime/all-run, unlike the Center's per-run strip.
+            const scopeCaption = `<div class="story-scope-note">All-time · across every run</div>`;
+            const viewToggleHtml = scopeCaption + `<div class="pdex-view-toggle" style="display:flex;gap:6px;justify-content:center;margin:6px 0 10px;">
                 <button type="button" class="pdex-view-btn${!shinyView ? ' pdex-view-btn--active' : ''}" onclick="window.StoryMode.pokedexSetShinyView(false)" style="padding:6px 14px;background:${!shinyView ? '#37474f' : 'rgba(20,28,40,0.6)'};border:1px solid ${!shinyView ? '#90caf9' : '#2c3a52'};color:${!shinyView ? '#90caf9' : '#aaa'};font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.04em;">&#128218; Regular</button>
                 <button type="button" class="pdex-view-btn${shinyView ? ' pdex-view-btn--active' : ''}" onclick="window.StoryMode.pokedexSetShinyView(true)" style="padding:6px 14px;background:${shinyView ? '#4a3a14' : 'rgba(20,28,40,0.6)'};border:1px solid ${shinyView ? '#ffd54f' : '#2c3a52'};color:${shinyView ? '#ffd54f' : '#aaa'};font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.04em;">&#10024; Shiny</button>
             </div>`;
@@ -53273,7 +53335,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
                         _coldOv.onclick = function (e) { if (e.target === _coldOv) _coldDismiss(); };
+                        // Keyboard (C1): focus the Begin button on open, and let Escape/Enter
+                        // dismiss — this first-run overlay was pointer-only.
+                        _coldOv.setAttribute('role', 'dialog');
+                        _coldOv.setAttribute('aria-modal', 'true');
+                        _coldOv.addEventListener('keydown', function (e) {
+                            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _coldDismiss(); }
+                        });
                         document.body.appendChild(_coldOv);
+                        try { requestAnimationFrame(function () { try { _coldOv.querySelector('button').focus({ preventScroll: true }); } catch (e) {} }); } catch (e) {}
                         return;
                     }
                 } catch (e) { console.warn('[Story] city0 cold-open failed, continuing', e); }
@@ -53403,7 +53473,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (box && animate) { box.classList.remove('story-city-quote-in'); void box.offsetWidth; box.classList.add('story-city-quote-in'); }
             } catch (e) {}
             if (el._cityTwTimer) { clearTimeout(el._cityTwTimer); el._cityTwTimer = null; }
-            if (!animate) return;
+            if (!animate) { el.setAttribute('aria-busy', 'false'); return; }
+            // aria-busy while typewriting so the live region announces the finished line
+            // once, not one fragment per frame.
+            el.setAttribute('aria-busy', 'true');
             requestAnimationFrame(function () {
                 let ci = 0;
                 el.textContent = '';
@@ -53411,7 +53484,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ci += Math.max(1, Math.round(text.length / 140));
                     el.textContent = text.slice(0, Math.min(ci, text.length));
                     if (ci < text.length) { el._cityTwTimer = setTimeout(step, 16); }
-                    else { el.textContent = text; el._cityTwTimer = null; }
+                    else { el.textContent = text; el._cityTwTimer = null; el.setAttribute('aria-busy', 'false'); }
                 };
                 step();
             });
@@ -55504,7 +55577,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const grade = getMonGrade(s.name, getBST(s.name));
                 const bonus = (s.build && s.build.bonus) || {};
                 const bonusTotal = ['hp','atk','def','spa','spd','spe'].reduce((a,k)=>a+(bonus[k]|0),0);
-                return `<div data-pits-pick="${_esc(s.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${picked?'rgba(255,82,82,0.18)':'rgba(20,12,12,0.6)'};border:1px solid ${picked?'#ff5252':'#5a1818'};cursor:pointer;">
+                return `<div data-pits-pick="${_esc(s.id)}" role="button" tabindex="0" aria-pressed="${picked?'true':'false'}" aria-label="${_esc(s.nickname || s.name)}${picked?', picked':''}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${picked?'rgba(255,82,82,0.18)':'rgba(20,12,12,0.6)'};border:1px solid ${picked?'#ff5252':'#5a1818'};cursor:pointer;">
                     <span style="font-size:11px;color:var(--text-muted);width:18px;">${picked ? (picks.indexOf(s.id)+1) : '·'}</span>
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh?'color:var(--accent);':''}">${sh?'✦ ':''}${_esc(s.nickname || s.name)} <span style="font-size:10px;color:var(--text-muted);">G${grade}</span>${bonusTotal > 0 ? ` <span style="color:#80cbc4;font-size:10px;" title="Permanent stat bonus">+${bonusTotal}</span>` : ''}</span>
                 </div>`;
@@ -55545,7 +55618,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const start = ov.querySelector('#pits-start-btn');
             if (start) start.onclick = _pitsStartBracket;
             ov.querySelectorAll('[data-pits-pick]').forEach(row => {
-                row.onclick = () => _pitsTogglePick(row.getAttribute('data-pits-pick'));
+                const pick = () => _pitsTogglePick(row.getAttribute('data-pits-pick'));
+                row.onclick = pick;
+                row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
             });
         }
         function _pitsTogglePick(id) {
@@ -62756,8 +62831,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Facility buttons pull from the canonical registry so the hub matches
             // the city menu and each facility's interior title exactly.
             const fico = (key) => storyFacilityIconHtml(key, { size: 24, cls: '' });
+            // The per-battle help was title-only — invisible on touch and to most keyboard/SR
+            // users. Render it as a visible sub-label under the button name (keep the title too).
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
-                <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
+                <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;"><span>${label}</span>${tip ? `<span class="crucible-btn-sub">${_esc(tip)}</span>` : ''}</span>
             </button>`;
             const hardOn = !!sm.crucibleHardMode;
             body.innerHTML = `
@@ -67654,6 +67731,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _battleBagModal = document.getElementById('modal-story-bag');
             const _battleBagH3 = _battleBagModal && _battleBagModal.querySelector('h3');
             if (_battleBagH3) _battleBagH3.textContent = 'Battle Bag';
+            { const _h = document.getElementById('story-bag-hint'); if (_h) _h.textContent = 'Select an item to use'; }
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -67666,7 +67744,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.className = 'story-bag-item';
                 const icon = storyShopIconCellHtml(item.id);
                 div.innerHTML = icon + `<div class="story-bag-item-text"><div class="name">${item.name}</div><div class="qty">x${qty}</div><div class="eff">${item.desc}</div></div>`;
+                // Keyboard parity (C2): bag items were mouse-only, so battle items were
+                // unusable without a pointer. Enter/Space selects, like the draft cards.
+                div.setAttribute('role', 'button');
+                div.tabIndex = 0;
+                div.setAttribute('aria-label', `${item.name}, ${item.desc}, ${qty} in bag`);
                 div.onclick = () => selectBagItem(item, div);
+                div.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectBagItem(item, div); } };
                 bagEl.appendChild(div);
             });
             if (!hasAny) bagEl.innerHTML='<div style="color:var(--text-muted);font-size:12px;grid-column:1/-1;">No items in bag.</div>';
@@ -67691,10 +67775,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const useOnFainted = item.effect.startsWith('revive');
             tarsEl.innerHTML = state.playerParty.map((mon,i) => {
                 const ok = useOnFainted ? mon.currentHp<=0 : mon.currentHp>0;
-                return `<div class="party-slot ${ok?'':'fainted'}" style="cursor:${ok?'pointer':'not-allowed'}" onclick="${ok?`window.StoryMode.useBagItemOn(${i})`:''}">
-                    <img src="${getSprite(spriteDisplayName(mon),mon.isShiny)}" class="mini-sprite">
+                const _tgtLabel = `${ok ? 'Use on ' : ''}${mon.name}, HP ${mon.currentHp} of ${mon.maxHp}${mon.currentHp<=0?', fainted':''}`;
+                return `<div class="party-slot ${ok?'':'fainted'}" ${ok?`role="button" tabindex="0"`:`aria-disabled="true"`} aria-label="${_tgtLabel}" style="cursor:${ok?'pointer':'not-allowed'}" onclick="${ok?`window.StoryMode.useBagItemOn(${i})`:''}" onkeydown="${ok?`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.StoryMode.useBagItemOn(${i})}`:''}">
+                    <img src="${getSprite(spriteDisplayName(mon),mon.isShiny)}" class="mini-sprite" alt="">
                     <div><div style="font-weight:bold;">${mon.name}</div>
-                    <div style="font-size:10px;">HP: ${mon.currentHp}/${mon.maxHp} | ${mon.status||'OK'}</div></div>
+                    <div style="font-size:10px;">HP: ${mon.currentHp}/${mon.maxHp} | ${mon.currentHp<=0?'<span style=\"color:var(--hp-red,#f44336)\">Fainted</span>':(mon.status||'OK')}</div></div>
                 </div>`;
             }).join('');
         }
@@ -67841,6 +67926,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             bagEl.style.gridTemplateColumns = '1fr';
             const h3 = modal.querySelector('h3');
             if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Your Bag';
+            { const _h = document.getElementById('story-bag-hint'); if (_h) _h.textContent = 'Sell spares for gold — battle items are used mid-fight.'; }
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -68193,6 +68279,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             bagEl.style.gridTemplateColumns = '1fr';
             const h3 = modal.querySelector('h3');
             if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">EXP Share — ' + wallet + ' unit' + (wallet === 1 ? '' : 's') + ' left';
+            { const _h = document.getElementById('story-bag-hint'); if (_h) _h.textContent = 'Choose which Pokémon gets the level.'; }
             const rowHtml = (mon, idx, source) => {
                 if (!mon || !mon.build) return '';
                 const used = Math.max(0, Math.min(EXP_SHARE_MAX_PER_MON, mon.build.expShareLevels | 0));
