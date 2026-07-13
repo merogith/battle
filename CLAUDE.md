@@ -12,6 +12,13 @@ A single-page Pokémon-style battle simulator (`battle.html`, ~61k lines / 4 MB 
 
 Plus a **Battle Frontier / Gauntlet** ladder reachable from the Story flow.
 
+> **Finding a mechanic in the 77k-line file — start here:** `docs/GAME_MECHANICS_MAP.md`
+> maps plain-English concepts (auto-heal, camp, wild spawns, EV/IV, drops, NPC unlocks,
+> item/move tiers, pre-fight banter, trainer pools, …) → the **exact symbols** to search,
+> the gotchas, and the guarding test. Use it (plus `/anchor <symbol>`) before grepping a
+> common word like `heal` (491 hits) or `camp` (622 hits). Keep it current when you rename
+> or add a mechanic.
+
 ## Active scope (mid-2026)
 
 **Story mode (normal difficulty)** is the **primary / headline mode** — it gets the lion's
