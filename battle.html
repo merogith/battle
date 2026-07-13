@@ -73413,7 +73413,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!sk || !tierSel.has(sk)) return false; // stage keys: inner / unleashed / guru
                 }
                 if (q && !m.toLowerCase().includes(q)) return false;
-                const md = movesDB[m];
+                // Resolve move data the SAME way the card render does (_txMoveCardHtml:
+                // `movesDB[moveName] || ensureMoveData(moveName)`) so the type/category
+                // filter always agrees with the category pill the card shows. Reading raw
+                // movesDB[m] here let an UNRESOLVED move (older moves aren't in
+                // data/moves.json — the browser resolves them async via @pkmn/dex, and the
+                // Stage check skips ensureMoveData at ∞-BP-cap cities) fall through
+                // `if (!md) return true`, silently bypassing the type/category chips —
+                // e.g. Physical moves showing under an active Status filter.
+                const md = movesDB[m] || (typeof ensureMoveData === 'function' ? ensureMoveData(m) : null);
                 if (!md) return true;
                 if (types.size && !types.has(md.type)) return false;
                 if (cats.size  && !cats.has(md.cat))  return false;
