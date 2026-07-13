@@ -309,3 +309,59 @@ is a no-op; solo team → B is a no-op), so nothing bricks and staging is automa
 | Difficulty bias annoying skilled players | D is VE/E only by default, behind a tunable; N+ untouched |
 | Scope creep | Four independent lenses; each ships + tests alone in the §6 order |
 | Save safety | No schema change; `evTrainFocus` already in schema; equipped-move invariant untouched |
+
+---
+
+## 9. Empirical baseline — the suggestion probe (evidence)
+
+Built `scripts/debug/mentor-suggestion-probe.mjs`: it drives the real `enterMentor()`
+path across a matrix of **Pokémon × evolution stage × game city** (base/mid/final
+forms + two finals walked C0→C9 + a 6-mon team probe), dumps the actual Auto-Build
+suggestions, and computes an objective "smell" scorecard. Re-run after any change to
+prove improvement (`--label after`, then `--diff`).
+
+**BEFORE scorecard (current system):**
+
+| smell | count | where | verdict |
+|---|---|---|---|
+| `filler_low_bp` | 25 | C0 12 · C2 9 → **0 by C6** | mostly forced by the BP-capped early pool; still pickable-better |
+| `moves_wrong_cat` | 22 | C0 8 · C2 8 → ~1 late | mostly early-pool; small late residue is real |
+| `matchup_miss` | 12 | spread, incl. C4 4 · C7 4 | Lens A target (diagnostic vs reference gym themes) |
+| `team_gap_unflagged` | 1 | team probe | Lens B target — confirmed the Mentor never surfaces it |
+
+Per-mon **nature/EV mismatch smells were 0** — the competitive core is sound. The
+probe's real value was surfacing a pattern the coarse metrics under-counted:
+
+### The headline empirical finding — walls are built as attackers (P1)
+`_txBestArchetypeFor` picks the **highest-weight eligible** archetype. For every
+`coarse:'wall'` mon the winner is **`status_attacker`** (role `any`, weight **1.0**,
+`bulk_offense` = 252 HP / 252 *attacking-stat*, Adamant/Modest) — it out-weights the
+true defensive `stall_wall` (weight **0.9**, `max_bulk`, Impish/Calm) by 0.1. Observed:
+
+- **Blissey / Chansey** → role chip "Special Attacker", nature **Modest**, **252 SpA**
+  (Blissey's SpA is 75 — it is *the* special wall).
+- **Toxapex** → nature **Adamant**, **252 Atk** (Atk 63, Def 152 — a pure wall).
+- **Blastoise** → **Modest** nature recommended with two **physical** moves (Waterfall,
+  Ice Punch) — an incoherent mixed set (root: `atk≈spa`, nature keys off `physical`
+  while move recs key off usage).
+
+This is a **correctness** defect (not a balance opinion): the game's premier walls are
+handed strictly-worse offensive builds. It only affects the **player** path
+(`_txBestArchetypeFor` is deterministic-highest-weight; the foe roller
+`_designedPickArchetype` is weighted-*random*, so foes still get variety) → the fix is
+**player-only, zero foe impact**.
+
+### Ranked polish points (from the probe, highest beat-the-game value first)
+
+| # | Polish point | Root cause | Risk | Foe impact |
+|---|---|---|---|---|
+| **P1** | **Bulky/wall mons get offensive builds** — fix `_txBestArchetypeFor` to pick a defensive-shaped archetype (`max_bulk`/`bulk`, Impish/Calm) for `coarse:'wall'`; label the role chip as the wall variant | `status_attacker` (w1.0) out-weights `stall_wall` (w0.9) for walls | low (correctness) | none (player-only) |
+| **P2** | **Mixed-mon nature/move coherence** — when `atk≈spa`, decide one category and make nature + EV + moves agree | nature from `physical=atk>=spa`; moves from usage | low | none |
+| **P3** | **Early-game filler floor** — a min-BP / "prefer 2nd STAB or strong status over ≤20-BP off-STAB" rule for the coverage slot (biggest beginner win, C0–C2) | `nextCoverage()` has no BP floor | low | none (player scorer) |
+| **P4** | **Matchup lens (A)** — bias coverage/def-tech toward the upcoming gym type | no opponent awareness | medium | none |
+| **P5** | **Team lens (B)** — surface shared weakness / missing hazard-removal | per-mon only | low-med | none |
+
+P1–P3 are clean, low-risk *correctness/quality* fixes that also happen to be the
+"mainstream and clean" wins; P4–P5 are the bigger contextual features. Recommend
+shipping **P1 first** (highest value, lowest risk, player-only), re-running the probe,
+and reading the `--diff` scorecard drop before moving on.
