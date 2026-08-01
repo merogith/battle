@@ -27,6 +27,26 @@ listed the Gen 6 ORAS wave, so none of them were reachable. All of them are now 
   Zygarde-Mega outright. Stones shared by several formes of one species (Meowsticite,
   Magearnite, Tatsugirinite) now resolve to the forme actually holding them.
 
+### Changed — a build's own Mega Stone now wins over the random roll
+
+Assigning the MEGA gimmick used to overwrite the held item with a stone picked at
+random from the species' list, even when the build already carried a legal one.
+For a dual-stone species that meant a set could get the forme it wasn't written
+for — Smogon's Charizardite Y sets are built around Drought, its Charizardite X
+sets around Tough Claws. A build that names its own legal stone now keeps it, and
+only builds without one take the roll. Builds holding another species' stone are
+still corrected, and the roll stays seeded so story battles replay identically.
+
+### Added — four alternate formes are draftable, so their Megas are reachable
+
+`Floette-Eternal`, `Magearna-Original`, `Tatsugiri-Droopy` and `Tatsugiri-Stretchy`
+had no competitive sets anywhere, and the draft pool is built from the set list —
+so they never appeared, and four of the new Megas could never be seen. A new
+project-owned `data/builds/custom.json` fills the gap: the three formes that are
+mechanically identical to their base forme inherit its sets outright, and
+Floette-Eternal gets two sets drawn from its real move pool. Every Mega-capable
+species can now actually turn up.
+
 ### Fixed
 
 - Mega stones with a suffixed name (`Charizardite X`, `Mewtwonite Y`, and now
