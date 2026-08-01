@@ -15136,11 +15136,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // No stone assigned — see activateMega() for sentinel handling.
                 } else {
+                    // A build that already names a stone legal for this species chose it
+                    // deliberately — Smogon's Charizardite Y sets are built around Drought,
+                    // its Charizardite X sets around Tough Claws — so honour it instead of
+                    // re-rolling. Only builds with no stone of their own take the roll below.
+                    // (Mirrors the ZMOVE branch, which already keeps a build's own crystal.)
+                    if (megaFormFor(name, build.i)) return;
                     let stone = MEGA_STONE_MAP[name];
                     // Seeded RNG in story mode so a dual-mega species (Charizard X/Y,
-                    // Mewtwo X/Y) resolves to the SAME stone on every load of a seeded
-                    // battle — X vs Y change typing/ability/role, so a bare Math.random()
-                    // here breaks the static-roll reproducibility the story pipeline keeps.
+                    // Mewtwo X/Y, Absol / Garchomp / Lucario Mega vs Mega-Z) resolves to the
+                    // SAME stone on every load of a seeded battle — the two formes change
+                    // typing/ability/role, so a bare Math.random() here breaks the
+                    // static-roll reproducibility the story pipeline keeps.
                     if (Array.isArray(stone)) {
                         // `sm` is private to the StoryMode IIFE — read story state via the
                         // public getter (mirrors storyAwareRng below) so this engine-scope

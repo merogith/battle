@@ -176,6 +176,31 @@ describe('the build pipeline can equip every mega', () => {
     assert.deepEqual(bad, [], bad.join('\n'));
   });
 
+  it('a build that already names a legal stone keeps it instead of re-rolling', () => {
+    // Smogon's Charizardite Y sets are built around Drought and its Charizardite X sets
+    // around Tough Claws, so re-rolling the stone would hand the set the wrong forme.
+    for (const [species, stone] of [
+      ['Charizard', 'Charizardite Y'], ['Charizard', 'Charizardite X'],
+      ['Mewtwo', 'Mewtwonite X'], ['Absol', 'Absolite'], ['Lucario', 'Lucarionite Z'],
+    ]) {
+      const kept = evalIn(`(function(){
+        const b = { m: ['Tackle','Tackle','Tackle','Tackle'], i: ${JSON.stringify(stone)} };
+        assignGimmickToBuild(${JSON.stringify(species)}, b, 'MEGA');
+        return b.i;
+      })()`);
+      assert.equal(kept, stone, `${species} should keep its own ${stone}`);
+    }
+  });
+
+  it('a build holding another species’ stone still gets re-rolled to a legal one', () => {
+    const rolled = evalIn(`(function(){
+      const b = { m: ['Tackle','Tackle','Tackle','Tackle'], i: 'Latiasite' };
+      assignGimmickToBuild('Gengar', b, 'MEGA');
+      return b.i;
+    })()`);
+    assert.equal(rolled, 'Gengarite');
+  });
+
   it('Rayquaza still mega-evolves stonelessly via Dragon Ascent', () => {
     const out = JSON.parse(evalIn(`(function(){
       const b = { m: ['Tackle','Tackle','Tackle','Tackle'], i: 'Leftovers' };
