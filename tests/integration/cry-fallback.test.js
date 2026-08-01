@@ -81,3 +81,20 @@ test('cryCandidates: all known formes terminate at a vendored local cry', async 
     assert.ok(hit, `${name} has no vendored local cry in its chain: ${local.join(', ')}`);
   }
 });
+
+// Same guard, driven off the live mega roster instead of a hand-listed sample, so a forme
+// added to the gimmick tables can't ship silent. Mega-Z (Absol / Garchomp / Lucario) and the
+// gender-tagged Meowstic megas were exactly this: neither suffix was stripped, so both fell
+// through every local candidate to a CDN id that does not exist.
+test('cryCandidates: every mega forme reaches a vendored local cry', async () => {
+  const { window: w } = await loadEngine();
+  const formes = Array.from(w.eval('Array.from(ALL_MEGA_FORM_NAMES)'));
+  assert.ok(formes.length > 90, `expected the full mega roster, got ${formes.length}`);
+  const silent = [];
+  for (const name of formes) {
+    const local = Array.from(w.eval(`cryCandidates(${JSON.stringify(name)})`)).filter((u) => !u.startsWith('http'));
+    if (!local.some((u) => existsSync(cryPath(u)))) silent.push(`${name} → ${local.join(', ')}`);
+  }
+  // Crucibelle is a Smogon CAP mon and has no vendored cry at all, base forme included.
+  assert.deepEqual(silent.filter((s) => !s.startsWith('Crucibelle')), []);
+});

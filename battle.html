@@ -12106,6 +12106,22 @@
                     if (it.name && it.shortDesc) tooltipDict[it.name] = it.shortDesc;
                     else if (it.name && it.desc) tooltipDict[it.name] = it.desc;
                 }
+                // 19 of the newer mega stones ship with no desc/shortDesc upstream, which
+                // would leave their tooltip blank. Synthesise one from MEGA_STONE_MAP — the
+                // table we own — rather than hand-editing data/items.json, which is a
+                // regenerated Showdown export (scripts/sync-showdown-data.js).
+                try {
+                    for (const [species, stones] of Object.entries(MEGA_STONE_MAP)) {
+                        if (species === 'Rayquaza') continue; // stoneless, gated on Dragon Ascent
+                        for (const stone of (Array.isArray(stones) ? stones : [stones])) {
+                            if (tooltipDict[stone]) continue;
+                            const forme = megaFormFor(species, stone);
+                            tooltipDict[stone] = forme && /-Primal$/.test(forme)
+                                ? `If held by a ${species}, this item allows it to undergo Primal Reversion in battle.`
+                                : `If held by a ${species}, this item allows it to Mega Evolve in battle.`;
+                        }
+                    }
+                } catch (e) { console.warn('[Mega] stone tooltip backfill failed:', e); }
 
                 const abilitiesJSON = abilitiesJSONOrig['9'] || {};
                 for (let k in abilitiesJSON) {
@@ -16546,8 +16562,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // …) are NOT vendored individually, so we walk toward the base species' local cry — which is
         // guaranteed to exist — before ever touching the CDN. This keeps every forme audible offline.
         function cryCandidates(name) {
-            // Mega / Gmax / Primal gimmicks share the base species' cry.
-            const core = String(name || '').replace(/-Mega(-[XY])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, '');
+            // Mega / Gmax / Primal gimmicks share the base species' cry. The mega suffix
+            // covers X / Y (Charizard, Mewtwo, Raichu) and Z (Absol, Garchomp, Lucario).
+            const core = String(name || '').replace(/-Mega(-[XYZ])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, '');
             const out = [];
             const seen = new Set();
             const pushLocal = (n) => {
@@ -16558,8 +16575,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Strip trailing "-Forme" words (Hisui, Galar, Therian, Zen, Ash, …) one at a time until
             // we reach the base species. Numeric/base formes that ship their own cry (Zygarde-10) win
             // on the first candidate, so this only fires when the exact forme cry is absent.
+            // Single-letter gender tags (Meowstic-F, Indeedee-M, Basculegion-F) count too — only the
+            // male/base cry is vendored, so without this the female forme falls straight to the CDN.
             let nm = core, prev;
-            do { prev = nm; nm = nm.replace(/-[A-Z][a-z]+$/, ''); if (nm !== prev) pushLocal(nm); } while (nm !== prev);
+            do { prev = nm; nm = nm.replace(/-([A-Z][a-z]+|[MF])$/, ''); if (nm !== prev) pushLocal(nm); } while (nm !== prev);
             // CDN last resort — only reached if no local file matched. Showdown cry ids drop hyphens.
             out.push(`https://play.pokemonshowdown.com/audio/cries/${toShowdownSpriteId(core).replace(/-/g, '')}.mp3`);
             return out;

@@ -158,6 +158,35 @@ describe('mega sprites', () => {
   });
 });
 
+describe('the build pipeline can equip every mega', () => {
+  // rollGimmick → assignGimmickToBuild → validateGimmick is the path enemy teams take.
+  // A species in MEGA_SPECIES whose stone never lands on the build would silently
+  // degrade to STANDARD, so walk the whole roster rather than a sample.
+  it('assignGimmickToBuild equips a legal stone for every mega species', () => {
+    const bad = [];
+    for (const base of new Set(STONE_PAIRS.map(([, b]) => b))) {
+      const out = JSON.parse(evalIn(`(function(){
+        const b = { m: ['Tackle','Tackle','Tackle','Tackle'], i: 'Leftovers' };
+        assignGimmickToBuild(${JSON.stringify(base)}, b, 'MEGA');
+        return JSON.stringify({ item: b.i, valid: !!validateGimmick(${JSON.stringify(base)}, b),
+                                forme: megaFormFor(${JSON.stringify(base)}, b.i) });
+      })()`));
+      if (!out.valid || !out.forme) bad.push(`${base} → item=${out.item} valid=${out.valid} forme=${out.forme || '(none)'}`);
+    }
+    assert.deepEqual(bad, [], bad.join('\n'));
+  });
+
+  it('Rayquaza still mega-evolves stonelessly via Dragon Ascent', () => {
+    const out = JSON.parse(evalIn(`(function(){
+      const b = { m: ['Tackle','Tackle','Tackle','Tackle'], i: 'Leftovers' };
+      assignGimmickToBuild('Rayquaza', b, 'MEGA');
+      return JSON.stringify({ moves: b.m, item: b.i, valid: !!validateGimmick('Rayquaza', b) });
+    })()`));
+    assert.ok(out.moves.includes('Dragon Ascent'), 'Dragon Ascent is injected');
+    assert.ok(out.valid, 'the build validates without a stone');
+  });
+});
+
 describe('activateMega applies real forme data', () => {
   // Dragonite-Mega is a Legends: Z-A forme: it did not exist before this roster pass,
   // so it proves the whole path (stone → forme → stats/typing/ability) end to end.
@@ -192,5 +221,22 @@ describe('activateMega applies real forme data', () => {
     const floette = stage(mkMon({ species: 'Floette-Eternal', item: 'Floettite' }));
     w.activateMega(floette, true);
     assert.equal(floette.name, 'Floette-Mega');
+  });
+});
+
+describe('mega stone tooltips', () => {
+  // 19 of the newer stones ship with no desc/shortDesc in the upstream Showdown export,
+  // so loadGameData backfills them from MEGA_STONE_MAP. Without that they hover blank.
+  it('every mega stone has tooltip text', () => {
+    const blank = [...new Set(STONE_PAIRS.map(([s]) => s))]
+      .filter((stone) => !evalIn(`!!(tooltipDict[${JSON.stringify(stone)}] || '').trim()`));
+    assert.deepEqual(blank, [], `stones with no tooltip: ${blank.join(', ')}`);
+  });
+
+  it('the backfilled text names the species that can use the stone', () => {
+    assert.match(evalIn(`tooltipDict['Baxcalibrite']`), /Baxcalibur/);
+    assert.match(evalIn(`tooltipDict['Raichunite X']`), /Raichu/);
+    // Upstream text is never overwritten.
+    assert.match(evalIn(`tooltipDict['Venusaurite']`), /Venusaur/);
   });
 });

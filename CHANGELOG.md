@@ -36,6 +36,14 @@ listed the Gen 6 ORAS wave, so none of them were reachable. All of them are now 
 - A mega forme missing from the `@pkmn/dex` bundle silently fell back to a flat +20%
   stat bump. It now reads the game's own species table first, so the transformation
   always matches the real forme.
+- 19 of the newer mega stones hovered with an empty tooltip — the upstream Showdown
+  item export ships them with no description. Their tooltip is now generated from the
+  stone table ("If held by a Baxcalibur, this item allows it to Mega Evolve in
+  battle."), so it survives the next data re-sync.
+- Cries were silent for formes whose suffix the fallback chain didn't recognise:
+  the new Mega-Z formes, and any gender-tagged forme without its own vendored cry
+  (Meowstic-F and its mega, Basculegion-F). They now fall back to the base
+  species' cry like every other forme.
 
 ## 1.7.0 — Story text reveal, speaker dialogue tones & build-generation engine 2026-07-07
 
