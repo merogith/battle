@@ -3,6 +3,40 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Legends: Z-A Mega Evolutions 2026-08-01 (`claude/missing-mega-evolutions-5xf4ab`)
+
+### Added — 49 missing Mega formes, with sprites
+
+The dex files already carried every Legends: Z-A mega (stats, typings, abilities, and
+the stones that trigger them) but the engine's four hand-written gimmick tables only
+listed the Gen 6 ORAS wave, so none of them were reachable. All of them are now wired:
+
+- **48 more species can Mega Evolve** — Dragonite, Feraligatr, Meganium, Clefable,
+  Victreebel, Starmie, Skarmory, Froslass, Emboar, Excadrill, Scolipede, Scrafty,
+  Eelektross, Chandelure, Golurk, Chesnaught, Delphox, Greninja, Pyroar, Malamar,
+  Barbaracle, Dragalge, Hawlucha, Drampa, Falinks, Baxcalibur, Crabominable,
+  Golisopod, Magearna, Zeraora, Scovillain, Glimmora, Tatsugiri, Chimecho, Staraptor,
+  Heatran, Darkrai, Meowstic (both genders), Floette-Eternal and Zygarde-Complete —
+  plus second formes for Raichu (X/Y) and Absol / Garchomp / Lucario (Mega-Z).
+- **They work everywhere megas already worked**: enemy trainers roll them, Colress
+  offers them as an awakening, and the Battle Options mega toggle gates them.
+- **Sprites ship locally** for all of them — front, back, shiny and shiny-back.
+- **A stone now only fits its own species.** The old check compared the forme name's
+  prefix to the species name, which let some legal pairings through only by accident
+  and would have rejected Floette-Eternal → Floette-Mega and Zygarde-Complete →
+  Zygarde-Mega outright. Stones shared by several formes of one species (Meowsticite,
+  Magearnite, Tatsugirinite) now resolve to the forme actually holding them.
+
+### Fixed
+
+- Mega stones with a suffixed name (`Charizardite X`, `Mewtwonite Y`, and now
+  `Absolite Z` / `Raichunite X` …) were filtered out of builds even with Mega
+  Evolution enabled, because the allow-check tested for an "…ite" ending instead of
+  asking whether the item was a mega stone.
+- A mega forme missing from the `@pkmn/dex` bundle silently fell back to a flat +20%
+  stat bump. It now reads the game's own species table first, so the transformation
+  always matches the real forme.
+
 ## 1.7.0 — Story text reveal, speaker dialogue tones & build-generation engine 2026-07-07
 
 Story-mode (normal) presentation polish and a balance pass on enemy/player build generation.

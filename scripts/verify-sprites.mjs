@@ -20,6 +20,27 @@ function parseMegaFormNames() {
   while ((mm = re.exec(m[1]))) out.add(mm[2]);
   return [...out];
 }
+// Formes reachable only through MEGA_FORM_BY_SPECIES (stones shared by several formes
+// of one species: Meowsticite, Magearnite, Tatsugirinite).
+function parseFormeSpecificMegas() {
+  const m = HTML.match(/const MEGA_FORM_BY_SPECIES = \{([\s\S]*?)\n {8}\};/);
+  if (!m) return [];
+  const re = /"([^"]+?)"\s*:\s*"([^"]+?)"/g;
+  const out = new Set();
+  let mm;
+  while ((mm = re.exec(m[1]))) out.add(mm[2]);
+  return [...out];
+}
+// Mirror battle.html's SPRITE_ID_ALIASES so slugs here match the ones getSprite emits.
+function parseSpriteAliases() {
+  const m = HTML.match(/const SPRITE_ID_ALIASES = \{([\s\S]*?)\n {8}\};/);
+  if (!m) return {};
+  const re = /'([^']+)'\s*:\s*'([^']+)'/g;
+  const out = {};
+  let mm;
+  while ((mm = re.exec(m[1]))) out[mm[1]] = mm[2];
+  return out;
+}
 function parseGmaxSpecies() {
   const m = HTML.match(/const GMAX_SPECIES = new Set\(\[([\s\S]*?)\]\);/);
   if (!m) return [];
@@ -30,17 +51,20 @@ function parseGmaxSpecies() {
   return out;
 }
 
+const SPRITE_ALIASES = parseSpriteAliases();
+
 function toSlug(name) {
-  return name
+  const normalized = name
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/♀/g, '-f').replace(/♂/g, '-m')
     .replace(/\s+/g, '-').replace(/\./g, '').replace(/'/g, '')
-    .replace(/-mega-x/g, '-megax').replace(/-mega-y/g, '-megay')
+    .replace(/-mega-([xyz])/g, '-mega$1')
     .replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/-$/, '');
+  return SPRITE_ALIASES[normalized] || normalized;
 }
 
-const megaForms = parseMegaFormNames();
+const megaForms = [...new Set([...parseMegaFormNames(), ...parseFormeSpecificMegas()])];
 const gmaxSpecies = parseGmaxSpecies();
 
 // Known gaps that have no official PokeAPI/Showdown sprite — handled via runtime fallback chain.
