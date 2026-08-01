@@ -56,6 +56,10 @@ species can now actually turn up.
 - A mega forme missing from the `@pkmn/dex` bundle silently fell back to a flat +20%
   stat bump. It now reads the game's own species table first, so the transformation
   always matches the real forme.
+- Knock Off could strip a `Absolite Z` / `Garchompite Z` / `Lucarionite Z` (and take the
+  bonus damage for it), Fling could throw one, and Trick could swap one away. Mega stones
+  are none of those things — the check tested for an "…ite" or "…ite X/Y" ending, which
+  can't see a Z-suffixed stone. It now asks the authoritative stone list.
 - 19 of the newer mega stones hovered with an empty tooltip — the upstream Showdown
   item export ships them with no description. Their tooltip is now generated from the
   stone table ("If held by a Baxcalibur, this item allows it to Mega Evolve in

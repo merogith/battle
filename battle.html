@@ -31937,7 +31937,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         /** Mega Stones match *ite / *ite X|Y; Eviolite also ends in "ite" but is a normal held item. */
         function isMegaStoneItemName(item) {
-            return !!(item && item !== "Eviolite" && /ite$|ite [XY]$/.test(item));
+            if (!item || item === "Eviolite") return false;
+            // Ask the authoritative set first. The "…ite" heuristic below cannot see a
+            // suffixed stone that isn't X or Y — it silently missed Absolite Z,
+            // Garchompite Z and Lucarionite Z, which made them Knock Off-able,
+            // Fling-able and Trick-able when a mega stone is none of those things.
+            if (typeof isMegaStone === 'function' && isMegaStone(item)) return true;
+            return /ite$|ite [XY]$/.test(item);
         }
 
         /** Knock Off cannot remove or get its damage boost vs these held items (cartridge-style + Z-Attack crystals). */

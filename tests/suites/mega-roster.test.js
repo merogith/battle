@@ -265,3 +265,29 @@ describe('mega stone tooltips', () => {
     assert.match(evalIn(`tooltipDict['Venusaurite']`), /Venusaur/);
   });
 });
+
+describe('mega stones are untouchable held items', () => {
+  // A mega stone can't be knocked off, flung or tricked away. isMegaStoneItemName used to
+  // decide that with an "…ite" / "…ite X|Y" regex, which cannot see a Z-suffixed stone —
+  // so Absolite Z, Garchompite Z and Lucarionite Z were all three of those things.
+  it('every mega stone is recognised as a stone by the item-effect predicate', () => {
+    const missed = [...new Set(STONE_PAIRS.map(([s]) => s))]
+      .filter((stone) => !evalIn(`isMegaStoneItemName(${JSON.stringify(stone)})`));
+    assert.deepEqual(missed, [], `not treated as mega stones: ${missed.join(', ')}`);
+  });
+
+  it('every mega stone is Knock Off-immune and un-flingable', () => {
+    const bad = [];
+    for (const stone of new Set(STONE_PAIRS.map(([s]) => s))) {
+      if (!evalIn(`cannotFlingItem(${JSON.stringify(stone)})`)) bad.push(`${stone} is flingable`);
+      if (!evalIn(`isKnockOffImmuneHeldItem({ megaEvolved: false }, ${JSON.stringify(stone)})`)) bad.push(`${stone} is Knock Off-able`);
+    }
+    assert.deepEqual(bad, [], bad.join('\n'));
+  });
+
+  it('Eviolite is still not a mega stone', () => {
+    // The old regex special-cased it; the delegation must not lose that.
+    assert.equal(evalIn(`isMegaStoneItemName('Eviolite')`), false);
+    assert.equal(evalIn(`cannotFlingItem('Eviolite')`), false);
+  });
+});

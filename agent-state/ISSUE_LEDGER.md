@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-08-01T10:40:29.695Z
+> **Generated**: 2026-08-01T16:06:31.334Z
 > **Source**: `agent-state/findings/*.md` (204 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -5031,6 +5031,13 @@ if (!s || !s.baseStats || !s.num || s.num <= 0) continue;
 **Fix sketch**: Prune the guard-failing species entries and Future items in the same gen-9-strip build step proposed for the layer cleanup, or mark them explicitly so audits can exclude them.
 
 **Verification**: Post-prune boot shows identical `Object.keys(baseStats).length` (1380) and identical tooltipDict key count.
+
+**Partial update** (2026-08-01, `claude/missing-mega-evolutions-5xf4ab`): the ITEM half of this
+finding is void — do not prune those 45 items. They are not fan entries; `isNonstandard:"Future"`
+marks the Legends: Z-A mega stones, and `data/species.json` carries matching formes with real
+stats, typings and abilities. All 45 are now wired into the engine's stone tables and reachable in
+play, and the 19 with no desc/shortDesc get a tooltip synthesised from `MEGA_STONE_MAP` at load.
+The SPECIES half (135 guard-failing gen-9 cosmetic formes) is unaffected and still open.
 
 ---
 

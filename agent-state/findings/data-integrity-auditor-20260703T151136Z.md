@@ -87,6 +87,13 @@ if (!s || !s.baseStats || !s.num || s.num <= 0) continue;
 
 **Verification**: Post-prune boot shows identical `Object.keys(baseStats).length` (1380) and identical tooltipDict key count.
 
+**Partial update** (2026-08-01, `claude/missing-mega-evolutions-5xf4ab`): the ITEM half of this
+finding is void — do not prune those 45 items. They are not fan entries; `isNonstandard:"Future"`
+marks the Legends: Z-A mega stones, and `data/species.json` carries matching formes with real
+stats, typings and abilities. All 45 are now wired into the engine's stone tables and reachable in
+play, and the 19 with no desc/shortDesc get a tooltip synthesised from `MEGA_STONE_MAP` at load.
+The SPECIES half (135 guard-failing gen-9 cosmetic formes) is unaffected and still open.
+
 ---
 severity: P3
 category: inconsistency
