@@ -47,6 +47,18 @@ mechanically identical to their base forme inherit its sets outright, and
 Floette-Eternal gets two sets drawn from its real move pool. Every Mega-capable
 species can now actually turn up.
 
+### Fixed — the test suite was silently dropping tests
+
+Not player-facing, but it undermined every "tests pass" claim made against this
+codebase. The test scripts ran with `--test-force-exit`, which exits the process the
+moment the runner believes it is done — racing suites still doing async work in the
+jsdom harness. Three consecutive runs of the same code reported 2502, 2460 and 2521
+tests across 67, 68 and 70 suites: up to 143 tests and 9 whole test *files* vanishing
+run to run, each time still exiting 0. A genuinely failing test could disappear into a
+green run. Removing the flag makes the suite report a stable 2603 tests across 76
+suites and terminate on its own; every subset script (`test:suites`,
+`test:integration`, `test:property`) also exits cleanly without it.
+
 ### Fixed
 
 - Mega stones with a suffixed name (`Charizardite X`, `Mewtwonite Y`, and now
