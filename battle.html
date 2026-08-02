@@ -12072,7 +12072,22 @@
                     // Dex-independent legendary/mythical/UB/paradox flag (from species.json
                     // tags) so getMonGrade keeps the G1 tier legendary-only even before
                     // @pkmn/dex loads or when it is stubbed (tests). See _computeMonGrade.
-                    if (speciesDexIsLegendaryTier(s)) bsRow.legendary = true;
+                    //
+                    // Only the BASE entry carries the tags — every alternate forme
+                    // (Arceus-Fire, Zacian-Crowned, Zygarde-Complete, Necrozma-Ultra, the
+                    // Origin/Therian/Silvally/Ogerpon sets…) has none of its own. Without
+                    // the fallback below, 67 draftable legendary formes graded G2 and the
+                    // STRONGER forme ranked below its base: Necrozma-Ultra (754 BST) sat in
+                    // the same band as an ordinary mon while Necrozma (600) was G1, and the
+                    // eight highest-BST entries in the G2 pool were all legendaries.
+                    // Battle-only stat swaps are exactly what the tags are meant to cover.
+                    let _isLegendaryTier = speciesDexIsLegendaryTier(s);
+                    if (!_isLegendaryTier && s.baseSpecies) {
+                        const _baseKey = String(s.baseSpecies).toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const _baseEntry = speciesJSON[_baseKey];
+                        if (_baseEntry) _isLegendaryTier = speciesDexIsLegendaryTier(_baseEntry);
+                    }
+                    if (_isLegendaryTier) bsRow.legendary = true;
                     baseStats[s.name] = bsRow;
                 }
 
@@ -17985,7 +18000,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // override. (Previously {Azumarill, Amoonguss, Chansey, Wishiwashi} rode in the
         // legendary bucket, which made them wild-uncatchable and parked passive support
         // walls in the climactic G1 ace slots.)
-        const _GRADE1_OVERRIDE = new Set();
+        // G1 overrides — for mons the tag data misses. Four of the Indigo Disk Paradox
+        // Pokemon ship WITHOUT the `Paradox` tag in the Showdown species export while
+        // their nine siblings (Walking Wake, Iron Leaves, Roaring Moon, Iron Valiant,
+        // Scream Tail, …) carry it, so they graded G2 on identical 590 BST. Pinning them
+        // here rather than patching data/species.json, which is a regenerated export.
+        const _GRADE1_OVERRIDE = new Set([
+            "Gouging Fire", "Raging Bolt", "Iron Crown", "Iron Boulder",
+        ]);
         // G2 overrides — kept deliberately small, on two rules:
         //   1. 3-stage lines ladder naturally G4→G3→G2. A 3-stage MIDDLE (Dusclops,
         //      Clefairy, Porygon2, Cosmoem, Chansey, …) stays G3; its final (Dusknoir,
@@ -70815,20 +70837,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 out.total++;
                 out.weightedTotal += w;
                 if (tag && out.tagCounts && out.tagCounts.hasOwnProperty(tag)) out.tagCounts[tag]++;
-                if (b.i && b.i !== 'NO_ITEM' && b.i !== '') {
-                    out.items.set(b.i, (out.items.get(b.i) || 0) + w);
-                    if (tag) {
-                        if (!out.tagsByItem.has(b.i)) out.tagsByItem.set(b.i, new Set());
-                        out.tagsByItem.get(b.i).add(tag);
+                // Item / ability / nature are single-valued per build, but a Smogon set
+                // often LISTS alternatives ("Heavy-Duty Boots|Eject Pack"). loadBuildsCSV
+                // collapses each to one scalar with Math.random() so a rolled team still
+                // varies — counting that scalar here turned this display into a random
+                // sample of the corpus. 21.8% of builds list multiple items, so the same
+                // species reported different usage on every page load (Garchomp's Lum Berry
+                // read 3.7% and 0.9% on consecutive loads with no data change) and the ★
+                // recommendation moved with it. Count every listed option instead, split
+                // evenly: deterministic, and the shares still sum to one build so the
+                // "% of builds" total stays ~100. The roll-side scalar is untouched.
+                const _spread = (raw, scalar) => {
+                    const list = (Array.isArray(raw) && raw.length) ? raw : (scalar != null ? [scalar] : []);
+                    const out2 = [];
+                    for (const v of list) {
+                        const s2 = String(v == null ? '' : v).trim();
+                        if (s2) out2.push(s2);
+                    }
+                    return out2;
+                };
+                const _items = _spread(b._itemOptions, b.i).filter(it => it !== 'NO_ITEM' && it !== 'No Item');
+                if (_items.length) {
+                    const share = w / _items.length;
+                    for (const it of _items) {
+                        out.items.set(it, (out.items.get(it) || 0) + share);
+                        if (tag) {
+                            if (!out.tagsByItem.has(it)) out.tagsByItem.set(it, new Set());
+                            out.tagsByItem.get(it).add(tag);
+                        }
                     }
                 }
-                const aRaw = b.a && String(b.a).trim();
-                const a = aRaw || defaultAbility;
-                if (a) {
-                    out.abilities.set(a, (out.abilities.get(a) || 0) + w);
+                // Blank ability means "the species default" (56% of rows) — resolve it the
+                // same way whether it arrives as a scalar or as an options list.
+                let _abilities = _spread(b._abilityOptions, b.a);
+                if (!_abilities.length && defaultAbility) _abilities = [defaultAbility];
+                if (_abilities.length) {
+                    const share = w / _abilities.length;
+                    for (const ab of _abilities) out.abilities.set(ab, (out.abilities.get(ab) || 0) + share);
                 }
-                if (b.n && String(b.n).trim()) {
-                    out.natures.set(b.n, (out.natures.get(b.n) || 0) + w);
+                const _natures = _spread(b._natureOptions, b.n);
+                if (_natures.length) {
+                    const share = w / _natures.length;
+                    for (const n of _natures) out.natures.set(n, (out.natures.get(n) || 0) + share);
                 }
                 if (Array.isArray(b.m)) {
                     // Count a move once per build even if it's slashed or in multiple slots —

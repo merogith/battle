@@ -47,6 +47,33 @@ mechanically identical to their base forme inherit its sets outright, and
 Floette-Eternal gets two sets drawn from its real move pool. Every Mega-capable
 species can now actually turn up.
 
+### Fixed — legendary alternate formes were sitting in the wrong grade band
+
+Only a Pokémon's base entry carries its legendary/mythical tag, so every alternate
+forme — Arceus-Fire, Zacian-Crowned, Necrozma-Ultra, Zygarde-Complete, the
+Origin/Therian/Silvally/Ogerpon sets, 67 in all — was graded as an ordinary Pokémon.
+The result was backwards: the **stronger** forme ranked below its base. Necrozma-Ultra
+(754 BST) shared a band with ordinary Pokémon while Necrozma (600) was top-tier, and
+the eight highest-BST entries in the whole G2 pool were legendaries. Since G2 is the
+band the story leans on hardest, a player two badges in could meet Arceus-Fire in an
+ordinary slot — which both reads as broken and spends the "first legendary" moment
+early. Formes now inherit their base species' tier. Separately, four Indigo Disk
+Paradox Pokémon (Gouging Fire, Raging Bolt, Iron Crown, Iron Boulder) ship without
+the `Paradox` tag upstream while their nine 590-BST siblings carry it; they are pinned
+to the legendary band to match.
+
+### Fixed — the build tutor's usage percentages were a coin flip
+
+"13% of Smogon builds use this option" was re-rolling on every page load. A Smogon set
+often lists alternatives for its item, ability or nature, and the game picks one at
+random per build so rolled teams stay varied — but the tutor counted that random pick,
+making the display a sample rather than a count. 21.8% of builds list multiple items,
+so Garchomp's Lum Berry read 3.7% and 0.9% on consecutive loads with no data change,
+options that lost the coin flip showed no percentage at all (Sitrus Berry, Dragon Gem),
+and the ★ recommendation moved with the numbers. The tutor now counts every listed
+option, splitting a build's weight evenly across them. Rolled teams are untouched — the
+random pick still drives what a Pokémon actually holds in battle.
+
 ### Fixed — the test suite was silently dropping tests
 
 Not player-facing, but it undermined every "tests pass" claim made against this
