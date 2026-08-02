@@ -3,6 +3,129 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Legends: Z-A Mega Evolutions 2026-08-01 (`claude/missing-mega-evolutions-5xf4ab`)
+
+### Added — 49 missing Mega formes, with sprites
+
+The dex files already carried every Legends: Z-A mega (stats, typings, abilities, and
+the stones that trigger them) but the engine's four hand-written gimmick tables only
+listed the Gen 6 ORAS wave, so none of them were reachable. All of them are now wired:
+
+- **48 more species can Mega Evolve** — Dragonite, Feraligatr, Meganium, Clefable,
+  Victreebel, Starmie, Skarmory, Froslass, Emboar, Excadrill, Scolipede, Scrafty,
+  Eelektross, Chandelure, Golurk, Chesnaught, Delphox, Greninja, Pyroar, Malamar,
+  Barbaracle, Dragalge, Hawlucha, Drampa, Falinks, Baxcalibur, Crabominable,
+  Golisopod, Magearna, Zeraora, Scovillain, Glimmora, Tatsugiri, Chimecho, Staraptor,
+  Heatran, Darkrai, Meowstic (both genders), Floette-Eternal and Zygarde-Complete —
+  plus second formes for Raichu (X/Y) and Absol / Garchomp / Lucario (Mega-Z).
+- **They work everywhere megas already worked**: enemy trainers roll them, Colress
+  offers them as an awakening, and the Battle Options mega toggle gates them.
+- **Sprites ship locally** for all of them — front, back, shiny and shiny-back.
+- **A stone now only fits its own species.** The old check compared the forme name's
+  prefix to the species name, which let some legal pairings through only by accident
+  and would have rejected Floette-Eternal → Floette-Mega and Zygarde-Complete →
+  Zygarde-Mega outright. Stones shared by several formes of one species (Meowsticite,
+  Magearnite, Tatsugirinite) now resolve to the forme actually holding them.
+
+### Changed — a build's own Mega Stone now wins over the random roll
+
+Assigning the MEGA gimmick used to overwrite the held item with a stone picked at
+random from the species' list, even when the build already carried a legal one.
+For a dual-stone species that meant a set could get the forme it wasn't written
+for — Smogon's Charizardite Y sets are built around Drought, its Charizardite X
+sets around Tough Claws. A build that names its own legal stone now keeps it, and
+only builds without one take the roll. Builds holding another species' stone are
+still corrected, and the roll stays seeded so story battles replay identically.
+
+### Added — four alternate formes are draftable, so their Megas are reachable
+
+`Floette-Eternal`, `Magearna-Original`, `Tatsugiri-Droopy` and `Tatsugiri-Stretchy`
+had no competitive sets anywhere, and the draft pool is built from the set list —
+so they never appeared, and four of the new Megas could never be seen. A new
+project-owned `data/builds/custom.json` fills the gap: the three formes that are
+mechanically identical to their base forme inherit its sets outright, and
+Floette-Eternal gets two sets drawn from its real move pool. Every Mega-capable
+species can now actually turn up.
+
+### Fixed — the draft's species clause only worked on names, not species
+
+The draft pool promised "no duplicate species across the combined draft pool" but
+deduplicated Pokémon *names*, and alternate formes are different names. Arceus-Fire,
+Arceus-Water and Arceus-Steel counted as three separate species, so one draft could
+legitimately offer you three Rotoms or four Deoxys. 86 species carried more than one
+forme in the pool — 145 surplus entries, 36 of them Arceus and Silvally alone, which
+also skewed how often those two turned up. The pool now keeps one forme per species,
+picked at random so every typing stays reachable across drafts — Arceus can still be
+any of its eighteen types, just not two of them at once. The same clause now covers the
+replacement foe team after a draw and the Gauntlet's between-round rerolls.
+
+### Changed — build tutor percentages say how much data they rest on
+
+Usage figures now read "13% of 41 Smogon builds use this option" instead of "13% of
+Smogon builds". A species with three competitive sets used to display as confidently as
+one with eighty; the count makes a thin sample obvious at a glance.
+
+### Fixed — legendary alternate formes were sitting in the wrong grade band
+
+Only a Pokémon's base entry carries its legendary/mythical tag, so every alternate
+forme — Arceus-Fire, Zacian-Crowned, Necrozma-Ultra, Zygarde-Complete, the
+Origin/Therian/Silvally/Ogerpon sets, 67 in all — was graded as an ordinary Pokémon.
+The result was backwards: the **stronger** forme ranked below its base. Necrozma-Ultra
+(754 BST) shared a band with ordinary Pokémon while Necrozma (600) was top-tier, and
+the eight highest-BST entries in the whole G2 pool were legendaries. Since G2 is the
+band the story leans on hardest, a player two badges in could meet Arceus-Fire in an
+ordinary slot — which both reads as broken and spends the "first legendary" moment
+early. Formes now inherit their base species' tier. Separately, four Indigo Disk
+Paradox Pokémon (Gouging Fire, Raging Bolt, Iron Crown, Iron Boulder) ship without
+the `Paradox` tag upstream while their nine 590-BST siblings carry it; they are pinned
+to the legendary band to match.
+
+### Fixed — the build tutor's usage percentages were a coin flip
+
+"13% of Smogon builds use this option" was re-rolling on every page load. A Smogon set
+often lists alternatives for its item, ability or nature, and the game picks one at
+random per build so rolled teams stay varied — but the tutor counted that random pick,
+making the display a sample rather than a count. 21.8% of builds list multiple items,
+so Garchomp's Lum Berry read 3.7% and 0.9% on consecutive loads with no data change,
+options that lost the coin flip showed no percentage at all (Sitrus Berry, Dragon Gem),
+and the ★ recommendation moved with the numbers. The tutor now counts every listed
+option, splitting a build's weight evenly across them. Rolled teams are untouched — the
+random pick still drives what a Pokémon actually holds in battle.
+
+### Fixed — the test suite was silently dropping tests
+
+Not player-facing, but it undermined every "tests pass" claim made against this
+codebase. The test scripts ran with `--test-force-exit`, which exits the process the
+moment the runner believes it is done — racing suites still doing async work in the
+jsdom harness. Three consecutive runs of the same code reported 2502, 2460 and 2521
+tests across 67, 68 and 70 suites: up to 143 tests and 9 whole test *files* vanishing
+run to run, each time still exiting 0. A genuinely failing test could disappear into a
+green run. Removing the flag makes the suite report a stable 2603 tests across 76
+suites and terminate on its own; every subset script (`test:suites`,
+`test:integration`, `test:property`) also exits cleanly without it.
+
+### Fixed
+
+- Mega stones with a suffixed name (`Charizardite X`, `Mewtwonite Y`, and now
+  `Absolite Z` / `Raichunite X` …) were filtered out of builds even with Mega
+  Evolution enabled, because the allow-check tested for an "…ite" ending instead of
+  asking whether the item was a mega stone.
+- A mega forme missing from the `@pkmn/dex` bundle silently fell back to a flat +20%
+  stat bump. It now reads the game's own species table first, so the transformation
+  always matches the real forme.
+- Knock Off could strip a `Absolite Z` / `Garchompite Z` / `Lucarionite Z` (and take the
+  bonus damage for it), Fling could throw one, and Trick could swap one away. Mega stones
+  are none of those things — the check tested for an "…ite" or "…ite X/Y" ending, which
+  can't see a Z-suffixed stone. It now asks the authoritative stone list.
+- 19 of the newer mega stones hovered with an empty tooltip — the upstream Showdown
+  item export ships them with no description. Their tooltip is now generated from the
+  stone table ("If held by a Baxcalibur, this item allows it to Mega Evolve in
+  battle."), so it survives the next data re-sync.
+- Cries were silent for formes whose suffix the fallback chain didn't recognise:
+  the new Mega-Z formes, and any gender-tagged forme without its own vendored cry
+  (Meowstic-F and its mega, Basculegion-F). They now fall back to the base
+  species' cry like every other forme.
+
 ## 1.7.0 — Story text reveal, speaker dialogue tones & build-generation engine 2026-07-07
 
 Story-mode (normal) presentation polish and a balance pass on enemy/player build generation.

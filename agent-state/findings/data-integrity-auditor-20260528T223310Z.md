@@ -38,8 +38,17 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: 47fd5985be47
 confidence: high
-status: open
+status: fixed-claude/missing-mega-evolutions-5xf4ab
 ---
+
+**Resolution** (2026-08-01, `claude/missing-mega-evolutions-5xf4ab`): taken the other way
+round from the fix sketch — the 45 stones were not fan/CAP data, they are the Legends: Z-A
+mega wave, and `data/species.json` already carried matching formes with real stats, typings
+and abilities. Rather than pruning the data, the engine tables were extended to match it:
+`ALL_MEGA_STONES`, `BANNED_ITEMS`, `MEGA_STONE_MAP` and `MEGA_FORM_NAMES` now cover every
+`megaStone` item, with `MEGA_FORM_BY_SPECIES` + `megaFormFor()` handling the three stones
+shared across formes of one species. `tests/suites/mega-roster.test.js` pins the tables to
+`data/items.json` so the two can no longer drift apart silently.
 
 **Title**: items.json defines 93 mega stones but the engine recognizes only 51 — 45 non-canonical stones are inert data
 

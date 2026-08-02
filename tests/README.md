@@ -12,11 +12,21 @@ by the battle engine in `battle.html`. Three layers:
 ```bash
 npm install             # installs jsdom (only dev dependency)
 npm run audit           # generates /tests/reports/coverage.{csv,md}
-npm test                # runs all 884 tests (~70s)
+npm test                # runs the whole suite (2603 tests / 76 suites, ~9 min)
 npm run test:property   # 9 property invariants over all 954 moves
 npm run test:suites     # targeted damage formula tests
 npm run test:moves      # 867 auto-generated per-move skeletons
 ```
+
+> **Do not add `--test-force-exit` to the test scripts.** It used to be there, and it
+> silently truncated runs: the flag exits the process when the runner believes it is
+> finished, which races suites still doing async work in the jsdom harness. Three
+> consecutive runs of the same code reported 2502/67, 2460/68 and 2521/70
+> tests/suites — dropping up to 143 tests and 9 whole *files* — and every one of them
+> still exited 0, so a failing test could disappear into a green run. Without the flag
+> the same suite reports 2603/76 and terminates on its own. If a new suite ever does
+> hang the process, close its jsdom window in an `after()` hook (see
+> `helpers/load-engine.js` → `teardown()`); do not reach for the flag.
 
 Reports written to `/tests/reports/`:
 - `coverage.csv` — every move with handler classification

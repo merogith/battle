@@ -167,15 +167,36 @@ function q(val) {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 
+// Project-owned overlay. The gen*.json files are regenerated Smogon exports, so
+// hand-maintained sets live in custom.json and are merged in here. See that file's
+// _comment for what each section is for.
+const customPath = path.join(__dirname, '..', 'data', 'builds', 'custom.json');
+const custom = fs.existsSync(customPath) ? JSON.parse(fs.readFileSync(customPath, 'utf8')) : {};
+const mirrorFormes = custom.mirrorFormes || {};
+const customSets = custom.sets || {};
+
 const rows = [];
 const seen = new Set();  // dedup: name|gen|format|roleName|item-first|m1|m2|m3|m4
 let totalSets = 0;
+let mirrored = 0, authored = 0;
 
 for (let gen = 4; gen <= 9; gen++) {
   const fp = path.join(__dirname, '..', 'data', 'builds', `gen${gen}.json`);
   if (!fs.existsSync(fp)) { console.log(`  gen${gen}.json — not found, skip`); continue; }
 
   const data = JSON.parse(fs.readFileSync(fp, 'utf8'));
+
+  // Formes that are mechanically identical to their base forme inherit its sets, but
+  // only in gens where the base actually has any — and never over a real Smogon entry.
+  for (const [forme, base] of Object.entries(mirrorFormes)) {
+    if (data[base] && !data[forme]) { data[forme] = data[base]; mirrored++; }
+  }
+  // Authored sets for formes Smogon does not cover at all.
+  for (const [pokeName, tiers] of Object.entries(customSets[String(gen)] || {})) {
+    data[pokeName] = Object.assign({}, data[pokeName], tiers);
+    authored++;
+  }
+
   let genCount = 0;
 
   for (const [pokeName, tiers] of Object.entries(data)) {
@@ -239,4 +260,5 @@ const outPath = path.join(__dirname, '..', 'data', 'builds.csv');
 fs.writeFileSync(outPath, output, 'utf8');
 
 const sizeKB = (Buffer.byteLength(output, 'utf8') / 1024).toFixed(1);
-console.log(`\nDone — ${totalSets} total rows → data/builds.csv (${sizeKB} KB)`);
+console.log(`\ncustom.json overlay — ${mirrored} forme mirror(s), ${authored} authored entr(ies)`);
+console.log(`Done — ${totalSets} total rows → data/builds.csv (${sizeKB} KB)`);

@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..');
 const SPRITES = path.join(ROOT, 'sprites');
 
 const DIRS = ['gen5ani', 'gen5ani-shiny', 'gen5ani-back', 'gen5ani-back-shiny'];
-const FORM_RE = /(-mega|-megax|-megay|-primal|-gmax|-eternamax)\.gif$/i;
+const FORM_RE = /(-mega|-megax|-megay|-megaz|-primal|-gmax|-eternamax)\.gif$/i;
 // Only attempt optimization on files larger than this — smaller ones are already minimal.
 const SIZE_THRESHOLD = 200 * 1024;
 // Lossy quality — 80 = light, 120 = medium, 200 = aggressive. 80 is barely visible.
