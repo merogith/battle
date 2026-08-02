@@ -26,30 +26,44 @@ function norm(s) {
 function loadBuilds() {
   const dir = join(DATA, 'builds');
   const out = [];
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.json')) continue;
-    const data = JSON.parse(readFileSync(join(dir, f), 'utf8'));
-    for (const species of Object.keys(data)) {
-      const tierObj = data[species];
-      for (const tier of Object.keys(tierObj)) {
-        const buildSet = tierObj[tier];
-        if (typeof buildSet !== 'object' || buildSet === null) continue;
-        for (const buildName of Object.keys(buildSet)) {
-          const b = buildSet[buildName];
-          if (!b || typeof b !== 'object') continue;
-          out.push({
-            file: `data/builds/${f}`,
-            species,
-            tier,
-            buildName,
-            moves: Array.isArray(b.moves) ? b.moves : [],
-            ability: b.ability,
-            item: b.item,
-            nature: b.nature,
-          });
-        }
+
+  const collect = (file, species, tierObj) => {
+    if (typeof tierObj !== 'object' || tierObj === null) return;
+    for (const tier of Object.keys(tierObj)) {
+      const buildSet = tierObj[tier];
+      if (typeof buildSet !== 'object' || buildSet === null) continue;
+      for (const buildName of Object.keys(buildSet)) {
+        const b = buildSet[buildName];
+        if (!b || typeof b !== 'object') continue;
+        out.push({
+          file,
+          species,
+          tier,
+          buildName,
+          moves: Array.isArray(b.moves) ? b.moves : [],
+          ability: b.ability,
+          item: b.item,
+          nature: b.nature,
+        });
       }
     }
+  };
+
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith('.json')) continue;
+    const file = `data/builds/${f}`;
+    const data = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+    // custom.json is the project-owned overlay merged in by scripts/generate_builds.js
+    // (see its _comment). Its authored sets sit one level deeper — sets[gen][species] —
+    // and its other top-level keys are metadata, not species. Walking it like a gen file
+    // would report "sets" as a missing species.
+    if (f === 'custom.json') {
+      for (const byName of Object.values(data.sets || {})) {
+        for (const [species, tierObj] of Object.entries(byName)) collect(file, species, tierObj);
+      }
+      continue;
+    }
+    for (const [species, tierObj] of Object.entries(data)) collect(file, species, tierObj);
   }
   return out;
 }
