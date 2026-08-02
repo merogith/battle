@@ -42,7 +42,7 @@ async function itemPercentages(species) {
   await sleep(250);
   const out = {};
   for (const c of host.querySelectorAll('.tx-card[data-card-kind="item"]')) {
-    const m = /title="([\d.]+)% of Smogon builds/.exec(c.outerHTML);
+    const m = /title="([\d.]+)% of (?:\d+ )?Smogon builds?/.exec(c.outerHTML);
     out[c.getAttribute('data-card-value')] = m ? Number(m[1]) : null;
   }
   return out;
@@ -81,5 +81,23 @@ describe('usage percentages count every listed option', () => {
     const first = await itemPercentages('Garchomp');
     const second = await itemPercentages('Garchomp');
     assert.deepEqual(second, first, 'usage percentages must not move between renders');
+  });
+
+  it('the tooltip names its sample size', async () => {
+    // "50% of 2 builds" and "50% of 82 builds" are very different claims; without the
+    // denominator a species with a handful of sets reads as confidently as a well-explored
+    // one. Assert the count is present AND that it differs where the corpus differs.
+    const titleFor = async (species) => {
+      await itemPercentages(species);
+      const chip = w.document.querySelector('#story-tutor-team .tx-card[data-card-kind="item"] .tx-card-pct');
+      return chip ? chip.getAttribute('title') : '';
+    };
+    const wide = await titleFor('Garchomp');
+    assert.match(wide, /% of \d+ Smogon builds? use this option$/, `got: ${wide}`);
+    const narrow = await titleFor('Floette-Eternal');
+    assert.match(narrow, /% of \d+ Smogon builds? use this option$/, `got: ${narrow}`);
+    const n = (t) => Number(/of (\d+) Smogon/.exec(t)[1]);
+    assert.ok(n(wide) > n(narrow),
+      `a well-covered species should report a larger sample than a sparse one (${n(wide)} vs ${n(narrow)})`);
   });
 });

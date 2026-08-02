@@ -12520,6 +12520,35 @@
             return eligible;
         }
 
+        // Collapse a name list to ONE entry per species, keeping a random forme.
+        //
+        // Callers that shuffle-and-slice a draft pool need this: a bare Set() dedupes forme
+        // NAMES, so Arceus-Fire / Arceus-Water / Arceus-Steel read as three separate species
+        // and a single draft could hand out three Rotoms or four Deoxys. 86 species carry
+        // more than one forme in the pool (145 surplus entries), and Arceus and Silvally
+        // alone account for 36 of them, which also skewed how often the legendary band
+        // surfaced those two.
+        //
+        // Random forme rather than "always the base" so every typing stays reachable across
+        // rolls — Arceus can still turn up as any of its 18 types, just not twice at once.
+        // Mirrors the family-aware `_famOf` filter the gauntlet swap already uses.
+        function dedupeBySpecies(names, rng) {
+            const pick = typeof rng === 'function' ? rng : Math.random;
+            const byFamily = new Map();
+            for (const name of names) {
+                const row = (typeof baseStats === 'object' && baseStats) ? baseStats[name] : null;
+                const family = (row && row.baseSpecies) || name;
+                let bucket = byFamily.get(family);
+                if (!bucket) { bucket = []; byFamily.set(family, bucket); }
+                bucket.push(name);
+            }
+            const out = [];
+            for (const bucket of byFamily.values()) {
+                out.push(bucket.length === 1 ? bucket[0] : bucket[Math.floor(pick() * bucket.length)]);
+            }
+            return out;
+        }
+
         // Weather-dependent abilities and the move setter they need
         const WEATHER_ABILITIES = {
             'Swift Swim':  { weather: 'Rain',      setter: 'Rain Dance' },
@@ -19657,8 +19686,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const poolSizeMap = { 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 };
             let poolSizePerPlayer = poolSizeMap[settings.partySize] || (settings.partySize + 2);
             let totalPool = poolSizePerPlayer * 2;
-            // Species clause: ensure no duplicate species across the combined draft pool
-            const uniqEligible = [...new Set(eligible)];
+            // Species clause: ensure no duplicate species across the combined draft pool.
+            // Deduping the raw names is not enough — alternate formes share a species.
+            const uniqEligible = dedupeBySpecies(new Set(eligible));
             const poolKeys = shuffleInPlace([...uniqEligible]).slice(0, totalPool);
             const p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
             const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
@@ -30845,7 +30875,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             logMsg(`Draw round — no swap reward. Fully healing team...`, 'heal');
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
                             let drawEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
-                            const drawKeys = shuffleInPlace([...drawEligible]).slice(0, settings.partySize);
+                            // Species clause applies to the replacement foe team too.
+                            const drawKeys = shuffleInPlace(dedupeBySpecies(drawEligible)).slice(0, settings.partySize);
                             state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
@@ -34894,6 +34925,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let allEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
             const _famOf = n => { const bs = baseStats[n]; return (bs && bs.baseSpecies) ? bs.baseSpecies : n; };
             let playerSpecies = new Set(state.playerParty.map(m => _famOf(m._baseName || m.name)));
+            // One forme per species before filtering, or the foe team can field two formes
+            // of the same Pokémon (the filter below only excludes the PLAYER's species).
+            allEligible = dedupeBySpecies(allEligible);
             let foeEligible = allEligible.filter(n => !playerSpecies.has(_famOf(n)));
             if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
             // Progressive difficulty: bias selection toward higher grades as rounds climb.
@@ -73178,7 +73212,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // a "<1%" chip rather than nothing, so the wider 30-move pool never
             // shows bare trailing cards with no usage signal.
             const label = pct < 1 ? '<1%' : `${Math.round(pct)}%`;
-            return `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
+            // Name the sample size. "13% of 41 builds" and "13% of 3 builds" are very
+            // different claims, and without the denominator a species with a handful of
+            // sets reads as confidently as a fully-explored one. Same vocabulary as the
+            // sparse-data banner. Falls back to the old wording if the count is unknown.
+            const n = ctx.sampleSize | 0;
+            const of = n > 0 ? `${n} Smogon build${n === 1 ? '' : 's'}` : 'Smogon builds';
+            return `<span class="tx-card-pct tx-tapinfo" title="${pct.toFixed(1)}% of ${of} use this option">${label}</span>`;
         }
 
         // Build a Move card. The ★ prefix on the title marks options in the
@@ -73852,6 +73892,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 recommended: sPool.moves.starred,
                 stabTypes: new Set([mon && mon.type1, mon && mon.type2].filter(Boolean)),
                 pctOf: sPool.moves.pctOf,
+                sampleSize: sPool.totalBuilds,
                 mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
                 equippedSet,
                 slotOf,
@@ -74178,7 +74219,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const items = pool.items.slice();
             const filtItems = _txApplyItemFilters(items, mon, b, t.name);
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
-            const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred, pctOf: sPool.items.pctOf, dojoStage: _dojoStage };
+            const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred, pctOf: sPool.items.pctOf, sampleSize: sPool.totalBuilds, dojoStage: _dojoStage };
 
             // Abilities — Hidden tagged from baseStats.abilities slot 'H' (locked
             // until Black Belt). Awakened = every shown ability that isn't a legal
@@ -74201,7 +74242,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // name so the sort can rank groups). Every ability stays visible.
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet, _haName);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
-            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, dojoStage: _dojoStage, haName: _haName };
+            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, sampleSize: sPool.totalBuilds, dojoStage: _dojoStage, haName: _haName };
 
             // Item tab content
             const itemTabHtml = (() => {

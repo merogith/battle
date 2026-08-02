@@ -47,6 +47,24 @@ mechanically identical to their base forme inherit its sets outright, and
 Floette-Eternal gets two sets drawn from its real move pool. Every Mega-capable
 species can now actually turn up.
 
+### Fixed — the draft's species clause only worked on names, not species
+
+The draft pool promised "no duplicate species across the combined draft pool" but
+deduplicated Pokémon *names*, and alternate formes are different names. Arceus-Fire,
+Arceus-Water and Arceus-Steel counted as three separate species, so one draft could
+legitimately offer you three Rotoms or four Deoxys. 86 species carried more than one
+forme in the pool — 145 surplus entries, 36 of them Arceus and Silvally alone, which
+also skewed how often those two turned up. The pool now keeps one forme per species,
+picked at random so every typing stays reachable across drafts — Arceus can still be
+any of its eighteen types, just not two of them at once. The same clause now covers the
+replacement foe team after a draw and the Gauntlet's between-round rerolls.
+
+### Changed — build tutor percentages say how much data they rest on
+
+Usage figures now read "13% of 41 Smogon builds use this option" instead of "13% of
+Smogon builds". A species with three competitive sets used to display as confidently as
+one with eighty; the count makes a thin sample obvious at a glance.
+
 ### Fixed — legendary alternate formes were sitting in the wrong grade band
 
 Only a Pokémon's base entry carries its legendary/mythical tag, so every alternate

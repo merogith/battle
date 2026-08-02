@@ -105,8 +105,10 @@ for (const kind of ['items', 'abilities']) {
       // Percentage-only drift is the expected case; anything else is worth eyeballing.
       // Strip both the tooltip figure and the rounded badge, which renders as "4%" or
       // "&lt;1%" depending on magnitude.
+      // The tooltip names its sample size ("13.1% of 41 Smogon builds use this option"),
+      // so strip the whole figure — count included — before comparing.
       const stripPct = (s) => String(s || '')
-        .replace(/[\d.]+% of Smogon builds[^"]*"/g, '"')
+        .replace(/[\d.]+% of (?:\d+ )?Smogon builds?[^"]*"/g, '"')
         .replace(/>(?:&lt;)?[\d.]+%</g, '>%<');
       const onlyPct = stripPct(prev[kind][k]) === stripPct(next[kind][k]);
       if (!onlyPct) {
