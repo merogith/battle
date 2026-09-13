@@ -48,9 +48,10 @@ test('gold accounting closes — sim is the sole reward authority', async () => 
   const battles = rec.stages.filter(s => s.kind === 'battle');
   const sumAward = battles.reduce((a, s) => a + (s.goldAwarded || 0), 0);
   const spent = rec.agent.goldSpent | 0;
+  const forfeited = battles.reduce((a, s) => a + (s.goldForfeited || 0), 0);
   // final = start + battle awards - agent spend. If the engine's own onBattleEnd leaked, awards
   // would roughly double and this would fail.
-  assert.equal(rec.gold, rec.startGold + sumAward - spent,
+  assert.equal(rec.gold, rec.startGold + sumAward - spent - forfeited,
     `gold accounting mismatch: final ${rec.gold} != start ${rec.startGold} + awards ${sumAward} - spent ${spent}`);
 });
 

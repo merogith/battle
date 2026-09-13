@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-08-01T16:06:31.334Z
+> **Generated**: 2026-09-12T22:49:13.613Z
 > **Source**: `agent-state/findings/*.md` (204 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -7817,7 +7817,7 @@ if (diff === 'challenge') return 0.90;
 
 ## Retired / Resolved
 
-_330 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
+_335 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from the active counts above._
 
 - [fixed] (no title) — `undefined` (P3/test-infra)
 - [fixed-claude/relaxed-bell-2X3Ys] Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog — `__pbsGlobalEscBound` (P3/a11y)
@@ -7905,6 +7905,7 @@ _330 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-main] Player gimmick gate reads bare IIFE-private `sm` — always sees zero unlocked gimmicks — `_withStoryPlayerGimmickGate` (P1/inconsistency)
 - [fixed-main] CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path — `_withStoryPlayerGimmickGate` (P3/bug)
 - [fixed-claude/enemy-bot-ai-optimization-i394cm] AI damage-immunity table drifted from engine — misses Earth Eater, Well-Baked Body, Wind Rider, Air Balloon, Magnet Rise/Telekinesis — `abilityImmunity` (P1/bug)
+- [fixed-approved] Form changes discard persistent progression stat modifiers — `activateMega` (P1/bug)
 - [fixed-claude/enemy-bot-ai-optimization-i394cm] AI status-move blocking misses Good as Gold, the whole applyStatus immunity-ability table, and terrain/field blocks — `aiAbilityBlocksMoveForAi` (P1/bug)
 - [fixed-claude/ecstatic-gauss-RY5hA] aiDecision early-returns null on any choiceLock — AI cannot switch out of an immune/walled lock — `aiDecision` (P1/bug)
 - [fixed-claude/bug-performance-investigation-8snuw9] aiSelectScoredMove picks window.storyRngNext unconditionally — consumes story stream even when sm.active=false — `aiSelectScoredMove` (P3/bug)
@@ -7927,6 +7928,7 @@ _330 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-main] Three conflicting "canon" docs for the boss/endgame arc; code matches none cleanly — `BOSS_CONFIGS` (P1/inconsistency)
 - [fixed-claude/cagedgod-excision] Caged God "Key" lead has zero cost — spec says it should demand strongest mon or steep gold — `bossCollectLead` (P2/design)
 - [fixed-main] Dead `build.tired` fatigue field still written/backfilled at 5 sites, read in zero gameplay paths — `build.tired` (P3/refactor)
+- [fixed-approved] Species construction assigns incorrect genders — `buildPokemon` (P1/bug)
 - [fixed-claude/gifted-fermat-yfnqq5] Extra-raid stat scaling compounds `_storyStatMult` × `_bossStatMult` × `_bossHpScale`; the doc comment omits `_storyStatMult` — `buildPokemon` (P3/inconsistency)
 - [fixed-claude/gracious-goodall-QFuQF] Achievements caged_god / r_caged_god are permanently unobtainable — `caged_god` (P3/data)
 - [fixed-claude/sharp-keller-eZEDN] `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays) — `canMove` (P1/bug)
@@ -8079,12 +8081,15 @@ _330 finding(s) marked fixed / wontfix / duplicate / obsolete — excluded from 
 - [fixed-claude/funny-clarke-EnGMv] ISSUE-038 is marked fixed but `No Item` is still absent from items.json and 11 build slots still reference it — `resolveCsvBuildEntry` (P2/inconsistency)
 - [fixed-main] Battle log (#battle-log) only cleared on returnToHome, not at battle start; previous fight's lines bleed in — `returnToHome` (P1/bug)
 - [fixed-main] CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive) — `RIVAL_ATTACK_TYPE_DECAY` (P3/balance)
+- [fixed-approved] Rival and Mystery dialogue contradict live campaign structure — `RIVAL_PROGRESS_PRIMARY_QUOTES` (P2/inconsistency)
 - [fixed-claude/sharp-keller-eZEDN] Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros` — `rollMysteryFigureFinalBossTeam` (P3/bug)
 - [fixed-claude/gifted-fermat-yfnqq5] Mystery Figure climax boss has ZERO gimmicks if the player disabled all 4 mechanics at run start — the "force all on" ctx is dead-coded — `rollMysteryFigureFinalBossTeam` (P3/inconsistency)
 - [fixed-main] `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit — `rollTrainerTeam` (P2/perf)
+- [fixed-approved] Campaign simulator retries reuse mutated enemy teams — `runStory` (P1/test-gap)
 - [fixed-claude/battle-mechanics-sequencing-u50036] Wish & Future Sight resolve BEFORE weather damage (residual-order inversion) — flips faint outcomes — `runWishHealing` (P2/bug)
 - [fixed-main] Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4 — `SAFARI_ENTRY_COST` (P2/inconsistency)
 - [fixed-claude/inspiring-shannon-MP5aq] Move-test generator strips apostrophes, and the engine silently runs unknown move names as a 187-dmg fallback — `safeName` (P3/dx)
+- [fixed-approved] Failed story persistence has no durable player-visible recovery — `save` (P1/bug)
 - [fixed-claude/sharp-keller-eZEDN] SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load — `SAVE_VER` (P2/dx)
 - [fixed-main] `SAVE_VER = 23` but migration dispatch stops at `_loadedVer < 22` — no numbered v23 step — `SAVE_VER` (P4/dx)
 - [fixed-claude/relaxed-bell-2X3Ys] SAVE_VER=23 but migration chain stops at `_loadedVer < 22` — no migrateStoryPreV23, no boot shadow-validation — `SAVE_VER` (P3/dx)

@@ -42,7 +42,7 @@ const WALK_DIRS = ['sprites', 'music', 'data', 'fonts', 'icons', 'vendor'];
 const EXCLUDE_URLS = new Set(['vendor/howler.min.js']);
 // Top-level boot files (explicit — not walked).
 const BOOT_FILES = [
-  'battle.html', 'index.html', 'manifest.webmanifest',
+  'battle.html', 'index.html', 'manifest.webmanifest', 'game-upgrades.js', 'game-upgrades.css',
   'online-config.js', 'online-pvp.js', 'move-anim-map.js', 'move-sfx-map.js', 'sw.js',
 ];
 
@@ -69,6 +69,17 @@ for (const d of WALK_DIRS) {
   const full = path.join(ROOT, d);
   if (fs.existsSync(full)) walk(full, paths);
 }
+
+// Bind each installed core release to its code and data. Exclude the generated manifest
+// and the version literal itself to avoid a circular hash.
+const swPath=path.join(ROOT,'sw.js');
+const normalizedSw=fs.readFileSync(swPath,'utf8').replace(/const CACHE_VERSION = '[^']+';/,"const CACHE_VERSION = 'RELEASE';");
+const releaseHash=crypto.createHash('sha256').update(normalizedSw);
+for(const full of paths.filter(p=>p!==swPath).sort()) {
+  releaseHash.update(path.relative(ROOT,full)).update(fs.readFileSync(full));
+}
+const releaseVersion='battle-v5-'+releaseHash.digest('hex').slice(0,12);
+fs.writeFileSync(swPath,normalizedSw.replace("const CACHE_VERSION = 'RELEASE';",`const CACHE_VERSION = '${releaseVersion}';`));
 
 let totalBytes = 0;
 const seen = new Set();

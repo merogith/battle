@@ -1,14 +1,14 @@
 // Invariant assertions for a Story-Sim run record (Phase 7).
 //
-// The simulator exercises the real onBattleEnd/gate/save code across 67 rows x thousands of
-// seeds, so it doubles as a bug-finder. checkRun() returns a list of violations; the run loop
+// The simulator shares battle and preparation helpers, but approximates optional journeys.
+// checkRun() returns a list of violations; the run loop
 // and the committed test both consume it. Violations are candidates for the ISSUE_LEDGER
 // (via the emit-finding skill) — the sim reports them, the maintainer triages.
 
 // Party-cap curve (mirror of _storyMaxPartySize): max(2, min(6, 2+badges)).
 function maxParty(badges) { return Math.max(2, Math.min(6, 2 + (badges | 0))); }
 
-const TERMINALS = /^(hof|failed@\d+|stall@\d+)$/;
+const TERMINALS = /^(hof|mystery-victory|incomplete|failed@\d+|stall@\d+)$/;
 
 // Check one run record. Returns [{ code, detail }].
 export function checkRun(rec) {
@@ -41,6 +41,11 @@ export function checkRun(rec) {
     if (s.goldAfter < 0) push('gold-negative-mid', `pos ${s.pos}: goldAfter ${s.goldAfter}`);
     // engine threw during resolution — a real correctness bug.
     if (s.threw) push('engine-threw', `pos ${s.pos}: ${s.threw}`);
+    for (const attempt of s.attemptStarts || []) for (const mon of [...attempt.player,...attempt.foe]) {
+      if (mon.hp !== mon.maxHp || mon.status || mon.pp.some(m => m.maxPp != null && m.pp !== m.maxPp))
+        push('dirty-retry', `pos ${s.pos}: ${mon.name} started with depleted HP, status, or PP`);
+    }
+    if (s.conceded && (!s.isRival || s.won || s.goldAfter !== 0)) push('invalid-concession', `pos ${s.pos}: invalid rival concession`);
     // NOTE: a battle stall (s.stalled) is an AI/matchup signal (the 1-ply AI can't break an
     // unwinnable wall), not a correctness violation — the resolver caps it gracefully. Stalls are
     // recorded on the stage and surfaced as an aggregate stall-rate metric by analyze.mjs, not
@@ -48,7 +53,7 @@ export function checkRun(rec) {
   }
 
   // Won every battle up to the failure point (the run ends on first unrecovered loss).
-  const firstLoss = battles.findIndex(s => !s.won);
+  const firstLoss = battles.findIndex(s => !s.won && !s.conceded);
   if (firstLoss >= 0 && firstLoss < battles.length - 1)
     push('continued-after-loss', `lost at stage ${firstLoss} (pos ${battles[firstLoss].pos}) but ran ${battles.length - 1 - firstLoss} more battles`);
 
@@ -60,7 +65,7 @@ export function checkDeterminism(a, b) {
   const sig = (r) => JSON.stringify({
     outcome: r.outcome, reachedPos: r.reachedPos, badges: r.badges, gold: r.gold,
     team: r.finalTeam, wins: r.wins,
-    stages: (r.stages || []).filter(s => s.kind === 'battle').map(s => [s.pos, s.won, s.turns, s.pFaints, s.fFaints, s.goldAwarded]),
+    stages: (r.stages || []).filter(s => s.kind === 'battle').map(s => [s.pos, s.won, s.conceded, s.turns, s.pFaints, s.fFaints, s.goldAwarded, s.goldForfeited]),
   });
   return sig(a) === sig(b) ? [] : [{ code: 'nondeterministic', detail: `same inputs produced different results (seed ${a.seed})` }];
 }

@@ -19,6 +19,7 @@ E.window.showGameConfirm = async () => true;
 function setupTeam(evs, gold) {
   ST.sm = Object.assign({}, ST.sm, {
     active: true,
+    eventIndex: ST.STORY_EVENTS_RAW.findIndex(r => r[1] === 'City' && r[2] === 'City3'),
     gold: gold,
     team: [{ name: 'Garchomp', build: { evs: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0, ...evs } } }],
     settings: { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },

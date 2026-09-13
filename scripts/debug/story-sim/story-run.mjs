@@ -11,6 +11,7 @@
 // The Player Agent (prep/train/catch/adapt) lives in agent.mjs; this module owns the run
 // skeleton and the faithful foe/battle wiring.
 
+import { Dex } from '@pkmn/dex';
 import { loadEngine } from '../../../tests/helpers/load-engine.js';
 import { resolveBattle, restoreRealAI } from './resolve-battle.mjs';
 import { installShims } from './dom-shim.mjs';
@@ -19,6 +20,7 @@ import { PlayerAgent } from './agent.mjs';
 
 const GYM_RE = /^Gym Leader [1-8]$/;
 const BASE_START_GOLD = 2000;
+const initialStates = new WeakMap();
 
 function uint32(n) { return (n >>> 0); }
 
@@ -57,6 +59,11 @@ export function initRun(E, opts) {
   } = opts;
 
   const sm = S.sm;
+  if (!initialStates.has(E)) initialStates.set(E, JSON.parse(JSON.stringify(sm)));
+  for (const key of Object.keys(sm)) delete sm[key];
+  Object.assign(sm, JSON.parse(JSON.stringify(initialStates.get(E))));
+  E.seedRng(uint32(seed) ^ 0x5eed1234);
+  window.pkmn.dex.Dex = Dex;
   sm.active = true;
   sm.runSeed = uint32(seed);
   sm._strngState = null;                 // storyRngNext lazily seeds from runSeed
@@ -176,7 +183,7 @@ function applyVictoryAdvance(E, pos, coins) {
 export async function runStory(E, opts = {}) {
   const {
     seed = 1, difficulty = 'normal', policy: policyId = 'recommended',
-    itemMode = 'off', gens, mech, endpoint = 'mystery', onStage = null,
+    itemMode = 'off', playerSkill, gens, mech, endpoint = 'mystery', onStage = null,
   } = opts;
   const policy = getPolicy(policyId);
   const sm = initRun(E, { seed, difficulty, gens, mech });
@@ -189,7 +196,7 @@ export async function runStory(E, opts = {}) {
   agent.pickStarter(sm.eventIndex);
 
   const stages = [];
-  let outcome = 'hof';
+  let outcome = 'incomplete';
   let reachedPos = 0, reachedName = '';
 
   for (let pos = 0; pos < raw.length; pos++) {
@@ -202,7 +209,7 @@ export async function runStory(E, opts = {}) {
     if (kind === 'City') {
       sm.eventIndex = pos;
       sm.badges = S.countGymBadgesBeforeStoryRow(pos);
-      agent.doCity(pos);
+      await agent.doCity(pos);
       continue;
     }
     if (kind === 'Hall of Fame') {
@@ -219,16 +226,21 @@ export async function runStory(E, opts = {}) {
     if (!rolled) { stages.push({ pos, event: eventName, skipped: 'no-trainer' }); continue; }
 
     // Build both sides fresh (HP resets each battle regardless).
-    const foeMons = rolled.foeSpecs.map(s => S.buildPokemon(s.name, s.build));
+    let foeMons = [];
     let result = null, retries = 0, playerMons = [];
+    const attemptStarts = [];
     const maxRetries = policy.adapt.retries;
     for (;;) {
+      foeMons = rolled.foeSpecs.map(s => S.buildPokemon(s.name, JSON.parse(JSON.stringify(s.build))));
       playerMons = agent.buildBattleTeam(pos, eventName);
+      const snapshot = mons => mons.map(m => ({name:m.name,hp:m.currentHp,maxHp:m.maxHp,status:m.status || null,
+        pp:m.moves.map(move=>({pp:move.pp,maxPp:move.maxPp}))}));
+      attemptStarts.push({player:snapshot(playerMons),foe:snapshot(foeMons)});
       result = await resolveBattle(E, { mons: playerMons }, { mons: foeMons }, {
         seed: uint32(seed) ^ (pos * 2654435761),
         mode: 'story',
         foeStoryItems: itemMode === 'on',
-        playerSkill: policy.playerSkill,
+        playerSkill: playerSkill || policy.playerSkill,
         storyContext: {
           active: true,
           storyDifficulty: difficulty,
@@ -238,7 +250,7 @@ export async function runStory(E, opts = {}) {
       if (result.winner === 'player') break;
       retries++;
       if (retries > maxRetries || !policy.adapt.reprepOnLoss) break;
-      agent.adaptAfterLoss(pos, eventName, foeMons, result);
+      await agent.adaptAfterLoss(pos, eventName, foeMons, result);
     }
 
     const won = result.winner === 'player';
@@ -248,9 +260,11 @@ export async function runStory(E, opts = {}) {
     // Coin reward reads the shared global sm.storyDifficulty (which the per-turn player-skill pin
     // flips to 'hard'); force it back to the run difficulty so rewards are exact & deterministic.
     sm.storyDifficulty = difficulty;
+    const goldBefore = sm.gold;
     let goldAwarded = 0;
     if (won) goldAwarded = applyVictoryAdvance(E, pos, rolled.coins);
     else { sm.stats.battlesLost = (sm.stats.battlesLost | 0) + 1; }
+    const concession = !won && rolled.isRival ? S.concedeRival() : null;
 
     const stage = {
       pos, eid: rolled.eid, event: eventName, kind: 'battle',
@@ -261,15 +275,18 @@ export async function runStory(E, opts = {}) {
       pPower: powerIndex(playerMons), fPower: powerIndex(foeMons),
       pEvTotal: teamEvTotal(sm.team), pSpecies: playerMons.map(m => m.name),
       fSpecies: foeMons.map(m => m.name),
-      result: result.result, won, retries, turns: result.turns, stalled: result.stalled,
+      result: result.result, won, conceded: !!concession, retries, attemptStarts, turns: result.turns, stalled: result.stalled,
       pHpRemainingPct: result.pHpRemainingPct, pFaints: result.pFaints, fFaints: result.fFaints,
-      goldBefore: sm.gold - goldAwarded, goldAfter: sm.gold, goldAwarded,
+      goldBefore, goldAfter: sm.gold, goldAwarded, goldForfeited: concession?.goldForfeited || 0,
     };
     stages.push(stage);
     if (onStage) onStage(stage);
 
     if (won) {
-      agent.postWin(pos, eventName);
+      agent.postWin(pos, eventName, rolled.beatKey);
+      if (eventName === 'Mystery Figure') outcome = 'mystery-victory';
+    } else if (concession) {
+      agent.completeOpening(pos);
     } else {
       outcome = `failed@${pos}`;
       break;
@@ -278,7 +295,8 @@ export async function runStory(E, opts = {}) {
 
   const battles = stages.filter(s => s.kind === 'battle');
   return {
-    seed, difficulty, policy: policyId, itemMode,
+    seed, difficulty, policy: policyId, itemMode, playerSkill: playerSkill || policy.playerSkill,
+    fidelityLimitations: ['Catch acquisition and optional side rewards are not a complete player journey; completion rates require live-flow validation.', 'Rival losses use the real all-gold concession. Mystery losses stop this diagnostic; the live game also offers a post-game concession.'],
     outcome, reachedPos, reachedName,
     badges: sm.badges, gold: sm.gold, startGold,
     villain: sm.tracks && sm.tracks.villain, extra: sm.tracks && sm.tracks.extra,

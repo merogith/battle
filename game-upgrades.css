@@ -1,0 +1,53 @@
+/* Shared product surfaces: Notebook, preparation, practice, recovery and support. */
+:root { --upgrade-space: 1rem; --upgrade-body: 0.875rem; }
+.upgrade-overlay { position:fixed; inset:0; z-index:16000; display:grid; place-items:center; padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); background:rgb(3 7 14 / 90%); box-sizing:border-box; }
+.upgrade-dialog { width:min(960px,100%); max-height:100%; overflow:auto; overscroll-behavior:contain; border:1px solid var(--border-color,#506078); border-radius:var(--radius-lg,12px); background:var(--surface,#101a29); color:var(--text-color,#eef3fc); padding:clamp(12px,3vw,28px); box-sizing:border-box; font-size:var(--upgrade-body); line-height:1.7; }
+.upgrade-dialog * { box-sizing:border-box; }
+.upgrade-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; position:sticky; top:-1px; background:var(--surface,#101a29); z-index:1; padding-bottom:12px; }
+.upgrade-header h2 { margin:0; color:var(--accent,#8ee7d2); font-size:clamp(16px,2.8vw,24px); line-height:1.5; }
+.upgrade-dialog h3 { margin:0 0 8px; font-size:1rem; line-height:1.6; }
+.upgrade-dialog p { margin:0 0 12px; overflow-wrap:anywhere; }
+.upgrade-actions,.upgrade-tabs,.upgrade-settings-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.upgrade-dialog button,.upgrade-settings-actions button,.upgrade-save-alert button { min-height:44px; min-width:44px; padding:10px 14px; border:1px solid #668096; border-radius:var(--radius-md,8px); background:#1b3043; color:#f2f7ff; font:inherit; line-height:1.5; cursor:pointer; white-space:normal; overflow-wrap:anywhere; }
+.upgrade-dialog button:hover,.upgrade-dialog button:focus-visible { background:#294b60; }
+.upgrade-dialog button:focus-visible,.upgrade-dialog input:focus-visible,.upgrade-dialog textarea:focus-visible { outline:3px solid #a9efbc; outline-offset:3px; }
+.upgrade-dialog button:disabled { opacity:0.6; cursor:default; }
+.upgrade-dialog .upgrade-primary,.upgrade-tabs button[aria-current="page"] { background:#a9efbc; border-color:#a9efbc; color:#092217; }
+.upgrade-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); gap:12px; margin:12px 0; }
+.upgrade-card { min-width:0; border:1px solid #40556c; border-radius:var(--radius-md,8px); padding:16px; background:#142233; }
+.upgrade-card small,.upgrade-muted { color:#bdcbdc; }
+.upgrade-card dl { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:8px 0; }
+.upgrade-card dd { margin:0; overflow-wrap:anywhere; }
+.upgrade-dialog input:not([type="checkbox"]),.upgrade-dialog textarea,.upgrade-dialog select { width:100%; min-width:0; min-height:44px; padding:10px; background:#091421; border:1px solid #73889e; border-radius:6px; color:#f2f7ff; font:inherit; }
+.upgrade-dialog textarea { min-height:160px; resize:vertical; }
+.upgrade-dialog label { display:block; margin:12px 0; }
+.upgrade-dialog input[type="checkbox"] { width:22px; height:22px; margin:0 10px 0 0; vertical-align:middle; }
+.upgrade-feedback { padding:12px; border-left:4px solid #a9efbc; background:#172e28; margin:12px 0; }
+.upgrade-save-alert { position:fixed; inset:auto 12px max(12px,env(safe-area-inset-bottom)); z-index:17000; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; padding:12px; border:2px solid #ffc277; border-radius:10px; background:#332012; color:#fff4e8; font-size:14px; }
+.upgrade-save-alert p { margin:0; max-width:620px; }
+.upgrade-service-notice { max-width:440px; padding:16px; color:var(--text-color); line-height:1.7; }
+.upgrade-readable,.upgrade-readable button,.upgrade-readable input,.upgrade-readable select { font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.upgrade-large-text { --upgrade-body:1.05rem; }
+.upgrade-large-text .story-dialogue-text,.upgrade-large-text .story-journal-body { font-size:1rem; line-height:1.8; }
+.upgrade-reduced-motion * { scroll-behavior:auto !important; animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+.upgrade-inline-help { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+@media (max-width:600px) {
+  .upgrade-overlay { align-items:stretch; }
+  .upgrade-dialog { border-radius:8px; }
+  .upgrade-actions > button { flex:1 1 140px; }
+  .upgrade-tabs > button { flex:1 1 100px; }
+}
+@media (prefers-reduced-motion:reduce) { .upgrade-dialog * { scroll-behavior:auto; transition:none; animation:none; } }
+
+/* Shared navigation and input affordances across existing campaign screens. */
+.upgrade-action-purpose { display:block; margin-top:6px; font-size:0.72rem; font-weight:normal; line-height:1.6; color:var(--text-muted,#c0cede); letter-spacing:normal; white-space:normal; }
+.upgrade-inline-help button { min-height:44px; padding:10px 14px; line-height:1.6; white-space:normal; }
+.screen button:focus-visible,.modal button:focus-visible,.story-action-btn:focus-visible { outline:3px solid var(--hp-green,#a9efbc); outline-offset:3px; }
+@media (pointer:coarse) {
+  .screen button,.modal button,.story-action-btn { min-height:44px; touch-action:manipulation; }
+  .screen input,.screen select,.modal input,.modal select { min-height:44px; font-size:max(16px,1em); }
+}
+@media (max-width:600px) {
+  .upgrade-inline-help button { flex:1 1 150px; }
+  .story-action-btn-text { min-width:0; overflow-wrap:anywhere; }
+}

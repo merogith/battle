@@ -142,9 +142,9 @@ test('settings modal is labelled and the ambient-particles toggle is wired', () 
 test('app self-updates like an installed app (SW revalidates the shell + page prompts reload)', () => {
   const sw = read('sw.js');
   assert.ok(/function revalidateShell/.test(sw), 'SW background shell revalidation exists');
-  assert.ok(sw.includes("cache: 'no-store'"), 'revalidation uses a conditional (no-store) request');
-  assert.ok(/If-None-Match/.test(sw), 'conditional request sends the cached ETag (304 fast path)');
-  assert.ok(/postMessage\(\{ type: 'SHELL_UPDATED' \}\)/.test(sw), 'SW notifies pages when the shell changed');
+  assert.match(sw,/cache:\s*'no-store'/, 'release manifest bypasses stale HTTP cache');
+  assert.ok(/self.registration.update\(\)/.test(sw), 'browser installs a new complete worker');
+  assert.ok(/precacheShell\(\).then/.test(sw), 'activation follows completed installation');
   // The page listens and offers a deferred, non-blocking reload (never mid-battle).
   assert.ok(/d\.type !== 'SHELL_UPDATED'/.test(HTML), 'page handles SHELL_UPDATED');
   assert.ok(/window\.__maybeShowShellUpdate/.test(HTML), 'reload prompt is gated through __maybeShowShellUpdate');
@@ -163,7 +163,7 @@ test('Battle Options: Classic (once-per-battle) toggle is wired + panel re-syncs
 test('offline/SW hardening: request watchdog + full-shell refresh + reload retry', () => {
   const sw = read('sw.js');
   assert.ok(/async function precacheShell/.test(sw), 'precacheShell helper exists');
-  assert.ok(/precacheShell\(SHELL\.filter\(/.test(sw), 'revalidation re-precaches sibling shell files on change');
+  assert.ok(/verifyResponse/.test(sw), 'core content hashes are verified before activation');
   // App-side request watchdog (idle timeout that resets on progress) — no more hang-forever.
   assert.ok(/function _swRequest\(sw, message, doneType, onProgress, idleMs\)/.test(HTML), '_swRequest takes an idle timeout');
   assert.ok(/\}, 45000\);/.test(HTML), 'bulk download passes a 45s idle watchdog to _swRequest');

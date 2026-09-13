@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. Bump CACHE_VERSION when the shell/code changes.
  */
-const CACHE_VERSION = 'battle-v4';
+const CACHE_VERSION = 'battle-v5-828dc46a6e15';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -25,6 +25,8 @@ const APPLIED_MANIFEST_KEY = '__OFFLINE_MANIFEST__';
 const SHELL = [
   './',
   'battle.html',
+  'game-upgrades.js',
+  'game-upgrades.css',
   'index.html',
   'manifest.webmanifest',
   'online-config.js',
@@ -39,17 +41,29 @@ const SHELL = [
   'icons/app-icon.svg',
 ];
 
-// (Re)precache the shell. {cache:'reload'} bypasses the HTTP cache so a new deploy's shell
-// is never stale. Tolerates individual 404s so one missing optional file can't break it.
-// `list` lets the background revalidation refresh the siblings without re-fetching the 5MB
-// battle.html (already re-cached from the conditional response it just read).
-async function precacheShell(list) {
-  const cache = await caches.open(SHELL_CACHE);
-  await Promise.all((list || SHELL).map((u) =>
-    fetch(u, { cache: 'reload' })
-      .then((res) => (res && res.ok ? cache.put(u, res) : null))
-      .catch(() => {})
-  ));
+// An incomplete or mismatched core never activates. Media remains an optional download.
+async function verifyResponse(response, file) {
+  if (!response || !response.ok) throw new Error(`Could not fetch ${file.u}`);
+  const buffer=await response.clone().arrayBuffer();
+  const digest=await crypto.subtle.digest('SHA-1',buffer);
+  const hash=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+  if(hash!==file.h || buffer.byteLength!==file.b) throw new Error(`Release mismatch: ${file.u}`);
+  return response;
+}
+async function precacheShell() {
+  const manifestResponse=await fetch('offline-assets.json',{cache:'no-store'});
+  if(!manifestResponse.ok)throw new Error('Release manifest unavailable');
+  const manifest=await manifestResponse.json();
+  if(manifest.version!==CACHE_VERSION || !Array.isArray(manifest.files))throw new Error('Release manifest is incompatible');
+  const core=manifest.files.filter(f=>SHELL.includes(f.u) || f.u.startsWith('data/'));
+  for(const required of SHELL.filter(u=>u!=='./'))if(!core.some(f=>f.u===required))throw new Error(`Core asset missing: ${required}`);
+  const cache=await caches.open(SHELL_CACHE);
+  for(let i=0;i<core.length;i+=12) await Promise.all(core.slice(i,i+12).map(async file=>{
+    const response=await verifyResponse(await fetch(file.u,{cache:'reload'}),file);
+    await cache.put(file.u,response);
+  }));
+  await cache.put('./',await cache.match('index.html'));
+  await cache.put('offline-assets.json',new Response(JSON.stringify(manifest),{headers:{'Content-Type':'application/json'}}));
 }
 
 self.addEventListener('install', (event) => {
@@ -77,48 +91,14 @@ async function cacheFirst(req) {
   return null;
 }
 
-// Background shell revalidation for navigations. Sends a conditional request for battle.html
-// (If-None-Match / If-Modified-Since from the cached copy), so the common unchanged case
-// returns a bodyless 304 — no 5MB re-download per launch. On a real change it refreshes
-// SHELL_CACHE and notifies open pages so they can offer a "reload for the new version"
-// prompt. Uses the ETag / Last-Modified validators GitHub Pages sends, with a byte compare
-// as a fallback. All best-effort: any failure (offline, etc.) no-ops and keeps the cache.
-let _shellRevalidating = false;
-async function revalidateShell(shell, cached) {
-  if (_shellRevalidating) return;         // one in-flight check is enough per navigation burst
-  _shellRevalidating = true;
-  try {
-    const oldEtag = cached.headers.get('etag') || '';
-    const oldMod = cached.headers.get('last-modified') || '';
-    // Conditional request: on the common "nothing changed" path the server answers 304
-    // with no body, so we do NOT re-download the ~5MB shell on every launch.
-    const headers = {};
-    if (oldEtag) headers['If-None-Match'] = oldEtag;
-    else if (oldMod) headers['If-Modified-Since'] = oldMod;
-    const fresh = await fetch('battle.html', { cache: 'no-store', headers });
-    if (fresh.status === 304) return;        // unchanged — cheap path
-    if (!fresh || !fresh.ok) return;
-    const newEtag = fresh.headers.get('etag') || '';
-    const newMod = fresh.headers.get('last-modified') || '';
-    let changed;
-    if (oldEtag && newEtag) changed = oldEtag !== newEtag;
-    else if (oldMod && newMod) changed = oldMod !== newMod;
-    else if (!oldEtag && !oldMod) changed = false;   // first cache had no validators → seed silently
-    else {                                            // validators dropped → compare bytes as a fallback
-      const [a, b] = await Promise.all([cached.clone().text(), fresh.clone().text()]);
-      changed = a.length !== b.length || a !== b;
-    }
-    await shell.put('battle.html', fresh.clone());
-    if (changed) {
-      // A content-only redeploy (no CACHE_VERSION bump) also changes sibling shell files
-      // (move-*-map.js, online-pvp.js, manifest…). Refresh them too so we never serve a new
-      // battle.html against stale JS. battle.html is already re-cached above, so skip it here.
-      await precacheShell(SHELL.filter((u) => u !== 'battle.html'));
-      const cs = await self.clients.matchAll({ includeUncontrolled: true });
-      cs.forEach((c) => c.postMessage({ type: 'SHELL_UPDATED' }));
-    }
-  } catch (e) { /* offline / network error → keep serving the cached shell */ }
-  finally { _shellRevalidating = false; }
+// Core caches are immutable after install. Ask the browser to install a complete
+// new worker instead of replacing battle.html while sibling code/data may still be old.
+let _shellRevalidating=false;
+async function revalidateShell() {
+  if(_shellRevalidating)return;
+  _shellRevalidating=true;
+  try { await self.registration.update(); } catch (_) { /* Offline: retain this release. */ }
+  finally { _shellRevalidating=false; }
 }
 
 self.addEventListener('fetch', (event) => {
@@ -139,7 +119,7 @@ self.addEventListener('fetch', (event) => {
       const cached = (await shell.match('battle.html'))
         || (await (await caches.open(ASSETS_CACHE)).match('battle.html'));
       if (cached) {
-        event.waitUntil(revalidateShell(shell, cached));
+        event.waitUntil(revalidateShell());
         return cached;
       }
       return fetch(req).catch(() => shell.match('./'));
@@ -155,7 +135,10 @@ self.addEventListener('fetch', (event) => {
       const res = await fetch(req);
       if (res && res.status === 200 && res.type === 'basic') {
         const copy = res.clone();
-        (await caches.open(RUNTIME_CACHE)).put(req, copy);
+        const runtime=await caches.open(RUNTIME_CACHE);
+        await runtime.put(req,copy);
+        const entries=await runtime.keys();
+        for(const oldest of entries.slice(0,Math.max(0,entries.length-200)))await runtime.delete(oldest);
       }
       return res;
     } catch (e) {
@@ -238,7 +221,7 @@ self.addEventListener('message', (event) => {
         await Promise.allSettled(batch.map(async (f) => {
           try {
             const res = await fetch(f.u, { cache: 'reload' }); // bypass HTTP cache → get the new bytes
-            if (res && res.ok) { await cache.put(f.u, res.clone()); done++; }
+            if (res && res.ok) { await verifyResponse(res,f); await cache.put(f.u, res.clone()); done++; }
             else failed++;
           } catch (e) { failed++; }                            // network error / QuotaExceededError
         }));
@@ -248,7 +231,7 @@ self.addEventListener('message', (event) => {
       for (const u of plan.toRemove) { try { if (await cache.delete(u)) removed++; } catch (e) {} }
       // Snapshot the applied manifest so the next sync diffs against it.
       try {
-        await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify(msg.manifest),
+        if (failed === 0) await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify(msg.manifest),
           { headers: { 'Content-Type': 'application/json' } }));
       } catch (e) {}
       reply({ type: 'SYNC_DONE', batchId: msg.batchId, done, total, removed, failed, bytes: plan.bytes });
