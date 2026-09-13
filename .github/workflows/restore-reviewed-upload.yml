@@ -1,0 +1,80 @@
+name: Restore reviewed upload
+
+on:
+  push:
+    branches: [codex/story-mechanics-upgrade]
+    paths:
+      - docs/review-evidence-2026-09-12/implementation.patch
+      - .github/workflows/restore-reviewed-upload.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: restore-reviewed-story-upload
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    if: github.repository == 'merogith/battle' && github.ref == 'refs/heads/codex/story-mechanics-upgrade'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/story-mechanics-upgrade
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore the exact reviewed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch=docs/review-evidence-2026-09-12/implementation.patch
+          test "$(git hash-object "$patch")" = 2228d0fbf37ce623cc86414b9a4de4c9c993897b
+          git apply --reverse --check --exclude=battle.html "$patch"
+          if [ "$(git hash-object battle.html)" != fefbff68359208aa5b3605f9ea8becf002dcd6e5 ]; then
+            git apply --check --include=battle.html "$patch"
+            git apply --include=battle.html "$patch"
+          fi
+          test "$(git hash-object battle.html)" = fefbff68359208aa5b3605f9ea8becf002dcd6e5
+          node scripts/build-offline-asset-manifest.mjs
+          node --input-type=module -e "import fs from 'node:fs';const m=JSON.parse(fs.readFileSync('offline-assets.json'));if(m.digest!=='78d791731398166b'||m.version!=='battle-v5-828dc46a6e15')throw Error('Release content differs from reviewed version');"
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify restored code
+        run: npm test > docs/review-evidence-2026-09-12/final-tests.log 2>&1
+      - name: Regenerate campaign evidence
+        run: node scripts/debug/upgrade-campaign-check.mjs
+      - name: Verify release artifact
+        run: npm run build:release
+      - name: Publish restored files to the review branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > RECOVERY_STATUS.md <<'NOTE'
+          # Upload restored and verified
+
+          The original implementation.patch was recovered from the maintainer's attachment.
+          GitHub Actions restored battle.html with its exact reviewed Git blob fingerprint,
+          verified the original release content digest, reran the full test suite and campaign
+          diagnostics, and verified the complete static artifact before publishing this commit.
+
+          The previous missing-file warning is resolved. This branch is ready for review;
+          merge and deployment remain the maintainer's decision. See the implementation review
+          for the remaining balance, device-testing and long-term feature limitations.
+          NOTE
+          git add battle.html offline-assets.json RECOVERY_STATUS.md docs/review-evidence-2026-09-12/implementation-campaign-check.json
+          git add -f docs/review-evidence-2026-09-12/final-tests.log
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Restore exact reviewed game code and verify complete release'
+            git push origin HEAD:refs/heads/codex/story-mechanics-upgrade
+          fi
+      - name: Preserve validation output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restored-upgrade-verification
+          path: docs/review-evidence-2026-09-12/final-tests.log
