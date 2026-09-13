@@ -2,7 +2,7 @@
 // and side conditions / screens. Promote per the test-coverage-filler workflow.
 //
 // Setup-shape: one runTurn, then assert engine.state. Weather is a string
-// (Rain/Sun/Sandstorm/Hail; Snowscape maps to Hail); terrain is a string
+// (Rain/Sun/Sandstorm/Hail; Snowscape creates non-damaging Snow); terrain is a string
 // (Electric/Grassy/Misty/Psychic); hazards land on the FOE's side (fSide); screens
 // and side conditions land on the user's side (pSide). Aurora Veil needs snow up
 // first, so it runs as a two-turn sequence.
@@ -28,7 +28,7 @@ async function field(move) {
 
 describe('Field-effect moves (draft fills)', () => {
   for (const [move, weather] of [
-    ['Rain Dance', 'Rain'], ['Sunny Day', 'Sun'], ['Sandstorm', 'Sandstorm'], ['Hail', 'Hail'], ['Snowscape', 'Hail'],
+    ['Rain Dance', 'Rain'], ['Sunny Day', 'Sun'], ['Sandstorm', 'Sandstorm'], ['Hail', 'Hail'], ['Snowscape', 'Snow'],
   ]) {
     it(`${move} sets ${weather} weather`, async () => {
       assert.equal((await field(move)).weather, weather, `${move} should set ${weather}`);

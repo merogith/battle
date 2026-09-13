@@ -19,7 +19,7 @@ const battleHtmlText = await readFile(new URL('../../battle.html', import.meta.u
 test('STORY_ACHIEVEMENTS_DATA registers r_no_death with correct shape', () => {
     // Source-level check (the achievements array isn't directly exposed; the
     // entry's existence + shape is the contract).
-    const re = /\{\s*id:\s*'r_no_death',[\s\S]{0,200}cat:\s*'replay',[\s\S]{0,200}name:\s*'No Death Run',[\s\S]{0,400}desc:\s*'Clear the Hall of Fame without losing a single story battle\.'/;
+    const re = /\{\s*id:\s*'r_no_death',[\s\S]{0,200}cat:\s*'replay',[\s\S]{0,200}name:\s*'Unbeaten Journey',[\s\S]{0,400}desc:\s*'Clear the Hall of Fame without losing a single story battle\.'/;
     assert.match(battleHtmlText, re, 'r_no_death registry entry missing or malformed');
 });
 
@@ -56,7 +56,7 @@ test('r_no_death is registered with the replay category (source check)', () => {
     const block = battleHtmlText.match(/\{[^{]*id:\s*'r_no_death'[^}]+\}/);
     assert.ok(block, 'r_no_death entry should be a discrete object literal');
     assert.match(block[0], /cat:\s*'replay'/);
-    assert.match(block[0], /name:\s*'No Death Run'/);
+    assert.match(block[0], /name:\s*'Unbeaten Journey'/);
     assert.match(block[0], /icon:/);
 });
 

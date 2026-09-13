@@ -157,7 +157,7 @@ async function main() {
   await audit('27-run-summary');
 
   // 26. QUICK BATTLE -> battle screen + battle modals
-  await ev(() => { try { settings.quickTeamSource='random'; } catch(e){} window.startQuickBattle(); });
+  await ev(() => { window.jumpInQuickBattle(); });
   await page.waitForTimeout(3000);
   await ev(() => window.closeModal && window.closeModal('modal-game-alert'));
   await audit('28-battle');

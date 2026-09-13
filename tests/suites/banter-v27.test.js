@@ -271,7 +271,7 @@ test('v25 save migrates to current SAVE_VER with banter fields seeded; banter da
   const LS = installLocalStorageShim();
   const plant = (extra) => LS.setItem('pbs_story_save', JSON.stringify(Object.assign({
     version: 25, active: true, storyLine: 'classic', eventIndex: 0, badges: 0,
-    team: [{ species: 'Bulbasaur', level: 5 }],
+    team: [{ name: 'Bulbasaur', build: { m: ['Tackle'], n: 'Hardy', a: 'Overgrow', i: null } }],
     tracks: { main: 'classic_v2', villain: 'rocket', extra: 'cubone' },
     settings: { minGen: 1, maxGen: 9, enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
   }, extra || {})));

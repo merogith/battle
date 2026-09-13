@@ -59,7 +59,7 @@ describe('Switch / pivot moves (draft fills)', () => {
     const t = team('Chilly Reception');
     await pivot(t);
     assert.equal(engine.state.pActive, t.b);
-    assert.equal(engine.state.weather, 'Hail');
+    assert.equal(engine.state.weather, 'Snow');
   });
 
   it('Shed Tail switches the user out', async () => {

@@ -37,7 +37,7 @@ function plantSave(extra) {
         storyLine: 'classic',
         eventIndex: 0,
         badges: 0,
-        team: [{ species: 'Bulbasaur', level: 5 }],
+        team: [{ name: 'Bulbasaur', build: { m: ['Tackle'], n: 'Hardy', a: 'Overgrow', i: null } }],
         tracks: { main: 'classic_v2', villain: 'rocket', extra: 'cubone' },
         settings: { minGen: 1, maxGen: 9, enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
     }, extra || {})));

@@ -1,14 +1,10 @@
 // The Player Agent — models a real player's prep -> fight -> adapt loop (§2.4a).
 //
-// Maintains the persistent player team as sm.team (spec list of {name, build, id}); battles
-// rebuild the mons fresh each time via buildPokemon (HP resets anyway). The three policies
-// (casual/recommended/optimal) vary only the PREP investment: how much the agent trains (EVs),
-// tutors, evolves, catches for coverage, and re-preps after a loss. Battle skill is constant.
-//
-// Faithfulness: builds go through the real makeBuild + _storyBuildTierForProfessor +
-// _storyDowngradeBuildForTier path (professor parity); EV training uses the real
-// _distributeEVsToTotal toward the real _storyEvTotalForCity band. Player builds NEVER carry
-// _storyStatMult (foe-only).
+// Maintains persistent team builds and reconstructs battle instances for each attempt.
+// Policies vary preparation and battle skill independently (playerSkill can override the latter).
+// Evolution and Mentor purchases use the game's eligibility, prices and mutations; earned EVs
+// come from the shared battle reward helper. Catch selection still approximates acquisition:
+// balls, failed captures and all optional scene rewards are not yet modeled.
 
 let _idCounter = 1;
 function nextId() { return `sim_${_idCounter++}`; }
@@ -32,7 +28,8 @@ export class PlayerAgent {
     this._blockedEvolve = 0;    // evolutions the player wanted but couldn't afford (economy stress)
     this._blockedTrain = 0;
     this._evolveCost = (this.S && this.S.EVOLVE_COST_BY_TARGET) || { 1: 12000, 2: 6000, 3: 3000 };
-    this._evPerMonCost = 500;   // vitamin-equivalent per trained mon per city (economy model)
+    this._openingComplete = false;
+    this._wildBuilds = new Map();
     this._buildEvoForwardMap();
   }
 
@@ -95,8 +92,8 @@ export class PlayerAgent {
   _maxParty() { try { return this.S.storyMaxPartySize(); } catch (e) { return Math.max(2, Math.min(6, 2 + (this.sm.badges | 0))); } }
 
   // Build a story-tier player build for a species at (city, badges), trained per policy.
-  _makeStoryBuild(species, city, badges, opts = {}) {
-    const S = this.S, T = this.T;
+  _makeStoryBuild(species, city, badges) {
+    const S = this.S;
     const tier = S.storyBuildTierForProfessor(city, badges);
     const build = S.makeBuild(species);
     try {
@@ -104,20 +101,6 @@ export class PlayerAgent {
     } catch (e) {}
     build.powerTier = tier;
     delete build._storyStatMult; // player builds are never foe-scaled
-    // EV training toward the city band, scaled by policy investment (gated by the caller on gold).
-    const doTrain = opts.train !== undefined ? opts.train : this.policy.train.evTrain;
-    if (doTrain && this.policy.train.evTargetFrac > 0) {
-      try {
-        let band = 508;
-        try { band = S.STORY_EVENTS_RAW && T && T.storyEvTotalForCity ? T.storyEvTotalForCity(city, 0) : 508; } catch (e) {}
-        const total = Math.max(0, Math.min(508, Math.round(band * this.policy.train.evTargetFrac)));
-        const base = (T && T.baseStats) ? T.baseStats[species] : null;
-        if (base && T.distributeEVsToTotal) {
-          T.distributeEVsToTotal(build, base, total);
-          this._trainCost += Math.round(total * 2); // rough vitamin-equivalent spend, telemetry only
-        }
-      } catch (e) {}
-    }
     return build;
   }
 
@@ -132,7 +115,7 @@ export class PlayerAgent {
       try {
         const w = this.T.rollWildEncounter ? this.T.rollWildEncounter(sg) : null;
         const name = w && (w.name || (w.build && w.species) || w.species);
-        if (name) candidates.push(name);
+        if (name) { candidates.push(name); if (w.build) this._wildBuilds.set(name, JSON.parse(JSON.stringify(w.build))); }
       } catch (e) {}
     }
     if (!candidates.length) return null;
@@ -152,7 +135,9 @@ export class PlayerAgent {
 
   _addMon(species, city, badges, { starter = false } = {}) {
     const S = this.S;
-    const build = this._makeStoryBuild(species, city, badges);
+    const build = this._wildBuilds.get(species) || this._makeStoryBuild(species, city, badges);
+    this._wildBuilds.delete(species);
+    delete build._storyStatMult;
     if (starter) build.starter = true;
     const slot = { name: species, build, id: nextId() };
     this.sm.team.push(slot);
@@ -171,16 +156,14 @@ export class PlayerAgent {
     // Professor hands out a G4 basic; approximate with a wild-pool G4 pick, built at C0 tier.
     let species = this._pickCatchSpecies(city, badges) || 'Eevee';
     this._addMon(species, city, badges, { starter: true });
-    // Catch-tutorial partner (normally auto-granted): a second mon so early fights aren't 1-mon.
-    const partner = this._pickCatchSpecies(city, badges);
-    if (partner) this._addMon(partner, city, badges);
+
   }
 
-  doCity(pos) {
+  async doCity(pos) {
     // The Evo Lab / EV Trainer live in cities, so the full evolve+train pass happens once per
     // city visit (not before every route battle) — keeps the paid actions from thrashing.
     this._fillToCap(pos);
-    this._evolveAndTrain(pos);
+    await this._evolveAndTrain(pos);
   }
 
   prepForBattle(pos, _eventName) {
@@ -189,6 +172,7 @@ export class PlayerAgent {
   }
 
   _fillToCap(pos) {
+    if (!this._openingComplete) return;
     this._seedAgentRng(pos);
     const city = this._cityForRow(pos);
     const badges = this.S.countGymBadgesBeforeStoryRow(pos);
@@ -197,7 +181,7 @@ export class PlayerAgent {
     const catchBudget = this.policy.catch.mode === 'rare' ? 0
       : this.policy.catch.mode === 'opportunistic' ? 1 : 2;
     let added = 0;
-    while (this.sm.team.length < cap && added < catchBudget + (cap - this.sm.team.length)) {
+    while (this.sm.team.length < cap && added < catchBudget) {
       const sp = this._pickCatchSpecies(city, badges);
       if (!sp) break;
       this._addMon(sp, city, badges);
@@ -205,43 +189,32 @@ export class PlayerAgent {
     }
   }
 
-  _evolveAndTrain(pos) {
+  async _evolveAndTrain(pos) {
+    if (!this._openingComplete) return;
     this._seedAgentRng(pos + 500);
     const city = this._cityForRow(pos);
-    const badges = this.S.countGymBadgesBeforeStoryRow(pos);
-    // Evolve team members forward to the city's player cap (the dominant power lever), gated on
-    // gold (paid Evo-Lab action), then retrain EVs toward the tier. The evolve/train affordability
-    // is what separates the policies once the economy binds.
-    const evoCap = this._playerEvoCap(city);
-    for (const slot of this.sm.team) {
-      let species = slot.name;
-      // Evolution is a paid Evo-Lab action (EVOLVE_COST_BY_TARGET) — gate it on gold. A
-      // gold-starved player (casual) can't afford to evolve and stays weak; this is the core
-      // economic feedback that separates the policies.
-      const target = this._evolveForward(species, evoCap);
-      if (target !== species) {
-        const cost = this._evolveCost[this._grade(target)] || 3000;
-        if (this._canSpend(cost)) { this._spend(cost); species = target; this._evolveCount++; }
-        else { this._blockedEvolve++; }
+    if (this.policy.train.tutorMoves) await this.S.warmPreparation();
+    for (let idx = 0; idx < this.sm.team.length; idx++) {
+      const slot = this.sm.team[idx];
+      if (this.policy.train.evolve !== 'freeOnly' && city >= 2) {
+        // The real NPC decides stage, grade, generation and consumable eligibility.
+        const options = this.S.evolutionOptions(slot.name).sort((a,b) => this._bst(b.name) - this._bst(a.name));
+        const target = options[0];
+        if (target && this._canSpend(target.cost)) {
+          const beforeGold = this.sm.gold, beforeName = slot.name;
+          await this.E.window.StoryMode.evoLabEvolve(slot.id, target.name);
+          this._goldSpent += beforeGold - this.sm.gold;
+          if (slot.name !== beforeName) this._evolveCount++;
+        } else if (target) this._blockedEvolve++;
       }
-      const speciesChanged = species !== slot.name;
-      // EV training is a paid EV-Trainer action — gate it on gold too.
-      const wantTrain = this.policy.train.evTrain;
-      const canTrain = wantTrain && this._canSpend(this._evPerMonCost);
-      if (wantTrain && !canTrain) this._blockedTrain++;
-      if (speciesChanged || canTrain) {
-        try {
-          const rebuilt = this._makeStoryBuild(species, city, badges, { train: canTrain });
-          slot.name = species;
-          if (speciesChanged) {
-            slot.build = rebuilt;                 // full rebuild on evolution
-          } else if (canTrain) {
-            slot.build.evs = rebuilt.evs;         // refresh trainable parts in place
-            slot.build.powerTier = rebuilt.powerTier;
-            if (this.policy.train.tutorMoves && rebuilt.m) slot.build.m = rebuilt.m;
-          }
-          if (canTrain) this._spend(this._evPerMonCost);
-        } catch (e) {}
+      if (this.policy.train.tutorMoves) {
+        const quote = this.S.preparationQuote(idx);
+        if (quote && this._canSpend(quote.gold)) {
+          const beforeGold = this.sm.gold;
+          await this.S.prepare(idx);
+          this._goldSpent += beforeGold - this.sm.gold;
+          this._trainCost += beforeGold - this.sm.gold;
+        } else if (quote) this._blockedTrain++;
       }
     }
   }
@@ -249,7 +222,7 @@ export class PlayerAgent {
   // Build the actual battle team (fresh mons). Trim to party cap.
   buildBattleTeam(pos, _eventName) {
     const S = this.S;
-    const cap = this._maxParty();
+    const cap = this._openingComplete ? this._maxParty() : 1;
     const specs = (this.sm.team || []).slice(0, cap);
     const mons = [];
     for (const s of specs) {
@@ -265,25 +238,25 @@ export class PlayerAgent {
     return mons;
   }
 
-  adaptAfterLoss(pos, _eventName, _foeMons, _result) {
-    this._seedAgentRng(pos + 1000);
+  async adaptAfterLoss(pos, _eventName, _foeMons, _result) {
     this._adaptCount++;
-    // Re-prep against the foe: bump training a notch and (optimal/recommended) catch a counter.
-    const city = this._cityForRow(pos), badges = this.S.countGymBadgesBeforeStoryRow(pos);
-    if (this.policy.catch.mode !== 'rare' && this.sm.team.length < this._maxParty()) {
-      const sp = this._pickCatchSpecies(city, badges);
-      if (sp) { this._addMon(sp, city, badges); this._catchCount++; }
-    }
-    // Nudge EV investment up on a loss (a real player min-maxes when stuck).
-    for (const slot of this.sm.team) {
-      try {
-        const base = this.T.baseStats ? this.T.baseStats[slot.name] : null;
-        if (base && this.T.distributeEVsToTotal) this.T.distributeEVsToTotal(slot.build, base, 508);
-      } catch (e) {}
-    }
+    // Returning for preparation uses actual NPC prices and gates; no free stat grant.
+    await this._evolveAndTrain(pos);
   }
 
-  postWin(_pos, _eventName) { /* team persists; evolutions/growth handled at next city */ }
+  postWin(pos, eventName, beatKey) {
+    this.S.awardBattleEVs(eventName, beatKey);
+    this.completeOpening(pos);
+  }
+
+  completeOpening(pos) {
+    if (!this._openingComplete) {
+      this._openingComplete = true;
+      const city = this._cityForRow(pos);
+      const partner = this._pickCatchSpecies(city, 0);
+      if (partner) this._addMon(partner, city, 0);
+    }
+  }
 
   telemetry() {
     return {

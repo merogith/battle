@@ -27,8 +27,8 @@ test('every city-action button onclick that targets StoryMode.* resolves to a fu
   assert.ok(btns.length > 0, 'city action strip rendered some buttons');
 
   // The Journal button must be present and wired to enterJournal.
-  const journalBtn = btns.find(b => /Journal/.test(b.textContent || ''));
-  assert.ok(journalBtn, 'Journal button present in the city action strip');
+  const journalBtn = btns.find(b => /Notebook/.test(b.textContent || ''));
+  assert.ok(journalBtn, 'Notebook button present in the city action strip');
   assert.match(journalBtn.getAttribute('onclick') || '', /window\.StoryMode\.enterJournal\(\)/);
 
   // No enabled button may call window.StoryMode.<method>() where <method> is missing.

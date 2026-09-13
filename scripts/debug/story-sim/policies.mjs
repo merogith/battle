@@ -13,7 +13,7 @@ export const POLICIES = {
   // free/forced, no EV training, no tutor moves, rarely catches. "Can a low-effort player clear?"
   casual: {
     id: 'casual',
-    playerSkill: 'hard', // battle skill is held constant across policies; only PREP differs
+    playerSkill: 'easy', // battle decision skill can be overridden independently per run
     reserveFrac: 0.5,
     train: {
       evTrain: false, tutorMoves: false, buyVitamins: false,
@@ -31,7 +31,7 @@ export const POLICIES = {
   // "Is the designed path smooth?" — the primary balance signal.
   recommended: {
     id: 'recommended',
-    playerSkill: 'hard',
+    playerSkill: 'normal',
     reserveFrac: 0.2,
     train: {
       evTrain: true, tutorMoves: true, buyVitamins: true,

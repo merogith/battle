@@ -3,8 +3,7 @@ name: Quality
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 jobs:
@@ -21,17 +20,17 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Refresh symbol index
         run: node scripts/debug/symbol-index.mjs
 
       - name: Data integrity validation
         run: node scripts/debug/data-validator.mjs
-        continue-on-error: true
 
       - name: Spec drift report
         run: node scripts/debug/spec-drift.mjs
+
         continue-on-error: true
 
       - name: Run tests
@@ -39,11 +38,12 @@ jobs:
 
       - name: Move audit
         run: npm run audit
-        continue-on-error: true
 
       - name: Lint (in-scope files only — battle.html excluded)
-        run: npx eslint scripts/ tests/ online-pvp.js move-anim-map.js move-sfx-map.js online-config.example.js
-        continue-on-error: true
+        run: npm run lint
+
+      - name: Verify release manifest and artifact
+        run: npm run build:release
 
       - name: Upload reports
         if: always()
