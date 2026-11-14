@@ -1,4 +1,4 @@
-# Pokémon Battle
+# Battle — Fan-Made Pokémon Battle Simulator
 
 A playable, noncommercial fan project with turn-based battles and a single-player story mode. [Play in your browser](https://merogith.github.io/battle/battle.html).
 
