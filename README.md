@@ -1,4 +1,18 @@
-# Localhost URL for testing
+# Pokémon Battle
+
+A playable, noncommercial fan project with turn-based battles and a single-player story mode. [Play in your browser](https://merogith.github.io/battle/battle.html).
+
+## Battle engine and testing
+
+The JavaScript engine in [`battle.html`](battle.html) reads structured move data, resolves action order and applies damage, status, and field effects. The test harness loads the engine in jsdom and seeds randomness so turns can be replayed. The suites exercise mechanics such as move priority, Protect and type effectiveness, and the differential tests compare selected cases with Pokémon Showdown.
+
+- [Move verification and test commands](tests/README.md)
+- [Battle engine investigation and testing approach](docs/BATTLE_ENGINE_INVESTIGATION.md)
+- [Story mode design and implementation notes](STORY_MODE_FLOW.md)
+
+This project has no affiliation with Nintendo, The Pokémon Company, Creatures Inc., or GAME FREAK Inc. See [asset credits and licensing](ATTRIBUTION.md) for third-party art, audio, and data.
+
+## Localhost URL for testing
 
 ## URL
 
