@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. Bump CACHE_VERSION when the shell/code changes.
  */
-const CACHE_VERSION = 'battle-v5-828dc46a6e15';
+const CACHE_VERSION = 'battle-v5-34969f1debf8';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
