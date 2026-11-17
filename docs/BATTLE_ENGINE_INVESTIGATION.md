@@ -1,5 +1,7 @@
 # Battle Engine Investigation — Findings & Recommendation
 
+> **Historical investigation:** the findings, line references and proposed Phase 2 decision below describe the June 2026 revision, not the status of the current playable release. This completion pass does not adopt or imply approval of an engine replacement. See [Showcase and supported scope](SHOWCASE.md) for current entry paths and verification commands.
+
 > **Status:** Phase 0 (investigate) + Phase 1 (recommend) complete. **No engine code changed.**
 > Awaiting approach approval before any Phase 2 implementation.
 > **Date:** 2026-06-02 · **Branch:** `claude/ecstatic-cannon-MJTai`

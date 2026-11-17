@@ -2,6 +2,14 @@
 
 A playable, noncommercial fan project with turn-based battles and a single-player story mode. [Play in your browser](https://merogith.github.io/battle/battle.html).
 
+## Start with one battle
+
+1. Open the browser game and choose **Jump In — instant battle**. No account or installation is needed. If a story run is already saved, use **Quick Battle** for a separate match.
+2. Choose **Fight**, inspect a move's type, power, accuracy and PP, then select it. Follow the HP bars and battle log as both actions resolve; controls return after the animations.
+3. When a Pokémon faints, select a healthy replacement. Finish the match, then try another team. For a simpler ruleset, select **Battle Options → Casual** before starting.
+
+The expandable **Your first battle** guide is available on the main menu. Instant battles do not overwrite the separate story save. For modes, current scope and verification commands, see [Showcase and supported scope](docs/SHOWCASE.md).
+
 ## Battle engine and testing
 
 The JavaScript engine in [`battle.html`](battle.html) reads structured move data, resolves action order and applies damage, status, and field effects. The test harness loads the engine in jsdom and seeds randomness so turns can be replayed. The suites exercise mechanics such as move priority, Protect and type effectiveness, and the differential tests compare selected cases with Pokémon Showdown.
@@ -64,6 +72,8 @@ You can open `battle.html` directly in the browser (`file://`), but some feature
 ## Debug & issue resolution system
 
 The repo ships a multi-agent debug system under `.claude/` and `scripts/debug/`. Findings collect into a single `agent-state/ISSUE_LEDGER.md` so you can review and fix at your own pace.
+
+The ledger and investigation reports are dated development records, not a current release checklist. Their finding counts and proposed decisions describe the revision inspected at the time. Use [the current scope guide](docs/SHOWCASE.md) for the public entry paths; rerun the linked checks before interpreting a historical finding as open or fixed.
 
 Slash commands (in Claude Code):
 
