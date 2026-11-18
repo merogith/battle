@@ -77,11 +77,21 @@ test('migrateStoryPreV22 is idempotent — existing track picks are preserved', 
 
 test('migrateStoryPreV22 fills a partially-shaped tracks object', () => {
     ST.sm = Object.assign({}, ST.sm, {
-        tracks: { main: null, villain: 'rocket', extra: null },
+        tracks: { main: null, villain: 'rocket' },
     });
     ST.migratePreV22();
     const sm = ST.sm;
     assert.equal(sm.tracks.main, 'classic_v2');
     assert.equal(sm.tracks.villain, 'rocket', 'existing villain pick was overwritten');
     assert.ok(ST.EXTRA_TRACKS.includes(sm.tracks.extra), 'extra not back-filled');
+});
+
+test('an explicit empty extra slot is preserved when no anomaly family fits', () => {
+    ST.sm = Object.assign({}, ST.sm, {
+        tracks: { main: 'classic_v2', villain: 'rocket', extra: null },
+        settings: { ...ST.sm.settings, enabledGens: [2, 3] },
+    });
+    assert.equal(ST.eligibleExtraTracks([2, 3]).length, 0);
+    ST.migratePreV22();
+    assert.equal(ST.sm.tracks.extra, null);
 });

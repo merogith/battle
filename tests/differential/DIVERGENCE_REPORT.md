@@ -1,6 +1,6 @@
 # Differential Divergence Report
 
-> Generated 2026-09-12 by `tests/differential/run-report.mjs`.
+> Generated 2026-11-18 by `tests/differential/run-report.mjs`.
 > Reference: **@pkmn/sim** (MIT, the auto-synced Pokémon Showdown simulator) ·
 > Subject: the in-house engine in `battle.html` (driven headless via the jsdom harness).
 > This is **Stage 0** of the oracle-led plan (`docs/BATTLE_ENGINE_INVESTIGATION.md`): no game
@@ -19,7 +19,7 @@ Confidence: **high** = boosts / faint / winner (RNG-independent — real diverge
 High-confidence disagreements on should-match / exploratory scenarios — candidate bugs beyond the known catalogue.
 
 - **`probe-multi-hit-bullet-seed`** (multi-hit) — Bullet Seed hits 2-5 times (RNG); hit count differs across engines — expected.
-  - T1 p2a `hp/damage`: Showdown=`22/362 (dmg~340)` vs in-house=`227/362 (dmg~135)` — damage differs ×2.5 — likely type/effectiveness/formula
+  - T1 p2a `hp/damage`: Showdown=`22/362 (dmg~340)` vs in-house=`226/362 (dmg~136)` — damage differs ×2.5 — likely type/effectiveness/formula
 
 ## Summary
 | Scenario | Category | Expect | HIGH | med | low | Verdict |
@@ -68,7 +68,7 @@ High-confidence disagreements on should-match / exploratory scenarios — candid
 | `speed-boost-switchin` | ability / end-of-turn | match | 0 | 0 | 0 | ✅ agrees |
 | `switchin-intimidate` | switch-in ability | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `hazard-stealth-rock-entry` | entry hazard | probe | 0 | 0 | 0 | 🔍 no divergence |
-| `prankster-vs-dark` | ability / priority | probe | 0 | 1 | 0 | 🔍 no divergence |
+| `prankster-vs-dark` | ability / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `psychic-terrain-blocks-priority` | terrain / priority | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `gravity-grounds-flying` | field / immunity | probe | 0 | 0 | 0 | 🔍 no divergence |
 | `weakness-policy-se` | item / boost | probe | 0 | 0 | 0 | 🔍 no divergence |
@@ -377,10 +377,7 @@ A Pokémon switched into Stealth Rock takes 1/8 max HP × type effectiveness (×
 A Prankster-boosted status move fails against a Dark-type (no paralysis).
 
 - Winner: Showdown=`null` · in-house=`null` · turns compared: 1
-
-| Turn | Mon | Field | Showdown | In-house | Conf |
-|---|---|---|---|---|---|
-| 1 | p2a | status | `(none)` | `par` | medium |
+- No divergences.
 
 ### `psychic-terrain-blocks-priority` — 🔍 no divergence
 Psychic Terrain blocks a priority move aimed at a grounded target (0 damage).
@@ -505,4 +502,4 @@ Bullet Seed hits 2-5 times (RNG); hit count differs across engines — expected.
 
 | Turn | Mon | Field | Showdown | In-house | Conf |
 |---|---|---|---|---|---|
-| 1 | p2a | hp/damage | `22/362 (dmg~340)` | `227/362 (dmg~135)` | high |
+| 1 | p2a | hp/damage | `22/362 (dmg~340)` | `226/362 (dmg~136)` | high |

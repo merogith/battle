@@ -17,6 +17,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
+import { ClassicSimulation } from '../../scripts/competitive/classic-simulation.mjs';
 
 const eng = await loadEngine();
 const ST = eng.window.__storyTest;
@@ -53,6 +54,26 @@ test('foe gate: Guru leaves moves untouched (full pool)', async () => {
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(2)));
   // Guru short-circuits before any cache lookup; all 4 moves survive verbatim.
   assert.deepEqual(team[0].build.m, ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance'], 'no filtering at Guru tier');
+});
+
+test('an early foe with a status-only build keeps its utility and gains a legal attack', async () => {
+  primeStory();
+  const team = [{ name: 'Caterpie', build: { m: ['String Shot'] } }];
+  await ST.storyGateFoeMovesByCity(team, cityRowIdx(0));
+    const [utility, attack] = team[0].build.m;
+    const learn = await ST.tutorFetchLearnsetMoveNames('Caterpie');
+    assert.equal(utility, 'String Shot');
+    assert.ok([...learn.natural, ...learn.learnt].includes(attack));
+    assert.notEqual(attack, 'Snore');
+
+    const player = ST.buildPokemon('Mew', { m: ['Splash'] });
+    const foe = ST.buildPokemon(team[0].name, team[0].build);
+    const session = new ClassicSimulation({
+      seed: 12, playerParty: [player], foeParty: [foe], rules: { scenario: { caps: { p2: [40] } } },
+    });
+    session.choose('p1', { kind: 'move', slot: 0 });
+    const next = session.choose('p2', { kind: 'move', slot: 1 });
+    assert.ok(next.player[0].hp < player.maxHp, 'the prepared attack works from the opening turn');
 });
 
 test('foe gate: at Inner, legal moves (Natural + Learnt) survive within the BP cap; Awakened stripped', async () => {

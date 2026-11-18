@@ -120,7 +120,7 @@ async function handleCatch(page) {
 
 async function pickStarter(page, tag) {
   await shot(page, `professor-${tag}`);
-  await clickSel(page, '.prof-pick-card .draft-card-sprite', 1500) || await clickSel(page, '.prof-pick-card', 1200);
+  await clickSel(page, '.prof-pick-choice', 1500);
   await sleep(350);
   await clickSel(page, '#prof-accept-btn:not([disabled])', 1500) || await api(page, 'profAccept');
   await sleep(700);

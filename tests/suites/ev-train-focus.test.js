@@ -62,6 +62,30 @@ test('auto default is unchanged when no focus is set', () => {
   assert.equal(sum(g), BOSS, 'full grant placed');
 });
 
+test('winning fills the last available EVs and receipts show only what each Pokémon earned', () => {
+  const cappedFocus = monFresh('Pikachu', { evs: { ...zeroEvs(), atk: 252, spe: 252 } });
+  const almostFull = monFresh('Pikachu', { evs: { ...zeroEvs(), atk: 252, spe: 252, spa: 5 } });
+  const full = monFresh('Pikachu', { evs: { ...zeroEvs(), atk: 252, spe: 252, spa: 6 } });
+  const team = [cappedFocus, almostFull, full];
+  setSm(team);
+  const report = ST.grantBattleEVs('Gym Leader 1', team, new Set([0]));
+  assert.deepEqual(Array.from(report, entry => entry.amount), [6, 1]);
+  assert.equal(sum(cappedFocus.build.evs), 510);
+  assert.equal(sum(almostFull.build.evs), 510);
+  assert.match(ST.battleEVRewardLine(report), /\+7 EVs total across 2 Pokémon/);
+  assert.match(ST.battleEVRewardLine([report[1]]), /\+1 EV for 1 Pokémon/);
+  assert.equal(ST.grantBattleEVs('Gym Leader 1', team, new Set([0])), null);
+});
+
+test('the victory receipt shows a real battle stat change when EVs cross a threshold', () => {
+  const mon = monFresh('Pikachu', { evTrainFocus: ['spe'] });
+  setSm([mon]);
+  const report = ST.grantBattleEVs('Gym Leader 1', [mon], new Set([0]));
+  assert.equal(report[0].statGain.stat, 'spe');
+  assert.ok(report[0].statGain.to > report[0].statGain.from);
+  assert.match(ST.battleEVRewardLine(report), /Pikachu · Speed \d+ → \d+ · \+18 EVs/);
+});
+
 test('single-stat focus puts the whole grant into that stat', () => {
   const BOSS = ST.EV_GAIN_ACTIVE.BOSS;
   const team = [monFresh('Pikachu', { evTrainFocus: ['spa'] })];

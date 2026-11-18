@@ -45,6 +45,7 @@ describe('gimmick activation timing (Showdown parity)', () => {
     bliss.stats.spe = 5;          // slower than the foe
     bliss.currentHp = 40;         // lethal at base HP, survivable at doubled HP
     const foe = mkMon({ species: 'Rampardos', moves: ['Earthquake', 'Earthquake', 'Earthquake', 'Earthquake'] });
+    foe.stats.atk = 40;           // the damage roll lies between 40 and 80 HP
     foe.stats.spe = 400;          // moves first
 
     const out = await runGimmickTurn({ pMon: bliss, fMon: foe, pIntentKind: 'DYNAMAX' });

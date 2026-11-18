@@ -88,3 +88,18 @@ test('eggs are excluded by type filter but kept otherwise', () => {
     assert.ok(!names(view(withEgg, { type: 'Ghost' })).includes('Egg'));
     assert.equal(view(withEgg, {}).length, withEgg.length, 'no filter keeps the egg');
 });
+
+test('search and sorting do not leak the species inside a Mystery Egg', () => {
+    const egg = mk('Abomasnow', { egg: true });
+    const box = [egg, mk('Abra')];
+    assert.deepEqual(names(view(box, { search: 'egg' })), ['Abomasnow']);
+    assert.equal(view(box, { search: 'abomasnow' }).length, 0);
+    assert.deepEqual(names(view(box, { sort: 'name' })), ['Abra', 'Abomasnow']);
+    assert.deepEqual(names(view(box, { sort: 'bst' })), ['Abra', 'Abomasnow']);
+});
+
+test('battle stat sorting distinguishes training between the same species', () => {
+    const fresh = { ...mk('Pikachu'), nickname: 'Fresh' };
+    const trained = { ...mk('Pikachu'), nickname: 'Trained', build: { n: 'Timid', evs: { spe: 252 } } };
+    assert.deepEqual(Array.from(view([fresh, trained], { sort: 'stats' }), slot => slot.nickname), ['Trained', 'Fresh']);
+});

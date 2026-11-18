@@ -94,4 +94,19 @@ test('catch-system: party-swap prompt lists all 6 teammates when the bench is fu
   ST.renderPartySwapPrompt({ name: 'Mewtwo', build: { _isShiny: false } });
   const swapBtns = window.document.querySelectorAll('#story-catch-body [onclick*="catchResolveSwap"]');
   assert.equal(swapBtns.length, 6, 'all six current teammates must be offered as swap targets');
+
+  const egg = { name: 'Gastly', id: 'mystery-egg', isEgg: true, eggLaidAtCity: 2 };
+  const fiveFighters = ST.sm.team.slice(0, 5);
+  ST.sm.team = [...fiveFighters, egg];
+  ST.sm.badges = 3; // 5 fighters, 6 physical slots.
+  const renderEggChoice = () => {
+    ST.renderPartySwapPrompt({ name: 'Mewtwo', build: { _isShiny: false } });
+    return Array.from(window.document.querySelectorAll('#story-catch-body [onclick*="catchResolveSwap"]'))
+      .find(button => button.textContent.includes('Mystery Egg'));
+  };
+  const capped = renderEggChoice();
+  assert.ok(capped.disabled, 'an egg cannot be replaced with a fighter at the badge cap');
+  assert.doesNotMatch(capped.textContent, /Gastly|Grade/);
+  ST.sm.badges = 4;
+  assert.equal(renderEggChoice().disabled, false, 'a swap is offered when a fighter slot is available');
 });

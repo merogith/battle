@@ -8,7 +8,7 @@
 //   4. a source-level guard that every replay/grind achievement actually has an
 //      unlock/bump hook in battle.html (so no trophy is defined-but-dead again).
 // Run: node --test tests/suites/achievements-unlock.test.js
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,7 @@ const eng = await loadEngine();
 const ST = eng.window.__storyTest;
 const defs = ST.storyAchievements();
 const byId = ST.storyAchievementsById();
+after(() => eng.teardown());
 
 test('extended count tiers + new grind tiers compute the right rank', () => {
   const rankOf = (id, progress) => ST.storyAchRankFor(byId[id], progress);
@@ -73,9 +74,9 @@ test('every replay/grind achievement has a live unlock/bump hook in battle.html'
   const src = readFileSync(join(here, '../../battle.html'), 'utf8');
   const hookable = defs.filter(d => d.cat === 'replay' || d.cat === 'grind');
   for (const d of hookable) {
-    // The id must appear in a _storyAchievementUnlock('id') or
-    // _storyAchievementBumpCount('id', ...) call somewhere in the source.
-    const re = new RegExp(`_storyAchievement(?:Unlock|BumpCount)\\(\\s*['"]${d.id}['"]`);
-    assert.match(src, re, `${d.id} (${d.cat}) must have an unlock/bump hook`);
+    const directHook = new RegExp(`_storyAchievement(?:Unlock|BumpCount)\\(\\s*['"]${d.id}['"]`);
+    const committedHook = new RegExp(`_storyAchievementSetProgress\\(meta,\\s*['"]${d.id}['"]`);
+    const batchedHook = new RegExp(`progress\\.push\\(\\[\\s*['"]${d.id}['"][^\n]+?\\n\\s*for \\(const \\[id, value\\] of progress\\) \\{\\s*const rank = _storyAchievementSetProgress\\(meta, id, value\\)`);
+    assert.ok(directHook.test(src) || committedHook.test(src) || batchedHook.test(src), `${d.id} (${d.cat}) must have a progress hook`);
   }
 });

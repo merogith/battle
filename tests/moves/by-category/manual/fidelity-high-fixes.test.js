@@ -83,9 +83,9 @@ describe('FIDELITY-HIGH fixes', () => {
     assert.ok(!logs.some((l) => l.text.includes('Tera Shell deflected')), 'no deflection on a non-Terapagos');
   });
 
-  it('Tera Shell still halves effectiveness for Terapagos at full HP', async () => {
+  it('Tera Shell still halves effectiveness for Terastal Terapagos at full HP', async () => {
     const p = e.mkMon({ species: 'Mew', moves: ['Tackle', 'Splash', 'Splash', 'Splash'] });
-    const f = e.mkMon({ species: 'Terapagos', ability: 'Tera Shell', moves: SPLASH4 });
+    const f = e.mkMon({ species: 'Terapagos-Terastal', ability: 'Tera Shell', moves: SPLASH4 });
     const logs = await e.runTurn({ playerMon: p, foeMon: f });
     assert.ok(logs.some((l) => l.text.includes('Tera Shell deflected')), 'Terapagos deflection expected');
   });

@@ -1,10 +1,5 @@
-// Locks _storyLiveStatTotal (the read-only roster-card stat sum) 1:1 to the engine's
-// canonical buildPokemon stat math. The helper deliberately re-expresses the Lv50
-// formula WITHOUT mutating the build or constructing moves/ability (so it's cheap to
-// call per-card across a 30-mon PC box) — this suite is the guard that the two never
-// drift: for a spread of builds, _storyLiveStatTotal(slot) must equal the sum of
-// buildPokemon(name, build).maxHp + .stats.* . If a future edit to buildPokemon's
-// formula isn't mirrored into the helper, these fail.
+// Read-only roster stat totals use the same stat math as battle entry. Exercise
+// all permanent training modifiers and ensure rendering leaves the build intact.
 //
 // Run: node --test tests/suites/story-live-stat-total.test.js
 
@@ -56,4 +51,16 @@ test('read-only — does not mutate the slot build (no EV clamp / move pad)', ()
   const before = JSON.stringify(build);
   liveTotal(slot);
   assert.equal(JSON.stringify(build), before, 'helper must not mutate build.evs / build.m');
+});
+
+test('the displayed role stat includes the same mastered Camp bond as battle entry', () => {
+  const slot = clone(CASES[0]);
+  const story = eng.window.__storyTest;
+  for (let i = 0; i < 8; i++) story.campAwardBond(slot, 'mimicry');
+  const relationship = story.relationshipStatMult(slot);
+  assert.equal(relationship.spe, 1.05);
+  const built = buildPokemon(slot.name, { ...clone(slot.build), _relationshipStatMult: relationship });
+  assert.equal(liveTotal(slot), sumBuilt(built));
+  assert.match(E._storyRoleCueHtml(slot), new RegExp(`Speed <strong>${built.stats.spe}</strong>`));
+  assert.equal(slot.build._relationshipStatMult, undefined);
 });

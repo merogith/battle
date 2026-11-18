@@ -182,12 +182,9 @@ tune in that table.*
 
 ### C — Offline-safe randbats mechanism *(fixes G4)*
 
-`fetchRandbatsForGen` (`battle.html:14513`) now tries a local `data/randbats/genN.json` snapshot first,
-then falls back to the live pkmn.cc API (same local-then-API shape as `fetchSmogonSetsForGen`). Behaviour
-is unchanged wherever the snapshot isn't present. `scripts/fetch-randbats.mjs` bakes the snapshot.
-**Data step deferred:** this session's egress policy blocks `data.pkmn.cc` (403), so the snapshot file
-itself is not committed — run `node scripts/fetch-randbats.mjs [--all]` on a machine/CI with pkmn.cc
-access and commit `data/randbats/`.
+`fetchRandbatsForGen` tries the local snapshot before the pkmn.cc API. The release includes
+`data/randbats/gen9.json` with the Gen 9 sets used by the runtime. The service worker caches it with the
+core data, so the same fallback is available offline. Run `node scripts/fetch-randbats.mjs 9` to refresh it.
 
 ### D — Curated single-battle floor for the no-clean-set formes *(fixes G1 tail)*
 
@@ -216,7 +213,6 @@ appears.
 
 ## Follow-ups left open
 
-- **Commit the randbats snapshot** (C's data half) from a network-allowed environment.
 - **G5 tail:** 73 single-set species now get designed variety, but a maintainer could still curate a
   second Smogon-style set for the most-played of them if more flavour is wanted.
 - Balance numbers in B (`0.60` mid-tier) are first-pass — retune to taste.

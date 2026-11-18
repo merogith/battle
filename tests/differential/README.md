@@ -5,9 +5,9 @@
 This harness runs the **same** scripted battle through two engines and diffs the
 results turn-by-turn:
 
-- **Reference / oracle:** [`@pkmn/sim`](https://github.com/pkmn/ps) — the MIT-licensed,
-  auto-synced port of **Pokémon Showdown's** battle simulator (all gens, full
-  move/ability/item effect coverage). Test-only dependency; it does **not** ship in the game.
+- **Reference / oracle:** The pinned `@pkmn/sim` also runs in the shipped
+  Competitive Arena worker. The oracle uses its scripted singles battle interface.
+  [Pokémon Showdown simulator port](https://github.com/pkmn/ps)
 - **Subject:** the in-house engine in `battle.html`, driven headless through the
   existing jsdom harness (`tests/helpers/load-engine.js`).
 
@@ -86,11 +86,11 @@ secondaries can't be compared across them. Divergences are tagged:
 ## Scope / limitations
 
 - **Singles only.** Doubles/triples are out of scope here (Story is singles).
-- **Forced-identical choices.** This catches *state* divergences given the same
-  moves. It is the wrong tool for **move-legality / precondition** bugs (e.g.
-  "Gravity should forbid Fly") — Showdown rejects the illegal choice and the two
-  battles diverge in *choices*, not comparable state. Those need a direct
-  assertion test. (`gravity-blocks-fly` is kept as a `probe` to document this.)
+- **Scripted choices.** Use `checkRequests: true` when both engines should
+  accept every scripted command. The comparator records a high-confidence
+  mismatch if Showdown rejects one. Use a direct request test for cases like
+  Gravity blocking Fly, where the expected result is a rejection. Trace
+  comparison also checks how many turns each engine resolved.
 - **Custom RPG layer not modeled.** The oracle judges *standard* Pokémon mechanics.
   Intentional in-house divergences (story artifacts, owner-tuned balance, fixed-damage
   story moves — see `tests/reports/deviations.md`) are expected to differ and should
@@ -107,6 +107,7 @@ Append to `SCENARIOS` in `scenarios.mjs`:
   desc: 'what this checks',
   expect: 'match',            // or 'diverge' / 'probe'
   guaranteedStatus: true,     // optional: promote status diffs to high
+  checkRequests: true,        // optional: assert the reference accepted the script
   team1: [{ species:'Jolteon', ability:'Volt Absorb', moves:['Thunderbolt','Quick Attack'],
             nature:'Modest', evs:{spa:252,spe:252}, ivs:{spe:31} }],
   team2: [{ species:'Snorlax', moves:['Splash','Splash'], nature:'Brave', evs:{spe:0}, ivs:{spe:0} }],

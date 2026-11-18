@@ -1,509 +1,538 @@
 #!/usr/bin/env node
 /**
- * Human-like Story Mode playthrough in a REAL headless browser.
+ * Drive a fresh Story campaign in Chromium and record each observed surface.
+ * Fights after the real-turn sample use a controlled victory after battle entry.
  *
- * Boots dev-server.cjs, launches Chromium via Playwright, then plays Story Mode
- * the way a person would: clicks STORY MODE, creates a trainer, picks a starter,
- * and walks the full event timeline (cities, facilities, battles, Hall of Fame,
- * post-HoF Mystery / Crucible / Boss Arc). Battle progression uses the engine's
- * own onBattleEnd() so the run always completes; an optional --real-battles=N
- * actually clicks moves for the first N fights to exercise the battle UI.
- *
- * At every screen it captures: a screenshot, the StoryMode engine state, any
- * page/console errors (network/cert noise filtered out), and a DOM text scan for
- * human-noticeable glitches (undefined / NaN / [object Object] / unresolved
- * ${...}/{{...}} templates / "Infinity" etc.).
- *
- * Output:
- *   screenshots/playthrough/NN-label.png
- *   agent-state/playthrough/findings.json   (structured)
- *   agent-state/playthrough/trace.txt       (event-by-event)
- *
- * Run:  node scripts/debug/story-playthrough.mjs [--real-battles=1] [--max-iters=400]
- * Requires a Chromium binary (Playwright's, or PLAYWRIGHT_BROWSERS_PATH).
+ * node scripts/debug/story-playthrough.mjs --seed=1 --real-battles=1
+ * Options: --max-iters=1600 --real-turns=4 --viewport=430x880
+ *          --out-dir=/tmp/story-playthrough --url=http://127.0.0.1:5177/battle.html
+ *          --offline-pack=true (download the complete release, disconnect, then play)
+ *          --road-choice=scout (or help or pass)
+ *          --road-choices=scout,help,pass,scout,help,pass,scout,help,pass
+ *          --chapters=true --chapter-choice=clue (or listen or act)
+ *          --milestone-turns=3 --fight-style=matchup
+ * Env: BATTLE_TEST_URL, BATTLE_TEST_CHROMIUM, PORT
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..', '..');
-const SHOTS = join(ROOT, 'screenshots', 'playthrough');
-const OUTDIR = join(ROOT, 'agent-state', 'playthrough');
-const PORT = Number(process.env.PORT || 5178);
-const URL = `http://localhost:${PORT}/battle.html`;
+/* global state, settings, showEndScreen */
 
-const argv = process.argv.slice(2);
-const flag = (name, def) => {
-  const hit = argv.find(a => a.startsWith(`--${name}=`));
-  return hit ? hit.split('=')[1] : def;
-};
-const REAL_BATTLES = Number(flag('real-battles', '0'));
-const MAX_ITERS = Number(flag('max-iters', '400'));
-
-mkdirSync(SHOTS, { recursive: true });
-mkdirSync(OUTDIR, { recursive: true });
-
-// ---- find a usable Chromium binary (Playwright's pinned one may be missing) ----
-function findChromium() {
-  const roots = [process.env.PLAYWRIGHT_BROWSERS_PATH, '/opt/pw-browsers'].filter(Boolean);
-  for (const base of roots) {
-    if (!existsSync(base)) continue;
-    let dirs;
-    try { dirs = readdirSync(base); } catch { continue; }
-    // Prefer full chromium over headless_shell (renders the same, more complete).
-    const ordered = dirs.filter(d => /^chromium-\d/.test(d)).concat(dirs.filter(d => /^chromium_headless_shell-\d/.test(d)));
-    for (const d of ordered) {
-      for (const rel of ['chrome-linux/chrome', 'chrome-linux/headless_shell']) {
-        const p = join(base, d, rel);
-        if (existsSync(p)) return p;
-      }
-    }
-  }
-  return undefined; // let Playwright try its default
-}
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const pad = n => String(n).padStart(3, '0');
-
-// ---- findings ----
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const args = Object.fromEntries(process.argv.slice(2).map(arg => arg.replace(/^--/, '').split(/=(.*)/s, 2)));
+const port = Number(process.env.PORT || 5178);
+const externalUrl = args.url || process.env.BATTLE_TEST_URL;
+const url = new URL(externalUrl || `http://127.0.0.1:${port}/battle.html`);
+const seed = Number(args.seed ?? 1);
+const maxIters = Number(args['max-iters'] ?? 1600);
+const realBattles = Number(args['real-battles'] ?? 1);
+const realTurns = Number(args['real-turns'] ?? 4);
+const milestoneTurns = Number(args['milestone-turns'] ?? 0);
+const fightStyle = args['fight-style'] ?? 'first';
+const expectedBattleEngine = process.env.BATTLE_EXPECT_STORY_ENGINE;
+const offlinePack = args['offline-pack'] === 'true';
+const roadChoice = args['road-choice'] ?? 'scout';
+const roadOptions = ['scout', 'help', 'pass'];
+const mixedRoad = args['road-choices'] !== undefined;
+const roadChoices = mixedRoad ? String(args['road-choices']).split(',') : Array(9).fill(roadChoice);
+const chapters = args.chapters === 'true';
+const chapterChoice = args['chapter-choice'] ?? 'clue';
+const chapterIds = [...Array.from({ length: 9 }, (_, index) => 'chapter-' + (index + 1)), 'aftermath'];
+const chapterCatalog = chapters ? Object.fromEntries(['opening', 'early', 'middle', 'finale']
+    .flatMap(group => JSON.parse(readFileSync(join(root, 'data/story', 'adventure-' + group + '.json'), 'utf8')))
+    .map(scene => [scene.id, scene])) : {};
+const choiceForChapter = id => chapterChoice === 'clue'
+    ? chapterCatalog[id].choices.find(option => option.clue)?.id || 'listen'
+    : chapterChoice;
+const [width, height] = (args.viewport || '430x880').split('x').map(Number);
+const outDir = resolve(args['out-dir'] || join(root, 'agent-state', 'playthrough'));
+const shotsDir = args['out-dir'] ? join(outDir, 'screenshots') : join(root, 'screenshots', 'playthrough');
+const touch = args.touch === undefined ? width <= 900 : args.touch === 'true';
+const executablePath = process.env.BATTLE_TEST_CHROMIUM ||
+    (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
+const wait = ms => new Promise(done => setTimeout(done, ms));
 const findings = [];
 const trace = [];
-function record(severity, area, msg, ctx) {
-  findings.push({ severity, area, msg, ctx: ctx || null, t: Date.now() });
-  const tag = severity.toUpperCase().padEnd(5);
-  console.log(`[${tag}] ${area}: ${msg}${ctx ? '  ' + JSON.stringify(ctx) : ''}`);
+const coverage = { battles: [], realTurns: 0, hallOfFame: false, mystery: false, crucible: false,
+    roadChoices: 0, roadDecisions: {} };
+if (chapters) coverage.chapters = [];
+
+if (![seed, width, height, maxIters, realBattles, realTurns, milestoneTurns].every(value => Number.isInteger(value) && value >= 0) ||
+    seed > 0xffffffff || !width || !height || !maxIters ||
+    roadChoices.length !== 9 || roadChoices.some(choice => !roadOptions.includes(choice)) ||
+    !['clue', 'listen', 'act'].includes(chapterChoice) || !['first', 'matchup'].includes(fightStyle)) {
+    throw new Error('Expected a valid seed, viewport, battle sample, road choice, chapter choice, and fight style.');
+}
+mkdirSync(outDir, { recursive: true });
+mkdirSync(shotsDir, { recursive: true });
+
+function record(severity, area, message) {
+    findings.push({ severity, area, message, step: trace.length });
+    console.log(`[${severity}] ${area}: ${message}`);
 }
 
-// Network/cert noise that the sandbox's policy produces — never a game bug.
-const NOISE = [
-  /ERR_CERT_AUTHORITY_INVALID/i, /net::ERR_/i, /Failed to load resource/i,
-  /localStorage is not available/i, /supabase/i, /online-pvp/i,
-  /Failed to register a ServiceWorker/i, /manifest/i, /favicon/i,
-  /the server responded with a status of/i,
-];
-const isNoise = s => NOISE.some(re => re.test(s));
+async function readPage(page) {
+    return page.evaluate(() => {
+        const visible = element => {
+            const style = getComputedStyle(element);
+            return element.getClientRects().length > 0 && style.visibility !== 'hidden' && style.opacity !== '0';
+        };
+        const screenElements = [...document.querySelectorAll('.screen[id]')].filter(visible);
+        const screens = screenElements.map(element => element.id);
+        const overlaySelector = [
+            '[role="dialog"]', '.modal', '.story-narr-root', '.story-vs-intro', '.story-hof-gb-overlay', '.story-legend-sighting', '.story-chapter-dialog',
+            '[id^="story-"][id$="-scene"]', '#story-scene-overlay',
+        ].join(',');
+        const dialogElements = [...document.querySelectorAll(overlaySelector)].filter(visible);
+        const surfaceName = element => element.id || element.getAttribute('aria-label') || element.classList[0];
+        const dialogs = dialogElements.map(surfaceName).filter(Boolean);
+        const content = (dialogElements.length ? dialogElements : screenElements).map(element => ({
+            surface: surfaceName(element), text: (element.innerText || '').trim().slice(0, 5000),
+        }));
+        const sm = window.StoryMode?.state;
+        const entry = window.STORY_EVENTS_RAW?.[sm?.eventIndex];
+        return {
+            screens, dialogs, content,
+            roadCity: Number(dialogElements.find(element => element.matches('.story-road-discovery'))?.dataset.roadDiscovery) || 0,
+            eventIndex: sm?.eventIndex ?? null, eventId: entry?.[0] ?? null,
+            eventType: entry?.[1] ?? null, eventName: entry?.[2] ?? null,
+            seed: sm?.runSeed == null ? null : sm.runSeed >>> 0,
+            badges: sm?.badges || 0, gold: sm?.gold || 0,
+            team: (sm?.team || []).map(member => member?.name),
+            pcCount: (sm?.pcBox || []).length,
+            mystery: !!sm?.postHofMysteryClimaxDone, crucible: !!sm?.atCrucible,
+        };
+    });
+}
+
+async function capture(page, label, snapshot = null) {
+    const snapshotBeforeAction = snapshot || await readPage(page);
+    const previous = trace.at(-1);
+    if (previous?.label === label && previous.eventIndex === snapshotBeforeAction.eventIndex &&
+        JSON.stringify(previous.content) === JSON.stringify(snapshotBeforeAction.content)) return;
+    const index = String(trace.length + 1).padStart(3, '0');
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 90);
+    const filename = join(shotsDir, `${index}-${slug || 'step'}.png`);
+    await page.screenshot({ path: filename, animations: 'disabled', timeout: 5000 });
+    const assessment = await page.evaluate(() => {
+        const shown = [...document.querySelectorAll('.screen:not(.hidden), [role="dialog"], .story-narr-root, .story-vs-intro')]
+            .filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+        const tokens = /\b(?:undefined|NaN|Infinity)\b|\[object (?:Object|Promise)\]|\$\{[^}]+\}|\{\{[^}]+\}\}/;
+        const text = shown.flatMap(element => element.innerText.split('\n').filter(line => tokens.test(line)).slice(0, 4));
+        const brokenImages = [...document.images].filter(image => {
+            if (!image.getClientRects().length || getComputedStyle(image).visibility === 'hidden' || !image.complete || image.naturalWidth) return false;
+            const src = image.currentSrc || image.getAttribute('src');
+            return src && new URL(src, location.href).origin === location.origin;
+        }).map(image => `Broken image: ${new URL(image.currentSrc || image.src, location.href).pathname}`);
+        const dialogs = shown.filter(el => !el.classList.contains('screen'));
+        const controls = (dialogs.length ? dialogs : shown).flatMap(surface => {
+            const name = surface.id || surface.getAttribute('aria-label') || surface.classList[0];
+            return [...surface.querySelectorAll('button, a[href], select, summary, input:not([type="hidden"])')]
+                .filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden')
+                .map(el => ({
+                    surface: name,
+                    label: (el.getAttribute('aria-label') || el.innerText || el.title || el.placeholder || el.name || el.id || el.tagName)
+                        .trim().replace(/\s+/g, ' ').slice(0, 150),
+                    enabled: !el.disabled && el.getAttribute('aria-disabled') !== 'true',
+                }));
+        });
+        return { anomalies: [...new Set(text.concat(brokenImages))], controls };
+    });
+    trace.push({ label, ...snapshotBeforeAction, screenshot: relative(outDir, filename), ...assessment });
+    console.log(`[${index}] ${label} · ${snapshotBeforeAction.eventId ?? '-'} ${snapshotBeforeAction.eventName || ''}`);
+}
+
+function button(page, scope, name) {
+    return page.locator(scope).getByRole('button', { name }).first();
+}
+
+async function click(page, match, label, snapshot = null) {
+    if (!await match.isVisible()) return false;
+    try { await match.click({ trial: true, timeout: 500 }); }
+    catch (error) {
+        if (error.name !== 'TimeoutError') throw error;
+        return false;
+    }
+    await capture(page, label, snapshot);
+    await match.click({ timeout: 1600 });
+    return true;
+}
+
+async function choosePlayerMove(attacks) {
+    if (fightStyle === 'first') return attacks.first();
+    const index = await attacks.evaluateAll(buttons => {
+        const score = button => {
+            const label = button.getAttribute('aria-label') || '';
+            const power = Number(label.match(/Power (\d+)/)?.[1] || 0);
+            const accuracy = Number(label.match(/Acc (\d+)%/)?.[1] || 100);
+            const matchup = button.querySelector('.move-tile-matchup')?.textContent || '';
+            const multiplier = matchup.includes('▲') ? 2 : matchup.includes('▼') ? 0.5 : matchup.includes('⊘') ? 0 : 1;
+            return power * accuracy * multiplier;
+        };
+        return buttons.length ? buttons.indexOf(buttons.reduce((best, button) => score(button) > score(best) ? button : best)) : 0;
+    });
+    return attacks.nth(index);
+}
+
+async function playMinigame(page, label, view) {
+    const overlay = page.locator('.story-minigame-overlay:visible');
+    if (!await overlay.count()) return false;
+    const pads = overlay.locator('.story-mg-pad:enabled');
+    if (await pads.count()) {
+        const lines = await overlay.locator('.story-dialog-box .story-dialog-text').allTextContents();
+        const sequence = lines[1]?.trim().split(/\s+/) || [];
+        if (!sequence.length) throw new Error('The memory scene did not expose its prompt in reduced-motion mode.');
+        await capture(page, label + '-remember', view);
+        for (const symbol of sequence) await overlay.getByRole('button', { name: symbol, exact: true }).click();
+        return true;
+    }
+    return await click(page, overlay.getByRole('button', { name: /^Continue/ }).first(), label + '-continue', view) ||
+        await click(page, overlay.locator('.story-mg-btn:enabled').first(), label + '-pick', view);
+}
+
+async function waitForServer() {
+    for (let attempt = 0; attempt < 30; attempt++) {
+        try {
+            const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(900) });
+            if (response.ok) return;
+        } catch {}
+        await wait(150);
+    }
+    throw new Error(`Could not reach ${url.href}`);
+}
 
 async function main() {
-  const exe = findChromium();
-  console.log('Chromium:', exe || '(playwright default)');
-  const server = spawn(process.execPath, [join(ROOT, 'scripts', 'dev-server.cjs')],
-    { env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
-  await sleep(1300);
-
-  let browser, chromium;
-  try { ({ chromium } = await import('playwright')); }
-  catch { console.error('playwright not installed'); server.kill(); process.exit(2); }
-
-  let n = 0;
-  try {
-    browser = await chromium.launch({ executablePath: exe });
-    const page = await browser.newPage({ viewport: { width: 430, height: 880 } }); // phone portrait
-    page.setDefaultTimeout(4000); // never let a locator block for 30s
-
-    page.on('pageerror', e => { const s = String(e && e.stack || e); if (!isNoise(s)) record('error', 'pageerror', s.split('\n')[0], { stack: s.split('\n').slice(1, 4).join(' | ') }); });
-    page.on('console', m => {
-      if (m.type() !== 'error' && m.type() !== 'warning') return;
-      const s = m.text();
-      if (isNoise(s)) return;
-      record(m.type() === 'error' ? 'error' : 'warn', `console.${m.type()}`, s.slice(0, 300));
+    const server = externalUrl ? null : spawn(process.execPath, [join(root, 'scripts/dev-server.cjs')], {
+        env: { ...process.env, PORT: String(port) }, stdio: 'ignore',
     });
-
-    // ---------- DOM/state helpers (run in page context) ----------
-    const getState = () => page.evaluate(() => {
-      const s = window.StoryMode && window.StoryMode.state;
-      if (!s) return null;
-      let ev = null;
-      try { ev = window.STORY_EVENTS_RAW && window.STORY_EVENTS_RAW[s.eventIndex]; } catch {}
-      return {
-        active: !!s.active, eventIndex: s.eventIndex | 0, badges: s.badges | 0,
-        gold: s.gold | 0, teamLen: (s.team || []).length,
-        team: (s.team || []).map(m => m && (m.species || m.name)),
-        pcLen: (s.pcBox || []).length,
-        balls: s.balls || null,
-        eventType: ev ? ev[1] : null, eventName: ev ? ev[2] : null, eventId: ev ? ev[0] : null,
-        eventsTotal: (window.STORY_EVENTS_RAW || []).length,
-        actions: ev ? (ev[5] || null) : null,
-      };
-    });
-
-    // Scan only *visible* text for human-noticeable glitches.
-    const scanDom = (label) => page.evaluate((label) => {
-      const out = [];
-      const seen = new Set();
-      const BAD = [
-        { re: /\bundefined\b/, name: 'undefined' },
-        { re: /\bNaN\b/, name: 'NaN' },
-        { re: /\[object (Object|Promise|HTML[A-Za-z]*Element)\]/, name: 'object-tostring' },
-        { re: /\$\{[^}]*\}/, name: 'unresolved-template-literal' },
-        { re: /\{\{[^}]*\}\}/, name: 'unresolved-handlebars' },
-        { re: /\bInfinity\b/, name: 'Infinity' },
-        { re: /\bnull\b(?!\s*pointer)/, name: 'null-text' },
-      ];
-      const isVisible = (el) => {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 || r.height === 0) return false;
-        const st = getComputedStyle(el);
-        return st.visibility !== 'hidden' && st.display !== 'none' && st.opacity !== '0';
-      };
-      // Walk text nodes within visible, non-script elements.
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      let node;
-      while ((node = walker.nextNode())) {
-        const txt = (node.nodeValue || '').trim();
-        if (!txt || txt.length < 2) continue;
-        const el = node.parentElement;
-        if (!el || /SCRIPT|STYLE|NOSCRIPT/.test(el.tagName)) continue;
-        if (!isVisible(el)) continue;
-        for (const b of BAD) {
-          if (b.re.test(txt)) {
-            const key = b.name + '|' + txt.slice(0, 60);
-            if (seen.has(key)) continue;
-            seen.add(key);
-            out.push({ kind: b.name, text: txt.slice(0, 100), where: el.id || el.className || el.tagName });
-          }
-        }
-      }
-      // Broken images: visible <img> that finished loading at 0×0. Only same-origin
-      // (local sprite) failures count — external CDN blocks are environment noise.
-      for (const img of document.querySelectorAll('img')) {
-        if (!isVisible(img)) continue;
-        if (!img.complete || img.naturalWidth > 0) continue;
-        const src = img.currentSrc || img.src || '';
-        if (!src || /^data:/.test(src)) continue;
-        let sameOrigin = false;
-        try { sameOrigin = new URL(src, location.href).origin === location.origin; } catch {}
-        if (!sameOrigin) continue;
-        const rel = src.replace(location.origin, '');
-        const key = 'broken-image|' + rel;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({ kind: 'broken-image', text: rel.slice(0, 100), where: img.id || img.alt || img.className || 'img' });
-      }
-      return out;
-    }, label);
-
-    const shot = async (label) => {
-      n++;
-      const f = join(SHOTS, `${pad(n)}-${label}`.replace(/[^a-z0-9._-]/gi, '_') + '.png');
-      try { await page.screenshot({ path: f, fullPage: false }); } catch {}
-      return f;
-    };
-
-    const capture = async (label, ctx) => {
-      await sleep(550); // let crossfade transitions settle so shots aren't mid-animation
-      const anomalies = await scanDom(label);
-      for (const a of anomalies) {
-        record('bug', `dom.${a.kind}`, `"${a.text}" in <${a.where}>`, { label, ...(ctx || {}) });
-      }
-      await shot(label);
-    };
-
-    // Evaluate-based click: matches the first VISIBLE button/clickable whose text
-    // contains `text`, and clicks it in-page. Avoids Playwright actionability hangs
-    // on animating/scrolling buttons.
-    // Case-insensitive (CSS text-transform makes rendered labels differ from raw
-    // textContent, e.g. "◆ Story Mode" → "STORY MODE"). Among visible matches,
-    // click the one on the topmost layer (highest z-index, then last in DOM) so
-    // full-screen overlays/tips appended to <body> win over stale buttons beneath.
-    const clickText = (text) => page.evaluate((text) => {
-      const want = text.toLowerCase();
-      const vis = (el) => { const r = el.getBoundingClientRect(); if (r.width === 0 || r.height === 0) return false; const st = getComputedStyle(el); return st.visibility !== 'hidden' && st.display !== 'none' && st.opacity !== '0'; };
-      const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      const zOf = (el) => { let z = 0, n = el; while (n && n !== document.body) { const v = parseInt(getComputedStyle(n).zIndex, 10); if (!isNaN(v)) z = Math.max(z, v); n = n.parentElement; } return z; };
-      const els = [...document.querySelectorAll('button, [role=button], [onclick]')]
-        .filter(el => vis(el) && norm(el.textContent).includes(want));
-      if (!els.length) return false;
-      els.sort((a, b) => zOf(a) - zOf(b)); // ascending; take the topmost
-      els[els.length - 1].click();
-      return true;
-    }, text);
-    const clickSel = (sel) => page.evaluate((sel) => { const el = document.querySelector(sel); if (el) { el.click(); return true; } return false; }, sel);
-    // Dismiss anything blocking the real screen, the way a player clicks through:
-    //  - showGameAlert tips render as .modal → closed by Escape (global handler)
-    //  - cold-open / city-arrival / storyline screens are custom z-9998 overlays
-    //    with "Begin →" / "Enter the City →" buttons.
-    const dismissOverlays = async () => {
-      for (let pass = 0; pass < 6; pass++) {
-        let did = false;
-        if ((await clickText('Begin →')) || (await clickText('Enter the City')) || (await clickText('Walk in')) || (await clickText('Set out'))) { did = true; await sleep(360); }
-        const nModal = await page.evaluate(() => document.querySelectorAll('.modal:not(.hidden)').length).catch(() => 0);
-        if (nModal) { await page.keyboard.press('Escape'); await sleep(260); did = true; }
-        if (!did) break;
-      }
-    };
-
-    // The post-battle VICTORY overlay (showVictoryOverlay) is a z-9999
-    // role=dialog that advances the story via its callback when dismissed
-    // (Enter / Escape / click, or a 6s auto-close). Tap Enter to advance
-    // promptly — the way a player taps "Continue →" — so the next scene
-    // renders on its own instead of under a stale reward overlay.
-    const dismissVictory = async () => {
-      const present = await page.evaluate(() => {
-        return [...document.querySelectorAll('[role=dialog][aria-modal="true"]')].some(d => {
-          const r = d.getBoundingClientRect();
-          return r.width > 0 && r.height > 0 && /victory/i.test(d.textContent || '');
+    let browser;
+    let page;
+    try {
+        await waitForServer();
+        browser = await chromium.launch({ executablePath });
+        const context = await browser.newContext({
+            viewport: { width, height }, hasTouch: touch, isMobile: touch,
+            reducedMotion: 'reduce', serviceWorkers: offlinePack ? 'allow' : 'block',
         });
-      }).catch(() => false);
-      if (present) { await page.keyboard.press('Enter'); await sleep(550); return true; }
-      return false;
-    };
-
-    const callSM = (method, ...args) => page.evaluate(({ method, args }) => {
-      try {
-        const fn = window.StoryMode && window.StoryMode[method];
-        if (typeof fn !== 'function') return { ok: false, err: 'no method ' + method };
-        const r = fn.apply(window.StoryMode, args);
-        return { ok: true, r: (r && typeof r === 'object') ? '[obj]' : r };
-      } catch (e) { return { ok: false, err: String(e && e.message || e) }; }
-    }, { method, args });
-
-    // ---------------- BOOT ----------------
-    await page.goto(URL, { waitUntil: 'domcontentloaded' });
-    await sleep(2600); // data load
-    await clickText('OK'); // dismiss "Add to Home Screen" tip
-    await sleep(300);
-    await capture('menu');
-
-    if (!(await clickText('STORY MODE'))) record('error', 'menu', 'No STORY MODE button found');
-    await sleep(700);
-    await capture('story-landing');
-
-    // Story landing → NEW ADVENTURE opens the trainer-creation screen.
-    if (!(await clickText('NEW ADVENTURE'))) record('error', 'menu', 'No NEW ADVENTURE button found');
-    await sleep(900);
-    await capture('trainer-create');
-
-    // Trainer creation: name + defaults, then Begin.
-    await page.fill('#story-create-name', 'TESTER', { timeout: 4000 }).catch(() => record('warn', 'create', 'name input not fillable'));
-    await sleep(200);
-    await capture('trainer-create-named');
-    let begun = await clickSel('#story-create-begin');
-    if (!begun) begun = await clickText('Begin Adventure');
-    if (!begun) { const r = await callSM('confirmTrainerAndStart'); begun = r.ok; if (!r.ok) record('error', 'create', 'confirmTrainerAndStart failed: ' + r.err); }
-    await sleep(1300);
-    await capture('storyline-reveal');
-
-    // Storyline-reveal + City0 cold-open intros sit before the real city UI.
-    await dismissOverlays();
-    await capture('story-begin');
-
-    let st = await getState();
-    if (!st) { record('error', 'create', 'StoryMode.state null after begin — cannot play'); }
-    else record('info', 'progress', `Run started: gold=${st.gold} eventIdx=${st.eventIndex} events=${st.eventsTotal}`);
-
-    // ---------------- helpers for the loop ----------------
-    const pickStarterViaProfessor = async (ctx) => {
-      await dismissOverlays();
-      await callSM('enterProfessor');
-      await sleep(700);
-      await dismissOverlays();
-      await capture('professor', ctx);
-      // Prefer clicking a real choice card; fall back to the API.
-      const before = (await getState())?.teamLen || 0;
-      const r1 = await callSM('profSelectChoice', 0);
-      await sleep(400);
-      await capture('professor-choice', ctx);
-      const r2 = await callSM('profAccept');
-      await sleep(800);
-      const after = (await getState())?.teamLen || 0;
-      if (after <= before) record('error', 'starter', `Starter not added (team ${before}->${after})`, { ...ctx, r1, r2 });
-      else record('info', 'starter', `Starter accepted (team ${before}->${after})`, ctx);
-      await capture('after-starter', ctx);
-    };
-
-    const facilitiesSeen = new Set();
-    const tryFacility = async (method, label, ctx) => {
-      if (facilitiesSeen.has(method)) return;
-      const r = await callSM(method);
-      if (!r.ok) { if (!/no method/.test(r.err)) record('warn', `facility.${label}`, r.err, ctx); return; }
-      facilitiesSeen.add(method);
-      await sleep(650);
-      await dismissOverlays();
-      await capture(`facility-${label}`, ctx);
-      await callSM('enterCity'); // return to city
-      await sleep(450);
-      await dismissOverlays();
-    };
-
-    const exerciseCity = async (ctx) => {
-      // Visit each facility offered by this city once across the run.
-      const map = [
-        ['enterShop', 'mart'], ['enterPokemonCenter', 'center'], ['enterTutor', 'tutor'],
-        ['enterEvolutionLab', 'evolab'], ['enterEVTrainer', 'evtrainer'], ['enterArtifactHall', 'artifact'],
-        ['enterColress', 'colress'], ['enterFanClub', 'fanclub'], ['enterCasino', 'casino'],
-        ['enterSafariZone', 'safari'], ['enterCrucible', 'crucible'],
-      ];
-      for (const [m, lbl] of map) {
-        if (ctx.actions && Array.isArray(ctx.actions)) {
-          // only attempt facilities that look offered, but always try center/mart
-        }
-        await tryFacility(m === 'enterShop' ? 'enterShop' : m, lbl, ctx);
-      }
-    };
-
-    const forceWin = async (ctx) => {
-      const r = await callSM('onBattleEnd', true, `Victory: ${ctx.eventName}`, '');
-      if (!r.ok) { record('error', 'battle.forceWin', r.err, ctx); return false; }
-      await sleep(700);
-      await dismissVictory(); // tap "Continue →" so the next scene isn't drawn under the reward overlay
-      return true;
-    };
-
-    const playRealBattle = async (ctx) => {
-      // Click FIGHT → first move, loop until battle resolves or stalls.
-      record('info', 'battle.real', `Playing battle by clicking: ${ctx.eventName}`, ctx);
-      const startIdx = ctx.eventIndex;
-      // Clear the battle-intro card AND any lingering start-of-game cold-open
-      // (their button is "Continue →", which dismissOverlays doesn't click) and
-      // wait for the command menu — otherwise the turn loop sees no menu, never
-      // acts, and bails to a force-win. This is the step a human does by hand.
-      for (let w = 0; w < 14; w++) {
-        const cmd = await page.locator('#command-menu:not(.hidden)').count().catch(() => 0);
-        if (cmd) break;
-        if (!(await clickText('Continue'))) { await page.locator('#battle-log').click({ timeout: 500 }).catch(() => {}); }
-        await sleep(650);
-      }
-      let turns = 0;
-      const t0 = Date.now();
-      while (turns < 60 && Date.now() - t0 < 90000) {
-        const s = await getState();
-        if (!s || s.eventIndex !== startIdx || s.eventType !== 'Battle') break; // battle ended
-        const cmdVisible = await page.locator('#command-menu:not(.hidden)').count().catch(() => 0);
-        if (cmdVisible) {
-          await page.evaluate(() => window.showMoves && window.showMoves());
-          await sleep(350);
-          if (turns < 4) await shot(`battle-turn${turns}`);
-          const moveBtn = page.locator('#move-menu button:not([disabled])').first();
-          if (await moveBtn.count()) { await moveBtn.click({ timeout: 2000 }).catch(() => {}); }
-          else { await page.evaluate(() => window.runAway && window.runAway()); }
-          turns++;
-          await sleep(1400);
-        } else {
-          // animation / forced switch / faint prompt / between-turn "Continue" — try to advance
-          if (!(await clickText('Continue'))) { await page.locator('#battle-log').click({ timeout: 800 }).catch(() => {}); }
-          await sleep(900);
-          // forced switch?
-          const partyVisible = await page.locator('#party-screen:not(.hidden), .party-overlay:not(.hidden)').count().catch(() => 0);
-          if (partyVisible) { await page.locator('.party-slot, [data-party-index]').first().click({ timeout: 1500 }).catch(() => {}); await sleep(900); }
-          const idle = (Date.now() - t0);
-          if (idle > 12000 && turns === 0) break; // never got a turn — bail to force-win
-        }
-      }
-      const s = await getState();
-      if (s && s.eventIndex === startIdx && s.eventType === 'Battle') {
-        record('warn', 'battle.real.stall', `Real battle didn't resolve in ${turns} turns; force-winning`, ctx);
-        return forceWin(ctx);
-      }
-      await capture('battle-victory', ctx);
-      await dismissVictory();
-      record('info', 'battle.real.done', `Real battle resolved in ${turns} turns`, ctx);
-      return true;
-    };
-
-    // ---------------- MAIN LOOP ----------------
-    let prev = null, stuck = 0, realBattlesPlayed = 0;
-    for (let iter = 0; iter < MAX_ITERS; iter++) {
-      st = await getState();
-      if (!st) { record('error', 'loop', 'state null'); break; }
-      if (!st.active) { record('info', 'progress', `Run inactive at iter ${iter} (idx=${st.eventIndex})`); break; }
-      const ctx = { iter, eventIndex: st.eventIndex, type: st.eventType, eventName: st.eventName, badges: st.badges };
-      trace.push(`iter=${iter} idx=${st.eventIndex} type=${st.eventType} name=${st.eventName} badges=${st.badges} team=${st.teamLen} pc=${st.pcLen} gold=${st.gold}`);
-      await dismissOverlays();
-
-      if (st.eventType === 'City') {
-        await capture(`city-${st.eventName}`, ctx);
-        if (st.teamLen === 0) {
-          await pickStarterViaProfessor(ctx);
-        } else {
-          await exerciseCity({ ...ctx, actions: st.actions });
-          // top up toward party cap via Professor if available
-          const cap = Math.min(6, 2 + st.badges);
-          if (st.actions && st.actions.includes('Professor') && st.teamLen < cap) {
-            for (let k = st.teamLen; k < cap; k++) {
-              await callSM('enterProfessor'); await sleep(250);
-              await callSM('profSelectChoice', 0); await sleep(150);
-              await callSM('profAccept'); await sleep(300);
+        await context.route('**/*', route => new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
+        await context.addInitScript(() => {
+            const nativeRandom = Math.random;
+            Math.random = function () {
+                if (window.__storyPlaythroughSeed === undefined) return nativeRandom();
+                const value = window.__storyPlaythroughSeed;
+                delete window.__storyPlaythroughSeed;
+                return Math.min(1, (value + 0.25) / 0xffffffff);
+            };
+        });
+        page = await context.newPage();
+        page.setDefaultTimeout(5000);
+        page.on('pageerror', error => record('error', 'page', error.message));
+        const seenConsole = new Set();
+        page.on('console', message => {
+            const type = message.type();
+            const text = message.text();
+            if (expectedBattleEngine && text.startsWith('[battle] Showdown initialization failed:')) {
+                record('error', 'battle-engine', text.slice(0, 450));
+                return;
             }
-          }
+            if (type !== 'error' || /Failed to load resource|net::ERR_|favicon/i.test(text) || seenConsole.has(text)) return;
+            seenConsole.add(text);
+            record(type, 'console', text.slice(0, 300));
+        });
+        await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+        await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
+        if (offlinePack) {
+            await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 45000 });
+            await page.locator('#menu-offline-entry').click();
+            const download = page.locator('#offline-dl-start');
+            await page.waitForFunction(() => /remaining.*files|files remaining/.test(document.getElementById('offline-dl-size')?.textContent), null, { timeout: 20000 });
+            await capture(page, 'full-download-size');
+            await download.click();
+            await page.waitForFunction(() => {
+                const text = document.getElementById('offline-dl-status')?.textContent || '';
+                return /^(Ready to play offline\.|Done\.|Download incomplete|Download stalled)/.test(text);
+            }, null, { timeout: 480000 });
+            const result = await page.locator('#offline-dl-status').innerText();
+            if (!/^(Ready to play offline\.|Done\.)/.test(result)) throw new Error(result);
+            await capture(page, 'full-download-complete');
+            console.log(result);
+            await context.setOffline(true);
+            await page.reload({ waitUntil: 'domcontentloaded' });
+            await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
+            coverage.offlinePack = true;
         }
-        // post-HoF hub guard
-        if (st.badges >= 8 && st.eventName === 'City9') {
-          const cleared = await page.evaluate(() => { const s = window.StoryMode.state; return !!(s.gymCleared && s.gymCleared[8]); });
-          if (cleared) { record('info', 'progress', 'Reached post-HoF hub (City9) — main story cleared.'); break; }
+        await page.locator('.menu-btn-quickplay--story').waitFor({ state: 'visible' });
+        const action = (selector, label, snapshot) => click(page, page.locator(selector).first(), label, snapshot);
+        if (!await action('.menu-btn-quickplay--story', 'home')) throw new Error('Story mode was not actionable.');
+        await page.locator('.story-menu-btn--new').waitFor({ state: 'visible' });
+        if (!await action('.story-menu-btn--new', 'story-menu')) throw new Error('Story creation was not actionable.');
+        await page.locator('#story-create-name').fill('Field Tester');
+        const seedInput = page.locator('#story-create-seed');
+        if (await seedInput.count()) {
+            if (!await seedInput.isVisible()) await page.locator('.story-create-advanced summary').click();
+            await seedInput.fill(String(seed));
+        } else {
+            await page.locator('#story-create-begin').evaluate((element, requestedSeed) => {
+                element.addEventListener('click', () => { window.__storyPlaythroughSeed = requestedSeed; }, { once: true, capture: true });
+            }, seed);
         }
-        const r = await callSM('proceedToNextBattle');
-        if (!r.ok) { record('error', 'proceedToNextBattle', r.err, ctx); break; }
-        await sleep(1100); // battle intro (real setTimeout)
-        const s2 = await getState();
-        if (s2 && s2.eventType === 'Battle') {
-          await capture(`battle-intro-${s2.eventName}`, { ...ctx, battle: s2.eventName });
-          if (realBattlesPlayed < REAL_BATTLES) { await playRealBattle({ ...ctx, eventIndex: s2.eventIndex, eventName: s2.eventName, eventType: 'Battle' }); realBattlesPlayed++; }
-          else if (!(await forceWin({ ...ctx, eventName: s2.eventName }))) break;
-        } else if (s2 && s2.eventType === 'Hall of Fame') {
-          record('info', 'progress', `Reached Hall of Fame after city iter ${iter}`);
-        }
-        await sleep(700);
-      } else if (st.eventType === 'Battle') {
-        await capture(`battle-intro-${st.eventName}`, ctx);
-        if (realBattlesPlayed < REAL_BATTLES) { await playRealBattle(ctx); realBattlesPlayed++; }
-        else if (!(await forceWin(ctx))) break;
-        await sleep(700);
-      } else if (st.eventType === 'Hall of Fame') {
-        await capture('hall-of-fame', ctx);
-        record('info', 'progress', 'Reached Hall of Fame — main story beaten!');
-        break;
-      } else {
-        record('warn', 'loop.unknownType', `Unknown event type "${st.eventType}" at idx ${st.eventIndex}`, ctx);
-        await page.evaluate(() => { const s = window.StoryMode.state; s.eventIndex = Math.min((window.STORY_EVENTS_RAW || []).length - 1, (s.eventIndex | 0) + 1); });
-      }
+        await action('#story-create-begin', 'trainer-create');
 
-      const cur = await getState();
-      if (prev && cur && cur.eventIndex === prev.eventIndex && cur.teamLen === prev.teamLen && cur.badges === prev.badges) {
-        if (++stuck >= 4) { record('error', 'loop.stuck', `Stuck at idx=${cur.eventIndex} (${cur.eventName}) for 4 iters`, ctx); break; }
-      } else stuck = 0;
-      prev = cur;
+        let advancingSince = Date.now();
+        let unchanged = 0;
+        let activeBattle = null;
+        let activeChapter = null;
+        let lastBattle = null;
+        let viewedDex = false;
+        let previousView = '';
+        const sampled = new Set();
+        const searched = new Set();
+        for (let iter = 0; iter < maxIters; iter++) {
+            const view = await readPage(page);
+            if (view.seed !== null && view.seed !== seed) throw new Error(`Expected run seed ${seed}, observed ${view.seed}`);
+            const signature = JSON.stringify(view);
+            unchanged = signature === previousView ? unchanged + 1 : 0;
+            previousView = signature;
+            coverage.mystery ||= view.mystery;
+            const eventName = view.eventName || 'Opening';
+            const selectedRoadChoice = roadChoices[view.roadCity - 1];
+            const selectedRoadIndex = roadOptions.indexOf(selectedRoadChoice);
+            const run = (selector, label) => action(selector, label, view);
+            const byName = (scope, name, label) => click(page, button(page, scope, name), label, view);
+            let advanced = false;
+            try {
+                const inCrucible = view.screens.includes('screen-story-crucible');
+                const city = view.screens.includes('screen-story-city') && /^City([1-9])$/.exec(eventName);
+                const chapter = inCrucible ? 'aftermath' : city ? 'chapter-' + city[1] : null;
+                const chapterPending = chapters && chapter && !coverage.chapters.some(item => item.id === chapter);
+                const chapterModal = '.story-chapter-dialog:visible';
+                if (chapters && activeChapter && await page.locator(chapterModal).count()) {
+                    const choice = choiceForChapter(activeChapter.id);
+                    if (await run(chapterModal + ` [data-adventure-pick="${choice}"]`, 'chapter-choice-' + activeChapter.id)) {
+                        activeChapter.choice = choice;
+                        advanced = true;
+                    } else if (await run(chapterModal + ' [data-adventure-next]', 'chapter-panel-' + activeChapter.id)) {
+                        activeChapter.panels++;
+                        advanced = true;
+                    } else if (await run(chapterModal + ' [data-adventure-secret]', 'chapter-secret-' + activeChapter.id)) {
+                        activeChapter.secret = true;
+                        advanced = true;
+                    } else if (await run(chapterModal + ' [data-adventure-done]', 'chapter-return-' + activeChapter.id)) {
+                        activeChapter = null;
+                        advanced = true;
+                    }
+                } else if (chapterPending && !view.dialogs.length &&
+                           await run(`[data-adventure-open="${chapter}"]:visible`, 'chapter-open-' + chapter)) {
+                    activeChapter = { id: chapter, choice: null, panels: 0, secret: false };
+                    coverage.chapters.push(activeChapter);
+                    advanced = true;
+                } else if (inCrucible && !view.dialogs.length && !chapterPending) {
+                    coverage.crucible = view.crucible;
+                    await capture(page, 'crucible', view);
+                    break;
+                } else if (await run('.story-victory-v2:visible .story-victory-v2-continue', `victory-${lastBattle?.eventName || eventName}`)) {
+                    if (lastBattle) lastBattle.outcome = lastBattle.controlled ? 'controlled win' : 'win';
+                    activeBattle = null;
+                    advanced = true;
+                } else if (await byName('#modal-game-alert:visible', /^OK$/, 'game-alert')) advanced = true;
+                else if (await run('.story-hof-gb-overlay:visible .story-hof-gb-btn-primary', 'hall-of-fame')) {
+                    coverage.hallOfFame = true;
+                    advanced = true;
+                } else if (view.dialogs.includes('story-minigame-overlay')) {
+                    advanced = await playMinigame(page, `minigame-${eventName}`, view);
+                } else if (await run('.story-legend-sighting:visible button', `legend-or-raid-${eventName}`)) advanced = true;
+                else if (await run('.story-vs-intro:visible [data-vs2-battle]', `vs-start-${eventName}`) ||
+                           await run('.story-vs-intro:visible [data-vs2-pick="stoic"]', `vs-choices-${eventName}`)) advanced = true;
+                else if (await run('.story-tutorial-overlay:visible .story-tutorial-continue', `tutorial-${eventName}`)) advanced = true;
+                else if (selectedRoadIndex >= 0 && await run(
+                    `.story-road-discovery[data-road-discovery="${view.roadCity}"]:visible [data-narr-choice-idx="${selectedRoadIndex}"]`,
+                    `road-${selectedRoadChoice}-${eventName}`
+                )) {
+                    coverage.roadDecisions[view.roadCity] = selectedRoadChoice;
+                    coverage.roadChoices = Object.keys(coverage.roadDecisions).length;
+                    advanced = true;
+                }
+                else if (await run('.story-narr-root:visible [data-narr-continue]', `narration-${eventName}`) ||
+                         await run('.story-narr-root:not(.story-road-discovery):visible [data-narr-choice-idx]', `narration-choice-${eventName}`)) advanced = true;
+                else if (await byName('#story-camp-scene:visible', /Break camp/, `camp-${eventName}`)) advanced = true;
+                else if (await run('[data-scene-cont]:visible', `scene-${eventName}`) ||
+                         await run('[data-scene-opt]:visible', `scene-choice-${eventName}`)) advanced = true;
+                else if (await byName('body', /^Begin →$/, 'pallet-cold-open')) advanced = true;
+                else if (await page.locator('.story-city-arrival [data-arrival-dismiss]').isVisible()) {
+                    const usable = await page.locator('[data-arrival-dismiss]').evaluate(element => {
+                        const rect = element.getBoundingClientRect();
+                        return rect.height >= 44 && rect.bottom <= innerHeight && rect.top >= 0 &&
+                            element.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
+                    });
+                    if (!usable) throw new Error(`City arrival button is clipped or obstructed at ${eventName}.`);
+                    advanced = await run('[data-arrival-dismiss]:visible', `arrive-${eventName}`);
+                }
+                else if (await run('[data-arrival-dismiss]:visible', `arrive-${eventName}`)) advanced = true;
+                else if (!searched.has(view.eventIndex) && await run('[data-wander-search]:visible', `wander-search-${eventName}`)) {
+                    searched.add(view.eventIndex);
+                    advanced = true;
+                } else if (await run('[data-wander-moveon]:visible', `wander-move-on-${eventName}`)) advanced = true;
+                else if (view.screens.includes('screen-story-catch')) {
+                    const scope = '#screen-story-catch';
+                    advanced = (!viewedDex && await run(`${scope} button[data-dex-name]:visible`, `catch-open-dex-${eventName}`)) ||
+                        await run(`${scope} [onclick*="catchContinue"]:visible`, `catch-result-${eventName}`) ||
+                        await run(`${scope} [onclick*="catchResolveSendToPC"]:visible`, `catch-party-full-${eventName}`) ||
+                        await run(`${scope} [data-ball-type]:enabled:visible`, `throw-ball-${eventName}`) ||
+                        await run('#story-catch-run-btn:enabled:visible', `leave-wild-encounter-${eventName}`);
+                } else if (view.screens.includes('screen-collection') && !viewedDex) {
+                    await page.locator('#pdex-entry-title').waitFor({ state: 'visible', timeout: 6000 });
+                    advanced = await run('#screen-collection .story-collection-head button', 'catch-dex-entry');
+                    if (advanced) {
+                        coverage.catchDex = true;
+                        viewedDex = true;
+                    }
+                } else if (view.screens.includes('screen-story-gameover')) {
+                    if (lastBattle && !lastBattle.outcome) lastBattle.outcome = 'loss';
+                    activeBattle = null;
+                    advanced = await run('#screen-story-gameover [onclick*="retryFromGameOver"]', `defeat-retry-${eventName}`);
+                } else if (view.screens.includes('screen-battle')) {
+                    const engine = await page.evaluate(() => ({
+                        story: state.mode === 'story', turn: state.turnNumber || 0, isOver: !!state.isOver,
+                        locked: !!state.isLocked, active: !!state.pActive && !!state.fActive,
+                        name: state.battleEngine,
+                        boss: !!state._bossMechanics?.length || !!state._storyBossProfile,
+                        bossProfile: state._storyBossProfile?.sceneKey || null,
+                    }));
+                    const party = page.locator('#modal-party');
+                    if (engine.story && !engine.isOver && await party.isVisible()) {
+                        const replacement = party.getByRole('button', { name: 'Switch', exact: true })
+                            .and(party.locator('button:enabled')).first();
+                        advanced = await click(page, replacement, `battle-replacement-${eventName}`, view);
+                    } else if (engine.story && engine.active && !engine.isOver && await page.locator('#command-menu').isVisible()) {
+                        if (!activeBattle) {
+                            if (engine.locked) {
+                                await page.waitForFunction(() => !state.isLocked || state.isOver);
+                                continue;
+                            }
+                            if (expectedBattleEngine && engine.name !== expectedBattleEngine) {
+                                throw new Error(`${eventName} started with ${engine.name || 'no engine'}; expected ${expectedBattleEngine}.`);
+                            }
+                            const milestone = engine.boss || /^(Gym Leader \d|Rival|E[1-4]|Champion|Mystery Figure)$/.test(eventName);
+                            const limit = sampled.has(view.eventIndex) ? 0
+                                : Math.max(sampled.size < realBattles ? realTurns : 0, milestone ? milestoneTurns : 0);
+                            if (limit) sampled.add(view.eventIndex);
+                            activeBattle = { id: view.eventId, eventName, engine: engine.name, boss: engine.boss,
+                                ...(engine.bossProfile ? { bossProfile: engine.bossProfile } : {}),
+                                real: limit > 0, turnLimit: limit, turns: 0 };
+                            lastBattle = activeBattle;
+                            coverage.battles.push(activeBattle);
+                            await page.evaluate(() => { settings.battleSpeed = 'instant'; });
+                        }
+                        if (activeBattle.turns < activeBattle.turnLimit) {
+                            advanced = await run('#command-menu [data-cmd="fight"]', `battle-fight-${eventName}-turn-${engine.turn + 1}`);
+                        } else {
+                            await capture(page, `battle-command-${eventName}`, view);
+                            activeBattle.controlled = true;
+                            activeBattle.outcome = 'controlled win';
+                            await page.evaluate(() => {
+                                state.isOver = true;
+                                showEndScreen('VICTORY', 'Playthrough controlled win', true);
+                            });
+                            activeBattle = null;
+                            advanced = true;
+                        }
+                    } else if (engine.story && !engine.isOver && await page.locator('#move-menu').isVisible()) {
+                        const moves = page.locator('#move-menu .move-menu-scroll button:not(.move-info-hit):enabled:visible');
+                        const attack = moves.filter({ hasNotText: 'Switch Pokémon' });
+                        advanced = await click(page, await choosePlayerMove(attack), `battle-moves-${eventName}-turn-${engine.turn + 1}`, view);
+                        if (advanced && activeBattle) {
+                            activeBattle.turns++;
+                            coverage.realTurns++;
+                        }
+                    } else if (engine.isOver) activeBattle = null;
+                } else if (view.screens.includes('screen-story-professor')) {
+                    for (const [selector, label] of [
+                        ['#prof-accept-btn:enabled:visible', 'accept-starter'],
+                        ['#story-prof-rolled-card .prof-pick-choice:visible', 'choose-starter'],
+                        ['#screen-story-professor:has(#story-prof-status:has-text("joined your team")) .story-shop-back-btn', 'leave-professor'],
+                    ]) if (await run(selector, label)) { advanced = true; break; }
+                } else if (view.screens.includes('screen-story-shop')) {
+                    advanced = await run('#screen-story-shop .story-shop-back-btn', `leave-shop-${eventName}`);
+                } else if (view.screens.includes('screen-story-pokemoncenter')) {
+                    advanced = await run('#screen-story-pokemoncenter .story-shop-back-btn', `leave-center-${eventName}`);
+                } else if (view.screens.includes('screen-story-city') && !chapterPending) {
+                    advanced = await run('#story-city-tips .story-city-objective:enabled:visible', `city-objective-${eventName}`);
+                }
+            } catch (error) {
+                if (error.name !== 'TimeoutError') throw error;
+            }
+            if (!advanced && view.dialogs.includes('story-vs-intro') && !unchanged) {
+                await capture(page, `vs-splash-${eventName}`, view);
+            }
+            if (unchanged > 85) {
+                await capture(page, 'blocked', view);
+                throw new Error(`Repeated action without advancing row ${view.eventId} ${eventName} (${view.screens.concat(view.dialogs).join(', ')})`);
+            }
+            if (advanced) {
+                advancingSince = Date.now();
+                if (unchanged) await wait(90);
+            } else {
+                if (Date.now() - advancingSince > 12000) {
+                    await capture(page, 'blocked', view);
+                    throw new Error(`No actionable surface at row ${view.eventId} ${eventName} (${view.screens.concat(view.dialogs).join(', ')})`);
+                }
+                await wait(110);
+            }
+        }
+        if (!coverage.crucible) throw new Error('The main story run did not reach the Crucible.');
+        if (!coverage.hallOfFame || !coverage.mystery) throw new Error('The finish omitted the Hall of Fame or Mystery climax.');
+        if (chapters) {
+            const choices = await page.evaluate(() => {
+                const saved = JSON.parse(localStorage.getItem('pbs_story_save') || '{}');
+                return saved.storyChoices || {};
+            });
+            for (const [index, id] of chapterIds.entries()) {
+                const completed = coverage.chapters[index];
+                const choice = choiceForChapter(id);
+                if (completed?.id !== id || completed.choice !== choice || choices['adventure.' + id] !== choice) {
+                    throw new Error('Expected a saved, observed choice in ' + id + '.');
+                }
+                if (completed.panels < chapterCatalog[id].panels.length - 1) {
+                    throw new Error('Some cinematic panels did not play in ' + id + '.');
+                }
+                if (chapterChoice === 'clue' && chapterCatalog[id].secret && !completed.secret) {
+                    throw new Error('Expected the complete clue path to unlock a secret in ' + id + '.');
+                }
+                if (completed.secret && choices['adventure.secret.' + id] !== true) {
+                    throw new Error('The claimed secret was not saved for ' + id + '.');
+                }
+            }
+        }
+        if (await seedInput.count()) {
+            if (coverage.roadChoices !== 9) throw new Error(`Observed ${coverage.roadChoices || 0} of 9 road choices.`);
+            const decisions = await page.evaluate(() => Object.entries(window.StoryMode.state.storyChoices)
+                .filter(([key]) => key.startsWith('road.discovery.')));
+            const savedRoads = Object.fromEntries(decisions);
+            if (decisions.length !== 9 || roadChoices.some((choice, index) =>
+                savedRoads[`road.discovery.${index + 1}`] !== choice || coverage.roadDecisions[index + 1] !== choice)) {
+                throw new Error('Saved road decisions differ from the choices made in the playthrough.');
+            }
+            if (!coverage.catchDex) throw new Error('The first catch did not open a Pokédex entry.');
+        }
+    } catch (error) {
+        record('error', 'harness', String(error.stack || error));
+        if (page && trace.at(-1)?.label !== 'blocked') await capture(page, 'blocked').catch(() => {});
+        process.exitCode = 1;
+    } finally {
+        if (browser) await browser.close();
+        server?.kill();
+        const summary = { seed, roadChoice: mixedRoad ? 'mixed' : roadChoice, ...(mixedRoad ? { roadChoices } : {}),
+            ...(chapters ? { chapterChoice } : {}), viewport: { width, height, touch }, completed: coverage.crucible && coverage.hallOfFame && coverage.mystery,
+            coverage, steps: trace.length, findings: findings.length };
+        writeFileSync(join(outDir, 'findings.json'), JSON.stringify({ ...summary, findings }, null, 2));
+        writeFileSync(join(outDir, 'trace.json'), JSON.stringify(trace, null, 2));
+        writeFileSync(join(outDir, 'trace.txt'), trace.map((entry, index) =>
+            `${index + 1}\t${entry.eventId ?? '-'}\t${entry.label}\t${entry.screenshot}`).join('\n'));
+        console.log(`Report: ${join(outDir, 'findings.json')}`);
     }
-
-    // ---------------- POST-HOF ----------------
-    record('info', 'progress', 'Entering post-HoF phase');
-    await dismissVictory(); // clear any lingering Champion/HoF reward overlay first
-    await callSM('continuePostGame'); await sleep(1200);
-    await dismissVictory();
-    await capture('posthof-after-continue');
-    const sm = await getState();
-    const src = await page.evaluate(() => window.StoryMode.state.crucibleBattleSource || null);
-    if (src === 'postHofMystery') { await callSM('onBattleEnd', true, 'Mystery cleared', ''); await sleep(900); await dismissVictory(); await capture('posthof-mystery-cleared'); }
-    await callSM('enterCrucible'); await sleep(700); await capture('crucible');
-    await callSM('crucibleMysteryFight'); await sleep(700);
-    await callSM('leaveCrucible'); await sleep(400);
-    await callSM('enterFrontierHub'); await sleep(700); await capture('frontier-hub');
-    await callSM('frontierStartRun'); await sleep(700); await capture('frontier-run');
-    await callSM('frontierSurrender'); await sleep(500);
-
-    // PC / collection edge captures
-    await callSM('enterPokemonCenter'); await sleep(600); await capture('posthof-center');
-    await callSM('openCollection'); await sleep(600); await capture('collection');
-
-    const finalState = await getState();
-    record('info', 'final', `Final: idx=${finalState?.eventIndex} badges=${finalState?.badges} gold=${finalState?.gold} team=${JSON.stringify(finalState?.team)}`);
-
-  } catch (e) {
-    record('error', 'harness', String(e && e.stack || e).split('\n').slice(0, 3).join(' | '));
-  } finally {
-    if (browser) await browser.close();
-    server.kill();
-  }
-
-  // ---------------- WRITE REPORT ----------------
-  const counts = findings.reduce((a, f) => (a[f.severity] = (a[f.severity] || 0) + 1, a), {});
-  writeFileSync(join(OUTDIR, 'findings.json'), JSON.stringify({ counts, findings }, null, 2));
-  writeFileSync(join(OUTDIR, 'trace.txt'), trace.join('\n'));
-  console.log('\n========== SUMMARY ==========');
-  console.log('counts:', JSON.stringify(counts));
-  console.log('screenshots:', SHOTS);
-  console.log('findings:', join(OUTDIR, 'findings.json'));
 }
 
-main();
+await main();

@@ -28,8 +28,8 @@ function setSm(extra = {}) {
   return ST.sm;
 }
 
-function mount({ gotBadge = false, rewardLines = [], event = 'Basic Trainer', coins = 250 } = {}) {
-  setSm();
+function mount({ gotBadge = false, rewardLines = [], event = 'Basic Trainer', coins = 250, state = {} } = {}) {
+  setSm(state);
   let cb = 0;
   ST.showVictoryOverlay('VICTORY!', coins, gotBadge, () => cb++, event, 5, rewardLines);
   const ov = W.document.querySelector('div[role="dialog"][aria-label="VICTORY!"]');
@@ -58,6 +58,37 @@ test('milestone win shows the medallion + milestone line', () => {
   assert.ok(ov.querySelector('.story-victory-v2-medallion'), 'badge medallion');
   assert.match(ov.querySelector('.story-victory-v2-milestone').textContent, /Badge 3 of 8/, 'pinned line');
   assert.ok(ov.querySelector('.story-victory-v2-quote'), 'leader flavor renders in the quote block');
+  dismiss(ov);
+});
+
+test('a new badge adds one chosen reserve without dismissing the results', () => {
+  const build = { m: ['Tackle'], n: 'Hardy' };
+  const egg = { id: 'egg-in-party', name: 'Eevee', isEgg: true };
+  const reserve = { id: 'reserve', name: 'Abra', nickname: 'Wisp', build };
+  const { ov, cbCount } = mount({ gotBadge: true, event: 'Gym Leader 1', state: {
+    badges: 1, team: [{ id: 'first', name: 'Pikachu', build }, { id: 'second', name: 'Eevee', build }, egg],
+    pcBox: [{ id: 'egg-in-box', name: 'Eevee', isEgg: true }, reserve],
+  } });
+  assert.match(ov.querySelector('.story-victory-party').textContent, /can now hold 3 Pokémon/);
+  assert.equal(ov.querySelectorAll('.story-victory-v2-continue').length, 1, 'Continue stays distinct from the party controls');
+  const toggle = ov.querySelector('[aria-controls="story-badge-reserve-picker"]');
+  toggle.click();
+  const menu = ov.querySelector('select');
+  assert.equal(menu.options.length, 1, 'eggs cannot be selected as fighters');
+  assert.match(menu.options[0].text, /Wisp \(Abra\)/);
+  ov.querySelector('.story-victory-party-pick button').click();
+  assert.equal(cbCount(), 0, 'the story only advances through Continue');
+  assert.equal(ST.sm.team.at(-1), reserve);
+  assert.equal(ST.sm.pcBox.length, 1);
+  assert.match(ov.querySelector('.story-victory-party [role="status"]').textContent, /Wisp joined/);
+  dismiss(ov);
+  assert.equal(cbCount(), 1);
+});
+
+test('a badge shows a route hint when storage has no battle-ready reserves', () => {
+  const { ov } = mount({ gotBadge: true, event: 'Gym Leader 1', state: { badges: 1, pcBox: [] } });
+  assert.match(ov.querySelector('.story-victory-party').textContent, /new partner on the road/);
+  assert.equal(ov.querySelector('[aria-controls="story-badge-reserve-picker"]'), null);
   dismiss(ov);
 });
 

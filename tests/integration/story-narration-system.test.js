@@ -11,10 +11,11 @@ import { test, before } from 'node:test';
 import assert from 'node:assert';
 import { loadEngine } from '../helpers/load-engine.js';
 
-let nt, document;
+let nt, document, browserWindow;
 
 before(async () => {
   const { window } = await loadEngine();
+  browserWindow = window;
   nt = window.__narrationTest;
   document = window.document;
   assert.ok(nt, 'window.__narrationTest must be exposed under the harness');
@@ -145,6 +146,103 @@ test('picking a choice persists to sm.storyChoices for later callbacks', () => {
   cont.click();
   assert.equal(doneFired, true, 'onDone fires after the reply is dismissed');
   assert.equal(nt.isNarrationLive(), false);
+});
+
+test('an interrupted paid or declined toll resumes its saved reply and never charges again', () => {
+  for (const { startingGold, afterPick, reply, skip } of [
+    { startingGold: 900, afterPick: 600, reply: /pockets them/, skip: true },
+    { startingGold: 150, afterPick: 150, reply: /come up short/, skip: undefined },
+  ]) {
+    nt.sm = { eventIndex: 20, storyChoices: {}, scenesShown: {}, flags: {}, gold: startingGold };
+    let finished = false;
+    nt.playStoryBeatScene('villain.rocket.battle1', () => { finished = true; });
+    document.querySelector('.story-narr-root [data-narr-continue]').click();
+    document.querySelector('.story-narr-root [data-narr-choice-idx="0"]').click();
+    assert.match(document.querySelector('.story-narr-root [data-narr-body]').textContent, reply);
+    assert.equal(nt.sm.gold, afterPick);
+    assert.equal(nt.sm.flags['mgSkipBattle:20'], skip);
+    assert.equal(finished, false);
+
+    const saved = JSON.stringify(nt.sm);
+    for (const legacy of [false, true]) {
+      nt.narrationForceClear();
+      nt.sm = JSON.parse(saved);
+      nt.sm.gold += 1200;
+      if (legacy) delete nt.sm.storyChoices['rocket.battle1.toll:locked'];
+      finished = false;
+      nt.playStoryBeatScene('villain.rocket.battle1', () => { finished = true; });
+      const resumed = document.querySelector('.story-narr-root');
+      assert.equal(resumed.querySelector('[data-narr-choice-idx]'), null);
+      assert.match(resumed.querySelector('[data-narr-body]').textContent, reply);
+      resumed.querySelector('[data-narr-continue]').click();
+      assert.equal(nt.sm.gold, afterPick + 1200);
+      assert.equal(nt.sm.flags['mgSkipBattle:20'], skip);
+      assert.equal(finished, true);
+    }
+  }
+});
+
+test('a mini-game lead-in saved without a result still plays, and a completed game does not pay twice', async () => {
+  const key = 'main.event2';
+  const lastAct = nt.STORY_SCENES[key].acts.length - 1;
+  const marks = Object.fromEntries(Array.from({ length: lastAct + 1 }, (_, index) => [`beat-${key}-${index}`, true]));
+  nt.sm = { eventIndex: 20, storyChoices: {}, scenesShown: marks, flags: {}, gold: 800 };
+  const games = browserWindow.StoryMiniGames;
+  const play = games.playAndApply;
+  let launches = 0;
+  games.playAndApply = (spec, opts) => {
+    launches++;
+    return play(spec, { ...opts, forceOutcome: 'win' });
+  };
+  try {
+    const finished = new Promise(resolve => nt.playStoryBeatScene(key, resolve));
+    const begin = document.querySelector('.story-narr-root [data-narr-continue]');
+    assert.ok(begin, 'A legacy marker without an outcome keeps the mini-game available');
+    begin.click();
+    await finished;
+    assert.equal(nt.sm.storyChoices['main.echo'], 'win');
+    assert.equal(nt.sm.flags['main.echo.heard'], true);
+    assert.equal(launches, 1);
+    nt.sm = JSON.parse(JSON.stringify(nt.sm));
+    await new Promise(resolve => nt.playStoryBeatScene(key, resolve));
+    assert.equal(launches, 1, 'A completed game resumes at the next act');
+  } finally {
+    games.playAndApply = play;
+  }
+});
+
+test('focus stays in narration and returns to the opener after dismissal', () => {
+  nt.sm = { storyChoices: {} };
+  const opening = document.createElement('button');
+  opening.className = 'settings-btn';
+  document.querySelector('#game-stage').append(opening);
+  opening.focus();
+  const overlay = nt.renderNarrativeOverlay({ nameplate: 'Night watch', lines: ['A lamp flickers.'], typewriter: false });
+  assert.equal(overlay.getAttribute('role'), 'dialog');
+  assert.equal(overlay.getAttribute('aria-modal'), 'true');
+  assert.equal(document.activeElement, overlay);
+  assert.equal(opening.hasAttribute('inert'), true);
+  document.dispatchEvent(new browserWindow.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+  assert.equal(document.activeElement, overlay.querySelector('[data-narr-continue]'));
+  document.dispatchEvent(new browserWindow.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(overlay.isConnected, false);
+  assert.equal(opening.hasAttribute('inert'), false);
+  assert.equal(document.activeElement, opening);
+  opening.remove();
+});
+
+test('Story text reveal Off wins over an authored typewriter cue', async () => {
+  const field = document.querySelector('#sw-story-typewriter');
+  field.checked = false;
+  field.dispatchEvent(new browserWindow.Event('change'));
+  const text = 'An entire line should remain visible while the cinematic mounts.';
+  const overlay = nt.renderNarrativeOverlay({ lines: [text], typewriter: true });
+  await new Promise(resolve => browserWindow.requestAnimationFrame(resolve));
+  assert.equal(overlay.querySelector('[data-narr-body]').textContent, text);
+  overlay.querySelector('[data-narr-continue]').click();
+  assert.equal(overlay.isConnected, false);
+  field.checked = true;
+  field.dispatchEvent(new browserWindow.Event('change'));
 });
 
 // ── Structured battle outro ─────────────────────────────────────────────────

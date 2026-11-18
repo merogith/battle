@@ -18,6 +18,15 @@ const h = await loadEngine();
 const { window } = h;
 const T = window.__storyTest;
 const SM = window.StoryMode;
+const storage = new Map();
+Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+        getItem: key => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, String(value)),
+        removeItem: key => storage.delete(key),
+    },
+});
 
 const mk = (name, i) => ({
     name, id: 'tut-' + i, nickname: null, isEgg: false, starter: false, unsellable: false,
@@ -28,6 +37,7 @@ const mk = (name, i) => ({
 // an empty PC, so a guaranteed catch (forcedCatchRate 1.0) routes through the
 // party-full swap prompt rather than the direct push.
 function primeFullPartyTutorialCatch() {
+    storage.clear();
     T.sm = Object.assign({}, T.sm, {
         active: true,
         badges: 0,                              // party cap = 2
@@ -35,6 +45,7 @@ function primeFullPartyTutorialCatch() {
         pcBox: [],                              // PC has room → swap prompt, not "both full"
         balls: { poke: 5, great: 0, ultra: 0, master: 0 },
         catchTutorialDone: false,
+        catchRecovery: null,
         pokedex: { seen: [], caught: [] },
     });
     T.catchState = {

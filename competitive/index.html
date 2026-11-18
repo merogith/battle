@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#12141c">
+  <title>Competitive Battle · Pokémon Arena</title>
+  <link rel="icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="arena.css">
+  <script type="module" src="arena.js"></script>
+</head>
+<body>
+  <header class="page-header">
+    <a class="home-link" href="../battle.html">← Pokémon Arena</a>
+    <span id="format-label" class="format-label">Gen 9 OU · 3v3</span>
+  </header>
+  <main>
+    <section id="setup" class="setup-panel">
+      <h1>Competitive Battle</h1>
+      <p id="setup-intro">Play a 3-on-3 battle against the Arena AI using Pokémon Showdown rules.</p>
+      <form id="setup-form">
+        <div class="battle-rules-grid">
+          <div>
+            <label for="format">Battle rules</label>
+            <select id="format" name="format" aria-describedby="format-rules">
+              <option value="gen9ou" selected>Gen 9 OU</option>
+              <option value="gen8ou">Gen 8 OU</option>
+              <option value="gen8battlestadiumsingles">Gen 8 Battle Stadium Singles</option>
+              <option value="gen7ou">Gen 7 OU</option>
+              <option value="gen6ou">Gen 6 OU</option>
+              <option value="gen5ou">Gen 5 OU</option>
+              <option value="gen4ou">Gen 4 OU</option>
+              <option value="gen3ou">Gen 3 OU</option>
+              <option value="gen2ou">Gen 2 OU</option>
+              <option value="gen1ou">Gen 1 OU</option>
+            </select>
+          </div>
+          <div id="team-size-choice">
+            <label for="team-size">Team size</label>
+            <select id="team-size" name="team-size">
+              <option value="3" selected>3-on-3</option>
+              <option value="6">6-on-6</option>
+            </select>
+          </div>
+        </div>
+        <p id="format-rules" class="format-rules" hidden>Pokémon are set to Lv. 50. Dynamax and Gigantamax are available.</p>
+        <dl class="team-preview">
+          <div><dt>Your team</dt><dd id="setup-player">Great Tusk, Gholdengo, Dragapult</dd></div>
+          <div><dt>Arena AI</dt><dd id="setup-opponent">Corviknight, Slowking-Galar, Meowscarada</dd></div>
+        </dl>
+        <details id="team-import" class="team-import">
+          <summary>Import your team</summary>
+          <label for="team-text">Showdown team export</label>
+          <p id="team-import-help">Paste three Pokémon from a Showdown export. Leave this blank to play with the preset.</p>
+          <textarea id="team-text" rows="7" maxlength="12000" aria-describedby="team-import-help" spellcheck="false" autocapitalize="off" aria-invalid="false"></textarea>
+          <p id="team-import-error" class="error" role="alert" hidden></p>
+        </details>
+        <div class="setup-actions">
+          <button id="start" class="primary" type="submit">Start battle</button>
+          <details>
+            <summary>Play with a seed</summary>
+            <label for="seed">Battle seed</label>
+            <input id="seed" type="number" inputmode="numeric" min="0" max="4294967295" step="1" placeholder="Random">
+          </details>
+        </div>
+      </form>
+      <p id="loading" role="status" hidden>Loading Pokémon Showdown…</p>
+      <p id="setup-error" class="error" role="alert" hidden></p>
+    </section>
+    <div id="match" hidden>
+      <div class="match-heading">
+        <h1>Competitive Battle</h1>
+        <div class="match-meta"><span id="turn">Team preview</span><span id="field-weather" hidden></span><span id="match-seed"></span></div>
+      </div>
+      <div class="battle-layout">
+        <div class="battle-column">
+          <section class="battlefield" aria-label="Battlefield">
+            <article id="opponent-active" class="combatant opponent" aria-label="Opponent’s active Pokémon"></article>
+            <article id="player-active" class="combatant player" aria-label="Your active Pokémon"></article>
+          </section>
+          <section id="actions" class="panel" aria-labelledby="request-heading">
+            <div class="action-header">
+              <h2 id="request-heading" tabindex="-1">Choose your lead</h2>
+              <div class="action-tools">
+                <button id="inspect-moves" class="subtle" type="button" aria-haspopup="dialog" hidden>Move details</button>
+                <label class="battle-form-option" id="battle-form-option" hidden><input type="checkbox" id="battle-form-toggle"><span id="battle-form-label"></span></label>
+              </div>
+            </div>
+            <p id="action-copy" class="action-copy"></p>
+            <p id="battle-error" class="error" role="alert" hidden></p>
+            <div id="moves" class="moves"></div>
+            <div id="switches" class="switches"></div>
+            <div id="result" hidden>
+              <p id="result-text"></p>
+              <button id="play-again" class="primary" type="button">New battle</button>
+              <button id="download-replay" class="subtle" type="button">Download replay</button>
+            </div>
+          </section>
+        </div>
+        <aside class="side-column">
+          <section class="panel rosters" aria-label="Teams">
+            <div><h2>Your team</h2><ul id="player-team"></ul></div>
+            <div><h2>Arena AI</h2><ul id="opponent-team"></ul></div>
+          </section>
+          <details class="panel log" open>
+            <summary>Battle log</summary>
+            <ol id="battle-log" aria-label="Recent battle events"></ol>
+          </details>
+          <button id="reset" class="subtle" type="button">Reset battle</button>
+        </aside>
+      </div>
+    </div>
+    <dialog id="move-guide" aria-labelledby="move-guide-title">
+      <div class="guide-header">
+        <h2 id="move-guide-title">Move details</h2>
+        <form method="dialog"><button class="subtle" type="submit" autofocus>Close</button></form>
+      </div>
+      <div class="guide-content">
+        <p id="move-guide-form" hidden></p>
+        <p id="move-guide-weather" hidden></p>
+        <div id="move-guide-list" class="move-guide-list"></div>
+      </div>
+    </dialog>
+  </main>
+  <footer><span id="engine-note">Powered by Pokémon Showdown</span> <a href="THIRD_PARTY_NOTICES.txt">Software notices</a></footer>
+</body>
+</html>

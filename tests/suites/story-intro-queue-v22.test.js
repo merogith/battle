@@ -102,22 +102,103 @@ test('IntroQueue is exposed as a singleton (same reference each access)', () => 
     assert.equal(a, b);
 });
 
-test('firstMart tutorial scene grants 5 PokéBalls (regression: 5+1 stacking)', () => {
-    // The tutorial scene lives in STORY_TUTORIAL_SCENES; we access it through
-    // the test handle by invoking a synthetic Continue and checking the grant.
-    const beforePoke = W.__storyTest.sm.balls ? (W.__storyTest.sm.balls.poke | 0) : 0;
-    // Find the scene's onContinue and invoke it.
-    const STS = W.STORY_TUTORIAL_SCENES || (function () {
-        // The scene table isn't exported directly; instead, we verify the
-        // wording via document by running the scene through the harness.
-        return null;
-    })();
-    // Fallback: scrape the tutorial wording from battle.html source to confirm
-    // the wording was updated to "five Poké Balls" instead of "complimentary".
-    // The actual grant test would require a DOM-aware tutorial runner; we
-    // verify the SOURCE OF TRUTH (the wording) here.
-    // This is a documentation-level regression check.
-    assert.ok(true, 'See enterShop regression test below for behavioral check');
+const MART_TUTORIAL = 'tutorial-first-mart';
+function tutorialFixture(t) {
+    const previousRun = ST.sm;
+    const previousAlert = W.showGameAlert;
+    const previousStorage = Object.getOwnPropertyDescriptor(W, 'localStorage');
+    const storage = new Map();
+    const writes = [];
+    ST.sm = {
+        ...previousRun,
+        active: true,
+        runSeed: 1001,
+        eventIndex: 0,
+        balls: { poke: 0, great: 0, ultra: 0, master: 0 },
+        inventory: {},
+        scenesShown: {},
+        fanClubGiftClaimed: false,
+        daycare: {},
+        team: [],
+        pcBox: [],
+    };
+    W.showGameAlert = () => {};
+    Object.defineProperty(W, 'localStorage', {
+        configurable: true,
+        value: {
+            getItem: key => storage.get(key) ?? null,
+            setItem: (key, value) => {
+                storage.set(key, String(value));
+                if (key === 'pbs_story_save') writes.push(JSON.parse(value));
+            },
+        },
+    });
+    t.after(() => {
+        W.document.getElementById('story-daycare-scene')?.remove();
+        ST.sm = previousRun;
+        W.showGameAlert = previousAlert;
+        Object.defineProperty(W, 'localStorage', previousStorage);
+    });
+    return { storage, writes, play: W.StoryMode.playTutorial };
+}
+
+test('the Mart remains eligible until Continue and saves its five-ball gift once', t => {
+    const { writes, play } = tutorialFixture(t);
+    const completed = [];
+    assert.equal(play('firstMart', () => completed.push('first')), true);
+    assert.equal(play('firstMart', () => completed.push('repeat')), true);
+    assert.equal(W.document.querySelectorAll('.story-tutorial-overlay').length, 1);
+    assert.equal(ST.sm.scenesShown[MART_TUTORIAL], undefined);
+    assert.equal(ST.sm.balls.poke, 0);
+    assert.deepEqual(completed, []);
+    assert.equal(writes.length, 0, 'an interrupted visit cannot be persisted as complete');
+
+    const dismiss = W.document.querySelector('.story-tutorial-continue');
+    dismiss.click();
+    dismiss.click();
+    assert.equal(play('firstMart'), false);
+    assert.deepEqual(completed, ['first', 'repeat']);
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0].scenesShown[MART_TUTORIAL], true);
+    assert.equal(writes[0].balls.poke, 5);
+});
+
+test('NG+ skips a previously read tutorial and persists its gift for the new run', t => {
+    const { storage, writes, play } = tutorialFixture(t);
+    storage.set('pbs_story_meta', JSON.stringify({ tutorialsSeen: { [MART_TUTORIAL]: true } }));
+    assert.equal(play('firstMart'), false);
+    assert.equal(W.document.querySelector('.story-tutorial-overlay'), null);
+    assert.equal(play('firstMart'), false);
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0].scenesShown[MART_TUTORIAL], true);
+    assert.equal(writes[0].balls.poke, 5);
+});
+
+test('a legacy completion remains completed even when its consumables were spent', t => {
+    const { writes, play } = tutorialFixture(t);
+    ST.sm.scenesShown[MART_TUTORIAL] = true;
+    assert.equal(play('firstMart'), false);
+    assert.equal(ST.sm.balls.poke, 0);
+    assert.equal(writes.length, 0);
+});
+
+test('Center, Fan Club, Daycare, and Hidden Power persist their reward with completion', t => {
+    const { writes, play } = tutorialFixture(t);
+    const cases = [
+        ['firstPokemonCenter', 'tutorial-first-pokemon-center', run => run.inventory.fullRestore === 1],
+        ['firstFanClub', 'tutorial-first-fan-club', run => run.fanClubGiftClaimed && run.inventory.hpUp === 5],
+        ['firstDaycare', 'tutorial-first-daycare', run =>
+            run.daycare.freeEggClaimed && [...run.team, ...run.pcBox].filter(slot => slot.isEgg).length === 1],
+        ['hiddenPowerMentor', 'tutorial-hidden-power-mentor', run => run.hiddenPowerUnlocked && run.hiddenPowerChoosePending],
+    ];
+    for (const [id, key, claimed] of cases) {
+        const before = writes.length;
+        assert.equal(play(id), true);
+        W.document.querySelector('.story-tutorial-continue').click();
+        assert.equal(writes.length, before + 1, `${id} has one complete save`);
+        assert.equal(writes.at(-1).scenesShown[key], true);
+        assert.ok(claimed(writes.at(-1)), `${id} gift is in that save`);
+    }
 });
 
 test('regression: enterShop no longer contains inline 5-ball toast block', async () => {
@@ -157,17 +238,13 @@ test('regression: firstMart tutorial scene grants 5 balls in onContinue (source 
     );
     const idx = battleHtmlText.indexOf("firstMart: {");
     assert.ok(idx > 0, 'firstMart scene block should exist');
-    // The block has 3 long line entries before onContinue; pull a 1600-char
-    // slice so the grant + alert sit well inside the window.
-    const block = battleHtmlText.slice(idx, idx + 1600);
+    const block = battleHtmlText.slice(idx, battleHtmlText.indexOf('firstDept: {', idx));
     assert.ok(
         block.includes("_storyGrantBundle({ pokeBall: 5 })"),
         'firstMart onContinue should grant 5 Poké Balls'
     );
-    assert.ok(
-        block.includes('Received 5 Poké Balls'),
-        'firstMart onContinue should show "Received 5 Poké Balls" alert'
-    );
+    assert.match(block, /five Poké Balls, welcome gift/);
+    assert.doesNotMatch(block, /showGameAlert/, 'the welcome itself explains the gift');
     assert.equal(
         block.includes("pokeBall: 1"),
         false,

@@ -16,6 +16,7 @@ const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
 const doc = W.document;
+Object.defineProperty(W, 'localStorage', { configurable: true, value: { getItem: () => null, setItem() {} } });
 
 function setupRouteCamp() {
     // jsdom's DOM persists across tests — clear any overlay a prior test left behind so

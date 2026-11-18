@@ -20,6 +20,31 @@ const VILLAINS = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'sku
 const EXTRAS = ['cubone', 'yamask', 'hypno', 'phantump', 'mimikyu', 'drifloon', 'parasect', 'mewtwo'];
 const INJECT_KINDS = /^(battle|miniBoss|boss|miniRaid|raid)$/;
 
+test('a route wild uses its own seed rather than the world cursor', () => {
+    const original = ST.sm;
+    try {
+        ST.sm = { ...original, active: true, runSeed: 1201, _strngState: 5423,
+            settings: { ...original.settings, enabledGens: [1] }, wildSeenByEventIdx: {} };
+        let initial;
+        const row = RAW.findIndex((_, index) => {
+            ST.sm.eventIndex = index;
+            initial = ST.prepareRouteWildEncounter(index)?.encounter;
+            return !!initial;
+        });
+        assert.ok(row >= 0);
+        assert.equal(ST.sm._strngState, 5423);
+        eng.seedRng(2035);
+        ST.sm._strngState = 7689;
+        const retry = ST.prepareRouteWildEncounter(row)?.encounter;
+        assert.deepEqual(retry, initial);
+        assert.equal(ST.sm._strngState, 7689);
+        ST.sm.wildSeenByEventIdx[row] = 1;
+        assert.notDeepEqual(ST.prepareRouteWildEncounter(row)?.encounter, initial);
+    } finally {
+        ST.sm = original;
+    }
+});
+
 // Pre-League event + inject beats expected to fire for a roll (firePostHoF and
 // League-anchored beats are delivered by their own paths).
 function preLeagueBeats(villain, extra) {

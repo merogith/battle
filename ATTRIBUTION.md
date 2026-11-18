@@ -26,6 +26,8 @@ If you are a rights holder and want something removed, please open an issue.
 | Item / ball icons (`sprites/pokesprite`) | [msikma/pokesprite](https://github.com/msikma/pokesprite) | **MIT** (code/data); sprite pixels © TPC | See `sprites/pokesprite/UPSTREAM_LICENSE.md`. |
 | Battle & menu backgrounds (`sprites/backgrounds`) | Generated for this project (AI image generation) | Project-owned | Prompts in `sprites/backgrounds/battle/GEMINI_PROMPTS.md`. |
 | Story scene backgrounds — original (`sprites/story/backgrounds/*.svg`) | Authored for this project | Project-owned | Hand-authored pixel/SVG scenes (lab, Crucible, Frontier, cities). |
+| Illustrated chapter backdrops (`sprites/backgrounds/story/*.webp`) | Generated for this project with ImageGen | Original project artwork | Pallet Harbor, Route 1, Mineshaft Pass, Cathedral Approach, Victory Road, and the Open Circle academy, ranger station, dock, yard, highlands, League, and Crucible scenes. |
+| Flintreach noticeboard and Field Archive props (`sprites/backgrounds/story/road1-board-*.webp`, `archive-*.webp`) | Original ImageGen prop atlas for this project | Project artwork | Three states of the warning lamp board, survey rubbing, highland lamp and two archived dispatches. Exported as six 192 × 96 WebPs. |
 | Story scene backgrounds — gen3 (`sprites/story/backgrounds/gen3-*.png`) | [pret/pokefirered](https://github.com/pret/pokefirered) `graphics/map_preview/*` | **No asset grant — ripped GameFreak graphics** | Assembled from gen3 tile-atlas + tilemap by `scripts/build-story-backgrounds.mjs`. Reference/placeholder footing (same as the Showdown sprites). |
 | Story UI icons (`icons/story`) | Authored for this project | Project-owned | |
 | UI font (`fonts/press-start-2p.woff2`) | [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) (CodeMan38) | **SIL Open Font License 1.1** | See `fonts/OFL.txt`. |
@@ -37,7 +39,8 @@ If you are a rights holder and want something removed, please open an issue.
 | Pokémon cries (`music/cries`) | Showdown / PokémonDB lineage | © TPC (fan-ripped) | Community-standard; not openly licensed. |
 | Move SFX (`music/battle_anims`, `music/moves`) | Showdown move SFX | © TPC (fan-ripped) | |
 | UI SFX (`music/ui_sfx`) | Project / mixed | see per-file where applicable | |
-| Background & theme music (`music/background`, `music/themes/Theme*.mp3`) | Project-supplied | Project-managed | `background1–3` = field BGM; `Theme1–4` = character-creation ("new adventure") theme (random pick). Re-encoded to 128 kbps for size; see hygiene notes. |
+| Background & theme music (`music/background`, `music/themes/Theme*.mp3`) | Project-supplied | Project-managed | `background1–3` = full field mixes. `short1–3` = two-minute excerpts encoded at 80 kbps. `Theme1–4` = character-creation themes. |
+| Story motifs (`music/story/first-partner.mp3`, `field-relay.mp3`, `the-portrait.mp3`) | Original score synthesized for North Road | Project-owned | Four-note theme in three arrangements, rendered to 32 kHz MP3. Combined encoded size is 55,428 bytes. |
 | Battle boss theme (`music/themes/boss_climax.mp3`) | "A Night of Dizzy Spells" — **Eric Skiff** (*Resistor Anthems*), via [Tuxemon](https://github.com/Tuxemon/Tuxemon) | **CC-BY 3.0** | Used for major story battles (gym leaders, rival, Elite Four / Victory Road, Champion, Mystery Figure); ordinary route/gym trainers keep the field BGM. Attribution required — keep this credit. |
 | Victory fanfare (`music/themes/victory.mp3`) | OpenGameArt "JRPG" collection (Yubatake / "yd"), via [Tuxemon](https://github.com/Tuxemon/Tuxemon) | **CC-BY 3.0** (verify per-track on OGA) | Played on a story battle win. Attribution required. |
 
@@ -46,6 +49,7 @@ If you are a rights holder and want something removed, please open an issue.
 | Dependency | License | Use |
 |---|---|---|
 | [@pkmn/dex](https://github.com/pkmn/ps) | MIT | Pokémon name → National Dex number mapping for sprite vendoring. |
+| [Gen 9 Random Battle sets](https://data.pkmn.cc/randbats/gen9randombattle.json) | Pokémon Showdown data via pkmn.cc | Local fallback for species without a suitable competitive build, including offline play. Refresh with `node scripts/fetch-randbats.mjs 9`. |
 | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | CC0 1.0 | Sprite source (compilation). |
 | [anime.js](https://github.com/juliangarnier/anime) (`vendor/anime.min.js`) | MIT | Tween engine for per-move battle animations. |
 | [tsParticles](https://github.com/tsparticles/tsparticles) slim bundle (`vendor/tsparticles.slim.min.js`) | MIT | Lazy-loaded ambient scene particles, particle weather, and celebration bursts (`window.FxParticles`). |

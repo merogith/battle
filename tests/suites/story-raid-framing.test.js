@@ -96,6 +96,29 @@ test('miniRaid2 is scaled exactly like miniRaid (not defaulted to 1×) — the b
 });
 
 // ── 3. Phase configs + lore cover every raid beat ──────────────────────────────
+test('authored raid stats survive the generic battle start and old saved stamps', () => {
+    const original = ST.sm;
+    try {
+        ST.sm = { ...original, active: true, badges: 6, storyDifficulty: 'normal' };
+        const { name, build } = ST.rollExtraRaidBossTeam(key('mewtwo', 'raid'))[0];
+        const expected = ST.buildPokemon(name, build);
+        const getStats = mon => [mon.maxHp, mon.currentHp, ...Object.values(mon.stats)];
+        for (const difficulty of ['veryeasy', 'easy', 'normal', 'hard', 'challenge']) {
+            ST.sm.storyDifficulty = difficulty;
+            const boss = ST.buildPokemon(name, { ...build, _storyStatMult: 1.4 });
+            W.applyFoeDifficultyScaling(boss);
+            assert.deepEqual(getStats(boss), getStats(expected), difficulty);
+        }
+        const wild = ST.buildPokemon('Pikachu', { i: 'None', m: ['Tackle'] });
+        const oldHP = wild.maxHp;
+        W.applyFoeDifficultyScaling(wild);
+        assert.ok(wild.maxHp > oldHP);
+        assert.equal(wild.item, null);
+    } finally {
+        ST.sm = original;
+    }
+});
+
 test('BOSS_CONFIGS has phase entries for all 24 raid beats', () => {
     const CFG = ST.BOSS_CONFIGS;
     for (const arc of ARCS) {
@@ -104,6 +127,8 @@ test('BOSS_CONFIGS has phase entries for all 24 raid beats', () => {
             assert.ok(cfg && Array.isArray(cfg.mechanics) && cfg.mechanics.length,
                 `${key(arc, suffix)} has a phase config`);
             assert.ok(cfg.mechanics[0].banner, `${key(arc, suffix)} phase banner present`);
+            assert.equal(new Set(cfg.mechanics.map(phase => phase.banner)).size, cfg.mechanics.length,
+                `${key(arc, suffix)} gives each phase its own title`);
         }
     }
 });
@@ -132,13 +157,12 @@ test('every raid roster key resolves a RAID_LORE line via the intro arc-stem pat
     }
 });
 
-test('raidNarratorLines distinguishes the full raid from the mini-raids', () => {
-    const full = ST.raidNarratorLines('extra.cubone.raid');
-    const mini = ST.raidNarratorLines('extra.cubone.miniRaid');
-    const mini2 = ST.raidNarratorLines('extra.cubone.miniRaid2');
-    assert.ok(Array.isArray(full) && full.length === 2);
-    assert.notDeepEqual(full, mini, 'full raid couplet differs from mini');
-    assert.deepEqual(mini, mini2, 'both mini-raids share the couplet');
+test('the raid narrator gives all three confrontations in each arc distinct lines', () => {
+    for (const arc of ARCS) {
+        const lines = SUFFIXES.map(tier => ST.raidNarratorLines(key(arc, tier)));
+        assert.ok(lines.every(couplet => couplet.length === 2 && couplet.every(Boolean)));
+        assert.equal(new Set(lines.map(couplet => couplet[0])).size, SUFFIXES.length, arc);
+    }
 });
 
 // ── 4. The intro mounts the Pokémon cinematic, NEVER the trainer VS-splash ──────
@@ -154,6 +178,8 @@ test('showRaidEncounterIntro mounts the cinematic shell, not the trainer VS-spla
         // The boss is named + framed by species, not by a trainer role label.
         assert.match(ov.textContent, /Marowak/, 'foe Pokémon is named on the card');
         assert.match(ov.textContent, /A REMEMBERED PLACE/, 'BOSS_CONFIGS banner shown');
+        assert.match(ov.textContent, /Solo raid · Final encounter/);
+        assert.match(ov.textContent, /Win to clear the road/);
         // Dismiss via the button → onDone fires + overlay is torn down.
         const btn = ov.querySelector('button');
         assert.ok(btn, 'cinematic has a continue button');

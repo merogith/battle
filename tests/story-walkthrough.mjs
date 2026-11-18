@@ -78,6 +78,7 @@ async function boot() {
       };
       window.HTMLMediaElement.prototype.play = () => Promise.resolve();
       window.HTMLMediaElement.prototype.pause = () => {};
+      window.HTMLMediaElement.prototype.load = () => {};
 
       const _animeFn = () => {
         const inst = { finished:Promise.resolve(), pause:()=>{}, restart:()=>{},
@@ -129,7 +130,7 @@ async function boot() {
             configurable: true,
             set(v) {
               this.setAttribute('src', v);
-              if (/^https?:\/\//.test(v)) {
+              if (/^https?:\/\//.test(v) || /(^|\/)vendor\//.test(v)) {
                 setTimeout(() => { if (typeof this.onerror === 'function') this.onerror(new Error('test stub')); }, 0);
               }
             },

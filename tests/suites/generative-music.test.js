@@ -62,9 +62,11 @@ test('MusicDirector maps screens to moods but stays dormant while the setting is
 });
 
 test('the file-based BGM + battle themes early-return while generative music is on', () => {
-  assert.match(SRC, /function _resumeOrStartBg\(\)\s*\{[\s\S]{0,400}if \(settings\.generativeMusic\) return;/,
+  const field = SRC.match(/function _resumeOrStartBg\(\) \{([\s\S]*?)\n {12}\}/)?.[1] ?? '';
+  const battle = SRC.match(/function _playBattleTheme\(mood\) \{([\s\S]*?)\n {12}\}/)?.[1] ?? '';
+  assert.match(field, /if \(settings\.generativeMusic\) return;/,
     'field BGM yields to the generative engine');
-  assert.match(SRC, /function _playBattleTheme\(mood\)\s*\{[\s\S]{0,400}if \(settings\.generativeMusic\)\s*\{ _battleMood = mood; return; \}/,
+  assert.match(battle, /if \(settings\.generativeMusic\)\s*\{ _battleMood = mood; return; \}/,
     'battle themes yield to the generative engine');
 });
 

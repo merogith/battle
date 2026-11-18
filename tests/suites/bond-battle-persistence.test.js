@@ -42,15 +42,14 @@ function plantBondedMon(id, species, nickname) {
     return slot;
 }
 
-// Simulate "a story battle just ended": point the module battle state's playerParty
-// at battle mons whose `buildData` is the SAME reference as each slot's build (the
-// engine invariant afterBattleReturn relies on), then run the return path.
+// Simulate "a story battle just ended" with the slot ID and cloned build that
+// launchBattle supplies for every fighter.
 function simulateBattleReturn(team) {
     ENG.state = {
         mode: 'story',
         playerParty: team
             .filter((s) => !s.isEgg)
-            .map((s) => ({ name: s.name, _baseName: s.name, buildData: s.build, currentHp: 5, maxHp: 30 })),
+            .map((s) => ({ name: s.name, _baseName: s.name, _storySlotId: s.id, buildData: { ...s.build }, currentHp: 5, maxHp: 30 })),
     };
     STORY.sm._crucibleBattleJustEnded = false;
     // afterBattleReturn also pokes the DOM / processNextEvent after the sync; that's
@@ -78,8 +77,8 @@ test('camp bonds + nickname + flags survive a story battle (single mon)', () => 
     assert.equal(after.caughtAt, 'Route 1', 'caughtAt kept');
 });
 
-test('two same-species mons keep their OWN bonds across a battle (build-identity match)', () => {
-    // Build-identity matching (buildData === slot.build) must disambiguate duplicates,
+test('two same-species mons keep their own bonds across a battle with cloned builds', () => {
+    // Slot ID must disambiguate duplicates,
     // so the lightly-bonded twin does not inherit the heavily-bonded twin's counters.
     const a = { id: 'm_twin_a', name: 'Voltorb', build: STORY.makeBuild('Voltorb') };
     const b = { id: 'm_twin_b', name: 'Voltorb', build: STORY.makeBuild('Voltorb') };
@@ -92,7 +91,7 @@ test('two same-species mons keep their OWN bonds across a battle (build-identity
     const bBefore = ST.bondCount(b, 'praise');
     assert.notEqual(aBefore, bBefore, 'twins start with distinct bond counts');
 
-    simulateBattleReturn(STORY.sm.team);
+    simulateBattleReturn([b, a]);
 
     const aAfter = STORY.sm.team.find((s) => s.id === 'm_twin_a');
     const bAfter = STORY.sm.team.find((s) => s.id === 'm_twin_b');
@@ -103,7 +102,7 @@ test('two same-species mons keep their OWN bonds across a battle (build-identity
 
 test('an egg in the party is preserved alongside the battling mon', () => {
     const slot = plantBondedMon('m_bond_egg', 'Magnemite', 'Sparky');
-    const egg = { id: 'm_egg', name: 'Egg', isEgg: true, build: STORY.makeBuild('Magnemite') };
+    const egg = W.StoryMode._makeEggSlot('Eevee', 2);
     STORY.sm.team = [slot, egg];
     STORY.sm.pcBox = [];
 
@@ -113,7 +112,7 @@ test('an egg in the party is preserved alongside the battling mon', () => {
 
     const ids = STORY.sm.team.map((s) => s.id);
     assert.ok(ids.includes('m_bond_egg'), 'battling mon kept');
-    assert.ok(ids.includes('m_egg'), 'egg kept across the rebuild');
+    assert.ok(ids.includes(egg.id), 'egg kept across the rebuild');
     const battledSlot = STORY.sm.team.find((s) => s.id === 'm_bond_egg');
     assert.deepEqual(
         PATHS.map((p) => ST.bondCount(battledSlot, p)),

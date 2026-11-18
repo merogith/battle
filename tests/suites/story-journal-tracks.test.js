@@ -40,14 +40,17 @@ test('journal renders all three tracks with labels', () => {
     assert.match(html, /Mystery · Cubone/, 'Extra/Mystery track must be labelled with its arc');
 });
 
-test('journal shows per-track progress counts and check marks', () => {
+test('journal shows track progress and only reveals discovered chapter titles', () => {
     plantRun();
     const html = ST.journalRenderHTML();
     // Each track block carries an "N / M chapters" count.
     assert.match(html, /\d+ \/ \d+ chapters/, 'a chapter progress count must render');
-    // A fired main chapter shows a check; an unfired one shows a bullet.
+    // A fired chapter is named and marked. Future titles stay hidden.
     assert.match(html, /✓/, 'a fired chapter shows a check mark');
-    assert.match(html, /•/, 'an unfired chapter shows a bullet');
+    const journal = W.document.createElement('div');
+    journal.innerHTML = html;
+    assert.ok(journal.textContent.includes(ST.STORY_SCENES['main.event1'].title));
+    assert.ok(!journal.textContent.includes(ST.STORY_SCENES['main.event3'].title));
 });
 
 test('HUD objective subline includes the Main story status', () => {

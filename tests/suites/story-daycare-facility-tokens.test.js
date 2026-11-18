@@ -51,9 +51,9 @@ test('the overlay header uses the registry egg icon, not a raw 🥚', () => {
 });
 
 test('the Drop Off button tracks the recover token', () => {
-  assert.ok(HTML.includes("color:${canDrop?'var(--fac-recover)':'#555'}"),
+  assert.match(HTML, /color:\$\{canDrop\?'var\(--fac-recover\)'/,
     'the Drop Off button colour must read the recover token');
-  assert.ok(HTML.includes("border:1px solid ${canDrop?'var(--fac-recover)':'#444'}"),
+  assert.match(HTML, /border:1px solid \$\{canDrop\?'var\(--fac-recover\)'/,
     'the Drop Off button border must read the recover token');
 });
 

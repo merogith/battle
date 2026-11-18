@@ -90,24 +90,24 @@ test('identity band mirrors the town name and badge pips', () => {
   assert.equal(earned.length, 3, 'earned pips match sm.badges');
 });
 
-// ── Casino canary + desktop gating (source-level) ────────────────────────────
-test('base .story-action-btn block intact, casino rule survives, V2 rules desktop-gated', () => {
+test('shared action styling remains available to the casino', () => {
   const src = fs.readFileSync(path.join(ROOT, 'battle.html'), 'utf8');
-  // Two pre-existing blocks: the desktop base rule and the phone font-size bump
-  // inside the portrait media query. V2 must not add or edit either.
+  // Both base rules remain available to screens that share the action-button markup.
   const baseRuleCount = (src.match(/^\s*\.story-action-btn \{/gm) || []).length;
   assert.equal(baseRuleCount, 2, '.story-action-btn blocks: base + phone sizing only (V2 adds none)');
   assert.ok(src.includes('border: 2px solid #4a4f5e; border-radius: 0 !important;'),
     'base block signature line intact');
   assert.ok(src.includes('#screen-story-casino .story-action-btn.casino {'), 'casino-scoped reuse rule survives');
-  assert.ok(src.includes('body:not(.is-mobile) #screen-story-city #story-action-buttons {'),
-    'V2 grid rule exists and is desktop-gated');
   assert.ok(!/^\s*#story-action-buttons \{/m.test(src), 'no ungated #story-action-buttons layout rule');
-  assert.ok(src.includes('body:not(.is-mobile) #screen-story-city #story-city-actions { display: contents !important; }'),
-    'display:contents promotion is desktop-gated');
-  // Mobile path byte-identical: the legacy inline layout still ships in markup.
-  assert.ok(src.includes('<div id="story-action-buttons" style="display:flex;flex-direction:column;gap:8px;"></div>'),
-    'mobile inline layout on #story-action-buttons unchanged');
-  assert.ok(src.includes('id="story-city-left" style="width:165px;'),
-    'mobile inline layout on #story-city-left unchanged');
+});
+
+test('the city places the objective ahead of dialogue and groups secondary controls under More', () => {
+  const city = W.document.getElementById('screen-story-city');
+  const content = city.querySelector('#story-city-actions');
+  assert.equal(content.firstElementChild.id, 'story-city-tips');
+  assert.ok(content.children[1].querySelector('#story-city-quote'));
+  assert.equal(content.lastElementChild.id, 'story-action-buttons');
+  assert.equal(city.querySelector('.story-hud-more summary').textContent, 'More');
+  assert.ok(city.querySelector('.story-hud-more .story-hud-abandon'));
+  assert.ok(city.querySelector('.story-hud-actions > .story-hud-savequit'));
 });

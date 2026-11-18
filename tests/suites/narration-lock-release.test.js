@@ -14,11 +14,19 @@ import assert from 'node:assert';
 import { loadEngine } from '../helpers/load-engine.js';
 
 let nt, window, document;
+const saves = new Map();
 
 before(async () => {
   ({ window } = await loadEngine());
   nt = window.__narrationTest;
   document = window.document;
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: key => saves.get(key) ?? null,
+      setItem: (key, value) => saves.set(key, String(value)),
+    },
+  });
   assert.ok(nt, 'window.__narrationTest must be exposed under the harness');
 });
 
@@ -27,6 +35,7 @@ before(async () => {
 beforeEach(() => {
   let guard = 0;
   do { nt.narrationForceClear(); } while ((nt.isNarrationLive() || nt.narrationQueueDepth() > 0) && ++guard < 50);
+  saves.clear();
   nt.sm = { storyChoices: {} };
 });
 
@@ -62,6 +71,8 @@ test('errand offer recovers after a wedged lock (was: silent no-op)', () => {
   assert.ok(acceptBtn, 'offer overlay actually mounted (the old bug queued it invisibly)');
 
   acceptBtn.click(); // "Take the job" → reply view
+  const savedRun = JSON.parse(saves.get('pbs_story_save'));
+  assert.equal(savedRun.errands.deliver_route_ledger.state, 'active', 'acceptance is persisted before the reply closes');
   const cont = document.querySelector('button[data-narr-continue="1"]');
   assert.ok(cont, 'reply view exposes Continue');
   cont.click();

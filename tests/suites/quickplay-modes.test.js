@@ -1,9 +1,9 @@
 // Quick Play & Multiplayer re-exposure (2026-06): Quick Battle / Gauntlet /
 // Local PvP / Online were hidden behind a "paused for development" panel. They
-// are now a permanent, always-visible mode grid under the headline Story Mode
-// button, with a Battle Options sheet (team source, bot difficulty, party size,
+// are available in the More ways to play disclosure under Story Mode, with a
+// Battle Options panel (team source, bot difficulty, party size,
 // gens, grades, gimmick toggles) and an instant Quick Battle path.
-// These tests lock in: (1) the modes are not hidden, (2) the gimmick toggles
+// These tests lock in: (1) the modes share a discoverable entrance, (2) the gimmick toggles
 // feed settings.mechanics, (3) startQuickBattle('random') builds a legal pve
 // battle with no species overlap, and (4) the 'draft' option routes to the
 // draft screen instead.
@@ -17,16 +17,20 @@ const eng = await loadEngine();
 const W = eng.window;
 const D = W.document;
 
-test('the mode grid is visible (not behind the old paused panel)', () => {
+test('More ways to play groups the secondary modes and options', () => {
+    const disclosure = D.getElementById('menu-more-play');
     const wrap = D.getElementById('menu-other-modes-wrap');
-    assert.ok(wrap, 'mode wrap exists');
-    assert.equal(wrap.hasAttribute('hidden'), false, 'mode wrap is not hidden');
+    assert.equal(disclosure.tagName, 'DETAILS');
+    assert.equal(disclosure.querySelector('summary').textContent.includes('More ways to play'), true);
+    assert.equal(wrap.closest('details'), disclosure);
+    assert.ok(disclosure.querySelector('#menu-customize-toggle'));
     // All five play modes are reachable as tiles; the leaderboard was demoted
     // to a link row (UX 2026-07 — it's a lookup, not a play mode).
     for (const cls of ['--pve', '--gaunt', '--pvp', '--onlineh', '--onlinej']) {
         assert.ok(D.querySelector('.menu-mode-btn' + cls), 'mode button ' + cls + ' present');
     }
     assert.ok(D.querySelector('.menu-lb-link'), 'leaderboard link row present');
+    assert.ok(disclosure.querySelector('.menu-competitive-entry'), 'competitive link present');
 });
 
 test('Battle Options exposes the new toggles', () => {

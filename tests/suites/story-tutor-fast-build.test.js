@@ -47,7 +47,7 @@ test('planner: a bare late-game mon gets moves + item + ability + nature + EV pa
 });
 
 test('gating: before the EV Trainer opens, EVs are focus-only (free), not a full spread', async () => {
-  await prime(2, { m: ['Tackle'], n: 'Hardy', a: 'Rough Skin' }, 999999);
+  await prime(2, { m: ['Tackle'], n: 'Hardy', a: 'Rough Skin', evTrainFocus: ['def'] }, 999999);
   const plan = ST.txBuildFastBuildPlan(0);
   const ev = plan.parts.find((p) => p.kind === 'evs');
   const evf = plan.parts.find((p) => p.kind === 'evfocus');
@@ -104,4 +104,24 @@ test('commit: applies everything, charges gold once, consumes the voucher, then 
   const plan2 = ST.txBuildFastBuildPlan(0);
   const changes2 = plan2.moveSteps.length + plan2.parts.filter((p) => p.kind !== 'evfocus').length;
   assert.ok(changes2 === 0, `optimized after apply (got ${changes2} residual changes)`);
+});
+
+test('Auto-Build retains the held item for an equipped Mega form', async () => {
+  await prime(7, { m: ['Tackle'], n: 'Hardy', a: 'Rough Skin', i: 'Garchompite', gimmick: 'MEGA' }, 999999);
+  const plan = ST.txBuildFastBuildPlan(0);
+  assert.equal(plan.parts.some(part => part.kind === 'item'), false);
+  w.showGameConfirm = async () => true;
+  await ST.tutorApplyFastBuild(0);
+  assert.equal(ST.sm.team[0].build.i, 'Garchompite');
+  assert.equal(ST.sm.team[0].build.gimmick, 'MEGA');
+});
+
+test('reviewing a build leaves the saved battle training and world seed intact', async () => {
+  await prime(7, { m: ['Tackle'], n: 'Hardy', evs: { atk: 240, spe: 200 } }, 2000);
+  const before = JSON.stringify(ST.sm.team[0].build);
+  const cursor = ST.sm._strngState;
+  ST.txBuildFastBuildPlan(0);
+  doc.querySelector('#story-mentor-team [data-fastbuild-open]').click();
+  assert.equal(JSON.stringify(ST.sm.team[0].build), before);
+  assert.equal(ST.sm._strngState, cursor);
 });

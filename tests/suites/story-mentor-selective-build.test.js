@@ -105,6 +105,8 @@ test('picker: a replacing move exposes a target dropdown of the current moves', 
   await prime(7, { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Splash'], n: 'Adamant', a: 'Rough Skin', evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 4, spe: 252 } }, 999999);
   const doc = w.document;
   doc.querySelector('#story-mentor-team [data-fastbuild-open]').click();
+  doc.querySelector('#story-mentor-team [data-fb-advanced]').click();
+  doc.querySelector('#story-mentor-team [data-fb-all]')?.click();
   await wait(60);
   const selects = doc.querySelectorAll('#story-mentor-team select[data-fb-move-target]');
   assert.ok(selects.length >= 1, 'at least one target dropdown rendered for a replacing move');
@@ -150,4 +152,75 @@ test('re-aim: an out-of-range override safely falls back to the planner slot', a
   const after = ST.sm.team[0].build.m;
   assert.ok(!after.includes(before[rep.slot]), 'the planner default slot was replaced (override ignored)');
   assert.equal(new Set(after).size, after.length, 'no duplicate moves');
+});
+
+test('the first Mentor action previews one affordable upgrade using an owned voucher', async () => {
+  await prime(7, { m: ['Tackle'], n: 'Hardy', a: 'Rough Skin' }, 0, { heartScale: 1 });
+  const host = doc.querySelector('#story-mentor-team');
+  const open = host.querySelector('[data-fastbuild-open]');
+  assert.match(open.textContent, /Teach .+ · 1 Heart Scale/);
+  open.click();
+  assert.equal(host.querySelectorAll('.tx-fb-row').length, 1);
+  assert.match(host.querySelector('[data-fb-heading]').textContent, /Suggested upgrade for Garchomp/);
+  assert.equal(host.querySelector('[data-fastbuild-apply]').disabled, false);
+  assert.match(host.querySelector('[data-fastbuild-apply]').textContent, /0G \+ 1 Heart Scale/);
+  assert.ok(host.querySelector('[data-fb-advanced]'), 'full build remains available');
+});
+
+test('two re-aimed suggestions cannot purchase a fifth move or consume vouchers', async () => {
+  await prime(7, { m: ['Tackle', 'Growl', 'Splash', 'Leer'], n: 'Adamant', a: 'Rough Skin' }, 40000, { heartScale: 1 });
+  const plan = ST.txBuildFastBuildPlan(0);
+  const replacing = plan.moveSteps.filter(step => step.replaces);
+  assert.ok(replacing.length >= 2);
+  const sel = ST.txFastBuildSel();
+  sel.sel = { heartScale: 1, moveTarget: { [replacing[0].slot]: 0, [replacing[1].slot]: 0 } };
+  const before = JSON.stringify(ST.sm.team[0].build);
+  let alert;
+  w.showGameAlert = value => { alert = value; };
+  w.showGameConfirm = async () => assert.fail('conflict must be rejected before confirmation');
+  await ST.tutorApplyFastBuild(0);
+  assert.match(alert, /same move/);
+  assert.equal(ST.sm.gold, 40000);
+  assert.equal(ST.sm.inventory.heartScale, 1);
+  assert.equal(JSON.stringify(ST.sm.team[0].build), before);
+});
+
+test('re-aiming away the last matching attack cannot strand a Z-Crystal', async () => {
+  await prime(7, { m: ['Tackle', 'Growl', 'Splash', 'Leer'], a: 'Rough Skin', i: 'Normalium Z', gimmick: 'ZMOVE' }, 40000);
+  const plan = ST.txBuildFastBuildPlan(0);
+  assert.equal(plan.parts.some(part => part.kind === 'item'), false);
+  assert.ok(plan.moveSteps.every(step => step.replaces !== 'Tackle'), 'the suggested build keeps the matching attack');
+  const replacement = plan.moveSteps.find(step => step.replaces && eng.engine.movesDB[step.move]?.type !== 'Normal');
+  assert.ok(replacement);
+  const sel = ST.txFastBuildSel();
+  sel.sel = {
+    moveTarget: { [replacement.slot]: 0 },
+    moveOff: Object.fromEntries(plan.moveSteps.map(step => [step.slot, step !== replacement])),
+    partOff: Object.fromEntries(plan.parts.map(part => [part.kind, true])),
+  };
+  let alert;
+  w.showGameAlert = message => { alert = message; };
+  w.showGameConfirm = async () => assert.fail('broken battle form must be rejected before confirmation');
+  await ST.tutorApplyFastBuild(0);
+  assert.match(alert, /battle form/);
+  assert.equal(ST.sm.team[0].build.m[0], 'Tackle');
+  assert.equal(ST.sm.gold, 40000);
+});
+
+test('the Mentor rejects payment that changed while confirmation was open', async () => {
+  await prime(7, { m: ['Tackle'], a: 'Rough Skin' }, 40000, { heartScale: 1 });
+  const plan = ST.txBuildFastBuildPlan(0);
+  const step = plan.moveSteps[0];
+  ST.txFastBuildSel().sel = {
+    heartScale: 1,
+    moveOff: Object.fromEntries(plan.moveSteps.map(move => [move.slot, move !== step])),
+    partOff: Object.fromEntries(plan.parts.map(part => [part.kind, true])),
+  };
+  let alert;
+  w.showGameAlert = message => { alert = message; };
+  w.showGameConfirm = async () => { delete ST.sm.inventory.heartScale; return true; };
+  await ST.tutorApplyFastBuild(0);
+  assert.match(alert, /payment changed/);
+  assert.deepEqual(ST.sm.team[0].build.m, ['Tackle']);
+  assert.equal(ST.sm.gold, 40000);
 });

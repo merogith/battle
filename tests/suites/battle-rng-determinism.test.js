@@ -7,9 +7,8 @@
 // the product). `performAction` and `parseMoveEffects` each take one `_fxRng`
 // accessor; a few out-of-scope sites call storyAwareRng()() inline.
 //
-// Damage roll / crit / accuracy / multi-hit count / variable-damage moves and AI
-// move-scoring are DELIBERATELY left on Math.random() pending a separate review,
-// so this guard is targeted (it does not assert "zero Math.random in the engine").
+// Timeline retries also use a dedicated encounter stream for accuracy,
+// critical hits and damage so animation callbacks cannot consume battle rolls.
 // Run: node --test tests/suites/battle-rng-determinism.test.js
 
 import { test } from 'node:test';
@@ -63,7 +62,9 @@ test('sleep duration + paralysis fizzle use the seeded RNG', () => {
   assert.match(SRC, /mon\.status === "PAR" && storyAwareRng\(\)\(\) < 0\.25/);
 });
 
-test('the deferred damage roll is still on Math.random (documents the review boundary)', () => {
-  // If this ever changes, the damage RNG was touched — that needs maintainer sign-off.
-  assert.match(SRC, /let rng = \(85 \+ Math\.floor\(Math\.random\(\) \* 16\)\) \/ 100;/);
+test('accuracy, critical hits, and damage rolls use the encounter RNG', () => {
+  const body = extractFn(SRC, 'async function performAction(');
+  assert.match(body, /if \(!neverMiss && _fxRng\(\) \* 100 > finalAcc\)/);
+  assert.match(body, /!armorBlocksCrit && _fxRng\(\) < critRate/);
+  assert.match(body, /let rng = \(85 \+ Math\.floor\(_fxRng\(\) \* 16\)\) \/ 100;/);
 });

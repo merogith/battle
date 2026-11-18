@@ -115,6 +115,15 @@ test('base species back sprites resolve to local when bundled', () => {
   assert.strictEqual(s.getSprite('Charizard', true, true), 'sprites/gen5ani-back-shiny/charizard.gif');
 });
 
+test('Own Tempo Rockruff uses its bundled artwork in every orientation', () => {
+  const { getSprite } = makeContext();
+  for (const shiny of [false, true]) for (const back of [false, true]) {
+    const art = getSprite('Rockruff-Dusk', shiny, back);
+    assert.strictEqual(art, getSprite('Rockruff', shiny, back));
+    assert.ok(fs.existsSync(path.join(ROOT, art)), art);
+  }
+});
+
 test('un-bundled back sprites fall through to Showdown URL', () => {
   // Species without a vendored back gif (e.g. newer-gen mons not in the local
   // manifest) must still fall through to the remote Showdown back sprite.

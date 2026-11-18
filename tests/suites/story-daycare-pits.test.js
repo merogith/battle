@@ -5,7 +5,7 @@
 //
 // Design under test (post-rewrite):
 //   • Daycare drop-off: parent is GONE for good; you receive a carryable EGG slot.
-//   • Egg: occupies a party/PC slot, never battles, hatches in place after Gym 7.
+//   • Egg: occupies a party/PC slot, never battles, hatches on a later city arrival.
 //   • Fight Club (story, one-time): requires a full stable of 6 fighters; lock a
 //     trio of 3, then a 5-round 3v3 gauntlet — each round the house fields six and
 //     counter-picks its best three vs your trio. A full sweep gives +2 ALL stats
@@ -108,7 +108,7 @@ test('Daycare first visit: must-see intro + free Grade-3 egg, no sacrifice', () 
   assert.equal(sm.daycare.freeEggClaimed, true, 'freeEggClaimed flag is set so the gift is one-time');
 });
 
-test('Daycare drop-off: parent is gone for good and you receive a carryable egg', () => {
+test('Daycare names the permanent trade and only exchanges the partner after confirmation', async () => {
   setupStory();
   const before = sm.team.length;
   SM.enterDaycare();
@@ -120,6 +120,15 @@ test('Daycare drop-off: parent is gone for good and you receive a carryable egg'
   const btn = Array.from(dropBtns).find(b => b.getAttribute('data-daycare-drop') === snorlaxId);
   assert.ok(btn, 'a droppable mon has a drop button');
   btn.click();
+  assert.match($('modal-game-confirm-text').textContent, /Snorlax.*permanently/);
+  assert.ok(sm.team.some(slot => slot.id === snorlaxId));
+  window._gameConfirmResult(false);
+  await Promise.resolve();
+  assert.ok(sm.team.some(slot => slot.id === snorlaxId));
+  assert.equal(sm.daycare.eggEventDone, false);
+  btn.click();
+  window._gameConfirmResult(true);
+  await Promise.resolve();
   // Parent removed and NOT replaced by a returning partner — replaced by an egg.
   assert.equal(sm.team.length, before, 'team size unchanged: parent out, egg in');
   assert.equal(sm.daycare.eggEventDone, true, 'egg event marked done (one-time)');
@@ -152,10 +161,41 @@ test('Egg hatches at laid-city + 2, not before', async () => {
   const hatched = await SM._hatchEligibleEggs();
   assert.ok(hatched.includes('Eevee'), 'egg laid back at city 0 hatches mid-game');
   assert.ok(!hatched.includes('Pikachu'), 'far-future egg has not hatched');
-  const slot = sm.team.find(s => s.id === due.id);
-  assert.ok(slot && !slot.isEgg, 'the due egg slot is now a real mon (isEgg cleared)');
+  const slot = sm.pcBox.find(s => s.id === due.id);
+  assert.ok(slot && !slot.isEgg, 'overflow hatches safely in the PC (isEgg cleared)');
   assert.ok(slot.build, 'hatchling has a build');
   assert.equal(slot.name, 'Eevee', 'hatchling species matches');
+});
+
+test('a ready egg waits when storage is full and hatches when a spot opens', async () => {
+  setupStory();
+  sm.badges = 2;
+  sm.team = freshTeam(['Pikachu', 'Pidgey', 'Geodude', 'Abra']);
+  const egg = SM._makeEggSlot('Eevee', 0);
+  sm.team.push(egg);
+  sm.pcBox = freshTeam(Array(30).fill('Rattata'));
+  assert.equal((await SM._hatchEligibleEggs()).length, 0);
+  assert.equal(SM._countFighters(), 4);
+  assert.ok(egg.isEgg);
+  sm.pcBox.pop();
+  assert.ok((await SM._hatchEligibleEggs()).includes('Eevee'));
+  assert.equal(SM._countFighters(), 4);
+  assert.equal(sm.pcBox.length, 30);
+  assert.equal(sm.pcBox[29], egg);
+  assert.ok(!egg.isEgg);
+});
+
+test('a City 8 egg can hatch at the League', async () => {
+  setupStory();
+  const timeline = window.__storyTest.STORY_EVENTS_RAW;
+  sm.eventIndex = timeline.findIndex(row => row[1] === 'City' && row[2] === 'City8');
+  const egg = SM._makeEggSlot('Pikachu', 8);
+  sm.pcBox.push(egg);
+  assert.equal((await SM._hatchEligibleEggs()).length, 0);
+  sm.eventIndex = timeline.findIndex(row => row[1] === 'City' && row[2] === 'City9');
+  assert.ok((await SM._hatchEligibleEggs()).includes('Pikachu'));
+  assert.equal(sm.pcBox[0], egg);
+  assert.ok(!egg.isEgg);
 });
 
 test('Egg counts as a slot but not as a fighter; can be deposited to PC', () => {
@@ -227,6 +267,14 @@ test('Fight Club forfeit kills all three fighters (you do not leave whole)', asy
   const forfeit = dov.querySelector('#pits-defeat-forfeit');
   assert.ok(forfeit, 'crawl-home button present');
   forfeit.click();
+  assert.match($('modal-game-confirm-text').textContent, /Garchomp, Gengar, Lapras.*permanently/);
+  window._gameConfirmResult(false);
+  await Promise.resolve();
+  assert.equal(sm.pits._teamBeforePit.length + sm.pcBox.length, totalBefore, 'cancel preserves the original team');
+  assert.deepEqual(Array.from(sm.pits._activePickIds), Array.from(ids), 'cancel leaves the bracket available to retry');
+  forfeit.click();
+  window._gameConfirmResult(true);
+  await Promise.resolve();
   assert.equal(sm.team.length + sm.pcBox.length, totalBefore - 3, 'all three fighters died');
   const anyBracketLeft = [...sm.team, ...sm.pcBox].some(s => ids.includes(s.id));
   assert.equal(anyBracketLeft, false, 'none of the three survive (team or PC)');

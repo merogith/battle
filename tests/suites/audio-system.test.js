@@ -60,6 +60,7 @@ function makeFakeAudio() {
     };
     FakeAudio.prototype.pause = function () { this.paused = true; };
     FakeAudio.prototype.load = function () {};
+    FakeAudio.prototype.removeAttribute = function (name) { if (name === 'src') this.src = ''; };
     FakeAudio.prototype.addEventListener = function (ev, fn) { if (ev === 'loadedmetadata') { try { fn(); } catch (e) {} } };
     FakeAudio.prototype.removeEventListener = function () {};
     return FakeAudio;
@@ -107,6 +108,41 @@ test('a comfortable resume point is honored', () => {
     const field = built.find(a => a.src === C.BACKGROUND_TRACKS[0]);
     assert.ok(field, 'a field element was created');
     assert.equal(field.currentTime, 50, 'mid-track resume seeks to the saved point');
+});
+
+test('field playback requests one short track and waits until it ends to load another', () => {
+    built.length = 0;
+    T.startBgTrack(0, 0);
+    assert.equal(built.length, 1);
+    const first = built[0];
+    assert.equal(first.src, 'music/background/short1.mp3');
+    assert.equal(first.preload, 'metadata');
+    first.onended();
+    assert.equal(built.length, 2);
+    assert.equal(first.src, '');
+    assert.match(built[1].src, /music\/background\/short[23]\.mp3$/);
+});
+
+test('opting into full mixes restores the old playlist position without changing the short-track save', () => {
+    const original = Object.getOwnPropertyDescriptor(W, 'localStorage');
+    const storage = new Map([['pbs_bg_state', JSON.stringify({ src: 'music/background/background2.mp3', time: 40 })]]);
+    Object.defineProperty(W, 'localStorage', { configurable: true, value: {
+        getItem: key => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: key => storage.delete(key),
+    } });
+    try {
+        T.startBgTrack(0, 24);
+        AS.setFieldMusicMode('full');
+        assert.equal(T.state().bgAudio.src, 'music/background/background2.mp3');
+        assert.equal(T.state().bgAudio.currentTime, 40);
+        assert.equal(JSON.parse(storage.get('pbs_settings')).fieldMusicMode, 'full');
+        AS.setFieldMusicMode('short');
+        assert.equal(T.state().bgAudio.src, 'music/background/short1.mp3');
+        assert.equal(T.state().bgAudio.currentTime, 24);
+    } finally {
+        Object.defineProperty(W, 'localStorage', original);
+    }
 });
 
 test('two back-to-back playBattleTheme() calls start ONE theme (re-entrancy guard)', () => {
@@ -194,4 +230,120 @@ test('SFX bus honors the voice cap', () => {
     const live = made.filter(Boolean).length;
     assert.equal(live, room, `capped at ${C.SFX_MAX_VOICES} total (room was ${room})`);
     assert.equal(T.state().sfxActive, C.SFX_MAX_VOICES, 'pool is at the cap');
+});
+
+test('switching soundtracks keeps one music layer and carries a boss mood into its fight', () => {
+    W.applySettingSwitch('generativeMusic', false);
+    T.startBgTrack(0, 0);
+    const field = T.state().bgAudio;
+    W.applySettingSwitch('generativeMusic', true);
+    assert.equal(field.paused, true);
+    assert.equal(field.src, '');
+
+    built.length = 0;
+    T.playIntroTheme();
+    T.playBattleTheme('boss');
+    W.MusicDirector.setScreen('screen-battle');
+    assert.equal(W.ChiptuneEngine.currentMood(), 'boss');
+    T.endBattleTheme(true);
+    assert.equal(W.ChiptuneEngine.currentMood(), 'victory');
+    assert.equal(built.length, 0, 'generated mode loads neither intro audio nor the victory file');
+
+    T.playBattleTheme('boss');
+    W.applySettingSwitch('generativeMusic', false);
+    assert.match(T.state().battleAudio.src, /boss_climax/);
+    T.endBattleTheme(false);
+    AS.stopIntroTheme();
+});
+
+test('changing music volume during a boss entrance lets the field fade finish', async () => {
+    T.startBgTrack(0, 0);
+    const field = T.state().bgAudio;
+    const before = AS.getMusicVolume();
+    await Promise.resolve();
+    T.playBattleTheme('boss');
+    AS.setMusicVolume(0.2);
+    await new Promise(resolve => setTimeout(resolve, C.MUSIC_FADE_MS + 100));
+    assert.equal(field.paused, true);
+    assert.ok(Math.abs(T.state().battleAudio.volume - 0.2) < 1e-6);
+    T.endBattleTheme(false);
+    AS.setMusicVolume(before);
+});
+
+test('the story motif pauses file music, honors its volume and releases the same position', () => {
+    W.applySettingSwitch('generativeMusic', false);
+    W.applySettingSwitch('musicEnabled', true);
+    const previous = AS.getMusicVolume();
+    T.startBgTrack(0, 48);
+    const field = T.state().bgAudio;
+    try {
+        const stop = AS.playStoryMotif('partner');
+        const cue = builtWith('first-partner.mp3').at(-1);
+        assert.equal(AS.storyMotifPlaying(), true);
+        assert.equal(field.paused, true);
+        T.resumeOrStartBg();
+        assert.equal(field.paused, true, 'Resume does not layer field music underneath the motif');
+        AS.setMusicVolume(0.24);
+        assert.ok(Math.abs(cue.volume - 0.192) < 1e-6);
+        stop();
+        assert.equal(cue.paused, true);
+        assert.equal(cue.src, '');
+        assert.equal(field.paused, false);
+        assert.equal(field.currentTime, 48);
+    } finally {
+        AS.setMusicVolume(previous);
+    }
+});
+
+test('the story motif suppresses generated music, and music mute releases the motif', () => {
+    W.applySettingSwitch('generativeMusic', true);
+    W.MusicDirector.setScreen('screen-menu');
+    try {
+        assert.equal(W.ChiptuneEngine.currentMood(), 'menu');
+        const stop = AS.playStoryMotif('gallery');
+        assert.equal(W.ChiptuneEngine.currentMood(), null, 'The motif is the only music source');
+        const cue = builtWith('the-portrait.mp3').at(-1);
+        W.applySettingSwitch('musicEnabled', false);
+        assert.equal(cue.src, '');
+        assert.equal(AS.storyMotifPlaying(), false);
+        assert.equal(AS.playStoryMotif('relay'), null);
+        W.applySettingSwitch('musicEnabled', true);
+        assert.equal(W.ChiptuneEngine.currentMood(), 'menu');
+        stop();
+        assert.equal(AS.storyMotifPlaying(), false);
+    } finally {
+        W.applySettingSwitch('musicEnabled', true);
+        W.applySettingSwitch('generativeMusic', false);
+    }
+});
+
+test('turning off effects interrupts live cries and cancels already queued cues', async () => {
+    // Clear the fake voices left by the capacity check.
+    W.applySettingSwitch('soundEnabled', false);
+    W.applySettingSwitch('soundEnabled', true);
+    built.length = 0;
+    AS.playFaintCry('Pikachu');
+    const cry = builtWith('pikachu.mp3')[0];
+    assert.ok(cry, 'the cry is playing before mute');
+    W.applySettingSwitch('soundEnabled', false);
+    assert.equal(cry.paused, true);
+    assert.equal(T.state().sfxActive, 0);
+    W.applySettingSwitch('soundEnabled', true);
+    await new Promise(resolve => setTimeout(resolve, 330));
+    assert.equal(builtWith('faint.wav').length, 0, 'the previous faint cue did not survive mute');
+});
+
+test('a rejected effect returns its voice to the live pool', async () => {
+    const Audio = W.Audio;
+    const starting = T.state().sfxActive;
+    try {
+        W.Audio = class BlockedAudio extends Audio {
+            play() { return Promise.reject(new Error('playback denied')); }
+        };
+        assert.ok(T.playOneShot('music/ui_sfx/rejected.wav', 0.4));
+        await Promise.resolve();
+        assert.equal(T.state().sfxActive, starting);
+    } finally {
+        W.Audio = Audio;
+    }
 });

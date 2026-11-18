@@ -6,6 +6,7 @@
     'use strict';
 
     const STORAGE_KEY = 'pbs_online_display_name';
+    const ENGINE_PROTOCOL = 1;
 
     let client = null;
     let roomId = null;
@@ -14,6 +15,7 @@
     let channel = null;
     let lastRemoteSeq = 0;
     let hostStartedBattle = false;
+    let nativeRoomReady = false;
     let pushDataQueue = Promise.resolve();
     let remoteRowQueue = Promise.resolve();
     let hostResolving = false;
@@ -22,11 +24,15 @@
     // we already advanced past (a re-delivered row, or a timeout racing a real
     // pick). Reset to 0 at battle start (afterHostStartBattle) and in dispose().
     let hostLastResolvedTurn = 0;
+    let hostPendingPublication = null;
+    let hostPublicationTimer = null;
+    const HOST_PUBLISH_RETRY_MS = [500, 1500, 3000];
     // Per-room caller token (ISSUE-020). Host receives this from
     // try_create_pvp_room; guest receives a different one from
     // try_join_pvp_room. All subsequent writes go through pvp_push_data
     // which validates the token server-side. Cleared in dispose().
     let roomToken = null;
+    const inRoom = (id, token) => roomId === id && roomToken === token;
 
     // Supabase JS SDK is loaded lazily (only when Online PvP is actually entered) so the
     // offline/first-paint boot path carries no third-party script. Memoized: concurrent callers
@@ -84,6 +90,50 @@
 
     function deepClone(o) {
         return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
+    }
+
+    function supportsNativeEngine(room) {
+        return room.host_engine_protocol === ENGINE_PROTOCOL && room.guest_engine_protocol === ENGINE_PROTOCOL;
+    }
+
+    function nativeChoiceKey(player) {
+        return player === 1 ? 'native_p1_choice' : 'native_p2_choice';
+    }
+
+    function readNativeChoice(room, player) {
+        const pick = room[nativeChoiceKey(player)];
+        if (!pick || pick.revision !== room.battle.pending_turn || pick.round !== (room.round_number || 1)) return null;
+        return pick.action ? pick : null;
+    }
+
+    // Native choices are written independently of the authoritative board and
+    // carry its revision. A late request cannot overwrite a newer board.
+    function withNativeChoices(room) {
+        if (room.battle?.engine !== 'showdown') return room;
+        const p1 = readNativeChoice(room, 1);
+        const p2 = readNativeChoice(room, 2);
+        return {
+            ...room,
+            battle: {
+                ...room.battle,
+                p1_pick: p1?.action || null,
+                p2_pick: p2?.action || null,
+                p1_gimmick: p1?.gimmick || null,
+                p2_gimmick: p2?.gimmick || null
+            }
+        };
+    }
+
+    function nativeRequest(state, player) {
+        return state.battleEngine === 'showdown' ? state.nativeRequests?.[player - 1] : null;
+    }
+
+    function encodeAction(action) {
+        return {
+            moveIndex: action.moveIndex,
+            switchIndex: action.switchIndex,
+            aiMoveName: action.aiMove?.name || null
+        };
     }
 
     /** Keys copied from host settings into match contract (guest must not use local settings). */
@@ -175,6 +225,14 @@
             residualPhaseComplete: !!state.residualPhaseComplete,
             currentPlayer: (state.currentPlayer === 2 ? 2 : 1)
         };
+        if (state.battleEngine === 'showdown') {
+            snap.battleEngine = 'showdown';
+            snap.engineProtocol = ENGINE_PROTOCOL;
+            snap.nativeRequests = state.nativeRequests || [null, null];
+            snap.nativeWinner = state.nativeWinner ?? null;
+            snap.onlineNativeRevision = state._onlineNativeRevision;
+            snap.onlineNativeRound = state._onlineNativeRound;
+        }
         return JSON.stringify(snap);
     }
 
@@ -186,6 +244,16 @@
             console.warn('[OnlinePvP] applyBattleSnapshot invalid JSON', e);
             return false;
         }
+        if (!o || typeof o !== 'object') return false;
+        if (o.battleEngine === 'showdown' &&
+            (o.engineProtocol !== ENGINE_PROTOCOL || !Array.isArray(o.nativeRequests) || o.nativeRequests.length !== 2)) {
+            return false;
+        }
+        state.battleEngine = o.battleEngine === 'showdown' ? 'showdown' : undefined;
+        state.nativeRequests = state.battleEngine === 'showdown' ? o.nativeRequests : null;
+        state.nativeWinner = state.battleEngine === 'showdown' ? o.nativeWinner : null;
+        state._onlineNativeRevision = o.onlineNativeRevision;
+        state._onlineNativeRound = o.onlineNativeRound;
         state.turnNumber = o.turnNumber;
         state.isOver = o.isOver;
         state.isLocked = o.isLocked;
@@ -340,6 +408,22 @@
         isHost() {
             return role === 1;
         },
+        isSettlingTurn() {
+            return role === 1 && (hostResolving || !!hostPendingPublication);
+        },
+        canUseNativeBattle() {
+            return nativeRoomReady;
+        },
+        applyNativeChoiceState(state, room) {
+            const battle = room.battle;
+            if (state.battleEngine !== 'showdown' || battle?.engine !== 'showdown' || state.isOver ||
+                state._onlineNativeRevision !== battle.pending_turn || state._onlineNativeRound !== (room.round_number || 1)) return;
+            const next = [1, 2].find(player => nativeRequest(state, player) && !readNativeChoice(room, player)) || 0;
+            if (next === state.currentPlayer) return;
+            state.currentPlayer = next;
+            global.refreshNativeBattleUi?.();
+            global.syncBattleActiveHighlight?.();
+        },
         getRole() {
             return role;
         },
@@ -349,6 +433,7 @@
         myTurn(state) {
             if (!this.isActive() || !state || state.mode !== 'pvp') return true;
             const cp = state.currentPlayer;
+            if (state.battleEngine === 'showdown') return cp === role && !!nativeRequest(state, role);
             return (cp === 1 && role === 1) || (cp === 2 && role === 2);
         },
         waitingOnOpponent(state) {
@@ -356,30 +441,39 @@
         },
 
         // Lazily inject the Supabase UMD bundle. Returns Promise<boolean> (true once
-        // global.supabase.createClient is available). Call before any room create/join.
+        // global.supabase.createClient is available). Shared by rooms and leaderboard.
         ensureSdk() {
-            if (global.supabase && global.supabase.createClient) return Promise.resolve(true);
+            if (typeof global.supabase?.createClient === 'function') return Promise.resolve(true);
             if (_sdkLoadPromise) return _sdkLoadPromise;
-            _sdkLoadPromise = new Promise((resolve) => {
-                try {
-                    const doc = global.document;
-                    if (!doc || !doc.head) { resolve(false); return; }
-                    const s = doc.createElement('script');
-                    s.src = SUPABASE_SDK_URL;
-                    s.async = true;
-                    s.onload = () => {
-                        const ok = !!(global.supabase && global.supabase.createClient);
-                        if (!ok) _sdkLoadPromise = null;
-                        resolve(ok);
-                    };
-                    s.onerror = () => { _sdkLoadPromise = null; resolve(false); };
-                    doc.head.appendChild(s);
-                } catch (e) {
-                    _sdkLoadPromise = null;
-                    resolve(false);
+            const doc = global.document;
+            if (!doc?.head) return Promise.resolve(false);
+            _sdkLoadPromise = new Promise(resolve => {
+                const script = doc.createElement('script');
+                script.src = SUPABASE_SDK_URL;
+                script.async = true;
+                const timeout = global.setTimeout(() => finish(false), 10000);
+                function finish(ok) {
+                    global.clearTimeout(timeout);
+                    script.onload = null;
+                    script.onerror = null;
+                    if (!ok) script.remove();
+                    resolve(ok);
                 }
-            });
+                script.onload = () => finish(typeof global.supabase?.createClient === 'function');
+                script.onerror = () => finish(false);
+                try {
+                    doc.head.appendChild(script);
+                } catch (_) {
+                    finish(false);
+                }
+            }).finally(() => { _sdkLoadPromise = null; });
             return _sdkLoadPromise;
+        },
+
+        async getServiceClient() {
+            if (!configured()) throw new Error('The online service is unavailable.');
+            if (!await this.ensureSdk()) throw new Error('Could not load online services. Check your connection and try again.');
+            return getClient();
         },
 
         applyHostMatchOptions(settings) {
@@ -416,6 +510,7 @@
             const data = {
                 seq,
                 phase: 'draft',
+                host_engine_protocol: ENGINE_PROTOCOL,
                 match_options: matchOptions,
                 enabledGens: eg,
                 minGen,
@@ -464,6 +559,7 @@
             roomId = rpcRes.id;
             roomToken = rpcRes.host_token;
             role = 1;
+            nativeRoomReady = false;
             lastRemoteSeq = seq;
             this._subscribe();
             return { roomId, code: roomCode };
@@ -493,6 +589,16 @@
             // subsequent pvp_push_data calls. The token is the only secret
             // bound to the guest's identity in this room.
             roomToken = jr.guest_token || null;
+            if (prev.host_engine_protocol === ENGINE_PROTOCOL) {
+                try {
+                    await this.pushData({ guest_engine_protocol: ENGINE_PROTOCOL });
+                    nativeRoomReady = true;
+                } catch (error) {
+                    // The join succeeded even if the optional handshake did not.
+                    nativeRoomReady = false;
+                    console.warn('[OnlinePvP] engine negotiation', error);
+                }
+            }
             lastRemoteSeq = (jr.data && jr.data.seq) != null ? jr.data.seq : lastRemoteSeq;
             this._subscribe();
             const { data: rowFresh, error: freshErr } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', roomId).single();
@@ -533,12 +639,15 @@
                 try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
                 channel = null;
             }
+            const subscribedRoom = roomId;
+            const subscribedToken = roomToken;
             let hadDrop = false;
             channel = sb.channel('room-' + roomId)
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pvp_rooms', filter: 'id=eq.' + roomId }, (payload) => {
-                    this._onRemoteRow(payload.new);
+                    if (inRoom(subscribedRoom, subscribedToken)) this._onRemoteRow(payload.new);
                 })
                 .subscribe((status, err) => {
+                    if (!inRoom(subscribedRoom, subscribedToken)) return;
                     if (status === 'SUBSCRIBED') {
                         // postgres_changes only streams UPDATEs from now on — any row
                         // change during an outage was missed, and because _onRemoteRow
@@ -564,9 +673,18 @@
         async _resyncFromHead() {
             const sb = getClient();
             if (!sb || !roomId) return;
+            const id = roomId;
+            const token = roomToken;
             try {
-                const { data: row, error } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', roomId).single();
+                const { data: row, error } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', id).single();
+                if (!inRoom(id, token)) return;
                 if (error || !row) { console.warn('[OnlinePvP] resync fetch', error); return; }
+                if (hostPendingPublication) {
+                    const alreadyPublished = (row.data?.battle?.resolved_turn || 0) >= hostPendingPublication.patch.battle.resolved_turn;
+                    await this._publishHostTurn(row.data);
+                    if (!alreadyPublished) return; // do not apply the pre-publication row over the local turn
+                }
+                if (!inRoom(id, token)) return;
                 this._onRemoteRow(row);
             } catch (e) {
                 console.warn('[OnlinePvP] resync', e);
@@ -598,8 +716,12 @@
             pushDataQueue = Promise.resolve();
             remoteRowQueue = Promise.resolve();
             hostStartedBattle = false;
+            nativeRoomReady = false;
             hostResolving = false;
             hostLastResolvedTurn = 0;
+            if (hostPublicationTimer !== null) global.clearTimeout(hostPublicationTimer);
+            hostPublicationTimer = null;
+            hostPendingPublication = null;
             try {
                 global.__hostOnlineBattleStarted = false;
                 global.__guestLastResolved = 0;
@@ -620,7 +742,9 @@
         pushData(patch, existingData) {
             const sb = getClient();
             if (!sb || !roomId) return Promise.resolve();
-            const op = pushDataQueue.then(() => this._pushDataImpl(patch, existingData));
+            const id = roomId;
+            const token = roomToken;
+            const op = pushDataQueue.then(() => inRoom(id, token) && this._pushDataImpl(patch, existingData));
             pushDataQueue = op.catch((e) => {
                 console.warn('[OnlinePvP] pushData queue', e);
             });
@@ -659,11 +783,15 @@
 
         _onRemoteRow(newRow) {
             if (!newRow) return;
+            const id = roomId;
+            const token = roomToken;
             remoteRowQueue = remoteRowQueue
                 .then(async () => {
-                    const d = newRow.data || {};
+                    if (!inRoom(id, token)) return;
+                    const d = withNativeChoices(newRow.data || {});
                     const incoming = d.seq || 0;
                     if (incoming <= lastRemoteSeq) return;
+                    nativeRoomReady = supportsNativeEngine(d);
                     if (typeof global.onOnlineRoomData === 'function') {
                         // Race the handler against a 10s timeout so a hung
                         // promise from the UI layer can't freeze every future
@@ -671,10 +799,14 @@
                         // the handler succeeds; pre-fix a thrown handler
                         // permanently skipped the sequence number.
                         const handlerP = Promise.resolve(global.onOnlineRoomData(d, { role, roomCode }));
-                        const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error('onOnlineRoomData timeout')), 10000));
-                        await Promise.race([handlerP, timeoutP]);
+                        let timeout;
+                        const timeoutP = new Promise((_, rej) => {
+                            timeout = global.setTimeout(() => rej(new Error('onOnlineRoomData timeout')), 10000);
+                        });
+                        try { await Promise.race([handlerP, timeoutP]); }
+                        finally { global.clearTimeout(timeout); }
                     }
-                    lastRemoteSeq = incoming || lastRemoteSeq + 1;
+                    if (inRoom(id, token)) lastRemoteSeq = incoming || lastRemoteSeq + 1;
                 })
                 .catch((e) => console.warn('[OnlinePvP] onOnlineRoomData', e));
         },
@@ -700,19 +832,80 @@
             await this.pushDraftState(state);
         },
 
+        async _handleNativePvPTurn(state, action) {
+            if (!this.myTurn(state) || state.isOver || state.isLocked || !state._onlineNativeRevision) return;
+            const id = roomId;
+            const token = roomToken;
+            const player = role;
+            const revision = state._onlineNativeRevision;
+            const round = state._onlineNativeRound;
+            if (player === 1 && hostPendingPublication && !await this._publishHostTurn()) {
+                if (inRoom(id, token)) global.refreshNativeBattleUi?.();
+                return;
+            }
+            if (!inRoom(id, token) || !this.myTurn(state) || revision !== state._onlineNativeRevision ||
+                round !== state._onlineNativeRound) return;
+            const next = player === 1 && nativeRequest(state, 2) ? 2 : 0;
+            const choice = {
+                revision,
+                round,
+                action: encodeAction(action),
+                gimmick: deepClone((player === 1 ? state.p1GimmickIntent : state.p2GimmickIntent) || null)
+            };
+            state.currentPlayer = next;
+            const stillPicking = () => inRoom(id, token) && state._onlineNativeRevision === revision &&
+                state._onlineNativeRound === round && state.currentPlayer === next;
+            try {
+                const { data: row, error } = await getClient().from('pvp_rooms').select('data').eq('id', id).single();
+                if (!stillPicking()) return;
+                if (error || !row?.data) throw error || new Error('Room is unavailable');
+                const room = row.data;
+                if (room.battle?.engine !== 'showdown' || room.battle.pending_turn !== revision ||
+                    (room.round_number || 1) !== round) {
+                    state.currentPlayer = player;
+                    this._onRemoteRow(row);
+                    return;
+                }
+                if (!readNativeChoice(room, player)) {
+                    const patch = { [nativeChoiceKey(player)]: choice };
+                    if (next === 2) {
+                        patch.battle_turn_deadline_iso = global.computeOnlineBattleTurnDeadlineIso?.(state) || null;
+                    }
+                    await this.pushData(patch);
+                }
+                if (stillPicking()) {
+                    const moveMenu = global.document?.getElementById('move-menu');
+                    const cmdMenu = global.document?.getElementById('command-menu');
+                    moveMenu?.classList.add('hidden');
+                    cmdMenu?.classList.remove('hidden');
+                    global.refreshNativeBattleUi?.();
+                    global.syncBattleActiveHighlight?.();
+                }
+            } catch (error) {
+                if (!stillPicking()) return;
+                state.currentPlayer = player;
+                this._restoreTurnUiAfterSendFailure();
+                global.refreshNativeBattleUi?.();
+                console.warn('[OnlinePvP] native choice', error);
+            }
+        },
+
         async handlePvPPlayTurn(state, action, settings) {
             const sb = getClient();
             if (!sb || !roomId) return;
+            if (state.battleEngine === 'showdown') return this._handleNativePvPTurn(state, action);
+            const id = roomId;
+            const token = roomToken;
             const myR = role;
+            if (myR === 1 && hostPendingPublication && !await this._publishHostTurn()) {
+                if (inRoom(id, token)) this._restoreTurnUiAfterSendFailure();
+                return;
+            }
+            if (!inRoom(id, token)) return;
             const cp = state.currentPlayer;
             if (cp === 1 && myR !== 1) return;
             if (cp === 2 && myR !== 2) return;
 
-            const ser = (a) => ({
-                moveIndex: a.moveIndex,
-                switchIndex: a.switchIndex,
-                aiMoveName: a.aiMove && a.aiMove.name ? a.aiMove.name : null
-            });
             const g1 = state.p1GimmickIntent ? deepClone(state.p1GimmickIntent) : null;
             const g2 = state.p2GimmickIntent ? deepClone(state.p2GimmickIntent) : null;
 
@@ -721,7 +914,8 @@
                 const prevPlayer = state.currentPlayer;
                 state.p1Action = action;
                 state.currentPlayer = 2;
-                const { data: row, error: rowErr } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
+                const { data: row, error: rowErr } = await sb.from('pvp_rooms').select('data').eq('id', id).single();
+                if (!inRoom(id, token)) return;
                 if (rowErr || !row || row.data == null) {
                     // Roll the local turn back so the player can retry instead of being
                     // stranded mid-turn with nothing sent to the opponent.
@@ -733,7 +927,7 @@
                 }
                 const prev = row.data;
                 const battle = Object.assign({}, prev.battle || {}, {
-                    p1_pick: ser(action),
+                    p1_pick: encodeAction(action),
                     p1_gimmick: g1,
                     p2_pick: prev.battle && prev.battle.p2_pick,
                     p2_gimmick: prev.battle && prev.battle.p2_gimmick
@@ -742,12 +936,14 @@
                 try {
                     await this.pushData({ battle, battle_turn_deadline_iso: deadlineIso }, prev);
                 } catch (e) {
+                    if (!inRoom(id, token)) return;
                     state.p1Action = prevAction;
                     state.currentPlayer = prevPlayer;
                     this._restoreTurnUiAfterSendFailure();
                     console.warn('[OnlinePvP] handlePvPPlayTurn (P1) push', e);
                     return;
                 }
+                if (!inRoom(id, token)) return;
                 if (typeof global.logMsg === 'function') global.logMsg("Waiting for opponent…", 'info');
                 const moveMenu = global.document && global.document.getElementById('move-menu');
                 const cmdMenu = global.document && global.document.getElementById('command-menu');
@@ -761,7 +957,8 @@
             const prevPlayer2 = state.currentPlayer;
             state.p2Action = action;
             state.currentPlayer = 1;
-            const { data: row2, error: row2Err } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
+            const { data: row2, error: row2Err } = await sb.from('pvp_rooms').select('data').eq('id', id).single();
+            if (!inRoom(id, token)) return;
             if (row2Err || !row2 || row2.data == null) {
                 state.p2Action = prevAction2;
                 state.currentPlayer = prevPlayer2;
@@ -771,7 +968,7 @@
             }
             const prev = row2.data;
             const battle = Object.assign({}, prev.battle || {}, {
-                p2_pick: ser(action),
+                p2_pick: encodeAction(action),
                 p2_gimmick: g2,
                 p1_pick: prev.battle && prev.battle.p1_pick,
                 p1_gimmick: prev.battle && prev.battle.p1_gimmick
@@ -779,6 +976,7 @@
             try {
                 await this.pushData({ battle }, prev);
             } catch (e) {
+                if (!inRoom(id, token)) return;
                 state.p2Action = prevAction2;
                 state.currentPlayer = prevPlayer2;
                 this._restoreTurnUiAfterSendFailure();
@@ -790,8 +988,15 @@
 
         async consumeRemoteForHost(state, settings, d) {
             if (role !== 1 || !d || !d.battle) return;
+            if (hostPendingPublication) return;
             const b = d.battle;
-            if (!b.p1_pick || !b.p2_pick) return;
+            if (b.engine === 'showdown') {
+                if (state.battleEngine !== 'showdown' || b.pending_turn !== state._onlineNativeRevision ||
+                    (d.round_number || 1) !== state._onlineNativeRound) return;
+                const needsP1 = !!nativeRequest(state, 1);
+                const needsP2 = !!nativeRequest(state, 2);
+                if ((!needsP1 && !needsP2) || (needsP1 && !b.p1_pick) || (needsP2 && !b.p2_pick)) return;
+            } else if (!b.p1_pick || !b.p2_pick) return;
             if (state.isLocked || hostResolving) return;
             // Fence: a re-delivered row (or a timeout that raced a real pick) can
             // still carry both picks for a turn the host already resolved+pushed.
@@ -800,15 +1005,20 @@
             const turn = (typeof b.pending_turn === 'number') ? b.pending_turn : null;
             if (turn !== null && turn <= hostLastResolvedTurn) return;
             hostResolving = true;
+            const id = roomId;
+            const token = roomToken;
             try {
-                await this._hostRunResolution(state, settings, b);
+                await this._hostRunResolution(state, d);
             } finally {
-                hostResolving = false;
+                if (inRoom(id, token)) hostResolving = false;
             }
         },
 
-        async _hostRunResolution(state, settings, remoteBattle) {
-            const deser = (p, party, isP1) => {
+        async _hostRunResolution(state, room) {
+            const id = roomId;
+            const token = roomToken;
+            const remoteBattle = room.battle;
+            const deser = (p, isP1) => {
                 if (!p) return null;
                 const a = { moveIndex: p.moveIndex, switchIndex: p.switchIndex, aiMove: null };
                 if (p.aiMoveName) {
@@ -818,29 +1028,23 @@
                 }
                 return a;
             };
-            state.p1Action = deser(remoteBattle.p1_pick, state.playerParty, true);
-            state.p2Action = deser(remoteBattle.p2_pick, state.foeParty, false);
+            const native = remoteBattle.engine === 'showdown';
+            state.p1Action = deser(native && !nativeRequest(state, 1) ? null : remoteBattle.p1_pick, true);
+            state.p2Action = deser(native && !nativeRequest(state, 2) ? null : remoteBattle.p2_pick, false);
             if (remoteBattle.p1_gimmick !== undefined) state.p1GimmickIntent = remoteBattle.p1_gimmick;
             if (remoteBattle.p2_gimmick !== undefined) state.p2GimmickIntent = remoteBattle.p2_gimmick;
 
             if (typeof global.__runLockedPvPTurnResolution === 'function') {
                 await global.__runLockedPvPTurnResolution();
             }
+            if (!inRoom(id, token)) return;
 
+            const resolvedTurn = remoteBattle.pending_turn || hostLastResolvedTurn + 1;
+            if (native) state._onlineNativeRevision = resolvedTurn + 1;
             const blob = exportBattleSnapshot(state);
             const h = simpleHash(blob);
-            const { data: row, error: rowErr } = await getClient().from('pvp_rooms').select('data').eq('id', roomId).single();
-            if (rowErr || !row || row.data == null) {
-                console.warn('[OnlinePvP] _hostRunResolution fetch', rowErr);
-                return;
-            }
-            const prev = row.data;
-            const resolvedTurn = (prev.battle && prev.battle.pending_turn) || 1;
-            // Local battle state has already advanced (resolution ran above), so fence
-            // this turn now — even if the push below fails we must not re-run resolution
-            // for it, which would double-apply on already-advanced state.
-            if (resolvedTurn > hostLastResolvedTurn) hostLastResolvedTurn = resolvedTurn;
-            const battle = Object.assign({}, prev.battle || {}, {
+            hostLastResolvedTurn = resolvedTurn;
+            const battle = Object.assign({}, remoteBattle, {
                 p1_pick: null,
                 p2_pick: null,
                 p1_gimmick: null,
@@ -850,68 +1054,106 @@
                 state_blob: blob,
                 state_hash: h
             });
-            const nextDeadline = !state.isOver && typeof global.computeOnlineBattleTurnDeadlineIso === 'function'
-                ? global.computeOnlineBattleTurnDeadlineIso(state)
-                : null;
-            const battle_log_html = captureBattleLogHtml();
-            try {
-                await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline, battle_log_html }, prev);
-            } catch (e) {
-                // The turn resolved locally on the host but the snapshot didn't reach the
-                // opponent. Surface it rather than failing silently; the guest re-syncs on
-                // its next Realtime reconnect (_resyncFromHead).
-                console.warn('[OnlinePvP] _hostRunResolution push', e);
-                if (typeof global.logMsg === 'function') {
-                    global.logMsg('[Online] Connection issue — your opponent may not have received this turn.', 'info');
-                }
-                return;
-            }
-
+            const patch = { battle, battle_log_html: captureBattleLogHtml() };
+            let winner = null;
+            const round = room.round_number || 1;
             if (state.isOver) {
                 const p1Alive = state.playerParty.some((m) => m.currentHp > 0);
                 const fAlive = state.foeParty.some((m) => m.currentHp > 0);
-                const p1Won = p1Alive && !fAlive;
-                const p2Won = fAlive && !p1Alive;
-
-                // Pull current wins from room then increment
-                const { data: winRow, error: winErr } = await getClient().from('pvp_rooms').select('data').eq('id', roomId).single();
-                if (winErr || !winRow || winRow.data == null) {
-                    console.warn('[OnlinePvP] _hostRunResolution win fetch', winErr);
-                    return;
-                }
-                const winPrev = winRow.data;
-                const p1Wins = (winPrev.p1_wins || 0) + (p1Won ? 1 : 0);
-                const p2Wins = (winPrev.p2_wins || 0) + (p2Won ? 1 : 0);
-                const roundNumber = winPrev.round_number || 1;
-
-                // Expose to local globals immediately so the host's end screen can read them
-                global.__onlineP1Wins = p1Wins;
-                global.__onlineP2Wins = p2Wins;
-                global.__onlineRoundNumber = roundNumber;
-
-                await this.pushData({
+                winner = native ? state.nativeWinner ?? null : p1Alive === fAlive ? null : (p1Alive ? 1 : 2);
+                // Publish the final state and its score together. Replaying
+                // the same write after a lost response keeps absolute scores.
+                Object.assign(patch, {
                     phase: 'done',
-                    battle_turn_deadline_iso: null,
-                    battle_log_html: captureBattleLogHtml(),
-                    p1_wins: p1Wins,
-                    p2_wins: p2Wins,
-                    round_number: roundNumber
-                }, winPrev);
-                if (p1Won) await reportWinIfConfigured(true);
-                else if (p2Won) await reportWinIfConfigured(false);
+                    p1_wins: (room.p1_wins || 0) + (winner === 1 ? 1 : 0),
+                    p2_wins: (room.p2_wins || 0) + (winner === 2 ? 1 : 0),
+                    round_number: round,
+                });
             }
+            global.__onlineBattleDeadlineIso = null;
+            hostPendingPublication = { id, token, patch, state, round, winner, retries: 0, failed: false, sending: null };
+            await this._publishHostTurn();
+        },
+
+        _publishHostTurn(head) {
+            const turn = hostPendingPublication;
+            if (!turn || !inRoom(turn.id, turn.token)) return Promise.resolve(true);
+            if (turn.sending) return turn.sending;
+            if (hostPublicationTimer !== null) global.clearTimeout(hostPublicationTimer);
+            hostPublicationTimer = null;
+            const publish = async () => {
+                try {
+                    let current = head;
+                    if (!current && turn.failed) {
+                        const { data: row, error } = await getClient().from('pvp_rooms').select('data').eq('id', turn.id).single();
+                        if (error || !row?.data) throw error || new Error('Room is unavailable');
+                        current = row.data;
+                    }
+                    if (hostPendingPublication !== turn || !inRoom(turn.id, turn.token)) return false;
+                    const round = current?.round_number || turn.round;
+                    if (round !== turn.round) {
+                        hostPendingPublication = null;
+                        return false;
+                    }
+                    const resolved = current?.battle?.resolved_turn || 0;
+                    if (resolved < turn.patch.battle.resolved_turn) {
+                        const deadline = !turn.state.isOver && typeof global.computeOnlineBattleTurnDeadlineIso === 'function'
+                            ? global.computeOnlineBattleTurnDeadlineIso(turn.state) : null;
+                        await this.pushData({ ...turn.patch, battle_turn_deadline_iso: deadline });
+                        if (hostPendingPublication !== turn || !inRoom(turn.id, turn.token)) return false;
+                        global.__onlineBattleDeadlineIso = deadline;
+                    } else {
+                        global.__onlineBattleDeadlineIso = current.battle_turn_deadline_iso || null;
+                        if (current.battle.state_hash !== turn.patch.battle.state_hash) {
+                            hostPendingPublication = null;
+                            return false;
+                        }
+                    }
+                    hostPendingPublication = null;
+                    if (turn.patch.phase === 'done') {
+                        global.__onlineP1Wins = turn.patch.p1_wins;
+                        global.__onlineP2Wins = turn.patch.p2_wins;
+                        global.__onlineRoundNumber = turn.round;
+                        global.updateOnlineEndScreenScore?.();
+                        if (turn.winner) void reportWinIfConfigured(turn.winner === 1);
+                    }
+                    return true;
+                } catch (error) {
+                    if (hostPendingPublication !== turn || !inRoom(turn.id, turn.token)) return false;
+                    if (!turn.failed) global.logMsg?.('Connection interrupted. Reconnecting to share the resolved turn…', 'info');
+                    turn.failed = true;
+                    const delay = HOST_PUBLISH_RETRY_MS[turn.retries++];
+                    if (delay !== undefined) {
+                        hostPublicationTimer = global.setTimeout(() => {
+                            hostPublicationTimer = null;
+                            void this._publishHostTurn();
+                        }, delay);
+                    }
+                    console.warn('[OnlinePvP] publish resolved turn', error);
+                    return false;
+                } finally {
+                    turn.sending = null;
+                }
+            };
+            turn.sending = publish();
+            return turn.sending;
         },
 
         async hostResolveGuestBattleTimeout(state, settings) {
-            if (role !== 1 || !roomId) return;
+            if (role !== 1 || !roomId || hostPendingPublication) return;
             const sb = getClient();
             if (!sb) return;
             if (global.__onlineBattleDeadlineFiring) return;
-            const { data: row, error: rowErr } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
+            const id = roomId;
+            const token = roomToken;
+            const { data: row, error: rowErr } = await sb.from('pvp_rooms').select('data').eq('id', id).single();
+            if (!inRoom(id, token)) return;
             if (rowErr) console.warn('[OnlinePvP] hostResolveGuestBattleTimeout fetch', rowErr);
             if (!row || !row.data || !row.data.battle) return;
-            const b = row.data.battle;
-            if (!b.p1_pick || b.p2_pick || state.isLocked) return;
+            const room = withNativeChoices(row.data);
+            const b = room.battle;
+            const hasHostPick = b.engine === 'showdown' ? !nativeRequest(state, 1) || b.p1_pick : b.p1_pick;
+            if (!hasHostPick || b.p2_pick || state.isLocked) return;
             if (state.currentPlayer !== 2) return;
             if (hostResolving) return;
             // Same fence as consumeRemoteForHost: don't synthesize a timeout pick for a
@@ -923,19 +1165,16 @@
             try {
                 if (typeof global.logMsg === 'function') global.logMsg("Time's up — AI chose Player 2's move.", 'info');
                 const action = global._pvpBuildTimeoutAction();
-                const ser = (a) => ({
-                    moveIndex: a.moveIndex,
-                    switchIndex: a.switchIndex,
-                    aiMoveName: a.aiMove && a.aiMove.name ? a.aiMove.name : null
-                });
+                if (!action) return;
                 const g2 = state.p2GimmickIntent ? deepClone(state.p2GimmickIntent) : null;
                 const remoteBattle = {
+                    ...b,
                     p1_pick: b.p1_pick,
-                    p2_pick: ser(action),
+                    p2_pick: encodeAction(action),
                     p1_gimmick: b.p1_gimmick,
                     p2_gimmick: g2
                 };
-                await this._hostRunResolution(state, settings, remoteBattle);
+                await this.consumeRemoteForHost(state, settings, { ...room, battle: remoteBattle });
             } catch (e) {
                 console.warn('[OnlinePvP] hostResolveGuestBattleTimeout', e);
             } finally {
@@ -945,20 +1184,29 @@
 
         async afterHostStartBattle(state) {
             if (!this.isHost() || !roomId) return;
+            const id = roomId;
+            const token = roomToken;
             // New battle (incl. rematch) resets pending_turn to 1, so clear the fence
             // or the first turn of a rematch would be skipped as "already resolved".
             hostLastResolvedTurn = 0;
-            const blob = exportBattleSnapshot(state);
-            const h = simpleHash(blob);
-            const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
-            const battle_log_html = captureBattleLogHtml();
             // Include latest display names + match format so guest stays in sync
-            const { data: nameRow, error: nameErr } = await getClient().from('pvp_rooms').select('data').eq('id', roomId).single();
+            const { data: nameRow, error: nameErr } = await getClient().from('pvp_rooms').select('data').eq('id', id).single();
+            if (!inRoom(id, token)) return;
             if (nameErr || !nameRow || nameRow.data == null) {
                 console.warn('[OnlinePvP] afterHostStartBattle fetch', nameErr);
                 return;
             }
             const nPrev = nameRow.data;
+            const round = nPrev.round_number || 1;
+            const native = state.battleEngine === 'showdown';
+            if (native) {
+                state._onlineNativeRevision = 1;
+                state._onlineNativeRound = round;
+            }
+            const blob = exportBattleSnapshot(state);
+            const h = simpleHash(blob);
+            const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
+            const battle_log_html = captureBattleLogHtml();
             await this.pushData({
                 phase: 'battle',
                 draft_deadline_iso: null,
@@ -971,8 +1219,9 @@
                 match_options: nPrev.match_options,
                 p1_wins: nPrev.p1_wins || 0,
                 p2_wins: nPrev.p2_wins || 0,
-                round_number: nPrev.round_number || 1,
+                round_number: round,
                 battle: {
+                    ...(native ? { engine: 'showdown' } : {}),
                     pending_turn: 1,
                     p1_pick: null,
                     p2_pick: null,
@@ -983,12 +1232,12 @@
                     state_hash: null
                 }
             }, nPrev);
-            hostStartedBattle = true;
+            if (inRoom(id, token)) hostStartedBattle = true;
         },
 
         async guestApplyBattleStart(state, roomData) {
             const blob = typeof roomData === 'string' ? roomData : (roomData && roomData.battle_start_blob);
-            if (!blob) return;
+            if (!blob) return false;
             // Sync display names from room data
             if (roomData && typeof roomData === 'object') {
                 if (roomData.host_display_name) global.__onlineHostName = roomData.host_display_name;
@@ -998,7 +1247,7 @@
                 if (typeof roomData.round_number === 'number') global.__onlineRoundNumber = roomData.round_number;
                 if (roomData.match_options && roomData.match_options.match_format) global.__onlineMatchFormat = roomData.match_options.match_format;
             }
-            if (!applyBattleSnapshot(state, blob)) return;
+            if (!applyBattleSnapshot(state, blob)) return false;
             if (typeof roomData === 'object' && roomData && roomData.battle_log_html !== undefined) {
                 applyBattleLogHtml(roomData.battle_log_html);
             }
@@ -1018,26 +1267,30 @@
             if (cmdMenuG) cmdMenuG.classList.remove('hidden');
             if (typeof global.applyBattleLogDockClass === 'function') global.applyBattleLogDockClass();
             if (typeof global.updateOnlineBattleScoreOverlay === 'function') global.updateOnlineBattleScoreOverlay();
+            if (state.battleEngine === 'showdown') global.refreshNativeBattleUi?.();
             try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
+            return true;
         },
 
         async guestApplyBattleBlob(state, d) {
             const b = d.battle || {};
-            if (!b.state_blob) return;
-            if (!applyBattleSnapshot(state, b.state_blob)) return;
+            if (!b.state_blob) return false;
+            if (!applyBattleSnapshot(state, b.state_blob)) return false;
             if (d && d.battle_log_html !== undefined) applyBattleLogHtml(d.battle_log_html);
             if (typeof global.updateUI === 'function') global.updateUI();
             state.isLocked = false;
             const cmdEnd = global.document && global.document.getElementById('command-menu');
             if (!state.isOver) {
                 if (cmdEnd) cmdEnd.classList.remove('hidden');
+                if (state.battleEngine === 'showdown') global.refreshNativeBattleUi?.();
             } else if (role === 2 && typeof global.showEndScreen === 'function') {
                 const p1s = state.playerParty.some((m) => m.currentHp > 0);
                 const p2s = state.foeParty.some((m) => m.currentHp > 0);
                 const p1Name = global.__onlineHostName || 'Host';
                 const p2Name = global.__onlineGuestName || 'Guest';
-                if (!p1s && p2s) global.showEndScreen('VICTORY!', `You (${p2Name}) won this round!`, true);
-                else if (p1s && !p2s) global.showEndScreen('DEFEAT', `${p1Name} won this round.`, false);
+                const winner = state.battleEngine === 'showdown' ? state.nativeWinner : p1s === p2s ? null : p1s ? 1 : 2;
+                if (winner === 2) global.showEndScreen('VICTORY!', `You (${p2Name}) won this round!`, true);
+                else if (winner === 1) global.showEndScreen('DEFEAT', `${p1Name} won this round.`, false);
                 else global.showEndScreen('DRAW', 'The round ended in a draw.', false);
             }
             try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
@@ -1045,6 +1298,7 @@
             if (b.state_hash && localH !== b.state_hash && typeof global.logMsg === 'function') {
                 global.logMsg('[Online] State hash mismatch — applied host snapshot.', 'info');
             }
+            return true;
         },
 
         buildMatchOptionsFromSettings,
@@ -1073,4 +1327,7 @@
 
     global.OnlineBattle = OnlineBattle;
     global.__onlinePvpConfigured = configured;
+    global.addEventListener?.('online', () => {
+        if (OnlineBattle.isActive()) void OnlineBattle._resyncFromHead();
+    });
 })(typeof window !== 'undefined' ? window : globalThis);

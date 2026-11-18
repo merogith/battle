@@ -153,6 +153,17 @@ test('withdraw: drag a PC mon into the party at a precise slot', () => {
     assert.deepEqual(ids(story.sm.pcBox), [], 'left the box');
 });
 
+test('withdraw uses the fighter cap independently of physical egg slots', () => {
+    const egg = mk('Egg', { egg: true });
+    for (const take of [id => SM.pcWithdraw(id, { refresh: false }), id => story.pcMoveAcross(id, 'team', 0)]) {
+        setSm([mk('Lead'), egg], [mk('Reserve'), mk('Second')], 0);
+        assert.equal(take('m_reserve'), true, 'an egg does not occupy the second fighter slot');
+        assert.equal(take('m_second'), false, 'there are already two fighters');
+        setSm([mk('Lead'), ...Array.from({ length: 5 }, (_, i) => mk('Egg' + i, { egg: true }))], [mk('Reserve')], 0);
+        assert.equal(take('m_reserve'), false, 'six occupied physical slots prevent another member');
+    }
+});
+
 test('withdraw is blocked when the party is at the badge cap', () => {
     // badges:6 → cap 6; a full six-mon party cannot take a seventh.
     const full = Array.from({ length: 6 }, (_, i) => mk('P' + i, { id: 'p' + i }));

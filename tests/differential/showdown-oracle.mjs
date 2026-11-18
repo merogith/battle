@@ -5,8 +5,7 @@
 // RNG-robust, per-turn trace that can be diffed against the in-house engine's
 // trace (see inhouse-oracle.mjs + diff.mjs).
 //
-// Stage 0 of the oracle-led plan (docs/BATTLE_ENGINE_INVESTIGATION.md): this is
-// a TEST-ONLY dependency. It does not run in the shipped game.
+// The same pinned simulator powers the shipped Competitive Arena.
 //
 // @pkmn/sim is MIT — Copyright (c) 2011-2026 Guangcong Luo and other
 // contributors (Pokémon Showdown); Copyright (c) 2020-2026 pkmn contributors.
@@ -180,11 +179,19 @@ function parseProtocol(log) {
 }
 
 // Drive one side's choices as its request stream emits them.
-async function driveSide(stream, choices) {
+async function driveSide(stream, choices, slot, rejectedChoices) {
   let i = 0;
+  let scriptedChoice = null;
   for await (const chunk of stream) {
     for (const line of chunk.split('\n')) {
-      if (line.startsWith('|error|')) { try { void stream.write('default'); } catch (e) {} continue; }
+      if (line.startsWith('|error|')) {
+        if (scriptedChoice) {
+          rejectedChoices.push({ ...scriptedChoice, slot, message: line.slice('|error|'.length) });
+          scriptedChoice = null;
+        }
+        try { void stream.write('default'); } catch (e) {}
+        continue;
+      }
       if (!line.startsWith('|request|')) continue;
       let req;
       try { req = JSON.parse(line.slice('|request|'.length) || '{}'); } catch (e) { req = {}; }
@@ -194,6 +201,7 @@ async function driveSide(stream, choices) {
       if (req.active) {
         const choice = (i < choices.length) ? choices[i] : 'default';
         i++;
+        scriptedChoice = i <= choices.length && choice !== 'default' ? { turn: i, choice } : null;
         void stream.write(choice);
       }
     }
@@ -215,8 +223,9 @@ export async function runShowdownBattle(opts) {
   const stream = new BattleStreams.BattleStream();
   const streams = BattleStreams.getPlayerStreams(stream);
 
-  const d1 = driveSide(streams.p1, choices1);
-  const d2 = driveSide(streams.p2, choices2);
+  const rejectedChoices = [];
+  const d1 = driveSide(streams.p1, choices1, 'p1a', rejectedChoices);
+  const d2 = driveSide(streams.p2, choices2, 'p2a', rejectedChoices);
 
   let raw = '';
   const collect = (async () => { for await (const c of streams.omniscient) raw += c; })();
@@ -244,5 +253,5 @@ export async function runShowdownBattle(opts) {
   const concludedWithinScript = allTurns.length <= nTurns;
   const winnerLine = raw.split('\n').find(l => l.startsWith('|win|'));
   const winner = (concludedWithinScript && winnerLine) ? winnerLine.slice('|win|'.length) : null;
-  return { turns, winner, raw, slots: SLOTS };
+  return { turns, winner, raw, slots: SLOTS, rejectedChoices };
 }

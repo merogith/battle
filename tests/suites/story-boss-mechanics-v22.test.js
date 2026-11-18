@@ -185,6 +185,39 @@ test('telegraph queue keeps BOTH phases when two mechanics cross the same turn',
     assert.equal(state._bossImmuneTurns, 1, 'immunity applied');
 });
 
+test('the boss HUD keeps simultaneous warnings readable after banners fade', () => {
+    const StoryMode = W.StoryMode;
+    const document = W.document;
+    const state = mkBossState([
+        { type: 'hpThresholdPhase', at: 0.75, effect: 'ward', banner: 'THE ARMOR WAKES' },
+        { type: 'hpThresholdPhase', at: 0.50, effect: 'heal', banner: 'THE TIDE RETURNS' },
+    ]);
+    state.fActive = mkFoe(100, 40);
+    state.turnNumber = 1;
+    ST.bossMechanicsTurnTick(state, state.fActive);
+    try {
+        StoryMode.renderBossStatusIndicator(state);
+        const warnings = document.querySelectorAll('#foe-stat-box #boss-status-indicator button[data-next="true"]');
+        assert.equal(warnings.length, 2);
+        assert.deepEqual(Array.from(document.querySelectorAll('.boss-hp-threshold'), marker => marker.style.left), ['75%', '50%']);
+        warnings[0].click();
+        assert.equal(warnings[0].getAttribute('aria-expanded'), 'true');
+        assert.match(document.getElementById('boss-mechanic-popover').textContent, /THE ARMOR WAKES.*weaker/);
+        warnings[1].click();
+        assert.equal(warnings[0].getAttribute('aria-expanded'), 'false');
+        assert.match(document.getElementById('boss-mechanic-popover').textContent, /THE TIDE RETURNS.*recover HP/);
+        state.turnNumber = 2;
+        ST.bossMechanicsTurnTick(state, state.fActive);
+        StoryMode.renderBossStatusIndicator(state);
+        assert.equal(document.querySelectorAll('#boss-status-indicator button[data-next="true"]').length, 0);
+        assert.match(document.querySelector('#boss-status-indicator button').textContent, /Damage Down.*turn/);
+    } finally {
+        StoryMode.removeBossStatusIndicator();
+    }
+    assert.equal(document.getElementById('boss-status-indicator'), null);
+    assert.equal(document.querySelectorAll('.boss-hp-threshold').length, 0);
+});
+
 test('solo raid boss scaling: _bossStatMult boosts stats; _bossHpScale multiplies HP only', () => {
     const mk = ST.makeBuild || W.makeBuild;
     const buildPokemon = W.buildPokemon;

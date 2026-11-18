@@ -146,3 +146,37 @@ test('.prr-* keeps its canonical sprite + body slots', () => {
   assert.ok(/class="party-lead-flag"/.test(GOLD.PRR_LEAD), 'PRR_LEAD: lead flag present on slot 0');
   assert.ok(/class="party-slot-num"/.test(GOLD.PRR_NICK), 'PRR_NICK: slot number on non-lead row');
 });
+
+test('summary skips eggs and keeps training and reorder actions on the selected partner', async () => {
+  primeRun();
+  ST.sm.team = [
+    { ...SLOT_B, id: 'partner-a', build: { ...SLOT_B.build }, nickname: 'First' },
+    { id: 'mystery-egg', isEgg: true, name: 'Gastly', eggSpecies: 'Gastly', eggLaidAtCity: 7 },
+    { ...SLOT_B, id: 'partner-b', build: { ...SLOT_B.build }, nickname: 'Second' },
+  ];
+  w.StoryMode.openSummary(0);
+  assert.ok(await waitFor('#modal-summary:not(.hidden) .sum-header-nick'));
+  assert.equal(doc.getElementById('summary-party-slot').textContent, '1/2');
+  w.summaryNavigateParty(1);
+  assert.equal(doc.querySelector('.sum-header-nick').textContent, '"Second"');
+  assert.equal(doc.getElementById('summary-party-slot').textContent, '2/2');
+  const details = doc.getElementById('sum-training-details');
+  assert.equal(details.open, false);
+  details.open = true;
+  w.setSummaryEvFocus('spe');
+  assert.deepEqual(Array.from(ST.sm.team[2].build.evTrainFocus), ['spe']);
+  assert.equal(ST.sm.team[0].build.evTrainFocus, undefined);
+  assert.equal(doc.getElementById('sum-training-details').open, true);
+  w.StoryMode.summaryMove(-1);
+  assert.equal(ST.sm.team[1].id, 'partner-b');
+  assert.equal(ST.sm.team[2].id, 'mystery-egg');
+});
+
+test('defensive matchups group zero damage as immunity', () => {
+  w.showDraftPokemonSummary({ name: 'Gastly', build: { m: ['Lick'], _isShiny: false } }, { storyGuide: true });
+  w.switchSummaryTab(3);
+  const rows = Array.from(doc.querySelectorAll('#sum-page-3 .sum-matchup-row'));
+  const immune = rows.find(row => row.querySelector('.sum-matchup-label')?.textContent === 'Immune');
+  assert.ok(immune);
+  assert.deepEqual(Array.from(immune.querySelectorAll('.type-badge'), node => node.textContent).sort(), ['Fighting', 'Normal']);
+});

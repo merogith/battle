@@ -1,7 +1,7 @@
 {
   "_meta": {
     "version": 1,
-    "purpose": "Courier / fetch errands for the v26 narration overhaul. An NPC in `fromCity` asks the player to deliver an item to `toCity` (kind:'deliver') or recover a route-dropped item (kind:'recover', paid off back in `fromCity`). Mirrored by DEFAULT_STORY_ERRANDS in battle.html (offline fallback). Reward sizes are MAINTAINER-OWNED balance numbers — tune freely. reward can be { gold }, { ultra } (Ultra Balls), or { item:{id,count} }."
+    "purpose": "Courier / fetch errands for the v26 narration overhaul. An NPC in `fromCity` asks the player to deliver an item to `toCity` (kind:'deliver') or recover a dropped item on `route` and return it at `toCity` (kind:'recover'). Mirrored by DEFAULT_STORY_ERRANDS in battle.html (offline fallback). Reward sizes are MAINTAINER-OWNED balance numbers — tune freely. reward can be { gold }, { ultra } (Ultra Balls), or { item:{id,count} }."
   },
   "errands": [
     {
@@ -42,13 +42,16 @@
       "id": "recover_trail_pouch",
       "kind": "recover",
       "fromCity": 4,
-      "toCity": 4,
+      "toCity": 5,
       "route": "city4to5",
       "npc": { "id": "npc_warden4", "name": "Safari Warden", "sprite": "Poke__0301mon_Ranger" },
       "item": { "name": "Warden’s Pouch", "icon": "sprites/items/black-belt.png" },
       "offerLines": [
         "The Safari warden stops you at the gate, embarrassed.",
-        "\"Dropped my field pouch somewhere on the lakeside road this morning. Bring it back and the next Ball’s on the house.\""
+        "\"I dropped my field pouch on the lakeside road. If you see it, I’ll be at the ranger station at the far end of the trail.\""
+      ],
+      "recoverLines": [
+        "A strap has caught on a post beneath the boardwalk. The name sewn into the muddy pouch is the warden’s."
       ],
       "deliverLines": [
         "You hand over the pouch, mud and all. The warden checks it twice.",

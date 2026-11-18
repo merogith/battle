@@ -131,7 +131,7 @@ test('Fight Club difficulty scales with current city (no grade-collapse)', () =>
 
 // ── Daycare egg reward ──────────────────────────────────────────────────────
 // Drive the real drop-off so _daycareRollHatchSpecies runs end-to-end.
-function rollEgg() {
+async function rollEgg() {
   sm.daycare = { unlocked: true, eggEventDone: false, freeEggClaimed: true };
   SM.enterDaycare();
   const ov = doc.getElementById('story-daycare-overlay');
@@ -139,6 +139,8 @@ function rollEgg() {
   const btn = ov.querySelector('[data-daycare-drop="mon_0"]'); // drop Garchomp
   if (!btn) return null;
   btn.click();
+  window._gameConfirmResult(true);
+  await Promise.resolve();
   const egg = (sm.team || []).find(s => s && s.isEgg) || (sm.pcBox || []).find(s => s && s.isEgg);
   // Clean overlays + reset for the next roll.
   ['story-daycare-overlay','story-daycare-scene','story-hatch-scene','story-scene-overlay']
@@ -146,11 +148,11 @@ function rollEgg() {
   return egg ? egg.eggSpecies : null;
 }
 
-test('Daycare egg reward (all gens) — hatches a non-forme species', () => {
+test('Daycare egg reward (all gens) — hatches a non-forme species', async () => {
   let eggLeaks = [], eggCount = 0;
   for (let trial = 0; trial < 25; trial++) {
     setupRun([1,2,3,4,5,6,7,8,9]);
-    const sp = rollEgg();
+    const sp = await rollEgg();
     if (sp) { eggCount++; if (isExcluded(sp)) eggLeaks.push(sp); }
   }
   assert.ok(eggCount > 0, `hatched ${eggCount} eggs`);
@@ -158,11 +160,11 @@ test('Daycare egg reward (all gens) — hatches a non-forme species', () => {
     `no egg hatch species is a forme entry; leaked: ${[...new Set(eggLeaks)].join(', ')}`);
 });
 
-test('Daycare egg reward (gen 1 only) — hatch is gen-1 or parent passthrough, never a forme', () => {
+test('Daycare egg reward (gen 1 only) — hatch is gen-1 or parent passthrough, never a forme', async () => {
   let eggOffGen = [], eggCount2 = 0;
   for (let trial = 0; trial < 25; trial++) {
     setupRun([1]);
-    const sp = rollEgg();
+    const sp = await rollEgg();
     if (sp) {
       eggCount2++;
       // Parent (Garchomp) is gen 4 and not gen-1-legal; the fallback returns the

@@ -13,6 +13,7 @@ import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const ST = eng.window.__storyTest;
+Object.defineProperty(eng.window, 'localStorage', { configurable: true, value: { getItem: () => null, setItem() {} } });
 
 // __storyTest returns jsdom-realm Arrays; spread into the Node realm before a
 // deepStrictEqual against Node array literals (cross-realm prototype mismatch).
@@ -92,14 +93,13 @@ test('DOM — the prompt renders Search + Move On; Move On marks done, fires onD
     assert.equal(doc.querySelector('button[data-wander-moveon="1"]'), null, 'overlay removed after Move On');
 });
 
-test('DOM — at the cap (3 taps spent) Search is disabled and only Move On is actionable', () => {
+test('DOM — at the cap (3 taps spent) the only control returns to camp', () => {
     ST.sm.wanderByEventIdx = { 9992: { taps: 3, hits: 1, done: false } };
     ST.showWanderScreen(9992, 4, () => {});
-    // The disabled Search button intentionally carries no data-wander-search hook.
-    assert.equal(doc.querySelector('button[data-wander-search="1"]'), null, 'no actionable Search at the cap');
-    assert.ok(doc.querySelector('button[disabled]'), 'a disabled Search button is shown');
-    const moveBtn = doc.querySelector('button[data-wander-moveon="1"]');
-    assert.ok(moveBtn, 'Move On still present at the cap');
+    const buttons = doc.querySelectorAll('.story-wander button');
+    assert.equal(buttons.length, 1);
+    const [moveBtn] = buttons;
+    assert.equal(moveBtn.textContent, 'Back to camp');
     moveBtn.click(); // cleanup
 });
 

@@ -42,7 +42,11 @@ function makeMockClient(opts = {}) {
             return Promise.resolve({ data: { ok: true }, error: null });
         },
         channel(name) {
-            const ch = { name, _cb: null, on() { return ch; }, subscribe(cb) { ch._cb = cb; channels.push(ch); return ch; } };
+            const ch = {
+                name, _cb: null, _row: null,
+                on(_event, _filter, callback) { ch._row = callback; return ch; },
+                subscribe(cb) { ch._cb = cb; channels.push(ch); return ch; },
+            };
             return ch;
         },
         removeChannel() { return Promise.resolve(); }
@@ -67,6 +71,288 @@ const okCreate = (fn) => fn === 'try_create_pvp_room'
     : null;
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
+
+async function until(check, label) {
+    for (let tries = 0; tries < 200; tries++) {
+        if (check()) return;
+        await tick();
+    }
+    assert.fail(label);
+}
+
+async function pairedBattle(t, nativeRequests = null) {
+    const server = { row: null, staged: [], failNextResult: null, reports: 0, guestDisconnected: false };
+    const clients = [];
+    const read = () => Promise.resolve({ data: structuredClone(server.row), error: null });
+    const write = (patch) => {
+        server.row.data = { ...server.row.data, ...structuredClone(patch), seq: server.row.data.seq + 1 };
+        for (const [index, peer] of clients.entries()) {
+            if (index === 1 && server.guestDisconnected) continue;
+            const update = { new: structuredClone(server.row) };
+            queueMicrotask(() => peer._channels[0]?._row(update));
+        }
+    };
+    for (let i = 0; i < 2; i++) {
+        clients.push(makeMockClient({
+            single: read, maybeSingle: read,
+            async rpc(fn, args) {
+                if (fn === 'try_create_pvp_room') {
+                    server.row = { id: 'room1', code: args.p_code, data: args.p_data };
+                    return { data: { ok: true, id: 'room1', host_token: 'token1' } };
+                }
+                if (fn === 'try_join_pvp_room') {
+                    write({ guest_joined: true, guest_display_name: 'Guest' });
+                    return { data: { ok: true, guest_token: 'token2', data: structuredClone(server.row.data) } };
+                }
+                if (fn === 'increment_pvp_leaderboard_win') {
+                    server.reports++;
+                    return { data: { ok: true } };
+                }
+                const patch = args.p_patch;
+                if (patch.battle?.resolved_turn > (server.row.data.battle?.resolved_turn || 0)) {
+                    server.staged.push(structuredClone(patch));
+                    if (server.dropGuestAtResolution) server.guestDisconnected = true;
+                    if (server.failNextResult) {
+                        const commit = server.failNextResult === 'after commit';
+                        server.failNextResult = null;
+                        if (commit) write(patch);
+                        return { data: null, error: { message: 'connection lost' } };
+                    }
+                }
+                write(patch);
+                return { data: { ok: true } };
+            },
+        }));
+    }
+    const host = loadOnlineBattle(clients[0]), guest = loadOnlineBattle(clients[1]);
+    t.after(() => {
+        host.OB.dispose();
+        guest.OB.dispose();
+        host.dom.window.close();
+        guest.dom.window.close();
+    });
+    const pActive = { name: 'Pikachu', currentHp: 100, moves: [] };
+    const fActive = { name: 'Eevee', currentHp: 100, moves: [] };
+    const hostState = { mode: 'pvp', currentPlayer: 1, playerParty: [pActive], foeParty: [fActive], pActive, fActive, pSide: {}, fSide: {}, turnNumber: 0 };
+    const guestState = { mode: 'pvp' };
+    const pickedAction = { moveIndex: 0, switchIndex: null, aiMove: null };
+    const guestRequests = [];
+
+    host.w.onOnlineRoomData = d => host.OB.consumeRemoteForHost(hostState, {}, d);
+    guest.w.updateMechanics = () => {};
+    guest.w.updateOnlineBattleScoreOverlay = () => {};
+    guest.w.updateOnlineEndScreenScore = () => {};
+    guest.w.refreshNativeBattleUi = () => guestRequests.push(guestState.nativeRequests?.[1]?.phase);
+    const script = readFileSync(join(ROOT, 'battle.html'), 'utf8');
+    const start = script.indexOf('window.onOnlineRoomData = async function');
+    const end = script.indexOf('\n        };', start) + '\n        };'.length;
+    assert.ok(start >= 0 && end > start);
+    new Function('window', 'state', 'settings', 'logMsg', 'syncBattleActiveHighlight', script.slice(start, end))(
+        guest.w, guestState, {}, () => {}, () => {},
+    );
+    const room = await host.OB.createRoom({ partySize: 1 }, [1], { p1_pool: [], p2_pool: [] });
+    await guest.OB.joinRoom(room.code, 'Guest');
+    if (nativeRequests) {
+        await until(() => host.OB.canUseNativeBattle(), 'host receives the guest engine protocol');
+        assert.ok(guest.OB.canUseNativeBattle());
+        hostState.battleEngine = 'showdown';
+        hostState.nativeRequests = nativeRequests;
+        hostState.currentPlayer = nativeRequests[0] ? 1 : 2;
+        hostState.foeParty.push({ name: 'Pichu', currentHp: 100, moves: [] });
+    }
+    await host.OB.afterHostStartBattle(hostState);
+    await until(() => guest.w.__guestBattleStartApplied, 'guest receives the opening snapshot');
+    async function sendBothActions() {
+        assert.ok(host.OB.myTurn(hostState));
+        assert.ok(guest.OB.waitingOnOpponent(guestState));
+        await host.OB.handlePvPPlayTurn(hostState, pickedAction, {});
+        await until(() => guest.OB.myTurn(guestState), 'guest receives the host action');
+        assert.ok(host.OB.waitingOnOpponent(hostState));
+        await guest.OB.handlePvPPlayTurn(guestState, pickedAction, {});
+    }
+    return {
+        host, guest, hostState, guestState, server, sendBothActions, guestRequests, write,
+        hostChannel: clients[0]._channels[0], guestChannel: clients[1]._channels[0],
+    };
+}
+
+test('two players recover an unpublished host turn through normal room reconnect', async t => {
+    const { host, guest, hostState, guestState, server, sendBothActions, hostChannel } = await pairedBattle(t);
+    host.w.__runLockedPvPTurnResolution = async () => {
+        hostState.turnNumber++;
+        hostState.fActive.currentHp -= 12;
+        hostState.currentPlayer = 1;
+    };
+    server.failNextResult = 'before commit';
+    await sendBothActions();
+    await until(() => server.staged.length === 1, 'the first result write fails');
+    assert.equal(hostState.turnNumber, 1);
+    assert.equal(guestState.turnNumber, 0);
+    assert.equal(server.row.data.battle.resolved_turn, 0);
+    assert.equal(host.OB.isSettlingTurn(), true);
+    hostChannel._cb('CHANNEL_ERROR', { message: 'connection interrupted' });
+    hostChannel._cb('SUBSCRIBED');
+    await until(() => guestState.turnNumber === 1, 'guest receives the published result');
+    assert.equal(server.staged.length, 2);
+    assert.equal(server.staged[0].battle.state_blob, server.staged[1].battle.state_blob);
+    assert.equal(hostState.turnNumber, 1, 'the engine ran once');
+    assert.equal(guestState.fActive.currentHp, 88);
+    await until(() => !host.OB.isSettlingTurn(), 'host can start another turn after publishing');
+    assert.ok(guest.OB.waitingOnOpponent(guestState));
+    await sendBothActions();
+    await until(() => guestState.turnNumber === 2, 'the next normal turn completes');
+    assert.equal(guestState.fActive.currentHp, 76);
+});
+
+test('a lost final-write response keeps the final snapshot and score atomic', async t => {
+    const { host, hostState, guestState, server, sendBothActions, hostChannel } = await pairedBattle(t);
+    host.w.__runLockedPvPTurnResolution = async () => {
+        hostState.turnNumber++;
+        hostState.fActive.currentHp = 0;
+        hostState.isOver = true;
+    };
+    server.failNextResult = 'after commit';
+    await sendBothActions();
+    await until(() => guestState.isOver, 'guest receives the terminal board');
+    assert.equal(server.row.data.phase, 'done');
+    assert.equal(server.row.data.p1_wins, 1);
+    assert.equal(host.OB.isSettlingTurn(), true);
+    hostChannel._cb('CHANNEL_ERROR', { message: 'response lost' });
+    hostChannel._cb('SUBSCRIBED');
+    await until(() => server.reports === 1, 'host confirms the committed result');
+    assert.equal(server.staged.length, 1, 'an already-committed result is not rewritten');
+    assert.equal(hostState.turnNumber, 1);
+    assert.equal(host.w.__onlineP1Wins, 1);
+    await until(() => !host.OB.isSettlingTurn(), 'host can start the next round only after confirming the result');
+});
+
+test('a reconnected guest accepts the saved result before opening its pending pick', async t => {
+    const { host, guest, hostState, guestState, server, sendBothActions, guestChannel } = await pairedBattle(t);
+    host.w.__runLockedPvPTurnResolution = async () => {
+        hostState.turnNumber++;
+        hostState.fActive.currentHp -= 12;
+        hostState.currentPlayer = 1;
+    };
+    server.dropGuestAtResolution = true;
+    await sendBothActions();
+    await until(() => server.row.data.battle.resolved_turn === 1, 'first result commits while the guest is away');
+    assert.equal(guestState.turnNumber, 0);
+    guestChannel._cb('CHANNEL_ERROR', { message: 'guest disconnected' });
+    const nextAction = { moveIndex: 1, switchIndex: null, aiMove: null };
+    await host.OB.handlePvPPlayTurn(hostState, nextAction, {});
+    assert.equal(server.row.data.battle.pending_turn, 2);
+    assert.equal(server.row.data.battle.p1_pick.moveIndex, 1);
+    server.guestDisconnected = false;
+    guestChannel._cb('SUBSCRIBED');
+    await until(() => guestState.turnNumber === 1, 'guest catches up to the completed turn');
+    assert.ok(guest.OB.myTurn(guestState), 'the newer host pick is visible after applying the snapshot');
+    assert.equal(guestState.fActive.currentHp, 88);
+    await guest.OB.handlePvPPlayTurn(guestState, nextAction, {});
+    await until(() => server.row.data.battle.resolved_turn === 2, 'the reconnected guest completes the next turn');
+});
+
+test('the native room sends a guest-only pivot choice and uses the engine winner', async t => {
+    const move = { phase: 'move', moves: [{ slot: 0, name: 'U-turn' }], switches: [], forms: [] };
+    const { host, guest, hostState, guestState, server, sendBothActions, guestRequests, write } = await pairedBattle(t, [move, move]);
+    let resolutions = 0;
+    host.w.__runLockedPvPTurnResolution = async () => {
+        resolutions++;
+        if (resolutions === 1) {
+            assert.equal(hostState.p1Action.moveIndex, 0);
+            assert.equal(hostState.p2Action.moveIndex, 0);
+            hostState.turnNumber = 1;
+            hostState.nativeRequests = [null, { phase: 'replace', moves: [], switches: [1], forms: [] }];
+            hostState.currentPlayer = 2;
+        } else {
+            assert.equal(hostState.p1Action, null, 'a waiting side sends no action to the engine');
+            assert.equal(hostState.p2Action.switchIndex, 1);
+            hostState.fActive = hostState.foeParty[1];
+            hostState.nativeRequests = [null, null];
+            hostState.nativeWinner = 2;
+            hostState.isOver = true;
+        }
+    };
+    const endings = [];
+    guest.w.showEndScreen = (...args) => endings.push(args);
+    assert.equal(guestState.battleEngine, 'showdown');
+    assert.equal(server.row.data.battle.engine, 'showdown');
+    await sendBothActions();
+    const firstGuestPick = structuredClone(server.row.data.native_p2_choice);
+    await until(() => guestState._onlineNativeRevision === 2, 'guest receives the pivot request');
+    assert.equal(guestState.turnNumber, 1);
+    assert.ok(guest.OB.myTurn(guestState));
+    assert.ok(host.OB.waitingOnOpponent(hostState));
+    assert.equal(guestRequests.at(-1), 'replace');
+    assert.equal(server.row.data.battle.p1_pick, null);
+    assert.equal(server.row.data.battle.resolved_turn, 1);
+    write({ native_p2_choice: firstGuestPick });
+    await tick();
+    assert.equal(resolutions, 1, 'a late choice belongs to the previous revision');
+    await guest.OB.handlePvPPlayTurn(guestState, { moveIndex: null, switchIndex: 1 }, {});
+    await until(() => guestState.isOver, 'guest receives the resolved replacement');
+    assert.equal(guestState.turnNumber, 1, 'the replacement is a distinct decision within the same turn');
+    assert.equal(guestState.fActive.name, 'Pichu');
+    assert.equal(server.row.data.battle.resolved_turn, 2);
+    assert.equal(server.row.data.p2_wins, 1, 'both sides still have HP, so scoring uses the Showdown outcome');
+    assert.equal(endings.at(-1)?.[0], 'VICTORY!');
+});
+
+test('a timed-out native guest replacement rejects an older board and reconnects to the latest', async t => {
+    const replace = { phase: 'replace', moves: [], switches: [1], forms: [] };
+    const move = { phase: 'move', moves: [{ slot: 0, name: 'Tackle' }], switches: [], forms: [] };
+    const { host, guest, hostState, guestState, server } = await pairedBattle(t, [null, replace]);
+    let resolutions = 0;
+    host.w._pvpBuildTimeoutAction = () => ({ moveIndex: null, switchIndex: 1 });
+    host.w.__runLockedPvPTurnResolution = async () => {
+        resolutions++;
+        assert.equal(hostState.p1Action, null);
+        assert.equal(hostState.p2Action.switchIndex, 1);
+        hostState.fActive = hostState.foeParty[1];
+        hostState.currentPlayer = 1;
+        hostState.nativeRequests = [move, move];
+    };
+    server.dropGuestAtResolution = true;
+    await host.OB.hostResolveGuestBattleTimeout(hostState, {});
+    assert.equal(server.row.data.battle.pending_turn, 2);
+    assert.equal(guestState._onlineNativeRevision, 1);
+    assert.ok(guest.OB.myTurn(guestState));
+    await guest.OB.handlePvPPlayTurn(guestState, { moveIndex: null, switchIndex: 1 }, {});
+    await until(() => guestState._onlineNativeRevision === 2, 'stale choice sees the newer board');
+    assert.equal(guestState.fActive.name, 'Pichu');
+    assert.ok(guest.OB.waitingOnOpponent(guestState));
+    assert.equal(resolutions, 1, 'the stale replacement must never run against the next decision');
+    assert.equal(server.row.data.native_p2_choice, undefined);
+});
+
+test('the online service lazily loads one SDK for concurrent callers and retries a failed load', async () => {
+    const mock = makeMockClient();
+    const { OB, dom, w } = loadOnlineBattle(mock);
+    try {
+        delete w.supabase;
+        let loads = 0;
+        const append = w.document.head.appendChild.bind(w.document.head);
+        w.document.head.appendChild = script => {
+            append(script);
+            const attempt = ++loads;
+            queueMicrotask(() => {
+                if (attempt === 1) script.onerror();
+                else {
+                    w.supabase = { createClient: () => mock };
+                    script.onload();
+                }
+            });
+            return script;
+        };
+        await assert.rejects(Promise.all([OB.getServiceClient(), OB.getServiceClient()]), /Could not load online services/);
+        assert.equal(loads, 1);
+        assert.equal(w.document.head.querySelectorAll('script').length, 0);
+        assert.equal(await OB.getServiceClient(), mock);
+        assert.equal(await OB.getServiceClient(), mock);
+        assert.equal(loads, 2);
+    } finally {
+        dom.window.close();
+    }
+});
 
 test('P1-5: failed pre-write read rolls the host turn back (P1 not stranded)', async () => {
     const mock = makeMockClient({

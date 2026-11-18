@@ -102,3 +102,25 @@ test('inactive story run → no filtering (filter is story-only)', async () => {
   assert.equal(await ST.storyFilterBuildMovesForCity(build, 'Garchomp', 0, false), false, 'no-op when sm inactive');
   assert.deepEqual(build.m, ['Outrage', 'Earthquake'], 'moveset untouched outside an active run');
 });
+
+test('preparing Professor offers restores the story RNG and discards a departed visit', async () => {
+  primeStory();
+  Object.assign(ST.sm, { eventIndex: 0, team: [], profUsed: {} });
+  const { document, StoryMode, storyRngNext } = eng.window;
+  const cards = document.getElementById('story-prof-rolled-card');
+  const lab = document.getElementById('screen-story-professor');
+
+  const preparation = StoryMode.enterProfessor();
+  assert.equal(eng.window.storyRngNext, storyRngNext, 'seeding ends before the first await');
+  assert.equal(ST.sm._strngState, null, 'rolling an offer leaves the world RNG cursor alone');
+  assert.equal(cards.children.length, 0, 'no raw preview is rendered while preparing');
+
+  StoryMode.showMenu(false);
+  await preparation;
+  assert.ok(lab.classList.contains('hidden'));
+  assert.equal(cards.children.length, 0, 'a departed visit cannot render a late offer');
+
+  await StoryMode.enterProfessor();
+  assert.equal(cards.querySelectorAll('.prof-pick-card').length, 3);
+  assert.equal(ST.sm._strngState, null, 'rendering the offer leaves the world RNG cursor alone');
+});

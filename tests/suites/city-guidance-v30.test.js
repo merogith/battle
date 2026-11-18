@@ -6,10 +6,7 @@
 //   B. The NEXT objective line: camp-return names its destination via the shared
 //      _storyNextBattleLabelForRow builder (extracted so label and click can't
 //      drift), and the post-game hub gets a fallback objective instead of none.
-//   C. The SUGGESTED rail describes team gaps (held item / ability / moves /
-//      neutral nature / EVs / can-evolve / evolved-new-moves); vouchers are
-//      "— free with …" suffixes on the matching gap chip, never standalone
-//      inventory chips.
+//   C. The city rail shows one payable next upgrade for a named partner.
 //   node --test tests/suites/city-guidance-v30.test.js
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,6 +23,7 @@ before(async () => {
   ({ window: W } = await loadEngine());
   ST = W.__storyTest;
   SER = ST.STORY_EVENTS_RAW;
+  W.eval(fs.readFileSync(path.join(ROOT, 'game-upgrades.js'), 'utf8'));
 });
 
 const INTROS_ALL = { mart: 1, tutor: 1, nature: 1, evolab: 1, stoneShop: 1, link: 1, fanclub: 1, dept: 1, casino: 1, dojo: 1, evtrainer: 1, colress: 1, artifacts: 1, safari: 1, center: 1, relic: 1, bag: 1, party: 1, daycare: 1, pits: 1 };
@@ -166,19 +164,29 @@ test('rival label never leaks the rolled identity', () => {
 });
 
 test('post-game hub: objective falls back to the Crucible / Mystery climax instead of vanishing', () => {
-  // Past the last Battle row there is nothing to scan — the old chain rendered
-  // NO objective at all. eventIndex beyond the timeline models the post-HoF hub.
-  setSm({ eventIndex: SER.length, postHofMysteryClimaxDone: true });
-  let out = render(SER.length);
+  const league = cityRowIdx(row => row[2] === 'City9');
+  setSm({ eventIndex: league, postHofMysteryClimaxDone: true, hofPartySnapshot: { team: [] } });
+  let out = render(league);
   assert.ok(out.obj, 'post-game objective rendered');
   assert.match(out.obj.label, /Crucible/, 'crucible objective');
   assert.match(out.obj.click, /enterCrucible/, 'clicks into the Crucible');
+  assert.doesNotMatch(out.grid, /Enter the Pokémon League/);
 
-  setSm({ eventIndex: SER.length, postHofMysteryClimaxDone: false, hofPartySnapshot: { team: [] } });
-  out = render(SER.length);
+  setSm({ eventIndex: league, postHofMysteryClimaxDone: false, hofPartySnapshot: { team: [] } });
+  out = render(league);
   assert.ok(out.obj, 'climax-pending objective rendered');
   assert.match(out.obj.label, /Mystery Figure/, 'mystery-climax objective');
   assert.match(out.obj.click, /enterMysteryClimax/, 'clicks into the climax re-challenge');
+  assert.doesNotMatch(out.grid, /Enter the Pokémon League/);
+});
+
+test('a returned League challenger sees the next Elite Four fight in both actions', () => {
+  const league = cityRowIdx(row => row[2] === 'City9');
+  const eliteFour = SER[battleRowIdx(row => row[2] === 'E4')];
+  setSm({ eventIndex: league, storyRetreatBattleRowId: eliteFour[0] });
+  const { grid, obj } = render(league);
+  assert.match(obj.label, /Resume the League.*Elite Four/);
+  assert.match(grid, /Resume the League.*Elite Four/);
 });
 
 // ── C. SUGGESTED rail ────────────────────────────────────────────────────────
@@ -186,18 +194,17 @@ test('post-game hub: objective falls back to the Crucible / Mystery climax inste
 const NATURE_CITY = () => cityRowIdx(r => String(r[2]) === 'City1' && r[5].includes('Nature Rater'));
 const EVO_CITY = () => cityRowIdx(r => Array.isArray(r[5]) && r[5].includes('Evolution Tutor'));
 
-test('neutral nature → gap chip; a held Mint becomes a suffix, never a standalone chip', () => {
+test('a held Mint gives a neutral partner an actionable suggestion', () => {
   const c = NATURE_CITY();
   assert.ok(c >= 0, 'Nature Rater city exists');
   const mon = polishedMon('m0'); mon.build.n = 'Hardy';
   setSm({ eventIndex: c, team: [mon] });
   let { rail } = render(c);
-  assert.match(rail, /1 Pokémon is still on a neutral nature/, 'nature gap chip present');
-  assert.ok(!/free with your Mint/.test(rail), 'no Mint suffix without a Mint');
+  assert.ok(!/Choose a stat boost/.test(rail), 'a neutral nature alone does not imply a gap');
 
   setSm({ eventIndex: c, team: [mon], inventory: { mint: 2 } });
   ({ rail } = render(c));
-  assert.match(rail, /still on a neutral nature — free with your Mint/, 'Mint rides the gap chip');
+  assert.match(rail, /Choose a stat boost for Gyarados — free with your Mint/);
   assert.ok(!/Mints? — free nature change/.test(rail), 'old standalone Mint chip is gone');
 });
 
@@ -211,13 +218,16 @@ test('voucher inventory with a polished team renders ZERO voucher chips', () => 
   }
 });
 
-test('missing held item + no ability → dojo chips with Emblem/Capsule suffixes', () => {
+test('several gaps yield one affordable action, and Acrobatics can keep its item slot empty', () => {
   const c = NATURE_CITY();
   const mon = polishedMon('m0'); mon.build.i = null; mon.build.a = 'None';
   setSm({ eventIndex: c, team: [mon], inventory: { emblemHonor: 1, abilityCapsule: 1 } });
-  const { rail } = render(c);
-  assert.match(rail, /1 Pokémon needs a held item — free with your Emblem of Honor/);
-  assert.match(rail, /1 Pokémon has no ability set — free with your Ability Capsule/);
+  assert.match(render(c).rail, /Give Gyarados an ability — free with your Ability Capsule/);
+  assert.equal(W.document.querySelectorAll('.story-city-prep-tip').length, 1);
+  mon.build.a = 'Intimidate';
+  assert.match(render(c).rail, /Give Gyarados a held item — free with your Emblem of Honor/);
+  mon.build.m[0] = 'Acrobatics';
+  assert.doesNotMatch(render(c).rail, /held item — free/);
 });
 
 test('empty move slot → tutor chip with Heart Scale suffix', () => {
@@ -225,7 +235,7 @@ test('empty move slot → tutor chip with Heart Scale suffix', () => {
   const mon = polishedMon('m0'); mon.build.m = ['Waterfall'];
   setSm({ eventIndex: c, team: [mon], inventory: { heartScale: 2 } });
   const { rail } = render(c);
-  assert.match(rail, /1 Pokémon has an empty move slot — free with a Heart Scale/);
+  assert.match(rail, /Teach Gyarados a move — free with a Heart Scale/);
 });
 
 test('evolvable teammate → need-gated evolve chip (Rare Candy as suffix only)', () => {
@@ -233,18 +243,92 @@ test('evolvable teammate → need-gated evolve chip (Rare Candy as suffix only)'
   const mon = polishedMon('m0'); mon.name = 'Charmander';
   setSm({ eventIndex: c, team: [mon], inventory: { rareCandy: 1 } });
   const { rail } = render(c);
-  assert.match(rail, /1 Pokémon can evolve — free with a Rare Candy/, 'evolve chip with suffix');
+  assert.match(rail, /Evolve Charmander — free with a Rare Candy/, 'evolve chip with suffix');
+});
+
+test('evolution guidance checks city, affordability, and the available payment path', () => {
+  const c = EVO_CITY();
+  const first = { ...polishedMon('m0'), name: 'Magikarp' };
+  setSm({ eventIndex: c, team: [first], inventory: { rareCandy: 1 } });
+  assert.doesNotMatch(render(c).rail, /Evolve Magikarp/);
+
+  const second = { ...polishedMon('m1'), name: 'Charmander' };
+  setSm({ eventIndex: c, team: [second], gold: 0, inventory: {} });
+  assert.doesNotMatch(render(c).rail, /Evolve Charmander/);
+
+  setSm({ eventIndex: c, team: [second], gold: 0, inventory: { rareCandy: 1 } });
+  assert.match(render(c).rail, /Evolve Charmander — free with a Rare Candy/);
+
+  const third = { ...polishedMon('m2'), name: 'Machop' };
+  setSm({ eventIndex: c, team: [first, second, third], gold: 3000, inventory: {} });
+  assert.match(render(c).rail, /Evolve Charmander/);
+  assert.doesNotMatch(render(c).rail, /Evolve Machop/);
 });
 
 test('evolved-since-tutor breadcrumb renders and clears on the move screen', () => {
   const c = NATURE_CITY();
   setSm({ eventIndex: c, team: [polishedMon('m0')], newMovesPending: { m0: 1 } });
   let { rail } = render(c);
-  assert.match(rail, /1 Pokémon evolved — new moves to learn/, 'breadcrumb chip present');
+  assert.match(rail, /See the moves Gyarados can learn after evolving/, 'breadcrumb chip present');
   // Opening the Move Tutor's move screen clears the flag for the party…
   W.StoryMode.enterTutor('moves');
   assert.ok(!ST.sm.newMovesPending.m0, 'flag cleared by the tutor visit');
   // …so the next hub render drops the chip.
   ({ rail } = render(c));
-  assert.ok(!/new moves to learn/.test(rail), 'chip gone after the visit');
+  assert.ok(!/can learn after evolving/.test(rail), 'chip gone after the visit');
+});
+
+test('an early EV Trainer cannot spend a suggestion on an untrained partner', () => {
+  const untrained = polishedMon('new');
+  untrained.build.evs = {};
+  const early = cityRowIdx(row => row[2] === 'City3');
+  const late = cityRowIdx(row => row[2] === 'City7');
+  setSm({ eventIndex: early, team: [untrained], inventory: { vitamin: 1 } });
+  assert.doesNotMatch(render(early).rail, /Train Gyarados/);
+  setSm({ eventIndex: late, team: [untrained], inventory: { vitamin: 1 } });
+  assert.match(render(late).rail, /Train Gyarados’s battle stats — free with an EV Voucher/);
+});
+
+test('a Stonewise Token points directly to the stone shop', () => {
+  const city = EVO_CITY();
+  setSm({ eventIndex: city, inventory: { stoneToken: 1 } });
+  const { rail } = render(city);
+  assert.match(rail, /Choose a free evolution stone with your Stonewise Token/);
+  assert.match(rail, /enterStoneShop/);
+  assert.equal(W.document.querySelectorAll('.story-city-prep-tip').length, 1);
+});
+
+test('a named preparation action opens the chosen partner directly', () => {
+  const early = NATURE_CITY();
+  const first = polishedMon('first');
+  const second = { ...polishedMon('second'), nickname: 'Ripple' };
+  second.build.a = 'None';
+  setSm({ eventIndex: early, team: [first, second], inventory: { abilityCapsule: 1 } });
+  assert.match(render(early).rail, /Give Ripple an ability/);
+  W.document.querySelector('.story-city-prep-tip').click();
+  assert.equal(W.document.querySelector('#screen-story-tutor .story-tutor-mon-toggle[data-team="1"]').getAttribute('aria-expanded'), 'true');
+});
+
+test('the Notebook uses actual town facilities and keeps boxed hatches a surprise', () => {
+  const city = W.document.getElementById('screen-story-city');
+  const setVisible = () => city.classList.remove('hidden');
+  const names = () => [...W.document.querySelectorAll('.upgrade-dialog button')].map(button => button.textContent);
+  const c = cityRowIdx(row => row[2] === 'City3');
+  setSm({ eventIndex: c, daycare: { unlocked: true }, pcBox: [{ id: 'egg', isEgg: true, name: 'Geodude' }] });
+  render(c);
+  setVisible();
+  W.GameUpgrades.openNotebook();
+  assert.equal(W.StoryMode.upgrades.visit('daycare'), false);
+  assert.ok(!names().includes('Visit Daycare Inn'));
+  assert.equal(W.StoryMode.upgrades.snapshot().storage.length, 0);
+  W.GameUpgrades.close();
+
+  setSm({ eventIndex: 0, storyDifficulty: 'easy' });
+  render(0);
+  setVisible();
+  W.GameUpgrades.openNotebook();
+  assert.ok(names().includes('Visit Department Store'));
+  assert.ok(!names().includes('Visit Pokémart'));
+  W.GameUpgrades.close();
+  city.classList.add('hidden');
 });

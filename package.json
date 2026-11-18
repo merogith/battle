@@ -1,6 +1,6 @@
 {
   "name": "pokemon-battle",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "start": "node scripts/dev-server.cjs",
@@ -17,7 +17,7 @@
     "sprites:verify": "node scripts/verify-sprites.mjs",
     "offline:manifest": "node scripts/build-offline-asset-manifest.mjs",
     "icons:build": "node scripts/build-app-icons.mjs",
-    "build:pwa": "node scripts/build-sprite-manifest.mjs && node scripts/build-app-icons.mjs && node scripts/build-offline-asset-manifest.mjs",
+    "build:pwa": "node scripts/build-sprite-manifest.mjs && node scripts/build-app-icons.mjs && npm run build:competitive && node scripts/build-offline-asset-manifest.mjs",
     "test": "node --test --test-concurrency=4 'tests/**/*.test.js'",
     "test:property": "node --test 'tests/property/**/*.test.js'",
     "test:suites": "node --test 'tests/suites/**/*.test.js'",
@@ -37,13 +37,17 @@
     "screenshots": "node scripts/debug/story-screenshots.mjs",
     "screenshots:casino": "node tests/visual/casino-visual.mjs",
     "test:casino": "node tests/visual/casino-functional.mjs",
+    "playtest:player": "node scripts/debug/player-playtest.mjs",
     "dojo-dex": "node scripts/build-dojo-dex.mjs",
-    "build:release": "node scripts/build-release.mjs"
+    "build:release": "node scripts/build-release.mjs",
+    "build:competitive": "node scripts/build-competitive.mjs",
+    "test:competitive:browser": "node tests/visual/competitive-playwright.mjs"
   },
   "devDependencies": {
     "@pkmn/data": "^0.10.9",
     "@pkmn/dex": "^0.10.9",
-    "@pkmn/sim": "^0.10.9",
+    "@pkmn/sim": "0.10.9",
+    "esbuild": "0.25.12",
     "eslint": "^8.57.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0"

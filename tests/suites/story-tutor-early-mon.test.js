@@ -54,9 +54,9 @@ test('Fast-Build produces a complete plan for Caterpie @ City 1 (moves from the 
   assert.ok(plan.parts.some((p) => p.kind === 'nature'), 'nature part present (Nature Rater open at C1)');
 });
 
-test('EVs are focus-only before the EV Trainer opens, even at the very first city', async () => {
+test('a custom EV focus can be retuned for free before the EV Trainer opens', async () => {
   const nm = EARLY[0];
-  await prime(nm, 1, { m: ['Tackle'], n: 'Hardy', a: (ST.baseStats[nm].abilities && ST.baseStats[nm].abilities['0']) || 'None' });
+  await prime(nm, 1, { m: ['Tackle'], n: 'Hardy', a: (ST.baseStats[nm].abilities && ST.baseStats[nm].abilities['0']) || 'None', evTrainFocus: ['def'] });
   const plan = ST.txBuildFastBuildPlan(0);
   assert.ok(!plan.parts.some((p) => p.kind === 'evs'), 'no full EV spread charge pre-unlock');
   const evf = plan.parts.find((p) => p.kind === 'evfocus');

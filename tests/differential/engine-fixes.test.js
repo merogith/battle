@@ -142,6 +142,44 @@ async function run({ player, foe, foeSlot = 0, seed = 909 }) {
   return { p, f, logs: eng.logs.slice(start).map((l) => l.text) };
 }
 
+test('Population Bomb checks accuracy between hits unless Skill Link or Loaded Dice applies', async () => {
+  async function hits(ability, item, magicRoom = 0) {
+    const player = eng.mkMon({ species: 'Maushold', ability, item, moves: ['Population Bomb'] });
+    const foe = eng.mkMon({ species: 'Aggron', ability: 'Rock Head', moves: ['Splash'] });
+    setup(player, foe);
+    eng.engine.state.magicRoom = magicRoom;
+    eng.engine.setForcedFoeMoveSlot(0);
+    await W.playTurn(0, null);
+    const result = eng.logs.find(({ text }) => /^Hit \d+ times?!/.test(text));
+    return Number(result?.text.match(/^Hit (\d+)/)[1]);
+  }
+
+  const ordinary = await hits('Friend Guard', null);
+  assert.ok(ordinary >= 1 && ordinary < 10, 'an accuracy failure can end the attack early');
+  assert.equal(await hits('Skill Link', null), 10, 'Skill Link skips later accuracy checks');
+  const withDice = await hits('Friend Guard', 'Loaded Dice');
+  assert.ok(withDice >= 4 && withDice < 10, 'Loaded Dice rolls 4–10 hits and can roll below the full ten');
+  assert.equal(await hits('Skill Link', 'Loaded Dice'), withDice, 'Loaded Dice still limits the roll with Skill Link');
+  assert.equal(await hits('Friend Guard', 'Loaded Dice', 3), ordinary, 'Magic Room suppresses Loaded Dice');
+});
+
+test('Z- and Max Moves converted from Bullet Seed resolve a single strike', async () => {
+  for (const [kind, item, moveName] of [
+    ['ZMOVE', 'Grassium Z', 'Bloom Doom'],
+    ['DYNAMAX', null, 'Max Overgrowth'],
+  ]) {
+    const player = eng.mkMon({ species: 'Breloom', ability: 'Technician', item, moves: ['Bullet Seed'] });
+    const foe = eng.mkMon({ species: 'Aggron', ability: 'Rock Head', moves: ['Splash'] });
+    setup(player, foe);
+    player.buildData.gimmick = kind;
+    eng.engine.state.p1GimmickIntent = { kind, slot: 0 };
+    eng.engine.setForcedFoeMoveSlot(0);
+    await W.playTurn(0, null);
+    assert.ok(eng.logs.some(({ text }) => text.includes(`used ${moveName}`)), `${moveName} should execute`);
+    assert.ok(!eng.logs.some(({ text }) => /^Hit \d+ times?!/.test(text)), `${moveName} should not inherit multiple hits`);
+  }
+});
+
 // ── ISSUE-055: the generic boost block must not swallow a move's extra effect ──
 // Each of these moves carries a `boosts` data field AND a named branch that adds a
 // second effect (faint / status / confusion / trap). Pre-fix the block's

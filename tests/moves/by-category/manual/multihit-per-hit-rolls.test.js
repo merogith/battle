@@ -35,7 +35,8 @@ async function doubleKickWithRolls(rolls) {
   window.Math.random = () => (armed && q.length > 0) ? q.shift() : nextFloat();
   try {
     const turnLogs = await runTurn({ playerMon: a, foeMon: d });
-    return { total: d.maxHp - d.currentHp, logs: turnLogs, queueLeft: q.length };
+    const neutralDamage = Math.floor(22 * 30 * a.stats.atk / d.stats.def / 50) + 2;
+    return { total: d.maxHp - d.currentHp, logs: turnLogs, queueLeft: q.length, neutralDamage };
   } finally {
     window.logMsg = origLog;
     window.Math.random = nextFloat;
@@ -56,7 +57,8 @@ describe('multi-hit per-hit damage/crit rolls (Showdown parity)', () => {
     const h1 = base.total / 2;
 
     const maxRoll2 = await doubleKickWithRolls([0.5, NO_CRIT, ROLL_85, NO_CRIT, ROLL_100]);
-    const expected = h1 + Math.floor(h1 * (1.0 / 0.85));
+    // The 100 roll uses the raw base, then applies super effectiveness.
+    const expected = h1 + 2 * base.neutralDamage;
     assert.equal(maxRoll2.total, expected,
       `hit 2 must use its own variance roll (hit1=${h1}, expected total ${expected}, got ${maxRoll2.total})`);
     assert.ok(maxRoll2.total > base.total, 'a max second-hit roll must out-damage two min rolls');
@@ -68,7 +70,8 @@ describe('multi-hit per-hit damage/crit rolls (Showdown parity)', () => {
     const h1 = base.total / 2;
 
     const crit2 = await doubleKickWithRolls([0.5, NO_CRIT, ROLL_85, CRIT, ROLL_85]);
-    const expected = h1 + Math.floor(h1 * 1.5);
+    // The crit rounds the raw base before applying this strike's own 85 roll.
+    const expected = h1 + 2 * Math.floor(Math.floor(base.neutralDamage * 1.5) * 85 / 100);
     assert.equal(crit2.total, expected,
       `hit 2 must crit independently (hit1=${h1}, expected total ${expected}, got ${crit2.total})`);
     assert.ok(crit2.logs.some((l) => l.text.includes('A critical hit!')),

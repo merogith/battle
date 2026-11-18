@@ -32,6 +32,7 @@ const HTML = fs.readFileSync(
   path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'battle.html'),
   'utf8'
 );
+const UPGRADES_CSS = fs.readFileSync(new URL('../../game-upgrades.css', import.meta.url), 'utf8');
 
 const TIERS = {
   'scrim': 1200,
@@ -66,27 +67,21 @@ test('the z-scale is strictly ascending: scrim < battle-banner < overlay < spotl
 const MIGRATED = [
   ['z-index: var(--sn-z-scrim);', 'z-index: 1200;', '.modal scrim'],
   ['z-index: var(--sn-z-toast);', 'z-index: 15000;', '#toast-host container'],
-  ['letter-spacing:0.06em;z-index:var(--sn-z-toast);', null, '_maybeShowSaveToast pill'],
   ['z-index: var(--sn-z-battle-banner);', null, '.gimmick-banner'],
-  // overlay tier (9998)
-  ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px', null, '_showCityArrivalScreen'],
-  ['background:#000;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:18px;padding:20px', null, 'city0 cold-open (enterCity)'],
-  ['height:100%;z-index:var(--sn-z-overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;background:linear-gradient', null, '_showWanderScreen'],
   // overlay tier — formerly off-scale (z10000 / z9990), folded onto the scale here
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
   ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.92);z-index:9990', '_daycareOpenDropOff (was z9990)'],
   // spotlight tier (9999)
-  ['z-index:var(--sn-z-spotlight);pointer-events:none;opacity:0;', null, '_showBossBanner'],
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-spotlight);', null, '_showFirstSightingLoreOverlay'],
-  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;', null, 'showBattleIntro'],
-  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;', null, 'showVictoryOverlay'],
-  ['height:100%;z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;padding:max(16px', null, 'showHallOfFame grid'],
+  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;gap:16px;', null, 'showBattleIntro'],
+  ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:14px;', null, 'showVictoryOverlay'],
 ];
 
 test('every migrated story overlay references its --sn-z-* token', () => {
   for (const [present, , label] of MIGRATED) {
     assert.ok(HTML.includes(present), `${label}: expected token fragment is present`);
   }
+  assert.match(HTML, /\.story-boss-announcements\s*\{[^}]*z-index:\s*var\(--sn-z-spotlight\)/);
 });
 
 test('no migrated story overlay still carries its old z-index literal', () => {
@@ -96,10 +91,12 @@ test('no migrated story overlay still carries its old z-index literal', () => {
 });
 
 test('the migrated CSS-class overlays sit on the overlay tier via the token', () => {
-  for (const cls of ['story-tutorial-overlay', 'storyfx-evo-overlay', 'story-legend-sighting']) {
-    const re = new RegExp('\\.' + cls + '\\s*\\{[\\s\\S]*?z-index: var\\(--sn-z-overlay\\);');
+  for (const cls of ['story-tutorial-overlay', 'storyfx-evo-overlay', 'story-legend-sighting', 'story-city-arrival', 'story-wander']) {
+    const re = new RegExp('\\.' + cls + '\\s*\\{[^}]*?z-index: var\\(--sn-z-overlay\\);');
     assert.ok(re.test(HTML), `.${cls} must use var(--sn-z-overlay)`);
   }
+  assert.match(UPGRADES_CSS, /\.story-cold-open\s*\{[^}]*z-index:\s*var\(--sn-z-overlay\);/);
+  assert.match(HTML, /\.story-hof-ceremony\s*\{[^}]*z-index:\s*var\(--sn-z-spotlight\);/);
 });
 
 test('the casino celebration overlays sit on the scale (jackpot below the prize reveal)', () => {
@@ -117,8 +114,8 @@ test('the casino celebration overlays sit on the scale (jackpot below the prize 
 });
 
 test('the save toast no longer hand-rolls a z-index:99999 literal', () => {
-  // 99999 may still appear in the dev/debug overlay (monospace), but never on
-  // the .story-save-toast element built by _maybeShowSaveToast.
+  // The saved confirmation shares the hosts's notification layout.
   const saveToastNearLiteral = /story-save-toast[\s\S]{0,500}z-index:99999/.test(HTML);
   assert.ok(!saveToastNearLiteral, 'story-save-toast must not use z-index:99999');
+  assert.match(HTML, /showToast\('💾 Saved', 1100, \{ saved: true \}\)/);
 });

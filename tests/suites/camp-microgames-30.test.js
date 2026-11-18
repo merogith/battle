@@ -1,4 +1,4 @@
-// Camp micro-games — 30-game roster (6 actions × 5) + the 17-primitive toolkit +
+// Camp micro-games — 30-game roster (6 actions × 5) + the 22-primitive toolkit +
 // the difficulty system (ranged [easy,hard] params lerp on bond progress). The
 // roster + the pure win/lose deciders + the difficulty resolver are the
 // deterministic parts and are locked here; the interactive FEEL (windows, speeds)
@@ -254,13 +254,15 @@ test('run-routing: unknown primitive → freebie win; known primitives mount an 
     assert.equal(pmRes, 'pending', 'pickMatch awaits a tap');
     let ov = W.document.getElementById('camp-microgame');
     assert.ok(ov && ov.querySelector('[data-camp-pm]'), 'pickMatch overlay rendered with choices');
-    if (ov) ov.remove();
+    ov.querySelector('[data-camp-exit]').click();
+    assert.equal(pmRes, null, 'leaving an activity is distinct from losing it');
 
     // spot-check the interactive primitives mount with their expected widgets (no sync resolve).
     const cases = [
         { game: { primitive: 'quickMath', name: 'Snap!', optionCount: 4, ms: 5000, maxOperand: 9 }, sel: '[data-camp-qm]' },
         { game: { primitive: 'block', name: 'Brace!', hits: 3, telegraphMs: 800 }, sel: '[data-camp-bk]' },
         { game: { primitive: 'dodge', name: 'Quick Dodge!', windowMs: 700, feints: 1 }, sel: '[data-camp-dg]' },
+        { game: { primitive: 'lobAim', name: 'Feed!', tol: 50 }, sel: '#camp-lb-band' },
         // toolkit expansion (17 → 22)
         { game: { primitive: 'tracePath', name: 'Soothe!', dots: 5, tol: 34, ms: 4200 }, sel: '#camp-tp-field' },
         { game: { primitive: 'stack', name: 'Stack!', need: 4, tol: 26, slideMs: 1200 }, sel: '#camp-sk-drop' },
@@ -274,7 +276,8 @@ test('run-routing: unknown primitive → freebie win; known primitives mount an 
         assert.equal(r, 'pending', `${c.game.primitive} awaits input (no sync freebie)`);
         ov = W.document.getElementById('camp-microgame');
         assert.ok(ov && ov.querySelector(c.sel), `${c.game.primitive} overlay rendered (${c.sel})`);
-        if (ov) ov.remove();
+        ov.querySelector('[data-camp-exit]').click();
+        assert.equal(r, null, `${c.game.primitive} cancels without a result`);
     }
 
     // Stack! drop produces a visible placed-slab in the field (both hit and miss
@@ -287,7 +290,25 @@ test('run-routing: unknown primitive → freebie win; known primitives mount an 
         drop.click();
         const field = ov.querySelector('#camp-sk-field');
         assert.ok(field && field.querySelector('.camp-sk-placed'), 'stack drop spawns a placed slab');
-        if (ov && ov.parentNode) ov.remove();
+        ov.querySelector('[data-camp-exit]').click();
+    }
+});
+
+test('balance seeds gusts once without consuming the journey stream on each frame', async () => {
+    const originalRng = W.storyRngNext;
+    const skip = W.__campSkipCountdown;
+    let calls = 0;
+    try {
+        W.__campSkipCountdown = true;
+        W.StoryMode.state.active = true;
+        W.storyRngNext = () => { calls++; return 0.5; };
+        ST.campRunMicrogame({ primitive: 'balance', name: 'Embrace', ms: 2400 }, () => {});
+        await new Promise(resolve => W.setTimeout(resolve, 80));
+        assert.equal(calls, 1);
+    } finally {
+        W.document.querySelector('#camp-microgame [data-camp-exit]')?.click();
+        W.storyRngNext = originalRng;
+        W.__campSkipCountdown = skip;
     }
 });
 
@@ -305,6 +326,33 @@ test('get-ready countdown gates every microgame start (unknown primitives skip i
     ST.campRunMicrogame({ primitive: 'totally-unknown', name: 'X' }, (won) => { freebie = won; });
     assert.equal(freebie, true, 'unknown primitive resolves instantly with no countdown');
 
-    if (cd && cd.parentNode) cd.remove();
+    W.document.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(resolved, null, 'Escape cancels the countdown before the game starts');
+    assert.equal(W.document.getElementById('camp-countdown'), null);
     W.__campSkipCountdown = true;   // restore instant mode
+});
+
+test('a successful GO cancels its own timer so it cannot expire the next cue', async () => {
+    const oldRandom = W.storyRngNext;
+    W.storyRngNext = () => 0;
+    const ready = new Promise(resolve => ST.campRunMicrogame({
+        primitive: 'goNoGo', name: 'React!', rounds: 2, windowMs: 1000, goRatio: 0.5,
+    }, resolve));
+    const cue = W.document.getElementById('camp-gn-cue');
+    const tap = W.document.getElementById('camp-gn-tap');
+    try {
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        for (let i = 0; i < 70 && cue.textContent !== 'GO'; i++) await wait(10);
+        assert.equal(cue.textContent, 'GO');
+        tap.click();
+        for (let i = 0; i < 70 && cue.textContent !== 'GO'; i++) await wait(10);
+        assert.equal(cue.textContent, 'GO');
+        await wait(550);
+        assert.ok(cue.isConnected, 'the second cue is still within its own 1000ms window');
+        tap.click();
+        assert.equal(await ready, true);
+    } finally {
+        W.document.querySelector('#camp-microgame [data-camp-exit]')?.click();
+        W.storyRngNext = oldRandom;
+    }
 });

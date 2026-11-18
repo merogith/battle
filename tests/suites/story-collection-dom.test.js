@@ -36,6 +36,19 @@ test('Achievements tab renders the new Endgame Grind category', () => {
   assert.match(html, /Replayability Trophies/, 'replay category still present');
 });
 
+test('actionable trophies lead and locked story spoilers use one disclosure', () => {
+  SM.openCollection('achievements');
+  const body = doc.getElementById('collection-body');
+  const hidden = body.querySelector('.ach-hidden');
+  assert.equal(body.querySelector('.ach-cat-title').textContent, 'Story Milestones');
+  assert.match(body.textContent, /First Catch/);
+  assert.match(body.textContent, /Investigate three different road discoveries/);
+  assert.equal(hidden, body.lastElementChild);
+  assert.equal(hidden.open, false);
+  assert.match(hidden.querySelector('summary').textContent, /4 hidden trophies/);
+  assert.doesNotMatch(body.textContent, /Mystery Figure|Mask Removed|Two Ways Forward/);
+});
+
 test('collection a11y: tablist roving tabindex + live panel + pokedex strip live', () => {
   SM.openCollection('pokedex');
   const active = doc.getElementById('collection-tab-pokedex');

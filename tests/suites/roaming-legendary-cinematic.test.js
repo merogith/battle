@@ -50,17 +50,24 @@ test('signs stage: silhouette sprite, hidden name, per-species signs line, then 
 
     const stage1 = W.document.querySelector('.story-legend-sighting');
     assert.ok(stage1, 'signs overlay mounted');
+    assert.equal(stage1.getAttribute('role'), 'dialog');
+    assert.equal(stage1.getAttribute('aria-modal'), 'true');
+    assert.equal(stage1.getAttribute('aria-label'), 'Tracks on the road');
+    assert.equal(stage1.querySelector('img')?.getAttribute('alt'), '', 'silhouette does not announce the species');
     assert.ok(stage1.querySelector('.story-legend-sighting-sprite--silhouette'), 'sprite is silhouetted');
     assert.equal(stage1.querySelector('.story-legend-sighting-name').textContent, '— ? —', 'name is hidden');
     assert.ok(/SOMETHING PACES THE ROUTE/.test(stage1.textContent), 'signs banner');
     assert.ok(stage1.textContent.includes('The puddles along the road have gone perfectly clear'),
         'per-species signs line (Suicune)');
     assert.equal(done, 0, 'onDone has not fired yet');
+    stage1.click();
+    assert.equal(W.document.querySelector('.story-legend-sighting'), stage1, 'the backdrop cannot advance the encounter');
 
     stage1.querySelector('button').click();
     const stage2 = W.document.querySelector('.story-legend-sighting');
     assert.ok(stage2 && stage2 !== stage1, 'reveal overlay mounted');
     assert.ok(!stage2.querySelector('.story-legend-sighting-sprite--silhouette'), 'silhouette lifted');
+    assert.match(stage2.getAttribute('aria-label'), /Suicune/);
     assert.equal(stage2.querySelector('.story-legend-sighting-name').textContent, 'Suicune', 'name revealed');
     assert.ok(stage2.querySelector('.story-legend-sighting-flash'), 'reveal flash element present');
     assert.ok(stage2.classList.contains('story-legend-sighting--shake'), 'reveal shake class applied');
@@ -100,7 +107,7 @@ test('raid intro path is untouched by the two-stage flow (no signs stage)', () =
 
 test('roaming outcomes carry aftermath copy: catch, flee, and walk-away', () => {
     const src = fs.readFileSync(path.join(ROOT, 'battle.html'), 'utf8');
-    assert.ok(src.includes('The route exhales. The legend rides with you now.'),
+    assert.ok(src.includes('The wind returns to the grass. You can still hear the latch click.'),
         'roaming catch success aftermath');
     assert.ok(src.includes('The route settles back into being just a route. It remembers you, though.'),
         'roaming ball-broken flee aftermath');

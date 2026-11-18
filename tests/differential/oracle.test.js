@@ -43,3 +43,20 @@ test('finding #1 fixed: self-target move applies through a semi-invuln foe', asy
   const d = await runScenario(scn);
   assert.equal(d.counts.high, 0, 'self-boost should apply through the foe\'s invulnerability (finding #1 fixed)');
 });
+
+test('the comparator reports missing turns and rejected scripted commands', async () => {
+  const scn = {
+    team1: [{ species: 'Pikachu', moves: ['Thunderbolt'] }],
+    team2: [{ species: 'Blissey', moves: ['Seismic Toss'] }],
+    choices1: ['move 4', 'move 1'],
+    choices2: ['move 1', 'move 1'],
+    checkRequests: true,
+  };
+  const showdown = await runShowdownBattle(scn);
+  assert.deepEqual(showdown.rejectedChoices.map(({ slot, choice }) => ({ slot, choice })), [
+    { slot: 'p1a', choice: 'move 4' },
+  ]);
+  const truncated = { ...showdown, turns: showdown.turns.slice(0, 1) };
+  const fields = diffTraces(showdown, truncated, scn).divergences.map(result => result.field);
+  assert.deepEqual(fields, ['rejected-choice', 'turn-count']);
+});

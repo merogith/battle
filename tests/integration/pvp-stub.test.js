@@ -244,27 +244,72 @@ test('pvp-stub: _pushDataImpl propagates write failures (ISSUE-019, post-005)', 
   assert.match(body, /throw\s+new\s+Error\(\s*['"]pvp_push_data/, 'RPC-level rejection must throw with reason');
 });
 
-test('pvp-stub: _onRemoteRow does not bump lastRemoteSeq before handler succeeds (ISSUE-010)', () => {
+async function loadRoomQueue() {
   const src = readFileSync('online-pvp.js', 'utf8');
-  // Locate the _onRemoteRow body
-  const start = src.indexOf('_onRemoteRow(newRow)');
-  const body = src.slice(start, start + 1200);
-  // The order inside .then(async () => { ... }) must be:
-  //   1. read incoming seq
-  //   2. (await handler)
-  //   3. lastRemoteSeq = incoming
-  const lastSeqAssignIdx = body.indexOf('lastRemoteSeq =');
-  const handlerAwaitIdx = body.search(/await\s+Promise\.(race|resolve)/);
-  assert.ok(handlerAwaitIdx > 0, 'await on handler present');
-  assert.ok(lastSeqAssignIdx > handlerAwaitIdx, 'lastRemoteSeq must be assigned AFTER the handler await; pre-fix it was before');
+  const timers = new Map();
+  const warnings = [];
+  let timerId = 0;
+  const window = {
+    __PBS_SUPABASE_URL: 'https://example.supabase.co',
+    __PBS_SUPABASE_ANON_KEY: 'test-public-key-for-local-room-tests',
+    supabase: { createClient: () => mockSupabaseClient() },
+    localStorage: { getItem: () => null },
+    setTimeout(callback, delay) {
+      timers.set(++timerId, { callback, delay });
+      return timerId;
+    },
+    clearTimeout: id => timers.delete(id),
+  };
+  const mockConsole = { warn: (...args) => warnings.push(args) };
+  const online = new Function('window', 'console', src + '\nreturn window.OnlineBattle;')(window, mockConsole);
+  await online.createRoom({ partySize: 1 }, [1], {});
+  const deliver = seq => online._onRemoteRow({ data: { seq } });
+  return { window, timers, warnings, deliver };
+}
+
+const flushRoomQueue = () => new Promise(resolve => setImmediate(resolve));
+
+test('pvp-stub: _onRemoteRow does not bump lastRemoteSeq before handler succeeds (ISSUE-010)', async () => {
+  const { window, timers, deliver, warnings } = await loadRoomQueue();
+  const received = [];
+  window.onOnlineRoomData = async d => {
+    received.push(d.seq);
+    if (received.length === 1) throw new Error('room render failed');
+  };
+  deliver(3);
+  await flushRoomQueue();
+  assert.match(warnings[0][1].message, /room render failed/);
+  assert.equal(timers.size, 0, 'a failed handler clears its timeout');
+
+  deliver(3);
+  await flushRoomQueue();
+  deliver(3);
+  deliver(2);
+  await flushRoomQueue();
+  assert.deepEqual(received, [3, 3], 'a rejected seq can retry and a successful seq stays fenced');
+  assert.equal(timers.size, 0, 'a successful handler clears its timeout');
 });
 
-test('pvp-stub: _onRemoteRow races handler against a timeout (ISSUE-021)', () => {
-  const src = readFileSync('online-pvp.js', 'utf8');
-  const start = src.indexOf('_onRemoteRow(newRow)');
-  const body = src.slice(start, start + 1200);
-  assert.match(body, /Promise\.race\s*\(/, 'must use Promise.race against a timeout');
-  assert.match(body, /onOnlineRoomData timeout/, 'must reject with a labeled timeout error');
+test('pvp-stub: _onRemoteRow races handler against a timeout (ISSUE-021)', async () => {
+  const { window, timers, deliver, warnings } = await loadRoomQueue();
+  const received = [];
+  window.onOnlineRoomData = d => {
+    received.push(d.seq);
+    if (received.length === 1) return new Promise(() => {});
+  };
+  deliver(2);
+  deliver(2);
+  deliver(3);
+  await flushRoomQueue();
+  assert.deepEqual(received, [2]);
+  assert.equal(timers.size, 1);
+  const [{ callback, delay }] = timers.values();
+  assert.equal(delay, 10000);
+  callback();
+  await flushRoomQueue();
+  assert.deepEqual(received, [2, 2, 3], 'timeout releases the queue and leaves the stalled seq eligible for retry');
+  assert.match(warnings[0][1].message, /onOnlineRoomData timeout/);
+  assert.equal(timers.size, 0);
 });
 
 test('pvp-stub: simulate the bumped-then-thrown anti-pattern is gone', async () => {

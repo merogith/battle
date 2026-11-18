@@ -1,0 +1,143 @@
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { chromium } from 'playwright';
+
+const url = new URL(process.env.BATTLE_TEST_URL || 'http://localhost:5173/battle.html');
+const out = process.env.BATTLE_PLAYTEST_OUT;
+const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
+const report = [];
+
+async function installProbe(page) {
+    // Observe original Chromium media elements and Web Audio gain. No playback mocks.
+    await page.addInitScript(() => {
+        const NativeAudio = window.Audio;
+        const connect = AudioNode.prototype.connect;
+        window.audioProbe = { elements: [], masters: [] };
+        window.Audio = function (...args) {
+            const audio = new NativeAudio(...args);
+            window.audioProbe.elements.push({ audio, requestedSource: args[0] || '' });
+            return audio;
+        };
+        window.Audio.prototype = NativeAudio.prototype;
+        AudioNode.prototype.connect = function (...args) {
+            if (args[0] === this.context.destination && this instanceof GainNode) window.audioProbe.masters.push(this);
+            return connect.apply(this, args);
+        };
+    });
+}
+
+try {
+    for (const [width, height, touch] of [[390, 844, true], [1440, 900, false]]) {
+        const reducedMotion = touch ? 'reduce' : 'no-preference';
+        const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, reducedMotion });
+        const page = await context.newPage();
+        const errors = [];
+        const requests = [];
+        await page.route('**/*', route => new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
+        page.on('pageerror', err => errors.push(err.message));
+        page.on('response', res => {
+            if (/\.(mp3|wav)$/.test(res.url())) requests.push({ path: new URL(res.url()).pathname, status: res.status() });
+        });
+        await installProbe(page);
+        const press = target => touch ? target.tap() : target.click();
+        const gear = page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first();
+        const close = page.getByRole('button', { name: 'Close settings' });
+        const toggle = id => press(page.locator(`label[for="${id}"]`));
+        const state = () => page.evaluate(() => ({
+            playing: window.audioProbe.elements.filter(({ audio }) => !audio.paused && !audio.ended).map(({ audio }) => new URL(audio.src).pathname),
+            generated: window.ChiptuneEngine.isPlaying(), mood: window.ChiptuneEngine.currentMood(),
+            gain: window.audioProbe.masters.at(-1)?.gain.value ?? null,
+        }));
+        const waitForField = () => page.waitForFunction(() => window.audioProbe.elements.some(({ audio }) =>
+            audio.src.includes('/music/background/short') && audio.currentTime > 0 && !audio.paused));
+
+        await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+        await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
+        await press(gear);
+        assert.equal(await page.locator('#settings-motion-note').isVisible(), touch);
+        await waitForField();
+        const field = await state();
+        assert.equal(field.playing.length, 1);
+        await page.evaluate(() => window.AudioSystem.playStoryMotif('gallery'));
+        await page.waitForFunction(() => window.audioProbe.elements.some(({ audio, requestedSource }) =>
+            requestedSource.endsWith('/the-portrait.mp3') && audio.currentTime > 0 && !audio.paused));
+        const gallery = await state();
+        assert.equal(gallery.playing.length, 1);
+        assert.match(gallery.playing[0], /\/music\/story\/the-portrait\.mp3$/);
+        await toggle('sw-music');
+        assert.deepEqual((await state()).playing, []);
+        assert.equal(await page.evaluate(() => window.AudioSystem.storyMotifPlaying()), false);
+        await toggle('sw-music');
+        await waitForField();
+        const volume = page.getByRole('slider', { name: 'Music volume' });
+        await toggle('sw-generative-music');
+        await volume.fill('28');
+        await page.waitForFunction(() => window.ChiptuneEngine.isPlaying() && Math.abs(window.audioProbe.masters.at(-1)?.gain.value - 0.0896) < 0.006);
+        assert.deepEqual((await state()).playing, []);
+        await volume.fill('0');
+        await page.waitForFunction(() => window.audioProbe.masters.at(-1)?.gain.value === 0);
+        await volume.fill('24');
+        await toggle('sw-music');
+        assert.equal((await state()).generated, false);
+        await page.waitForFunction(() => window.audioProbe.masters.at(-1)?.gain.value === 0);
+
+        // Reload the actual settings store while Music remains off.
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
+        await press(gear);
+        assert.equal(await volume.inputValue(), '24');
+        assert.equal(await page.locator('#sw-generative-music').isChecked(), true);
+        assert.equal(await page.locator('#sw-music').isChecked(), false);
+        await toggle('sw-music');
+        await page.waitForFunction(() => window.ChiptuneEngine.isPlaying() && window.audioProbe.masters.at(-1)?.gain.value > 0.06);
+        if (out) {
+            await mkdir(out, { recursive: true });
+            await page.screenshot({ path: join(out, `${width}x${height}-audio-settings.png`) });
+        }
+
+        // Exercise trainer creation while the generated soundtrack owns the mix.
+        await press(close);
+        await press(page.getByRole('button', { name: /Story Mode/ }));
+        await press(page.getByRole('button', { name: /New Adventure/ }));
+        await page.locator('#screen-story-trainercreate').waitFor();
+        assert.equal((await state()).generated, true);
+        assert.ok(!(await state()).playing.some(src => src.includes('/music/themes/')));
+        await press(page.getByRole('button', { name: 'Back to story menu' }));
+        await press(page.getByRole('button', { name: 'Back to Main Menu' }));
+        await press(gear);
+        await toggle('sw-generative-music');
+        await waitForField();
+        assert.equal((await state()).generated, false);
+
+        // A start-of-cry fixture lets the player use the real mute switch mid-effect.
+        await page.evaluate(() => window.AudioSystem.playFaintCry('Pikachu'));
+        await toggle('sw-sound');
+        assert.equal(await page.evaluate(() => window.AudioSystem.__test.state().sfxActive), 0);
+        await toggle('sw-sound');
+        await page.waitForTimeout(350);
+        assert.equal(requests.some(({ path }) => path.endsWith('/faint.wav')), false);
+        await press(close);
+
+        // Load an in-game battle fixture, then command a real native turn through the UI.
+        const battleUrl = new URL(url.href);
+        battleUrl.searchParams.set('testbattle', 'charge6');
+        await page.goto(battleUrl.href, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => document.getElementById('screen-battle').dataset.battleEngine === 'showdown'
+            && !document.getElementById('command-menu').classList.contains('hidden'));
+        await press(page.locator('#command-menu [data-cmd="fight"]'));
+        const impact = page.waitForResponse(res => /hit(?:_strong|_weak)?\.wav$/.test(new URL(res.url()).pathname) && res.ok());
+        await press(page.getByRole('button', { name: /Earthquake/ }).filter({ visible: true }).first());
+        await impact;
+        await page.waitForFunction(() => window.audioProbe.elements.some(({ requestedSource }) => /hit(?:_strong|_weak)?\.wav/.test(requestedSource)));
+        await page.waitForFunction(() => Array.from(document.querySelectorAll('#battle-log > *')).some(el => el.textContent.includes('used Earthquake')));
+        assert.deepEqual(errors, []);
+        assert.ok(requests.some(({ path, status }) => /hit(?:_strong|_weak)?\.wav/.test(path) && status < 400));
+        report.push({ viewport: `${width}×${height}`, touch, reducedMotion, controls: ['settings', 'gallery cue', 'mute', 'slider', 'reload', 'trainer creation', 'preset battle turn'], requests });
+        console.log(`${width}×${height} audio controls, reload, trainer creation and Showdown impact passed`);
+        await context.close();
+    }
+    if (out) await writeFile(join(out, 'audio.json'), JSON.stringify(report, null, 2));
+} finally {
+    await browser.close();
+}

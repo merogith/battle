@@ -31,12 +31,28 @@ export function diffTraces(showdown, inhouse, scenario = {}) {
   const divergences = [];
   const add = (d) => divergences.push(d);
 
+  if (scenario.checkRequests) {
+    for (const { turn, slot, choice, message } of showdown.rejectedChoices || []) {
+      add({ turn, slot, field: 'rejected-choice', showdown: message, inhouse: choice, confidence: 'high' });
+    }
+  }
+
   const nTurns = Math.min(showdown.turns.length, inhouse.turns.length);
+  if (showdown.turns.length !== inhouse.turns.length) {
+    add({ turn: '-', slot: '-', field: 'turn-count', showdown: showdown.turns.length, inhouse: inhouse.turns.length, confidence: 'high' });
+  }
 
   for (let i = 0; i < nTurns; i++) {
     const sT = showdown.turns[i];
     const hT = inhouse.turns[i];
-    if (!sT?.end || !hT?.end) continue;
+    if (sT.n !== hT.n) {
+      add({ turn: sT.n, slot: '-', field: 'turn-number', showdown: sT.n, inhouse: hT.n, confidence: 'high' });
+      continue;
+    }
+    if (!sT.end || !hT.end) {
+      add({ turn: sT.n, slot: '-', field: 'turn-snapshot', showdown: !!sT.end, inhouse: !!hT.end, confidence: 'high' });
+      continue;
+    }
 
     // --- move-execution order (HIGH, opt-in via scenario.checkOrder) ---
     // Priority, speed and Trick Room determine who acts first; the end-state diff
@@ -44,7 +60,7 @@ export function diffTraces(showdown, inhouse, scenario = {}) {
     if (scenario.checkOrder && Array.isArray(sT.order) && Array.isArray(hT.order)) {
       const so = sT.order.join('>');
       const ho = hT.order.join('>');
-      if (so && ho && so !== ho) {
+      if (so !== ho) {
         add({ turn: sT.n, slot: '-', field: 'move-order', showdown: so, inhouse: ho, confidence: 'high' });
       }
     }

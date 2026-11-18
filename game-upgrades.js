@@ -4,10 +4,17 @@
   const VERSION = '1.8.0';
   const RULESET = 'story-singles-2026-09';
   const SAVE = 'pbs_story_save';
+  const META = 'pbs_story_meta';
   const PREFS = 'pbs_accessibility';
-  const KEYS = [SAVE, 'pbs_story_meta', 'pbs_settings', PREFS];
+  const KEYS = [SAVE, META, 'pbs_settings', PREFS];
+  const BACKUP_CONTENTS = {
+    [SAVE]: 'Story run',
+    [META]: 'collection records',
+    pbs_settings: 'game settings',
+    [PREFS]: 'accessibility preferences',
+  };
   const SERVICES = [
-    ['mentor','Build a stronger team','Battle Mentor','Review a priced upgrade plan. Choose the changes you want.'],
+    ['mentor','Find one useful change for a partner','Battle Mentor','Check the effect and cost. A full build plan is also available.'],
     ['tutor','Teach or replace moves','Move Tutor','Compare attacks, coverage and utility. Earlier towns have smaller move pools.'],
     ['dojo','Choose items and abilities','Battle Dojo','Each belt opens more choices. Read the effect before changing your build.'],
     ['nature','Change a nature','Nature Rater','Trade one stat for another. Check the exact before-and-after values.'],
@@ -16,10 +23,11 @@
     ['fanclub','Improve individual stats','Pokémon Fan Club','IV upgrades improve a partner’s potential. They are separate from EV training.'],
     ['center','Manage party and storage','Pokémon Center','Swap between your party and PC. Your current party cap still applies.'],
     ['stoneShop','Find evolution items','Stones and Beyond','Get the stone or trade item required by an evolution.'],
-    ['link','Prepare a trade evolution','Cable Link','Visit before using the Evolution Tutor for a trade evolution.'],
-    ['colress','Learn battle transformations','Power Up','Review Mega, Z-Moves, Dynamax and Tera under this run’s rules.'],
-    ['mart','Stock your battle bag','Poké Mart','Consumables help within a battle. Compare purchases with permanent upgrades.'],
-    ['daycare','Care for your partners','Daycare Inn','Review the available care services and their costs.'],
+    ['link','Trade or rebuild a partner','Cable Link','A trade replaces the partner. A rebuild keeps the Pokémon and rerolls parts of its build.'],
+    ['colress','Equip a battle form','Colress','Choose among Mega Evolution, Z-Moves, Dynamax and Tera when enabled in your run.'],
+    ['mart','Stock your battle bag','Pokémart','Buy Poké Balls and items to use during battle.'],
+    ['safari','Catch rare partners','Safari Zone','Try bait and rocks to help you catch Pokémon. The first visit is free.'],
+    ['daycare','Find an Egg','Daycare Inn','Meet the matron to learn about her Eggs. Confirm before trading away a partner permanently.'],
   ];
   const LESSONS = [
     { title:'Type matchups', prompt:'A Water-type attack faces a Rock/Ground opponent. What happens?', choices:['It is resisted','It is four times effective','It has no effect'], answer:1, explanation:'Water is strong against both Rock and Ground. The two type multipliers combine: 2 × 2 = 4. An ability or other effect can still change the result.' },
@@ -32,7 +40,7 @@
     { title:'Build a team plan', prompt:'Every team member uses the same coverage and needs several setup turns. What should you investigate first?', choices:['Whether the team has safe switch-ins and an immediate threat','Making all six movesets identical','Buying every expensive upgrade'], answer:0, explanation:'A team needs a workable route to victory. Complementary partners can cover each other’s weaknesses; the most expensive individual sets may still fit poorly together.' },
   ];
 
-  let overlay = null, panel = null, returnFocus = null, inertElements = [];
+  let overlay = null, panel = null, releaseDialog = null, dismiss = null;
   const api = () => global.StoryMode && global.StoryMode.upgrades;
   const element = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -49,48 +57,49 @@
     return append(element('section', null, 'upgrade-card'), element('h3', title), text ? element('p', text) : null);
   }
   function close() {
-    if (overlay) overlay.remove();
+    if (!overlay) return;
+    for (const dialog of overlay.querySelectorAll('.modal:not(.hidden)')) global.closeModal(dialog.id);
+    overlay.remove();
     overlay = panel = null;
-    for (const [node, old] of inertElements) node.inert = old;
-    inertElements = [];
-    if (returnFocus && returnFocus.isConnected) returnFocus.focus();
-    returnFocus = null;
+    releaseDialog();
+    releaseDialog = dismiss = null;
   }
   function open(title) {
     if (!overlay) {
-      returnFocus = document.activeElement;
-      inertElements = [...document.querySelectorAll('.screen,.modal')].map(n => [n, n.inert]);
-      for (const [node] of inertElements) node.inert = true;
       overlay = element('div', null, 'upgrade-overlay');
       panel = element('div', null, 'upgrade-dialog');
       panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true');
       panel.setAttribute('aria-labelledby', 'upgrade-title'); panel.tabIndex = -1;
       overlay.appendChild(panel); document.body.appendChild(overlay);
-      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-      overlay.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
-        if (e.key === 'Tab') {
-          const items = [...panel.querySelectorAll('button:not(:disabled),input,textarea,select,a[href]')].filter(n => !n.hidden);
-          const first = items[0], last = items[items.length - 1];
-          if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) { e.preventDefault(); last && last.focus(); }
-          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first && first.focus(); }
-        }
-      });
+      releaseDialog = global._registerAppDialog(panel, () => dismiss());
+      overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
     }
+    dismiss = close;
+    panel.className = 'upgrade-dialog';
     panel.replaceChildren();
     const heading = element('h2', title); heading.id = 'upgrade-title';
-    append(panel, append(element('header', null, 'upgrade-header'), heading, button('Close', close)));
+    append(panel, append(element('header', null, 'upgrade-header'), heading, button('Close', () => dismiss())));
     panel.focus(); return panel;
   }
   function notice(text) { const n = element('p', text, 'upgrade-feedback'); n.setAttribute('role','status'); panel.appendChild(n); return n; }
   function read(key, fallback = null) {
     try { const raw = global.localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; }
   }
+  function currentRun(stored = read(SAVE)) {
+    const state = global.StoryMode?.state;
+    return state?.active && !global.__storyRestoreReady ? state : stored;
+  }
+  function displayDate(value) {
+    if (typeof value !== 'string' && typeof value !== 'number') return '';
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toLocaleString() : '';
+  }
   function activeBattle() { return !!(api() && api().battleActive()); }
 
   function analyzeTeam(team, effectiveness) {
     const notes = [];
     if (!team.length) return ['Choose your first partner, then revisit this page.'];
+    if (team.length === 1) return ['You have one battle-ready partner. Check which of their equipped moves can hit the opponent, and use your Bag if battle items are available.'];
     const types = ['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
     for (const type of types) {
       const weak = team.filter(m => effectiveness(type,m.types) > 1);
@@ -107,30 +116,41 @@
     return notes.slice(0,5);
   }
 
-  function openNotebook(tab = 'next') {
+  function openNotebook(tab = 'next', focusTab = false) {
     if (!['next','team','story','rules'].includes(tab)) tab = 'next';
     const p = open('Trainer’s Notebook');
     if (!api()) return notice('Game data is still loading. Close this page and try again shortly.');
     const s = api().snapshot();
     const nav = element('nav',null,'upgrade-tabs'); nav.setAttribute('aria-label','Notebook pages');
     for (const [id,label] of [['next','What next?'],['team','My team'],['story','Story & clues'],['rules','Battle rules']]) {
-      const b = button(label,()=>openNotebook(id)); if (tab === id) b.setAttribute('aria-current','page'); nav.appendChild(b);
+      const b = button(label,()=>openNotebook(id,true)); if (tab === id) b.setAttribute('aria-current','page'); nav.appendChild(b);
     }
     append(p,nav);
+    if (focusTab) nav.querySelector('[aria-current="page"]').focus();
     if (tab === 'next') {
-      append(p,card(s.active ? s.goal : 'Begin your adventure',s.active ? `${s.badges}/8 badges · ${s.gold.toLocaleString()}G · ${s.team.length}/${s.cap} partners` : 'Choose Story Mode, create your trainer, and meet your first partner.'));
-      append(p,element('p','Your next story action moves the journey forward. Preparation is a choice: use the services below when you need them.'));
-      if (s.inCity) append(p,button('Go to my next action',()=>{ close(); const target=document.querySelector('#screen-story-city .story-city-objective'); if(target) target.click(); },true));
+      const objective = card(s.active ? s.goal : 'Begin your adventure');
+      objective.classList.add('upgrade-objective');
+      if (s.inCity) append(objective,button('Go to my next action',()=>{
+        close();
+        document.querySelector('#story-city-primary .story-city-objective')?.click();
+      },true));
+      append(objective,element('p',s.active ? `${s.badges}/8 badges · ${s.gold.toLocaleString()}G · ${s.team.length}/${s.cap} partners` : 'Choose Story Mode, create your trainer, and meet your first partner.'));
+      append(p,objective);
+      const available = new Set(s.availableFacilities);
+      const guide = append(element('details'), element('summary', 'What each facility does'));
       const grid=element('div',null,'upgrade-grid');
       for (const [key,purpose,name,description] of SERVICES) {
-        const unlocked=s.active && s.city >= (s.facilities[key] ?? Infinity);
-        const c=card(purpose,`${name} — ${description}`);
-        append(c,element('small',unlocked ? 'Available at this stage' : `Opens in City ${s.facilities[key] ?? '—'}`));
-        if (unlocked && s.inCity) append(c,button(`Visit ${name}`,()=>{ close(); api().visit(key); }));
+        const localKey = key === 'mart' && available.has('dept') ? 'dept' : key;
+        const localName = localKey === 'dept' ? 'Department Store' : name;
+        const c=card(purpose,`${localName} — ${description}`);
+        if (available.has(localKey)) append(c,button(`Visit ${localName}`,()=>{ close(); api().visit(localKey); }));
+        else append(c,element('small',s.inCity ? 'Unavailable in this town' : 'Check in town'));
         grid.appendChild(c);
       }
-      append(p,grid,button('Practice a battle concept',openPractice),button('Back up or restore progress',openData));
+      append(guide,grid);
+      append(p,guide,button('Practice a battle concept',openPractice),button('Back up or restore progress',openData));
     } else if (tab === 'team') {
+      if (s.openingRivalDefeat && s.team.length === 1) append(p,openingRivalRecovery(s.gold));
       for (const note of analyzeTeam(s.team,api().typeEffectiveness)) append(p,element('p',note,'upgrade-feedback'));
       append(p,element('p','These suggestions are starting points, not requirements. Keep the partners and strategies you enjoy. Training stats below exclude temporary battle stages.'));
       const grid=element('div',null,'upgrade-grid');
@@ -147,7 +167,7 @@
         for(const mon of s.storage) append(storage,append(card(mon.name),button(mon.favorite ? 'Unprotect favorite' : 'Protect as favorite',()=>{api().favorite(mon.id);openNotebook('team');})));
         append(p,storage);
       }
-      if(s.inCity) append(p,button('Review upgrades with the Mentor',()=>{close();api().visit('mentor');},true));
+      if(s.availableFacilities?.includes('mentor')) append(p,button('Review upgrades with the Mentor',()=>{close();api().visit('mentor');},true));
       append(p,button('Export run passport',()=>download('battle-run-passport.json',JSON.stringify(runPassport(),null,2))));
     } else if(tab === 'story') {
       append(p,element('p',s.thread));
@@ -177,19 +197,131 @@
     append(p,feedback,button('Next lesson',()=>openPractice((index+1)%LESSONS.length)));
   }
 
+  function openingRivalRecovery(gold) {
+    return card('After the first Rival duel',
+      `Retry starts the fight again from its saved entry. Return to Last City to heal and prepare. Concede to Rival heals your partner and continues the journey, and costs all your current gold (${gold.toLocaleString()}G).`);
+  }
+  const COACH_STATUS = {
+    brn: 'was burned', frz: 'was frozen', par: 'was paralyzed',
+    psn: 'was poisoned', slp: 'fell asleep', tox: 'was badly poisoned',
+  };
+  const COACH_SETUP = {
+    atk: 'Attack', def: 'Defense', spa: 'Special Attack', spd: 'Special Defense', spe: 'Speed',
+    accuracy: 'accuracy', evasion: 'evasion', Reflect: 'Reflect', 'Light Screen': 'Light Screen',
+    'Aurora Veil': 'Aurora Veil', Tailwind: 'Tailwind',
+  };
+  const COACH_PRIORITY = { immune: 3, 'super-effective': 2, status: 1, setup: 1 };
+  function normalizeBattleObservation(value) {
+    if (typeof value?.kind !== 'string' || !Object.hasOwn(COACH_PRIORITY, value.kind)) return null;
+    const field = name => typeof value[name] === 'string' ? value[name].trim().slice(0, 100) : '';
+    const subject = field('subject');
+    if (!subject) return null;
+    const { kind } = value;
+    const move = field('move');
+    const opponent = field('opponent');
+    if (kind === 'status' || kind === 'setup') {
+      const effect = field('effect');
+      if (!Object.hasOwn(kind === 'status' ? COACH_STATUS : COACH_SETUP, effect)) return null;
+      return { kind, subject, move, opponent, effect };
+    }
+    return { kind, subject, move, opponent, ability: field('ability') };
+  }
+  function observeBattle(events, filter = null) {
+    let move = null;
+    let publicTurn = null;
+    let observation = null;
+    let observedTurn = -1;
+    for (const { native, turn } of events || []) {
+      if (!native) continue;
+      let current = null;
+      if (native.tag === 'move') {
+        move = native;
+      } else if (native.tag === 'turn') {
+        publicTurn = Number(native.subject) || null;
+        move = null;
+      } else if (['switch', 'drag', 'replace', 'cant', 'boss-phase'].includes(native.tag)) {
+        move = null;
+      } else if (native.tag === '-immune' && move?.side === 'p1' && native.side === 'p2'
+          && (!move.targetSide || move.targetSide === 'p2') && move.detail
+          && !native.detail?.startsWith('[from] move:')) {
+        current = normalizeBattleObservation({
+          kind: 'immune', subject: native.subject, move: move.detail, opponent: native.subject,
+          ability: native.detail?.match(/^\[from\] ability: (.+)$/)?.[1],
+        });
+      } else if (native.tag === '-supereffective' && move?.side === 'p2' && native.side === 'p1'
+          && (!move.targetSide || move.targetSide === 'p1')) {
+        current = normalizeBattleObservation({
+          kind: 'super-effective', subject: native.subject, move: move.detail, opponent: move.subject,
+        });
+      } else if (native.tag === '-status' && native.side === 'p1') {
+        current = normalizeBattleObservation({ kind: 'status', subject: native.subject, effect: native.detail });
+      } else if (native.tag === '-boost' && native.side === 'p2') {
+        current = normalizeBattleObservation({ kind: 'setup', subject: native.subject, effect: native.detail });
+      } else if (native.tag === '-sidestart' && native.side === 'p2') {
+        current = normalizeBattleObservation({
+          kind: 'setup', subject: 'The opposing team', effect: native.detail?.replace(/^move: /, ''),
+        });
+      }
+      const eventTurn = publicTurn ?? turn;
+      if (current && (!filter || filter(current)) &&
+          (observedTurn !== eventTurn || COACH_PRIORITY[current.kind] >= COACH_PRIORITY[observation?.kind])) {
+        observation = current;
+        observedTurn = eventTurn;
+      }
+    }
+    return observation;
+  }
+  function describeBattleObservation(observation) {
+    if (!observation) return '';
+    const { kind, subject, move, ability, effect } = observation;
+    if (kind === 'immune') {
+      return ability ? `${subject}’s ${ability} blocked ${move}.` : `${move} had no effect on ${subject}.`;
+    }
+    if (kind === 'status') return `${subject} ${COACH_STATUS[effect]}.`;
+    if (kind === 'setup') return subject === 'The opposing team'
+      ? `${COACH_SETUP[effect]} went up on the opposing side.` : `${subject} raised its ${COACH_SETUP[effect]}.`;
+    return `${subject} took a super-effective hit${move ? ` from ${move}` : ''}.`;
+  }
   function openBattleReview() {
     const p=open('Explain this battle');
     const events=api() ? api().events() : [];
-    append(p,element('p','Recorded outcomes from the current or most recent battle. Calculations describe a direct hit before survival effects, fixed-damage overrides and custom encounter modifiers; the battle log records the final outcome.'));
+    const run=api()?.snapshot();
+    const defeat = document.getElementById('screen-story-gameover');
+    const reviewingDefeat = run?.active && defeat && !defeat.classList.contains('hidden');
+    const observation = reviewingDefeat ? (api()?.defeatObservation?.() || observeBattle(events)) : null;
+    if (run?.openingRivalDefeat && run.team.length === 1) append(p,openingRivalRecovery(run.gold));
+    const native=events.filter(e=>e.native);
     const calculations=events.filter(e=>e.kind==='calculation').slice(-12);
-    if(!calculations.length) append(p,element('p','No attack calculation has been recorded yet. Play a battle, then return here.'));
-    for(const e of calculations.reverse()) {
-      append(p,card(`Turn ${e.turn}: ${e.attacker} → ${e.defender}`,`${e.move} · ${e.category} · effective power ${e.basePower}. Type multiplier ×${e.effectiveness}; same-type bonus ×${e.stab}${e.critical ? '; critical hit' : ''}${e.weather ? `; weather: ${e.weather}` : ''}. Calculated damage: ${e.damage}.`));
+    if (native.some(e=>e.native.kind==='move' || e.native.kind==='damage')) {
+      append(p,element('h3','What happened'));
+      const outcomes=element('ol');
+      native.filter(e=>['move','damage','heal','faint'].includes(e.native.kind) ||
+        ['-miss','-immune','-supereffective','-resisted','-crit','-status','-boost','-sidestart','cant','boss-phase'].includes(e.native.tag))
+        .slice(-10).forEach(e=>append(outcomes,element('li',e.text)));
+      append(p,outcomes);
+    } else if (calculations.length) {
+      append(p,element('p','These calculations show a direct hit before survival effects and special encounter rules. The recent log shows the final result.'));
+      for(const e of calculations.slice().reverse()) {
+        const critical=e.critical ? ' Critical hit.' : '';
+        const weather=e.weather ? ` Weather was ${e.weather}.` : '';
+        append(p,card(`Turn ${e.turn} · ${e.attacker} → ${e.defender}`,`${e.move} · ${e.category} · ${e.basePower} power. Type multiplier ×${e.effectiveness}. Same-type bonus ×${e.stab}. Calculated damage ${e.damage}.${critical}${weather}`));
+      }
+    } else if (!observation) {
+      append(p,element('p','Battle outcomes appear here after the first attack.'));
+    }
+    if (observation) {
+      const preparation = api()?.defeatPreparation?.(observation);
+      append(p,card('One change to try',
+        [describeBattleObservation(observation), preparation || 'Compare your equipped moves and party matchups before the retry.'].join(' ')));
     }
     const details=element('details'); append(details,element('summary','Recent battle log'));
     const log=element('ol'); events.filter(e=>e.kind==='message').slice(-60).forEach(e=>append(log,element('li',e.text))); append(details,log); append(p,details);
     const received=calculations.filter(e=>!e.playerAttacking && e.effectiveness>1);
-    if(received.length) append(p,card('One preparation question',`Your team received ${received.length} recorded super-effective attack${received.length===1?'':'s'}. Check whether an available partner can switch into that type. This is an observation, not a complete explanation of the result.`));
+    if(received.length && !observation) {
+      const prep = run?.team.length > 1 ? 'Check whether an available partner can switch into that type.'
+        : 'Check the recorded attacks against your equipped moves and items.';
+      append(p,card('One preparation question',`Your team received ${received.length} recorded super-effective attack${received.length===1?'':'s'}. ${prep}`));
+    }
     append(p,button('Review my team',()=>openNotebook('team')),button('Export a bug report',exportBugReport));
   }
 
@@ -209,27 +341,49 @@
     const run=backup.entries[SAVE];
     if(!run || !Number.isInteger(run.version) || run.version<2 || run.version>(api()?.saveVersion || 28) || !Array.isArray(run.team)) throw new Error('This run is missing required data or uses a newer save version.');
     if(!Number.isFinite(run.gold) || run.gold<0 || !Number.isInteger(run.badges) || run.badges<0 || run.badges>8) throw new Error('This run contains invalid progress values.');
-    if(run.team.length>6 || (run.pcBox!==undefined && !Array.isArray(run.pcBox)) || [...run.team,...(run.pcBox || [])].some(m=>!m || typeof m.name!=='string' || !m.name.trim() || !m.build || (!m.isEgg && (!Array.isArray(m.build.m) || m.build.m.length<1 || m.build.m.length>4 || m.build.m.some(n=>typeof n!=='string' || !n.trim()))))) throw new Error('This run contains an invalid party.');
+    if(run.team.length>6 || (run.pcBox!==undefined && !Array.isArray(run.pcBox))) throw new Error('This run contains an invalid party.');
+    for(const mon of [...run.team,...(run.pcBox || [])]) {
+      if(!mon || typeof mon.name!=='string' || !mon.name.trim()) throw new Error('This run contains an invalid party.');
+      if(mon.isEgg===true) continue;
+      const moves=mon.build?.m;
+      if(!Array.isArray(moves) || moves.length<1 || moves.length>4 || moves.some(name=>typeof name!=='string' || !name.trim())) throw new Error('This run contains an invalid party.');
+    }
     if(!Number.isInteger(run.eventIndex) || run.eventIndex<0 || run.eventIndex>(api()?.maxEventIndex ?? 100)) throw new Error('This run contains an invalid journey position.');
     return backup;
   }
   function makeBackup() {
     const entries={};
     for(const key of KEYS) { const value=read(key); if(value!==null) entries[key]=value; }
-    const state=global.StoryMode && global.StoryMode.state;
     // On failed persistence the in-memory run is the newest recoverable progress.
-    if(state && state.active && !global.__storyRestoreReady) entries[SAVE]=JSON.parse(JSON.stringify(state));
-    if(!entries[SAVE]) throw new Error('There is no run to back up yet.');
+    const run = currentRun(entries[SAVE] || null);
+    if(!run) throw new Error('There is no run to back up yet.');
+    entries[SAVE] = JSON.parse(JSON.stringify(run));
     return {format:'battle-backup',version:1,game:VERSION,rules:RULESET,createdAt:new Date().toISOString(),entries};
   }
   function restoreBackup(value) {
     if(activeBattle()) throw new Error('Finish the battle before restoring a backup.');
     const b=validateBackup(value), previous={};
-    for(const key of Object.keys(b.entries)) previous[key]=global.localStorage.getItem(key);
+    const entries={...b.entries};
+    if(global.FrontierChallenges && entries[META]) {
+      entries[META]={...entries[META],frontierChallengeRecords:global.FrontierChallenges.mergeRecords(
+        read(META)?.frontierChallengeRecords,entries[META].frontierChallengeRecords)};
+    }
+    const archive=global.AdventureProgress;
+    if(archive) {
+      const current=archive.normalize(read(META)?.adventureArchive);
+      const run=entries[SAVE];
+      const recorded=Object.hasOwn(current.runs,run.adventureRunId) && current.runs[run.adventureRunId];
+      if(recorded && Number.isInteger(run.runSeed) && recorded.seed===(run.runSeed>>>0)) {
+        const merged=entries[META] ? archive.mergeArchives(current,entries[META].adventureArchive) : current;
+        entries[SAVE]={...run,storyChoices:archive.reconcileChoices(merged,run.adventureRunId,run.storyChoices)};
+        if(entries[META]) entries[META]={...entries[META],adventureArchive:merged};
+      }
+    }
+    for(const key of Object.keys(entries)) previous[key]=global.localStorage.getItem(key);
     // Keep a recovery journal until every write succeeds. Never include connection tokens.
     global.localStorage.setItem('pbs_restore_pending',JSON.stringify(previous));
     try {
-      for(const [key,data] of Object.entries(b.entries)) global.localStorage.setItem(key,JSON.stringify(data));
+      for(const [key,data] of Object.entries(entries)) global.localStorage.setItem(key,JSON.stringify(data));
       global.localStorage.removeItem('pbs_restore_pending');
     } catch(error) {
       let restored=true;
@@ -255,40 +409,157 @@
   function reviewBrokenBackup() {
     const backup=read(SAVE+'.broken.latest');
     if(!backup) { openData();notice('No diagnostic backup is available. Review a healthy checkpoint below.');return; }
-    reviewRestore(backup);
+    reviewRestore(backup, 'Recovered local save');
   }
   function exportBackup() { try { download('pokemon-battle-backup.json',JSON.stringify(makeBackup(),null,2)); } catch(e) { if(!panel) openData(); notice(e.message); } }
-  function reviewRestore(value) {
+  function runSummary(title, run, backupDate) {
+    if (!run) return card(title, 'No Story run on this device.');
+    const trainer = run.trainerProfile?.name || run.trainerName;
+    const party = Array.isArray(run.team) ? run.team.map(mon => mon?.name).filter(name => typeof name === 'string') : [];
+    const fields = [
+      ['Trainer', typeof trainer === 'string' ? trainer : 'Trainer'],
+      ['Last town', api()?.runLocation?.(run) || 'Unknown'],
+      ['Badges', `${run.badges ?? 0}/8`],
+      ['Party', party.join(', ') || 'No partner yet'],
+      ['Saved', displayDate(run._lastSave) || displayDate(backupDate) || 'Date unavailable'],
+    ];
+    const list = element('dl', null, 'upgrade-restore-summary');
+    for (const [term, description] of fields) append(list, element('dt', term), element('dd', description));
+    return append(card(title), list);
+  }
+  function reviewRestore(value, source, onInvalid) {
+    let backup;
     try {
-      const b=validateBackup(value); const run=b.entries[SAVE]; const p=open('Review restoration');
-      append(p,element('p',`${run.badges}/8 badges · ${run.team.map(m=>m.name).join(', ') || 'No partner yet'}`),element('p',`This replaces: ${Object.keys(b.entries).map(k=>({[SAVE]:'current run',pbs_story_meta:'collection records',pbs_settings:'settings',[PREFS]:'accessibility preferences'})[k]).join(', ')}. Back up your current progress first if you want to keep both.`));
-      append(p,button('Back up current progress',exportBackup),button('Restore this backup',()=>{
-        try { restoreBackup(b); notice('Restored successfully. Reloading your journey…'); global.location.reload(); append(p,button('Reload game',()=>global.location.reload(),true)); }
-        catch(e) { notice(e.message); }
-      },true));
-    } catch(e) { if(!panel) openData(); notice(e.message); }
+      backup = validateBackup(value);
+    } catch (error) {
+      if (onInvalid) onInvalid(error.message);
+      else {
+        if (!panel) openData();
+        notice(error.message);
+      }
+      return;
+    }
+    const current = currentRun();
+    const scopes = Object.keys(backup.entries);
+    const replaced = scopes.filter(key => key === SAVE ? current : read(key) !== null);
+    const p = open('Review restoration');
+    p.classList.add('upgrade-dialog--restore');
+    const body = element('div', null, 'upgrade-restore-body');
+    body.tabIndex = 0;
+    body.setAttribute('role', 'region');
+    body.setAttribute('aria-label', 'Backup comparison');
+    const details = element('div', null, 'upgrade-grid');
+    append(details, runSummary('Incoming backup', backup.entries[SAVE], backup.createdAt), runSummary('On this device', current));
+    const contents = element('ul', null, 'upgrade-scope');
+    for (const key of scopes) append(contents, element('li', BACKUP_CONTENTS[key]));
+    append(body, element('p', source, 'upgrade-muted'));
+    if (replaced.length) {
+      append(body, element('p', `Restoring will replace your ${replaced.map(key => BACKUP_CONTENTS[key]).join(', ')}.`, 'upgrade-feedback upgrade-error'));
+    } else {
+      append(body, element('p', 'Restoring will create a Story run on this device.'));
+    }
+    append(body, details, element('h3', 'Included in this backup'), contents);
+    const result = element('p', null, 'upgrade-feedback');
+    result.setAttribute('role', 'status');
+    result.hidden = true;
+    const actions = element('div', null, 'upgrade-actions upgrade-restore-actions');
+    const restore = button('Restore this backup', () => {
+      try {
+        restoreBackup(backup);
+        result.hidden = false;
+        result.textContent = 'Restored successfully. Reloading your journey…';
+        global.location.reload();
+      } catch (error) {
+        result.hidden = false;
+        result.classList.add('upgrade-error');
+        result.textContent = error.message;
+        result.scrollIntoView?.({block:'nearest'});
+      }
+    }, true);
+    if (replaced.length) restore.classList.add('upgrade-danger');
+    if (activeBattle()) {
+      restore.disabled = true;
+      append(body, element('p', 'Finish the battle before restoring a backup.', 'upgrade-feedback'));
+    }
+    const backUp = current ? button('Back up current progress', exportBackup) : null;
+    if (backUp) backUp.classList.add('upgrade-restore-export');
+    append(actions, backUp, button('Cancel', close), restore);
+    append(body, result);
+    append(p, body, actions);
+  }
+  function backupImport() {
+    const field = element('div', null, 'upgrade-import');
+    const label = element('label', 'Import a backup file');
+    const input = element('input'); input.type = 'file'; input.accept = '.json,application/json';
+    input.id = 'upgrade-backup-file';
+    label.htmlFor = input.id;
+    const error = element('p', null, 'upgrade-feedback upgrade-error');
+    error.id = 'upgrade-backup-error';
+    error.hidden = true;
+    error.setAttribute('role', 'status');
+    input.setAttribute('aria-describedby', error.id);
+    const showError = message => {
+      input.value = '';
+      input.setAttribute('aria-invalid', 'true');
+      error.hidden = false;
+      error.textContent = message;
+      error.scrollIntoView?.({ block: 'nearest' });
+    };
+    let selection = 0;
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const request = ++selection;
+      input.removeAttribute('aria-invalid');
+      error.hidden = true;
+      error.textContent = '';
+      if (file.size > 5 * 1024 * 1024) return showError('Choose a Pokémon Arena backup smaller than 5 MB.');
+      let value;
+      try {
+        value = JSON.parse(await file.text());
+      } catch (_) {
+        if (request === selection && input.isConnected) showError('Could not read this file. Choose a Pokémon Arena JSON backup.');
+        return;
+      }
+      if (request === selection && input.isConnected) reviewRestore(value, file.name, showError);
+    });
+    return append(field, label, input, error);
   }
   function openData() {
-    const p=open('Save & recovery'); const state=global.StoryMode && global.StoryMode.state;
-    append(p,element('p',global.__storySaveError || (state?._lastSave ? `Last successful save: ${new Date(state._lastSave).toLocaleString()}` : 'No successful save recorded this session.')),
-      element('p','Backups include your run, saved collection records, settings and accessibility preferences. They stay on your device unless you choose to share the file.'));
-    append(p,button('Download complete backup',exportBackup,true),button('Retry saving',()=>{if(api()) {api().save();openData();}}));
-    const label=element('label','Import a backup file'); const input=element('input'); input.type='file'; input.accept='.json,application/json';
-    input.addEventListener('change',async()=>{ const f=input.files[0]; if(!f)return; if(f.size>5*1024*1024)return notice('Choose a backup smaller than 5 MB.'); try {reviewRestore(JSON.parse(await f.text()));}catch(e){notice(`Could not read backup: ${e.message}`);} }); append(label,input); append(p,label);
+    const p = open('Save & recovery');
+    const stored = read(SAVE);
+    const current = currentRun(stored);
+    const lastSave = displayDate(stored?._lastSave) || displayDate(current?._lastSave);
+    const status = global.__storySaveError || (lastSave ? `Last saved ${lastSave}`
+      : current ? 'There is a Story run on this device.' : 'No Story run on this device.');
+    append(p, element('p', status, global.__storySaveError ? 'upgrade-feedback upgrade-error' : null));
+    if (current) {
+      append(p, element('p', 'A complete backup includes your Story run, collection, settings and accessibility preferences.'));
+      const actions = element('div', null, 'upgrade-actions');
+      append(actions, button('Download complete backup', exportBackup, true));
+      if (global.__storySaveError && global.StoryMode?.state.active) {
+        append(actions, button('Retry saving', () => { api()?.save(); openData(); }));
+      }
+      append(p, actions);
+    }
+    append(p, backupImport());
     const grid=element('div',null,'upgrade-grid');
     for(let i=1;i<=3;i++) {
-      const key=`pbs_slot_${i}`, stored=read(key); const c=card(`Save slot ${i}`,stored ? `Saved ${new Date(stored.createdAt).toLocaleString()}` : 'Empty');
-      append(c,button(stored?'Replace this slot':'Save here',async()=>{
-        if(stored && !await global.showGameConfirm('Replace this saved slot? Your active run will stay in place.'))return;
+      const key=`pbs_slot_${i}`, slot=read(key);
+      if (!slot && !current) continue;
+      const date = displayDate(slot?.createdAt);
+      const c=card(`Save slot ${i}`,slot ? (date ? `Saved ${date}` : 'Saved backup') : 'Empty');
+      if (current) append(c,button(slot?'Replace this slot':'Save here',async()=>{
+        if(slot && !await global.showGameConfirm('Replace this saved slot? Your active run will stay in place.'))return;
         try{global.localStorage.setItem(key,JSON.stringify(makeBackup()));openData();}catch(e){notice(e.message);}
       }));
-      if(stored)append(c,button('Review and load',()=>reviewRestore(stored))); append(grid,c);
+      if(slot)append(c,button('Review and load',()=>reviewRestore(slot,`Save slot ${i}`))); append(grid,c);
     }
-    append(p,grid);
+    if (grid.childElementCount) append(p,grid);
     for(const [key,labelText] of [[SAVE+'.checkpoint','Latest checkpoint'],[SAVE+'.checkpoint.previous','Earlier checkpoint']]) {
-      const run=read(key); if(run)append(p,button(`Review ${labelText.toLowerCase()}`,()=>reviewRestore(run)));
+      const run=read(key); if(run)append(p,button(`Review ${labelText.toLowerCase()}`,()=>reviewRestore(run,labelText)));
     }
-    append(p,element('p','Clearing browser site data removes local saves and slots. Download a backup before clearing data or moving devices.','upgrade-muted'));
+    if (current || grid.childElementCount) append(p,element('p','Clearing browser site data removes local saves and slots. Download a backup before clearing data or moving devices.','upgrade-muted'));
   }
 
   function applyPreferences() {
@@ -298,22 +569,39 @@
     document.body.classList.toggle('upgrade-reduced-motion',!!prefs.reducedMotion);
     global.__accessibleCamp=!!prefs.camp;
     global.__reduceGameMotion=!!prefs.reducedMotion;
-    if(prefs.reducedMotion && api()) {
-      const settings=api().settings();settings.animations=false;settings.ambientParticles=false;settings.weatherAnimation=false;
-    }
+    global.refreshReducedMotionSettings?.();
   }
   function openPreferences() {
     const p=open('Reading & accessibility'), prefs=read(PREFS,{});
     for(const [key,labelText] of [['readable','Use a readable interface font'],['largeText','Larger Notebook and story text'],['reducedMotion','Reduce interface motion'],['camp','Use untimed camp activities']]) {
-      const label=element('label'), input=element('input');input.type='checkbox';input.checked=!!prefs[key];
+      const label=element('label',null,'upgrade-preference'), input=element('input');input.type='checkbox';input.checked=!!prefs[key];
       input.addEventListener('change',()=>{prefs[key]=input.checked;try{global.localStorage.setItem(PREFS,JSON.stringify(prefs));applyPreferences();}catch(e){notice('This preference could not be saved.');}});
-      append(label,input,document.createTextNode(labelText));append(p,label);
+      append(label,input,element('span',labelText));append(p,label);
     }
     append(p,element('p','Battle speed, animation switches and independent music/SFX volume remain in Settings. Untimed camp activities provide the same successful activity reward.'));
   }
   function saveResult(ok) {
     const existing=document.getElementById('upgrade-save-alert');
     if(ok) {if(existing)existing.remove();return;}
+    const finale=document.querySelector('.story-league-finale[data-gallery-motif]:not([inert]):has([data-narr-choices])');
+    if(finale?.__showFinaleSaveRecovery) {
+      existing?.remove();
+      finale.__showFinaleSaveRecovery();
+      return;
+    }
+    const offer=document.querySelector('#screen-story-professor:not(.hidden) #prof-accept-btn:not(:disabled)');
+    if(offer) {
+      existing?.remove();
+      document.getElementById('story-prof-status').textContent=global.__storyExternalSave
+        ? 'Your partner could not be saved. Back up and reload.'
+        : 'Your partner could not be saved. Choose again to retry.';
+      if(!document.getElementById('prof-save-backup')) {
+        const backup=button('Back up now',exportBackup);
+        backup.id='prof-save-backup';
+        offer.after(backup);
+      }
+      return;
+    }
     if(existing) {existing.querySelector('p').textContent=global.__storySaveError || 'Progress could not be saved. Keep this page open and back up your current progress.';return;}
     const alert=element('aside',null,'upgrade-save-alert');alert.id='upgrade-save-alert';alert.setAttribute('role','alert');
     append(alert,element('p',global.__storySaveError || 'Progress could not be saved. Keep this page open and back up your current progress.'),button('Back up now',exportBackup),button('Retry',()=>api() && api().save()));document.body.appendChild(alert);
@@ -332,15 +620,14 @@
     append(p,element('p','Take your time. Spend a quiet moment caring for your partner. This gives the same reward as completing the activity successfully.'));
     let settled=false;
     const finish=(won)=>{if(settled)return;settled=true;close();onResult(won);};
-    append(p,button('Spend time together',()=>finish(true),true),button('Cancel activity',()=>finish(false)));
-    // Use an explicit cancellation path so dismissing cannot leave the camp action locked.
-    const closeButton=p.querySelector('.upgrade-header button');
-    closeButton.replaceWith(button('Cancel',()=>finish(false)));
-    overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish(false);}},true);
-    overlay.addEventListener('click',e=>{if(e.target===overlay){e.stopImmediatePropagation();finish(false);}},true);
+    append(p,button('Spend time together',()=>finish(true),true),button('Cancel activity',()=>finish(null)));
+    // Every dismissal settles the pending camp action.
+    dismiss=()=>finish(null);
+    p.querySelector('.upgrade-header button').textContent='Cancel';
   }
   global.GameUpgrades={openNotebook,openPractice,openData,openPreferences,openBattleReview,saveResult,campActivity,
-    exportBackup,reviewBrokenBackup,makeBackup,validateBackup,restoreBackup,runPassport,analyzeTeam,close,VERSION,RULESET};
+    exportBackup,reviewBrokenBackup,makeBackup,validateBackup,restoreBackup,runPassport,analyzeTeam,close,
+    observeBattle,normalizeBattleObservation,describeBattleObservation,VERSION,RULESET};
   global.addEventListener('storage',event=>{
     if(event.key===SAVE && event.oldValue!==event.newValue && global.StoryMode?.state.active) {
       global.__storyExternalSave=true;

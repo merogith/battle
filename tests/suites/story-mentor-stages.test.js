@@ -54,21 +54,24 @@ test('Bulbasaur @ City 0 — moves ONLY (item/nature locked, no EV yet)', async 
   assert.ok(lockedKinds(plan).includes('item') && lockedKinds(plan).includes('nature'), 'item + nature shown as locked');
 });
 
-test('Ivysaur @ City 3 — moves + item + ability + nature, EV as free focus (EV Trainer still locked)', async () => {
-  const plan = await primeMentor('Ivysaur', 3, { m: ['Tackle'], n: 'Hardy', a: 'Overgrow' });
+test('Ivysaur @ City 3 — offers a free change to custom training focus', async () => {
+  const plan = await primeMentor('Ivysaur', 3, { m: ['Tackle'], n: 'Hardy', a: 'Overgrow', evTrainFocus: ['def'] });
   const k = kinds(plan);
   assert.ok(!lockedKinds(plan).includes('nature'), 'Nature Rater unlocked by C3');
   assert.ok(!lockedKinds(plan).includes('item'), 'Battle Dojo unlocked by C3');
   // At least the nature and an EV focus should be offered for an unbuilt mon.
   assert.ok(k.includes('nature'), 'nature is buildable');
   assert.ok(k.includes('evfocus') && !k.includes('evs'), 'EV is focus-only pre-EV-Trainer');
+  const banner = doc.querySelector('#story-mentor-team .tx-mentor-banner').textContent;
+  assert.match(banner, /battle training focus/);
+  assert.doesNotMatch(banner, /full stat training/);
 });
 
 test('Venusaur @ City 6 — still focus-only EVs; full item/ability/nature build available', async () => {
   const plan = await primeMentor('Venusaur', 6, { m: ['Tackle'], n: 'Hardy', a: 'Overgrow' });
   const k = kinds(plan);
   assert.ok(!k.includes('evs'), 'no full EV spread before City 7');
-  assert.ok(k.includes('evfocus'), 'EV training focus offered');
+  assert.ok(!k.includes('evfocus'), 'default Auto focus already trains the recommended stats');
   assert.ok(k.includes('nature'), 'nature buildable');
 });
 
@@ -79,6 +82,7 @@ test('Endgame Venusaur @ City 7 — FULL build incl. the EV spread', async () =>
   assert.ok(!k.includes('evfocus'), 'focus-only replaced by the full spread');
   assert.ok(k.includes('nature'), 'nature buildable');
   assert.equal(lockedKinds(plan).length, 0, 'nothing locked at endgame');
+  assert.match(doc.querySelector('#story-mentor-team .tx-mentor-banner').textContent, /full stat training/);
 });
 
 test('apply works end-to-end at both ends: C0 teaches moves; C7 sets the whole kit', async () => {

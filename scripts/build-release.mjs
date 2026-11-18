@@ -3,22 +3,71 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const out=path.join(root,'dist');
-const manifest=JSON.parse(fs.readFileSync(path.join(root,'offline-assets.json'),'utf8'));
-const allowed=/^(?:battle\.html|index\.html|manifest\.webmanifest|online-(?:config|pvp)\.js|move-(?:anim|sfx)-map\.js|game-upgrades\.(?:js|css)|sw\.js|(?:sprites|music|data|fonts|icons|vendor)\/[^\0]+)$/;
-for(const file of manifest.files){
-  const relative=decodeURI(file.u);
-  if(!allowed.test(relative) || relative.split('/').includes('..'))throw new Error(`Unapproved release path: ${relative}`);
-  const bytes=fs.readFileSync(path.join(root,relative));
-  const hash=crypto.createHash('sha1').update(bytes).digest('hex').slice(0,16);
-  if(hash!==file.h || bytes.length!==file.b)throw new Error(`Stale release manifest: ${relative}. Run npm run offline:manifest.`);
+import { parseArgs } from 'node:util';
+
+const { values: { verify } } = parseArgs({ options: { verify: { type: 'boolean' } } });
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const out = path.join(root, 'dist');
+const source = verify ? out : root;
+const manifest = JSON.parse(fs.readFileSync(path.join(source, 'offline-assets.json'), 'utf8'));
+const allowed = /^(?:battle\.html|index\.html|manifest\.webmanifest|online-(?:config|pvp)\.js|move-(?:anim|sfx)-map\.js|game-upgrades\.(?:js|css)|sw\.js|competitive\/(?:index\.html|arena\.css|arena\.js|arena-client\.js|showdown-worker\.js|classic-simulation\.js|showdown-engine\.js|THIRD_PARTY_NOTICES\.txt)|(?:sprites|music|data|fonts|icons|vendor)\/[^\0]+)$/;
+const publishedFiles = new Set();
+const metadata = { version: manifest.version, digest: manifest.digest, files: manifest.fileCount };
+let totalBytes = 0;
+
+for (const file of manifest.files) {
+  const relative = decodeURI(file.u);
+  if (!allowed.test(relative) || relative.split('/').includes('..')) {
+    throw new Error(`Unapproved release path: ${relative}`);
+  }
+  if (publishedFiles.has(relative)) throw new Error(`Duplicate release path: ${relative}`);
+  publishedFiles.add(relative);
+  const bytes = fs.readFileSync(path.join(source, relative));
+  totalBytes += bytes.length;
+  const hash = crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 16);
+  if (hash !== file.h || bytes.length !== file.b) {
+    const hint = verify ? 'Rebuild and re-test the artifact.' : 'Run npm run offline:manifest.';
+    throw new Error(`Stale release manifest: ${relative}. ${hint}`);
+  }
 }
-fs.rmSync(out,{recursive:true,force:true});fs.mkdirSync(out,{recursive:true});
-for(const file of manifest.files){
-  const relative=decodeURI(file.u), target=path.join(out,relative);
-  fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join(root,relative),target);
+
+if (publishedFiles.size !== manifest.fileCount) throw new Error('Invalid release manifest file count');
+if (totalBytes !== manifest.totalBytes) throw new Error('Invalid release manifest byte count');
+const digest = crypto.createHash('sha1')
+  .update(manifest.files.map(file => `${file.u}:${file.h}`).join('\n')).digest('hex').slice(0, 16);
+if (digest !== manifest.digest) throw new Error('Invalid release manifest digest');
+const worker = fs.readFileSync(path.join(source, 'sw.js'), 'utf8');
+const workerVersion = worker.match(/const CACHE_VERSION = '([^']+)';/)?.[1];
+if (!publishedFiles.has('sw.js') || !workerVersion || workerVersion !== manifest.version) {
+  throw new Error('Service worker version does not match the release manifest');
 }
-for(const name of ['offline-assets.json','ATTRIBUTION.md','LICENSE','.nojekyll'])if(fs.existsSync(path.join(root,name)))fs.copyFileSync(path.join(root,name),path.join(out,name));
-fs.writeFileSync(path.join(out,'release.json'),JSON.stringify({version:manifest.version,digest:manifest.digest,files:manifest.fileCount},null,2)+'\n');
+const supplementalFiles = ['offline-assets.json', 'ATTRIBUTION.md', 'LICENSE', '.nojekyll'].filter(name =>
+  fs.existsSync(path.join(root, name)));
+if (verify) {
+  const actual = JSON.parse(fs.readFileSync(path.join(out, 'release.json'), 'utf8'));
+  if (Object.keys(metadata).some(key => actual[key] !== metadata[key])) {
+    throw new Error('The tested release metadata does not match its manifest');
+  }
+  for (const name of supplementalFiles) {
+    if (!fs.existsSync(path.join(out, name))) throw new Error(`Missing release file: ${name}`);
+  }
+  const expectedFiles = new Set([...publishedFiles, ...supplementalFiles, 'release.json']);
+  for (const relative of fs.readdirSync(out, { recursive: true })) {
+    if (!fs.statSync(path.join(out, relative)).isDirectory() && !expectedFiles.has(relative.split(path.sep).join('/'))) {
+      throw new Error(`Unexpected file in the tested artifact: ${relative}`);
+    }
+  }
+} else {
+  fs.rmSync(out, { recursive: true, force: true });
+  fs.mkdirSync(out, { recursive: true });
+  for (const relative of publishedFiles) {
+    const target = path.join(out, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(root, relative), target);
+  }
+  for (const name of supplementalFiles) {
+    fs.copyFileSync(path.join(root, name), path.join(out, name));
+  }
+  fs.writeFileSync(path.join(out, 'release.json'), JSON.stringify(metadata, null, 2) + '\n');
+}
 console.log(`Verified ${manifest.fileCount} files; Pages artifact: dist/ (${manifest.version})`);

@@ -84,6 +84,19 @@ test('eligible trainer row: exchange offers 4 picks, records, then launches', as
   assert.ok(!W.document.querySelector('[data-vs2-battle]'), 'overlay removed');
 });
 
+test('Skip the talk records a neutral choice and immediately launches the battle', async () => {
+  const { arrIdx, rowId } = talkativeBasicRow();
+  freshSm({ eventIndex: arrIdx });
+  let launched = 0;
+  ST.showBattleIntro(TRAINER, 'Basic Trainer', () => launched++, rowId);
+  await tick();
+  W.document.querySelector('button[data-vs2-pick="stoic"]').click();
+  assert.equal(launched, 1);
+  assert.equal(ST.sm.banterByRow[rowId].pick, 'stoic');
+  assert.equal(ST.sm.banterByRow[rowId].outcome, 'neutral');
+  assert.equal(W.document.querySelector('[data-vs2-battle]'), null);
+});
+
 // ── Once per row: a recorded exchange falls back to the splash ───────────────
 test('a row with a recorded exchange shows the legacy splash (no re-banter)', async () => {
   const { arrIdx, rowId } = talkativeBasicRow();

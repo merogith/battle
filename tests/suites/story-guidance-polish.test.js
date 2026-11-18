@@ -46,7 +46,7 @@ test('the stale "🎯 Next" chip guidance is replaced by the objective bar', () 
     'the welcome tip must not reference the removed "🎯 Next chip"');
   assert.ok(/gold <b>objective bar<\/b>/.test(HTML),
     'Help should point at the gold objective bar');
-  assert.ok(HTML.includes('gold objective bar up top'),
+  assert.ok(HTML.includes('The gold objective at the top of town shows your next step.'),
     'the welcome tip should point at the gold objective bar');
 });
 

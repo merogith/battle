@@ -165,7 +165,10 @@ test('recordExchange stamps the row, bumps the track, recomputes persona; mult f
 // ── Damage parity: player ±5% exactly; foe path untouched; story-only ────────
 test('player damage scales ×1.05/×0.95/×1.00 by outcome; foe damage is byte-identical', async () => {
   const origRandom = W.Math.random;
-  W.Math.random = () => 0.99; // pin roll, no crit
+  const origStoryRandom = W.storyRngNext;
+  const fixedRoll = () => 0.99; // pin damage, no crit in either mode
+  W.Math.random = fixedRoll;
+  W.storyRngNext = fixedRoll;
   try {
     const run = async (mode, banterMod) => {
       const player = E.mkMon({ species: 'Mew', moves: ['Tackle', 'Splash', 'Splash', 'Splash'] });
@@ -196,12 +199,13 @@ test('player damage scales ×1.05/×0.95/×1.00 by outcome; foe damage is byte-i
     assert.equal(pve.playerDealt, base.playerDealt, 'pve never reads banterMod');
   } finally {
     W.Math.random = origRandom;
+    W.storyRngNext = origStoryRandom;
   }
 });
 
 test('single application site, gated story + player side (source guard)', () => {
   const src = fs.readFileSync(path.join(ROOT, 'battle.html'), 'utf8');
-  assert.equal((src.match(/damage \* state\.banterMod/g) || []).length, 1, 'exactly one damage-path site');
+  assert.equal((src.match(/\*\s*state\.banterMod\b/g) || []).length, 1, 'exactly one damage-path site');
   assert.ok(src.includes("state.mode === 'story' && isPlayer && state.banterMod"), 'site is story- and player-gated');
 });
 

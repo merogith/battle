@@ -39,9 +39,9 @@ async function dealtBy(moveName, city, { starter = false } = {}) {
   player.stats.spe = 999; // player moves first
   E.engine.setForcedFoeMoveSlot(0);
   const fHp = foe.currentHp;
-  const origRandom = W.Math.random;
-  W.Math.random = () => 0.99; // pin roll, no crit
-  try { await W.playTurn(0, null); } finally { W.Math.random = origRandom; }
+  const origStoryRandom = W.storyRngNext;
+  W.storyRngNext = () => 0.99; // pin the combat roll, no crit
+  try { await W.playTurn(0, null); } finally { W.storyRngNext = origStoryRandom; }
   return fHp - foe.currentHp;
 }
 

@@ -101,7 +101,16 @@ test('forfeit memorializes your three; honors player nicknames, fills random for
   $('story-pits-draft-overlay').querySelector('#pits-draft-go').click();
   SM.onBattleEnd(false, 'loss', '');
   await flushTimers();
-  $('story-pits-defeat-overlay').querySelector('#pits-defeat-forfeit').click();
+  const forfeit = $('pits-defeat-forfeit');
+  const confirm = $('modal-game-confirm');
+  forfeit.click();
+  assert.match($('modal-game-confirm-text').textContent, /Champ, Gengar, Pickles/);
+  confirm.querySelector('button[onclick*="false"]').click();
+  await Promise.resolve();
+  assert.equal(sm.memorial?.totalFallen || 0, 0);
+  forfeit.click();
+  confirm.querySelector('button[onclick*="true"]').click();
+  await Promise.resolve();
   assert.equal(sm.memorial.totalFallen, 3, 'all three fighters memorialized');
   assert.equal(sm.memorial.fallen.length, 3);
   // unshift order = newest first; the LAST sent (Garchomp[0], Gengar[1], Lapras[2]) were pushed

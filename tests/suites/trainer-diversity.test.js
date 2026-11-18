@@ -106,6 +106,48 @@ test('avoidSpecies is deterministic: same seed + same avoid-set => same team', (
   assert.deepEqual(roll(), roll(), 'avoid-set path stays reproducible on the story seed');
 });
 
+test('a reload before the next trainer preserves the seeded city roster diversity', () => {
+  const run = activeSeed(9090);
+  const sim = window.__storySim;
+  const gymTrainer = 4;
+  const gymLeader = 5;
+  const nextTownTrainer = 10;
+  const roll = row => sim.withEventSeededRng(row, () =>
+    ST.rollTrainerTeam(waterFodder(), 4, BASIC_GW, ALL_GENS, 'Gym Trainer 1', row, sim.storyCityFoeSeen(row)).map(slot => slot.name));
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  const stored = new Map();
+  Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+    getItem: key => stored.get(key) ?? null,
+    setItem: (key, value) => stored.set(key, String(value)),
+    removeItem: key => stored.delete(key),
+  } });
+  try {
+    const priorTeam = roll(gymTrainer);
+    sim.storyCityFoeRecord(gymTrainer, priorTeam.map(name => ({ name })));
+    assert.deepEqual([...sim.storyCityFoeSeen(gymLeader)], [...priorTeam]);
+    assert.equal(sim.storyCityFoeSeen(nextTownTrainer).size, 0);
+    const uninterrupted = [...roll(gymLeader)];
+    assert.equal(window.StoryMode.upgrades.save(), true);
+    const saved = window.localStorage.getItem('pbs_story_save');
+
+    // Recreate the loaded run in the same app without any live encounter state.
+    ST.sm = { ...run, active: false, storyCityFoeMemory: null };
+    assert.equal(ST.loadSaveForTest(), true);
+    assert.deepEqual([...sim.storyCityFoeSeen(gymLeader)], [...priorTeam]);
+    assert.deepEqual([...roll(gymLeader)], uninterrupted);
+
+    // Old saves have no hints and must not borrow the previous run's city.
+    const legacy = JSON.parse(saved);
+    delete legacy.storyCityFoeMemory;
+    window.localStorage.setItem('pbs_story_save', JSON.stringify(legacy));
+    assert.equal(ST.loadSaveForTest(), true);
+    assert.equal(sim.storyCityFoeSeen(gymLeader).size, 0);
+  } finally {
+    Object.defineProperty(window, 'localStorage', original);
+    ST.sm = run;
+  }
+});
+
 test('avoidSpecies never blocks: a pool smaller than the avoid-set still fields a full team', () => {
   // Gen-1 Ice is a famously thin type. Even if the avoid-set covers most of it, the
   // roll must fail open and still return a full party (soft nudge, never a hard filter).

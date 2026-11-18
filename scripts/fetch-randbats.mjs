@@ -39,7 +39,7 @@ async function fetchGen(gen) {
   const n = Object.keys(data).length;
   if (n === 0) throw new Error(`gen${gen}: empty payload`);
   const out = join(OUT_DIR, `gen${gen}.json`);
-  writeFileSync(out, JSON.stringify(data), 'utf8');
+  writeFileSync(out, JSON.stringify(data) + '\n', 'utf8');
   console.log(`  gen${gen}: ${n} species → data/randbats/gen${gen}.json`);
 }
 

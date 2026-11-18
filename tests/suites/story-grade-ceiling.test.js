@@ -48,7 +48,7 @@ test('ceiling is inert outside an active run', () => {
   ST.sm.active = true; // restore for the rolls below
 });
 
-test('pool ceiling: buckets stronger than the ceiling empty; G3 admitted from City 2; fail-open', () => {
+test('pool ceiling empties buckets above the limit even when the theme has no legal choices', () => {
   // Compare lengths/elements (primitives) — arrays built inside jsdom fail a cross-realm
   // deepEqual against node-side arrays.
   const T = { 1: ['Mewtwo'], 2: ['Gyarados'], 3: ['Haunter'], 4: ['Caterpie'] };
@@ -58,11 +58,10 @@ test('pool ceiling: buckets stronger than the ceiling empty; G3 admitted from Ci
   const c3 = ST.capGradePoolsByGradeCeiling(T, 3); // City 2-3: G3 + G4 (G3 IS admitted)
   assert.equal(c3[1].length, 0); assert.equal(c3[2].length, 0);
   assert.equal(c3[3][0], 'Haunter', 'G3 retained from City 2'); assert.equal(c3[4][0], 'Caterpie');
-  // Fail-open: nothing at/under the ceiling → return unchanged so a roll never breaks.
+  // The caller will fall back to another type instead of exceeding the cap.
   const thin = { 1: ['Mewtwo'], 2: ['Gyarados'], 3: [], 4: [] };
   const ft = ST.capGradePoolsByGradeCeiling(thin, 4);
-  assert.equal(ft[1].length, 1, 'fail-open keeps G1 when no G3/G4 exists');
-  assert.equal(ft[2].length, 1, 'fail-open keeps G2 when no G3/G4 exists');
+  assert.equal(Object.values(ft).flat().length, 0);
   // ceiling=1 (unrestricted) is a no-op (returns the same object reference).
   assert.equal(ST.capGradePoolsByGradeCeiling(T, 1), T);
 });

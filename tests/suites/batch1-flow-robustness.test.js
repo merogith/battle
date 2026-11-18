@@ -4,8 +4,7 @@
 //     (was dead code: unlockedGimmicks derives from the same settings toggles).
 //  2. proceedToNextBattle egg-only-party guard (fighter-count parity with the
 //     fight-launch guard — egg-only used to advance eventIndex then bounce).
-//  3. _daycareDropOff last-fighter re-check (handler is directly callable;
-//     only the BUTTON was gated before).
+//  3. Daycare checks the last-fighter guard again when a trade is confirmed.
 //  4. (removed) Victory-overlay auto-advance: superseded by the P0.1 redesign
 //     on main — NO card auto-closes now. Contract lives in
 //     victory-overlay-dismiss-v27.test.js (incl. a no-autoClose source guard).
@@ -34,7 +33,7 @@ function snapshotSm() {
     return {
         team: sm.team, settings: sm.settings, unlockedGimmicks: sm.unlockedGimmicks,
         eventIndex: sm.eventIndex, gold: sm.gold, badges: sm.badges, daycare: sm.daycare,
-        active: sm.active,
+        active: sm.active, facilityIntros: sm.facilityIntros,
     };
 }
 function restoreSm(s) { Object.assign(sm, s); }
@@ -78,20 +77,43 @@ test('proceedToNextBattle blocks an egg-only party without advancing eventIndex'
     } finally { window.showGameAlert = origAlert; restoreSm(snap); }
 });
 
-test('_daycareDropOff refuses to take the last party fighter', () => {
+test('Daycare refuses a confirmed trade if the partner has become the last party fighter', async () => {
     const snap = snapshotSm();
-    const origAlert = window.showGameAlert;
-    const alerts = [];
+    const originalConfirm = window.showGameConfirm;
+    let confirmations = 0;
     try {
-        window.showGameAlert = (msg) => alerts.push(String(msg));
-        sm.daycare = {};
-        sm.team = [{ id: 'last-fighter-1', name: 'Pikachu', build: { ...BUILD } }];
-        T.daycareDropOff('last-fighter-1');
+        sm.daycare = { freeEggClaimed: true, eggEventDone: false };
+        sm.facilityIntros = { ...sm.facilityIntros };
+        sm.team = [
+            { id: 'last-fighter-1', name: 'Pikachu', build: { ...BUILD } },
+            { id: 'reserve', name: 'Eevee', build: { ...BUILD } },
+        ];
+        window.showGameConfirm = async () => {
+            confirmations++;
+            sm.team.pop();
+            return true;
+        };
+        window.StoryMode.enterDaycare();
+        const overlay = window.document.getElementById('story-daycare-overlay');
+        const trade = overlay.querySelector('[data-daycare-drop="last-fighter-1"]');
+        assert.equal(trade.disabled, false, 'the original two-fighter party can start the trade');
+
+        await T.daycareDropOff(trade, overlay);
+        assert.equal(confirmations, 1);
         assert.equal(sm.team.length, 1, 'team unchanged');
         assert.equal(sm.team[0].id, 'last-fighter-1', 'the fighter was not swapped for an egg');
         assert.ok(!sm.team[0].isEgg, 'no egg replaced the last fighter');
-        assert.ok(alerts.some(m => /battle-ready/i.test(m)), 'player is told why');
-    } finally { window.showGameAlert = origAlert; restoreSm(snap); }
+        assert.equal(sm.daycare.eggEventDone, false, 'the trade is still available later');
+
+        window.StoryMode.enterDaycare();
+        const lastFighter = window.document.querySelector('[data-daycare-drop="last-fighter-1"]');
+        assert.equal(lastFighter.disabled, true);
+        assert.match(lastFighter.title, /party needs at least one Pokémon/i);
+    } finally {
+        window.document.getElementById('story-daycare-overlay')?.remove();
+        window.showGameConfirm = originalConfirm;
+        restoreSm(snap);
+    }
 });
 
 test('a throwing end-of-turn residual no longer skips the turn tail', async () => {

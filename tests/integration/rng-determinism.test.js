@@ -105,3 +105,85 @@ test('sm.active toggling restores native behavior cleanly', async () => {
   assert.equal(seeded1, seeded2, 'same seed + reset state → same first roll, even after toggling active off and back on');
   assert.notEqual(native1, native2, 'native rolls between the seeded ones are non-deterministic (mulberry32 in harness, native in browser)');
 });
+
+test('starting a new adventure rolls the story tracks from its own seed', async () => {
+  const { window, seedRng, nextFloat } = await loadEngine();
+  const story = window.StoryMode;
+  const storyTest = window.__storyTest;
+  const previousRun = { ...storyTest.sm, active: true, runSeed: 314159, _strngState: 913 };
+  storyTest.sm = previousRun;
+  seedRng(90210);
+  const expectedRunSeed = (nextFloat() * 0x100000000) | 0;
+  seedRng(90210);
+
+  const original = window.storyRngNext;
+  const draws = [];
+  window.storyRngNext = () => {
+    const roll = original();
+    draws.push({ seed: story.state.runSeed, roll });
+    return roll;
+  };
+  try {
+    story.startNewRun();
+  } finally {
+    window.storyRngNext = original;
+  }
+
+  assert.equal(story.state.runSeed, expectedRunSeed);
+  assert.equal(previousRun._strngState, 913, 'starting a new story leaves the previous stream untouched');
+  assert.deepEqual(draws.slice(0, 2).map(draw => draw.seed), [expectedRunSeed, expectedRunSeed]);
+  assert.deepEqual(
+    [story.state.tracks.villain, story.state.tracks.extra],
+    [storyTest.VILLAIN_TRACKS[Math.floor(draws[0].roll * storyTest.VILLAIN_TRACKS.length)],
+      storyTest.EXTRA_TRACKS[Math.floor(draws[1].roll * storyTest.EXTRA_TRACKS.length)]],
+  );
+});
+
+test('a timeline rematch rewinds combat rolls without rewinding world or presentation randomness', async () => {
+  const { window, engine, reset, logs } = await loadEngine();
+  const testStory = window.__storyTest;
+  const eventIndex = testStory.STORY_EVENTS_RAW.findIndex(row => row[0] === 1);
+  const rowId = testStory.STORY_EVENTS_RAW[eventIndex][0];
+  const makeSlot = (name, move) => ({
+    name, build: { m: [move], n: 'Hardy', a: 'None', _isShiny: false },
+  });
+  const run = {
+    ...testStory.sm,
+    active: true,
+    runSeed: 65432,
+    _strngState: 775,
+    eventIndex,
+    inventory: {},
+    team: [makeSlot('Pikachu', 'Thunderbolt')],
+    stats: { battlesLost: 0, rivalBattlesLost: 0 },
+  };
+  testStory.sm = run;
+
+  async function firstTurn(presentationDraws) {
+    reset();
+    const worldCursor = run._strngState;
+    await testStory.launchBattle([makeSlot('Eevee', 'Tackle')], rowId);
+    assert.equal(engine.state.mode, 'story');
+    assert.equal(run._strngState, worldCursor, 'battle setup leaves the world stream alone');
+    const cursor = engine.state.storyBattleRng.cursor;
+    for (let i = 0; i < presentationDraws; i++) window.Math.random();
+    assert.equal(engine.state.storyBattleRng.cursor, cursor, 'effects cannot consume the encounter stream');
+    logs.length = 0;
+    await window.playTurn(0, null);
+    assert.equal(run._strngState, worldCursor, 'turn resolution leaves the world stream alone');
+    return {
+      hp: [engine.state.pActive.currentHp, engine.state.fActive.currentHp],
+      pp: [engine.state.pActive.moves[0].pp, engine.state.fActive.moves[0].pp],
+      cursor: engine.state.storyBattleRng.cursor,
+      logs: logs.map(entry => entry.text),
+    };
+  }
+
+  const first = await firstTurn(0);
+  assert.ok(first.logs.length);
+  window.StoryMode.onBattleEnd(false, 'Defeat', '');
+  assert.equal(engine.state.storyBattleRng, null);
+  for (let i = 0; i < 8; i++) window.storyRngNext();
+  assert.notEqual(run._strngState, 775);
+  assert.deepEqual(await firstTurn(80), first);
+});

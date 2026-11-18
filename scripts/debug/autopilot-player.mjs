@@ -179,7 +179,7 @@ async function handleCatch(page) {
 
 async function pickStarter(page) {
   await shot(page, 'professor');
-  await page.evaluate(() => { const c = document.querySelector('.prof-pick-card .draft-card-sprite') || document.querySelector('.prof-pick-card'); if (c) c.click(); });
+  await page.locator('.prof-pick-choice').first().click().catch(() => {});
   await sleep(300);
   await forceClick(page, 'Choose This|Take ') || await api(page, 'profAccept');
   await sleep(700);

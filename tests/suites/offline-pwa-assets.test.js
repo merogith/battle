@@ -69,11 +69,11 @@ test('home menu has a discoverable "Download for offline" entry wired to the flo
   assert.ok(HTML.includes('id="menu-offline-entry"'), 'home-menu offline entry present');
   assert.ok(HTML.includes('window.openOfflineSettings'), 'home entry opens the offline settings flow');
   assert.ok(/window\.openOfflineSettings\s*=\s*function/.test(HTML), 'openOfflineSettings wrapper defined');
-  // The entry lives on the home menu (#screen-menu / mode-wrap), before the online-setup hint.
+  // The utility is available before the collapsed secondary mode choices.
+  const titleIdx = HTML.indexOf('id="screen-menu"');
   const entryIdx = HTML.indexOf('id="menu-offline-entry"');
-  const gridIdx = HTML.indexOf('class="menu-mode-grid"');
-  const hintIdx = HTML.indexOf('id="online-setup-hint"');
-  assert.ok(gridIdx > 0 && entryIdx > gridIdx && entryIdx < hintIdx, 'entry sits between the mode grid and the online hint');
+  const moreIdx = HTML.indexOf('id="menu-more-play"');
+  assert.ok(titleIdx > 0 && entryIdx > titleIdx && entryIdx < moreIdx, 'entry precedes the secondary play disclosure');
   // Reuses the existing update signal so it flags when an update is available.
   assert.ok(/refreshOfflineUpdateBadge[\s\S]*menu-offline-update/.test(HTML), 'badge refresh drives the home chip');
 });

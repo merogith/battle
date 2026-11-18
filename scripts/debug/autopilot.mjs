@@ -404,7 +404,7 @@ try {
   await shot(page, 'professor');
   const teamBefore = (await story(page))?.teamLen ?? 0;
   if (profUp) {
-    await clickSel(page, '.prof-pick-card .draft-card-sprite', { timeout: 2000 }) || await clickSel(page, '.prof-pick-card', { timeout: 1500 });
+    await clickSel(page, '.prof-pick-choice', { timeout: 2000 });
     await page.waitForTimeout(400);
     const acc = await clickSel(page, '#prof-accept-btn:not([disabled])', { timeout: 2000 })
       || await page.evaluate(() => { try { window.StoryMode.profAccept(); return true; } catch (e) { return false; } });

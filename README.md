@@ -2,9 +2,17 @@
 
 A playable, noncommercial fan project with turn-based battles and a single-player story mode. [Play in your browser](https://merogith.github.io/battle/battle.html).
 
+## North Road campaign
+
+Travel from Pallet to the Pokémon League. A road decision can change the noticeboard, a local resident’s response, or a record you find in a later town. The Field Archive lets you revisit earlier accounts and inspect earned keepsakes. After the League, the Battle Frontier offers three optional offline seed challenges.
+
+Story uses base level 50 with the existing late Experience Share power-up. Your team grows through recruitment, evolution, moves, items, abilities, training, and bonds. Signature bosses show what they are preparing before the next turn. Historical formats are available separately in the Competitive Arena.
+
+Use **Settings → Save & recovery** to export or restore a backup. The title screen offers the full offline download. Use the same installation or restore a backup when moving to another device. [Player playtest](docs/PLAYER_PLAYTEST.md) · [Build and release checks](docs/north-road/RELEASE.md)
+
 ## Battle engine and testing
 
-The JavaScript engine in [`battle.html`](battle.html) reads structured move data, resolves action order and applies damage, status, and field effects. The test harness loads the engine in jsdom and seeds randomness so turns can be replayed. The suites exercise mechanics such as move priority, Protect and type effectiveness, and the differential tests compare selected cases with Pokémon Showdown.
+Story and the standard battle modes use a Showdown simulator adapter for damage, action order, abilities and status. Story adds its own level, equipment, encounter and transformation rules around that simulator. Competitive Arena uses the rules of the selected format. The test suites cover deterministic retries, native battle behavior, and legacy-engine comparisons against Showdown.
 
 - [Move verification and test commands](tests/README.md)
 - [Battle engine investigation and testing approach](docs/BATTLE_ENGINE_INVESTIGATION.md)
@@ -57,9 +65,11 @@ Story runs are stored in **one** browser `localStorage` key: `pbs_story_save`. T
 - **General settings** (for example toggles under the main Settings screen) live in separate storage from the story run and are not the same object as `pbs_story_save`.
 - See `STORY_MODE_FLOW.md` for the spec of the catch / PC / Underground / Safari / boss-arc systems (shipped).
 
-## Alternative (no server)
+## Install or try a packaged build
 
-You can open `battle.html` directly in the browser (`file://`), but some features (fetch to APIs, certain CORS cases) behave better over `http://localhost`, so prefer `npm start` when testing online/PvP-related behavior.
+Open the game on its HTTPS site and use your browser’s install or Add to Home Screen action. Choose **Download for offline** on the title screen to keep the full media library. The game shows the download size before starting and fetches changed files on subsequent updates.
+
+To try the verified local package, run `npm run build:release`, start `npm start`, and open `http://localhost:5173/dist/battle.html`. The localhost server provides the origin needed for the simulator modules, installation and offline downloads.
 
 ## Debug & issue resolution system
 

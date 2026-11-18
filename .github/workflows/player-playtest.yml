@@ -1,0 +1,91 @@
+name: Player playtest
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'battle.html'
+      - 'game-upgrades.*'
+      - 'competitive/**'
+      - 'data/**'
+      - 'fonts/**'
+      - 'icons/**'
+      - 'music/**'
+      - 'offline-assets.json'
+      - 'online-*.js'
+      - 'package*.json'
+      - 'scripts/build-*'
+      - 'sw.js'
+      - 'sprites/**'
+      - 'vendor/**'
+      - 'scripts/debug/**playtest*.mjs'
+      - 'scripts/debug/release-candidate-playtest.sh'
+      - 'scripts/debug/story-playthrough.mjs'
+      - 'scripts/competitive/**'
+      - 'tests/visual/**'
+      - '.github/workflows/player-playtest.yml'
+  workflow_call:
+    inputs:
+      publish_artifact:
+        description: Upload the browser-tested dist as the Pages artifact
+        type: boolean
+        default: false
+      offline_pack:
+        description: Verify a fresh full offline download and play Story offline
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Story seed
+        default: '1'
+        type: string
+      road_choice:
+        description: Road choice to exercise at each town
+        options: [scout, help, pass]
+        type: choice
+        default: scout
+      offline_pack:
+        description: Download the full pack and play Story offline
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: player-playtest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !inputs.publish_artifact }}
+
+jobs:
+  player:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build:release
+      - name: Test the packaged game
+        env:
+          STORY_SEED: ${{ inputs.seed || '1' }}
+          ROAD_CHOICE: ${{ inputs.road_choice || 'scout' }}
+          OFFLINE_PACK: ${{ inputs.offline_pack || false }}
+          BATTLE_CANDIDATE_MIXED: ${{ inputs.publish_artifact || false }}
+        run: bash scripts/debug/release-candidate-playtest.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: player-playtest
+          path: agent-state/playthrough/ci/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload the exact browser-tested Pages artifact
+        if: ${{ success() && inputs.publish_artifact }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
