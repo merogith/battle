@@ -32,6 +32,12 @@ const act = (session, player, opponent) => {
     : opponent || move(scripted?.slot ?? request.moves[0].slot));
 };
 const phaseLog = view => view.events.filter(event => event.boss?.id);
+const normalizeSnapshot = session => {
+  const snapshot = session.snapshot();
+  // Showdown writes wall-clock protocol lines inside the nested battle state.
+  State.normalize(snapshot.battle);
+  return snapshot;
+};
 
 test('the catalog has a valid revision for every raid tier and selected climax', () => {
   assert.equal(Object.keys(data).length, 28);
@@ -114,8 +120,8 @@ test('restored pending and active snapshots produce the same native result and o
     assert.equal(phaseLog(result).filter(event => event.boss.phase === 'expire').length, 1);
     assert.equal(act(session, 0).winner, 'p1');
   }
-  assert.deepEqual(State.normalize(first.snapshot()), State.normalize(active.snapshot()));
-  assert.deepEqual(State.normalize(first.snapshot()), State.normalize(pending.snapshot()));
+  assert.deepEqual(normalizeSnapshot(first), normalizeSnapshot(active));
+  assert.deepEqual(normalizeSnapshot(first), normalizeSnapshot(pending));
 });
 
 test('an actual pivot replacement waits for the native completed turn before counting an active guard', () => {
@@ -136,7 +142,7 @@ test('an actual pivot replacement waits for the native completed turn before cou
     assert.equal(resumed.boss.phases[0].remainingTurns, 1);
     assert.equal(resumed.turn, switching.turn + 1);
   }
-  assert.deepEqual(State.normalize(restored.snapshot()), State.normalize(session.snapshot()));
+  assert.deepEqual(normalizeSnapshot(restored), normalizeSnapshot(session));
 });
 
 test('Relic Guard is spent by one positive direct hit and neither a miss nor a fully absorbed hit grants it', () => {
