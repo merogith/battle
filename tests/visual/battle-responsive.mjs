@@ -27,6 +27,19 @@ async function tapCenter(page, locator) {
   await page.touchscreen.tap(point.x, point.y);
 }
 
+async function measureField(page) {
+  return page.locator('#player-sprite, #foe-sprite').evaluateAll(sprites => {
+    const field = document.getElementById('screen-battle').getBoundingClientRect();
+    const controlsTop = document.querySelector('#screen-battle .ui-bottom').getBoundingClientRect().top;
+    const clippedSprites = sprites.flatMap(sprite => {
+      const box = sprite.getBoundingClientRect();
+      if (box.top >= field.top && box.bottom <= controlsTop && box.height > 0) return [];
+      return [{ id: sprite.id, top: box.top, bottom: box.bottom, fieldTop: field.top, controlsTop }];
+    });
+    return { controlsTop, clippedSprites };
+  });
+}
+
 async function compactMoveTaps() {
   const context = await browser.newContext({ viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true,
     serviceWorkers: 'block', reducedMotion: 'reduce' });
@@ -40,6 +53,12 @@ async function compactMoveTaps() {
   try {
     for (const [width, height] of [[320, 568], [568, 260], [844, 390]]) {
       await page.setViewportSize({ width, height });
+      await page.waitForFunction(({ width, height }) => {
+        const screen = document.getElementById('screen-battle');
+        const bounds = screen.getBoundingClientRect();
+        return screen.dataset.battleLayout === (height > width ? 'stack' : 'arena') &&
+          Math.round(bounds.width) === width && Math.round(bounds.height) === height;
+      }, { width, height });
       for (const form of [false, true]) {
         for (const [slot, move] of moves.entries()) {
           await page.evaluate(async form => {
@@ -47,11 +66,13 @@ async function compactMoveTaps() {
             state.pActive.buildData.gimmick = 'STANDARD';
             state.pActive.buildData.teraType = form ? 'Ground' : null;
           }, form);
+          const checkField = height === 260 && slot === 0;
+          const commandField = checkField ? await measureField(page) : null;
           await page.locator('#command-menu [data-cmd="fight"]').tap();
           const gutter = page.locator('#move-menu .move-menu-controls');
           assert.equal(await gutter.locator('.gimmick-btn').count(), Number(form));
           if (form) await gutter.locator('.gimmick-btn').tap();
-          if (height === 260 && slot === 0) {
+          if (checkField) {
             const clipped = await page.locator('#move-menu .move-tile-name').evaluateAll(labels =>
               labels.filter(label => label.scrollWidth > label.clientWidth + 1).map(label => label.textContent));
             assert.deepEqual(clipped, [], 'Short landscape shows the full move names');
@@ -61,16 +82,10 @@ async function compactMoveTaps() {
               return bounds.top >= card.top && bounds.bottom <= card.bottom && bounds.height > 0;
             });
             assert.ok(hudVisible, 'The player name stays inside the visible battle HUD');
-            const clippedSprites = await page.locator('#player-sprite, #foe-sprite').evaluateAll(sprites => {
-              const field = document.getElementById('screen-battle').getBoundingClientRect();
-              const controls = document.querySelector('#screen-battle .ui-bottom').getBoundingClientRect();
-              return sprites.flatMap(sprite => {
-                const box = sprite.getBoundingClientRect();
-                if (box.top >= field.top && box.bottom <= controls.top && box.height > 0) return [];
-                return [{ id: sprite.id, top: box.top, bottom: box.bottom, fieldTop: field.top, controlsTop: controls.top }];
-              });
-            });
-            assert.deepEqual(clippedSprites, [], 'Both battlers fit in the field above the move controls');
+            const moveField = await measureField(page);
+            assert.deepEqual(commandField.clippedSprites, [], 'Both battlers fit above the commands');
+            assert.deepEqual(moveField.clippedSprites, [], 'Both battlers fit above the moves');
+            assert.equal(moveField.controlsTop, commandField.controlsTop, 'Opening Fight keeps the short field steady');
           }
           if (out && slot === 0) await page.screenshot({ path: join(out, `battle-${width}x${height}-${form ? 'tera' : 'standard'}.png`) });
           const info = page.getByRole('button', { name: `${move} details`, exact: true });

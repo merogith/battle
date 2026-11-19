@@ -5597,6 +5597,8 @@
             #screen-battle #move-menu .move-tile-meta > [title="PP"] { white-space: nowrap; }
         }
         @media (max-height: 360px) and (orientation: landscape) {
+            /* Keep the field and controls in place when switching between commands and moves. */
+            #screen-battle[data-battle-layout="arena"] { --battle-ui-h: max(164px, 40cqmin); }
             #screen-battle[data-battle-layout="arena"] #move-menu .move-tile-core {
                 display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
                 align-items: center; column-gap: 4px; row-gap: 2px;
@@ -5630,15 +5632,16 @@
             #screen-battle[data-battle-layout="arena"] :is(#player-sprite-container, #foe-sprite-container) {
                 /* Reserve room for the largest lore scale, including Dynamax. */
                 --compact-sprite-size: clamp(24px, calc((100cqh - var(--battle-ui-h) - 16px) / 1.4), 76px);
+                grid-area: arena;
                 width: var(--compact-sprite-size); height: var(--compact-sprite-size);
-                right: auto; bottom: calc(var(--battle-ui-h) + 2px);
+                right: auto; bottom: 2px;
             }
             #screen-battle[data-battle-layout="arena"] :is(#player-sprite, #foe-sprite) {
                 bottom: 2px; transform-origin: center bottom;
             }
             #screen-battle[data-battle-layout="arena"] #player-sprite-container { left: calc(42% - var(--compact-sprite-size) / 2); }
             #screen-battle[data-battle-layout="arena"] #foe-sprite-container {
-                left: calc(56% - var(--compact-sprite-size) / 2); bottom: calc(var(--battle-ui-h) + 10px);
+                left: calc(56% - var(--compact-sprite-size) / 2); bottom: 10px;
             }
         }
         .move-info-hit:active { background: rgba(255,213,79,0.22); filter: brightness(0.95); }
