@@ -59,8 +59,9 @@ concurrency:
 
 jobs:
   player:
-    # Playwright 1.60 can install Chromium and WebKit on Ubuntu 24.04.
     runs-on: ubuntu-24.04
+    # Keep the bundled browsers matched to the Playwright version in package-lock.json.
+    container: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +70,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
       - run: npm run build:release
       - name: Test the packaged game
         env:
