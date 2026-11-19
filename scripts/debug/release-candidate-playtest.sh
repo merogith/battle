@@ -13,7 +13,7 @@ unset BATTLE_CAMP_GAMES BATTLE_PLAYTEST_CASES BATTLE_PLAYTEST_PHASE BATTLE_SIDE_
 mkdir -p "$output"
 
 cp dist/release.json "$output/release.json"
-git rev-parse HEAD > "$output/source-commit.txt"
+git -c "safe.directory=$(pwd -P)" rev-parse --verify HEAD > "$output/source-commit.txt"
 sha256sum dist/release.json dist/offline-assets.json dist/battle.html dist/sw.js \
   dist/competitive/classic-simulation.js dist/competitive/showdown-engine.js > "$output/package-sha256.txt"
 
