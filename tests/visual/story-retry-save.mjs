@@ -13,13 +13,18 @@ const prompts = [
   '[data-vs2-battle]',
 ].map(selector => selector + ':visible').join(',');
 
-async function reach(page, target) {
+async function reach(page, target, { activate = false } = {}) {
   for (let step = 0; step < 50; step++) {
     const prompt = page.locator(prompts).last();
-    if (await prompt.count()) await prompt.click({ timeout: 3000 });
-    else if (await target.isVisible()) {
-      await target.click({ trial: true, timeout: 1200 });
-      return;
+    try {
+      if (await prompt.count()) await prompt.click({ timeout: 1000 });
+      else if (await target.isVisible()) {
+        await target.click({ trial: !activate, timeout: 500 });
+        return;
+      }
+    } catch (error) {
+      // An arriving tutorial can block an otherwise visible control.
+      if (error.name !== 'TimeoutError') throw error;
     }
     await page.waitForTimeout(150);
   }
@@ -150,13 +155,12 @@ try {
         await objective.click();
       }
       const leaveMart = page.locator('#screen-story-shop .story-shop-back-btn');
-      await reach(page, leaveMart);
       if (withBag) {
         const stock = page.locator('#screen-story-shop [data-item-id="maxElixir"]');
-        await stock.getByRole('button', { name: 'Buy', exact: true }).click();
+        await reach(page, stock.getByRole('button', { name: 'Buy', exact: true }), { activate: true });
         assert.equal((await saved(page)).inventory.maxElixir, 1);
       }
-      await leaveMart.click();
+      await reach(page, leaveMart, { activate: true });
       await reach(page, objective);
       assert.match(await objective.innerText(), /Rival/i);
       await objective.click();

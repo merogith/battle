@@ -16,14 +16,19 @@ const introControls = [
   '.vs2-battle-btn:visible',
 ].join(', ');
 
-async function reach(page, target) {
+async function reach(page, target, { activate = false } = {}) {
   for (let step = 0; step < 40; step += 1) {
     const advance = page.locator(introControls).last();
-    if (await advance.count()) {
-      await advance.click({ timeout: 1800 });
-    } else if (await target.isVisible()) {
-      await target.click({ trial: true, timeout: 5000 });
-      return;
+    try {
+      if (await advance.count()) {
+        await advance.click({ timeout: 1000 });
+      } else if (await target.isVisible()) {
+        await target.click({ trial: !activate, timeout: 500 });
+        return;
+      }
+    } catch (error) {
+      // An arriving tutorial can block an otherwise visible control.
+      if (error.name !== 'TimeoutError') throw error;
     }
     await page.waitForTimeout(120);
   }
@@ -116,8 +121,7 @@ try {
       assert.match(await objective.innerText(), /Pokémart/);
       await objective.click();
       const leaveMart = page.locator('#screen-story-shop .story-shop-back-btn');
-      await reach(page, leaveMart);
-      await leaveMart.click();
+      await reach(page, leaveMart, { activate: true });
       await reach(page, objective);
       assert.match(await objective.innerText(), /Rival/i);
       await objective.click();
