@@ -61,15 +61,16 @@ async function compactMoveTaps() {
               return bounds.top >= card.top && bounds.bottom <= card.bottom && bounds.height > 0;
             });
             assert.ok(hudVisible, 'The player name stays inside the visible battle HUD');
-            const wholeSprites = await page.locator('#player-sprite, #foe-sprite').evaluateAll(sprites => {
+            const clippedSprites = await page.locator('#player-sprite, #foe-sprite').evaluateAll(sprites => {
               const field = document.getElementById('screen-battle').getBoundingClientRect();
               const controls = document.querySelector('#screen-battle .ui-bottom').getBoundingClientRect();
-              return sprites.every(sprite => {
+              return sprites.flatMap(sprite => {
                 const box = sprite.getBoundingClientRect();
-                return box.top >= field.top && box.bottom <= controls.top && box.height > 0;
+                if (box.top >= field.top && box.bottom <= controls.top && box.height > 0) return [];
+                return [{ id: sprite.id, top: box.top, bottom: box.bottom, fieldTop: field.top, controlsTop: controls.top }];
               });
             });
-            assert.ok(wholeSprites, 'Both battlers fit in the field above the move controls');
+            assert.deepEqual(clippedSprites, [], 'Both battlers fit in the field above the move controls');
           }
           if (out && slot === 0) await page.screenshot({ path: join(out, `battle-${width}x${height}-${form ? 'tera' : 'standard'}.png`) });
           const info = page.getByRole('button', { name: `${move} details`, exact: true });

@@ -287,6 +287,7 @@ try {
     await page.goto(base.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
     await page.locator('.menu-btn-quickplay--continue').click();
+    await crucible.waitFor();
     assert.deepEqual(await run('crucibleLeagueRun', 'gold', 'inventory'), leagueBreak, 'opening the saved break preserves the round and costs nothing');
     await enterLeagueMatch(/Continue League Run · 2\/5/);
     const row = await page.evaluate(() => window.STORY_EVENTS_RAW[window.StoryMode.state.eventIndex][0]);
@@ -302,7 +303,7 @@ try {
     }, null, 2) + '\n');
     console.log(summary);
 } catch (error) {
-    console.error(await page.evaluate(() => ({
+    console.error(await page.evaluate(() => typeof state === 'undefined' ? null : ({
         mode: state.mode, turn: state.turnNumber, isLocked: state.isLocked,
         log: document.getElementById('battle-log').innerText,
         requestedActions: state.nativeRequests,

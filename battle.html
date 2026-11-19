@@ -5628,9 +5628,13 @@
                 font: 700 9px/1.1 system-ui, sans-serif; padding: 2px 4px;
             }
             #screen-battle[data-battle-layout="arena"] :is(#player-sprite-container, #foe-sprite-container) {
-                --compact-sprite-size: clamp(24px, calc(100cqh - var(--battle-ui-h) - 18px), 76px);
+                /* Reserve room for the largest lore scale, including Dynamax. */
+                --compact-sprite-size: clamp(24px, calc((100cqh - var(--battle-ui-h) - 16px) / 1.4), 76px);
                 width: var(--compact-sprite-size); height: var(--compact-sprite-size);
                 right: auto; bottom: calc(var(--battle-ui-h) + 2px);
+            }
+            #screen-battle[data-battle-layout="arena"] :is(#player-sprite, #foe-sprite) {
+                bottom: 2px; transform-origin: center bottom;
             }
             #screen-battle[data-battle-layout="arena"] #player-sprite-container { left: calc(42% - var(--compact-sprite-size) / 2); }
             #screen-battle[data-battle-layout="arena"] #foe-sprite-container {
@@ -14662,8 +14666,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return null;
         }
         let dataReady;
+        let gameTablesLoaded = false;
         let gameDataLoaded = false;
-        function prepareGameData() {
+        function prepareGameData({ allowMissingDex = false } = {}) {
             if (dataReady) return dataReady;
             const overlay = document.getElementById('app-loading-overlay');
             const stage = document.getElementById('app-root');
@@ -14671,18 +14676,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (message) message.textContent = 'Loading Pokédex & moves…';
             if (overlay) overlay.classList.remove('hidden');
             if (stage) stage.inert = true;
-            dataReady = loadDexCore().then(loadGameData).then(() => {
-                gameDataLoaded = true;
+            let ready = false;
+            dataReady = loadDexCore().catch(error => {
+                if (!allowMissingDex) throw error;
+            }).then(async () => {
+                if (!gameTablesLoaded) {
+                    await loadGameData();
+                    gameTablesLoaded = true;
+                } else if (getPssDex()) enrichBaseStatsHeightsFromDex();
+                gameDataLoaded = Boolean(getPssDex());
+                ready = true;
                 try { window.updatePoolCount?.(); } catch (e) {}
                 return true;
             }).catch(error => {
-                dataReady = null;
                 console.error('[Data]', error);
                 return false;
             }).finally(() => {
+                if (!gameDataLoaded) dataReady = null;
                 if (overlay) overlay.classList.add('hidden');
                 if (stage) stage.inert = false;
-                if (!gameDataLoaded) window.showGameAlert?.('Game data could not load. Try again when connected, or verify your offline download.');
+                if (!ready) window.showGameAlert?.('Game data could not load. Try again when connected, or verify your offline download.');
             });
             return dataReady;
         }
@@ -53718,7 +53731,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function continueRun() {
-            if (!gameDataLoaded) return prepareGameData().then(ready => { if (ready) continueRun(); });
+            if (gameDataLoaded) return _continueLoadedRun();
+            // A saved Frontier challenge carries both teams. Its native engine
+            // can replay the round with local tables even if the build Dex is unavailable.
+            let allowMissingDex = false;
+            try {
+                const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+                allowMissingDex = saved?.atCrucible === true && !!window.FrontierChallenges?.normalize(saved.frontier?.challenge);
+            } catch (e) {}
+            return prepareGameData({ allowMissingDex }).then(ready => { if (ready) _continueLoadedRun(); });
+        }
+
+        function _continueLoadedRun() {
             if (!load()) { showMenu(true); return; }
             _recordLoopChoice(sm.storyChoices?.['main.loop.remember'], sm.loopChoiceCommittedAt);
             resetProfessorPickSession();

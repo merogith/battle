@@ -30,6 +30,7 @@ const MIME = {
 };
 
 function sendAsset(req, res, contentType, data) {
+  if (res.destroyed) return;
   res.setHeader('Content-Type', contentType);
   if (process.env.BATTLE_STATIC_COMPRESSION === '1' && data.length >= 1024 && /^(text\/|application\/json|image\/svg)/.test(contentType)) {
     res.setHeader('Vary', 'Accept-Encoding');
@@ -70,12 +71,14 @@ const server = http.createServer((req, res) => {
     return;
   }
   fs.stat(file, (err, st) => {
+    if (res.destroyed) return;
     if (!err && st.isDirectory()) {
       file = path.join(file, 'index.html');
     }
     const contentType = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
     if (!err && st.isFile() && contentType.startsWith('audio/')) {
       res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' });
+      if (req.method === 'HEAD') return res.end();
       pipeline(fs.createReadStream(file), res, () => {});
       return;
     }

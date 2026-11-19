@@ -1,5 +1,6 @@
 /* global state, settings */
 import assert from 'node:assert/strict';
+import { userInfo } from 'node:os';
 import { chromium, firefox, webkit } from 'playwright';
 
 const url = new URL(process.env.BATTLE_TEST_URL || 'http://localhost:5173/battle.html');
@@ -7,7 +8,12 @@ const engine = process.env.BATTLE_TEST_ENGINE || 'chromium';
 const browserType = { chromium, firefox, webkit }[engine];
 assert.ok(browserType, `Unsupported browser engine ${engine}`);
 const executables = { chromium: process.env.BATTLE_TEST_CHROMIUM, webkit: process.env.BATTLE_TEST_WEBKIT };
-const browser = await browserType.launch({ executablePath: executables[engine] });
+// GitHub's job container sets HOME to a directory owned by a different user.
+// Give Firefox the actual current user's home without changing other job steps.
+const env = engine === 'firefox' && process.env.GITHUB_ACTIONS === 'true'
+  ? { ...process.env, HOME: userInfo().homedir }
+  : undefined;
+const browser = await browserType.launch({ executablePath: executables[engine], env });
 try {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, isMobile: engine !== 'firefox', hasTouch: true,

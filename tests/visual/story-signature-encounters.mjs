@@ -102,8 +102,15 @@ try {
   await choose('Water Gun');
   assert.deepEqual((await snapshot()).phases, []);
 
-  await page.evaluate(() => window.StoryMode.retryFromGameOver());
+  await screen.locator('#command-menu [data-cmd="run"]').tap();
+  await page.locator('#modal-game-confirm').getByRole('button', { name: 'OK', exact: true }).tap();
+  await page.locator('#screen-story-gameover').getByRole('button', { name: /Retry/ }).tap();
   try {
+    const narrationAction = page.locator('.story-narr-root :is([data-narr-continue], [data-narr-choice-idx]):visible');
+    for (let line = 0; line < 12 && !(await cinematic.isVisible()); line++) {
+      await cinematic.or(narrationAction).first().waitFor({ timeout: 6000 });
+      if (await narrationAction.first().isVisible()) await narrationAction.first().tap();
+    }
     await cinematic.waitFor({ timeout: 6000 });
   } catch (error) {
     const summary = await page.evaluate(() => ({ row: window.StoryMode.state.eventIndex,
