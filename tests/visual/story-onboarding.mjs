@@ -66,6 +66,11 @@ try {
     const capture = state => out && page.screenshot({ path: join(out, `${profile}-${state}.png`), animations: 'disabled' });
     await page.goto(url.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#screen-menu').getByRole('button', { name: /Story Mode/ }).tap();
+    await page.getByText('Battle frozen? Open Settings and choose Force Continue.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Settings', exact: true }).tap();
+    const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
+    await settings.getByRole('button', { name: 'Force Continue', exact: true }).waitFor();
+    await settings.getByRole('button', { name: 'Close settings', exact: true }).tap();
     await page.getByRole('button', { name: /New Adventure/ }).tap();
 
     const heading = page.getByRole('heading', { name: 'New Adventure', exact: true });
@@ -164,6 +169,11 @@ try {
     await capture('confirmation');
     await tapInView(page, accept, `${profile} confirm starter`);
     await page.waitForFunction(() => document.getElementById('story-prof-status').textContent.includes('joined your team'));
+    const guidance = lab.getByText('Return to Pallet Town and follow the gold objective.', { exact: true });
+    await guidance.waitFor();
+    assert.ok(await guidance.evaluate(el => getComputedStyle(el).fontFamily === getComputedStyle(el.parentElement).fontFamily),
+      'Receipt guidance uses the readable body typeface');
+    await capture('starter-receipt');
     assert.equal(await back.count(), 1);
     await tapInView(page, back, `${profile} single Lab exit`);
 

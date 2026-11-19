@@ -248,11 +248,12 @@ async function loadRoomQueue() {
   const src = readFileSync('online-pvp.js', 'utf8');
   const timers = new Map();
   const warnings = [];
+  const client = mockSupabaseClient();
   let timerId = 0;
   const window = {
     __PBS_SUPABASE_URL: 'https://example.supabase.co',
     __PBS_SUPABASE_ANON_KEY: 'test-public-key-for-local-room-tests',
-    supabase: { createClient: () => mockSupabaseClient() },
+    supabase: { createClient: () => client },
     localStorage: { getItem: () => null },
     setTimeout(callback, delay) {
       timers.set(++timerId, { callback, delay });
@@ -264,10 +265,78 @@ async function loadRoomQueue() {
   const online = new Function('window', 'console', src + '\nreturn window.OnlineBattle;')(window, mockConsole);
   await online.createRoom({ partySize: 1 }, [1], {});
   const deliver = seq => online._onRemoteRow({ data: { seq } });
-  return { window, timers, warnings, deliver };
+  return { window, online, client, timers, warnings, deliver };
 }
 
 const flushRoomQueue = () => new Promise(resolve => setImmediate(resolve));
+
+test('an online draft card can retry the same pick after an RPC rejection', async () => {
+  const { window, online, client } = await loadRoomQueue();
+  const starter = { name: 'Eevee', build: {} };
+  const state = { draftTurn: 1, p1Pool: [starter], p1Draft: [] };
+  window.__onlineGuestJoined = true;
+  window.onOnlineRoomData = data => {
+    state.p1Pool = data.p1_pool;
+    state.p1Draft = data.p1_draft;
+  };
+  const rpc = client.rpc;
+  let attempts = 0;
+  client.rpc = async (name, args) => {
+    if (name === 'pvp_push_data' && args.p_patch.p1_draft && ++attempts === 1) {
+      return { data: { ok: false, error: 'fixture_rejection' } };
+    }
+    return rpc(name, args);
+  };
+
+  const app = readFileSync('battle.html', 'utf8');
+  const select = app.indexOf('async function selectDraft(draftItem)');
+  const selectCore = app.indexOf('function selectDraftCore(draftItem)', select);
+  const card = app.indexOf('let _drafted = false;');
+  const bind = app.indexOf('btn.onclick = _pickThis;', card);
+  assert.ok(select >= 0 && selectCore > select && card >= 0 && bind > card);
+  const makeClick = new Function('window', 'state', 'settings', 'isOnlineParallelDraft', 'selectDraftCore', 'draftItem',
+    app.slice(select, selectCore) + app.slice(card, bind) + 'return _pickThis;');
+  const click = makeClick(window, state, { partySize: 2 }, () => true, () => {}, starter);
+  await click();
+  await flushRoomQueue();
+  assert.equal(online.isDraftWritePending(), false);
+  assert.deepEqual(state.p1Draft, []);
+  await click();
+  await flushRoomQueue();
+  assert.equal(attempts, 2);
+  assert.deepEqual(state.p1Draft.map(row => row.name), ['Eevee']);
+});
+
+test('draft RPC receipts recover missed Realtime and cannot replace a newer accepted revision', async () => {
+  const { window, online, client } = await loadRoomQueue();
+  const first = { name: 'Eevee', build: {} };
+  const second = { name: 'Pikachu', build: {} };
+  const opponent = { name: 'Meowth', build: {} };
+  const applied = [];
+  let reads = 0;
+  client.from = () => { reads++; throw new Error('head read unavailable'); };
+  window.onOnlineRoomData = data => applied.push(data);
+  assert.equal(await online.commitDraftSide(1, [second], [first]), true);
+  assert.equal(online.isDraftWritePending(), false);
+  assert.deepEqual(applied.at(-1).p1_draft, [first]);
+  const firstSeq = applied.at(-1).seq;
+
+  const rpc = client.rpc;
+  client.rpc = async (name, args) => {
+    const response = await rpc(name, args);
+    const receipt = response.data.data;
+    const room = client.rooms.get(args.p_room_id);
+    room.data = { ...receipt, seq: receipt.seq + 1, p2_draft: [opponent] };
+    await online._onRemoteRow(room);
+    return response;
+  };
+  assert.equal(await online.commitDraftSide(1, [], [first, second]), true);
+  assert.equal(online.isDraftWritePending(), false);
+  assert.deepEqual(applied.map(data => data.seq), [firstSeq, firstSeq + 2]);
+  assert.deepEqual(applied.at(-1).p1_draft, [first, second]);
+  assert.deepEqual(applied.at(-1).p2_draft, [opponent]);
+  assert.equal(reads, 0, 'a full committed receipt needs no extra head read');
+});
 
 test('pvp-stub: _onRemoteRow does not bump lastRemoteSeq before handler succeeds (ISSUE-010)', async () => {
   const { window, timers, deliver, warnings } = await loadRoomQueue();

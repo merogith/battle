@@ -75,6 +75,7 @@ async function caseRun(name, run) {
   const context = await browser.newContext({ viewport: { width: 430, height: 850 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce', serviceWorkers: 'block' });
   const page = await context.newPage();
   page.setDefaultTimeout(6500);
+  page.setDefaultNavigationTimeout(45000);
   const pageErrors = [];
   const answers = [];
   const nativeDialogs = [];
@@ -342,7 +343,7 @@ try {
     await record(page, 'mystery-edge', 'challenge-resolved');
   });
 
-  await caseRun('hall-frontier', async (page, answers) => {
+  await caseRun('hall-frontier', async page => {
     const { command, frontier } = await playHallEnding(page, 'hall-frontier', {
       label: /Remember\. Carry it forward/,
       reply: /You hold onto it\. All of it\./,
@@ -360,8 +361,10 @@ try {
     await advanceTo(page, round2);
     assert.equal((await story(page, ['frontier'])).frontier.currentStreak, 1);
     await record(page, 'hall-frontier', 'round-2');
-    answers.push('');
     await button(frontierScreen, /Surrender/).click();
+    const confirmation = page.locator('#modal-game-confirm');
+    assert.match(await confirmation.innerText(), /1 win will be recorded/);
+    await button(confirmation, 'OK').click();
     await advanceTo(page, begin);
     const ended = (await story(page, ['frontier'])).frontier;
     assert.equal(ended.active, false);

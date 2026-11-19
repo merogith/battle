@@ -18,6 +18,8 @@ const result = await build({
   outdir: 'competitive',
   bundle: true,
   minify: true,
+  // Showdown's serializer writes constructor names into Side, Pokémon and other state references.
+  keepNames: true,
   splitting: true,
   chunkNames: 'showdown-engine',
   platform: 'browser',

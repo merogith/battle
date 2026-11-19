@@ -22,6 +22,15 @@ const eng = await loadEngine();
 const { window } = eng;
 const SM = window.StoryMode;
 const sm = SM.state;
+const storage = new Map();
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: key => storage.delete(key),
+  },
+});
 
 // jsdom doesn't implement confirm/alert — stub so the forfeit confirm() returns true.
 window.confirm = () => true;
@@ -58,6 +67,7 @@ function clearOverlays() {
 function setupStory() {
   clearOverlays();
   sm.active = true;
+  sm.runSeed = 44183;
   sm.badges = 6;
   sm.gold = 10000;
   sm.eventIndex = 38; // a mid-game City row
@@ -88,6 +98,19 @@ function sendInTrio() {
   assert.ok(draft, 'round draft reveal renders before the fight');
   draft.querySelector('#pits-draft-go').click();
   return draft;
+}
+
+function clearBracket() {
+  for (let round = 1; round <= 5; round++) {
+    SM.onBattleEnd(true, 'Fight Club win', '');
+    if (round === 5) break;
+    const draft = $('story-pits-draft-overlay');
+    assert.match(draft.querySelector('[role="status"]').textContent, new RegExp(`Round ${round} cleared`));
+    assert.equal(sm.pits._fightIndex, round);
+    SM.onBattleEnd(true, 'Stale callback', '');
+    assert.equal(sm.pits._fightIndex, round, 'a duplicated win cannot clear the next round');
+    sendInTrio();
+  }
 }
 
 test('Daycare first visit: must-see intro + free Grade-3 egg, no sacrifice', () => {
@@ -242,7 +265,7 @@ test('Fight Club story win: 5-round 3v3 sweep grants +10 all stats, gold, NO rel
   draft.querySelector('#pits-draft-go').click(); // send the trio in
   assert.equal(sm.pits._inBattle, true, 'marked in-battle after sending them in');
 
-  for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+  clearBracket();
   assert.equal(sm.pits._inBattle, false, 'in-battle cleared after 5 wins');
   assert.ok(sm.gold > goldBefore, 'gold paid out');
   assert.equal(sm.team.length, teamSizeBefore, 'NO mons released — you keep all six');
@@ -315,7 +338,7 @@ test('Endgame Fight Club: gold only, no +1, repeatable', () => {
   for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
   $('story-pits-overlay').querySelector('#pits-start-btn').click();
   sendInTrio();
-  for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+  clearBracket();
   assert.ok(sm.gold > goldBefore, 'endgame win pays gold');
   const noBuff = sm.team.every((s, i) => ['hp','atk','def','spa','spd','spe'].every(k => (s.build.bonus[k] | 0) === (bonusBefore[i][k] | 0)));
   assert.ok(noBuff, 'endgame win grants NO permanent stat bonus');

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Battle move preview</title>
+  <style>
+    * { box-sizing:border-box; }
+    body { margin:0; padding:clamp(12px,4vw,40px); color:#edf2f8; background:#10141d; font:16px/1.55 system-ui,sans-serif; }
+    main { max-width:960px; margin:auto; }
+    h1 { margin:0 0 12px; font-size:clamp(1.4rem,4vw,2.2rem); }
+    form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin-bottom:18px; }
+    label { display:grid; gap:4px; font-size:.9rem; }
+    :is(input,select,button) { min-height:44px; color:#edf2f8; background:#192337; border:1px solid #70829c; border-radius:6px; padding:8px; font:inherit; }
+    button { padding-inline:16px; cursor:pointer; }
+    button[type="submit"] { color:#111927; background:#cce2ff; font-weight:700; }
+    .arena { position:relative; height:clamp(210px,52vw,410px); overflow:hidden; isolation:isolate; border:1px solid #3d506c; border-radius:12px;
+      background:radial-gradient(ellipse at 70% 15%,#243b50,transparent 65%), linear-gradient(160deg,#162234,#0f1727 60%,#263b4b); }
+    .arena[data-layout="portrait"] { aspect-ratio:3/4; max-width:100%; width:min(410px,100%); height:auto; }
+    .arena img { position:absolute; width:clamp(85px,24%,170px); aspect-ratio:1; object-fit:contain; image-rendering:pixelated; }
+    .arena img:first-child { bottom:12%; left:10%; }
+    .arena img:nth-child(2) { top:15%; right:10%; }
+    .battle-stage-motion { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+    output { display:block; padding-block:10px; color:#bac8dd; min-height:44px; }
+  </style>
+  <script src="../../battle-move-profiles.js" defer></script>
+  <script src="../../battle-motion.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>Battle move preview</h1>
+    <form id="controls">
+      <label>Canonical move ID <input id="move" type="search" list="moves" value="shadowball" required autocomplete="off"></label>
+      <datalist id="moves"></datalist>
+      <label>Outcome <select id="outcome"><option>hit</option><option>block</option><option>immune</option><option>decoy</option><option>miss</option><option>fail</option><option>charge</option><option>heal</option><option>effect</option></select></label>
+      <label>Speed <select id="speed"><option value="1">Normal</option><option value=".5">Fast</option><option value="0">Instant</option></select></label>
+      <label>Perspective <select id="perspective"><option value="local">Lower left</option><option value="reversed">Upper right</option></select></label>
+      <label>Layout <select id="layout"><option value="wide">Landscape</option><option value="portrait">Portrait</option></select></label>
+      <button type="submit">Play effect</button>
+      <button type="button" id="skip">Skip</button>
+    </form>
+    <div class="arena" id="arena">
+      <img id="source" src="../../sprites/gen5ani-back/pikachu.gif" alt="Pikachu">
+      <img id="target" src="../../sprites/gen5ani/charizard.gif" alt="Charizard">
+    </div>
+    <output id="result" for="move speed outcome"></output>
+  </main>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const get = id => document.getElementById(id);
+      const registry = window.BattleMoveProfiles;
+      const stage = get('arena');
+      const result = get('result');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      for (const id of registry.ids().sort()) get('moves').append(new Option(id));
+      let current;
+      get('layout').addEventListener('change', event => {
+        current?.stop();
+        stage.dataset.layout = event.target.value;
+      });
+      get('skip').addEventListener('click', () => current?.stop());
+      get('controls').addEventListener('submit', async event => {
+        event.preventDefault();
+        current?.stop();
+        const profile = registry.get(get('move').value);
+        if (profile.source === 'fallback') return void (result.textContent = 'Choose a valid move from the list.');
+        const outcome = get('outcome').value;
+        const reversed = get('perspective').value === 'reversed';
+        const from = get(reversed ? 'target' : 'source');
+        const to = ['self', 'ally', 'ally-side'].includes(profile.target) ? from : get(reversed ? 'source' : 'target');
+        const rate = () => reduced.matches ? 0 : Number(get('speed').value);
+        const ownsPreview = () => current === run;
+        const run = window.BattleMotion.createRun(stage, { rate, valid: ownsPreview });
+        current = run;
+        const summary = [profile.id, profile.source, profile.family, profile.target].join(' · ');
+        result.textContent = summary;
+        try {
+          await run.play(profile, { from, to, outcome, onImpact: () => {
+            if (ownsPreview()) result.textContent = summary + ' · ' + outcome;
+          } });
+        } finally {
+          run.stop();
+          if (ownsPreview()) current = null;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

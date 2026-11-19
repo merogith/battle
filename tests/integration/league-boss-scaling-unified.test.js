@@ -49,6 +49,12 @@ test('applyStoryLeagueFoeStatBoost still scales Frontier mons each round', async
 
   sm.active = true;
   sm.frontier = { active: true, currentRound: 1 };
+  sm.crucibleBattleSource = 'league';
+
+  const rematch = makeFakeMon();
+  window.applyStoryLeagueFoeStatBoost(rematch);
+  assert.equal(rematch.maxHp, 100, 'a paused Frontier streak cannot boost another mode');
+  sm.crucibleBattleSource = 'frontier';
 
   const mon = makeFakeMon();
   window.applyStoryLeagueFoeStatBoost(mon);
@@ -59,6 +65,7 @@ test('applyStoryLeagueFoeStatBoost still scales Frontier mons each round', async
   assert.equal(mon.stats.spe, 125, 'Frontier round-1 speed ×1.25');
 
   sm.frontier = null; // reset so we don't leak state into other tests
+  sm.crucibleBattleSource = null;
 });
 
 test('applyFoeDifficultyScaling skips a foe already scaled at build time', async () => {

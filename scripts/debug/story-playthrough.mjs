@@ -6,13 +6,16 @@
  * node scripts/debug/story-playthrough.mjs --seed=1 --real-battles=1
  * Options: --max-iters=1600 --real-turns=4 --viewport=430x880
  *          --out-dir=/tmp/story-playthrough --url=http://127.0.0.1:5177/battle.html
- *          --offline-pack=true (download the complete release, disconnect, then play)
+ *          --offline-pack=true (download the default offline pack, disconnect, then play)
  *          --road-choice=scout (or help or pass)
  *          --road-choices=scout,help,pass,scout,help,pass,scout,help,pass
  *          --chapters=true --chapter-choice=clue (or listen or act)
  *          --milestone-turns=3 --fight-style=matchup
+ *          --difficulty=hard --gens=1,2,4,7,9 --no-items=true
+ *          --screenshots=surfaces (keep all trace steps, deduplicate screenshots)
  * Env: BATTLE_TEST_URL, BATTLE_TEST_CHROMIUM, PORT
  */
+import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -27,6 +30,12 @@ const port = Number(process.env.PORT || 5178);
 const externalUrl = args.url || process.env.BATTLE_TEST_URL;
 const url = new URL(externalUrl || `http://127.0.0.1:${port}/battle.html`);
 const seed = Number(args.seed ?? 1);
+const difficulty = args.difficulty ?? 'normal';
+const generations = args.gens === undefined
+    ? Array.from({ length: 9 }, (_, index) => index + 1)
+    : [...new Set(args.gens.split(',').map(Number))].sort((a, b) => a - b);
+const noItems = args['no-items'] === 'true';
+const screenshotMode = args.screenshots ?? 'all';
 const maxIters = Number(args['max-iters'] ?? 1600);
 const realBattles = Number(args['real-battles'] ?? 1);
 const realTurns = Number(args['real-turns'] ?? 4);
@@ -34,6 +43,7 @@ const milestoneTurns = Number(args['milestone-turns'] ?? 0);
 const fightStyle = args['fight-style'] ?? 'first';
 const expectedBattleEngine = process.env.BATTLE_EXPECT_STORY_ENGINE;
 const offlinePack = args['offline-pack'] === 'true';
+const resumeOfflineTurn = offlinePack && process.env.BATTLE_TEST_RESUME_OFFLINE_TURN === '1';
 const roadChoice = args['road-choice'] ?? 'scout';
 const roadOptions = ['scout', 'help', 'pass'];
 const mixedRoad = args['road-choices'] !== undefined;
@@ -56,12 +66,16 @@ const executablePath = process.env.BATTLE_TEST_CHROMIUM ||
 const wait = ms => new Promise(done => setTimeout(done, ms));
 const findings = [];
 const trace = [];
+const capturedSurfaces = new Set();
 const coverage = { battles: [], realTurns: 0, hallOfFame: false, mystery: false, crucible: false,
     roadChoices: 0, roadDecisions: {} };
 if (chapters) coverage.chapters = [];
 
 if (![seed, width, height, maxIters, realBattles, realTurns, milestoneTurns].every(value => Number.isInteger(value) && value >= 0) ||
     seed > 0xffffffff || !width || !height || !maxIters ||
+    !['veryeasy', 'easy', 'normal', 'hard', 'challenge'].includes(difficulty) ||
+    !['all', 'surfaces'].includes(screenshotMode) ||
+    !generations.length || generations.some(value => !Number.isInteger(value) || value < 1 || value > 9) ||
     roadChoices.length !== 9 || roadChoices.some(choice => !roadOptions.includes(choice)) ||
     !['clue', 'listen', 'act'].includes(chapterChoice) || !['first', 'matchup'].includes(fightStyle)) {
     throw new Error('Expected a valid seed, viewport, battle sample, road choice, chapter choice, and fight style.');
@@ -115,8 +129,17 @@ async function capture(page, label, snapshot = null) {
         JSON.stringify(previous.content) === JSON.stringify(snapshotBeforeAction.content)) return;
     const index = String(trace.length + 1).padStart(3, '0');
     const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 90);
-    const filename = join(shotsDir, `${index}-${slug || 'step'}.png`);
-    await page.screenshot({ path: filename, animations: 'disabled', timeout: 5000 });
+    const surface = JSON.stringify([
+        snapshotBeforeAction.eventId, label.replace(/-turn-\d+$/, ''),
+        snapshotBeforeAction.screens, snapshotBeforeAction.dialogs,
+    ]);
+    let screenshot = null;
+    if (screenshotMode === 'all' || !capturedSurfaces.has(surface)) {
+        const filename = join(shotsDir, `${index}-${slug || 'step'}.png`);
+        await page.screenshot({ path: filename, animations: 'disabled', timeout: 15000 });
+        screenshot = relative(outDir, filename);
+        capturedSurfaces.add(surface);
+    }
     const assessment = await page.evaluate(() => {
         const shown = [...document.querySelectorAll('.screen:not(.hidden), [role="dialog"], .story-narr-root, .story-vs-intro')]
             .filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
@@ -141,7 +164,7 @@ async function capture(page, label, snapshot = null) {
         });
         return { anomalies: [...new Set(text.concat(brokenImages))], controls };
     });
-    trace.push({ label, ...snapshotBeforeAction, screenshot: relative(outDir, filename), ...assessment });
+    trace.push({ label, ...snapshotBeforeAction, screenshot, ...assessment });
     console.log(`[${index}] ${label} · ${snapshotBeforeAction.eventId ?? '-'} ${snapshotBeforeAction.eventName || ''}`);
 }
 
@@ -242,14 +265,14 @@ async function main() {
             seenConsole.add(text);
             record(type, 'console', text.slice(0, 300));
         });
-        await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+        await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
         if (offlinePack) {
-            await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 45000 });
             await page.locator('#menu-offline-entry').click();
+            await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 120000 });
             const download = page.locator('#offline-dl-start');
             await page.waitForFunction(() => /remaining.*files|files remaining/.test(document.getElementById('offline-dl-size')?.textContent), null, { timeout: 20000 });
-            await capture(page, 'full-download-size');
+            await capture(page, 'offline-download-size');
             await download.click();
             await page.waitForFunction(() => {
                 const text = document.getElementById('offline-dl-status')?.textContent || '';
@@ -257,12 +280,26 @@ async function main() {
             }, null, { timeout: 480000 });
             const result = await page.locator('#offline-dl-status').innerText();
             if (!/^(Ready to play offline\.|Done\.)/.test(result)) throw new Error(result);
-            await capture(page, 'full-download-complete');
+            await capture(page, 'offline-download-complete');
             console.log(result);
             await context.setOffline(true);
-            await page.reload({ waitUntil: 'domcontentloaded' });
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
             await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
             coverage.offlinePack = true;
+            coverage.offlineProfile = await page.evaluate(() =>
+                JSON.parse(localStorage.getItem('pbs_settings') || '{}').offlineDownload?.profile || 'full');
+            if (coverage.offlineProfile === 'compact') {
+                const sprite = await page.evaluate(async () => {
+                    const path = 'sprites/gen5ani/pikachu.gif';
+                    const response = await fetch(path);
+                    const image = new Image();
+                    image.src = path;
+                    await image.decode();
+                    return { type: response.headers.get('content-type'), width: image.naturalWidth };
+                });
+                if (sprite.type !== 'image/webp' || !sprite.width) throw new Error('Compact pack did not decode its offline sprite.');
+                coverage.compactSprite = sprite;
+            }
         }
         await page.locator('.menu-btn-quickplay--story').waitFor({ state: 'visible' });
         const action = (selector, label, snapshot) => click(page, page.locator(selector).first(), label, snapshot);
@@ -270,16 +307,29 @@ async function main() {
         await page.locator('.story-menu-btn--new').waitFor({ state: 'visible' });
         if (!await action('.story-menu-btn--new', 'story-menu')) throw new Error('Story creation was not actionable.');
         await page.locator('#story-create-name').fill('Field Tester');
+        if (difficulty !== 'normal') {
+            await page.locator(`.story-create-diff-card[data-diff="${difficulty}"]`).click();
+        }
+        if (generations.length !== 9) {
+            await page.locator('.story-create-gen-preset[data-preset="custom"]').click();
+            for (let gen = 1; gen <= 9; gen++) {
+                await page.locator('#story-gen-cb-' + gen).setChecked(generations.includes(gen));
+            }
+        }
         const seedInput = page.locator('#story-create-seed');
-        if (await seedInput.count()) {
+        const supportsSeedField = (await seedInput.count()) > 0;
+        if (supportsSeedField || noItems) {
             if (!await seedInput.isVisible()) await page.locator('.story-create-advanced summary').click();
+        }
+        if (noItems) await page.locator('#story-no-item-run').check();
+        if (supportsSeedField) {
             await seedInput.fill(String(seed));
         } else {
             await page.locator('#story-create-begin').evaluate((element, requestedSeed) => {
                 element.addEventListener('click', () => { window.__storyPlaythroughSeed = requestedSeed; }, { once: true, capture: true });
             }, seed);
         }
-        await action('#story-create-begin', 'trainer-create');
+        if (!await action('#story-create-begin', 'trainer-create')) throw new Error('Adventure could not start.');
 
         let advancingSince = Date.now();
         let unchanged = 0;
@@ -343,6 +393,13 @@ async function main() {
                     advanced = true;
                 } else if (view.dialogs.includes('story-minigame-overlay')) {
                     advanced = await playMinigame(page, `minigame-${eventName}`, view);
+                } else if (view.dialogs.includes('camp-microgame')) {
+                    advanced = await run('#camp-microgame [data-camp-exit]', `camp-leave-activity-${eventName}`);
+                } else if (view.dialogs.includes('story-camp-scene')) {
+                    const options = page.locator('#story-camp-scene [data-scene-opt]');
+                    advanced = await click(page, options.filter({ hasText: /Break camp/ }).first(), `camp-${eventName}`, view)
+                        || await click(page, options.filter({ hasText: /Back/ }).first(), `camp-back-${eventName}`, view)
+                        || await run('#story-camp-scene [data-scene-cont]', `camp-continue-${eventName}`);
                 } else if (await run('.story-legend-sighting:visible button', `legend-or-raid-${eventName}`)) advanced = true;
                 else if (await run('.story-vs-intro:visible [data-vs2-battle]', `vs-start-${eventName}`) ||
                            await run('.story-vs-intro:visible [data-vs2-pick="stoic"]', `vs-choices-${eventName}`)) advanced = true;
@@ -357,7 +414,6 @@ async function main() {
                 }
                 else if (await run('.story-narr-root:visible [data-narr-continue]', `narration-${eventName}`) ||
                          await run('.story-narr-root:not(.story-road-discovery):visible [data-narr-choice-idx]', `narration-choice-${eventName}`)) advanced = true;
-                else if (await byName('#story-camp-scene:visible', /Break camp/, `camp-${eventName}`)) advanced = true;
                 else if (await run('[data-scene-cont]:visible', `scene-${eventName}`) ||
                          await run('[data-scene-opt]:visible', `scene-choice-${eventName}`)) advanced = true;
                 else if (await byName('body', /^Begin →$/, 'pallet-cold-open')) advanced = true;
@@ -426,7 +482,19 @@ async function main() {
                             coverage.battles.push(activeBattle);
                             await page.evaluate(() => { settings.battleSpeed = 'instant'; });
                         }
-                        if (activeBattle.turns < activeBattle.turnLimit) {
+                        if (resumeOfflineTurn && !coverage.offlineResume && engine.turn > 0 && !engine.locked) {
+                            const board = () => page.evaluate(() => ({ turn: state.turnNumber,
+                                hp: [state.pActive.currentHp, state.fActive.currentHp],
+                                pp: state.pActive.moves.map(move => move.pp), phase: state.nativeRequests[0]?.phase }));
+                            const before = await board();
+                            await page.goto(new URL('./', url).href, { waitUntil: 'domcontentloaded' });
+                            await page.getByRole('link', { name: /Continue/ }).click();
+                            await page.waitForFunction(() => typeof state !== 'undefined' && state.resumedStoryTurn && !state.isLocked);
+                            assert.deepEqual(await board(), before, 'The offline title resumes the exact battle decision');
+                            coverage.offlineResume = before;
+                            await capture(page, 'offline-resume-turn');
+                            advanced = true;
+                        } else if (activeBattle.turns < activeBattle.turnLimit) {
                             advanced = await run('#command-menu [data-cmd="fight"]', `battle-fight-${eventName}-turn-${engine.turn + 1}`);
                         } else {
                             await capture(page, `battle-command-${eventName}`, view);
@@ -483,7 +551,13 @@ async function main() {
             }
         }
         if (!coverage.crucible) throw new Error('The main story run did not reach the Crucible.');
+        if (resumeOfflineTurn) assert.ok(coverage.offlineResume, 'The offline run reopens an active native battle');
         if (!coverage.hallOfFame || !coverage.mystery) throw new Error('The finish omitted the Hall of Fame or Mystery climax.');
+        coverage.rules = await page.evaluate(() => {
+            const { storyDifficulty, settings } = JSON.parse(localStorage.getItem('pbs_story_save'));
+            return { difficulty: storyDifficulty, generations: settings.enabledGens, noItems: !!settings.noItemRun };
+        });
+        assert.deepEqual(coverage.rules, { difficulty, generations, noItems });
         if (chapters) {
             const choices = await page.evaluate(() => {
                 const saved = JSON.parse(localStorage.getItem('pbs_story_save') || '{}');
@@ -524,13 +598,14 @@ async function main() {
     } finally {
         if (browser) await browser.close();
         server?.kill();
-        const summary = { seed, roadChoice: mixedRoad ? 'mixed' : roadChoice, ...(mixedRoad ? { roadChoices } : {}),
-            ...(chapters ? { chapterChoice } : {}), viewport: { width, height, touch }, completed: coverage.crucible && coverage.hallOfFame && coverage.mystery,
+        const summary = { seed, difficulty, generations, noItems, roadChoice: mixedRoad ? 'mixed' : roadChoice, ...(mixedRoad ? { roadChoices } : {}),
+            ...(chapters ? { chapterChoice } : {}), viewport: { width, height, touch }, screenshotMode,
+            completed: coverage.crucible && coverage.hallOfFame && coverage.mystery,
             coverage, steps: trace.length, findings: findings.length };
         writeFileSync(join(outDir, 'findings.json'), JSON.stringify({ ...summary, findings }, null, 2));
         writeFileSync(join(outDir, 'trace.json'), JSON.stringify(trace, null, 2));
         writeFileSync(join(outDir, 'trace.txt'), trace.map((entry, index) =>
-            `${index + 1}\t${entry.eventId ?? '-'}\t${entry.label}\t${entry.screenshot}`).join('\n'));
+            `${index + 1}\t${entry.eventId ?? '-'}\t${entry.label}\t${entry.screenshot ?? '-'}`).join('\n'));
         console.log(`Report: ${join(outDir, 'findings.json')}`);
     }
 }

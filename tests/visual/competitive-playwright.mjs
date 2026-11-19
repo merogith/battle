@@ -342,6 +342,8 @@ try {
     assert.match(workers[0], /competitive\/showdown-worker\.js$/);
     await page.getByRole('button', { name: /Great Tusk.*Lead/ }).click();
     await atTurn(page, 1);
+    assert.equal(await page.locator('#match').getAttribute('data-send-out'), 'true');
+    assert.equal(await page.locator('.battlefield img').first().evaluate(image => getComputedStyle(image).animationName), 'none', 'reduced motion keeps the ready field still');
     if (name === 'phone-short-landscape') {
       await page.evaluate(() => scrollTo(0, 0));
       const reachable = await page.locator('#moves button, #switches button').evaluateAll(buttons => buttons.filter(button => {
@@ -378,6 +380,9 @@ try {
     if (name === 'desktop') {
       await finishBattle(page);
       assert.equal(await page.locator('#player-active .combatant-name').innerText(), 'Team fainted');
+      assert.equal(await page.locator('#request-heading').innerText(), 'Arena AI wins');
+      assert.match(await page.locator('#result-text').innerText(), /\d+ turns? · Pokémon left: you 0, Arena AI [1-6]/);
+      assert.equal(await page.getByRole('link', { name: 'Return to main menu' }).getAttribute('href'), '../battle.html');
       if (out) {
         await page.evaluate(() => scrollTo(0, 0));
         await page.screenshot({ path: join(out, 'replay-result.png') });
@@ -420,7 +425,9 @@ try {
     const classicUrl = new URL('classic-simulation.js', pageUrl).href;
     await context.route('**/*', route => new URL(route.request().url()).origin === base.origin ? route.continue() : route.abort());
     await page.goto(base.href, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+    await page.locator('#menu-offline-entry').click();
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 120000 });
+    await page.locator('#modal-settings').getByRole('button', { name: 'Close settings' }).click();
     assert.equal(await page.evaluate(async url => Boolean(await caches.match(url)), workerUrl), false);
     await context.setOffline(true);
     const classicExports = await page.evaluate(async url => Object.keys(await import(url)), classicUrl);

@@ -7,6 +7,7 @@
 
     const STORAGE_KEY = 'pbs_online_display_name';
     const ENGINE_PROTOCOL = 1;
+    const ROOM_RULE_KEYS = ['draftGrades', 'mechanics', 'classicMode', 'randomWeather', 'randomTerrain', 'partySize', 'pvpBattleItems'];
 
     let client = null;
     let roomId = null;
@@ -14,6 +15,8 @@
     let role = null; // 1 host (P1), 2 guest (P2)
     let channel = null;
     let lastRemoteSeq = 0;
+    let pendingDraftWrite = null;
+    let guestRules = null;
     let hostStartedBattle = false;
     let nativeRoomReady = false;
     let pushDataQueue = Promise.resolve();
@@ -92,6 +95,10 @@
         return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
     }
 
+    function draftRows(rows) {
+        return rows.map(({ name, build }) => ({ name, build }));
+    }
+
     function supportsNativeEngine(room) {
         return room.host_engine_protocol === ENGINE_PROTOCOL && room.guest_engine_protocol === ENGINE_PROTOCOL;
     }
@@ -161,18 +168,18 @@
 
     function applyMatchOptionsToSettings(match, settings) {
         if (!match || !settings) return;
-        Object.keys(match).forEach((k) => {
-            if (k === 'minGen' || k === 'maxGen') return;
-            if (k === 'timer_preset') {
-                global.__onlineMatchTimerPreset = match.timer_preset === 'fast' || match.timer_preset === 'slow' ? match.timer_preset : 'none';
-                return;
-            }
-            if (k === 'match_format') {
-                global.__onlineMatchFormat = (match.match_format === 3 || match.match_format === 5) ? match.match_format : 1;
-                return;
-            }
-            if (match[k] !== undefined) settings[k] = match[k];
-        });
+        if (role === 2 && guestRules?.settings !== settings) {
+            guestRules = { settings, local: Object.fromEntries(ROOM_RULE_KEYS.map(key => [key, settings[key]])) };
+        }
+        for (const key of ROOM_RULE_KEYS) {
+            if (match[key] !== undefined) settings[key] = deepClone(match[key]);
+        }
+        if (match.timer_preset !== undefined) {
+            global.__onlineMatchTimerPreset = match.timer_preset === 'fast' || match.timer_preset === 'slow' ? match.timer_preset : 'none';
+        }
+        if (match.match_format !== undefined) {
+            global.__onlineMatchFormat = (match.match_format === 3 || match.match_format === 5) ? match.match_format : 1;
+        }
     }
 
     function exportBattleSnapshot(state) {
@@ -479,21 +486,16 @@
         applyHostMatchOptions(settings) {
             const sb = getClient();
             if (!sb || !roomId) return;
-            sb.from('pvp_rooms').select('data').eq('id', roomId).maybeSingle().then(({ data: row, error }) => {
+            const id = roomId;
+            const token = roomToken;
+            sb.from('pvp_rooms').select('data').eq('id', id).maybeSingle().then(({ data: row, error }) => {
+                if (!inRoom(id, token)) return;
                 if (error) {
                     console.warn('[OnlinePvP] applyHostMatchOptions', error);
                     return;
                 }
                 const d = row && row.data ? row.data : {};
                 if (d.match_options) applyMatchOptionsToSettings(d.match_options, settings);
-                if (d.match_options && d.match_options.timer_preset !== undefined) {
-                    global.__onlineMatchTimerPreset = d.match_options.timer_preset === 'fast' || d.match_options.timer_preset === 'slow' ? d.match_options.timer_preset : 'none';
-                }
-                if (Array.isArray(d.enabledGens) && d.enabledGens.length && typeof global.setDraftGenCheckboxes === 'function') {
-                    global.setDraftGenCheckboxes(d.enabledGens);
-                } else if (typeof d.minGen === 'number' && typeof d.maxGen === 'number' && typeof global.setDraftGenCheckboxes === 'function' && typeof global.rangeToEnabledGens === 'function') {
-                    global.setDraftGenCheckboxes(global.rangeToEnabledGens(d.minGen, d.maxGen));
-                }
             }).catch((e) => console.warn('[OnlinePvP] applyHostMatchOptions', e));
         },
 
@@ -609,16 +611,47 @@
         async pushDraftState(state, extraTopLevel) {
             const patch = {
                 phase: 'draft',
-                p1_pool: state.p1Pool.map((x) => ({ name: x.name, build: x.build })),
-                p2_pool: state.p2Pool.map((x) => ({ name: x.name, build: x.build })),
-                p1_draft: state.p1Draft.map((x) => ({ name: x.name, build: x.build })),
-                p2_draft: state.p2Draft.map((x) => ({ name: x.name, build: x.build })),
+                p1_pool: draftRows(state.p1Pool),
+                p2_pool: draftRows(state.p2Pool),
+                p1_draft: draftRows(state.p1Draft),
+                p2_draft: draftRows(state.p2Draft),
                 draft_turn: state.draftTurn
             };
             if (extraTopLevel && typeof extraTopLevel === 'object') {
                 Object.assign(patch, extraTopLevel);
             }
             await this.pushData(patch);
+        },
+
+        isDraftWritePending() {
+            return pendingDraftWrite !== null;
+        },
+
+        async commitDraftSide(player, pool, draft) {
+            if (pendingDraftWrite || ![1, 2].includes(player) || (player !== role && role !== 1)) return false;
+            const id = roomId;
+            const token = roomToken;
+            const field = `p${player}_draft`;
+            const write = { field, picks: draft.map(row => row.name) };
+            pendingDraftWrite = write;
+            try {
+                // Both seats may pick at the same time. Only publish the side being edited.
+                const saved = await this.pushData({ [`p${player}_pool`]: draftRows(pool), [field]: draftRows(draft) });
+                if (!inRoom(id, token)) return false;
+                // Apply the full merged RPC receipt through the same ordering gate as Realtime.
+                if (Number.isSafeInteger(saved?.seq) && saved.seq > 0 && typeof saved.phase === 'string' &&
+                    ['p1_pool', 'p2_pool', 'p1_draft', 'p2_draft'].every(key => Array.isArray(saved[key]))) {
+                    await this._onRemoteRow({ data: saved });
+                    if (pendingDraftWrite === write && lastRemoteSeq >= saved.seq) pendingDraftWrite = null;
+                }
+                if (pendingDraftWrite === write) await this._resyncFromHead();
+                return inRoom(id, token);
+            } catch (error) {
+                if (pendingDraftWrite === write) pendingDraftWrite = null;
+                console.warn('[OnlinePvP] draft save', error);
+                global.showToast?.('Your draft change could not be saved. Try again.');
+                return false;
+            }
         },
 
         async refreshDraftDeadlineOnly() {
@@ -692,6 +725,8 @@
         },
 
         dispose() {
+            if (guestRules) Object.assign(guestRules.settings, guestRules.local);
+            guestRules = null;
             const sb = getClient();
             if (channel && sb) {
                 try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
@@ -713,6 +748,7 @@
             role = null;
             roomToken = null;
             lastRemoteSeq = 0;
+            pendingDraftWrite = null;
             pushDataQueue = Promise.resolve();
             remoteRowQueue = Promise.resolve();
             hostStartedBattle = false;
@@ -779,6 +815,7 @@
                 console.warn('[OnlinePvP] pushData RPC rejected:', err);
                 throw new Error('pvp_push_data: ' + err);
             }
+            return result.data;
         },
 
         _onRemoteRow(newRow) {
@@ -791,6 +828,12 @@
                     const d = withNativeChoices(newRow.data || {});
                     const incoming = d.seq || 0;
                     if (incoming <= lastRemoteSeq) return;
+                    if (pendingDraftWrite) {
+                        const { field, picks } = pendingDraftWrite;
+                        const saved = d[field];
+                        if (d.phase !== 'draft' || (saved?.length === picks.length &&
+                            picks.every((name, index) => saved[index]?.name === name))) pendingDraftWrite = null;
+                    }
                     nativeRoomReady = supportsNativeEngine(d);
                     if (typeof global.onOnlineRoomData === 'function') {
                         // Race the handler against a 10s timeout so a hung
@@ -809,6 +852,7 @@
                     if (inRoom(id, token)) lastRemoteSeq = incoming || lastRemoteSeq + 1;
                 })
                 .catch((e) => console.warn('[OnlinePvP] onOnlineRoomData', e));
+            return remoteRowQueue;
         },
 
         // Re-open the command menu and tell the player their move didn't send, so a
@@ -827,9 +871,16 @@
             } catch (e) { /* best-effort UI restore */ }
         },
 
-        async handleSelectDraft(state, settings, draftItem, selectDraftLocal) {
+        async handleSelectDraft(state, settings, draftItem, selectDraftLocal, player = role) {
+            if (global.__onlineGuestJoined) {
+                const pool = state[`p${player}Pool`];
+                const draft = state[`p${player}Draft`];
+                if (!pool?.includes(draftItem) || draft?.length >= settings.partySize) return false;
+                return this.commitDraftSide(player, pool.filter(row => row !== draftItem), [...draft, draftItem]);
+            }
             selectDraftLocal(draftItem);
             await this.pushDraftState(state);
+            return true;
         },
 
         async _handleNativePvPTurn(state, action) {
@@ -1052,7 +1103,8 @@
                 resolved_turn: resolvedTurn,
                 pending_turn: resolvedTurn + 1,
                 state_blob: blob,
-                state_hash: h
+                state_hash: h,
+                presentation: native ? global.consumeOnlineBattleMotion?.() || [] : []
             });
             const patch = { battle, battle_log_html: captureBattleLogHtml() };
             let winner = null;
@@ -1110,6 +1162,7 @@
                         }
                     }
                     hostPendingPublication = null;
+                    void global.presentOnlineBattleMotion?.(turn.patch.battle.presentation, turn.round, turn.patch.battle.resolved_turn);
                     if (turn.patch.phase === 'done') {
                         global.__onlineP1Wins = turn.patch.p1_wins;
                         global.__onlineP2Wins = turn.patch.p2_wins;
@@ -1248,6 +1301,7 @@
                 if (roomData.match_options && roomData.match_options.match_format) global.__onlineMatchFormat = roomData.match_options.match_format;
             }
             if (!applyBattleSnapshot(state, blob)) return false;
+            global.resetOnlineBattleMotion?.();
             if (typeof roomData === 'object' && roomData && roomData.battle_log_html !== undefined) {
                 applyBattleLogHtml(roomData.battle_log_html);
             }
@@ -1275,6 +1329,7 @@
         async guestApplyBattleBlob(state, d) {
             const b = d.battle || {};
             if (!b.state_blob) return false;
+            const previousRevision = state._onlineNativeRevision;
             if (!applyBattleSnapshot(state, b.state_blob)) return false;
             if (d && d.battle_log_html !== undefined) applyBattleLogHtml(d.battle_log_html);
             if (typeof global.updateUI === 'function') global.updateUI();
@@ -1294,6 +1349,9 @@
                 else global.showEndScreen('DRAW', 'The round ended in a draw.', false);
             }
             try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
+            if (b.resolved_turn === previousRevision) {
+                void global.presentOnlineBattleMotion?.(b.presentation, d.round_number || 1, b.resolved_turn);
+            }
             const localH = simpleHash(b.state_blob);
             if (b.state_hash && localH !== b.state_hash && typeof global.logMsg === 'function') {
                 global.logMsg('[Online] State hash mismatch — applied host snapshot.', 'info');
@@ -1303,6 +1361,9 @@
 
         buildMatchOptionsFromSettings,
         applyMatchOptionsToSettings,
+        localBattleOptions(settings) {
+            return guestRules?.settings === settings ? guestRules.local : settings;
+        },
         exportBattleSnapshot,
         applyBattleSnapshot,
         simpleHash,

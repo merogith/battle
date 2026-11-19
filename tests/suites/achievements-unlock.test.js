@@ -76,7 +76,8 @@ test('every replay/grind achievement has a live unlock/bump hook in battle.html'
   for (const d of hookable) {
     const directHook = new RegExp(`_storyAchievement(?:Unlock|BumpCount)\\(\\s*['"]${d.id}['"]`);
     const committedHook = new RegExp(`_storyAchievementSetProgress\\(meta,\\s*['"]${d.id}['"]`);
+    const stagedHook = new RegExp(`progress\\.push\\(\\[\\s*['"]${d.id}['"][\\s\\S]{0,1200}?progress\\.map\\(\\(\\[id, value\\]\\) => \\[STORY_ACHIEVEMENTS_BY_ID\\[id\\], _storyAchievementSetProgress\\(meta, id, value\\)`);
     const batchedHook = new RegExp(`progress\\.push\\(\\[\\s*['"]${d.id}['"][^\n]+?\\n\\s*for \\(const \\[id, value\\] of progress\\) \\{\\s*const rank = _storyAchievementSetProgress\\(meta, id, value\\)`);
-    assert.ok(directHook.test(src) || committedHook.test(src) || batchedHook.test(src), `${d.id} (${d.cat}) must have a progress hook`);
+    assert.ok(directHook.test(src) || committedHook.test(src) || stagedHook.test(src) || batchedHook.test(src), `${d.id} (${d.cat}) must have a progress hook`);
   }
 });

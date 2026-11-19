@@ -3,7 +3,7 @@
 //
 //   • Stage 1 "SIGNS": the legend as a drifting silhouette (name hidden) over a
 //     per-species "the route reacts" line, with its own narrator copy.
-//   • Stage 2 "REVEAL": flash + shake + species cry + sparkle burst, then the
+//   • Stage 2 "REVEAL": a localized sprite reveal and cry, then the
 //     classic banner / name / Pokédex-flavored lore / narrator frame.
 //   • Reduced motion collapses back to the single classic overlay.
 //   • Outcome beats: roaming catch success / ball-broken flee / walk-away all
@@ -24,6 +24,7 @@ let W, ST;
 before(async () => {
     ({ window: W } = await loadEngine());
     ST = W.__storyTest;
+    W.settings.animations = true;
 });
 
 function clearSightings() {
@@ -69,8 +70,8 @@ test('signs stage: silhouette sprite, hidden name, per-species signs line, then 
     assert.ok(!stage2.querySelector('.story-legend-sighting-sprite--silhouette'), 'silhouette lifted');
     assert.match(stage2.getAttribute('aria-label'), /Suicune/);
     assert.equal(stage2.querySelector('.story-legend-sighting-name').textContent, 'Suicune', 'name revealed');
-    assert.ok(stage2.querySelector('.story-legend-sighting-flash'), 'reveal flash element present');
-    assert.ok(stage2.classList.contains('story-legend-sighting--shake'), 'reveal shake class applied');
+    assert.equal(stage2.querySelector('.story-legend-sighting-flash'), null, 'no white flash');
+    assert.ok(stage2.classList.contains('story-legend-sighting--reveal'), 'sprite-local reveal applied');
     assert.ok(/A LEGENDARY HAS BEEN SIGHTED/.test(stage2.textContent), 'classic reveal banner');
     assert.ok(stage2.textContent.includes('It purifies poisoned water'), 'reveal lore line (Suicune)');
     assert.equal(done, 0, 'onDone still pending until the reveal is dismissed');
@@ -115,9 +116,35 @@ test('roaming outcomes carry aftermath copy: catch, flee, and walk-away', () => 
         'roaming walk-away aftermath');
 });
 
-test('reduced-motion collapse: the shared shell checks prefers-reduced-motion before staging', () => {
-    const src = fs.readFileSync(path.join(ROOT, 'battle.html'), 'utf8');
-    const fn = src.slice(src.indexOf('function _showWildEncounterCinematic'), src.indexOf('function _showWildEncounterCinematic') + 2400);
-    assert.ok(/prefers-reduced-motion/.test(fn), 'shell consults the media query');
-    assert.ok(/o\.signs && !_reducedMotion/.test(fn), 'signs stage is gated on motion being allowed');
+test('explicit cinematic skip reaches the same encounter once', () => {
+    let launches = 0;
+    ST.showRoamingLegendarySighting('Suicune', () => launches++);
+    const skip = W.document.querySelector('.story-encounter-skip');
+    assert.ok(skip);
+    skip.click();
+    skip.click();
+    assert.equal(launches, 1);
+    assert.equal(W.document.querySelector('.story-legend-sighting'), null);
+});
+
+test('Fast and reduced motion keep confirmation and omit the optional signs', () => {
+    for (const shouldReduce of [false, true]) {
+        W.settings.battleSpeed = shouldReduce ? 'normal' : 'fast';
+        W.__reduceGameMotion = shouldReduce;
+        let launches = 0;
+        try {
+            ST.showRoamingLegendarySighting('Suicune', () => launches++);
+            const stage = W.document.querySelector('.story-legend-sighting');
+            assert.match(stage.getAttribute('aria-label'), /Suicune/);
+            assert.equal(stage.dataset.encounterMotion, shouldReduce ? 'still' : 'fast');
+            assert.equal(stage.querySelector('.story-encounter-skip'), null);
+            assert.equal(launches, 0);
+            stage.querySelector('[data-encounter-enter]').click();
+            assert.equal(launches, 1);
+        } finally {
+            W.settings.battleSpeed = 'normal';
+            W.__reduceGameMotion = false;
+            clearSightings();
+        }
+    }
 });

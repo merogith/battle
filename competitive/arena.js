@@ -10,7 +10,7 @@ const matchMessages = {
   wait: ['Waiting for the opponent', ''],
   ended: ['Battle complete', ''],
 };
-const results = { win: 'You won the match.', loss: 'The Arena AI won the match.', draw: 'The match ended in a draw.' };
+const results = { win: 'You win', loss: 'Arena AI wins', draw: 'Match drawn' };
 const modernRoster = [$('setup-player').textContent, $('setup-opponent').textContent];
 const historicalRoster = ['Snorlax, Starmie, Gengar', 'Alakazam, Zapdos, Rhydon'];
 const modernReserves = ['Primarina, Kingambit, Rillaboom', 'Iron Valiant, Ting-Lu, Cinderace'];
@@ -18,6 +18,31 @@ const historicalReserves = ['Tauros, Exeggutor, Jolteon', 'Lapras, Chansey, Drag
 const stadiumFormat = 'gen8battlestadiumsingles';
 let view;
 let busy = false;
+let matchEpoch = 0;
+let activeMotion;
+const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+const pacing = { normal: 1, fast: .5, instant: 0 };
+const motionBreaks = new Set(['move', 'switch', 'drag', 'replace', 'cant', 'turn', 'win', 'tie']);
+const settingsKey = 'pbs_settings';
+
+function sharedSettings() {
+  try { return JSON.parse(localStorage.getItem(settingsKey) || '{}') || {}; }
+  catch { return {}; }
+}
+
+const speed = $('arena-speed');
+const initialSettings = sharedSettings();
+speed.value = Object.hasOwn(pacing, initialSettings.battleSpeed) ? initialSettings.battleSpeed : 'normal';
+const motionRate = () => document.hidden || motionPreference.matches || initialSettings.animations === false ? 0 : pacing[speed.value];
+const stopMotion = () => activeMotion?.stop();
+speed.addEventListener('change', () => {
+  try { localStorage.setItem(settingsKey, JSON.stringify({ ...sharedSettings(), battleSpeed: speed.value })); }
+  catch { /* Settings remain usable for this session. */ }
+  if (!motionRate()) stopMotion();
+});
+motionPreference.addEventListener('change', () => { if (!motionRate()) stopMotion(); });
+$('arena-skip-motion').addEventListener('click', stopMotion);
+window.addEventListener('pagehide', stopMotion);
 
 function element(tag, options = {}) {
   const node = document.createElement(tag);
@@ -87,6 +112,90 @@ function combatant(root, label, reverse) {
 
 const showPlayer = combatant($('player-active'), 'Your side', true);
 const showOpponent = combatant($('opponent-active'), 'Arena AI', false);
+const arenaSide = side => $(side === 'p1' ? 'player-active' : 'opponent-active');
+
+function logItem(event) {
+  const item = element('li', { text: event.text });
+  item.dataset.kind = event.kind;
+  return item;
+}
+
+function drawPublicEvent(event) {
+  if (event.text) {
+    const log = $('battle-log');
+    log.append(logItem(event));
+    log.scrollTop = log.scrollHeight;
+  }
+  if (!event.side) return;
+  const drawSide = event.side === 'p1' ? showPlayer : showOpponent;
+  if (event.appearance) drawSide([event.appearance], 'move');
+  else if (event.tag === 'faint') drawSide([], 'replace');
+  else if (typeof event.hpPercent === 'number') {
+    const root = arenaSide(event.side);
+    root.querySelector('meter').value = event.hpPercent;
+    root.querySelector('.health span').textContent = `${event.hpPercent}%`;
+  }
+}
+
+async function playPresentation(next, owner) {
+  const { BattleMotion, BattleMoveProfiles } = window;
+  const events = next.presentation;
+  if (!motionRate() || !BattleMotion || !BattleMoveProfiles || next.error || next.requestId === view?.requestId
+    || !events?.some(event => event.tag === 'move' && event.side)) return;
+  const valid = () => owner === matchEpoch && !$('match').hidden;
+  const run = BattleMotion.createRun(document.querySelector('.battlefield'), { rate: motionRate, valid });
+  activeMotion = run;
+  const caption = $('arena-motion-caption');
+  const skip = $('arena-skip-motion');
+  skip.hidden = false;
+  if ($('actions').contains(document.activeElement)) skip.focus({ preventScroll: true });
+  $('reset').disabled = false;
+  const anchor = side => {
+    const stage = arenaSide(side).querySelector('.sprite-stage');
+    return stage.querySelector('img:not([hidden])') || stage;
+  };
+  let cursor = 0;
+  const renderThrough = last => {
+    while (valid() && cursor <= last) drawPublicEvent(events[cursor++]);
+  };
+  try {
+    while (valid() && run.usable() && cursor < events.length) {
+      const move = events[cursor];
+      if (move.tag !== 'move' || !move.side || !move.name) { renderThrough(cursor); continue; }
+      const profile = BattleMoveProfiles.get(move.name, move.facts);
+      const targetSide = ['self', 'ally', 'ally-side'].includes(profile.target) ? move.side
+        : move.targetSide || (move.side === 'p1' ? 'p2' : 'p1');
+      const start = cursor + 1;
+      let end = start;
+      while (end < events.length && !motionBreaks.has(events[end].tag)) end++;
+      const effects = events.slice(start, end);
+      const cues = effects.map(event => event.tag === '-heal' && event.protocol.split('|')[4]?.startsWith('[from] ')
+        ? { ...event, tag: 'residual' } : event);
+      const impact = BattleMotion.analyzeMove(cues, targetSide, profile.category);
+      const from = anchor(move.side), to = anchor(targetSide);
+      const hit = effects.length ? start + impact.index : start - 1;
+      renderThrough(cursor);
+      caption.textContent = move.text;
+      await run.play(profile, { from, to, outcome: impact.outcome, onImpact: () => renderThrough(hit) });
+      if (run.usable() && impact.hitIndices.length > 1) {
+        const extraBeat = { ...profile, pose: 'still', timing: { windup: 0, travel: 0, impact: 60, settle: 0 } };
+        for (const index of impact.hitIndices.filter(index => start + index > hit)) {
+          if (!run.usable()) break;
+          await run.play(extraBeat, { from, to, outcome: effects[index].tag === '-damage' ? 'hit' : 'decoy',
+            onImpact: () => renderThrough(start + index) });
+        }
+      }
+      if (run.usable()) renderThrough(end - 1);
+    }
+  } finally {
+    run.stop();
+    if (activeMotion === run) {
+      activeMotion = null;
+      skip.hidden = true;
+      caption.textContent = '';
+    }
+  }
+}
 
 function announceError(id, message) {
   const box = $(id);
@@ -186,9 +295,14 @@ function openMoveGuide() {
 }
 
 function draw(next, focus = true) {
+  const sendOut = next.turn > 0 && (!view || view.phase === 'preview');
   view = next;
   $('setup').hidden = true;
-  $('match').hidden = false;
+  const match = $('match');
+  match.hidden = false;
+  match.dataset.sendOut = String(sendOut);
+  match.dataset.motion = String(motionRate() > 0);
+  match.dataset.result = next.result || '';
   $('format-label').textContent = `${next.formatLabel}${next.format.endsWith('ou') ? ` · ${next.teamSize}v${next.teamSize}` : ''}`;
   $('match-seed').textContent = `Seed ${next.seed}`;
   $('field-weather').textContent = next.weather || '';
@@ -197,7 +311,7 @@ function draw(next, focus = true) {
   $('turn').textContent = next.turn ? `Turn ${next.turn}` : 'Team preview';
   const [heading, instructions] = matchMessages[next.phase];
   $('actions').dataset.phase = next.phase;
-  $('request-heading').textContent = heading;
+  $('request-heading').textContent = results[next.result] || heading;
   $('action-copy').textContent = instructions;
   $('action-copy').hidden = !instructions;
   announceError('battle-error', next.error);
@@ -218,20 +332,27 @@ function draw(next, focus = true) {
     return actionButton(kind, slot, mon.name, kind === 'lead' ? `Lead · ${mon.types.join(' / ')}` : `Switch · ${mon.hpPercent}% HP`);
   }));
   $('result').hidden = !next.result;
-  $('result-text').textContent = results[next.result] || '';
+  if (next.result) {
+    const turns = next.turn;
+    const left = next.player.filter(member => !member.fainted).length;
+    const right = next.opponent.filter(member => !member.fainted).length;
+    $('result-text').textContent = `${turns} turn${turns === 1 ? '' : 's'} · Pokémon left: you ${left}, Arena AI ${right}.`;
+    $('request-heading').setAttribute('aria-describedby', 'result-text');
+  } else {
+    $('result-text').textContent = '';
+    $('request-heading').removeAttribute('aria-describedby');
+  }
+  $('download-replay').hidden = !next.replay;
   $('reset').hidden = next.phase === 'ended';
   const log = $('battle-log');
-  log.replaceChildren(...next.events.map(event => {
-    const item = element('li', { text: event.text });
-    item.dataset.kind = event.kind;
-    return item;
-  }));
+  log.replaceChildren(...next.events.map(logItem));
   log.scrollTop = log.scrollHeight;
   if (focus) $('request-heading').focus({ preventScroll: true });
 }
 
 async function choose(action) {
   if (busy) return;
+  const owner = matchEpoch;
   busy = true;
   $('actions').setAttribute('aria-busy', 'true');
   $('battle-form-toggle').disabled = true;
@@ -239,16 +360,25 @@ async function choose(action) {
   $('actions').querySelectorAll('.action-button').forEach(button => { button.disabled = true; });
   $('reset').disabled = true;
   try {
-    draw(await client.choose(action));
+    const next = await client.choose(action);
+    if (owner !== matchEpoch) return;
+    try { await playPresentation(next, owner); }
+    catch { /* A missing effect cannot block the simulator's confirmed result. */ }
+    if (owner === matchEpoch) draw(next);
   } catch (error) {
+    if (owner !== matchEpoch) return;
     draw(view, false);
     announceError('battle-error', error.message);
   } finally {
-    busy = false;
-    $('reset').disabled = false;
-    $('inspect-moves').disabled = false;
-    $('actions').removeAttribute('aria-busy');
+    if (owner === matchEpoch) unlockActions();
   }
+}
+
+function unlockActions() {
+  busy = false;
+  $('reset').disabled = false;
+  $('inspect-moves').disabled = false;
+  $('actions').removeAttribute('aria-busy');
 }
 
 $('setup-form').addEventListener('submit', async event => {
@@ -326,7 +456,13 @@ $('download-replay').addEventListener('click', () => {
 });
 
 function reset() {
-  if (busy) return;
+  if (busy && !activeMotion) return;
+  matchEpoch++;
+  stopMotion();
+  activeMotion = null;
+  $('arena-motion-caption').textContent = '';
+  $('arena-skip-motion').hidden = true;
+  unlockActions();
   client.close();
   view = null;
   $('setup').hidden = false;

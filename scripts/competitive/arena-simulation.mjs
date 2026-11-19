@@ -300,6 +300,36 @@ function opponentMon(mon, activeSpecies) {
     fainted: mon.fainted, hpPercent: mon.fainted ? 0 : null, status: null };
 }
 
+const presentationTags = new Set([
+  'move', 'switch', 'drag', 'replace', 'faint', 'cant', 'turn', 'win', 'tie',
+  '-damage', '-heal', '-status', '-curestatus', '-boost', '-unboost', '-miss', '-immune', '-fail',
+  '-block', '-activate', '-start', '-prepare', '-notarget', '-sidestart', '-fieldstart', '-weather',
+]);
+const sideOf = value => /^(p[12])(?:[a-z]?: |$)/.exec(value || '')?.[1] ?? null;
+
+function presentEvent(protocol, appearances, dex) {
+  const [, tag, subject, detail, target] = protocol.split('|');
+  if (!presentationTags.has(tag)) return null;
+  const event = explain(protocol, appearances, dex);
+  const side = sideOf(subject);
+  const base = { tag, side, protocol, kind: event?.kind || 'effect', text: event?.text || '' };
+  if (tag === 'move') {
+    const move = dex.moves.get(detail);
+    return { ...base, name: detail, targetSide: sideOf(target), facts: move.exists ? {
+      category: move.category, type: move.type, target: move.target, basePower: move.basePower, priority: move.priority,
+    } : null };
+  }
+  if (tag === '-damage' || tag === '-heal') return { ...base, hpPercent: healthPercent(detail) };
+  if (tag === 'switch' || tag === 'drag' || tag === 'replace') {
+    const species = dex.species.get(detail.split(',')[0]);
+    return { ...base, appearance: species.exists ? {
+      name: pokemonLabel(subject.replace(/^p[12][a-z]?: /, ''), species), sprite: species.spriteid, types: species.types,
+      hpPercent: healthPercent(target), active: true, fainted: false, status: target?.split(' ')[1] || null,
+    } : null };
+  }
+  return base;
+}
+
 export class ArenaSimulation {
   constructor(seed, epoch = 1, format = FORMAT, teamText, teamSize = 3) {
     const match = /^gen([1-9])ou$/.exec(format);
@@ -315,6 +345,7 @@ export class ArenaSimulation {
     this.logCursor = 0;
     this.events = [];
     this.activeSpecies = new Map();
+    this.publicAppearances = new Map();
     this.weather = '';
     this.choiceError = '';
     const modern = this.generation === 9;
@@ -341,7 +372,9 @@ export class ArenaSimulation {
   collectEvents() {
     const slice = this.battle.log.slice(this.logCursor).join('\n');
     this.logCursor = this.battle.log.length;
-    for (const line of extractChannelMessages(slice, [1])[1]) {
+    const channels = extractChannelMessages(slice, [0, 1]);
+    this.presentation = channels[0].map(line => presentEvent(line, this.publicAppearances, this.battle.dex)).filter(Boolean);
+    for (const line of channels[1]) {
       const weather = /^\|-weather\|([^|]+)/.exec(line);
       if (weather) {
         const id = toID(weather[1]);
@@ -363,6 +396,7 @@ export class ArenaSimulation {
       ...choices, moves, phase: ended ? 'ended' : choices.phase,
       player: p1.pokemon.map(ownedMon), opponent: p2.pokemon.map(mon => opponentMon(mon, this.activeSpecies.get('p2a'))),
       events: this.events.slice(-100),
+      presentation: this.presentation,
       result: ended ? (winner === PLAYER ? 'win' : winner === OPPONENT ? 'loss' : 'draw') : null,
       replay: ended ? { version: 1, engine: '@pkmn/sim', engineVersion: ENGINE_VERSION,
         format: this.format, teamSize: this.teamSize, seed: this.seed, inputLog: [...this.battle.inputLog] } : null,

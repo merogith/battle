@@ -224,6 +224,34 @@ try {
     await frontier.getByRole('button', { name: 'Begin Battle Frontier', exact: true }).click();
     assert.ok((await run('frontier')).frontier.active);
     assert.equal((await record())['frontier-quarry/v1'].bestRound, 3);
+    await begin('Begin Round 1');
+    await page.evaluate(() => {
+        const write = Storage.prototype.setItem;
+        window.restoreFrontierTestStorage = () => { Storage.prototype.setItem = write; };
+        Storage.prototype.setItem = function(key, value) {
+            if (key === 'pbs_story_save') throw new DOMException('Fixture storage limit', 'QuotaExceededError');
+            return write.call(this, key, value);
+        };
+    });
+    assert.equal(await page.evaluate(() => window.__devAutoWinBattle()), true);
+    await frontier.getByRole('heading', { name: 'Round result ready' }).waitFor();
+    assert.equal((await run('frontier')).frontier.currentStreak, 0);
+    assert.equal(await frontier.getByRole('button', { name: 'Begin Round 2', exact: true }).count(), 0);
+    await page.evaluate(() => window.restoreFrontierTestStorage());
+    await closeAlert();
+    await frontier.getByRole('button', { name: 'Save result' }).click();
+    await frontier.getByRole('heading', { name: 'Round 1 cleared', exact: true }).waitFor();
+    assert.equal((await run('frontier')).frontier.currentStreak, 1);
+    assert.ok(await frontier.getByRole('button', { name: 'Begin Round 2', exact: true }).isVisible());
+    await capture('ladder-round-cleared');
+    await frontier.getByRole('button', { name: /Surrender/ }).click();
+    await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal((await run('frontier')).frontier.currentStreak, 1);
+    await frontier.getByRole('button', { name: /Surrender/ }).click();
+    await confirm.getByRole('button', { name: 'OK', exact: true }).click();
+    await frontier.getByRole('heading', { name: 'Streak banked' }).waitFor();
+    assert.match(await frontier.getByRole('status').filter({ hasText: 'Streak banked' }).innerText(), /New personal best/);
+    assert.equal((await run('frontier')).frontier.highscores[0].streak, 1);
     await page.evaluate(() => {
         const backup = window.GameUpgrades.makeBackup();
         backup.entries.pbs_story_meta.frontierChallengeRecords = {
@@ -235,8 +263,39 @@ try {
     await reopen();
     assert.equal((await record())['frontier-quarry/v1'].bestRound, 3);
     assert.equal((await record())['frontier-lakeside/v1'].bestRound, 1);
+
+    const crucible = page.locator('#screen-story-crucible');
+    await frontier.locator('.story-shop-back-btn').click();
+    await closeAlert();
+    const leagueIntro = page.locator('.story-vs-intro [data-vs2-battle]');
+    async function enterLeagueMatch(name) {
+        await crucible.getByRole('button', { name }).click();
+        await leagueIntro.or(battle).filter({ visible: true }).first().waitFor();
+        if (await leagueIntro.isVisible()) await leagueIntro.click();
+        await battle.waitFor();
+        await fight.waitFor();
+    }
+    await enterLeagueMatch(/League Run \(E1/);
+    assert.equal(await page.evaluate(() => window.__devAutoWinBattle()), true);
+    await crucible.getByRole('heading', { name: 'League Run · 1 of 5 cleared' }).waitFor();
+    await capture('league-intermission');
+    const leagueBreak = await run('crucibleLeagueRun', 'gold', 'inventory');
+    const checkpoint = leagueBreak.crucibleLeagueRun;
+    assert.equal(checkpoint.phase, 'break');
+    assert.equal(checkpoint.currentStage, 1);
+    assert.ok(await crucible.getByRole('button', { name: /Continue League Run · 2\/5/ }).isVisible());
+    await page.goto(base.href, { waitUntil: 'domcontentloaded' });
+    await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
+    await page.locator('.menu-btn-quickplay--continue').click();
+    assert.deepEqual(await run('crucibleLeagueRun', 'gold', 'inventory'), leagueBreak, 'opening the saved break preserves the round and costs nothing');
+    await enterLeagueMatch(/Continue League Run · 2\/5/);
+    const row = await page.evaluate(() => window.STORY_EVENTS_RAW[window.StoryMode.state.eventIndex][0]);
+    assert.equal(row, checkpoint.nextRowId);
+    assert.equal(await page.evaluate(() => window.__devLoseBattle()), true);
+    await crucible.getByRole('heading', { name: 'League Run ended' }).waitFor();
+    assert.equal((await run('crucibleLeagueRun')).crucibleLeagueRun, null);
     assert.deepEqual(errors, []);
-    const summary = 'All seed cards, single-generation rules, native turn replay with a missing Dex resource, safe new-entry rejection, final-save retry, duplicate result guard, career repair, forfeit, backup merge and ordinary ladder passed.';
+    const summary = 'All seed cards, single-generation rules, native turn replay with a missing Dex resource, safe new-entry rejection, final-save retry, duplicate result guard, career repair, forfeit, backup merge, the ordinary ladder and League intermission recovery passed.';
     if (output) await writeFile(join(output, 'report.json'), JSON.stringify({
         status: 'passed', summary, screenshots,
         fixture: 'A late save opens the facility. Native turns use actual battle controls. Developer outcomes exercise result settlement without replaying the full fights.',

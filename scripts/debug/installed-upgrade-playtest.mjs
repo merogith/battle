@@ -262,6 +262,7 @@ try {
   page = await context.newPage();
   page.on('pageerror', error => report.errors.push(error.message));
   await page.goto(origin + '/battle.html', { waitUntil: 'domcontentloaded' });
+  await page.locator('#menu-offline-entry').click();
   await install(page, older.version);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });

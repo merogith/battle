@@ -7,12 +7,23 @@
   <title>Competitive Battle · Pokémon Arena</title>
   <link rel="icon" href="../icons/icon-192.png">
   <link rel="stylesheet" href="arena.css">
+  <script src="../battle-move-profiles.js" defer></script>
+  <script src="../battle-motion.js" defer></script>
   <script type="module" src="arena.js"></script>
 </head>
 <body>
   <header class="page-header">
     <a class="home-link" href="../battle.html">← Pokémon Arena</a>
-    <span id="format-label" class="format-label">Gen 9 OU · 3v3</span>
+    <div class="header-tools">
+      <span id="format-label" class="format-label">Gen 9 OU · 3v3</span>
+      <label class="arena-speed">Battle speed
+        <select id="arena-speed">
+          <option value="normal">Normal</option>
+          <option value="fast">Fast</option>
+          <option value="instant">Instant</option>
+        </select>
+      </label>
+    </div>
   </header>
   <main>
     <section id="setup" class="setup-panel">
@@ -77,6 +88,7 @@
           <section class="battlefield" aria-label="Battlefield">
             <article id="opponent-active" class="combatant opponent" aria-label="Opponent’s active Pokémon"></article>
             <article id="player-active" class="combatant player" aria-label="Your active Pokémon"></article>
+            <div id="arena-motion-caption" class="motion-caption" aria-live="polite"></div>
           </section>
           <section id="actions" class="panel" aria-labelledby="request-heading">
             <div class="action-header">
@@ -86,14 +98,18 @@
                 <label class="battle-form-option" id="battle-form-option" hidden><input type="checkbox" id="battle-form-toggle"><span id="battle-form-label"></span></label>
               </div>
             </div>
+            <button id="arena-skip-motion" class="subtle" type="button" hidden>Skip animation</button>
             <p id="action-copy" class="action-copy"></p>
             <p id="battle-error" class="error" role="alert" hidden></p>
             <div id="moves" class="moves"></div>
             <div id="switches" class="switches"></div>
             <div id="result" hidden>
               <p id="result-text"></p>
-              <button id="play-again" class="primary" type="button">New battle</button>
-              <button id="download-replay" class="subtle" type="button">Download replay</button>
+              <div class="result-actions">
+                <button id="play-again" class="primary" type="button">New battle</button>
+                <button id="download-replay" class="subtle" type="button">Download replay</button>
+                <a class="result-exit" href="../battle.html">Return to main menu</a>
+              </div>
             </div>
           </section>
         </div>

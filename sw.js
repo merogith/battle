@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. The manifest build sets CACHE_VERSION from the release contents.
  */
-const CACHE_VERSION = 'battle-v5-749b7184a3bd';
+const CACHE_VERSION = 'battle-v5-216276322430';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -25,6 +25,7 @@ const VERSIONED_CACHE = /^battle-v\d+(?:-[0-9a-f]+)?-(?:shell|runtime)$/;
 const ASSET_BATCH_SIZE = 12;
 const ASSET_BATCH_BYTES = 16 * 1024 * 1024;
 const ASSET_TRANSFER_IDLE_MS = 30000;
+const ASSET_WORK_SLICE_MS = 45000;
 const LAZY_CODE = new Set(['competitive/showdown-worker.js', 'vendor/pkmn-dex-learnsets.min.js']);
 
 // Files the app cannot boot without — precached so a cold offline launch works.
@@ -39,6 +40,9 @@ const SHELL = [
   'online-pvp.js',
   'move-anim-map.js',
   'move-sfx-map.js',
+  'battle-encounter-profiles.js',
+  'battle-move-profiles.js',
+  'battle-motion.js',
   'vendor/anime.min.js',
   'vendor/pkmn-dex.min.js',
   'sprites/placeholder.svg',
@@ -134,6 +138,36 @@ async function cacheFirst(req) {
   return null;
 }
 
+const PACK_FRAME_ARCHIVE = 'sprites/compact-frames.bin';
+let compactFrames;
+
+async function loadCompactFrames() {
+  const archive = await matchCache(ASSETS_CACHE, PACK_FRAME_ARCHIVE);
+  if (!archive) return null;
+  const blob = await archive.blob();
+  const bytes = new DataView(await blob.slice(0, 4).arrayBuffer()).getUint32(0);
+  const origin = bytes + 4;
+  if (bytes <= 0 || bytes > 1024 * 1024 || origin >= blob.size) return null;
+  return { entries: JSON.parse(await blob.slice(4, origin).text()), blob, origin };
+}
+
+async function compactSprite(path) {
+  if (!/^sprites\/gen5ani(?:-back)?(?:-shiny)?\/[a-z0-9-]+\.gif$/.test(path)) return null;
+  compactFrames ??= loadCompactFrames().catch(() => null).then(value => {
+    if (!value) compactFrames = null;
+    return value;
+  });
+  const frames = await compactFrames;
+  const range = frames && Object.hasOwn(frames.entries, path) ? frames.entries[path] : null;
+  if (!range) return null;
+  const [start, bytes] = range;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(bytes) || start < 0 || bytes <= 0
+      || frames.origin + start + bytes > frames.blob.size) return null;
+  return new Response(frames.blob.slice(frames.origin + start, frames.origin + start + bytes, 'image/webp'), {
+    headers: { 'Content-Type': 'image/webp', 'Content-Length': String(bytes) },
+  });
+}
+
 async function versionedLazyCode(path, request, event) {
   // A versioned runtime entry was verified by this worker before caching.
   const loaded = await matchCache(RUNTIME_CACHE, path);
@@ -165,7 +199,8 @@ async function revalidateShell() {
 }
 
 function shellDocument(path) {
-  if (path === '' || path === 'index.html' || path === 'battle.html') return 'battle.html';
+  if (path === '' || path === 'index.html') return 'index.html';
+  if (path === 'battle.html') return 'battle.html';
   if (path === 'competitive/' || path === 'competitive/index.html') return 'competitive/index.html';
   return null;
 }
@@ -221,7 +256,7 @@ self.addEventListener('fetch', (event) => {
 
   // Same-origin assets → cache-first by precedence; populate RUNTIME on first network hit.
   event.respondWith((async () => {
-    const hit = await cacheFirst(req);
+    const hit = await cacheFirst(req) || await compactSprite(path);
     if (hit) {
       const range = req.headers?.get('Range');
       if (!range) return hit;
@@ -312,6 +347,7 @@ self.addEventListener('message', (event) => {
     reply({ type: 'SYNC_STATUS', batchId: msg.batchId, job: offlineJob });
   } else if (msg.type === 'PAUSE_ASSETS') {
     if (offlineJob?.status === 'running' || offlineJob?.status === 'preparing') offlineJob.status = 'pausing';
+    if (offlineJob?.status === 'continuing') offlineJob.status = 'paused';
     reply({ type: 'PAUSE_RESULT', batchId: msg.batchId, job: offlineJob });
   } else if (msg.type === 'CLEAR_CACHE') {
     event.waitUntil(clearAssets(msg, reply));
@@ -324,7 +360,7 @@ self.addEventListener('message', (event) => {
       const partial = assetHashes(await readAssetRecord(cache, OFFLINE_PROGRESS_KEY));
       const urls = Object.keys(applied);
       reply({ type: 'CACHE_STATE', batchId: msg.batchId, cachedCount: present.size,
-        appliedCount: urls.length, digest: record?.digest, complete: urls.length > 0
+        appliedCount: urls.length, digest: record?.digest, profile: record?.profile || 'full', complete: urls.length > 0
           && urls.every(url => present.has(url))
           && Object.keys(partial).every(url => applied[url] === partial[url]) });
     })());
@@ -342,6 +378,7 @@ async function clearAssets(msg, reply) {
   assetMutationInProgress = true;
   try {
     await caches.delete(ASSETS_CACHE);
+    compactFrames = null;
     offlineJob = null;
     reply({ type: 'CACHE_CLEARED', batchId: msg.batchId });
   } catch (_) {
@@ -386,19 +423,22 @@ async function fetchOfflineAsset(file) {
 async function checkpointAssets(cache, progress, job) {
   try {
     await cache.put(OFFLINE_PROGRESS_KEY, new Response(JSON.stringify({
-      files: [...progress.values()], digest: job.digest, paused: job.status === 'pausing',
+      files: [...progress.values()], digest: job.digest, profile: job.profile, paused: job.status === 'pausing',
     })));
+    return true;
   } catch (_) { /* Available space may be too low even for the checkpoint. */ }
+  return false;
 }
 
 async function syncAssets(msg, reply) {
-  const digest = msg.manifest.digest || null;
+  const profile = msg.profile === 'compact' ? 'compact' : 'full';
+  const digest = msg.manifest.digest && profile === 'compact' ? `${msg.manifest.digest}:compact` : msg.manifest.digest || null;
   if (msg.manifest.version && msg.manifest.version !== CACHE_VERSION) {
     const type = msg.dryRun ? 'SYNC_PLAN' : 'SYNC_DONE';
     reply({ type, batchId: msg.batchId, failed: true });
     return;
   }
-  if (msg.dryRun && assetMutationInProgress && offlineJob?.digest === digest
+  if (msg.dryRun && assetMutationInProgress && offlineJob
       && ['preparing', 'running', 'pausing', 'finishing'].includes(offlineJob.status)) {
     reply({ type: 'SYNC_PLAN', batchId: msg.batchId, job: offlineJob });
     return;
@@ -408,8 +448,12 @@ async function syncAssets(msg, reply) {
       reply({ type: 'SYNC_DONE', batchId: msg.batchId, busy: true, job: offlineJob });
       return;
     }
+    if (msg.continueJob && offlineJob?.digest === digest && offlineJob.status === 'paused') {
+      reply({ type: 'SYNC_DONE', batchId: msg.batchId, ...offlineJob, paused: true });
+      return;
+    }
     assetMutationInProgress = true;
-    offlineJob = { digest, status: 'preparing', total: 0, done: 0, failed: 0, bytes: 0, remainingBytes: 0 };
+    offlineJob = { digest, profile, status: 'preparing', total: 0, done: 0, failed: 0, bytes: 0, remainingBytes: 0 };
   }
   try {
     const cache = await caches.open(ASSETS_CACHE);
@@ -418,13 +462,27 @@ async function syncAssets(msg, reply) {
     const appliedHashes = assetHashes(appliedRecord);
     const partialHashes = assetHashes(partialRecord);
     const present = await presentUrls(cache);
-    const files = msg.manifest.files.filter(file => !isCoreAsset(file) && file.u !== 'sw.js');
+    const packFiles = msg.manifest.files.filter(file => !file.p || file.p === profile);
+    const files = packFiles.filter(file => !isCoreAsset(file) && file.u !== 'sw.js');
+    if (profile === 'compact' && !files.some(file => file.u === PACK_FRAME_ARCHIVE)) throw new Error('Compact sprite archive is missing');
     const plan = computeSyncPlan(files, { ...appliedHashes, ...partialHashes }, present);
+    // A continuation can outlive its worker, but it must still belong to a
+    // saved download. Another tab's Remove action deletes that checkpoint.
+    if (!msg.dryRun && msg.continueJob && partialRecord?.digest !== digest) {
+      const complete = appliedRecord?.digest === digest && plan.toFetch.length === 0 && plan.toRemove.length === 0;
+      offlineJob = null;
+      reply({ type: 'SYNC_DONE', batchId: msg.batchId, applied: complete, cancelled: !complete });
+      return;
+    }
     if (msg.dryRun) {
       reply({ type: 'SYNC_PLAN', batchId: msg.batchId,
+        digest, profile, installedProfile: appliedRecord ? appliedRecord.profile || 'full' : null,
+        pendingProfile: partialRecord ? partialRecord.profile || 'full' : null,
         fetchCount: plan.toFetch.length, removeCount: plan.toRemove.length, bytes: plan.bytes,
+        totalBytes: packFiles.reduce((sum, file) => sum + (file.b || 0), 0),
         complete: Boolean(appliedRecord && files.length && plan.toFetch.length === 0 && plan.toRemove.length === 0),
-        resumable: Boolean(partialRecord), paused: partialRecord?.digest === digest && partialRecord.paused === true });
+        resumable: Boolean(partialRecord && (partialRecord.profile || 'full') === profile),
+        paused: partialRecord?.digest === digest && partialRecord.paused === true });
       return;
     }
 
@@ -439,6 +497,9 @@ async function syncAssets(msg, reply) {
     const update = () => reply({ type: 'SYNC_PROGRESS', batchId: msg.batchId, ...job });
     // The page watchdog can distinguish a slow large file from a lost worker.
     const heartbeat = setInterval(update, 10000);
+    // End a long download at a verified checkpoint before browser event limits
+    // can terminate the service worker. The open page requests the next slice.
+    const deadline = Date.now() + ASSET_WORK_SLICE_MS;
     try {
       for (const batch of offlineAssetBatches(plan.toFetch)) {
         if (job.status === 'pausing') break;
@@ -454,6 +515,7 @@ async function syncAssets(msg, reply) {
         }));
         if (++completedBatches % 16 === 0) await checkpointAssets(cache, progress, job);
         update();
+        if (Date.now() >= deadline) break;
       }
     } finally {
       clearInterval(heartbeat);
@@ -462,6 +524,13 @@ async function syncAssets(msg, reply) {
       await checkpointAssets(cache, progress, job);
       job.status = 'paused';
       reply({ type: 'SYNC_DONE', batchId: msg.batchId, ...job, paused: true });
+      return;
+    }
+    if (job.done + job.failed < job.total) {
+      const checkpointed = await checkpointAssets(cache, progress, job);
+      const continuation = checkpointed && job.failed === 0;
+      job.status = continuation ? 'continuing' : 'incomplete';
+      reply({ type: 'SYNC_DONE', batchId: msg.batchId, ...job, continuation, applied: false });
       return;
     }
     job.status = 'finishing';
@@ -476,9 +545,10 @@ async function syncAssets(msg, reply) {
     }
     if (job.failed === 0) {
       try {
-        await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify({ files, digest }),
+        await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify({ files, digest, profile }),
           { headers: { 'Content-Type': 'application/json' } }));
         applied = true;
+        compactFrames = null;
         await cache.delete(OFFLINE_PROGRESS_KEY);
       } catch (_) { /* Existing asset files can still be used on a retry. */ }
     }
@@ -488,7 +558,7 @@ async function syncAssets(msg, reply) {
     if (applied && digest) {
       try {
         for (const client of await self.clients.matchAll({ type: 'window' })) {
-          try { client.postMessage({ type: 'OFFLINE_PACK_READY', digest }); } catch (_) {}
+          try { client.postMessage({ type: 'OFFLINE_PACK_READY', digest, profile }); } catch (_) {}
         }
       } catch (_) { /* Readiness is still available through CACHE_STATE. */ }
     }

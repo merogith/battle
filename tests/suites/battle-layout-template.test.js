@@ -55,11 +55,11 @@ test('getBattleBgUrl maps templates (and legacy names) to the right art set', as
   assert.equal(typeof window.getBattleBgUrl, 'function', 'getBattleBgUrl is exposed');
   const url = (terrain, folder) => window.getBattleBgUrl(terrain, folder);
 
-  assert.match(url('neutral', 'portrait'), /battle\/portrait\/bg_neutral\.png/);
-  assert.match(url('neutral', 'stack'), /battle\/portrait\/bg_neutral\.png/, 'stack → portrait art');
-  assert.match(url('grassy', 'landscape'), /battle\/landscape\/bg_grassy\.png/);
+  assert.match(url('neutral', 'portrait'), /battle\/portrait\/bg_neutral\.webp/);
+  assert.match(url('neutral', 'stack'), /battle\/portrait\/bg_neutral\.webp/, 'stack → portrait art');
+  assert.match(url('grassy', 'landscape'), /battle\/landscape\/bg_grassy\.webp/);
   // arena (and the retired "desktop" name, and anything non-portrait) → the landscape stadium.
-  assert.match(url('electric', 'arena'), /battle\/landscape\/bg_electric\.png/, 'arena → landscape art');
-  assert.match(url('neutral', 'desktop'), /battle\/landscape\/bg_neutral\.png/, 'retired "desktop" → landscape');
+  assert.match(url('electric', 'arena'), /battle\/landscape\/bg_electric\.webp/, 'arena → landscape art');
+  assert.match(url('neutral', 'desktop'), /battle\/landscape\/bg_neutral\.webp/, 'retired "desktop" → landscape');
   assert.doesNotMatch(url('neutral', 'arena'), /battle\/desktop\//, 'desktop bg set is retired');
 });

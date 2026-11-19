@@ -39,7 +39,7 @@ const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_
 try {
   for (const { seed, species } of fixtures) {
     const context = await browser.newContext({
-      viewport: { width: 390, height: 844 },
+      viewport: seed === 17 ? { width: 320, height: 568 } : { width: 390, height: 844 },
       isMobile: true,
       hasTouch: true,
       reducedMotion: 'reduce',
@@ -106,7 +106,7 @@ try {
         await page.evaluate(() => { window.__storyExternalSave = false; });
       }
       await accept.click();
-      await page.getByText(`${species} joined your team!`, { exact: true }).waitFor();
+      await page.locator('#story-prof-status').filter({ hasText: `${species} joined your team!` }).waitFor();
       const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')));
       assert.equal(persisted.starterMemory.slotId, persisted.team[0].id);
       assert.equal(persisted.starterMemory.speciesAtGift, species);
@@ -134,6 +134,17 @@ try {
         return { name, type };
       }));
       assert.deepEqual(fightMoves, summaryMoves.map(({ name, type }) => ({ name, type })), `${species} kept the previewed moves after reload`);
+      if (seed === 17) {
+        const immuneMarker = page.locator('.move-tile-matchup[title="Basic type chart: immune"]');
+        const choice = page.locator('#move-menu .move-choice').filter({ has: immuneMarker }).first();
+        const immune = choice.locator('.move-tile-matchup');
+        await immune.waitFor({ state: 'visible' });
+        assert.equal((await immune.innerText()).trim(), '⊘', 'Pocket battle shows the immunity cue from the tutorial');
+        await choice.locator('.move-info-hit').tap();
+        assert.match(await page.locator('#move-tooltip').innerText(), /Basic type chart: immune/);
+        await page.locator('#move-tooltip .move-tip-close').tap();
+        assert.ok(await choice.locator('.battle-btn-move').isVisible());
+      }
       assert.deepEqual(errors, []);
       console.log(`${species} (seed ${seed}) · ${previewNames.join(', ')}`);
     } finally {

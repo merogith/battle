@@ -6,12 +6,13 @@ import { chromium } from 'playwright';
 
 const base = new URL(process.env.BATTLE_TEST_URL || 'http://localhost:5177/battle.html');
 const output = process.env.BATTLE_PLAYTEST_OUT || '/tmp/battle-facilities-playtest';
+const compact = process.env.BATTLE_FACILITY_SHORT === '1';
 const fixture = new URL(base);
 fixture.searchParams.set('testmega', '1');
 const report = {
   status: 'passed',
   fixture: 'City 7 debug save with six badges and 50,000 gold. Party IDs, a Vulpix, and one HP Up are seeded for facility checks.',
-  viewport: { width: 390, height: 844 },
+  viewport: compact ? { width: 568, height: 260 } : { width: 390, height: 844 },
   findings: [],
   observations: [],
   trace: [],
@@ -74,6 +75,12 @@ async function ready(target) {
   assert.fail(`Could not reach ${target} | ${JSON.stringify(await uiState())}`);
 }
 
+async function loadGame(tab, url) {
+  await tab.goto(url.href, { waitUntil: 'commit', timeout: 35000 });
+  await tab.locator('#app-loading-overlay').waitFor({ state: 'attached', timeout: 35000 });
+  await tab.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 35000 });
+}
+
 async function visit(key) {
   const control = city.locator(`[data-action-key="${key}"]`);
   await ready(control);
@@ -125,7 +132,7 @@ async function back(screen) {
 }
 
 async function resumeCity() {
-  await page.goto(base.href, { waitUntil: 'domcontentloaded' });
+  await loadGame(page, base);
   const start = page.locator('.menu-btn-quickplay--story');
   await ready(start);
   await start.click();
@@ -157,7 +164,7 @@ async function step(name, action) {
 }
 
 try {
-  await page.goto(fixture.href, { waitUntil: 'domcontentloaded' });
+  await loadGame(page, fixture);
   await ready(city);
   await page.evaluate(() => {
     const run = window.StoryMode.state;
@@ -295,6 +302,31 @@ try {
 
   await step('colress', async () => {
     await visit('colress');
+    if (compact) {
+      const lesson = page.getByRole('dialog', { name: 'Colress', exact: true });
+      const reader = lesson.getByRole('group', { name: 'Tutorial text' });
+      const proceed = lesson.getByRole('button', { name: /Continue/ });
+      await reader.waitFor();
+      await page.waitForFunction(() => document.activeElement.classList.contains('story-tutorial-scene'));
+      const readingStart = await reader.evaluate(el => ({
+        scrollTop: el.scrollTop,
+        pageTop: el.querySelector('.story-dialog-text').getBoundingClientRect().top,
+        bottom: el.getBoundingClientRect().bottom,
+      }));
+      assert.equal(readingStart.scrollTop, 0);
+      assert.ok(readingStart.pageTop >= 0 && readingStart.pageTop < readingStart.bottom, 'Lesson starts on its first paragraph');
+      const footer = await proceed.boundingBox();
+      assert.ok(footer.y >= 0 && footer.y + footer.height <= report.viewport.height && footer.height >= 44, 'Continue fits while reading');
+      await mark('colress-lesson-start', readingStart);
+      await page.keyboard.press('End');
+      await page.waitForFunction(() => document.querySelector('.story-tutorial-scene').scrollTop > 0);
+      await page.keyboard.press('Tab');
+      assert.ok(await proceed.evaluate(el => document.activeElement === el));
+      await page.keyboard.press('Shift+Tab');
+      assert.ok(await reader.evaluate(el => document.activeElement === el));
+      await mark('colress-lesson-end');
+      await proceed.tap();
+    }
     const facility = page.locator('#screen-story-colress');
     const partner = facility.locator('.story-tutor-mon-toggle').filter({ hasText: 'Charizard' });
     await ready(partner);
@@ -415,7 +447,17 @@ try {
     const partner = facility.locator('.story-tutor-mon-toggle').filter({ hasText: 'Rattata' }).first();
     await ready(partner);
     const index = Number(await partner.getAttribute('data-team'));
-    await partner.click();
+    if (compact) {
+      await partner.scrollIntoViewIfNeeded();
+      assert.ok(await partner.evaluate(el => {
+        const { left, top, width, height } = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(left + width / 2, top + height / 2));
+      }), 'The switcher clears the Cable Link card touch target');
+      await mark('cable-link-card-target');
+      await partner.tap();
+    } else {
+      await partner.click();
+    }
     const trade = facility.getByRole('button', { name: /Same Tier Swap \(/ });
     await ready(trade);
     const before = await saved();
@@ -524,7 +566,7 @@ try {
           balls: window.StoryMode.state.balls?.poke || 0,
         };
       });
-      await second.goto(fixture.href, { waitUntil: 'domcontentloaded' });
+      await loadGame(second, fixture);
       await mart.click();
       await welcome.waitFor({ state: 'visible' });
       const interrupted = await giftState();
@@ -538,7 +580,7 @@ try {
         detail: interrupted,
       });
 
-      await second.goto(base.href, { waitUntil: 'domcontentloaded' });
+      await loadGame(second, base);
       await second.locator('.menu-btn-quickplay--story').click();
       await second.getByRole('button', { name: /Continue Run/ }).click();
       await mart.click();

@@ -106,7 +106,7 @@ test('navigation update checks cannot mutate the active core cache',async()=>{
 test('the competitive route serves its own offline HTML and unknown routes keep their HTTP status',async()=>{
   const w=worker();
   await w.install();
-  assert.equal(await (await w.fetch('','navigate')).text(),'content:battle.html');
+  assert.equal(await (await w.fetch('','navigate')).text(),'content:index.html');
   assert.equal(await (await w.fetch('competitive/','navigate')).text(),'content:competitive/index.html');
   assert.equal(await (await w.fetch('competitive/index.html?from=menu','navigate')).text(),'content:competitive/index.html');
   assert.equal((await w.fetch('not-a-route','navigate')).status,404);
@@ -221,6 +221,40 @@ test('successful network responses survive cache quota and availability failures
 function mediaFile(u,body){
   return {u,h:crypto.createHash('sha1').update(body).digest('hex').slice(0,16),b:Buffer.byteLength(body)};
 }
+test('compact and full packs share gameplay files and use their own sprite payloads', async () => {
+  const w = worker();
+  const sprite = 'sprites/gen5ani/pikachu.gif';
+  const common = 'music/cries/pikachu.mp3';
+  const atlas = 'sprites/compact-frames.bin';
+  const frame = 'RIFF WebP still';
+  const index = JSON.stringify({ [sprite]: [0, frame.length] });
+  const header = Buffer.alloc(4);
+  header.writeUInt32BE(index.length);
+  const archive = Buffer.concat([header, Buffer.from(index), Buffer.from(frame)]);
+  const payloads = { [sprite]: 'GIF animation', [common]: 'shared cry', [atlas]: archive };
+  for (const [key, body] of Object.entries(payloads)) w.responses.set(key, body);
+  const manifest = { digest: 'release', files: [
+    { ...mediaFile(sprite, payloads[sprite]), p: 'full' },
+    mediaFile(common, payloads[common]),
+    { ...mediaFile(atlas, archive), p: 'compact' },
+  ] };
+  const message = { type: 'SYNC_ASSETS', manifest };
+  assert.equal((await w.message({ ...message, profile: 'compact' })).applied, true);
+  assert.equal((await w.message({ type: 'CACHE_STATE' })).digest, 'release:compact');
+  assert.deepEqual(w.fetches, [common, atlas]);
+  const still = await w.fetch(sprite);
+  assert.equal(still.headers.get('content-type'), 'image/webp');
+  assert.equal(await still.text(), frame);
+  const fullPlan = await w.message({ ...message, profile: 'full', dryRun: true });
+  assert.equal(fullPlan.installedProfile, 'compact');
+  assert.equal(fullPlan.fetchCount, 1);
+  assert.equal(fullPlan.removeCount, 1);
+  const switched = await w.message({ ...message, profile: 'full' });
+  assert.equal(switched.applied, true);
+  assert.equal((await w.message({ type: 'CACHE_STATE' })).profile, 'full');
+  assert.equal(await (await w.fetch(sprite)).text(), payloads[sprite]);
+  assert.deepEqual(w.fetches, [common, atlas, sprite]);
+});
 test('bulk offline download excludes the installed shell and removes its legacy duplicates',async()=>{
   const w=worker();
   await w.install();
@@ -280,6 +314,61 @@ test('offline batches isolate large media and bound concurrent verification byte
   assert.deepEqual(JSON.parse(JSON.stringify(result)), [
     ['asset0'], ['asset1'], ['asset2'], ['asset3','asset4'], ['asset5','asset6']
   ]);
+});
+test('long offline downloads yield with a verified checkpoint and honor a pause between slices',async()=>{
+  const w=worker();
+  const files=Array.from({length:30},(_, index)=>{
+    const path=`sprites/example-${index}.webp`;
+    const bytes=`sprite ${index}`;
+    w.responses.set(path,bytes);
+    return mediaFile(path,bytes);
+  });
+  vm.runInContext('let batchTime = 0; Date.now = () => batchTime += 45000;',w.context);
+  const sync={type:'SYNC_ASSETS',manifest:{files,digest:'sliced-download'}};
+  const initial=await w.message(sync);
+  assert.equal(initial.status,'continuing');
+  assert.equal(initial.done,12);
+  assert.equal(initial.continuation,true);
+  assert.equal((await w.message({type:'CACHE_STATE'})).complete,false);
+  assert.equal((await w.message({type:'PAUSE_ASSETS'})).job.status,'paused');
+  const paused=await w.message({...sync,continueJob:true});
+  assert.equal(paused.paused,true);
+  assert.equal(w.fetches.length,12);
+
+  const resumed=await w.message(sync);
+  assert.equal(resumed.continuation,true);
+  const finished=await w.message({...sync,continueJob:true});
+  assert.equal(finished.applied,true);
+  assert.equal((await w.message({type:'CACHE_STATE'})).complete,true);
+  assert.equal(w.fetches.length,30);
+  assert.equal(new Set(w.fetches).size,30);
+});
+test('a removed offline pack rejects another tab’s stale continuation until a player starts again',async()=>{
+  const w=worker();
+  const files=Array.from({length:13},(_, index)=>{
+    const path=`sprites/example-${index}.webp`;
+    const bytes=`sprite ${index}`;
+    w.responses.set(path,bytes);
+    return mediaFile(path,bytes);
+  });
+  vm.runInContext('let batchTime = 0; Date.now = () => batchTime += 45000;',w.context);
+  const sync={type:'SYNC_ASSETS',manifest:{files,digest:'removed-download'}};
+  assert.equal((await w.message({...sync,batchId:'tab-a'})).continuation,true);
+  assert.equal(w.fetches.length,12);
+  assert.equal((await w.message({type:'CLEAR_CACHE',batchId:'tab-b'})).failed,undefined);
+  const stopped=await w.message({...sync,batchId:'tab-a',continueJob:true});
+  assert.equal(stopped.cancelled,true);
+  assert.equal(stopped.applied,false);
+  assert.equal(w.fetches.length,12);
+  assert.equal((await w.message({type:'CACHE_STATE'})).cachedCount,0);
+
+  assert.equal((await w.message({...sync,batchId:'tab-b'})).continuation,true);
+  assert.equal((await w.message({...sync,batchId:'tab-b',continueJob:true})).applied,true);
+  assert.equal(w.fetches.length,25);
+  const finished=await w.message({...sync,batchId:'tab-a',continueJob:true});
+  assert.equal(finished.applied,true);
+  assert.equal(finished.cancelled,false);
+  assert.equal(w.fetches.length,25);
 });
 test('slow offline transfers extend the deadline when bytes arrive and abort on inactivity', async () => {
   const {context} = worker();
@@ -373,7 +462,7 @@ test('a reopened tab can track, pause and resume an offline job after the initia
   const cache=await w.message({type:'CACHE_STATE'});
   assert.equal(cache.complete,true);
   assert.equal(cache.digest,digest);
-  assert.deepEqual(notifications,[{type:'OFFLINE_PACK_READY',digest}]);
+  assert.deepEqual(notifications,[{type:'OFFLINE_PACK_READY',digest,profile:'full'}]);
 });
 test('offline download UI does not record a failed sync as complete',async()=>{
   const html=fs.readFileSync(new URL('../../battle.html',import.meta.url),'utf8');
@@ -394,6 +483,53 @@ test('offline download UI does not record a failed sync as complete',async()=>{
   assert.equal(nodes['offline-dl-start'].textContent,'Retry');
   assert.equal(nodes['offline-dl-bar-fill'].style.width,'25%');
   assert.equal(nodes['offline-dl-size'].textContent,'~<1 MB remaining · 1 file · 1 failed');
+});
+test('offline download UI continues checkpoints and bounds recovery from worker interruption',async()=>{
+  const html=fs.readFileSync(new URL('../../battle.html',import.meta.url),'utf8');
+  const start=html.indexOf('const _offlineElement =');
+  const end=html.indexOf('window.clearOfflineCache = async function',start);
+  for(const recovers of [true,false]){
+    const nodes={'offline-dl-start':{},'offline-dl-size':{},'offline-dl-status':{},'offline-dl-bar-fill':{style:{}}};
+    const settings={offlineDownload:{completed:false,digest:null}};
+    const messages=[];
+    const serviceWorker={};
+    const ctx=vm.createContext({
+      window:{},document:{getElementById:id=>nodes[id]},settings,persistMiscSettings:()=>{},
+      _offlineActiveSW:async()=>serviceWorker,_getOfflineManifest:async()=>({digest:'new'}),
+      _swRequest:async(_sw,message,_type,onProgress)=>{
+        messages.push(message.continueJob);
+        const job={done:1,failed:0,total:3,bytes:300,remainingBytes:200};
+        onProgress(job);
+        if(messages.length===1)return {...job,continuation:true,applied:false};
+        if(recovers&&messages.length===3)return {...job,done:2,total:2,bytes:200,remainingBytes:0,applied:true};
+        return null;
+      },
+      _fmtBytes:String,
+    });
+    vm.runInContext(html.slice(start,end),ctx);
+    await ctx.window.startOfflineDownload();
+    assert.deepEqual(messages,recovers?[false,true,true]:[false,true,true,true]);
+    assert.equal(settings.offlineDownload.completed,recovers);
+    assert.equal(nodes['offline-dl-start'].textContent,recovers?'Check for updates':'Retry');
+  }
+});
+test('offline download UI clears readiness and refreshes when its checkpoint was removed',async()=>{
+  const html=fs.readFileSync(new URL('../../battle.html',import.meta.url),'utf8');
+  const start=html.indexOf('const _offlineElement =');
+  const end=html.indexOf('window.clearOfflineCache = async function',start);
+  const settings={offlineDownload:{completed:true,digest:'old'}};
+  const ctx=vm.createContext({
+    window:{},document:{getElementById:()=>null},settings,persistMiscSettings:()=>{},
+    _offlineActiveSW:async()=>({}),_getOfflineManifest:async()=>({digest:'new'}),
+    _swRequest:async()=>({cancelled:true,applied:false}),
+  });
+  vm.runInContext(html.slice(start,end),ctx);
+  let refreshed=0;
+  ctx.window.openDownloadOfflineFlow=async()=>{refreshed++;};
+  await ctx.window.startOfflineDownload();
+  assert.equal(settings.offlineDownload.completed,false);
+  assert.equal(settings.offlineDownload.digest,null);
+  assert.equal(refreshed,1);
 });
 test('the first controller claim arms future updates without reloading a battle', () => {
   const html = fs.readFileSync(new URL('../../battle.html', import.meta.url), 'utf8');
@@ -425,6 +561,26 @@ test('the first controller claim arms future updates without reloading a battle'
   window.__maybeSwReload();
   window.__maybeSwReload();
   assert.equal(reloads, 1);
+});
+test('returning from a standard battle applies a pending worker update at the menu',async()=>{
+  const html=fs.readFileSync(new URL('../../battle.html',import.meta.url),'utf8');
+  const start=html.indexOf('window.returnToHome = async function()');
+  const end=html.indexOf('// Context-aware exit',start);
+  const state={mode:'pve',isOver:false};
+  const visited=[];
+  const nodes={'screen-menu':{classList:{remove:()=>visited.push('menu')}},
+    'draft-grid':{},'battle-log':{}};
+  const window={__maybeSwReload:()=>{
+    assert.equal(state.isOver,true);
+    visited.push('update');
+  }};
+  const ctx=vm.createContext({
+    window,state,document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},
+    cancelNativeBattleMotion:()=>{},_isFullscreen:()=>false,_reenterFullscreenIfNeeded:()=>{},
+  });
+  vm.runInContext(html.slice(start,end),ctx);
+  await window.returnToHome();
+  assert.deepEqual(visited,['menu','update']);
 });
 test('Pages uses the artifact uploaded after reusable Quality and packaged browser tests',()=>{
   const deploy=fs.readFileSync(new URL('../../.github/workflows/static.yml',import.meta.url),'utf8');

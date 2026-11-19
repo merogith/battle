@@ -475,10 +475,12 @@ test('closing an unfinished Frontier battle refunds consumed items without movin
   Object.assign(run, {
     badges: 8,
     eventIndex: hallOfFameIndex,
+    atCrucible: true,
     storyDifficulty: 'hard',
     inventory: { potion: 2 },
     frontier: { active: true, currentRound: 1, highscores: [] },
   });
+  story.enterFrontierHub();
   await story.frontierStartNext();
   assert.equal(story.upgrades.battleActive(), true);
   assert.equal(E.engine.state.mode, 'story');

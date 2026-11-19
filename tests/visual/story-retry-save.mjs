@@ -103,12 +103,22 @@ async function verifyBattleBag(page, fight) {
   assert.equal(await page.locator('#player-hp-text').innerText(), `${restored.hp}/${restored.maxHp}`);
   assert.ok(restored.hp > 0, `${restored.name} needs to remain in battle after using the item`);
 
+  const savedTurn = await snapshot(page);
+  const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')).storyBattleCheckpoint);
+  assert.ok(checkpoint?.resume?.simulation, 'The Bag action stores a native checkpoint');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.menu-btn-quickplay--continue').click();
+  await fight.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => !state.isLocked && state.resumedStoryTurn);
+  assert.deepEqual(await snapshot(page), savedTurn, 'Continue restores the exact board after the bag turn');
+  assert.equal((await saved(page)).inventory.maxElixir || 0, 0, 'Continue keeps the item consumed');
+
   await playMove(page, fight);
   const afterMove = await readActive();
   assert.equal(afterMove.turn, restored.turn + 1);
   assert.ok(afterMove.pp.some((pp, slot) => pp < restored.pp[slot]), 'a native move spent PP again after using the item');
   assert.equal(await page.locator('#player-hp-text').innerText(), `${afterMove.hp}/${afterMove.maxHp}`);
-  console.log('Story Bag spent one Max Elixir and one native turn, then the same battle accepted a regular move.');
+  console.log('Story Bag spent one Max Elixir and one native turn; Continue kept the board and accepted the next move.');
 }
 
 const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
@@ -125,6 +135,9 @@ try {
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
+      page.on('console', message => {
+        if (/Exact turn could not be restored|Could not save the resolved battle turn|Could not prepare the saved battle/.test(message.text())) console.error(message.text());
+      });
       await page.route('**/*', route => new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
@@ -160,7 +173,8 @@ try {
         await reach(page, stock.getByRole('button', { name: 'Buy', exact: true }), { activate: true });
         assert.equal((await saved(page)).inventory.maxElixir, 1);
       }
-      await reach(page, leaveMart, { activate: true });
+      await reach(page, leaveMart.filter({ visible: true }).or(objective.filter({ visible: true })).first());
+      if (await leaveMart.isVisible()) await leaveMart.click();
       await reach(page, objective);
       assert.match(await objective.innerText(), /Rival/i);
       await objective.click();

@@ -1,5 +1,7 @@
 # Human-style playtest of Pokémon Arena
 
+For new sessions, use the [player testing protocol](PLAYER_TESTING_PROTOCOL.md) for test charters, evidence capture, and confirmation.
+
 Tested the packaged build `battle-v5-6dd79c51828d` in fresh local Chromium profiles. Seven LLM-operated perspectives used visible controls for play: a first-time phone player, a story player on a laptop, a collector, a competitive player, a returning offline player, a keyboard-oriented player, and a small-screen visual reviewer. Devices were represented by CSS viewports and input profiles. Players made their own battle decisions and played out the wins and losses. Source and diagnostic inspection followed the relevant observations.
 
 Coverage included the first rival, the first road and city, collecting without an open party slot, PC and item use, the opening Open Circle episode, competitive imports and turns in Gen 9 and Gen 1, and a genuine offline saved-game and backup recovery. This pass covers a fresh player’s opening and selected systems. The previous campaign automation covers later chapters using controlled outcomes for long fights. LLM-operated sessions give reproducible interface evidence and hypotheses about what a person might do. Pacing, difficulty perception, timing, and enjoyment need feedback from people playing unassisted. [Scripted campaign test](PLAYER_PLAYTEST.md)

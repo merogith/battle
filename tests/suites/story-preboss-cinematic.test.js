@@ -1,7 +1,6 @@
 // Guard: the pre-boss cinematic (§5) + portrait-emotion (§6.4). Canon villain bosses/
-// admins and the Mystery Figure apex get an additive escalation beat (threshold banner +
-// canon portrait with an emotion treatment + one framing line) between the narrative scene
-// and the VS-splash, reusing _renderNarrativeOverlay. See
+// admins and the Mystery Figure apex get a threshold banner, portrait, and framing line
+// in a single VS entrance with one Start action. See
 // docs/story-design/story-immersion/visual-and-cinematic.md §5 / §6.4.
 // Run: node --test tests/suites/story-preboss-cinematic.test.js
 
@@ -52,12 +51,20 @@ test('every villain boss + the Mystery apex has a line + a valid emotion', () =>
     assert.ok(mf && mf.emotion === 'obscured', 'Mystery apex is obscured');
 });
 
-// ── The cinematic mounts the canonical overlay with banner + emotion portrait ──
-test('playPreBossCinematic mounts the overlay with banner, portrait emotion, and chains onDone', () => {
-    // Clear any live overlay so this one mounts (the renderer serializes a queue).
-    document.querySelectorAll('button[data-narr-continue="1"]').forEach(b => b.click());
+async function openBoss(trainer, role, key, onDone) {
+    ST.sm = { active: true, eventIndex: 0, runSeed: 504, _activeBeatBattleKey: key,
+        scenesShown: { 'tutorial-first-trainer-battle': true }, settings: { enabledGens: [1] } };
+    ST.showBattleIntro(trainer, role, onDone, null, { preBossKey: key });
+    await new Promise(resolve => setTimeout(resolve, 15));
+    return document.querySelector('.story-vs-intro');
+}
+
+test('the threshold belongs to one battle entrance and masks the resolved name', async () => {
     let done = false;
-    ST.playPreBossCinematic('main.mfBattle', { name: '??? Mystery Figure', spriteFile: 'Cyrus' }, () => { done = true; });
+    const overlay = await openBoss({ name: 'Cyrus', spriteFile: 'Cyrus' }, 'Mystery Figure', 'main.mfBattle', () => { done = true; });
+    assert.ok(overlay);
+    assert.equal(document.querySelectorAll('.story-vs-intro').length, 1);
+    assert.equal(document.querySelector('.story-narr-root'), null);
 
     const banner = document.querySelector('.story-preboss-banner');
     assert.ok(banner, 'pre-boss banner mounted');
@@ -67,26 +74,26 @@ test('playPreBossCinematic mounts the overlay with banner, portrait emotion, and
     assert.ok(img, 'cast sprite carries the obscured emotion treatment');
     assert.ok(img.classList.contains('cast-emotion'), 'sprite has the emotion base class');
     assert.match(img.getAttribute('src') || '', /Cyrus\.png$/, 'uses the resolved trainer sprite path');
-    assert.match(document.body.textContent, /\?\?\?/, 'masked "???" nameplate shown');
+    assert.match(overlay.textContent, /\?\?\? Mystery Figure/, 'masked name shown');
+    assert.ok(!overlay.textContent.includes('Cyrus'));
+    assert.ok(img.classList.contains('vs-fighter-mystery'));
 
-    const cont = document.querySelector('button[data-narr-continue="1"]');
-    assert.ok(cont, 'continue button present');
+    const cont = overlay.querySelector('button[data-vs2-battle="1"]');
+    assert.ok(cont, 'Start button present');
     cont.click();
-    assert.equal(done, true, 'onDone chained on dismiss (→ showBattleIntro in the live flow)');
+    assert.equal(done, true, 'one action launches the battle');
+    assert.equal(document.querySelector('.story-vs-intro'), null);
 });
 
 // ── A boss whose sprite differs from its name resolves via SPRITE_MAP ──────────
-test('a canon boss with a mapped sprite (Piers→Roughneck) resolves correctly', () => {
-    document.querySelectorAll('button[data-narr-continue="1"]').forEach(b => b.click());
-    ST.playPreBossCinematic('villain.yell.boss', { name: 'Piers' }, () => {});
-    const banner = document.querySelector('.story-preboss-banner');
+test('a canon boss with a mapped sprite (Piers→Roughneck) resolves correctly', async () => {
+    const overlay = await openBoss({ name: 'Piers' }, 'Basic Trainer', 'villain.yell.boss', () => {});
+    const banner = overlay.querySelector('.story-preboss-banner');
     assert.ok(banner, 'portrait mounted');
-    // Scope the sprite lookup to THIS overlay (the renderer places the <img> as a sibling
-    // of the banner under the overlay root) — not any stray trainer img elsewhere in the DOM.
-    const img = banner.parentElement.querySelector('img');
+    const img = overlay.querySelector('.vs-fighter-foe');
     assert.ok(img, 'overlay has a portrait');
     // getTrainerSprite maps Piers → Roughneck; passing the trainer object (not a bare
     // spriteFile) must honor that map, not request Piers.png.
     assert.match(img.getAttribute('src') || '', /Roughneck\.png$/, 'SPRITE_MAP honored via spriteSrc');
-    document.querySelectorAll('button[data-narr-continue="1"]').forEach(b => b.click());
+    overlay.querySelector('[data-vs2-battle]').click();
 });

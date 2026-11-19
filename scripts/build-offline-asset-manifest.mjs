@@ -40,12 +40,19 @@ const WALK_DIRS = ['sprites', 'music', 'data', 'fonts', 'icons', 'vendor'];
 // NOT shipped into the offline download. howler.min.js lost its only consumer (window.AudioBus)
 // when that dead wrapper was removed in 2026-07.
 const EXCLUDE_URLS = new Set(['vendor/howler.min.js']);
-// Menu and encounter views use WebP. Keep the original PNGs as editing sources.
-const MENU_BACKGROUND_SOURCE = /^sprites\/backgrounds\/menu\/menu_bg(?:_[a-z]+)?\.png$/;
+// Menu and battle views use WebP. Keep the original PNGs as editing sources.
+const BACKGROUND_SOURCE = /^sprites\/backgrounds\/(?:menu\/menu_bg(?:_[a-z]+)?|battle\/(?:portrait|landscape)\/bg_[a-z]+)\.png$/;
+function assetPack(url) {
+  if (url === 'sprites/compact-frames.bin') return 'compact';
+  if (/^sprites\/gen5ani(?:-back)?(?:-shiny)?\//.test(url)
+      || /^music\/(?:battle_anims\/|background\/background[123]\.mp3$|themes\/Theme[134]\.mp3$)/.test(url)) return 'full';
+  return undefined;
+}
 // Top-level boot files (explicit — not walked).
 const BOOT_FILES = [
   'battle.html', 'index.html', 'manifest.webmanifest', 'game-upgrades.js', 'game-upgrades.css',
   'online-config.js', 'online-pvp.js', 'move-anim-map.js', 'move-sfx-map.js', 'sw.js',
+  'battle-encounter-profiles.js', 'battle-move-profiles.js', 'battle-motion.js',
   'competitive/index.html', 'competitive/arena.css', 'competitive/arena.js',
   'competitive/arena-client.js', 'competitive/showdown-worker.js',
   'competitive/classic-simulation.js', 'competitive/showdown-engine.js',
@@ -78,7 +85,7 @@ for (const d of WALK_DIRS) {
 
 const publishedPaths = paths.filter(full => {
   const url = toUrl(path.relative(ROOT, full));
-  return !EXCLUDE_URLS.has(url) && !MENU_BACKGROUND_SOURCE.test(url);
+  return !EXCLUDE_URLS.has(url) && !BACKGROUND_SOURCE.test(url);
 });
 
 // Bind each installed core release to its code and data. Exclude the generated manifest
@@ -87,7 +94,8 @@ const swPath=path.join(ROOT,'sw.js');
 const normalizedSw=fs.readFileSync(swPath,'utf8').replace(/const CACHE_VERSION = '[^']+';/,"const CACHE_VERSION = 'RELEASE';");
 const releaseHash=crypto.createHash('sha256').update(normalizedSw);
 for(const full of publishedPaths.filter(p=>p!==swPath).sort()) {
-  releaseHash.update(path.relative(ROOT,full)).update(fs.readFileSync(full));
+  const url = toUrl(path.relative(ROOT, full));
+  releaseHash.update(url).update(assetPack(url) || '').update(fs.readFileSync(full));
 }
 const releaseVersion='battle-v5-'+releaseHash.digest('hex').slice(0,12);
 fs.writeFileSync(swPath,normalizedSw.replace("const CACHE_VERSION = 'RELEASE';",`const CACHE_VERSION = '${releaseVersion}';`));
@@ -101,7 +109,8 @@ for (const full of publishedPaths) {
   seen.add(url);
   const bytes = fs.statSync(full).size;
   totalBytes += bytes;
-  files.push({ u: url, h: hashFile(full), b: bytes });
+  const pack = assetPack(url);
+  files.push({ u: url, h: hashFile(full), b: bytes, ...(pack ? { p: pack } : {}) });
 }
 files.sort((a, b) => (a.u < b.u ? -1 : a.u > b.u ? 1 : 0));
 

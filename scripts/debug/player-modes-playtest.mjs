@@ -1,4 +1,4 @@
-/* global state */
+/* global state, finishNativeBattle */
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -168,6 +168,8 @@ const cases = [
     name: 'settings-offline', profile: desktop, serviceWorkers: 'allow',
     async play(page, record) {
       await chooseFastBattles(page);
+      const offline = page.getByRole('button', { name: 'Download the game for offline play' });
+      await offline.click();
       await waitForOfflineControl(page, 'before the settings reload');
       await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForOfflineControl(page, 'after the settings reload');
@@ -175,7 +177,7 @@ const cases = [
       assert.equal(await page.locator('#setting-battle-speed').inputValue(), 'instant');
       assert.equal(await page.locator('#sw-animations').isChecked(), false);
       await closeSettings(page);
-      await page.getByRole('button', { name: 'Download the game for offline play' }).click();
+      await offline.click();
       await page.locator('#offline-dl-panel').waitFor({ state: 'visible' });
       await page.waitForFunction(() =>
         /remaining.*files|files remaining/.test(document.getElementById('offline-dl-size').textContent));
@@ -351,7 +353,7 @@ const cases = [
           await waitForTurn(page, before);
         }
         if (await loot.isVisible()) {
-          await loot.getByRole('heading', { name: /Round Cleared/ }).waitFor();
+          await loot.getByRole('heading', { name: /Round 1 cleared/i }).waitFor();
           await snapshot(page, record, 'loot');
           const capturedName = await page.evaluate(() => state.foeParty[0].name);
           const confirm = loot.getByRole('button', { name: 'Confirm Swap' });
@@ -377,6 +379,34 @@ const cases = [
         if (attempt < 3) await end(page).getByRole('button', { name: 'Return to Main Menu' }).tap();
       }
       assert.fail('The first Gauntlet clear must expose the loot screen');
+    },
+  },
+  {
+    name: 'gauntlet-draw', profile: { ...phone, viewport: { width: 568, height: 260 } },
+    async play(page, record) {
+      await chooseFastBattles(page);
+      await battleOptions(page);
+      await modeButton(page, /Gauntlet/i).tap();
+      await cards(page).first().locator('img').tap();
+      await battleEngine(page, record, 'before-draw');
+      report.bypasses.push('Gauntlet draw staged as a simulator draw after the player drafted and entered a real match.');
+      await page.evaluate(() => {
+        for (const mon of [...state.playerParty, ...state.foeParty]) mon.currentHp = 0;
+        finishNativeBattle(null);
+      });
+      const result = end(page);
+      await result.getByRole('heading', { name: 'Round 1 drawn' }).waitFor();
+      const next = result.getByRole('button', { name: 'Continue Gauntlet' });
+      assert.ok(await next.isVisible());
+      await snapshot(page, record, 'draw');
+      await page.waitForTimeout(2100);
+      assert.ok(await result.isVisible());
+      await next.tap();
+      await battleEngine(page, record, 'after-draw');
+      assert.deepEqual(await page.evaluate(() => ({ score: state.score, healthy: state.playerParty.every(mon => mon.currentHp === mon.maxHp) })), { score: 0, healthy: true });
+      assert.equal(await page.locator('#modal-gauntlet-swap').isVisible(), false);
+      await snapshot(page, record, 'continued');
+      record.detail = 'The draw waits, its touch action opens the next match, and the party is healed without a score increase or swap.';
     },
   },
   {
@@ -471,12 +501,13 @@ try {
     report.trace.push(record);
     const context = await browser.newContext({ ...profile, serviceWorkers, reducedMotion: 'reduce' });
     const page = await context.newPage();
-    page.setDefaultTimeout(8000);
+    page.setDefaultTimeout(15_000);
     page.on('pageerror', error => record.errors.push(error.message));
     await page.route('**/*', route =>
       new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
     try {
-      await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+      await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 30_000 });
       await main(page).waitFor();
       const more = page.locator('#menu-more-play-summary');
       if (await more.count() && !['settings-offline', 'collection-help'].includes(name)) await more.click();

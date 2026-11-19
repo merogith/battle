@@ -184,6 +184,7 @@ test('the game bridge keeps exact campaign stat investments when native forms ch
   story.sm.active = true;
   story.sm.storyDifficulty = 'hard';
   story.sm.frontier = { active: true, currentRound: 1 };
+  story.sm.crucibleBattleSource = 'frontier';
   state.mode = 'story';
   state.p2Draft = [{ name: 'Terapagos', build: terapagos }];
   await window.startBattle();

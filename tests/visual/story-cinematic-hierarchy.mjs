@@ -1,3 +1,4 @@
+/* global settings, state */
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -45,6 +46,75 @@ async function reachChampion(page, url) {
   }
   throw new Error(`The Champion checkpoint did not reach the entrance. Visible controls: ${await page.getByRole('button').filter({ visible: true }).evaluateAll(buttons =>
     buttons.map(button => button.outerHTML.slice(0, 180)).join(' · '))}`);
+}
+
+async function verifyChampionVictory(page, capture) {
+  const fight = page.locator('#command-menu [data-cmd="fight"]');
+  const readSave = () => page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')));
+  const startingGold = (await readSave()).gold;
+  let turns = 0;
+  // Play the six-foe Champion checkpoint through normal commands, choosing
+  // attacks from the displayed effectiveness and power. No result is injected.
+  for (let action = 0; action < 60; action++) {
+    await page.waitForFunction(() => state.battleEngine === 'showdown' && (state.isOver || !state.isLocked));
+    const request = await page.evaluate(() => state.isOver ? 'over' : state.nativeRequests?.[0]?.phase);
+    if (request === 'over') break;
+    const turn = await page.evaluate(() => state.turnNumber);
+    if (request === 'replace') {
+      await page.locator('#modal-party button[onclick^="window.selectPartyMember"]:enabled').first().click();
+      await page.waitForFunction(() => state.isOver || state.nativeRequests?.[0]?.phase === 'move');
+      continue;
+    }
+    assert.equal(request, 'move');
+    await fight.click();
+    const moves = page.locator('#move-menu .battle-btn-move:enabled:visible');
+    const pick = await moves.evaluateAll(buttons => {
+      const score = button => {
+        const label = button.getAttribute('aria-label') || '';
+        const power = Number(label.match(/Power (\d+)/)?.[1] || 0);
+        const accuracy = Number(label.match(/Acc (\d+)%/)?.[1] || 100);
+        const matchup = button.querySelector('.move-tile-matchup')?.textContent || '';
+        return power * accuracy * (matchup.includes('▲') ? 2 : matchup.includes('▼') ? 0.5 : matchup.includes('⊘') ? 0 : 1);
+      };
+      return buttons.indexOf(buttons.reduce((best, button) => score(button) > score(best) ? button : best));
+    });
+    await moves.nth(pick).click();
+    await page.waitForFunction(last => state.isOver || state.nativeRequests?.[0]?.phase === 'replace'
+      || (state.turnNumber > last && !state.isLocked), turn);
+    turns++;
+  }
+  const outcome = await page.evaluate(() => ({ winner: state.nativeWinner, turn: state.turnNumber,
+    user: state.playerParty.map(mon => [mon.name, mon.currentHp]), foes: state.foeParty.map(mon => [mon.name, mon.currentHp]),
+    lastMessages: document.getElementById('battle-log').innerText.slice(-1900) }));
+  assert.equal(outcome.winner, 1, JSON.stringify(outcome));
+  assert.ok(turns >= 6, 'Normal move choices defeated all six foes');
+  const result = page.locator('.story-victory-v2[data-story-result-id]');
+  await result.waitFor();
+  await capture('champion-native-result');
+  const receipt = await readSave();
+  assert.equal(receipt.gold, startingGold + receipt.pendingBattleResult.coins);
+  assert.ok(receipt.pendingBattleResult.coins > 0);
+  await page.goto(base.href, { waitUntil: 'domcontentloaded' });
+  await page.locator('.menu-btn-quickplay--continue').click();
+  await result.waitFor();
+  const resumed = await readSave();
+  assert.equal(resumed.pendingBattleResult.id, receipt.pendingBattleResult.id);
+  assert.equal(resumed.gold, receipt.gold);
+  await page.waitForTimeout(400);
+  await result.locator('.story-victory-v2-continue').click();
+  const rival = page.getByRole('dialog', { name: /Battle introduction with Rival/ });
+  const storyAdvance = page.locator([
+    '.story-narr-root [data-narr-continue]:visible', '.story-narr-root [data-narr-choice-idx]:visible',
+    '[data-scene-cont]:visible', '.story-tutorial-continue:visible', '#modal-game-alert button:visible',
+  ].join(', '));
+  for (let step = 0; step < 25 && !await rival.isVisible(); step++) {
+    if (await storyAdvance.count()) await storyAdvance.last().click();
+    else await page.waitForTimeout(150);
+  }
+  assert.ok(await rival.isVisible(), (await page.locator('body').innerText()).slice(-1800));
+  assert.match(await rival.innerText(), /Rival/);
+  assert.equal((await readSave()).gold, receipt.gold);
+  console.log(`Champion checkpoint won in ${turns} native turns; reload kept the one-time reward and reached the final Rival introduction.`);
 }
 
 async function verifyFinaleRecovery(page, capture, { partner, decision, failOnce }) {
@@ -177,9 +247,19 @@ try {
       assert.match(await scene.evaluate(node => getComputedStyle(node).backgroundImage), /recovery-league\.webp/);
       assert.ok(await inReach(face), `Champion action fits ${prefix}`);
       await capture('champion');
+      if (!touch) await page.evaluate(() => {
+        settings.animations = false;
+        settings.battleSpeed = 'instant';
+        // Fix the lead’s legal moveset to keep the smoke test independent of
+        // the debug fixture's randomized Choice and support builds.
+        const lead = window.StoryMode.state.team[0];
+        lead.build = { n: 'Jolly', a: 'Rough Skin', i: '', m: ['Earthquake', 'Dragon Claw', 'Rock Slide', 'Crunch'],
+          ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 }, evs: { hp: 4, atk: 252, spe: 252 } };
+      });
       await page.waitForTimeout(450);
       await face.click();
       await page.locator('#command-menu [data-cmd="fight"]:visible').waitFor();
+      if (!touch) await verifyChampionVictory(page, capture);
 
       const hall = new URL(base);
       hall.searchParams.set('debugPostHofClimax', '1');

@@ -26,7 +26,7 @@ const report = {
     findings: [],
     fixtures: 'Starts two real adventures with the same seed using the normal setup screen. Save fixtures move each run to the nine arrived towns and the completed Mystery aftermath, bypassing those battles and earlier travel. Both chapter answers, all discoveries, returns and archive replays use the public controls.',
 };
-const browser = engine === 'webkit' ? await webkit.launch()
+const browser = engine === 'webkit' ? await webkit.launch({ executablePath: process.env.BATTLE_TEST_WEBKIT })
     : await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
 const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce',
@@ -36,6 +36,7 @@ await context.route('**/*', route =>
     new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
 const page = await context.newPage();
 page.setDefaultTimeout(8500);
+page.setDefaultNavigationTimeout(45000);
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 const modal = () => page.locator('dialog.story-chapter-dialog[open]');

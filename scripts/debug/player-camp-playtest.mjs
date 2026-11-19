@@ -25,8 +25,8 @@ async function fixture(profile) {
   page.setDefaultTimeout(4500);
   page.on('pageerror', error => results.errors.push(error.message));
   await page.addInitScript(() => { window.__testHarness = true; });
-  await page.goto(url.href, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__testReady && window.StoryMode?.state);
+  await page.goto(url.href, { waitUntil: 'commit', timeout: 35000 });
+  await page.waitForFunction(() => window.__testReady && window.StoryMode?.state, null, { timeout: 35000 });
   await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
   return { context, page };
 }
@@ -165,11 +165,19 @@ async function play(page, primitive) {
       break;
     }
     case 'track': {
-      const timer = Date.now();
-      while (await present() && Date.now() - timer < 3200) {
-        const box = await find('#camp-tk-mark').boundingBox({ timeout: 150 }).catch(() => null);
-        if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.waitForTimeout(22);
+      // Read one frame before moving the real pointer. Locator polling can
+      // leave the pointer aiming at a stale position on busy browsers.
+      const deadline = Date.now() + 6500;
+      while (Date.now() < deadline) {
+        const point = await page.evaluate(() => {
+          const marker = document.getElementById('camp-tk-mark');
+          if (!marker) return null;
+          const { left, top, width, height } = marker.getBoundingClientRect();
+          return { x: left + width / 2, y: top + height / 2 };
+        });
+        if (!point) break;
+        await page.mouse.move(point.x, point.y);
+        await page.waitForTimeout(12);
       }
       break;
     }

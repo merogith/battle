@@ -130,7 +130,10 @@ export async function mountAdventure(host, city, bridge) {
     let location;
     let pageProgress;
     let stopRelayMotif;
+    let stopDialogue;
     function show(titleText, place, art) {
+        stopDialogue?.();
+        stopDialogue = null;
         stopRelayMotif?.();
         stopRelayMotif = null;
         if (!dialog || !dialog.open) {
@@ -155,6 +158,8 @@ export async function mountAdventure(host, city, bridge) {
             opened.addEventListener('close', () => {
                 opened.remove();
                 if (dialog !== opened) return;
+                stopDialogue?.();
+                stopDialogue = null;
                 stopRelayMotif?.();
                 stopRelayMotif = null;
                 updateCard();
@@ -182,6 +187,8 @@ export async function mountAdventure(host, city, bridge) {
     }
 
     function sceneBody(scene, speakerName, prose, actions, { phase = 'reading', clue, sprite, tone, step } = {}) {
+        stopDialogue?.();
+        stopDialogue = null;
         body.dataset.chapterPhase = phase;
         if (tone) body.dataset.chapterTone = tone;
         else delete body.dataset.chapterTone;
@@ -291,6 +298,9 @@ export async function mountAdventure(host, city, bridge) {
             if (last && !chapter.choices) footer.append(done());
             else footer.append(button('Continue', 'next', '', () => last ? endScene(saved) : panel(index + 1), true));
             dialogueFocus(sceneBody(chapter, entry.speaker || 'Narrator', entry.text, footer, presentation));
+            if (entry.voiceId && !readOnly) {
+                stopDialogue = globalThis.AudioSystem?.playDialogue?.(entry.voiceId, entry.text);
+            }
         };
         if (saved && !readOnly) endScene(saved);
         else panel(0);

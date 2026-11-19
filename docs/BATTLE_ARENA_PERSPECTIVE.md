@@ -6,7 +6,7 @@
 
 ## The scene is 2.5D: a photographic backdrop + two sprites that must stand on the pitch
 
-Two background sets remain (`sprites/backgrounds/battle/{landscape,portrait}/bg_*.png`,
+Two background sets remain (`sprites/backgrounds/battle/{landscape,portrait}/bg_*.webp`,
 1536×1024), each a painted stadium:
 
 - **`landscape/`** — used by the **arena** template on *every* landscape screen (desktop frame,

@@ -5,12 +5,16 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-const { values: { verify } } = parseArgs({ options: { verify: { type: 'boolean' } } });
+const { values } = parseArgs({ options: {
+  verify: { type: 'boolean' },
+  'out-dir': { type: 'string' },
+} });
+const { verify, 'out-dir': outputDirectory } = values;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const out = path.join(root, 'dist');
+const out = outputDirectory === undefined ? path.join(root, 'dist') : path.resolve(root, outputDirectory);
 const source = verify ? out : root;
 const manifest = JSON.parse(fs.readFileSync(path.join(source, 'offline-assets.json'), 'utf8'));
-const allowed = /^(?:battle\.html|index\.html|manifest\.webmanifest|online-(?:config|pvp)\.js|move-(?:anim|sfx)-map\.js|game-upgrades\.(?:js|css)|sw\.js|competitive\/(?:index\.html|arena\.css|arena\.js|arena-client\.js|showdown-worker\.js|classic-simulation\.js|showdown-engine\.js|THIRD_PARTY_NOTICES\.txt)|(?:sprites|music|data|fonts|icons|vendor)\/[^\0]+)$/;
+const allowed = /^(?:battle\.html|battle-(?:motion|move-profiles|encounter-profiles)\.js|index\.html|manifest\.webmanifest|online-(?:config|pvp)\.js|move-(?:anim|sfx)-map\.js|game-upgrades\.(?:js|css)|sw\.js|competitive\/(?:index\.html|arena\.css|arena\.js|arena-client\.js|showdown-worker\.js|classic-simulation\.js|showdown-engine\.js|THIRD_PARTY_NOTICES\.txt)|(?:sprites|music|data|fonts|icons|vendor)\/[^\0]+)$/;
 const publishedFiles = new Set();
 const metadata = { version: manifest.version, digest: manifest.digest, files: manifest.fileCount };
 let totalBytes = 0;
@@ -58,8 +62,8 @@ if (verify) {
     }
   }
 } else {
-  fs.rmSync(out, { recursive: true, force: true });
-  fs.mkdirSync(out, { recursive: true });
+  if (outputDirectory === undefined) fs.rmSync(out, { recursive: true, force: true });
+  fs.mkdirSync(out);
   for (const relative of publishedFiles) {
     const target = path.join(out, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -70,4 +74,4 @@ if (verify) {
   }
   fs.writeFileSync(path.join(out, 'release.json'), JSON.stringify(metadata, null, 2) + '\n');
 }
-console.log(`Verified ${manifest.fileCount} files; Pages artifact: dist/ (${manifest.version})`);
+console.log(`Verified ${manifest.fileCount} files; Pages artifact: ${path.relative(root, out)}/ (${manifest.version})`);

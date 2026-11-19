@@ -39,6 +39,9 @@ function supplementalText(tag, subject, detail, label) {
   case '-start': return label && `${subject} gained ${label}.`;
   case '-end': return label && `${subject} lost ${label}.`;
   case '-activate': return label && `${subject}'s ${label} took effect.`;
+  case '-block': return label && `${subject} blocked the move with ${label}.`;
+  case '-prepare': return label && `${subject} prepared ${label}.`;
+  case '-notarget': return `${subject}'s move had no target.`;
   case '-sidestart': return label && `${label} took effect.`;
   case '-sideend': return label && `${label} wore off.`;
   case '-fieldend': return subject && `${subject.replace(/^move: /, '')} ended.`;

@@ -3,6 +3,13 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.1 — Faster startup, smaller offline download, and Story battle recovery
+
+- The title screen opens before loading the game. Its measured cold transfer is 179 KiB.
+- The Compact offline pack includes the complete Story campaign in about 70 MiB with still sprites and shorter music. The Full pack retains animations and extended audio.
+- Continue restores the last saved turn in supported Story fights, including HP, PP, consumed items, and pending switches. Older and incompatible saves resume from the encounter checkpoint.
+- Battle openings, move effects, boss presentations, and Gym breaks have updated animations, sound, and dialogue. Campaign and Arena screens received layout, readability, and navigation improvements.
+
 ## Unreleased — Legends: Z-A Mega Evolutions 2026-08-01 (`claude/missing-mega-evolutions-5xf4ab`)
 
 ### Added — 49 missing Mega formes, with sprites

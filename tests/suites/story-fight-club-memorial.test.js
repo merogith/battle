@@ -11,6 +11,15 @@ const eng = await loadEngine();
 const { window } = eng;
 const SM = window.StoryMode;
 const sm = SM.state;
+const storage = new Map();
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: key => storage.delete(key),
+  },
+});
 
 window.confirm = () => true;
 window.alert = () => {};
@@ -39,6 +48,7 @@ function clearOverlays() {
 function setupStory(nicks) {
   clearOverlays();
   sm.active = true;
+  sm.runSeed = 76611;
   sm.badges = 6;
   sm.gold = 10000;
   sm.eventIndex = 38;
@@ -79,8 +89,11 @@ test('sweeping the bracket memorializes 3 enemies per round × 5 rounds = 15', (
   const picks = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
   for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
   $('story-pits-overlay').querySelector('#pits-start-btn').click();
-  $('story-pits-draft-overlay').querySelector('#pits-draft-go').click();
-  for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'win', '');
+  for (let round = 1; round <= 5; round++) {
+    $('story-pits-draft-overlay').querySelector('#pits-draft-go').click();
+    SM.onBattleEnd(true, 'win', '');
+    assert.equal(sm.memorial.totalDefeated, round * 3, 'record only the round the player entered');
+  }
   assert.equal(sm.memorial.totalDefeated, 15, '3 per round × 5 rounds');
   assert.equal(sm.memorial.defeated.length, 15, 'all entries kept (under the 100 cap)');
   assert.equal(sm.memorial.totalFallen, 0, 'a clean sweep has no fallen of yours');

@@ -14,6 +14,7 @@ before(async () => {
   ST = W.__storyTest;
   SER = ST.STORY_EVENTS_RAW;
   W.__vsInputArmMs = 0; // buffered-input guard off under the harness
+  W.settings.animations = true;
 });
 
 const tick = (ms = 8) => new Promise(r => setTimeout(r, ms));
@@ -183,4 +184,63 @@ test('crucible-sourced fights never banter or marquee', async () => {
   await tick();
   assert.ok(!W.document.querySelector('[data-vs2-picks]'), 'no exchange UI for crucible re-fights');
   clearOverlays();
+});
+
+test('Instant skips a timed splash and preserves Vibe Exchange', async () => {
+  const { arrIdx, rowId } = talkativeBasicRow();
+  W.settings.battleSpeed = 'instant';
+  try {
+    freshSm({ eventIndex: arrIdx });
+    let launched = 0;
+    ST.showBattleIntro(TRAINER, 'Basic Trainer', () => launched++, rowId);
+    await tick();
+    assert.equal(launched, 0);
+    const choices = W.document.querySelector('[data-vs2-picks]');
+    assert.ok(choices);
+    assert.equal(choices.closest('.story-vs-intro').dataset.encounterMotion, 'still');
+    choices.querySelector('[data-vs2-pick="stoic"]').click();
+    assert.equal(launched, 1);
+
+    ST.showBattleIntro(TRAINER, 'Basic Trainer', () => launched++, rowId);
+    await tick();
+    assert.equal(launched, 2);
+    assert.equal(W.document.querySelector('.story-vs-intro'), null);
+  } finally {
+    W.settings.battleSpeed = 'normal';
+    clearOverlays();
+  }
+});
+
+test('presentation speed and skipped introductions preserve the run RNG', async () => {
+  const { arrIdx, rowId } = talkativeBasicRow();
+  try {
+    for (const speed of ['normal', 'fast', 'instant']) {
+      W.settings.battleSpeed = speed;
+      const run = freshSm({ eventIndex: arrIdx, _strngState: 9399,
+        banterByRow: { [rowId]: { pick: 'stoic', outcome: 'neutral' } } });
+      let launched = 0;
+      ST.showBattleIntro(TRAINER, 'Basic Trainer', () => launched++, rowId);
+      await tick();
+      W.document.querySelector('button[data-vs2-battle]')?.click();
+      assert.equal(launched, 1);
+      assert.equal(run._strngState, 9399, `${speed} must not consume the encounter RNG`);
+    }
+  } finally {
+    W.settings.battleSpeed = 'normal';
+    clearOverlays();
+  }
+});
+
+test('a delayed entrance cannot start a battle after leaving its run', async () => {
+  const { arrIdx, rowId } = talkativeBasicRow();
+  freshSm({ eventIndex: arrIdx, banterByRow: { [rowId]: { pick: 'stoic', outcome: 'neutral' } } });
+  let launched = 0;
+  ST.showBattleIntro(TRAINER, 'Basic Trainer', () => launched++, rowId);
+  await tick();
+  const enter = W.document.querySelector('button[data-vs2-battle]');
+  assert.ok(enter);
+  freshSm({ eventIndex: arrIdx + 1 });
+  enter.click();
+  assert.equal(launched, 0);
+  assert.equal(W.document.querySelector('.story-vs-intro'), null);
 });

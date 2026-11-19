@@ -51,6 +51,26 @@ async function compactMoveTaps() {
           const gutter = page.locator('#move-menu .move-menu-controls');
           assert.equal(await gutter.locator('.gimmick-btn').count(), Number(form));
           if (form) await gutter.locator('.gimmick-btn').tap();
+          if (height === 260 && slot === 0) {
+            const clipped = await page.locator('#move-menu .move-tile-name').evaluateAll(labels =>
+              labels.filter(label => label.scrollWidth > label.clientWidth + 1).map(label => label.textContent));
+            assert.deepEqual(clipped, [], 'Short landscape shows the full move names');
+            const hudVisible = await page.locator('#player-stat-box .stat-box-name').evaluate(label => {
+              const card = document.getElementById('screen-battle').getBoundingClientRect();
+              const bounds = label.getBoundingClientRect();
+              return bounds.top >= card.top && bounds.bottom <= card.bottom && bounds.height > 0;
+            });
+            assert.ok(hudVisible, 'The player name stays inside the visible battle HUD');
+            const wholeSprites = await page.locator('#player-sprite, #foe-sprite').evaluateAll(sprites => {
+              const field = document.getElementById('screen-battle').getBoundingClientRect();
+              const controls = document.querySelector('#screen-battle .ui-bottom').getBoundingClientRect();
+              return sprites.every(sprite => {
+                const box = sprite.getBoundingClientRect();
+                return box.top >= field.top && box.bottom <= controls.top && box.height > 0;
+              });
+            });
+            assert.ok(wholeSprites, 'Both battlers fit in the field above the move controls');
+          }
           if (out && slot === 0) await page.screenshot({ path: join(out, `battle-${width}x${height}-${form ? 'tera' : 'standard'}.png`) });
           const info = page.getByRole('button', { name: `${move} details`, exact: true });
           await tapCenter(page, info);
@@ -93,6 +113,23 @@ try {
       new URL(route.request().url()).origin === base.origin ? route.continue() : route.abort());
     await page.goto(base.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#command-menu').waitFor({ state: 'visible' });
+
+    if (name === 'phone') {
+      const backdrops = await page.evaluate(async () => {
+        const types = ['neutral', 'electric', 'grassy', 'misty', 'psychic'];
+        const results = [];
+        for (const layout of ['portrait', 'landscape']) {
+          for (const type of types) {
+            const image = new Image();
+            image.src = window.getBattleBgUrl(type, layout).slice(5, -2);
+            await image.decode();
+            results.push([image.naturalWidth, image.naturalHeight]);
+          }
+        }
+        return results;
+      });
+      assert.deepEqual(backdrops, Array.from({ length: 10 }, () => [1536, 1024]));
+    }
 
     // Viewport emulation provides no physical notch. Simulate safe-area padding on the body.
     await page.addStyleTag({ content: 'body { padding: 18px 32px 23px !important; }' });

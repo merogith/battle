@@ -22,7 +22,7 @@ try {
   await page.route('**/*', route =>
     new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
   await page.goto(url.href, { waitUntil: 'domcontentloaded' });
-  await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
+  assert.equal(await page.evaluate(() => window.prepareGameData()), true);
 
   // Supply deterministic draft results, then use the same battle entry and
   // touch controls as a local match. A random draft cannot guarantee U-turn.

@@ -1,7 +1,6 @@
 // Guard: the in-battle "impact" layer is consistent across the single-hit AND multi-hit
-// damage paths, and a hit that is BOTH critical AND super-effective shakes the screen
-// exactly ONCE (the prior code called _battleHitShake('crit') then ('super') at the
-// telegraph → a double shake). Both paths now route the shake through the shared,
+// damage paths, and a hit that is BOTH critical AND super-effective reacts
+// exactly ONCE. Both paths route the sprite reaction through the shared,
 // tier-selecting _applyHitImpact dispatcher (which reuses _battleHitShake + adds a
 // hit-stop on crit/boss-phase). Pure source check — locks parity + the single-shake fix.
 // Run: node --test tests/suites/battle-hit-impact.test.js
@@ -44,10 +43,13 @@ test('a crit + super-effective hit shakes ONCE, not twice (the double-shake fix)
     assert.match(b, /if \(o\.bossPhase\)[\s\S]{0,140}else if \(o\.crit\)[\s\S]{0,140}else if \(o\.effectiveness > 1\)/,
         'tiers are exclusive — boss > crit > super, never stacked');
     // _battleHitShake is now invoked ONLY from inside _applyHitImpact (no telegraph calls).
-    const inBodyCrit = (b.match(/_battleHitShake\('crit'\)/g) || []).length;
-    const inBodySuper = (b.match(/_battleHitShake\('super'\)/g) || []).length;
-    assert.equal(count(/_battleHitShake\('crit'\)/g), inBodyCrit, "no _battleHitShake('crit') left at a telegraph");
-    assert.equal(count(/_battleHitShake\('super'\)/g), inBodySuper, "no _battleHitShake('super') left at a telegraph");
+    const crit = /_battleHitShake\('crit', o\.isPlayerTarget\)/g;
+    const superEffective = /_battleHitShake\('super', o\.isPlayerTarget\)/g;
+    const inBodyCrit = (b.match(crit) || []).length;
+    const inBodySuper = (b.match(superEffective) || []).length;
+    assert.equal(count(crit), inBodyCrit, 'crit motion stays inside the dispatcher');
+    assert.equal(count(superEffective), inBodySuper, 'super-effective motion stays inside the dispatcher');
+    assert.equal(inBodyCrit, 2, 'the critical style is used for boss phases and critical hits');
     assert.equal(inBodySuper, 1, 'super shake fires from exactly one place');
 });
 
@@ -65,10 +67,11 @@ test('_hitStop is harness-aware and reduced-motion-bypassed', () => {
     assert.match(bodyOf('_applyHitImpact'), /_hitStop\(120\)[\s\S]*_hitStop\(90\)/, 'boss 120ms / crit 90ms');
 });
 
-test('_battleHitShake still honors reduced motion + the animations setting', () => {
+test('hit reactions use the battle rate and target sprite while leaving the HUD still', () => {
     const b = bodyOf('_battleHitShake');
-    assert.match(b, /settings\.animations/, 'gated by settings.animations');
-    assert.match(b, /isReducedMotion/, 'respects prefers-reduced-motion');
+    assert.match(b, /battleVisualRate\(\)/, 'gated by effective animation settings and speed');
+    assert.match(b, /isPlayerTarget \? 'player-sprite' : 'foe-sprite'/, 'moves the confirmed target sprite');
+    assert.doesNotMatch(b, /screen-battle/, 'the HUD remains still');
 });
 
 test('both damage paths still play the hit sound (parity)', () => {

@@ -30,6 +30,42 @@ function completeMatch(sim, initial) {
   return view;
 }
 
+const supportedConfigurations = [
+  ...Array.from({ length: 9 }, (_, index) => `gen${index + 1}ou`)
+    .flatMap(format => [[format, 3], [format, 6]]),
+  [DYNAMAX_FORMAT, 3],
+];
+
+for (const [format, size] of supportedConfigurations) {
+  test(`Arena completes a real ${size}-on-${size} match under ${format}`, () => {
+    const sim = new ArenaSimulation(253, 1, format, undefined, size);
+    const preview = sim.view();
+    assert.equal(preview.format, format);
+    assert.equal(preview.player.length, size);
+    assert.equal(preview.opponent.length, size);
+    const finished = completeMatch(sim, choose(sim, 'lead', 0));
+    assert.equal(finished.phase, 'ended');
+    assert.equal(sim.view().result, finished.result);
+  });
+}
+
+test('Arena publishes move, outcome, and HP from this request’s public events', () => {
+  const battle = new ArenaSimulation(125);
+  const opening = choose(battle, 'lead', 0);
+  assert.equal(opening.presentation.find(event => event.side === 'p2').appearance.name, 'Corviknight');
+  const round = choose(battle, 'move', 0);
+  const [rush, immune, braveBird] = round.presentation;
+  assert.deepEqual([rush.tag, rush.name, rush.side, rush.targetSide], ['move', 'Headlong Rush', 'p1', 'p2']);
+  assert.deepEqual([immune.tag, immune.side], ['-immune', 'p2']);
+  assert.deepEqual([braveBird.tag, braveBird.name, braveBird.side, braveBird.targetSide], ['move', 'Brave Bird', 'p2', 'p1']);
+  const damage = round.presentation.find(event => event.tag === '-damage');
+  assert.equal(damage.side, 'p1');
+  assert.equal(damage.hpPercent, 42);
+  assert.match(damage.protocol, /\|42\/100$/);
+  assert.ok(!round.presentation.some(event => /\|(?:split|request)\|/.test(event.protocol)));
+  assert.ok(!round.presentation.some(event => event.tag === 'switch'), 'previous request cues never repeat');
+});
+
 test('competitive singles runs the pinned OU format, with validated lead and move requests', () => {
   const battle = new ArenaSimulation(125);
   const initial = battle.view();

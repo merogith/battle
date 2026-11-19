@@ -41,14 +41,16 @@ const present = (block, frag, label) =>
 
 test('firstColress keeps every battle-form mechanic', () => {
   const b = sceneBlock('firstColress');
-  ['Mega, Z, Dynamax, Tera',        // the four forms
-   'sixth',                          // gym-gated; sixth gym opens the door
-   'signature move',                 // pick form + signature move
-   'held-item slot',                 // Mega/Z consume the item slot
-   'Mega Stone or Z-Crystal',        // …specifically these
-   'ask for the slot',               // Dynamax/Tera do NOT use the slot
-   'spectacular swing',              // the bargain
-   'finite window',
+  ['Mega, Z-Moves, Dynamax, Tera',
+   'Six badges open my lab',
+   'any move a form requires',
+   'one form per partner',
+   'Under Classic rules, the team can activate one per battle',
+   'Mega Stones and Z-Crystals take the held-item slot',
+   'Dynamax and Tera leave it free',
+   'A Z-Move is one strike',
+   'Dynamax lasts up to three turns',
+   'Mega Evolution and Terastallization last for the rest of the battle',
   ].forEach((f) => present(b, f, 'firstColress'));
   // re-voice landed (Colress's clinical fascination) + old wall phrasings gone
   assert.ok(b.includes('fascinating'), 'firstColress: Colress voice marker present');

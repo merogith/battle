@@ -117,6 +117,11 @@ try {
         await toggle('sw-sound');
         await page.waitForTimeout(350);
         assert.equal(requests.some(({ path }) => path.endsWith('/faint.wav')), false);
+        await page.evaluate(() => window.AudioSystem.playMoveSound({ name: 'Unmapped Fire cue', type: 'Fire', cat: 'Special' }));
+        const fireCue = await page.waitForFunction(() => window.audioProbe.elements.find(({ audio, requestedSource }) =>
+            requestedSource.endsWith('music/moves/fire.mp3') && Number.isFinite(audio.duration))?.audio.duration);
+        const fireDuration = await fireCue.jsonValue();
+        assert.ok(fireDuration > 0 && fireDuration < 1.5, `The Fire fallback should be a short cue (${fireDuration} seconds)`);
         await press(close);
 
         // Load an in-game battle fixture, then command a real native turn through the UI.
@@ -133,7 +138,7 @@ try {
         await page.waitForFunction(() => Array.from(document.querySelectorAll('#battle-log > *')).some(el => el.textContent.includes('used Earthquake')));
         assert.deepEqual(errors, []);
         assert.ok(requests.some(({ path, status }) => /hit(?:_strong|_weak)?\.wav/.test(path) && status < 400));
-        report.push({ viewport: `${width}×${height}`, touch, reducedMotion, controls: ['settings', 'gallery cue', 'mute', 'slider', 'reload', 'trainer creation', 'preset battle turn'], requests });
+        report.push({ viewport: `${width}×${height}`, touch, reducedMotion, controls: ['settings', 'gallery cue', 'mute', 'slider', 'reload', 'trainer creation', 'preset battle turn'], fireDuration, requests });
         console.log(`${width}×${height} audio controls, reload, trainer creation and Showdown impact passed`);
         await context.close();
     }

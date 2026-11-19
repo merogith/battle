@@ -100,3 +100,40 @@ test('startQuickBattle("draft") routes to the draft screen, no auto teams', asyn
     assert.equal(draftScreen.classList.contains('hidden'), false, 'draft screen shown');
     eng.engine.settings.quickTeamSource = 'random';
 });
+
+test('Gauntlet waits on a draw, then restores the team without granting a win or swap', async () => {
+    await W.startQuickBattle();
+    const state = eng.engine.state;
+    state.mode = 'gauntlet';
+    state.score = 3;
+    const roundParty = state.foeParty;
+    state.playerParty.forEach(mon => { mon.currentHp = 0; });
+    W.finishNativeBattle(null);
+    const result = D.getElementById('modal-end-screen');
+    const next = D.getElementById('btn-gauntlet-draw-continue');
+    assert.ok(!result.classList.contains('hidden'));
+    assert.match(D.getElementById('end-title').textContent, /Round 4 drawn/);
+    assert.equal(D.activeElement, next);
+    await new Promise(resolve => setTimeout(resolve, 2100));
+    assert.equal(state.foeParty, roundParty, 'an unattended result never starts a round');
+    await W.continueGauntletDraw();
+    await W.continueGauntletDraw();
+    assert.equal(state.score, 3);
+    assert.equal(state.isOver, false);
+    assert.ok(result.classList.contains('hidden'));
+    assert.ok(D.getElementById('modal-gauntlet-swap').classList.contains('hidden'));
+    assert.ok(state.playerParty.every(mon => mon.currentHp === mon.maxHp));
+    assert.notEqual(state.foeParty, roundParty);
+});
+
+test('local multiplayer names the winner and offers the existing draft for another match', async () => {
+    const state = eng.engine.state;
+    state.mode = 'pvp';
+    W.finishNativeBattle('p2');
+    assert.equal(D.getElementById('end-title').textContent, 'Player 2 wins');
+    const playAgain = D.getElementById('btn-play-again');
+    assert.ok(!playAgain.classList.contains('hidden'));
+    await W.playAgainFromEndScreen();
+    assert.ok(!D.getElementById('screen-draft').classList.contains('hidden'));
+    assert.equal(eng.engine.state.mode, 'pvp');
+});

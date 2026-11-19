@@ -22,6 +22,9 @@ body {
 }
 .page-header, main, footer { max-width: 1160px; margin-inline: auto; }
 .page-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 66px; border-bottom: 1px solid var(--edge); }
+.header-tools { display: flex; align-items: center; flex-wrap: wrap; justify-content: end; gap: 4px 10px; }
+.arena-speed { display: flex; align-items: center; gap: 6px; font-size: .76rem; white-space: nowrap; }
+#arena-speed { min-height: 44px; width: auto; margin: 0; padding: 4px 8px; font: inherit; }
 a { color: var(--accent); text-underline-offset: 4px; }
 .home-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; text-decoration: none; }
 .home-link:hover { text-decoration: underline; }
@@ -64,6 +67,7 @@ summary { min-height: 44px; padding: 10px 0; line-height: 1.5; cursor: pointer; 
 .battle-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(246px, 330px); gap: 14px; }
 .battle-column, .side-column { min-width: 0; display: grid; align-content: start; gap: 12px; }
 .battlefield {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas: 'player opponent';
@@ -75,6 +79,9 @@ summary { min-height: 44px; padding: 10px 0; line-height: 1.5; cursor: pointer; 
   background: radial-gradient(ellipse at 76% 20%, #475474 0, transparent 56%), linear-gradient(158deg, #1c2b39, #263c4b 60%, #1e2e3b);
   align-items: stretch;
 }
+.battlefield .battle-stage-motion { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.motion-caption { position: absolute; z-index: 3; inset: auto 6px 6px; text-align: center; pointer-events: none; }
+.motion-caption:not(:empty) { width: fit-content; max-width: calc(100% - 12px); margin-inline: auto; padding: 3px 8px; border-radius: 5px; background: #111827ea; font-size: .77rem; }
 .combatant { min-width: 0; display: flex; flex-direction: column; justify-content: space-between; align-items: stretch; }
 .combatant.player { grid-area: player; }
 .combatant.opponent { grid-area: opponent; }
@@ -98,6 +105,7 @@ summary { min-height: 44px; padding: 10px 0; line-height: 1.5; cursor: pointer; 
 .panel { min-width: 0; padding: 14px; border: 1px solid var(--edge); border-radius: 12px; background: var(--surface); }
 .action-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px 12px; }
 .action-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+#arena-skip-motion { position: sticky; inset-block-start: max(6px, env(safe-area-inset-top)); z-index: 1; display: block; margin-inline-start: auto; background: var(--surface); }
 #inspect-moves { font-size: .8rem; padding: 5px 9px; }
 .action-copy { margin: 4px 0 10px; color: var(--muted); font-size: .84rem; line-height: 1.4; }
 .battle-form-option { display: flex; min-height: 44px; padding-inline: 8px; align-items: center; gap: 8px; color: #ddc8ff; font-size: .82rem; cursor: pointer; }
@@ -140,8 +148,21 @@ summary { min-height: 44px; padding: 10px 0; line-height: 1.5; cursor: pointer; 
 [data-type="grass"] { --type-color: #a4e49e; }
 [data-type="stellar"] { --type-color: #ddc8ff; }
 .error { margin: 8px 0; color: #ffb5bb !important; font-size: .85rem; white-space: pre-line; overflow-wrap: anywhere; }
-#result p { margin-block: 6px 12px; }
-#result button { margin: 0 5px 4px 0; }
+#match[data-result="win"] { --result-color: var(--accent); }
+#match[data-result="loss"] { --result-color: #ffb5bb; }
+#match[data-result="draw"] { --result-color: var(--warm); }
+#actions[data-phase="ended"] { border-color: var(--result-color, var(--edge)); }
+#actions[data-phase="ended"] #request-heading { color: var(--result-color, var(--ink)); }
+#result p { margin-block: 6px 12px; color: var(--muted); font-size: .85rem; line-height: 1.4; }
+.result-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 10px; }
+.result-exit { display: inline-flex; align-items: center; min-height: 44px; font-size: .8rem; }
+@media (prefers-reduced-motion: no-preference) {
+  #match[data-send-out="true"][data-motion="true"] .sprite-stage img { animation: arena-send-out 340ms ease-out both; }
+  @keyframes arena-send-out {
+    from { opacity: .25; transform: scale(.82); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
 .rosters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
 .rosters h2 { font-size: .83rem; color: var(--muted); }
 .rosters ul { padding: 0; margin: 7px 0 0; list-style: none; font-size: .78rem; }
@@ -186,6 +207,8 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8p
 @media (max-width: 375px) {
   .format-label { font-size: .65rem; padding-inline: 6px; }
   .home-link { font-size: .85rem; }
+  .arena-speed { font-size: .68rem; }
+  #arena-speed { padding-inline: 4px; }
   .battlefield, .panel { padding-inline: 9px; }
   .team-preview { grid-template-columns: 1fr; }
 }

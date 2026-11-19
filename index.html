@@ -1,10 +1,100 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <meta http-equiv="refresh" content="0; url=battle.html">
-    <title>Pure Stats Battle</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#11151c">
+    <title>Pokémon Arena</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <style>
+        :root { color-scheme: dark; font: 16px/1.4 system-ui, sans-serif; background: #11151c; color: #f3f0e8; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center;
+            background: linear-gradient(120deg, #11151cf0 8%, #11151c98 65%, #11151cdf),
+                #11151c url('sprites/backgrounds/menu/menu_bg_dark.webp') center / cover no-repeat fixed;
+            padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        }
+        main { width: min(100%, 48rem); }
+        h1 { font-size: clamp(2rem, 8vw, 5rem); line-height: 1; letter-spacing: -.055em; margin: 0 0 clamp(12px, 5vh, 32px); }
+        h1 span { color: #f8d282; }
+        nav, .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; }
+        a, summary {
+            min-height: 44px; display: grid; align-content: center; padding: 10px 13px;
+            border-radius: 8px; border: 1px solid #747784; font-weight: 650;
+            text-decoration: none; color: inherit; background: #1b2029;
+        }
+        a[hidden] { display: none; }
+        .primary { background: #f8d282; border-color: #f8d282; color: #21180c; }
+        a:hover, summary:hover { border-color: #f8d282; }
+        :focus-visible { outline: 3px solid #f8d282; outline-offset: 3px; }
+        details, footer { margin-top: 10px; }
+        summary { cursor: pointer; display: list-item; }
+        .modes { margin-top: 8px; }
+        footer { display: flex; gap: 8px; flex-wrap: wrap; }
+        small { font-weight: 550; }
+        @media (orientation: landscape) and (max-height: 400px) {
+            h1 { font-size: clamp(1.9rem, 8vh, 3.2rem); margin-bottom: 10px; }
+        }
+    </style>
 </head>
 <body>
-    <script>window.location.href = 'battle.html';</script>
+    <main>
+        <h1>Pokémon <span>Arena</span></h1>
+        <nav aria-label="Play">
+            <a class="primary" id="title-continue" href="battle.html?entry=continue" hidden>
+                Continue <small id="title-save"></small>
+            </a>
+            <a class="primary" id="title-story" href="battle.html?entry=story">Story Mode</a>
+            <a href="battle.html?entry=quick">Jump In</a>
+        </nav>
+        <details>
+            <summary>More ways to play</summary>
+            <nav class="modes" aria-label="Battle modes">
+                <a href="battle.html?entry=battle">Quick Battle</a>
+                <a href="battle.html?entry=options">Battle Options</a>
+                <a href="battle.html?entry=gauntlet">Gauntlet</a>
+                <a href="battle.html?entry=local">Local PvP</a>
+                <a href="battle.html?entry=host">Online Host</a>
+                <a href="battle.html?entry=join">Online Join</a>
+                <a href="competitive/index.html">Competitive Arena</a>
+                <a href="battle.html?entry=leaderboard">Gauntlet Leaderboard</a>
+            </nav>
+        </details>
+        <footer>
+            <a href="battle.html?entry=offline">Offline play</a>
+            <a href="battle.html?entry=settings">Settings</a>
+        </footer>
+    </main>
+    <script>
+        function showSave() {
+            let run;
+            try { run = JSON.parse(localStorage.getItem('pbs_story_save')); } catch (_) {}
+            const resumable = run?.active === true && Array.isArray(run.team);
+            document.getElementById('title-continue').hidden = !resumable;
+            document.getElementById('title-story').classList.toggle('primary', !resumable);
+            if (resumable) {
+                const name = run.trainerProfile?.name || 'Trainer';
+                const badges = Math.max(0, Math.min(8, run.badges | 0));
+                document.getElementById('title-save').textContent = `${String(name).slice(0, 24)} · ${badges}/8 badges`;
+            }
+        }
+        showSave();
+        window.addEventListener('pageshow', showSave);
+        window.addEventListener('storage', event => { if (event.key === 'pbs_story_save') showSave(); });
+        // Preserve older invitation and diagnostic URLs on the site root.
+        if (location.search || location.hash) location.replace('battle.html' + location.search + location.hash);
+        if ('serviceWorker' in navigator && (navigator.serviceWorker.controller || navigator.standalone ||
+                matchMedia('(display-mode: standalone)').matches)) {
+            const hadController = !!navigator.serviceWorker.controller;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (hadController) location.reload();
+            }, { once: true });
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>
