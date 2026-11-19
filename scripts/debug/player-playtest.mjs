@@ -220,4 +220,9 @@ ${body}</html>
 await writeFile(join(out, 'coverage.json'), JSON.stringify({ total, inventory, dynamic, results }, null, 2) + '\n');
 for (const [label, items] of sections) console.log(`${label}: ${counts(items, item => item.evidence.length)}/${items.length}`);
 console.log(`Evidence gallery: ${join(out, 'index.html')}`);
-if (results.some(result => wanted.includes(result.id) && ['failed', 'incomplete'].includes(result.status))) process.exitCode = 1;
+for (const result of results) {
+  if (!wanted.includes(result.id) || !['failed', 'incomplete'].includes(result.status)) continue;
+  process.exitCode = 1;
+  console.error(`${result.label} ${result.status} (${result.log || 'no runner log'})`);
+  for (const finding of result.findings) console.error(JSON.stringify(finding).slice(0, 600));
+}

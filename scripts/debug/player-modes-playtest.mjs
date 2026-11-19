@@ -75,6 +75,28 @@ async function chooseFastBattles(page) {
   await closeSettings(page);
 }
 
+async function waitForOfflineControl(page, phase) {
+  try {
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller), undefined, { timeout: 30_000 });
+  } catch (error) {
+    const state = await page.evaluate(async () => {
+      const workers = navigator.serviceWorker;
+      const registration = await Promise.race([
+        workers?.getRegistration(),
+        new Promise(resolve => setTimeout(resolve, 1000)),
+      ]);
+      return {
+        document: document.readyState,
+        controller: workers?.controller?.state ?? null,
+        installing: registration?.installing?.state ?? null,
+        waiting: registration?.waiting?.state ?? null,
+        active: registration?.active?.state ?? null,
+      };
+    }).catch(() => null);
+    throw new Error(`Offline service worker did not control the page ${phase}${state ? ` (${JSON.stringify(state)})` : ''}`, { cause: error });
+  }
+}
+
 async function battleOptions(page, { teams = 'random', size = '1' } = {}) {
   await page.locator('#menu-customize-toggle').click();
   await page.getByRole('radio', { name: /Custom/ }).click();
@@ -146,12 +168,13 @@ const cases = [
     name: 'settings-offline', profile: desktop, serviceWorkers: 'allow',
     async play(page, record) {
       await chooseFastBattles(page);
+      await waitForOfflineControl(page, 'before the settings reload');
       await page.reload({ waitUntil: 'domcontentloaded' });
+      await waitForOfflineControl(page, 'after the settings reload');
       await openSettings(page);
       assert.equal(await page.locator('#setting-battle-speed').inputValue(), 'instant');
       assert.equal(await page.locator('#sw-animations').isChecked(), false);
       await closeSettings(page);
-      await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 30000 });
       await page.getByRole('button', { name: 'Download the game for offline play' }).click();
       await page.locator('#offline-dl-panel').waitFor({ state: 'visible' });
       await page.waitForFunction(() =>
@@ -456,7 +479,7 @@ try {
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await main(page).waitFor();
       const more = page.locator('#menu-more-play-summary');
-      if (await more.count() && !['offline-settings', 'collection-help'].includes(name)) await more.click();
+      if (await more.count() && !['settings-offline', 'collection-help'].includes(name)) await more.click();
       await play(page, record);
       assert.deepEqual(record.errors, []);
     } catch (error) {
