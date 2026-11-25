@@ -66,15 +66,17 @@ try {
       await reach(page, objective);
       await objective.click();
       await reach(page, choose);
-      const roleCue = (await choose.locator('.prof-pick-role').innerText()).trim();
-      assert.match(roleCue, /attacker|Defensive/);
+      const roleCue = choose.locator('.prof-pick-role .story-stat-style');
+      assert.match(await roleCue.getAttribute('data-attack-style'), /^(Physical|Special|Hybrid)$/);
+      const displayedTotal = await roleCue.locator('strong').innerText();
+      assert.ok(Number(displayedTotal) > 0);
       const previewNames = await choose.locator('.prof-pick-move').allTextContents();
       assert.ok(previewNames.length >= 1 && previewNames.length <= 4, `${species} has playable moves`);
       assert.ok(previewNames.every(move => !move.startsWith('Hidden Power')), `${species} has no mentor-locked Hidden Power`);
 
       await page.getByRole('button', { name: `Full summary of ${species}`, exact: true }).click();
       const summary = page.locator('#modal-summary');
-      assert.equal((await summary.locator('#sum-page-1 .sum-note strong').innerText()).trim().replace(/\s+/g, ' '), roleCue.replace(/\s+/g, ' '));
+      assert.equal(await summary.locator('#sum-page-1 .sum-stat-total b').innerText(), displayedTotal);
       assert.equal(await summary.locator('#sum-training-details').evaluate(details => details.open), false);
       await summary.getByText('Training details', { exact: true }).click();
       assert.ok(await summary.getByText('IVs', { exact: true }).isVisible());

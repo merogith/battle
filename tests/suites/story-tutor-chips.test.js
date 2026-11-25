@@ -1,7 +1,5 @@
-// Step 2 — chip-bar declutter. The 18 always-on type chips collapse into one
-// "Type ▾" control that expands a row listing ONLY the types present in the current
-// view; the duplicate Physical/Special/Status category row is gone (the STAB /
-// Damage / Status quick chips already cover that split).
+// The Move Tutor groups its filters in one collapsed sheet. Type choices come
+// from the Pokémon's own catalog and stay available during multi-selection.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
@@ -45,9 +43,10 @@ test('move bar: Type ▾ collapsed by default, no inline type chips, no category
   await enterMovesAndSettle();
   assert.ok(host().querySelector('[data-typemenu-toggle]'), 'Type ▾ toggle present');
   assert.ok(!host().querySelector('.tx-typemenu-row'), 'type menu is collapsed by default');
-  assert.equal(host().querySelectorAll('.tx-chip[data-filter-kind="moveCat"]').length, 0,
-    'standalone Physical/Special/Status category row removed');
-  assert.ok(host().querySelectorAll('.tx-chip--quick').length >= 2, 'STAB / Damage / Status quick chips remain');
+  assert.equal(host().querySelector('.tx-filter-sheet').hidden, true, 'advanced filters start collapsed');
+  const categories = host().querySelector('[aria-label="Move category"]');
+  assert.deepEqual([...categories.querySelectorAll('button')].map(button => button.textContent),
+    ['Any category', 'Damage', 'Physical', 'Special', 'Status']);
 });
 
 test('opening Type ▾ reveals only the types present in the current view', async () => {

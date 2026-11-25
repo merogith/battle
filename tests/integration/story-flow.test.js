@@ -44,6 +44,10 @@ test('storyRngNext is deterministic given a seeded state', async () => {
 // lose them, sometimes not"). A genuine victory still burns them.
 test('non-win battle exits refund spent battle-bag items', async () => {
   const { window } = await loadEngine();
+  const store = new Map();
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true, value: { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) },
+  });
   const SM = window.StoryMode;
   if (!SM || !SM.state) return;
   const sm = SM.state;

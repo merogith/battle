@@ -13,7 +13,7 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 
 const button = (name, host = page) => host.getByRole('button', { name, exact: typeof name === 'string' });
-const offer = button(/Someone here needs a hand/);
+const offer = button(/Optional errand/);
 const scene = page.locator('.story-narr-root:visible');
 const bag = page.locator('#modal-story-bag');
 const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')));
@@ -95,10 +95,14 @@ try {
     await button('Bag (2 types)').waitFor();
 
     await offer.click();
+    assert.match(await offer.innerText(), /Talk to Mine Foreman/);
     assert.match(await scene.innerText(), /Mine Foreman/i);
+    assert.match(await scene.innerText(), /Flintreach Town/i);
     await button(/Not right now/, scene).click();
+    assert.equal(await scene.locator('[data-narr-body]').evaluate(node => node === document.activeElement), true);
     await button('Continue →', scene).click();
     await offer.waitFor();
+    assert.equal(await offer.evaluate(node => node === document.activeElement), true);
     assert.equal((await saved()).errands.deliver_route_ledger, undefined);
     await offer.click();
     await button(/Take the job/, scene).click();

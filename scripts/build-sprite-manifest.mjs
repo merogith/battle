@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build a manifest of locally available Pokemon sprites and inject it into battle.html.
-// Read by getSprite() at runtime: if a slug is in the manifest, serve from local; else go to Showdown.
+// Read by getSprite() at runtime to choose the best bundled orientation and color.
 
 import fs from 'node:fs';
 import path from 'node:path';

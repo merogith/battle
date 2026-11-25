@@ -68,7 +68,7 @@ try {
         await enterAfterRoad(page);
         assert.equal(await page.locator('#story-hud-city').textContent(), 'Flintreach Town');
         const visitor = page.locator('#story-city-visitor');
-        assert.equal(await visitor.textContent(), 'Brock is visiting from Pewter City.');
+        assert.equal(await visitor.textContent(), 'Brock, the Rock-type Gym Leader, is visiting from Pewter City.');
         assert.match(await visitor.evaluate(node => getComputedStyle(node).fontFamily), /system-ui/);
         const card = page.locator('#story-world-city');
         assert.equal(await card.locator('summary').textContent(), title);

@@ -145,6 +145,22 @@ try {
       await page.evaluate(() => window.showScreen('screen-story-city'));
       await docked.waitFor({ state: 'visible' });
       console.log('Global notice pauses across the Casino screen and resumes in the city');
+
+      await item.waitFor({ state: 'detached' });
+      await page.evaluate(() => {
+        window.showToast('A local lead from town', 5000, { townOnly: true });
+        window.showToast('A second local lead', 5000, { townOnly: true });
+      });
+      await docked.filter({ hasText: 'A local lead from town' }).waitFor();
+      await page.evaluate(() => {
+        window.showScreen('screen-story-tutor');
+        window.showToast('Lesson complete', 1000);
+      });
+      await item.filter({ hasText: 'Lesson complete' }).waitFor();
+      await page.evaluate(() => window.openNotificationHistory());
+      assert.match(await alert.locator('#modal-game-alert-text').innerText(), /A second local lead[\s\S]*A local lead from town/);
+      await alert.getByRole('button', { name: 'OK', exact: true }).click();
+      console.log('Town leads stay in history and clear from the Tutor');
     }
     assert.deepEqual(errors, []);
     await context.close();

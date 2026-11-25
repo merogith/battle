@@ -1,8 +1,5 @@
-// Move Tutor "Show all" reveals the FULL movepool with off-stage moves rendered
-// locked (🔒 + the tutor tier that unlocks them), matching the Dojo's all-items
-// roster. Locks are authoritative — a card is locked iff the move is NOT in the
-// teachable acceptance set, so the Inner ≤75 BP cap and the Learnt/Awakened tiers
-// are all reflected correctly. Locked cards are disabled (never selectable).
+// The Move Tutor opens the full catalog, including locked lessons. The optional
+// Popular moves and Can learn now filters must use their advertised predicates.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
@@ -27,41 +24,52 @@ async function openTutorInner() {
 }
 
 const host = () => doc.getElementById('story-tutor-team');
-const moveCards = () => [...host().querySelectorAll('.tx-card[data-card-kind="move"]')];
-async function clickShowAll() {
-  const chip = host().querySelector('[data-filter-kind="recOnly"][data-filter-value="moves"]');
-  assert.ok(chip, '★ Recommended chip exists');
-  chip.click();
-  for (let i = 0; i < 25; i++) { await wait(40); if (moveCards().length > 0) break; }
-  await wait(120);
-}
+const moveCards = () => [...host().querySelectorAll('.tx-card[data-card-kind="move"]:not([hidden])')];
 
-test('Show all reveals more moves than the ★ recommended view', async () => {
+test('the catalog starts complete, and Popular moves still filters while searching', async () => {
   await openTutorInner();
-  assert.equal(ST.npcStage('tutor'), 0, 'precondition: Inner Strength (most of the pool locked)');
-  const recCount = moveCards().length;
-  await clickShowAll();
-  const allCount = moveCards().length;
-  assert.ok(allCount > recCount, `Show all (${allCount}) reveals more than ★ recommended (${recCount})`);
+  const full = moveCards();
+  const unpopular = full.find(card => !card.querySelector('.tx-card-pct'));
+  assert.ok(unpopular, 'the full catalog contains lessons outside the competitive sample');
+  const popular = () => host().querySelector('[data-filter-kind="recOnly"][data-filter-value="moves"]');
+  assert.equal(popular().getAttribute('aria-pressed'), 'false');
+  popular().click();
+  assert.ok(moveCards().length < full.length);
+  assert.ok(moveCards().every(card => card.querySelector('.tx-card-pct')));
+  const search = host().querySelector('input[data-kind="moves"]');
+  search.value = unpopular.dataset.cardValue;
+  search.dispatchEvent(new w.Event('input', { bubbles: true }));
+  assert.equal(moveCards().some(card => card.dataset.cardValue === unpopular.dataset.cardValue), false);
+  popular().click();
+  assert.ok(moveCards().some(card => card.dataset.cardValue === unpopular.dataset.cardValue));
 });
 
 test('off-stage moves are locked, disabled, and carry a 🔒 unlock-tier pill', async () => {
   await openTutorInner();
-  await clickShowAll();
   const cards = moveCards();
   const locked = cards.filter((c) => c.getAttribute('data-locked') === '1');
-  assert.ok(locked.length > 0, 'Show all surfaces locked off-stage moves at Inner');
+  assert.ok(locked.length > 0, 'the catalog surfaces future lessons');
   for (const c of locked) {
     assert.ok(c.hasAttribute('disabled'), `${c.getAttribute('data-card-value')} locked card is disabled (not selectable)`);
     const pill = c.querySelector('.tx-pill--locked');
     assert.ok(pill, 'locked card shows a 🔒 pill');
-    assert.match(pill.textContent, /Unleashed|Guru/, 'pill names the unlock tier (Unleashed or Guru)');
+    assert.match(pill.textContent, /Opens in .+/, 'pill names the town that unlocks the move');
   }
+});
+
+test('Can learn now excludes future lessons and exposes a removable active filter', async () => {
+  await openTutorInner();
+  host().querySelector('.tx-chip[data-filter-kind="learnableOnly"]').click();
+  assert.ok(moveCards().length > 0);
+  assert.ok(moveCards().every(card => card.dataset.locked !== '1'));
+  const filter = host().querySelector('.tx-active-filter[data-filter-kind="learnableOnly"]');
+  assert.ok(filter);
+  filter.click();
+  assert.ok(moveCards().some(card => card.dataset.locked === '1'));
 });
 
 test('locks match the teachable acceptance set exactly (authoritative)', async () => {
   await openTutorInner();
-  await clickShowAll();
   // Warm gated pool (post-render the learnset cache is warm → returns the gated set).
   const gated = await ST.tutorGetStagedMovePool('Garchomp', ['Dragon Claw']);
   const teachable = new Set(gated.map((m) => String(m).split('/')[0]));

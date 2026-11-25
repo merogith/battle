@@ -2,8 +2,8 @@
 // toggles: it keyed-reconciles the card grid instead of rebuilding the whole editor.
 // This is the SAFETY GUARDRAIL: for a sequence of real toggles, the fast-path result
 // (visible cards + order + count + chip states + active pills) must be identical to a
-// full render of the same state. A full render is forced by switching mon away and back
-// (state persists), which never takes the fast path.
+// full render of the same state. Toggling the drawer twice preserves the Pokémon,
+// the active filters and the sort while forcing a full render.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
@@ -33,11 +33,11 @@ async function enterMovesAndSettle() {
   await openTutorMon(w, 0); // screen starts all-closed — open the first mon
   for (let i = 0; i < 25; i++) { await sleep(40); if (host() && host().innerHTML.includes('tx-grid')) break; }
 }
-async function gridReady(i) { for (let k = 0; k < 25; k++) { await sleep(40); if (monNode(i) && monNode(i).querySelector('.tx-grid > .tx-card')) return; } }
-// Force a FULL render of the same state: open mon 1, then mon 0 again (filters/sort persist).
 async function forceFullRender() {
-  host().querySelector('.tx-mon-pill[data-mon-switcher="1"]').click(); await gridReady(1);
-  host().querySelector('.tx-mon-pill[data-mon-switcher="0"]').click(); await gridReady(0);
+  for (let i = 0; i < 2; i++) {
+    host().querySelector('[data-filters-toggle]').click();
+    await sleep(40);
+  }
 }
 function snap() {
   const body = openBody();
@@ -90,11 +90,36 @@ test('filter fast path (type + quick) is equivalent to a full render', async () 
 test('sort fast path is equivalent to a full render', async () => {
   primeTwoMon();
   await enterMovesAndSettle();
-  host().querySelector('.tx-chip--rec[data-filter-kind="recOnly"]').click(); await sleep(160); // Show all → sort selector appears
   for (const v of ['power', 'name', 'recommended', 'usage']) {
     const sel = openBody().querySelector('.tx-sort-select[data-kind="moves"]');
     sel.value = v; sel.dispatchEvent(new w.Event('change', { bubbles: true }));
     await sleep(160);
     await assertEquiv('sort ' + v);
+  }
+});
+
+test('search and clear leave cards in place when the catalog order is unchanged', async () => {
+  primeTwoMon();
+  await enterMovesAndSettle();
+  const grid = openBody().querySelector('.tx-grid');
+  const initial = [...grid.children];
+  const observer = new w.MutationObserver(() => {});
+  observer.observe(grid, { childList: true });
+  try {
+    const search = openBody().querySelector('.tx-search-input');
+    search.value = 'Earthquake';
+    search.dispatchEvent(new w.Event('input', { bubbles: true }));
+    assert.deepEqual(snap().cards, ['Earthquake']);
+    const clear = openBody().querySelector('[data-clear-filters="moves"]');
+    clear.focus();
+    let cardsAtFocus = null;
+    search.addEventListener('focus', () => { cardsAtFocus = snap().cards; }, { once: true });
+    clear.click();
+    assert.deepEqual(cardsAtFocus, ['Earthquake']);
+    assert.deepEqual([...grid.children], initial);
+    assert.equal(grid.querySelectorAll('.tx-card[hidden]').length, 0);
+    assert.deepEqual(observer.takeRecords(), []);
+  } finally {
+    observer.disconnect();
   }
 });

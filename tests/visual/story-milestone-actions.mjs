@@ -72,7 +72,7 @@ try {
         window.showScreen('screen-story-city');
         window.__renderCityActionsForTest(row);
       });
-      const action = page.locator('#story-city-milestone button');
+      const action = page.locator('#story-city-milestone button').filter({ hasText: 'Teach Wake' });
       await action.waitFor();
       const label = await action.locator('strong').innerText();
       const move = label.match(/^Teach Wake (.+)$/)?.[1];

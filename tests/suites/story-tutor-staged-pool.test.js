@@ -1,5 +1,5 @@
-// 3-stage Move Tutor (user model, tutor:[0,3,6]) — Inner Strength (Natural, per-city BP cap) at
-// C0-C2, Unleashed (ALL Natural, no TMs) at C3-C5, Guru (+Learnt +Awakened) at C6+. Verifies:
+// 3-stage Move Tutor (user model, tutor:[0,3,7]) — Inner Strength (Natural, per-city BP cap) at
+// C0-C2, Unleashed (ALL Natural, no TMs) at C3-C6, Guru (+Learnt +Awakened) at C7+. Verifies:
 //   • the staged pool's contents grow as the tutor levels up,
 //   • _moveCostForStage by-tag returns 1000 / 2500 / 5000 per Natural / Learnt /
 //     Awakened (independent of tutor stage), and matches the no-arg legacy
@@ -27,7 +27,6 @@ function primeAtCity(city) {
   }
   ST.sm.eventIndex = idx;
 }
-const bp = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
 function cityAtTutorStage(stage) {
   for (let c = 0; c <= 12; c++) { if ((ST.npcStageForCity('tutor', c) | 0) === stage) return c; }
   return 0;
@@ -37,12 +36,13 @@ test('Move Tutor: 3 stages — Inner Strength → Unleashed → Guru', () => {
   assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
   assert.equal(ST.npcStageName('tutor', 1), 'Unleashed');
   assert.equal(ST.npcStageName('tutor', 2), 'Guru');
-  // Thresholds tutor:[0,3,6] — Inner C0-2, Unleashed C3-5, Guru C6+.
+  // Thresholds tutor:[0,3,7] — Inner C0-2, Unleashed C3-6, Guru C7+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 2), 0);
   assert.equal(ST.npcStageForCity('tutor', 3), 1);
   assert.equal(ST.npcStageForCity('tutor', 5), 1);
-  assert.equal(ST.npcStageForCity('tutor', 6), 2);
+  assert.equal(ST.npcStageForCity('tutor', 6), 1);
+  assert.equal(ST.npcStageForCity('tutor', 7), 2);
 });
 
 test('_moveCostForStage by tag — Natural 1000 / Learnt 2500 / Awakened 5000', () => {
@@ -64,8 +64,8 @@ test('staged pool: Inner→Unleashed→Guru unlock ladder (user model) end-to-en
   // Warm the cache for Garchomp + verify the ACTUAL gating function (not a helper).
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   assert.ok(ls.natural.length && ls.learnt.length && ls.awakened.length, 'precondition: all buckets populated (offline index)');
-  const nat = ls.natural.find(m => bp(m) <= 40) || ls.natural[0]; // C0-teachable Natural (≤40, the C0 cap)
-  const lrn = ls.learnt[0];
+  const nat = ls.natural.find(m => ST.storyMoveLessonTier('Garchomp', m) === 1); // C0-teachable Natural (≤40, the C0 cap)
+  const lrn = ls.learnt.find(move => ST.storyMoveLessonTier('Garchomp', move) === 4);
   const awk = ls.awakened[0];
   // L1 Inner Strength (C0, BP cap 40): Natural within cap only — no Learnt, no Awakened.
   // Pre-fix bug: syncMoves was unioned unconditionally, so any Smogon Learnt move slipped
@@ -80,7 +80,7 @@ test('staged pool: Inner→Unleashed→Guru unlock ladder (user model) end-to-en
   primeAtCity(cityAtTutorStage(1));
   const poolL2 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
   assert.ok(poolL2.has(nat), 'L2 includes Natural');
-  assert.ok(!poolL2.has(lrn), 'L2 still blocks Learnt/TM (unlocks at Guru)');
+  assert.ok(!poolL2.has(lrn), 'Tier 3 still blocks taught attacks');
   assert.ok(!poolL2.has(awk), 'L2 still blocks Awakened');
   // L3 Guru: everything.
   primeAtCity(cityAtTutorStage(2));

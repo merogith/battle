@@ -6,7 +6,7 @@
 //
 // This locks: (1) the unified card renders the mon's own hpType as its type badge
 // (not Normal) and BP 60; (2) the desc explains the "hidden element" mechanic;
-// (3) on the one-time choose token the card says the player will pick the type.
+// (3) a waiting favor keeps the natural type visible and explains the choice.
 // Purely presentational — the teach path is covered by hidden-power-mentor.test.js.
 //
 // Run: node --test tests/suites/hidden-power-tutor-card.test.js
@@ -18,11 +18,15 @@ import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 const eng = await loadEngine();
 const w = eng.window;
 const ST = w.__storyTest;
-const HP = w.__hpTest;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const host = () => w.document.getElementById('story-tutor-team');
 async function settle(needle, tries = 40) { for (let i = 0; i < tries; i++) { await sleep(40); const h = host(); if (h && h.innerHTML.includes(needle)) return true; } return false; }
-async function showAll() { host().querySelector('.tx-chip--rec[data-filter-kind="recOnly"]')?.click(); await sleep(180); }
+async function searchHiddenPower(value = 'Hidden Power') {
+  const search = host().querySelector('.tx-search-input[data-kind="moves"]');
+  search.value = value;
+  search.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await sleep(180);
+}
 function hpCard() { return host().querySelector('.tx-card[data-card-value="Hidden Power"]'); }
 
 function prime({ choose }) {
@@ -47,7 +51,7 @@ test('the unified Hidden Power card shows the mon\'s own element, not Normal', a
   await w.StoryMode.enterTutor('moves');
   await openTutorMon(w);
   await settle('tx-grid');
-  await showAll();
+  await searchHiddenPower();
   const card = hpCard();
   assert.ok(card, 'the unified Hidden Power card is present at an unlocked tutor');
   const badge = card.querySelector('.type-badge');
@@ -67,7 +71,7 @@ test('the card carries an accessible "?" explainer (hover + touch + SR labelled)
   await w.StoryMode.enterTutor('moves');
   await openTutorMon(w);
   await settle('tx-grid');
-  await showAll();
+  await searchHiddenPower();
   const card = hpCard();
   const info = card.querySelector('.tx-tapinfo--force');
   assert.ok(info, 'a forced tap-info affordance is present on the Hidden Power card');
@@ -78,15 +82,29 @@ test('the card carries an accessible "?" explainer (hover + touch + SR labelled)
   assert.ok(!info.hasAttribute('tabindex'), 'not a nested focusable (valid button content)');
 });
 
-test('with the one-time token, the card says the player chooses the element', async () => {
+test('the natural type remains visible and searchable while the favor is available', async () => {
   prime({ choose: true });
   await w.StoryMode.enterTutor('moves');
   await openTutorMon(w);
   await settle('tx-grid');
-  await showAll();
+  await searchHiddenPower('Hidden Power Ice');
   const card = hpCard();
   assert.ok(card, 'card present');
+  assert.equal(card.hidden, false);
+  assert.equal(card.querySelector('.type-badge').textContent.trim(), 'Ice');
   const desc = card.querySelector('.tx-card-desc');
-  assert.ok(desc && /choose its type|lets you choose/i.test(desc.textContent),
-    'first-lesson copy tells the player they pick the type');
+  assert.match(desc?.textContent || '', /spend the Diviner’s favor to choose another type/i);
+});
+
+test('an equipped Hidden Power has one card with the real move name for Forget', async () => {
+  prime({ choose: true });
+  ST.sm.team[0].build.m.push('Hidden Power Ice');
+  await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w);
+  await settle('tx-grid');
+  await searchHiddenPower();
+  const equipped = host().querySelector('.tx-card[data-card-value="Hidden Power Ice"]');
+  assert.ok(equipped && !equipped.hidden);
+  assert.equal(equipped.querySelector('[data-unlearn-move]')?.dataset.unlearnMove, 'Hidden Power Ice');
+  assert.equal(hpCard(), null);
 });

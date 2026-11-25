@@ -61,7 +61,7 @@ run_case battle-motion-catalog node tests/visual/battle-motion-catalog.mjs
 run_case native-room-mock env BATTLE_TEST_ROOM_PIVOT=1 node tests/visual/online-native-room.mjs
 run_case native-room-reconnect env BATTLE_TEST_ROOM_RECONNECT=1 node tests/visual/online-native-room.mjs
 
-for visual in deferred-startup classic-native-pivot story-retry-save story-exact-resume keyboard-navigation story-city-errands-and-bag \
+for visual in deferred-startup classic-native-pivot story-retry-save story-exact-resume keyboard-navigation story-town-tools story-city-errands-and-bag \
   story-starter-parity story-cinematic-hierarchy story-boss-phases story-audio story-side-activities \
   story-first-gym-coach story-north-road-world story-signature-encounters story-gym-intermission story-dialogue battle-motion \
   story-raid-ordinary-win; do
@@ -70,6 +70,7 @@ done
 run_case battle-motion-webkit env BATTLE_TEST_ENGINE=webkit node tests/visual/battle-motion.mjs
 run_case battle-motion-firefox env BATTLE_TEST_ENGINE=firefox node tests/visual/battle-motion.mjs
 run_case battle-responsive env BATTLE_MAIN_RES_SHOTS="$output/battle-responsive" node tests/visual/battle-responsive.mjs
+run_case interface-polish env BATTLE_INTERFACE_OUT="$output/interface-polish" node tests/visual/interface-polish.mjs
 run_case story-onboarding env BATTLE_ONBOARDING_OUT="$output/story-onboarding" node tests/visual/story-onboarding.mjs
 run_case story-city-notifications env BATTLE_CITY_OUT="$output/story-city-notifications" node tests/visual/story-city-notifications.mjs
 run_case story-collection-layout env BATTLE_COLLECTION_OUT="$output/story-collection-layout" node tests/visual/story-collection-layout.mjs

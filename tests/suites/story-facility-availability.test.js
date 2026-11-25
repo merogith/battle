@@ -34,19 +34,19 @@ async function waitFor(predicate, label) {
 
 test('the City 5 action opens the chosen partner, exact move and first free slot', async () => {
     prime(4);
-    story.enterTutor('moves', { partnerId: 'trainer-ace', move: 'Outrage' });
-    await waitFor(() => host().querySelector('.tx-card[data-card-value="Outrage"]'), 'the locked move renders');
-    const locked = host().querySelector('.tx-card[data-card-value="Outrage"]');
+    story.enterTutor('moves', { partnerId: 'trainer-ace', move: 'Earthquake' });
+    await waitFor(() => host().querySelector('.tx-card[data-card-value="Earthquake"]'), 'the locked move renders');
+    const locked = host().querySelector('.tx-card[data-card-value="Earthquake"]');
     assert.equal(locked.disabled, true);
     assert.match(locked.querySelector('.tx-pill--locked').textContent, /Glasswater City/);
     prime(5);
     state.sm.team.unshift({ id: 'starter', name: 'Pikachu', build: { m: ['Thunder Shock'] } });
-    story.enterTutor('moves', { partnerId: 'trainer-ace', move: 'Outrage' });
-    await waitFor(() => host().querySelector('.tx-card[data-card-value="Outrage"]'), 'Outrage card renders');
-    const card = host().querySelector('.tx-card[data-card-value="Outrage"]');
+    story.enterTutor('moves', { partnerId: 'trainer-ace', move: 'Earthquake' });
+    await waitFor(() => host().querySelector('.tx-card[data-card-value="Earthquake"]'), 'Earthquake card renders');
+    const card = host().querySelector('.tx-card[data-card-value="Earthquake"]');
     assert.equal(card.disabled, false);
     assert.equal(host().querySelector('.story-tutor-mon-toggle[aria-expanded="true"]').dataset.team, '1');
-    assert.equal(host().querySelector('.tx-search-input').value, 'Outrage');
+    assert.equal(host().querySelector('.tx-search-input').value, 'Earthquake');
     assert.equal(host().querySelector('.tx-slot-chip[aria-pressed="true"]').dataset.slotIdx, '1');
     assert.deepEqual([...state.sm.team[1].build.m], ['Dragon Claw'], 'the shortcut makes no purchase');
     story.enterTutor('moves');

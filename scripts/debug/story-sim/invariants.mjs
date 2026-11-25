@@ -45,7 +45,7 @@ export function checkRun(rec) {
       if (mon.hp !== mon.maxHp || mon.status || mon.pp.some(m => m.maxPp != null && m.pp !== m.maxPp))
         push('dirty-retry', `pos ${s.pos}: ${mon.name} started with depleted HP, status, or PP`);
     }
-    if (s.conceded && (!s.isRival || s.won || s.goldAfter !== 0)) push('invalid-concession', `pos ${s.pos}: invalid rival concession`);
+    if (s.conceded && (!s.isRival || s.won || s.goldAfter !== (s.city === 0 ? s.goldBefore : 0))) push('invalid-concession', `pos ${s.pos}: invalid rival concession`);
     // NOTE: a battle stall (s.stalled) is an AI/matchup signal (the 1-ply AI can't break an
     // unwinnable wall), not a correctness violation — the resolver caps it gracefully. Stalls are
     // recorded on the stage and surfaced as an aggregate stall-rate metric by analyze.mjs, not

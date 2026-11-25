@@ -139,11 +139,13 @@ test('revealLines stages lines per tap and never dismisses past an unread beat',
   // Full-text contract still holds — hidden lines are in the DOM text.
   assert.match(ov.textContent, /s3/);
   const cont = ov.querySelector('button[data-narr-continue="1"]');
+  assert.equal(cont.textContent, 'Next line');
   cont.click();
   assert.equal(hidden(), 1, 'tap 1 reveals line 2');
   assert.equal(done, false, 'not dismissed');
   cont.click();
   assert.equal(hidden(), 0, 'tap 2 reveals line 3');
+  assert.equal(cont.textContent, 'Continue →');
   assert.equal(done, false, 'still not dismissed');
   cont.click();
   assert.equal(done, true, 'final tap dismisses');

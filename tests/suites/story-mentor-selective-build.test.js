@@ -19,7 +19,7 @@ const ST = w.__storyTest;
 const doc = w.document;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function prime(city, build, gold, inventory) {
+async function prime(city, build, gold, inventory, species = 'Garchomp') {
   ST.sm.active = true; ST.sm.runSeed = 1; ST.sm._strngState = null;
   ST.sm.settings = { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] };
   ST.sm.badges = Math.max(0, city - 1); ST.sm.gold = gold; ST.sm.inventory = inventory || {};
@@ -27,7 +27,7 @@ async function prime(city, build, gold, inventory) {
   for (let ei = 0; ei <= 140; ei++) { let c = -1; try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {} if (c === city) { idx = ei; break; } }
   ST.sm.eventIndex = idx;
   ST.sm.facilityIntros = {}; ST.sm.facilitiesSeen = {}; ST.sm.scenesShown = {};
-  ST.sm.team = [{ name: 'Garchomp', build }];
+  ST.sm.team = [{ name: species, build }];
   w.StoryMode.enterMentor();
   for (let i = 0; i < 40; i++) { await wait(40); if (doc.querySelector('#story-mentor-team [data-fastbuild-open], #story-mentor-team .tx-fastbuild-bar--done')) break; }
 }
@@ -163,8 +163,27 @@ test('the first Mentor action previews one affordable upgrade using an owned vou
   assert.equal(host.querySelectorAll('.tx-fb-row').length, 1);
   assert.match(host.querySelector('[data-fb-heading]').textContent, /Suggested upgrade for Garchomp/);
   assert.equal(host.querySelector('[data-fastbuild-apply]').disabled, false);
-  assert.match(host.querySelector('[data-fastbuild-apply]').textContent, /0G \+ 1 Heart Scale/);
+  assert.match(host.querySelector('[data-fastbuild-apply]').textContent, /Apply upgrade · 1 Heart Scale/);
   assert.ok(host.querySelector('[data-fb-advanced]'), 'full build remains available');
+});
+
+test('the Mentor keeps gold as the default payment when the lesson is affordable', async () => {
+  await prime(7, { m: ['Tackle'], n: 'Hardy', a: 'Rough Skin' }, 40000, { heartScale: 1 });
+  const host = doc.querySelector('#story-mentor-team');
+  host.querySelector('[data-fastbuild-open]').click();
+  assert.equal(host.querySelector('[data-fb-vouch="heartScale"]').checked, false);
+  assert.match(host.querySelector('[data-fastbuild-apply]').textContent, /G$/);
+  host.querySelector('[data-fb-vouch="heartScale"]').click();
+  assert.match(host.querySelector('[data-fastbuild-apply]').textContent, /1 Heart Scale$/);
+});
+
+test('the Mentor preserves itemless Acrobatics for both empty held item representations', async () => {
+  for (const i of [undefined, '(none)']) {
+    await prime(7, { m: ['Acrobatics', 'Flying Press'], n: 'Adamant', a: 'Unburden', i }, 40000, {}, 'Hawlucha');
+    const plan = ST.txBuildFastBuildPlan(0);
+    assert.ok(plan);
+    assert.equal(plan.parts.some(part => part.kind === 'item'), false);
+  }
 });
 
 test('two re-aimed suggestions cannot purchase a fifth move or consume vouchers', async () => {

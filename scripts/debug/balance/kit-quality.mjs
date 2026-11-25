@@ -2,13 +2,8 @@
 // IV/EV/nature-modifier/stat-multiplier). This pass covers the dimensions stats DON'T capture:
 // MOVESETS, ABILITIES, ITEMS, and NATURE-APPROPRIATENESS — across the 4 gen locks over N seeds.
 //
-// Reference frame: the engine's enemy kit-quality knobs are EXPLICITLY tuned to player parity
-// (the source comments say "foe ≤ player at every city" — foe item tier is derived from the
-// player's Battle-Dojo clock; ability/nature/move optimization ramp with the player's facility
-// unlocks). So the INTENDED opt-chance curves (_storyNatureOptChance / _storyAbilityOptChance /
-// _storyMoveOptChance / _storyFoeItemTier) ARE the player-availability ceiling. This script
-// measures the REALIZED enemy kit per stage and compares it to that intended ceiling — flagging
-// where a roll OVER-delivers (would beat player parity) or UNDER-delivers (gen-lock thinning).
+// The final encounter pass applies the shared unlocks and fits equipment to the resulting kit.
+// Measure the resulting set, and keep the optimization probabilities as context for the results.
 //
 // Run:  node --max-old-space-size=4096 scripts/debug/balance/kit-quality.mjs [seeds]
 // Out:  agent-state/balance/{enemy-kits.csv, kit-summary.csv, KIT_QUALITY_REPORT.md}
@@ -19,9 +14,8 @@ import fs from 'fs';
 const SEEDS_N = Math.max(1, parseInt(process.argv[2] || process.env.SEEDS || '100', 10));
 const SEED_BASE = 1000;
 const DIFFICULTY = 'normal';
-const OUT_DIR = 'agent-state/balance';
+const OUT_DIR = process.env.KIT_QUALITY_OUT || 'agent-state/balance';
 const MECHANICS = { megaOn: false, zOn: false, dynaOn: false, teraOn: false };
-const TOL = 0.12; // realized-vs-intended band before flagging over/under-delivery
 
 const GEN_SETTINGS = [
   { label: 'GEN 1 ONLY', key: 'gen1',    gens: [1] },
@@ -35,10 +29,10 @@ const eng = await loadEngine();
 const S = eng.window.__storyTest;
 const R = eng.window.__rivalTest;
 const W = eng.window;
+await W._loadOpAbilities?.();
 const baseStats = R.baseStats;
 const natureMods = W.natureModifiers || {};
 const SEEDS = Array.from({ length: SEEDS_N }, (_, i) => (SEED_BASE + i) >>> 0);
-const diffStep = (S.trainerDifficultyStep ? S.trainerDifficultyStep(DIFFICULTY) : 1) | 0;
 
 const NO_ITEM = new Set([null, '', 'No Item', 'NO_ITEM', 'None', undefined]);
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
@@ -98,6 +92,16 @@ for (const setting of GEN_SETTINGS) {
     const res = S.simulateStoryRunTeams({ seed, enabledGens: setting.gens, difficulty: DIFFICULTY, partySize: 6, mechanics: MECHANICS });
     sims++;
     if (res.error) continue;
+    const run = S.sm;
+    try {
+      S.sm = { ...run, active: true, runSeed: seed, storyDifficulty: DIFFICULTY, crucibleBattleSource: null };
+      for (const row of res.rows) {
+        Object.assign(S.sm, { eventIndex: row.pos, badges: row.badges });
+        await S.storyGateFoeMovesByCity(row.team, row.eid);
+      }
+    } finally {
+      S.sm = run;
+    }
     for (const row of res.rows) {
       const { eid, eventName, trainer, cityIndex } = row;
       const city = cityIndex;
@@ -106,7 +110,7 @@ for (const setting of GEN_SETTINGS) {
       if (!A) {
         A = { meta: { genKey: setting.key, genLabel: setting.label, eid, eventName, trainer, city },
               stab: [], hasStab: [], coverage: [], avgBP: [], maxBP: [], status: [], priority: [], moveCount: [],
-              natOpt: [], natBad: [], abilOpt: [], abilHidden: [], item: [] };
+              natOpt: [], natBad: [], abilOpt: [], abilHidden: [], item: [], overItemTier: [] };
         stage.set(key, A);
       }
       A.meta.trainer = trainer;
@@ -118,6 +122,7 @@ for (const setting of GEN_SETTINGS) {
         A.natOpt.push(k.natOptimized ? 1 : 0); A.natBad.push(k.natDetrimental ? 1 : 0);
         A.abilOpt.push(k.abilityNonDefault ? 1 : 0); A.abilHidden.push(k.abilityHidden ? 1 : 0);
         A.item.push(k.hasItem ? 1 : 0);
+        A.overItemTier.push(Number(k.hasItem && S.dojoItemTier(slot.build.i) > S.storyFoeItemTier(city)));
         if (WRITE_ROWS_SEED.has(seed)) {
           const bs = baseStats[slot.name] || {};
           kitCsv.push([setting.key, seed, eid, eventName, trainer, city, slot.name,
@@ -145,6 +150,7 @@ stages.sort((a, b) => {
 const sumCsv = ['genKey,eid,eventName,trainer,city,stab_avg,hasStab_pct,coverage_avg,avgBP,maxBP,status_pct,priority_pct,natOpt_pct,natBad_pct,abilOpt_pct,abilHidden_pct,item_pct,intent_natOpt,intent_abilOpt,intent_moveOpt,intent_itemTier'];
 for (const A of stages) {
   const m = A.meta;
+  const diffStep = S.trainerDifficultyStep(m.eventName);
   const iNat = S.storyNatureOptChance(m.city, diffStep);
   const iAbil = S.storyAbilityOptChance(m.city, diffStep);
   const iMove = S.storyMoveOptChance(m.city, diffStep);
@@ -161,13 +167,13 @@ fs.writeFileSync(`${OUT_DIR}/kit-summary.csv`, sumCsv.join('\n') + '\n');
 // ── markdown report ──
 const md = [];
 md.push(`# Story-mode enemy KIT-QUALITY report (movesets · abilities · items · natures)`);
-md.push(`Generated ${new Date().toISOString()} · ${SEEDS_N} seeds · difficulty **${DIFFICULTY}** (diffStep ${diffStep}) · gimmicks off\n`);
+md.push(`Generated ${new Date().toISOString()} · ${SEEDS_N} seeds · difficulty **${DIFFICULTY}** · gimmicks off\n`);
 md.push(`Companion to BALANCE_REPORT.md (which covers raw stats: IV/EV/nature-modifier/stat-multiplier). This pass covers the dimensions stats don't: **movesets, abilities, items, nature-appropriateness.**\n`);
 md.push(`## How to read`);
-md.push(`- The enemy kit-quality knobs are tuned to **player parity** (foe ≤ player at every city — item tier derives from the player's Battle-Dojo clock; ability/nature/move optimization ramp with player facility unlocks). So the **intended opt-chance curves are the player-availability ceiling.**`);
+md.push(`- The samples include the final encounter preparation. The shared city tiers set availability. Optimization probabilities guide choices within those tiers.`);
 md.push(`- \`natOpt_pct\` realized nature-optimization vs \`intent_natOpt\`; \`abilOpt_pct\` (ability upgraded off slot-0) vs \`intent_abilOpt\`; \`item_pct\` (holds an item) vs \`intent_itemTier\` (0 ⇒ should hold none); move quality (\`hasStab\`, \`coverage\`, \`avgBP\`) trends with \`intent_moveOpt\`.`);
 md.push(`- \`natBad_pct\` = fraction with a nature that **lowers the mon's main attack stat** (the clear failure mode — should stay low).`);
-md.push(`- **Flags:** realized OVER intended by >${TOL} ⇒ 🔴 over-parity; UNDER by >${TOL} ⇒ 🔵 under-delivered.\n`);
+md.push(`- **Flags** mark gear above the local tier or a large share of natures that reduce the main attacking stat.\n`);
 
 for (const setting of GEN_SETTINGS) {
   const rows = stages.filter(s => s.meta.genKey === setting.key);
@@ -177,13 +183,13 @@ for (const setting of GEN_SETTINGS) {
   md.push(`|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|`);
   for (const A of rows) {
     const m = A.meta;
-    const iNat = S.storyNatureOptChance(m.city, diffStep), iAbil = S.storyAbilityOptChance(m.city, diffStep), iItem = S.storyFoeItemTier(m.city);
+    const iItem = S.storyFoeItemTier(m.city);
     const natR = mean(A.natOpt), abilR = mean(A.abilOpt), itemR = mean(A.item), natBadR = mean(A.natBad);
     // Only two reliable flags: item-before-parity (foe holds an item the player can't yet) and a
     // genuinely-bad-nature rate. nat/abil OPTIMIZATION is shown for context but NOT flagged vs the
     // intent curve — the outcome metric undercounts intent (a best-is-default ability or a wall
     // nature reads as "not optimized" even when correct).
-    const fItem = (iItem === 0 && itemR > TOL) ? '🔴 item>parity' : '';
+    const fItem = A.overItemTier.some(Boolean) ? '🔴 item>parity' : '';
     const fBad = natBadR > 0.15 ? '🔴 natBad' : '';
     const flag = [fItem, fBad].filter(Boolean).join(' ') || '·';
     md.push(`| ${m.eid} | ${m.eventName} | ${m.city} | ${r2(mean(A.stab))} | ${r2(mean(A.coverage))} | ${r2(mean(A.avgBP))} | ${r2(mean(A.maxBP))} | ${Math.round(mean(A.status)*100)} | ${Math.round(mean(A.priority)*100)} | ${Math.round(natR*100)} | ${Math.round(natBadR*100)} | ${Math.round(abilR*100)} | ${Math.round(mean(A.abilHidden)*100)} | ${Math.round(itemR*100)}/${iItem} | ${flag} |`);
@@ -209,21 +215,20 @@ const allg = stages.filter(s => s.meta.genKey === 'allgen');
 const lateAll = allg.filter(s => s.meta.city >= 6 || /^E[1-4]$|Champion|Mystery Figure/.test(s.meta.eventName));
 const earlyAll = allg.filter(s => s.meta.city <= 2);
 const f = (arr, sel) => r2(mean(arr.flatMap(sel)));
-md.push(`- **Items respect the player-parity (Battle-Dojo) clock — the one strict invariant:** at C0-1 (intent tier 0) realized item% = ${Math.round(f(earlyAll.filter(A=>A.meta.city<=1), A=>A.item)*100)}% (must be ~0 — foe can't out-tier the player), rising to ${Math.round(f(lateAll, A=>A.item)*100)}% late. This is the cleanest signal and it holds.`);
-md.push(`- **Nature failures are low once judged by moveset** (not base stats): mean natBad% = ${Math.round(f(allg, A => A.natBad)*100)}% (a nature lowering the stat the mon actually attacks with). Any stage over 15% is flagged in the tables.`);
-md.push(`- **Ability & nature optimization ramp up as intended** (descriptive — the outcome undercounts the dialed intent): abilAlt% (ability upgraded off slot-0) ${Math.round(f(earlyAll, A=>A.abilOpt)*100)}%→${Math.round(f(lateAll, A=>A.abilOpt)*100)}% early→late; hidden-ability use reaches ${Math.round(f(lateAll, A=>A.abilHidden)*100)}% late. natOpt% ${Math.round(f(earlyAll, A=>A.natOpt)*100)}%→${Math.round(f(lateAll, A=>A.natOpt)*100)}%. (Many mons' best ability/nature IS the default, so 100% is not the expected ceiling.)`);
-md.push(`- **Movesets are rich and scale correctly:** late/endgame mean coverage ${f(lateAll, A=>A.coverage)} distinct attacking types, avgBP ${f(lateAll, A=>A.avgBP)}, STAB ${f(lateAll, A=>A.stab)} per slot; early coverage ${f(earlyAll, A=>A.coverage)}, avgBP ${f(earlyAll, A=>A.avgBP)} (early BP intentionally held down by the foe BP cap + basic-STAB stage). Status-move presence ${Math.round(f(lateAll, A=>A.status)*100)}% late.`);
+md.push(`- **Held items** appear on ${Math.round(f(earlyAll.filter(A=>A.meta.city===0), A=>A.item)*100)}% of Pallet opponents and ${Math.round(f(lateAll, A=>A.item)*100)}% of late opponents. ${stages.reduce((sum, A) => sum + A.overItemTier.filter(Boolean).length, 0)} sampled sets exceeded the local item tier.`);
+md.push(`- **Nature fit** uses the actual moveset. The mean share of natures that lowered the main attacking stat was ${Math.round(f(allg, A => A.natBad)*100)}% (a nature lowering the stat the mon actually attacks with). Any stage over 15% is flagged in the tables.`);
+md.push(`- **Abilities and natures** varied with the stage. abilAlt% (ability upgraded off slot-0) ${Math.round(f(earlyAll, A=>A.abilOpt)*100)}%→${Math.round(f(lateAll, A=>A.abilOpt)*100)}% early→late; hidden-ability use reaches ${Math.round(f(lateAll, A=>A.abilHidden)*100)}% late. natOpt% ${Math.round(f(earlyAll, A=>A.natOpt)*100)}%→${Math.round(f(lateAll, A=>A.natOpt)*100)}%.`);
+md.push(`- **Movesets** show the following late and early averages. late/endgame mean coverage ${f(lateAll, A=>A.coverage)} distinct attacking types, avgBP ${f(lateAll, A=>A.avgBP)}, STAB ${f(lateAll, A=>A.stab)} per slot; early coverage ${f(earlyAll, A=>A.coverage)}, avgBP ${f(earlyAll, A=>A.avgBP)} (early BP intentionally held down by the foe BP cap + basic-STAB stage). Status-move presence ${Math.round(f(lateAll, A=>A.status)*100)}% late.`);
 // reliable flags: item-before-parity (over) + bad-nature rate (quality), and under-delivered STAB late
 let over = 0, badNat = 0, lowStab = 0;
 for (const A of stages) {
-  const iItem = S.storyFoeItemTier(A.meta.city);
-  if (iItem === 0 && mean(A.item) > TOL) over++;
+  if (A.overItemTier.some(Boolean)) over++;
   if (mean(A.natBad) > 0.15) badNat++;
   const late = A.meta.city >= 6 || /^E[1-4]$|Champion|Mystery Figure/.test(A.meta.eventName);
   if (late && pctf(A.hasStab.reduce((a,b)=>a+b,0), A.hasStab.length) < 0.85) lowStab++;
 }
 md.push(`- **Parity/quality flags (of ${stages.length} stage×gen rows):** ${over} item-before-parity (foe holds an item the player can't yet), ${badNat} with >15% bad-nature rate, ${lowStab} late stages with <85% STAB coverage.`);
-md.push(`\n> **Scope note:** this measures kit *composition* (what moves/ability/item/nature each foe carries), not in-battle *execution* (the AI's move selection). It also does not model the player's realized kit — it leans on the engine's parity design (foe knobs are tuned ≤ player availability per city), which the item clock confirms is honoured.`);
+md.push(`\n> This report measures which moves, abilities, items, and natures encountered trainers bring.`);
 md.push(`\n---\nArtifacts: \`enemy-kits.csv\` (per-mon kits incl. full movesets, seed ${SEEDS[0]}), \`kit-summary.csv\` (all stages × gen-sets, ${SEEDS_N}-seed rates).`);
 
 fs.writeFileSync(`${OUT_DIR}/KIT_QUALITY_REPORT.md`, md.join('\n') + '\n');

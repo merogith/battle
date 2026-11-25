@@ -22,7 +22,7 @@ const ANCHORS = [
   { section: 'Catch / PC / Safari', symbols: ['_pickStarterPartner'] },
   { section: 'Damage formula', symbols: ['parseMoveEffects', 'buildPokemon', 'ensureMoveData'] },
   { section: 'Tutorial scenes', symbols: ['STORY_TUTORIAL_SCENES', '_showStoryTutorialScene', 'playStoryTutorial'] },
-  { section: 'Dialogue pools', symbols: ['TRAINER_QUOTES', 'TRAINER_QUOTES_BY_NAME', 'CITY_PROFESSOR_QUOTES', 'CITY_GUIDE_QUOTES', 'getTrainerQuoteForBattle'] },
+  { section: 'Dialogue pools', symbols: ['TRAINER_QUOTES', 'TRAINER_QUOTES_BY_NAME', 'CITY_PROFESSOR_GREETING', 'CITY_GUIDE_QUOTES', 'getTrainerQuoteForBattle'] },
   { section: 'Retreat / game-over', symbols: ['_storyCalcRetreatGoldFee', 'refreshStoryGameOverRetreatUI', 'acceptRivalLossAndContinue'] },
   { section: 'Tutor / EV trainer / Link / Colress', symbols: ['enterShop', 'enterArtifactShop'] },
   { section: 'Test harness', symbols: ['__testHarness', '__engine', '__testReady', 'sleep'] },

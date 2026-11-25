@@ -41,25 +41,15 @@ test('wild/caught build is filtered to natural moves within the city cap (C0 = 4
   assert.ok(build.m.length >= 1, 'never leaves an empty moveset');
 });
 
-test('the starter follows the same filter with a cap+20 BP allowance (Q9)', async () => {
+test('the starter can generate moves one tier earlier than a wild catch', async () => {
   primeStory();
-  await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  // isStarter arg → allowance 40+20=60 at C0: everything over 60 BP (and all TMs) strips.
-  const b1 = { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] };
-  assert.equal(await ST.storyFilterBuildMovesForCity(b1, 'Garchomp', 0, true), true, 'starter IS filtered (at cap+20)');
-  for (const m of b1.m) {
-    assert.ok(tag('Garchomp', m) === 'natural' || tag('Garchomp', m) === 'unknown', `kept "${m}" is natural`);
-    assert.ok(bp(m) <= 60, `kept "${m}" is within the starter allowance (≤60, was ${bp(m)})`);
-  }
-  // build.starter flag carries the same allowance: a 60-BP natural move survives for
-  // the starter at C0 where a non-starter (cap 40) would lose it.
-  const b2 = { m: ['Outrage', 'Bulldoze'], starter: true };
-  await ST.storyFilterBuildMovesForCity(b2, 'Garchomp', 0, false);
-  assert.ok(b2.m.includes('Bulldoze'), 'Bulldoze (60) survives for the starter at C0');
-  assert.ok(!b2.m.includes('Outrage'), 'Outrage (120) does not');
-  const b3 = { m: ['Bulldoze', 'Tackle'] };
-  await ST.storyFilterBuildMovesForCity(b3, 'Garchomp', 0, false);
-  assert.ok(!b3.m.includes('Bulldoze'), 'the same 60-BP move IS stripped for a non-starter at C0');
+  const starter = { m: ['Outrage', 'Bite'], starter: true };
+  const ordinary = { m: [...starter.m] };
+  await ST.storyFilterBuildMovesForCity(starter, 'Garchomp', 0, false);
+  await ST.storyFilterBuildMovesForCity(ordinary, 'Garchomp', 0, false);
+  assert.ok(starter.m.includes('Bite'));
+  assert.ok(!starter.m.includes('Outrage'));
+  assert.ok(!ordinary.m.includes('Bite'));
 });
 
 test('Guru cities (C6+) leave the moveset unfiltered (full pool, matches trainers)', async () => {
@@ -74,7 +64,7 @@ test('reversible-via-tutor: a stripped natural move is re-offered once the city 
   primeStory();
   const learn = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   // A high-BP NATURAL move (>40) that C0 strips but the tutor can re-teach later.
-  const highNat = (learn.natural || []).find(m => bp(m) > 40);
+  const highNat = learn.natural.find(m => ST.storyMoveLessonTier('Garchomp', m) === 4);
   assert.ok(highNat, 'precondition: Garchomp has a >40-BP natural move');
   // Filter a caught build at C0 → the high-BP natural move is stripped.
   const build = { m: [highNat, 'Earthquake', 'Stone Edge', 'Dragon Claw'] };

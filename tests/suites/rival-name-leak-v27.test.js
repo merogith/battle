@@ -14,6 +14,10 @@ const ROLLED = 'Blue'; // the rolled identity we plant everywhere a leak could r
 let W, ST, SER;
 before(async () => {
   ({ window: W } = await loadEngine());
+  const store = new Map();
+  Object.defineProperty(W, 'localStorage', {
+    configurable: true, value: { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) },
+  });
   ST = W.__storyTest;
   SER = ST.STORY_EVENTS_RAW;
   assert.ok(ST, 'story test surface exposed');
@@ -95,12 +99,11 @@ test('victory card attributes the rival aftermath to "Rival"', () => {
 
 // ── Concede alert ────────────────────────────────────────────────────────────
 test('concede alert attributes the rival line to "Rival"', () => {
-  // Prefer a rival row directly followed by a City row so the post-concede
-  // processNextEvent lands on the quiet city path.
-  const rows = rivalRows();
-  const pick = rows.find(({ i }) => Array.isArray(SER[i + 1]) && SER[i + 1][1] === 'City') || rows[0];
+  // Later rival fights show the aftermath alert. Pallet has its own scene.
+  const pick = rivalRows().find(({ r }) => r[0] !== W.__storySim.STORY_RIVAL_ROW_INTRO);
   setSm({
     eventIndex: pick.i,
+    storyRetryInventorySnapshot: {},
     currentTrainerData: { name: ROLLED, role: 'Rival', type: 'Mixed' },
     trainerAssignments: { [pick.r[0] | 0]: ROLLED },
   });

@@ -71,6 +71,15 @@ test('resist berry matches the mon\'s worst type weakness (Garchomp 4x Ice → Y
   assert.equal(def.item, 'Yache Berry', 'Garchomp gets the Ice-resist berry for its 4x Ice weakness');
 });
 
+test('a defensive fallback describes its own effect when the resist berry is unavailable', () => {
+  const mon = ST.buildPokemon('Garchomp', GARCHOMP);
+  const recs = ST.txItemRecsByPurpose(['Soft Sand', 'Sitrus Berry', 'Rocky Helmet'], mon, GARCHOMP, 'Garchomp');
+  const defensive = recs.find(rec => rec.purpose === 'Defensive');
+  assert.equal(defensive.item, 'Rocky Helmet');
+  assert.match(defensive.reason, /contact/i);
+  assert.doesNotMatch(defensive.reason, /ice.type|once/i);
+});
+
 test('archetype: walls get a Bulk primary, sweepers get an Offensive primary', () => {
   const wall = recsFor(8, 'Toxapex', TOXAPEX).recs;
   assert.ok(wall.some((r) => r.purpose === 'Bulk'), 'Toxapex (wall) leads with a Bulk item');

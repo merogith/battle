@@ -68,3 +68,37 @@ test('EV Trainer recommended preset carries the role label + archetype spread', 
     'preset spread == archetype spread',
   );
 });
+
+test('the recommended EV card uses legal payment paths and previews early redistribution', async () => {
+  const run = ST.sm;
+  const document = w.document;
+  run.active = true;
+  run.runSeed = 5;
+  run.gold = 20000;
+  run.inventory = { vitamin: 1 };
+  run.settings = { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] };
+  run.team = [{ id: 'partner', name: PHYS_FAST, build: { m: ['Tackle'], evs: { hp: 24 } } }];
+  const eventAt = city => Array.from({ length: 141 }, (_, i) => i).find(i => ST.cityIndexFromEventIndex(i) === city);
+  run.badges = 2;
+  run.eventIndex = eventAt(3);
+  w.StoryMode.enterEVTrainer('partner');
+  const recommended = () => document.querySelector('#evpreset-0-rec-role');
+  const stats = () => [...recommended().querySelectorAll('.tx-stat-row-val')].map(el => Number(el.textContent));
+  assert.match(recommended().textContent, /Redistribute 24 EVs/);
+  assert.doesNotMatch(recommended().textContent, /Buy|Use EV Voucher/);
+  assert.equal(stats().reduce((sum, value) => sum + value, 0), 24);
+  run.team[0].build.evs = { atk: 12, spe: 12 };
+  w.StoryMode.enterEVTrainer('partner');
+  assert.match(recommended().textContent, /Applied/);
+  assert.doesNotMatch(recommended().textContent, /Redistribute/);
+  run.badges = 6;
+  run.eventIndex = eventAt(7);
+  w.StoryMode.enterEVTrainer('partner');
+  assert.match(recommended().textContent, /Buy 508 EVs/);
+  assert.match(recommended().textContent, /Use EV Voucher/);
+  assert.equal(stats().reduce((sum, value) => sum + value, 0), 508);
+  w.showGameConfirm = async () => true;
+  await w.StoryMode.evTrainerApplyPresetWithVitamin(0, 'rec-role');
+  assert.equal(run.inventory.vitamin, undefined);
+  assert.deepEqual(run.team[0].build.evs, w._evTrainerRecPreset(PHYS_FAST).evs);
+});

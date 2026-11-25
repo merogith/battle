@@ -105,3 +105,48 @@ test('_syncFacilityAmbient no-ops under the harness and clears for non-facility 
   assert.equal(document.querySelectorAll('.fxp-layer').length, before, 'no canvas mounted while disabled');
   assert.equal(window.FxParticles.liveCount(), 0, 'no facility layer tracked');
 });
+
+test('leaving and quickly returning retires unfinished facility and weather layers', async () => {
+  const pending = [];
+  let destroyed = 0;
+  const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+  window.__testHarness = false;
+  window.tsParticles = {
+    load({ element }) {
+      element.appendChild(document.createElement('canvas'));
+      return new Promise(resolve => pending.push(() => resolve({ destroy() { destroyed++; } })));
+    },
+  };
+  try {
+    for (let visit = 0; visit < 6; visit++) {
+      window.showScreen('screen-story-city');
+      await flush();
+      window.showScreen('screen-story-shop');
+      await flush();
+    }
+    window.showScreen('screen-story-city');
+    await flush();
+    assert.equal(pending.length, 13, 'each visit started mounting before the next transition');
+    pending.splice(0).forEach(resolve => resolve());
+    await flush();
+    assert.equal(window.FxParticles.liveCount(), 1);
+    assert.equal(document.querySelectorAll('.fxp-layer canvas').length, 1);
+    assert.equal(destroyed, 12);
+
+    window.showScreen('screen-battle');
+    const weather = document.getElementById('weather-overlay');
+    window.syncBattleWeatherFx(weather, 'Rain');
+    await flush();
+    document.getElementById('screen-battle').classList.add('hidden');
+    await flush();
+    assert.equal(document.querySelectorAll('.fxp-layer canvas').length, 0, 'detach the pending weather canvas on exit');
+    pending.splice(0).forEach(resolve => resolve());
+    await flush();
+    assert.equal(window.FxParticles.liveCount(), 0, 'no late weather mount on the hidden battle');
+    assert.equal(destroyed, 14);
+  } finally {
+    window.FxParticles.clearAll();
+    delete window.tsParticles;
+    window.__testHarness = true;
+  }
+});

@@ -5,7 +5,7 @@
 // the bar showed 2,500 for a Learnt move.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -17,10 +17,11 @@ async function primeGuruTutor() {
   ST.sm.settings = { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] };
   ST.sm.badges = 7; ST.sm.gold = 99999; ST.sm.inventory = ST.sm.inventory || {};
   let idx = 0;
-  for (let ei = 0; ei <= 120; ei++) { let c = -1; try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {} if (c === 6) { idx = ei; break; } }
+  for (let ei = 0; ei <= 120; ei++) { let c = -1; try { c = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {} if (c === 7) { idx = ei; break; } }
   ST.sm.eventIndex = idx;
   ST.sm.team = [{ name: 'Garchomp', build: { m: ['Dragon Claw'], n: 'Jolly', a: 'Rough Skin' } }];
   await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w.document);
   for (let i = 0; i < 30; i++) { await wait(50); if (w.document.querySelector('.tx-grid')) break; }
 }
 

@@ -131,6 +131,7 @@ test('Liquid Voice resolves before type effectiveness and absorbing abilities',a
 test('converted Normal attacks respect their new immunity and Struggle remains typeless',async()=>{
   assert.equal((await hit({move:'Tackle',ability:'Galvanize',targetAbility:'Volt Absorb'})).damage,0);
   assert.equal((await hit({move:'Swift',ability:'Normalize',targetSpecies:'Gengar'})).damage,0);
+  assert.ok((await hit({move:'Hidden Power Fire',ability:'Normalize',targetSpecies:'Gengar'})).damage > 0);
   assert.equal((await hit({move:'Struggle',ability:'Normalize'})).damage,(await hit({move:'Struggle'})).damage);
 });
 

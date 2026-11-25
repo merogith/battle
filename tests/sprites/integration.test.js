@@ -51,13 +51,12 @@ test('every Mega form resolves to a local sprite path', async () => {
   const w = dom.window;
   // Pull the canonical lists out of the game itself.
   const megaForms = w.eval('Object.values(MEGA_FORM_NAMES)');
-  // The single CAP that has no PokeAPI sprite — game falls through to Showdown URL.
-  const expectedRemote = new Set(['Crucibelle-Mega']);
+  const expectedPlaceholder = new Set(['Crucibelle-Mega']);
   for (const form of megaForms) {
     const url = w.eval(`getSprite(${JSON.stringify(form)}, false, false)`);
     w.eval('for (let k in _spriteCache) delete _spriteCache[k];');
-    if (expectedRemote.has(form)) {
-      assert.ok(url.startsWith('https://'), `expected remote URL for CAP form ${form}, got ${url}`);
+    if (expectedPlaceholder.has(form)) {
+      assert.strictEqual(url, 'sprites/placeholder.svg', `expected local placeholder for CAP form ${form}`);
     } else {
       assert.ok(url.startsWith('sprites/gen5ani/'), `expected local path for ${form}, got ${url}`);
       const onDisk = path.join(ROOT, url);

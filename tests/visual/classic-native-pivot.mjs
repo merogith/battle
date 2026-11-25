@@ -21,6 +21,12 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route =>
     new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
+  let releasePikachu;
+  const pendingPikachu = new Promise(resolve => { releasePikachu = resolve; });
+  await page.route(/\/sprites\/gen5ani-back(?:-shiny)?\/pikachu\.gif$/, async route => {
+    await pendingPikachu;
+    await route.continue();
+  });
   await page.goto(url.href, { waitUntil: 'domcontentloaded' });
   assert.equal(await page.evaluate(() => window.prepareGameData()), true);
 
@@ -40,6 +46,10 @@ try {
   const screen = page.locator('#screen-battle[data-battle-engine="showdown"]');
   await screen.waitFor();
   assert.equal(await page.evaluate(() => state.battleEngine), 'showdown');
+  const playerSprite = screen.locator('#player-sprite');
+  const foeSprite = screen.locator('#foe-sprite');
+  await playerSprite.waitFor();
+  await foeSprite.waitFor();
   const fight = screen.locator('#command-menu [data-cmd="fight"]');
   const chooseMove = async name => {
     await fight.tap();
@@ -59,7 +69,15 @@ try {
   await page.waitForFunction(() => state.currentPlayer === 2);
   await chooseMove('Seismic Toss');
 
-  await party.waitFor();
+  try {
+    await party.waitFor();
+  } catch (error) {
+    const stateAtFailure = await page.evaluate(() => ({
+      currentPlayer: state.currentPlayer, locked: state.isLocked, over: state.isOver,
+      requests: state.nativeRequests?.map(request => request?.phase), log: document.getElementById('battle-log').textContent,
+    }));
+    throw new Error(`U-turn did not open replacement. ${JSON.stringify(stateAtFailure)} ${errors.join(' ')}`, { cause: error });
+  }
   assert.match(await party.locator('#party-context-text').innerText(), /switching move|finish U-turn/i);
   assert.equal(await party.getByRole('button', { name: 'Cancel', exact: true }).isDisabled(), true);
   const during = await snapshot();
@@ -68,6 +86,7 @@ try {
   assert.equal(during.tossPp, starting.tossPp, 'the queued opposing move waits for the replacement');
   const switchButton = party.locator('.party-slot').filter({ hasText: 'Pikachu' }).getByRole('button', { name: 'Switch' });
   if (out) await page.screenshot({ path: join(out, 'showdown-u-turn-request.png') });
+  await playerSprite.evaluate(sprite => sprite.classList.add('anim-hit-flash', 'tera-crystal-on', 'sprite-airborne'));
   await switchButton.tap();
   await party.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => state.pActive.name === 'Pikachu' && !state.isLocked && state.currentPlayer === 1);
@@ -76,6 +95,13 @@ try {
   assert.equal(after.scizorHp, starting.scizorHp);
   assert.equal(after.tossPp, starting.tossPp - 1);
   assert.ok(after.pikachuHp < starting.pikachuHp, 'the incoming Pokémon takes the queued attack');
+  assert.equal(await playerSprite.getAttribute('alt'), 'Pikachu');
+  assert.equal(await playerSprite.isVisible(), false, 'a slow replacement must never show the outgoing sprite');
+  assert.equal(await playerSprite.evaluate(sprite =>
+    sprite.matches('.anim-hit-flash, .tera-crystal-on, .sprite-airborne')), false, 'outgoing visual effects are cleared');
+  releasePikachu();
+  await playerSprite.waitFor();
+  assert.match(await playerSprite.evaluate(sprite => sprite.currentSrc), /\/pikachu\.gif$/);
   const log = await screen.locator('#battle-log').innerText();
   assert.match(log, /Scizor used U-turn![\s\S]*Pikachu[\s\S]*Blissey used Seismic Toss!/);
   assert.equal((log.match(/Scizor used U-turn!/g) || []).length, 1, 'the log preserves each event once');
@@ -87,15 +113,34 @@ try {
   // Reproduce a KO on the same turn as a voluntary switch. The previous
   // lead remains the legal replacement while the native active slot is empty.
   await page.evaluate(async () => {
+    const engineUrl = new URL('competitive/classic-simulation.js', document.baseURI).href;
+    const simulation = await import(engineUrl);
+    window.__classicSimulationModule = new Promise(resolve => {
+      window.releaseSpriteTestBattle = () => resolve(simulation);
+    });
     state.mode = 'pve';
     state.p1Draft = [
       { name: 'Raikou', build: { a: 'Pressure', m: ['Thunderbolt'] } },
       { name: 'Raichu', build: { a: 'Static', m: ['Thunderbolt'] } },
     ];
     state.p2Draft = [{ name: 'Feraligatr', build: { a: 'Torrent', i: 'Life Orb', m: ['Earthquake'] } }];
-    await window.startBattle();
+    window.spriteTestBattle = window.startBattle();
+  });
+  assert.equal(await page.locator('#player-sprite').isVisible(), false);
+  assert.equal(await page.locator('#foe-sprite').isVisible(), false);
+  const preparing = await page.evaluate(() => ({
+    active: document.getElementById('screen-battle').classList.contains('battle-preparing'),
+    hud: getComputedStyle(document.getElementById('player-stat-box')).display,
+  }));
+  assert.deepEqual(preparing, { active: true, hud: 'none' }, 'the previous battle’s HUD must stay hidden during setup');
+  await page.evaluate(async () => {
+    window.releaseSpriteTestBattle();
+    await window.spriteTestBattle;
+    delete window.__classicSimulationModule;
   });
   await screen.waitFor();
+  await playerSprite.waitFor();
+  assert.match(await playerSprite.evaluate(sprite => sprite.currentSrc), /\/raikou\.gif$/);
   const quakePP = await page.evaluate(() => state.fActive.moves[0].pp);
   await screen.getByRole('button', { name: /Pokémon — switch a party member/ }).tap();
   const partySlot = name => party.locator('.party-slot').filter({ has: page.getByRole('img', { name, exact: true }) });
@@ -105,12 +150,15 @@ try {
   assert.equal(await party.getByRole('button', { name: 'Cancel', exact: true }).isDisabled(), true);
   assert.equal(await party.locator('.active-mon').count(), 0);
   assert.equal(await partySlot('Raichu').getByRole('button', { name: 'Switch' }).isDisabled(), true);
+  assert.equal(await playerSprite.isVisible(), false, 'the KO leaves the field empty until a replacement is chosen');
   const returnToRaikou = partySlot('Raikou').getByRole('button', { name: 'Switch' });
   assert.equal(await returnToRaikou.isEnabled(), true);
   if (out) await page.screenshot({ path: join(out, 'showdown-switch-in-ko-request.png') });
   await returnToRaikou.tap();
   await party.waitFor({ state: 'hidden' });
   await fight.waitFor();
+  await playerSprite.waitFor();
+  assert.match(await playerSprite.evaluate(sprite => sprite.currentSrc), /\/raikou\.gif$/);
   assert.deepEqual(await page.evaluate(() => [state.pActive.name, state.turnNumber, state.fActive.moves[0].pp]),
     ['Raikou', 1, quakePP - 1], 'the replacement adds no foe action');
   assert.match(await screen.locator('#battle-log').textContent(),
@@ -163,6 +211,8 @@ try {
   await chooseMove('Splash');
   await party.waitFor();
   assert.deepEqual(await page.evaluate(() => [state.currentPlayer, state.pActive.fainted, state.fActive.fainted]), [1, true, true]);
+  assert.equal(await playerSprite.isVisible(), false);
+  assert.equal(await foeSprite.isVisible(), false);
   const availableReplacement = party.locator('.party-slot').getByRole('button', { name: 'Switch' }).filter({ visible: true });
   await party.locator('.party-slot').filter({ hasText: 'Pikachu' }).getByRole('button', { name: 'Switch' }).tap();
   await page.waitForFunction(() => state.currentPlayer === 2);
@@ -175,14 +225,16 @@ try {
   }));
   assert.equal(afterDoubleFaint.turn, 1);
   assert.ok(afterDoubleFaint.player > 0 && afterDoubleFaint.foe > 0);
+  await playerSprite.waitFor();
+  await foeSprite.waitFor();
   assert.deepEqual(errors, []);
   console.log('A simultaneous KO collected both hotseat replacement picks and finished one turn.');
 
   await page.evaluate(async () => {
     state.p1Draft = [{ name: 'Machamp', build: { a: 'No Guard', m: ['Low Kick', 'Thunderbolt'] } }];
     state.p2Draft = [
-      { name: 'Zoroark-Hisui', build: { a: 'Illusion', m: ['Shadow Ball', 'Psychic'] } },
-      { name: 'Snorlax', build: { a: 'Immunity', m: ['Splash'] } },
+      { name: 'Zoroark-Hisui', build: { a: 'Illusion', _isShiny: false, m: ['Shadow Ball', 'Psychic'] } },
+      { name: 'Snorlax', build: { a: 'Immunity', _isShiny: false, m: ['Splash'] } },
     ];
     await window.startBattle();
   });
@@ -192,6 +244,8 @@ try {
   const foeTypes = screen.locator('#foe-types');
   const publicSummary = page.locator('#modal-game-alert');
   assert.equal(await foe.innerText(), 'Snorlax');
+  await foeSprite.waitFor();
+  assert.match(await foeSprite.evaluate(sprite => sprite.currentSrc), /\/snorlax\.gif$/);
   assert.match(await foeTypes.innerText(), /^Normal$/i);
   await foe.tap();
   assert.match(await publicSummary.innerText(), /Snorlax · Normal · 100% HP/);
@@ -204,9 +258,36 @@ try {
   await chooseMove('Shadow Ball');
   await page.waitForFunction(() => state.turnNumber === 1 && !state.isLocked);
   assert.equal(await foe.innerText(), 'Zoroark-Hisui');
+  await foeSprite.waitFor();
+  assert.match(await foeSprite.evaluate(sprite => sprite.currentSrc), /\/zoroark-hisui\.gif$/);
   assert.match(await foeTypes.innerText(), /Ghost/i);
   assert.deepEqual(errors, []);
-  console.log('Illusion hid the true name, types, and summary until damage revealed the Pokémon.');
+  console.log('Illusion hid the true sprite, name, types, and summary until damage revealed the Pokémon.');
+
+  await page.evaluate(async () => {
+    window.__testHarness = true;
+    state.mode = 'pve';
+    state.p1Draft = [
+      { name: 'Scizor', build: { a: 'Technician', m: ['Bullet Punch'] } },
+      { name: 'Pikachu', build: { a: 'Static', m: ['Thunderbolt'] } },
+    ];
+    state.p2Draft = [{ name: 'Blissey', build: { a: 'Natural Cure', m: ['Seismic Toss'] } }];
+    await window.startBattle();
+  });
+  const classicField = page.locator('#screen-battle[data-battle-engine="classic"]');
+  const classicSprite = classicField.locator('#player-sprite');
+  await classicSprite.waitFor();
+  await page.evaluate(async () => {
+    state.pActive.currentHp = 0;
+    await window.checkFaints();
+  });
+  await party.waitFor();
+  assert.equal(await classicSprite.isVisible(), false, 'the compatibility engine hides a faint even with animations off');
+  await partySlot('Pikachu').getByRole('button', { name: 'Switch' }).tap();
+  await classicSprite.waitFor();
+  assert.match(await classicSprite.evaluate(sprite => sprite.currentSrc), /\/pikachu\.gif$/);
+  assert.deepEqual(errors, []);
+  console.log('The compatibility battle hid its fainted sprite and displayed the healthy replacement.');
 } finally {
   await browser.close();
 }

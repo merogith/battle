@@ -130,11 +130,19 @@ try {
     await showSaved(page, lab);
     await capture('lab');
     const summary = page.locator('#modal-summary');
+    const closeSummary = summary.getByRole('button', { name: /^Close(?: summary)?$/ });
     const inspectFirst = async label => {
       await tapInView(page, lab.locator('.prof-pick-summary').first(), `${profile} ${label}`);
       await summary.waitFor({ state: 'visible' });
       assert.equal(await accept.isDisabled(), true, 'Inspecting a starter leaves it unselected');
-      await summary.getByRole('button', { name: 'Close', exact: true }).first().tap();
+      if (journeySeed) {
+        const spritePath = await summary.locator('.sum-header-sprite').evaluate(async image => {
+          await image.decode();
+          return new URL(image.currentSrc).pathname;
+        });
+        assert.match(spritePath, /\/sprites\/gen5ani(?:-shiny)?\/voltorb-hisui\.gif$/);
+      }
+      await closeSummary.tap();
       await summary.waitFor({ state: 'hidden' });
     };
     if (journeySeed) assert.equal(await choose.first().getAttribute('aria-label'), 'Choose Voltorb-Hisui');
@@ -160,7 +168,7 @@ try {
     await card.locator('.prof-pick-summary').tap();
     await summary.waitFor({ state: 'visible' });
     assert.equal(await choose.first().getAttribute('aria-pressed'), 'true', 'Full summary leaves selection alone');
-    await summary.getByRole('button', { name: 'Close', exact: true }).first().tap();
+    await closeSummary.tap();
     await summary.waitFor({ state: 'hidden' });
     await currentChoice.scrollIntoViewIfNeeded();
     await tapInView(page, currentChoice, `${profile} longest starter selection`);
@@ -169,6 +177,12 @@ try {
     await capture('confirmation');
     await tapInView(page, accept, `${profile} confirm starter`);
     await page.waitForFunction(() => document.getElementById('story-prof-status').textContent.includes('joined your team'));
+    const bondScene = page.getByRole('dialog').filter({ hasText: 'Your first partner' });
+    await bondScene.waitFor();
+    assert.match(await bondScene.innerText(), /one tier ahead/);
+    const closeBond = bondScene.getByRole('button', { name: 'Back to the lab', exact: true });
+    await capture('starter-bond');
+    await tapInView(page, closeBond, `${profile} Starter bond scene`);
     const guidance = lab.getByText('Return to Pallet Town and follow the gold objective.', { exact: true });
     await guidance.waitFor();
     assert.ok(await guidance.evaluate(el => getComputedStyle(el).fontFamily === getComputedStyle(el.parentElement).fontFamily),

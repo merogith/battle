@@ -12,6 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'battle.html'), 'utf8');
+const species = Object.values(JSON.parse(fs.readFileSync(path.join(ROOT, 'data/species.json'), 'utf8'))['9'])
+  .filter(entry => entry.num > 0 && entry.baseStats);
 
 function extractSpriteSection() {
   const startMarker = 'const _spriteCache = {};';
@@ -30,16 +32,14 @@ function extractSpriteSection() {
   throw new Error('could not find end of handleSpriteError');
 }
 
-function makeContext(baseStats = {}) {
+function makeContext() {
   const sandbox = {
-    baseStats,
-    Image: class { constructor() {} set src(_) {} },
     console,
   };
   const ctx = vm.createContext(sandbox);
   const out = vm.runInContext(
     extractSpriteSection() +
-    '\n; ({ getSprite, handleSpriteError, toShowdownSpriteId, LOCAL_SPRITE_MANIFEST, FORM_DEX_IDS, SPRITE_ID_ALIASES, _spriteCache });',
+    '\n; ({ getSprite, handleSpriteError, hasDistinctCosmeticSprite, toShowdownSpriteId, LOCAL_SPRITE_MANIFEST, FORM_DEX_IDS, _spriteCache });',
     ctx,
   );
   return out;
@@ -124,27 +124,57 @@ test('Own Tempo Rockruff uses its bundled artwork in every orientation', () => {
   }
 });
 
-test('un-bundled back sprites fall through to Showdown URL', () => {
-  // Species without a vendored back gif (e.g. newer-gen mons not in the local
-  // manifest) must still fall through to the remote Showdown back sprite.
+test('missing backs use the same local front art and preserve shiny coloring', () => {
   const s = makeContext();
-  Object.keys(s._spriteCache).forEach(k => delete s._spriteCache[k]);
-  const backManifest = s.LOCAL_SPRITE_MANIFEST['gen5ani-back'];
-  // The newest Gen 9 mons (Paradox / Treasures of Ruin / DLC legendaries) have no animated
-  // BACK sprite at the PokeAPI mirror, so they stay un-bundled in gen5ani-back and must still
-  // fall through to the remote Showdown back sprite. (Most base-species backs are now vendored.)
-  const unbundled = ['Iron Treads', 'Iron Bundle', 'Chi-Yu', 'Ogerpon', 'Pecharunt']
-    .find(n => !backManifest.has(s.toShowdownSpriteId(n)));
-  assert.ok(unbundled, 'expected at least one un-bundled back-sprite species for this test');
-  const url = s.getSprite(unbundled, false, true);
-  assert.ok(url.startsWith('https://play.pokemonshowdown.com/sprites/gen5ani-back/'), `expected Showdown URL for ${unbundled}, got ${url}`);
+  s.LOCAL_SPRITE_MANIFEST['gen5ani-back'].delete('charizard');
+  s.LOCAL_SPRITE_MANIFEST['gen5ani-back-shiny'].delete('charizard');
+  assert.strictEqual(s.getSprite('Charizard', false, true), 'sprites/gen5ani/charizard.gif');
+  assert.strictEqual(s.getSprite('Charizard', true, true), 'sprites/gen5ani-shiny/charizard.gif');
 });
 
-test('unknown species falls through to Showdown URL', () => {
+test('an unknown form uses the local unavailable art instead of the base species', () => {
   const s = makeContext();
-  Object.keys(s._spriteCache).forEach(k => delete s._spriteCache[k]);
-  const url = s.getSprite('NoSuchPokemon', false, false);
-  assert.ok(url.startsWith('https://play.pokemonshowdown.com/sprites/gen5ani/'), `expected Showdown URL, got ${url}`);
+  for (const dir of Object.values(s.LOCAL_SPRITE_MANIFEST)) dir.delete('moltres-galar');
+  assert.strictEqual(s.getSprite('Moltres-Galar', false, false), 'sprites/placeholder.svg');
+  assert.strictEqual(s.getSprite('NoSuchPokemon', true, true), 'sprites/placeholder.svg');
+});
+
+test('only visible cosmetic differences can be offered as a rare skin', () => {
+  const s = makeContext();
+  assert.ok(s.hasDistinctCosmeticSprite('Pikachu', 'Pikachu-World'));
+  assert.ok(!s.hasDistinctCosmeticSprite('Rockruff', 'Rockruff-Dusk'));
+  assert.ok(!s.hasDistinctCosmeticSprite('Pikachu', 'Pikachu-Missing'));
+});
+
+test('every supported regional variant ships its own art for all four orientations', () => {
+  const { getSprite, toShowdownSpriteId } = makeContext();
+  const regional = species.filter(({ name }) => /-(?:Alola|Galar|Hisui|Paldea)(?:-|$)/.test(name));
+  assert.ok(regional.length >= 50);
+  for (const { name, baseSpecies } of regional) {
+    const slug = toShowdownSpriteId(name);
+    assert.notStrictEqual(slug, toShowdownSpriteId(baseSpecies), name);
+    for (const [shiny, back, dir] of [
+      [false, false, 'gen5ani'], [true, false, 'gen5ani-shiny'],
+      [false, true, 'gen5ani-back'], [true, true, 'gen5ani-back-shiny'],
+    ]) {
+      const expected = `sprites/${dir}/${slug}.gif`;
+      assert.strictEqual(getSprite(name, shiny, back), expected, name);
+      assert.ok(fs.existsSync(path.join(ROOT, expected)), expected);
+    }
+  }
+});
+
+test('every selectable species or form resolves to a bundled path in every orientation', () => {
+  const { getSprite } = makeContext();
+  for (const { name } of species) {
+    for (const back of [true, false]) {
+      for (const shiny of [true, false]) {
+        const localPath = getSprite(name, shiny, back);
+        assert.match(localPath, /^sprites\//, name);
+        assert.ok(fs.existsSync(path.join(ROOT, localPath)), localPath);
+      }
+    }
+  }
 });
 
 test('FORM_DEX_IDS covers every Mega/Primal/Gmax form in MEGA_FORM_NAMES and GMAX_SPECIES', () => {
@@ -181,44 +211,36 @@ test('LOCAL_SPRITE_MANIFEST matches sprites on disk', () => {
   }
 });
 
-test('handleSpriteError falls back from local → Showdown → PokeAPI form-id → local placeholder and terminates', () => {
-  const s = makeContext({
-    'Charizard-Mega-X': { dex: 6 },
-    'Charizard': { dex: 6 },
-  });
+test('a failed local image uses same-form art and leaves the shared resolver intact', () => {
+  const s = makeContext();
+  const expectedBack = s.getSprite('Charizard-Mega-X', true, true);
+  const onerror = () => {};
   const img = {
-    src: 'sprites/gen5ani/charizard-megax.gif',
-    alt: 'Charizard-Mega-X',
-    dataset: { shiny: 'false', back: 'false' },
-    onerror: null,
+    src: expectedBack,
+    alt: 'Charizard',
+    onerror,
   };
-  const expected = [
-    /pokemonshowdown\.com\/sprites\/gen5ani\/charizard-megax\.gif/,
-    /\/xyani\/charizard-megax\.gif/,
-    /\/sprites\/ani\/charizard-megax\.gif/,
-    /PokeAPI.+?\/other\/showdown\/10034\.gif/,
-    /\/sprites\/gen5\/charizard-megax\.png/,
-    /PokeAPI.+?\/sprites\/pokemon\/10034\.png/,
-    /\/sprites\/gen5\/charizard\.png/, // base species static (last remote rung)
-    /sprites\/placeholder\.svg/,        // remote chain exhausted → bundled offline placeholder
-  ];
-  for (const re of expected) {
+  for (const expected of [
+    'sprites/gen5ani-shiny/charizard-megax.gif',
+    'sprites/gen5ani/charizard-megax.gif',
+    'sprites/placeholder.svg',
+    'sprites/placeholder.svg',
+  ]) {
     s.handleSpriteError(img);
-    assert.match(img.src, re);
+    assert.strictEqual(img.src, expected);
   }
-  // Chain must terminate at the local placeholder — no further mutation.
-  const terminus = img.src;
-  s.handleSpriteError(img);
-  assert.strictEqual(img.src, terminus, 'chain should terminate at the local placeholder');
+  assert.strictEqual(img.onerror, onerror);
+  assert.strictEqual(s.getSprite('Charizard-Mega-X', true, true), expectedBack);
 });
 
-test('handleSpriteError uses correct form-dex ID for shiny back variants', () => {
-  const s = makeContext({});
+test('a stale error event leaves a new pending sprite alone', () => {
+  const s = makeContext();
   const img = {
-    src: 'https://play.pokemonshowdown.com/sprites/ani-shiny/pikachu-gmax.gif',
-    alt: 'Pikachu-Gmax',
-    dataset: { shiny: 'true', back: 'true' },
+    src: 'https://example.test/sprites/gen5ani-back/charizard-megax.gif',
+    currentSrc: 'https://example.test/sprites/gen5ani-back/charizard.gif',
+    complete: false,
   };
+  const pending = img.src;
   s.handleSpriteError(img);
-  assert.match(img.src, /\/other\/showdown\/back\/shiny\/10199\.gif/);
+  assert.strictEqual(img.src, pending);
 });

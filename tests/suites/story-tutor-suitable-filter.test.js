@@ -1,5 +1,5 @@
-// ★ Suitable filter — narrows the move grid to competitive-tagged utility/singleton
-// moves so a player can jump straight to the "good stuff". Equipped moves always pass.
+// Battle utility filters every catalog card. The Pokémon's current moves are
+// still shown above the catalog as editing slots.
 //
 //   node --test tests/suites/story-tutor-suitable-filter.test.js
 import { test } from 'node:test';
@@ -34,9 +34,6 @@ test('the Suitable chip renders in the moves toolbar', async () => {
 
 test('toggling Suitable narrows the grid to competitive-tagged moves (+ equipped)', async () => {
   await prime(7, { m: ['Earthquake'], n: 'Jolly', a: 'Rough Skin' });
-  // expand to the full pool first (turn off ★ Recommended) so the narrowing is meaningful
-  const rec = host().querySelector('.tx-chip--rec');
-  if (rec && rec.dataset.active === '1') { rec.click(); await wait(200); }
   const before = visMoves().length;
   host().querySelector('[data-filter-kind="suitableOnly"]').click();
   await wait(250);
@@ -45,17 +42,15 @@ test('toggling Suitable narrows the grid to competitive-tagged moves (+ equipped
   assert.ok(after.length < before, `grid narrowed (${before} → ${after.length})`);
   for (const m of after) {
     const base = String(m).split('/')[0];
-    const ok = !!w._txCompetitiveTag(base) || base === 'Earthquake'; // equipped always passes
-    assert.ok(ok, `${m} is competitive-tagged or the equipped move`);
+    assert.ok(w._txCompetitiveTag(base), `${m} is a utility-tagged move`);
   }
 });
 
-test('the equipped move survives the Suitable filter even if it is not tagged', async () => {
+test('the equipped slot remains accessible while the Battle utility filter is active', async () => {
   await prime(7, { m: ['Scale Shot'], n: 'Jolly', a: 'Rough Skin' }); // Scale Shot: not in the table
   assert.equal(w._txCompetitiveTag('Scale Shot'), null, 'Scale Shot is not tagged');
-  const rec = host().querySelector('.tx-chip--rec');
-  if (rec && rec.dataset.active === '1') { rec.click(); await wait(200); }
   host().querySelector('[data-filter-kind="suitableOnly"]').click();
   await wait(250);
-  assert.ok(visMoves().includes('Scale Shot'), 'the equipped move is never filtered out');
+  assert.ok(!visMoves().includes('Scale Shot'));
+  assert.match(host().querySelector('.tx-slot-chip').textContent, /Scale Shot/);
 });

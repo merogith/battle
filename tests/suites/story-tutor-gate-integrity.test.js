@@ -75,9 +75,7 @@ test('Q2b player pool: Inner still excludes Learnt status (unlock is C3, not C0)
 });
 
 test('foe gate: foes keep legal moves at C3; over-cap damage stripped', async () => {
-  // Build-diversity overhaul: foes keep the full LEGAL pool subject only to the
-  // per-city BP cap (no player-style category gate). At C3 (cap 80): Toxic (status)
-  // and Dragon Claw (80) survive; Earthquake (100) is stripped as over-cap.
+  // Toxic is Tier 3 for a Garchomp and Earthquake is Tier 4.
   primeStory(3);
   const team = [{ name: 'Garchomp', build: { m: ['Toxic', 'Bulldoze', 'Earthquake', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(3));
@@ -85,16 +83,20 @@ test('foe gate: foes keep legal moves at C3; over-cap damage stripped', async ()
   assert.ok(!team[0].build.m.includes('Earthquake'), 'foe loses Earthquake (100 BP) — over the C3 cap (80)');
 });
 
-test('foe gate: at Inner (C0) foes keep legal status but strip over-cap damage (Phase 1)', async () => {
-  // Phase 1 (build-diversity): the foe gate is BP-capped, not category-gated — Toxic
-  // (legal, 0-BP status) survives even at Inner; Bulldoze (60 BP) exceeds the C0 cap
-  // (40) and is stripped. (The PLAYER gate still withholds Learnt status until C3 —
-  // see the player-pool tests above; the two models diverge here by design.)
+test('Pallet withholds Toxic for both sides and gives the starter only one extra tier', async () => {
   primeStory(0);
   const team = [{ name: 'Garchomp', build: { m: ['Toxic', 'Bulldoze'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(0));
-  assert.ok(team[0].build.m.includes('Toxic'), 'foe keeps legal status Toxic at C0 (Phase 1)');
-  assert.ok(!team[0].build.m.includes('Bulldoze'), 'Bulldoze (60 BP) stripped over the C0 cap (40)');
+  assert.ok(!team[0].build.m.includes('Toxic'));
+  assert.ok(!team[0].build.m.includes('Bulldoze'));
+  const ordinary = await ST.tutorGetStagedMovePool('Garchomp', []);
+  const starter = await ST.tutorGetStagedMovePool('Garchomp', [], true);
+  assert.ok(ordinary.every(move => starter.includes(move)));
+  assert.ok(starter.includes('Bite') && !ordinary.includes('Bite'));
+  assert.ok(!starter.includes('Toxic'), 'Tier 3 learned utility waits even for a Pallet starter');
+  primeStory(1);
+  assert.ok((await ST.tutorGetStagedMovePool('Garchomp', [], true)).includes('Toxic'), 'the next tier unlocks utility for the starter');
+  assert.ok(!(await ST.tutorGetStagedMovePool('Garchomp', [])).includes('Toxic'));
 });
 
 test('Q4 crucible: an off-timeline Crucible battle skips the historical city gate', async () => {

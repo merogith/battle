@@ -38,12 +38,12 @@ test('npcStageForCity: city-anchored thresholds (dojo 1/4/6/8, tutor 0/3/6, evol
   assert.equal(ST.npcStageForCity('dojo', 6), 2);
   assert.equal(ST.npcStageForCity('dojo', 7), 2);
   assert.equal(ST.npcStageForCity('dojo', 8), 3);
-  // Move Tutor thresholds tutor:[0,3,6] — Inner C0-2, Unleashed C3-5, Guru C6+.
+  // Move Tutor thresholds tutor:[0,3,7] — Inner C0-2, Unleashed C3-6, Guru C7+.
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 2), 0);
   assert.equal(ST.npcStageForCity('tutor', 3), 1);
   assert.equal(ST.npcStageForCity('tutor', 5), 1);
-  assert.equal(ST.npcStageForCity('tutor', 6), 2);
+  assert.equal(ST.npcStageForCity('tutor', 6), 1);
   assert.equal(ST.npcStageForCity('evolab', 2), 0);
   assert.equal(ST.npcStageForCity('evolab', 3), 0);
   assert.equal(ST.npcStageForCity('evolab', 4), 1);
@@ -75,7 +75,7 @@ test('dojoItemTier: Foundation=1 (berries + type-boosters), Staples=2 (Eviolite 
   assert.equal(ST.dojoItemTier('Leftovers'), 2);
   assert.equal(ST.dojoItemTier('Heavy-Duty Boots'), 2);
   assert.equal(ST.dojoItemTier('Assault Vest'), 2);
-  assert.equal(ST.dojoItemTier('Focus Sash'), 2);
+  assert.equal(ST.dojoItemTier('Focus Sash'), 3);
   // Tier 3 — Meta: snowball / win-more only.
   assert.equal(ST.dojoItemTier('Choice Band'), 3);
   assert.equal(ST.dojoItemTier('Life Orb'), 3);
@@ -165,10 +165,10 @@ test('stage-up gifts: dojo 4-tier (Black Belt → Master → Grandmaster) and Ev
 });
 
 test('city-screen chip tags advance with the arrived city', () => {
-  // Move Tutor is 3-stage (tutor:[0,3,6]) — Inner Strength (C0-2) → Unleashed (C3-5) → Guru (C6+).
+  // Move Tutor is 3-stage (tutor:[0,3,7]) — Inner Strength (C0-2) → Unleashed (C3-6) → Guru (C7+).
   assert.ok(renderCity(2).includes('Move Tutor — Inner Strength'), 'C2 Move Tutor = Inner Strength');
   assert.ok(renderCity(3).includes('Move Tutor — Unleashed'), 'C3 Move Tutor = Unleashed');
-  assert.ok(renderCity(6).includes('Move Tutor — Guru'), 'C6 Move Tutor = Guru');
+  assert.ok(renderCity(7).includes('Move Tutor — Guru'), 'C7 Move Tutor = Guru');
   assert.ok(renderCity(2).includes('Battle Dojo — White Belt'), 'C2 Dojo = White Belt');
   assert.ok(renderCity(4).includes('Battle Dojo — Black Belt'), 'C4 Dojo = Black Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Master'), 'C6 Dojo = Master');

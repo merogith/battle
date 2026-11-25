@@ -2,7 +2,7 @@
 // road scene on the approach to City 3) sets sm.hiddenPowerUnlocked and grants a
 // one-time sm.hiddenPowerChoosePending token. Once unlocked, the Move Tutor can
 // teach bare "Hidden Power" to ANY Pokémon; on teach it projects to that mon's
-// hpType (chosen via a picker on the first lesson, assigned/random thereafter).
+// hpType, either its natural element or the type chosen with the one-time favor.
 //
 // These tests lock in: (1) the mentor scene exists and its onContinue flips the
 // flags; (2) the staged tutor pool includes "Hidden Power" only when unlocked, and
@@ -26,9 +26,13 @@ test('the Diviner mentor scene exists and unlocks Hidden Power on continue', () 
     assert.ok(Array.isArray(sc.lines) && sc.lines.length >= 1, 'has dialogue');
     eng.sm.hiddenPowerUnlocked = false;
     eng.sm.hiddenPowerChoosePending = false;
+    eng.sm.hpChooseGranted = false;
     sc.onContinue();
     assert.equal(eng.sm.hiddenPowerUnlocked, true, 'unlock flag set');
     assert.equal(eng.sm.hiddenPowerChoosePending, true, 'one-time choose token granted');
+    eng.sm.hiddenPowerChoosePending = false;
+    sc.onContinue();
+    assert.equal(eng.sm.hiddenPowerChoosePending, false, 'seeing the Diviner again cannot reissue a spent favor');
 });
 
 test('"Hidden Power" is priced at a normal tutor tier, never the 5,000G Awakened default', async () => {
@@ -69,9 +73,65 @@ test('teaching Hidden Power projects to the mon\'s hpType and consumes the token
     assert.ok(mon.build.m.includes('Hidden Power Fire'), 'bare HP projected to the mon\'s type');
     assert.ok(!mon.build.m.includes('Hidden Power'), 'no bare Hidden Power left in the loadout');
 
-    const mon2 = { name: 'Gengar', build: { m: ['Shadow Ball'], n: 'Timid' } };
+    const mon2 = { name: 'Gengar', build: { m: ['Shadow Ball', 'Hidden Power'], n: 'Timid' } };
     eng.sm.hiddenPowerChoosePending = true;
-    eng._hpTutorApply(mon2, 'Hidden Power', 'Ice');
+    eng._hpTutorApply(mon2, { type: 'Ice', spendFavor: true });
     assert.equal(mon2.build.hpType, 'Ice', 'chosen type applied');
+    assert.equal(mon2.build.m[1], 'Hidden Power Ice');
     assert.equal(eng.sm.hiddenPowerChoosePending, false, 'token consumed on a successful teach');
+});
+
+test('gold and Heart Scale lessons commit the previewed type only when confirmed', async t => {
+    const w = E.window;
+    const story = w.StoryMode;
+    const sm = eng.sm;
+    const partner = { name: 'Eevee', build: { m: ['Tackle'], n: 'Hardy' } };
+    const second = { name: 'Gengar', build: { m: ['Shadow Ball'], n: 'Timid', hpType: 'Steel' } };
+    const natural = eng.resolveHiddenPowerForBuild({ ...partner.build }, partner.name);
+    Object.assign(sm, {
+        active: true, gold: 10000, hiddenPowerUnlocked: true, hiddenPowerChoosePending: true,
+        hpChooseGranted: true, inventory: { heartScale: 1 }, team: [partner, second],
+        eventIndex: w.__narrationTest.STORY_EVENTS_RAW.findIndex(row => row[1] === 'City' && row[2] === 'City7'),
+    });
+    const originalConfirm = w.showGameConfirm;
+    t.after(() => { w.showGameConfirm = originalConfirm; });
+    async function choose(selector) {
+        for (let tryCount = 0; tryCount < 60; tryCount++) {
+            const button = w.document.querySelector(`.story-hp-picker ${selector}`);
+            if (button) { button.click(); return; }
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.fail(`Hidden Power picker did not show ${selector}`);
+    }
+    w.showGameConfirm = async prompt => {
+        assert.match(prompt, new RegExp(`Hidden Power \\(${natural}\\)`));
+        return true;
+    };
+    const teach = story.tutorChangeMove(0, 1, 'Hidden Power');
+    await choose('[data-hp-natural]');
+    await teach;
+    assert.equal(partner.build.m[1], `Hidden Power ${natural}`, 'legacy unassigned type matches the preview');
+    assert.equal(sm.hiddenPowerChoosePending, true, 'natural lesson saves the favor for another partner');
+    assert.equal(sm.gold, 7500);
+
+    let accepted = false;
+    w.showGameConfirm = async prompt => {
+        assert.match(prompt, /1 Heart Scale to teach Hidden Power \(Fire\)/);
+        return accepted;
+    };
+    const offer = () => story.tutorChangeMoveWithVoucher(1, 1, 'Hidden Power');
+    const cancel = offer();
+    await choose('[data-hp="Fire"]');
+    await cancel;
+    assert.equal(second.build.hpType, 'Steel');
+    assert.equal(sm.hiddenPowerChoosePending, true);
+    assert.equal(sm.inventory.heartScale, 1);
+    accepted = true;
+    const commit = offer();
+    await choose('[data-hp="Fire"]');
+    await commit;
+    assert.equal(second.build.m[1], 'Hidden Power Fire');
+    assert.equal(sm.hiddenPowerChoosePending, false);
+    assert.equal(sm.inventory.heartScale, undefined);
+    assert.equal(sm.gold, 7500);
 });

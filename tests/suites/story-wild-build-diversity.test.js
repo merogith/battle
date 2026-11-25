@@ -131,60 +131,32 @@ test('distributor hits the target total even for a lopsided shape at the 508 cap
   }
 });
 
-test('end-to-end: C7 wild EV totals hit the 508 cap (no clamp-overflow undershoot)', () => {
-  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
-  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
-  ST.sm = {
-    active: true, badges: 8, team: [],
-    settings: { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
-    unlockedGimmicks: [], storyDifficulty: 'normal',
-    eventIndex: cityRowFor(7), trainerAssignments: {},
-  };
-  const KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
-  let checked = 0, undershot = 0;
-  for (let i = 0; i < 400; i++) {
-    const enc = ST.rollWildEncounter([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    if (!enc) continue;
-    checked++;
-    const total = KEYS.reduce((s, k) => s + (enc.build.evs[k] | 0), 0);
-    if (total < 500) undershot++; // 508 cap, allow ≤8 for /4 rounding
+test('wild builds gain EVs, IVs and move options gradually and leave room for training', async () => {
+  const rows = ST.STORY_EVENTS_RAW;
+  const totals = [];
+  for (const city of [0, 3, 6, 9]) {
+    ST.sm = { active: true, runSeed: 70 + city, badges: city, team: [],
+      settings: { enabledGens: [1, 4, 9] }, unlockedGimmicks: [], storyDifficulty: 'normal',
+      eventIndex: rows.findIndex(row => row[2] === 'City' + city), trainerAssignments: {} };
+    const observedMoves = new Set();
+    const values = [];
+    const { natural } = await ST.tutorFetchLearnsetMoveNames('Garchomp');
+    for (let i = 0; i < 60; i++) {
+      const build = ST.storyMakeWildBuild('Garchomp');
+      values.push(Object.values(build.evs).reduce((total, ev) => total + ev, 0));
+      observedMoves.add(build.m.join('|'));
+      assert.ok(build.m.every(move => natural.includes(move)), build.m.join(', '));
+      assert.ok(build.m.some(move => ST.ensureMoveData(move).cat !== 'Status'));
+      assert.ok(!build.i || build.i === 'None' || /Berry$/.test(build.i), build.i);
+      assert.ok(['Sand Veil', 'Rough Skin'].includes(build.a));
+      if (city < 6) assert.equal(build.a, 'Sand Veil');
+      if (city === 0) assert.ok(Object.values(build.ivs).every(iv => iv <= 10));
+    }
+    assert.ok(observedMoves.size > 2, `City ${city} has varied movesets`);
+    assert.ok(Math.max(...values) <= 280);
+    totals.push(values.reduce((total, ev) => total + ev, 0) / values.length);
   }
-  assert.ok(checked > 50, 'sampled enough C7 wilds');
-  assert.equal(undershot, 0, `no C7 wild should undershoot 508 (got ${undershot}/${checked})`);
-  ST.sm = null;
-});
-
-test('C1 move bias: dual-typed wilds carry their secondary-type basic STAB (pre-catch)', () => {
-  // Locks in the makeWildBuild secondary-STAB post-pass: a dual-typed wild should
-  // visibly carry its 2nd type's basic STAB more often than never. Measured at the
-  // ROLL layer (where the bias lives). NOTE: the catch-time learnset filter
-  // (_storyFilterBuildMovesForCity) narrows this on the actual caught mon at early
-  // cities — this test guards the mechanism, not the post-filter survival rate.
-  const RAW = ST.STORY_EVENTS_RAW, N = RAW.length;
-  const cityRowFor = (c) => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return -1; };
-  const T1SEC = W._T1_BASIC_STAB_BY_TYPE;
-  const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  ST.sm = {
-    active: true, badges: 8, team: [],
-    settings: { enabledGens: GENS.slice() },
-    unlockedGimmicks: [], storyDifficulty: 'normal',
-    eventIndex: cityRowFor(7), trainerAssignments: {},
-  };
-  let dual = 0, withSecondary = 0;
-  for (let i = 0; i < 700; i++) {
-    const enc = ST.rollWildEncounter(GENS);
-    if (!enc) continue;
-    const base = baseStats[enc.name];
-    if (!base || !base.t2) continue;
-    const sec = T1SEC && T1SEC[base.t2];
-    if (!sec) continue;
-    dual++;
-    if ((enc.build.m || []).includes(sec)) withSecondary++;
-  }
-  assert.ok(dual > 30, `sampled enough dual-typed wilds (got ${dual})`);
-  // Generous floor — the observed C7 pre-catch rate is ~90%; assert well clear of a
-  // "never surfaces the 2nd type" regression.
-  assert.ok(withSecondary / dual >= 0.4, `dual-types show 2nd-type STAB (${withSecondary}/${dual})`);
+  assert.deepEqual(totals, [...totals].sort((a, b) => a - b));
   ST.sm = null;
 });
 

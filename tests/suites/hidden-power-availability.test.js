@@ -7,9 +7,8 @@
 // Hidden Power go" failure mode.
 //
 // Locks: (1) _hpAvailable derives from City 3 and honours the explicit flag;
-// (2) _hpEnsureUnlockState self-heals the flag past the threshold; (3) it lazily
-// grants the first-pick token once (not re-granting after it is spent, and never
-// when the mon already knows Hidden Power); (4) the tutor pool surfaces Hidden Power
+// (2) _hpEnsureUnlockState self-heals the flag past the threshold; (3) it grants
+// the favor once, including parties with a naturally known copy; (4) the tutor pool surfaces Hidden Power
 // from derived availability alone.
 //
 // Run: node --test tests/suites/hidden-power-availability.test.js
@@ -67,13 +66,13 @@ test('lazy first-pick: token granted once when no Hidden Power taught yet', () =
     assert.equal(sm.hiddenPowerChoosePending, false, 'spent token is never re-granted');
 });
 
-test('no lazy token when the mon already knows Hidden Power (already past the first lesson)', () => {
+test('a captured partner that knows Hidden Power does not spend the favor', () => {
     const sm = resetSm({ city: 4, unlocked: false });
     sm.team = [{ name: 'Gengar', build: { m: ['Hidden Power Ice', 'Shadow Ball'] } }];
     HP.hpEnsureUnlockState();
     assert.equal(sm.hiddenPowerUnlocked, true, 'still unlocks the mechanic');
-    assert.equal(sm.hiddenPowerChoosePending, false, 'but grants no fresh first-pick — a HP is already taught');
-    assert.equal(sm.hpChooseGranted, true, 'and records the token as issued so it never fires later');
+    assert.equal(sm.hiddenPowerChoosePending, true, 'known moves do not prove the favor was spent');
+    assert.equal(sm.hpChooseGranted, true);
 });
 
 test('below the threshold, nothing self-heals', () => {

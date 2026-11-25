@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { chromium } from 'playwright';
 
 /* global state */
 
 const url = new URL(process.env.BATTLE_TEST_URL || 'http://localhost:5173/battle.html');
+const out = process.env.BATTLE_RETRY_OUT;
+if (out) await mkdir(out, { recursive: true });
 const prompts = [
   '.story-cold-open button',
   '.story-tutorial-overlay .story-tutorial-continue',
@@ -49,6 +53,17 @@ const saved = page => page.evaluate(() => {
   const run = JSON.parse(localStorage.getItem('pbs_story_save'));
   return { gold: run.gold, event: run.eventIndex, seed: run.runSeed, losses: run.stats.battlesLost, inventory: run.inventory };
 });
+const enemyLock = page => page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')).currentEnemyLock);
+const acknowledge = page => page.getByRole('button', { name: 'See my options', exact: true });
+async function lose(page) {
+  const gameOver = page.locator('#screen-story-gameover');
+  if (!await gameOver.isVisible()) {
+    await page.locator('#command-menu [data-cmd="run"]').click();
+    await page.locator('#modal-game-confirm').getByRole('button', { name: 'OK', exact: true }).click();
+  }
+  await gameOver.waitFor({ state: 'visible' });
+  return gameOver;
+}
 
 async function playMove(page, fight, lowestDamage = false) {
   await page.waitForFunction(() => state.mode === 'story' && state.pActive && state.fActive && !state.isLocked && !state.isOver);
@@ -124,11 +139,14 @@ async function verifyBattleBag(page, fight) {
 const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
 try {
   const fingerprints = [];
-  const scenarios = [17, 253].map(seed => ({ seed, difficulty: 'hard', withBag: false }));
+  const scenarios = [
+    { seed: 17, difficulty: 'hard', viewport: { width: 320, height: 568 }, playToLoss: true },
+    { seed: 253, difficulty: 'hard', viewport: { width: 568, height: 320 } },
+  ];
   if (process.env.BATTLE_TEST_STORY_BAG === '1') scenarios.push({ seed: 253, difficulty: 'veryeasy', withBag: true });
-  for (const { seed, difficulty, withBag } of scenarios) {
+  for (const { seed, difficulty, withBag, playToLoss, viewport = { width: 390, height: 844 } } of scenarios) {
     const context = await browser.newContext({
-      viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+      viewport, hasTouch: true, isMobile: true,
       reducedMotion: 'reduce', serviceWorkers: 'block',
     });
     try {
@@ -158,6 +176,10 @@ try {
       await choose.click();
       await page.locator('#prof-accept-btn').click();
       await page.getByText(/joined your team!/).waitFor();
+      const bond = page.getByRole('dialog').filter({ hasText: 'Your first partner' });
+      await bond.waitFor();
+      assert.match(await bond.innerText(), /one tier ahead of each town/);
+      await bond.getByRole('button', { name: 'Back to the lab', exact: true }).click();
       await page.locator('#screen-story-professor .story-shop-back-btn').click();
       await reach(page, objective);
       const objectiveName = await objective.innerText();
@@ -186,19 +208,31 @@ try {
         await page.locator(`#screen-battle[data-battle-engine="${initial.engine}"]`).waitFor();
       }
       const before = await saved(page);
-      const first = await playMove(page, fight, withBag);
+      const first = await playMove(page, fight, withBag || playToLoss);
       if (withBag) {
         assert.equal(first.board.over, false, 'the Bag scenario needs a second turn');
         await verifyBattleBag(page, fight);
         assert.deepEqual(errors, []);
         continue;
       }
-      const gameOver = page.locator('#screen-story-gameover');
-      if (!first.board.over && !await gameOver.isVisible()) {
-        await page.locator('#command-menu [data-cmd="run"]').click();
-        await page.locator('#modal-game-confirm').getByRole('button', { name: 'OK', exact: true }).click();
+      const locked = await enemyLock(page);
+      if (playToLoss) {
+        let board = first.board;
+        for (let turn = 1; turn < 30 && !board.over; turn++) board = (await playMove(page, fight, true)).board;
+        assert.ok(board.over && board.player.every(mon => mon.hp === 0), 'one scenario loses naturally through real battle turns');
       }
-      await gameOver.waitFor({ state: 'visible' });
+      const gameOver = await lose(page);
+      await acknowledge(page).waitFor();
+      assert.match(await page.getByRole('dialog', { name: 'Rival', exact: true }).innerText(), /One to nothing/);
+      if (out) await page.screenshot({ path: join(out, `rival-scene-${viewport.width}.png`) });
+      await acknowledge(page).click();
+      const advance = gameOver.getByRole('button', { name: /^Continue the story/ });
+      assert.match(await advance.innerText(), /Keep your gold/);
+      assert.match(await gameOver.innerText(), /A rematch is optional/);
+      assert.equal(await page.locator('#toast-host').isVisible(), false, 'town notifications wait while the defeat choices are open');
+      const advanceBox = await advance.boundingBox();
+      assert.ok(advanceBox.y >= 0 && advanceBox.y + advanceBox.height <= viewport.height, 'the main action fits without scrolling');
+      if (out) await page.screenshot({ path: join(out, `rival-options-${viewport.width}.png`) });
       if (initial.engine === 'showdown') {
         await gameOver.getByRole('button', { name: 'Understand this battle' }).click();
         const review = page.getByRole('dialog', { name: 'Explain this battle' });
@@ -218,13 +252,38 @@ try {
       await page.locator('#story-continue-btn').click();
       assert.deepEqual(await saved(page), defeat, 'reloading a defeat keeps the saved battle, inventory and gold');
       await gameOver.waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(await acknowledge(page).count(), 0, 'an acknowledged scene does not replay on reload');
       await gameOver.getByRole('button', { name: /Retry/ }).click();
       await reach(page, fight);
       assert.deepEqual(await snapshot(page), initial, 'Retry rebuilds the same opening board');
-      assert.deepEqual(await playMove(page, fight), first, 'the first real action gets the same result after Retry');
+      assert.deepEqual(await playMove(page, fight, playToLoss), first, 'the first real action gets the same result after Retry');
+      await lose(page);
+      await gameOver.getByRole('button', { name: /Return to Last City/ }).click();
+      await reach(page, objective);
+      assert.deepEqual(await enemyLock(page), locked, 'retreat preserves the entire rival build');
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
+      await story.click();
+      await page.locator('#story-continue-btn').click();
+      await reach(page, objective);
+      assert.match(await objective.innerText(), /Rival/i);
+      await objective.click();
+      await reach(page, fight);
+      assert.deepEqual((await snapshot(page)).opponent, initial.opponent, 'town reload and re-entry keep the same rival');
+      assert.deepEqual(await enemyLock(page), locked);
+      await lose(page);
+      const atChoice = await saved(page);
+      await advance.click();
+      await gameOver.waitFor({ state: 'hidden' });
+      const continued = await page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')));
+      assert.equal(continued.gold, atChoice.gold, 'the opening loss has no gold penalty');
+      assert.ok(continued.eventIndex > atChoice.event);
+      assert.equal(continued.rivalEncounterLog.at(-1).won, false);
+      assert.deepEqual(continued.rivalEncounterLog.at(-1).team, initial.opponent.map(mon => mon.name));
+      assert.equal(continued.currentEnemyLock, null);
       assert.deepEqual(errors, []);
       fingerprints.push(initial.opponent.map(mon => mon.name));
-      console.log(`Story ${difficulty} seed ${seed} recovered its defeat and repeated the first turn`);
+      console.log(`Story ${difficulty} seed ${seed} verified Starter bond, defeat scene, same-roster retry/retreat/reload, and story continuation`);
     } catch (error) {
       const [page] = context.pages();
       if (page) {

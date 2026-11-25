@@ -224,6 +224,7 @@ export async function runStory(E, opts = {}) {
 
     const rolled = rollFoeForRow(E, pos);
     if (!rolled) { stages.push({ pos, event: eventName, skipped: 'no-trainer' }); continue; }
+    await E.window.__storyTest.storyGateFoeMovesByCity(rolled.foeSpecs, rolled.eid);
 
     // Build both sides fresh (HP resets each battle regardless).
     let foeMons = [];

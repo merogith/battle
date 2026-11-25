@@ -107,23 +107,22 @@ test('Status quick chip → search: only Status moves stay visible', async () =>
   if (catPill) { catPill.click(); await wait(220); }
 });
 
-test('Stage/tier filter renders a removable ACTIVE pill and re-enables the sort selector', async () => {
-  const tierChip = host().querySelector('[data-filter-kind="tier"][data-tier-kind="moves"][data-filter-value="inner"]');
+test('Stage/tier filter renders a removable pill and preserves the selected sort', async () => {
+  const tierChip = host().querySelector('[data-filter-kind="tier"][data-tier-kind="moves"][data-filter-value="1"]');
   assert.ok(tierChip, 'moves tier chip exists');
-  assert.ok(!host().querySelector('.tx-sort-select[data-kind="moves"]'),
-    'precondition: sort selector hidden in the default ★ Recommended view');
+  const sort = () => host().querySelector('.tx-sort-select[data-kind="moves"]');
+  sort().value = 'name';
+  sort().dispatchEvent(new w.Event('change', { bubbles: true }));
   tierChip.click();
   await wait(260);
-  const pill = host().querySelector('.tx-active-filter[data-filter-kind="tier"][data-tier-kind="moves"][data-filter-value="inner"]');
+  const pill = host().querySelector('.tx-active-filter[data-filter-kind="tier"][data-tier-kind="moves"][data-filter-value="1"]');
   assert.ok(pill, 'active Stage filter surfaces as a removable pill (was: "Filters (1)" with no pill)');
-  assert.ok(host().querySelector('.tx-sort-select[data-kind="moves"]'),
-    'sort selector reappears while a Stage filter bypasses ★');
+  assert.equal(sort().value, 'name');
   pill.click();
   await wait(260);
   assert.ok(!host().querySelector('.tx-active-filter[data-filter-kind="tier"]'),
     'tapping the pill removes the Stage filter');
-  assert.ok(!host().querySelector('.tx-sort-select[data-kind="moves"]'),
-    'sort selector hides again once ★ curation resumes');
+  assert.equal(sort().value, 'name');
 });
 
 test('suggest panel hides while searching and returns when cleared (fast path parity)', async () => {

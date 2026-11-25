@@ -286,7 +286,7 @@ const cases = [
       await snapshot(page, record, 'move-summary');
       await summary.getByRole('button', { name: /^Close(?: summary)?$/i }).first().click();
       await openSettings(page);
-      await settings(page).getByRole('button', { name: 'VIEW', exact: true }).click();
+      await settings(page).getByRole('button', { name: 'Help & controls', exact: true }).click();
       const guide = page.getByRole('dialog', { name: 'Help Guide' });
       await guide.waitFor();
       assert.match(await guide.textContent(), /possible builds for this draft/);
@@ -460,7 +460,7 @@ const cases = [
     name: 'collection-help', profile: phone,
     async play(page, record) {
       await openSettings(page);
-      await settings(page).getByRole('button', { name: 'VIEW', exact: true }).click();
+      await settings(page).getByRole('button', { name: 'Help & controls', exact: true }).click();
       const help = page.getByRole('dialog', { name: 'Help Guide' });
       await help.waitFor();
       assert.match(await help.textContent(), /Local PvP/);

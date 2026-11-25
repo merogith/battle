@@ -14,20 +14,20 @@
     [PREFS]: 'accessibility preferences',
   };
   const SERVICES = [
-    ['mentor','Find one useful change for a partner','Battle Mentor','Check the effect and cost. A full build plan is also available.'],
-    ['tutor','Teach or replace moves','Move Tutor','Compare attacks, coverage and utility. Earlier towns have smaller move pools.'],
-    ['dojo','Choose items and abilities','Battle Dojo','Each belt opens more choices. Read the effect before changing your build.'],
-    ['nature','Change a nature','Nature Rater','Trade one stat for another. Check the exact before-and-after values.'],
-    ['evolab','Evolve a partner','Evolution Tutor','Check the stage, fee and any stone or trade requirement.'],
-    ['evtrainer','Train your stats','EV Trainer','Early access redistributes earned EVs; full spread purchases open later.'],
-    ['fanclub','Improve individual stats','Pokémon Fan Club','IV upgrades improve a partner’s potential. They are separate from EV training.'],
-    ['center','Manage party and storage','Pokémon Center','Swap between your party and PC. Your current party cap still applies.'],
-    ['stoneShop','Find evolution items','Stones and Beyond','Get the stone or trade item required by an evolution.'],
-    ['link','Trade or rebuild a partner','Cable Link','A trade replaces the partner. A rebuild keeps the Pokémon and rerolls parts of its build.'],
-    ['colress','Equip a battle form','Colress','Choose among Mega Evolution, Z-Moves, Dynamax and Tera when enabled in your run.'],
-    ['mart','Stock your battle bag','Pokémart','Buy Poké Balls and items to use during battle.'],
-    ['safari','Catch rare partners','Safari Zone','Try bait and rocks to help you catch Pokémon. The first visit is free.'],
-    ['daycare','Find an Egg','Daycare Inn','Meet the matron to learn about her Eggs. Confirm before trading away a partner permanently.'],
+    ['mentor','Battle Mentor','Check the effect and cost. A full build plan is also available.'],
+    ['tutor','Move Tutor','Compare attacks, coverage and utility. Earlier towns have smaller move pools.'],
+    ['dojo','Battle Dojo','Each belt opens more choices. Read the effect before changing your build.'],
+    ['nature','Nature Rater','Trade one stat for another. Check the exact before-and-after values.'],
+    ['evolab','Evolution Tutor','Check the stage, fee and any stone or trade requirement.'],
+    ['evtrainer','EV Trainer','Early access redistributes earned EVs; full spread purchases open later.'],
+    ['fanclub','Pokémon Fan Club','IV upgrades improve a partner’s potential. They are separate from EV training.'],
+    ['center','Pokémon Center','Swap between your party and PC. Your current party cap still applies.'],
+    ['stoneShop','Stones and Beyond','Get the stone or trade item required by an evolution.'],
+    ['link','Cable Link','A trade replaces the partner. A rebuild keeps the Pokémon and rerolls parts of its build.'],
+    ['colress','Colress','Choose among Mega Evolution, Z-Moves, Dynamax and Tera when enabled in your run.'],
+    ['mart','Pokémart','Buy Poké Balls and items to use during battle.'],
+    ['safari','Safari Zone','Try bait and rocks to help you catch Pokémon. The first visit is free.'],
+    ['daycare','Daycare Inn','Meet the matron to learn about her Eggs. Confirm before trading away a partner permanently.'],
   ];
   const LESSONS = [
     { title:'Type matchups', prompt:'A Water-type attack faces a Rock/Ground opponent. What happens?', choices:['It is resisted','It is four times effective','It has no effect'], answer:1, explanation:'Water is strong against both Rock and Ground. The two type multipliers combine: 2 × 2 = 4. An ability or other effect can still change the result.' },
@@ -117,12 +117,15 @@
   }
 
   function openNotebook(tab = 'next', focusTab = false) {
-    if (!['next','team','story','rules'].includes(tab)) tab = 'next';
+    const showRules = tab === 'rules';
+    if (showRules) tab = 'team';
+    if (!['next','team','story'].includes(tab)) tab = 'next';
     const p = open('Trainer’s Notebook');
     if (!api()) return notice('Game data is still loading. Close this page and try again shortly.');
+    p.classList.add('upgrade-dialog--notebook');
     const s = api().snapshot();
     const nav = element('nav',null,'upgrade-tabs'); nav.setAttribute('aria-label','Notebook pages');
-    for (const [id,label] of [['next','What next?'],['team','My team'],['story','Story & clues'],['rules','Battle rules']]) {
+    for (const [id,label] of [['next','What next?'],['team','My team'],['story','Journal']]) {
       const b = button(label,()=>openNotebook(id,true)); if (tab === id) b.setAttribute('aria-current','page'); nav.appendChild(b);
     }
     append(p,nav);
@@ -130,56 +133,67 @@
     if (tab === 'next') {
       const objective = card(s.active ? s.goal : 'Begin your adventure');
       objective.classList.add('upgrade-objective');
-      if (s.inCity) append(objective,button('Go to my next action',()=>{
+      const nextAction = document.querySelector('#screen-story-city:not(.hidden) #story-city-primary .story-city-objective');
+      if (nextAction) append(objective,button('Go to my next action',()=>{
         close();
-        document.querySelector('#story-city-primary .story-city-objective')?.click();
+        nextAction.click();
       },true));
-      append(objective,element('p',s.active ? `${s.badges}/8 badges · ${s.gold.toLocaleString()}G · ${s.team.length}/${s.cap} partners` : 'Choose Story Mode, create your trainer, and meet your first partner.'));
+      append(objective,element('p',s.active ? `${s.badges}/8 badges · ${s.gold.toLocaleString()}G · ${s.team.length}/${s.cap} partners` : 'Start Story Mode to meet your first partner.'));
       append(p,objective);
+      if (s.errand) append(p,card('Current errand',s.errand));
+      if (s.discoveryHints?.length) append(p,card('Heard in town',s.discoveryHints.at(-1)));
       const available = new Set(s.availableFacilities);
-      const guide = append(element('details'), element('summary', 'What each facility does'));
+      const guide = append(element('details'), element('summary', 'Services in this town'));
       const grid=element('div',null,'upgrade-grid');
-      for (const [key,purpose,name,description] of SERVICES) {
+      for (const [key,name,description] of SERVICES) {
         const localKey = key === 'mart' && available.has('dept') ? 'dept' : key;
+        if (!available.has(localKey)) continue;
         const localName = localKey === 'dept' ? 'Department Store' : name;
-        const c=card(purpose,`${localName} — ${description}`);
-        if (available.has(localKey)) append(c,button(`Visit ${localName}`,()=>{ close(); api().visit(localKey); }));
-        else append(c,element('small',s.inCity ? 'Unavailable in this town' : 'Check in town'));
-        grid.appendChild(c);
+        grid.appendChild(append(card(localName,description),button(`Visit ${localName}`,()=>{ close(); api().visit(localKey); })));
       }
-      append(guide,grid);
-      append(p,guide,button('Practice a battle concept',openPractice),button('Back up or restore progress',openData));
+      if (grid.children.length) append(p,append(guide,grid));
+      append(p,button('Practice a battle concept',openPractice));
     } else if (tab === 'team') {
-      if (s.openingRivalDefeat && s.team.length === 1) append(p,openingRivalRecovery(s.gold));
-      for (const note of analyzeTeam(s.team,api().typeEffectiveness)) append(p,element('p',note,'upgrade-feedback'));
-      append(p,element('p','These suggestions are starting points, not requirements. Keep the partners and strategies you enjoy. Training stats below exclude temporary battle stages.'));
+      if (s.openingRivalDefeat && s.team.length === 1) append(p,openingRivalRecovery());
+      const notes = analyzeTeam(s.team,api().typeEffectiveness);
+      append(p,element('p',notes[0],'upgrade-feedback'));
+      if (notes.length > 1) append(p,append(element('details'),element('summary','More team advice'),...notes.slice(1).map(note=>element('p',note))));
+      if(s.availableFacilities?.includes('mentor')) append(p,button('Review upgrades with the Mentor',()=>{close();api().visit('mentor');},true));
       const grid=element('div',null,'upgrade-grid');
+      const favoriteButton = mon => {
+        const label = marked => marked ? 'Unprotect favorite' : 'Protect as favorite';
+        const control = button(label(mon.favorite), () => {
+          const marked = api().favorite(mon.id);
+          control.textContent = label(marked);
+          control.setAttribute('aria-pressed', String(marked));
+        });
+        control.setAttribute('aria-pressed', String(mon.favorite));
+        return control;
+      };
       for (const mon of s.team) {
-        const c=card(`${mon.favorite ? '★ ' : ''}${mon.name}`,`${mon.types.join(' / ')} · Level ${mon.level} · ${mon.nature}`);
-        append(c,element('p',`${mon.ability} · ${mon.item}`),element('p',`HP ${mon.hp} · Atk ${mon.stats.atk} · Def ${mon.stats.def} · SpA ${mon.stats.spa} · SpD ${mon.stats.spd} · Spe ${mon.stats.spe}`));
-        const list=element('ul'); for(const move of mon.moves) append(list,element('li',`${move.name} — ${move.type || '—'} / ${move.category || '—'}`));
-        append(c,list,button(mon.favorite ? 'Unprotect favorite' : 'Protect as favorite',()=>{api().favorite(mon.id);openNotebook('team');}));
+        const c=card(mon.nickname || mon.name,`${mon.types.join(' / ')} · Stats ${mon.statTotal} · ${mon.attackStyle}`);
+        const full=append(element('details'),element('summary','Stats and moves'));
+        const list=element('ul'); for(const move of mon.moves) append(list,element('li',`${move.name} (${[move.type,move.category].filter(Boolean).join(', ')})`));
+        append(full,element('p',`${mon.nature} · ${mon.ability} · ${mon.item === 'None' ? 'No held item' : mon.item}`),element('p',`HP ${mon.hp} · Atk ${mon.stats.atk} · Def ${mon.stats.def} · SpA ${mon.stats.spa} · SpD ${mon.stats.spd} · Spe ${mon.stats.spe}`),list);
+        append(c,full,favoriteButton(mon));
         grid.appendChild(c);
       }
       append(p,grid);
       if(s.storage?.length) {
         const storage=append(element('details'),element('summary','Protect partners in storage'));
-        for(const mon of s.storage) append(storage,append(card(mon.name),button(mon.favorite ? 'Unprotect favorite' : 'Protect as favorite',()=>{api().favorite(mon.id);openNotebook('team');})));
-        append(p,storage);
+        append(p,append(storage,append(element('div',null,'upgrade-grid'),...s.storage.map(mon=>append(card(mon.name),favoriteButton(mon))))));
       }
-      if(s.availableFacilities?.includes('mentor')) append(p,button('Review upgrades with the Mentor',()=>{close();api().visit('mentor');},true));
-      append(p,button('Export run passport',()=>download('battle-run-passport.json',JSON.stringify(runPassport(),null,2))));
-    } else if(tab === 'story') {
-      append(p,element('p',s.thread));
-      // Existing journal renderer escapes player-owned values and gates discovered story beats.
-      const journal=element('div',null,'story-journal-body'); journal.innerHTML=s.journal; append(p,journal);
+      const rules=append(element('details'),element('summary','Battle rules'),
+        element('p',`Difficulty: ${s.difficulty}. Battles use singles rules. Partners usually fight at level 50. EXP-Share upgrades can raise this to 53.`),
+        element('p','Priority comes before Speed. Nature, IVs and EVs change trained stats. Stages change those stats during a fight.'),
+        button('Explain the current battle',openBattleReview),
+        button('Export run passport',()=>download('battle-run-passport.json',JSON.stringify(runPassport(),null,2))));
+      rules.open = showRules;
+      append(p,rules);
     } else {
-      append(p,card('Strategic singles','One active Pokémon per side. Most builds use level 50; EXP-Share gifts can reach level 53. This is a custom campaign, with its own progression and encounter modifiers.'));
-      append(p,card('Know your run',`Difficulty: ${s.difficulty}. Transformations, generation restrictions and bag rules come from your run settings. Boss stat scaling, camp bonuses and custom builds can change familiar matchups.`));
-      append(p,card('How opponents think','The current AI scores moves and switches using battle state, including your team’s actual builds. Difficulty changes its move selection and prediction strength. It is a heuristic opponent, not a perfect solver.'));
-      append(p,card('Learn the layers','Priority is checked before Speed. Nature, IVs and EVs determine trained stats. Stages modify them during battle. Type, weather, items and abilities can alter damage or make an attack fail.'));
-      append(p,card('This update','Progression modifiers persist through form changes. Gender metadata, several ability/item interactions and save failure reporting have been corrected. Notebook, practice lessons and complete backup tools are available here.'));
-      append(p,element('p',`Game ${VERSION} · Rules ${RULESET}`),button('Explain the current battle',openBattleReview));
+      const archive = document.querySelector('.screen:not(.hidden) [data-adventure-archive]');
+      if (archive) append(p,button('Open the Field Archive',()=>{close();archive.click();},true));
+      const journal=element('div',null,'story-journal-body'); journal.innerHTML=s.journal; append(p,journal);
     }
   }
 
@@ -197,9 +211,9 @@
     append(p,feedback,button('Next lesson',()=>openPractice((index+1)%LESSONS.length)));
   }
 
-  function openingRivalRecovery(gold) {
+  function openingRivalRecovery() {
     return card('After the first Rival duel',
-      `Retry starts the fight again from its saved entry. Return to Last City to heal and prepare. Concede to Rival heals your partner and continues the journey, and costs all your current gold (${gold.toLocaleString()}G).`);
+      'Continue the story heals your partner and keeps your gold. The rival gets the win. Retry faces the same rival team. Return to Last City gives you time to prepare.');
   }
   const COACH_STATUS = {
     brn: 'was burned', frz: 'was frozen', par: 'was paralyzed',
@@ -289,7 +303,7 @@
     const defeat = document.getElementById('screen-story-gameover');
     const reviewingDefeat = run?.active && defeat && !defeat.classList.contains('hidden');
     const observation = reviewingDefeat ? (api()?.defeatObservation?.() || observeBattle(events)) : null;
-    if (run?.openingRivalDefeat && run.team.length === 1) append(p,openingRivalRecovery(run.gold));
+    if (run?.openingRivalDefeat && run.team.length === 1) append(p,openingRivalRecovery());
     const native=events.filter(e=>e.native);
     const calculations=events.filter(e=>e.kind==='calculation').slice(-12);
     if (native.some(e=>e.native.kind==='move' || e.native.kind==='damage')) {

@@ -158,13 +158,13 @@ async function verifyNotebookAndRecovery(page) {
   const primaryObjective = notebook.locator('.upgrade-objective > h3 + button');
   assert.equal(await primaryObjective.innerText(), 'Go to my next action');
   if (page.viewportSize().width < 600) {
-    assert.equal(await notebook.locator('.upgrade-tabs').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length), 2);
+    assert.equal(await notebook.locator('.upgrade-tabs').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length), 3);
   }
   const team = notebook.getByRole('button', { name: 'My team', exact: true });
   await activate(page, team);
   await hasFocus(team);
   await page.keyboard.press('Tab');
-  await hasFocus(notebook.getByRole('button', { name: 'Story & clues' }));
+  await hasFocus(notebook.getByRole('button', { name: 'Journal' }));
   await page.keyboard.press('Escape');
   await hasFocus(cityNotebook);
 

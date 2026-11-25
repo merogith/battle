@@ -30,13 +30,14 @@ test('Fight labels matchup markers as basic type chart information', () => {
 
     document.querySelector('#command-menu [data-cmd="fight"]').click();
     const [strong, resisted, immune, status] = document.querySelectorAll('#move-menu .battle-btn-move');
-    for (const [button, icon, matchup] of [
-        [strong, '▲', 'super effective'],
-        [resisted, '▼', 'resisted'],
-        [immune, '⊘', 'immune'],
+    for (const [button, icon, label, matchup] of [
+        [strong, '▲', 'Super eff.', 'super effective'],
+        [resisted, '▼', 'Resisted', 'resisted'],
+        [immune, '⊘', 'Immune', 'immune'],
     ]) {
         const marker = button.querySelector('.move-tile-matchup');
-        assert.equal(marker.textContent, `Type ${icon}`);
+        assert.equal(marker.querySelector('[aria-hidden="true"]').textContent, icon);
+        assert.equal(marker.querySelector('.move-tile-matchup-label').textContent, label);
         assert.equal(marker.title, `Basic type chart: ${matchup}`);
         assert.ok(button.getAttribute('aria-label').includes(`basic type chart: ${matchup}`));
     }
@@ -58,7 +59,8 @@ test('a variable-power move has the same basic immunity marker as other attacks'
     window.showMoves();
     const attack = document.querySelector('#move-menu .battle-btn-move');
     const info = document.querySelector('#move-menu .move-info-hit');
-    assert.equal(attack.querySelector('.move-tile-matchup').textContent, 'Type ⊘');
+    assert.equal(attack.querySelector('.move-tile-matchup [aria-hidden="true"]').textContent, '⊘');
+    assert.equal(attack.querySelector('.move-tile-matchup-label').textContent, 'Immune');
     assert.equal(info.parentElement, attack.parentElement);
     assert.equal(attack.contains(info), false);
     const pp = player.moves[0].pp;

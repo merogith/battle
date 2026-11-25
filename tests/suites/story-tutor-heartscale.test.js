@@ -42,8 +42,8 @@ test('Heart Scale no longer unlocks the full pool at Inner Strength (C0)', async
     'precondition: Garchomp learnset is populated (offline index loaded)');
   // At C0 the per-city BP cap (≤40) applies, so pick a Natural move that is actually
   // teachable there, plus a Learnt (TM) move that must stay hidden until Guru.
-  const nat = ls.natural.find(m => bp(m) <= 40) || ls.natural[0];
-  const lrn = ls.learnt[0];
+  const nat = ls.natural.find(m => ST.storyMoveLessonTier('Garchomp', m) === 1);
+  const lrn = ls.learnt.find(move => ST.storyMoveLessonTier('Garchomp', move) === 4);
 
   // No scale: Natural-only at Inner (C0).
   primeAtCity(0, 0);
@@ -58,11 +58,11 @@ test('Heart Scale no longer unlocks the full pool at Inner Strength (C0)', async
   assert.equal(withScale.size, noScale.size, 'holding a Heart Scale does not change the staged pool size');
 });
 
-test('Learnt/TM moves unlock at Guru, not Expert (user staging model)', async () => {
+test('Learnt damage is still locked in a Tier 3 town', async () => {
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
   assert.ok(ls.learnt.length && ls.awakened.length,
     'precondition: Garchomp has learnt + awakened moves (offline index loaded)');
-  const lrn = ls.learnt[0];
+  const lrn = ls.learnt.find(move => ST.storyMoveLessonTier('Garchomp', move) === 4);
   const awk = ls.awakened[0];
   // Expert (L2): ALL Natural, but NO Learnt/TM and NO Awakened yet.
   primeAtCity(cityAtTutorStage(1), 3);

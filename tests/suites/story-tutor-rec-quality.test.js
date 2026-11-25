@@ -64,6 +64,9 @@ test('Q6+R5: Toxic (short-battle down-weighted) does not clear the flex bar; Rec
   const withRecover = ST.txMoveRecsByPurpose(
     ['Earthquake', 'Stone Edge', 'Iron Head', 'Poison Jab', 'Recover'], mon, { m: [] }, NO_DATA);
   assert.ok(movesOf(withRecover).includes('Recover'), 'Recover earns the zero-usage flex slot');
+  const withWeakStatus = ST.txMoveRecsByPurpose(
+    ['Earthquake', 'Stone Edge', 'Iron Head', 'Poison Jab', 'Growl', 'Recover'], mon, { m: [] }, NO_DATA);
+  assert.ok(movesOf(withWeakStatus).includes('Recover'), 'an alphabetically earlier weak move does not hide useful recovery');
 });
 
 test('R1/R2 regression: physical mon coverage stays physical when both categories offer the type', () => {
@@ -95,6 +98,5 @@ test('R4: sparse species still get the ✨ Suggest panel (heuristic fallback, ho
   for (let i = 0; i < 30; i++) { await wait(40); if (doc.querySelector('.tx-grid')) break; }
   const sug = doc.querySelector('details.tx-suggest');
   assert.ok(sug, 'suggest panel renders for a sparse species (was silently suppressed)');
-  assert.ok(sug.textContent.includes('no competitive usage data'),
-    'caption is honest about the heuristic basis');
+  assert.match(sug.textContent, sparsePool.totalBuilds ? /Few recorded sets/ : /no competitive usage data/);
 });

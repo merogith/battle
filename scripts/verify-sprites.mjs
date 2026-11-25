@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// Verify that every Mega / Primal / Gmax form named in battle.html has a local sprite.
-// Reports the gap so the download script can be re-run if needed.
+// Audit installed art for the full roster and its cosmetic formes using the runtime resolver.
+// Include --details to list intentional same-form fallbacks and unavailable artwork.
 
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { Dex } from '@pkmn/sim';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -67,9 +69,9 @@ function toSlug(name) {
 const megaForms = [...new Set([...parseMegaFormNames(), ...parseFormeSpecificMegas()])];
 const gmaxSpecies = parseGmaxSpecies();
 
-// Known gaps that have no official PokeAPI/Showdown sprite — handled via runtime fallback chain.
+// Known exceptions to direct Mega/Gmax sprite coverage.
 const EXPECTED_GAPS_FRONT = new Set([
-  'crucibelle-mega', // Smogon CAP Pokemon; not on PokeAPI. Showdown serves it via URL fallback.
+  'crucibelle-mega', // Smogon CAP form with no bundled sprite.
   'eternatus-gmax',  // Eternatus uses its Eternamax sprite (aliased in SPRITE_ID_ALIASES).
 ]);
 // Some Gmaxes are too large to have back-facing sprites on PokeAPI's Showdown mirror.
@@ -116,9 +118,9 @@ console.log(`gen5ani-back-shiny/        : ${fmt(backShinyMissing, EXPECTED_GAPS_
 
 // Manifest consistency
 const manifestPath = path.join(SPRITES, 'manifest.json');
+let manifestMismatch = 0;
 if (fs.existsSync(manifestPath)) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  let manifestMismatch = 0;
   for (const dir of DIRS) {
     const filesOnDisk = fs.readdirSync(path.join(SPRITES, dir))
       .filter((f) => f.endsWith('.gif'))
@@ -133,6 +135,45 @@ if (fs.existsSync(manifestPath)) {
   if (!manifestMismatch) console.log(`manifest.json              : ✓ in sync`);
 }
 
-// Exit code: nonzero only on UNEXPECTED front-sprite gaps (Smogon CAP & special-form gaps don't count).
+const start = HTML.indexOf('const _spriteCache = {};');
+const end = HTML.indexOf('window.syncSettingsModalSwitches', start);
+const { getSprite, SPRITE_PLACEHOLDER } = vm.runInNewContext(
+  `${HTML.slice(start, end)}\n;({ getSprite, SPRITE_PLACEHOLDER });`,
+);
+const roster = Object.values(JSON.parse(fs.readFileSync(path.join(ROOT, 'data/species.json'), 'utf8'))['9'])
+  .filter(entry => entry.num > 0 && entry.baseStats);
+const forms = new Set(roster.flatMap(({ name }) => [name, ...(Dex.species.get(name).cosmeticFormes || [])]));
+const regionalForms = roster.filter(({ name }) => /-(?:Alola|Galar|Hisui|Paldea)(?:-|$)/.test(name)).map(({ name }) => name);
+const regionalSet = new Set(regionalForms);
+let unavailableOnDisk = 0;
+let regionalGaps = 0;
+console.log(`\nFull roster audit           : ${forms.size} roster and cosmetic formes, ${regionalSet.size} regional entries`);
+for (const [dir, shiny, back] of [
+  ['gen5ani', false, false], ['gen5ani-shiny', true, false],
+  ['gen5ani-back', false, true], ['gen5ani-back-shiny', true, true],
+]) {
+  const sameFormFallbacks = [];
+  const placeholders = [];
+  for (const name of forms) {
+    const url = getSprite(name, shiny, back);
+    if (!url.startsWith('sprites/') || !fs.existsSync(path.join(ROOT, url))) {
+      console.error(`Bad resolved path for ${name}: ${url}`);
+      unavailableOnDisk++;
+    }
+    if (url.startsWith(`sprites/${dir}/`)) continue;
+    if (regionalSet.has(name)) {
+      console.error(`Missing regional artwork in ${dir} for ${name}`);
+      regionalGaps++;
+    }
+    if (url === SPRITE_PLACEHOLDER) placeholders.push(name);
+    else sameFormFallbacks.push(name);
+  }
+  console.log(`${dir.padEnd(26)} : ${forms.size - sameFormFallbacks.length - placeholders.length} requested art, ${sameFormFallbacks.length} same-form fallbacks, ${placeholders.length} placeholders`);
+  if (process.argv.includes('--details')) {
+    if (sameFormFallbacks.length) console.log(`  Same-form fallback: ${sameFormFallbacks.join(', ')}`);
+    if (placeholders.length) console.log(`  Art unavailable: ${placeholders.join(', ')}`);
+  }
+}
+
 const unexpectedFront = frontMissing.filter((r) => !EXPECTED_GAPS_FRONT.has(r.slug));
-process.exit(unexpectedFront.length > 0 ? 1 : 0);
+process.exitCode = Number(unexpectedFront.length > 0 || manifestMismatch > 0 || unavailableOnDisk > 0 || regionalGaps > 0);

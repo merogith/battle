@@ -3,6 +3,43 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.2 — Playtest fixes and interface polish
+
+### Playtest fixes
+
+- Gym introductions, victory rewards, and the Trainer’s Notebook now display the same leader, type, and badge.
+- Each battle clears its old artwork and pose. Switches and fainting recover cleanly when a replacement sprite takes time to load. Regional forms use credited local sprites.
+- Screen effects clean up when their screen closes. The battle log groups layout and scroll updates, and clearing a Tutor search restores results without forcing a full layout mid-update.
+- The Move Tutor gives search and the lesson list the main space. Filters compose, and recommendations give a clear reason and price before a player commits.
+- The Diviner’s lesson reveals the partner’s Hidden Power type. Keep the natural type or use one favor to pick a different element for a partner of your choice.
+
+### Handheld interface polish
+
+- Settings has direct section shortcuts and a close button that stays in view.
+- Pokémon summaries show abilities and held items first, with explanations and better keyboard navigation. The Pokémon Center marks its active section.
+- Battle move buttons show remaining PP, move category, and type matchup. Open Details to check exact power, accuracy, and priority. Party cards use the same category marks, and selected Move Tutor filters have clearer contrast.
+- Town errands identify whom to talk to. Dialogue shows the town and speaker, labels each advance, and brings the reply into view after a choice. Returning to town restores focus to the errand when it is still available.
+
+### Story training and encounter pacing
+
+- Tier 4 moves span two Gym cities. Full move access arrives at City 7. The Starter Bond still opens the following move tier early.
+- The Battle Dojo opens ordinary Hidden Abilities at Black Belt and the high-impact ones at Master. Master also opens high-impact held items. Species-specific Awakened abilities sit at Grandmaster.
+- Trainer sets gain better move selection and compatible equipment as the story advances. Select late bosses can bring one eligible Awakened ace.
+- Wild Pokémon use varied, mostly natural kits, occasional berries and modest training. Their EV and IV bands improve through the adventure. Professor gifts and Cable Link builds follow local lesson and equipment limits.
+
+### The opening rivalry and move lessons
+
+- The first rival defeat has a short scene and a direct way to continue the story. Accepting the result heals the starter, keeps your gold, and records the rival's win.
+- A Story battle keeps the opponent's roster and builds when you retry or take time to train in town.
+- Five shared move tiers account for damage, utility, and how a Pokémon learns a move. The original starter can learn one tier ahead. The Professor explains the bond and the Tutor labels those lessons.
+
+### Town navigation and team advice
+
+- Town guides keep their place when players return from a facility. The Trainer’s Notebook puts the next action, team tools, and journal on three pages.
+- Story Pokémon cards show the total of all six stats and a Physical, Special, or Hybrid attack indicator.
+- Move Tutor filters and sorting work together. Its suggested lessons, the Dojo’s first item pick, the Nature Rater’s preview, and the EV Trainer’s recommended spread agree with the Battle Mentor.
+- Town notifications surface leads to the free relic, the Underground, and the Daycare Inn. Errands leave a local follow-up, and the relay choice carries through to the Crucible. Town, route, facility, and witness dialogue has been revised.
+
 ## 2.0.1 — Faster startup, smaller offline download, and Story battle recovery
 
 - The title screen opens before loading the game. Its measured cold transfer is 179 KiB.

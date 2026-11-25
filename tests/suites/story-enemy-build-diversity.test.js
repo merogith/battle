@@ -83,8 +83,13 @@ test('no enemy attacker carries a role-fighting nature', async () => {
     for (const m of mons) {
       const bs = baseStats[m.name];
       if (!bs) continue;
-      assert.ok(!W._natureFightsRole(bs, m.build.n),
-        `C${c} ${m.name} nature ${m.build.n} must not fight its role (atk${bs.atk}/spa${bs.spa})`);
+      if (!W._natureFightsRole(bs, m.build.n)) continue;
+      assert.ok(c >= 6, `C${c} ${m.name} nature ${m.build.n} must fit its early build`);
+      // Polished sets can attack off the lower base stat, such as Swords Dance Venusaur.
+      const favoredCategory = bs.atk > bs.spa ? 'Special' : 'Physical';
+      const attacks = m.build.m.map(move => ST.ensureMoveData(move)).filter(move => move?.pow && move.cat !== 'Status');
+      assert.ok(attacks.some(move => move.cat === favoredCategory),
+        `C${c} ${m.name} nature ${m.build.n} must support an attack in its final kit`);
     }
   }
 });
@@ -134,4 +139,48 @@ test('Phase 1: early foes carry coverage/utility, not only STAB', async () => {
     assert.ok(withCoverageOrUtil > 0, `C${c} some foes carry coverage/utility`);
   }
   ST.sm.active = false;
+});
+
+test('generated gear fits the final build and a late boss can awaken one eligible ace', async () => {
+  const garchomp = { name: 'Garchomp', build: { a: 'Sand Veil', i: 'Assault Vest', _storyAce: true,
+    m: ['Dragon Claw', 'Earthquake', 'Swords Dance'] } };
+  const blastoise = { name: 'Blastoise', build: { a: 'Torrent', i: 'Choice Band', _storyAce: true,
+    m: ['Surf', 'Ice Beam', 'Water Pulse'] } };
+  assert.equal(ST.storyBuildHeldItemFits(garchomp.name, garchomp.build, garchomp.build.i), false);
+  assert.equal(ST.storyBuildHeldItemFits(blastoise.name, blastoise.build, blastoise.build.i), false);
+  assert.equal(ST.storyBuildHeldItemFits('Blaziken', { a: 'Blaze', m: ['Blaze Kick'] }, 'Flame Orb'), false);
+  assert.equal(ST.storyBuildHeldItemFits('Heracross', { a: 'Guts', m: ['Facade'] }, 'Flame Orb'), true);
+  assert.equal(ST.storyBuildHeldItemFits('Pelipper', { a: 'Keen Eye', m: ['Surf'] }, 'Damp Rock'), false);
+  assert.equal(ST.storyBuildHeldItemFits('Pelipper', { a: 'Drizzle', m: ['Surf'] }, 'Damp Rock'), true);
+
+  await W._loadOpAbilities();
+  const team = async (city, event) => {
+    prime(4321, city - 1);
+    const row = RAW.find((row, index) => row[2] === event && ST.cityIndexFromEventIndex(index) === city);
+    assert.ok(row, event);
+    const roster = structuredClone([garchomp, blastoise]);
+    await ST.storyGateFoeMovesByCity(roster, row[0]);
+    for (const slot of roster) {
+      assert.ok(!slot.build.i || ST.storyBuildHeldItemFits(slot.name, slot.build, slot.build.i));
+    }
+    return roster;
+  };
+  const early = await team(7, 'Gym Leader 7');
+  assert.ok(early.every(slot => ST.dojoAbilityUnlockStage(slot.name, slot.build.a) < 3));
+  const late = await team(8, 'Gym Leader 8');
+  const awakened = late.filter(slot => ST.dojoAbilityUnlockStage(slot.name, slot.build.a) === 3);
+  assert.equal(awakened.length, 1);
+  assert.ok(ST.opAbilitiesForMon(awakened[0].name).includes(awakened[0].build.a));
+  assert.deepEqual(late, await team(8, 'Gym Leader 8'));
+});
+
+test('a polished late trainer matches offensive training to its actual attacks', async () => {
+  prime(4321, 7);
+  const row = RAW.find(entry => entry[2] === 'Gym Leader 8');
+  const team = [{ name: 'Nidoqueen', build: { _storyAce: true, a: 'Sheer Force', n: 'Adamant',
+    m: ['Earth Power', 'Sludge Wave', 'Ice Beam', 'Stealth Rock'],
+    evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 } } }];
+  await ST.storyGateFoeMovesByCity(team, row[0]);
+  assert.equal(team[0].build.n, 'Modest');
+  assert.deepEqual({ ...team[0].build.evs }, { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 });
 });

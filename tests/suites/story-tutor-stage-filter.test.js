@@ -74,47 +74,19 @@ test('ability Stage filter: Legal hides off-legal abilities', async () => {
   assert.equal(cards.filter((c) => c.querySelector('.tx-pill--awaken')).length, 0, 'no off-legal abilities under the Legal filter');
 });
 
-// The move Stage chips mirror the tutor stripe (1.6.0: the BP cap is PER-CITY):
-//   Inner Strength — an innate (Natural) move within the current city's BP cap.
-//   Unleashed      — an innate move above the city cap.
-//   Guru           — a taught (Learnt) or off-legal (Awakened) move.
-// Each shown card must belong to the picked stage. Garchomp is primed at Guru (C6)
-// where the city cap is ∞, so every Natural move classifies as Inner (nothing above
-// an infinite cap) and the full pool is visible.
-const bpOf = (m) => { const md = ST.ensureMoveData(String(m).split('/')[0]); return md ? (md.pow | 0) : 0; };
-const cityCap = () => { try { return ST.storyMoveBpCapForCity(ST.cityIndexFromEventIndex(ST.sm.eventIndex)); } catch (e) { return Infinity; } };
-const stageOf = (mon, mv) => {
-  let tag = null; try { tag = ST.moveTagForSpecies(mon, mv); } catch (e) {}
-  if (tag === 'learnt' || tag === 'awakened') return 'guru';
-  if (tag !== 'natural') return null;
-  const cap = cityCap();
-  return (cap === Infinity || bpOf(mv) <= cap) ? 'inner' : 'unleashed';
-};
+// Tier filters use the same groups as the learning rules and compose with sorting.
 const shownMoveCards = () => [...host().querySelectorAll('.tx-card[data-card-kind="move"]:not([hidden])')];
 
-test('move Stage filter: Guru shows only taught / off-legal moves', async () => {
+test('move tier multi-select composes with tier sorting', async () => {
   await prime(6, 'Garchomp', { m: ['Dragon Claw'], n: 'Jolly', a: 'Rough Skin' }, 'moves');
-  assert.ok(host().querySelector('[data-filter-kind="tier"][data-tier-kind="moves"]'), 'move tier chips render');
-  await clickTier('moves', 'guru');
-  const cards = shownMoveCards();
-  assert.ok(cards.length > 0, 'Guru reveals taught/off-legal moves (full tier, bypassing ★)');
-  const leak = cards.filter((c) => {
-    const mv = c.getAttribute('data-card-value');
-    if (mv === 'Dragon Claw') return false; // equipped is exempt
-    return stageOf('Garchomp', mv) !== 'guru';
-  });
-  assert.equal(leak.length, 0, 'only Guru-stage (Learnt/Awakened) moves show under the Guru filter');
-});
-
-test('move Stage filter: Inner Strength shows only innate moves within the power cap', async () => {
-  await prime(6, 'Garchomp', { m: ['Dragon Claw'], n: 'Jolly', a: 'Rough Skin' }, 'moves');
-  await clickTier('moves', 'inner');
-  const cards = shownMoveCards();
-  assert.ok(cards.length > 0, 'Inner Strength reveals innate moves within the city cap (∞ at C6)');
-  const leak = cards.filter((c) => {
-    const mv = c.getAttribute('data-card-value');
-    if (mv === 'Dragon Claw') return false; // equipped is exempt
-    return stageOf('Garchomp', mv) !== 'inner';
-  });
-  assert.equal(leak.length, 0, 'only Inner-stage moves (innate, within the city cap) show under the Inner Strength filter');
+  await clickTier('moves', '2');
+  await clickTier('moves', '4');
+  const sort = host().querySelector('.tx-sort-select');
+  sort.value = 'tier';
+  sort.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await wait(150);
+  const tiers = shownMoveCards().filter(card => card.dataset.equipped !== '1').map(card => Number(card.dataset.stage));
+  assert.ok(tiers.includes(2) && tiers.includes(4));
+  assert.deepEqual(tiers, tiers.slice().sort((a, b) => a - b));
+  assert.ok(tiers.every(tier => tier === 2 || tier === 4));
 });

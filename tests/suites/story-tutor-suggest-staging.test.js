@@ -43,7 +43,7 @@ test('at Inner, every suggested move is teachable right now (no stage-locked pic
 });
 
 test('suggestions improve with tutor tier — Guru surfaces the off-stage staples', async () => {
-  await openTutor(6, 'Garchomp', { m: ['Dragon Claw'], n: 'Jolly', a: 'Rough Skin' });
+  await openTutor(7, 'Garchomp', { m: ['Dragon Claw'], n: 'Jolly', a: 'Rough Skin' });
   assert.equal(ST.npcStage('tutor'), 2, 'precondition: Guru (full pool)');
   const suggested = suggestedMoves();
   // At Guru the gate is off, so the optimal set (Earthquake / Swords Dance etc.)

@@ -17,10 +17,10 @@ import { test, before } from 'node:test';
 import assert from 'node:assert';
 import { loadEngine } from '../helpers/load-engine.js';
 
-let window, document;
+let window, document, renderLog;
 
 before(async () => {
-  ({ window } = await loadEngine());
+  ({ window, renderLog } = await loadEngine());
   document = window.document;
   assert.equal(window.__testHarness, true);
 });
@@ -80,4 +80,20 @@ test('_battleImpactBurst fires only for the punchy tiers and no-ops under the ha
   });
   assert.equal(document.querySelectorAll('.fxp-layer').length, before, 'no burst canvas mounted while disabled');
   assert.equal(window.FxParticles.liveCount(), 0, 'no live layer tracked');
+});
+
+test('a battle log batch renders immediately and scrolls once after all lines', async () => {
+  const log = document.getElementById('battle-log');
+  let layoutReads = 0;
+  Object.defineProperty(log, 'scrollHeight', { configurable: true, get() { layoutReads++; return 500; } });
+  try {
+    for (let line = 0; line < 20; line++) renderLog(`Battle line ${line}`);
+    assert.match(log.lastElementChild.textContent, /Battle line 19/);
+    assert.equal(layoutReads, 0);
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    assert.equal(layoutReads, 1);
+    assert.equal(log.scrollTop, 500);
+  } finally {
+    delete log.scrollHeight;
+  }
 });

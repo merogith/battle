@@ -60,9 +60,9 @@ function sound(key, volume) {
 
 export async function mountAdventure(host, city, bridge) {
     const chapters = await loadChapters();
-    if (!host.isConnected || !bridge.isCurrent()) return;
+    if (!host.isConnected || !bridge.isCurrent()) return false;
     const here = chapters.find(chapter => chapter.city === city);
-    if (!here) return;
+    if (!here) return false;
 
     function snapshot(sync = true) {
         const run = bridge.readRun();
@@ -109,7 +109,11 @@ export async function mountAdventure(host, city, bridge) {
 
     function updateCard() {
         const { choices, archive } = snapshot(false);
-        teaser.textContent = chosen(here, choices) ? 'Scene recorded in your Field Archive.' : here.invitation;
+        const option = chosen(here, choices);
+        teaser.textContent = option ? option.townNote || `Recorded: ${option.label}.` : here.invitation;
+        if (option && here.secret.requires.length && !choices[secretKey(here.id)] && hasTrail(here, chapters, choices)) {
+            bridge.notice?.(`records:${here.id}`, `There’s more to read in ${here.title}. Bring both records back to the witness.`);
+        }
         if (keepsakeSlot) {
             const copy = progress.summarize(archive).keepsakes.find(item => item.id === 'keepers-spare-copy');
             keepsakeSlot.hidden = !copy;
@@ -186,7 +190,7 @@ export async function mountAdventure(host, city, bridge) {
         target.focus({ preventScroll: true });
     }
 
-    function sceneBody(scene, speakerName, prose, actions, { phase = 'reading', clue, sprite, tone, step } = {}) {
+    function sceneBody(scene, speakerName, prose, actions, { phase = 'reading', clue, sprite, tone, step, source } = {}) {
         stopDialogue?.();
         stopDialogue = null;
         body.dataset.chapterPhase = phase;
@@ -209,7 +213,7 @@ export async function mountAdventure(host, city, bridge) {
         const copy = element('div', 'story-chapter-copy');
         const person = [speakerName, speakerName === scene.speaker?.name ? scene.speaker?.role : ''].filter(Boolean).join(' · ');
         if (phase === 'discovery') copy.append(element('p', 'story-chapter-eyebrow', 'Hidden discovery'));
-        else if (person) copy.append(element('p', 'story-chapter-eyebrow', person));
+        else if (source || person) copy.append(element('p', 'story-chapter-eyebrow', source ? `Because of your choice in ${source}` : person));
         const caption = element('p', 'story-chapter-caption', prose);
         caption.tabIndex = -1;
         copy.append(caption);
@@ -230,9 +234,10 @@ export async function mountAdventure(host, city, bridge) {
         show(chapter.title, chapter.place, chapter.art);
         const panels = [...chapter.panels];
         const choices = fromArchive ? null : snapshot().choices;
-        const echo = (chapter.echoes || []).find(entry =>
-            (fromArchive ? replayChoices?.[entry.from] : choices[choiceKey(entry.from)]) === entry.choice);
-        if (echo) panels.push({ speaker: chapter.speaker?.name, text: echo.text });
+        for (const echo of chapter.echoes || []) {
+            if ((fromArchive ? replayChoices?.[echo.from] : choices[choiceKey(echo.from)]) !== echo.choice) continue;
+            panels.push({ text: echo.text, source: chapters.find(entry => entry.id === echo.from)?.title });
+        }
         const back = () => fromArchive ? openArchive(archiveKey) : dialog.close();
         const returnLabel = fromArchive ? 'Back to Field Archive' : (city === null ? 'Return to the Crucible' : 'Return to town');
         const done = () => button(returnLabel, 'done', '', back, true);
@@ -261,12 +266,16 @@ export async function mountAdventure(host, city, bridge) {
                 hint.append(element('summary', '', 'Follow the trail'), element('p', '', chapter.secret.hint));
                 actions.append(hint);
             }
+            if (!readOnly) actions.append(element('p', 'story-chapter-hint', option.consequence ||
+                (chapter.city === null ? 'Your decision is saved in the Field Archive.' : 'Your decision is saved. The next witness may respond to it.')));
             actions.append(done());
             const caption = sceneBody(chapter, chapter.speaker?.name, option.reply, actions, { phase: 'result', clue: option.clue });
             dialogueFocus(caption);
         };
         const showChoices = (entry, presentation) => {
             const actions = element('div', 'story-chapter-actions');
+            actions.append(element('p', 'story-chapter-hint', chapter.city === null
+                ? 'Decide how Ivo’s account will be kept.' : 'Choose what to do here. It changes what you carry to the next witness.'));
             const status = element('p', 'story-chapter-status');
             status.setAttribute('role', 'alert');
             for (const option of chapter.choices) {
@@ -281,7 +290,7 @@ export async function mountAdventure(host, city, bridge) {
         const panel = index => {
             const entry = panels[index];
             const last = index + 1 === panels.length;
-            const presentation = { sprite: entry.sprite, tone: entry.tone, step: { current: index + 1, total: panels.length } };
+            const presentation = { sprite: entry.sprite, tone: entry.tone, source: entry.source, step: { current: index + 1, total: panels.length } };
             if (chapter.id === 'chapter-7' && !readOnly) {
                 if (index === 0) stopRelayMotif = globalThis.AudioSystem?.playStoryMotif?.('relay');
                 else {
@@ -395,4 +404,5 @@ export async function mountAdventure(host, city, bridge) {
 
     snapshot();
     updateCard();
+    return true;
 }

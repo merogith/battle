@@ -1,15 +1,4 @@
-// Phase 0 + Phase 1 — the unified move-pacing ceiling.
-//
-// Phase 0: the Natural/Learnt classification is served from the precomputed
-//   data/move-tags.json index (offline-safe), so the gate no longer silently
-//   no-ops without a CDN.
-// Phase 1 (1.6.0): the gate is the single move-pacing authority. The move
-// CATEGORY is keyed on the tutor TIER (TMs/tutor moves unlock only at Guru,
-// tutor:[0,3,6]); the BP CAP is now PER-CITY (STORY_MOVE_BP_CAP_BY_CITY):
-//   C0=40 · C1=60 · C2=60 · C3=80 · C4=80 · C5+=∞.  Foe cap == player cap.
-//   Starter (build.starter) gets a 60-BP floor (only bites at C0).
-// Category gate (tutor tier): Inner/Unleashed = Natural only; Guru (C6+) = all.
-// NB: tests resolve cities via cityAtTutorStage() so they survive threshold tuning.
+// Verify the offline learnsets and shared city move tiers.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEngine } from '../helpers/load-engine.js';
@@ -60,56 +49,32 @@ test('Phase 0: classification is served from the index (deterministic)', async (
   assert.equal(ST.moveTagForSpecies('Garchomp', 'Outrage'), 'natural', 'Outrage is a level-up (Natural)');
 });
 
-test('Phase 1: per-city BP-cap table — 40/60/60/80/80/∞ (player & foe equal), starter cap+20', () => {
-  assert.equal(ST.storyMoveBpCapForCity(0), 40, 'C0 = 40');
-  assert.equal(ST.storyMoveBpCapForCity(1), 60, 'C1 = 60');
-  assert.equal(ST.storyMoveBpCapForCity(2), 60, 'C2 = 60');
-  assert.equal(ST.storyMoveBpCapForCity(3), 80, 'C3 = 80');
-  assert.equal(ST.storyMoveBpCapForCity(4), 80, 'C4 = 80');
-  assert.equal(ST.storyMoveBpCapForCity(5), Infinity, 'C5 = no cap');
-  assert.equal(ST.storyMoveBpCapForCity(6), Infinity, 'C6 = no cap');
-  assert.equal(ST.storyMoveBpCapForCity(9), Infinity, 'C9 (past array end) clamps to no cap');
-  // Foe cap == player cap at every city (foe ≤ player rule, set equal in 1.6.0).
-  for (let c = 0; c <= 9; c++) assert.equal(ST.storyFoeMoveBpCapForCity(c), ST.storyMoveBpCapForCity(c), `foe cap == player cap at C${c}`);
-  // Starter advantage (Q9): city cap + 20 wherever a cap exists (so 60 at C0).
-  assert.equal(ST.storyMoveBpCapForCity(0, true), 60, 'starter = 40+20 = 60 at C0');
-  assert.equal(ST.storyMoveBpCapForCity(1, true), 80, 'starter = 60+20 = 80 at C1');
-  assert.equal(ST.storyMoveBpCapForCity(3, true), 100, 'starter = 80+20 = 100 at C3');
-  assert.equal(ST.storyMoveBpCapForCity(5, true), Infinity, 'starter bonus never changes an uncapped city');
-});
-
-test('Phase 1: foe gate per-city — C3 caps at 80 (legal ≤80 kept, over-cap stripped); C0 ≤40', async () => {
-  primeStory();
-  // Build-diversity overhaul: Learnt/TM moves are now ALLOWED for foes if ≤ the city
-  // BP cap — only the BP cap + off-legal Awakened gate them. C3 (cap 80): Dragon
-  // Claw(80,nat) survives; Outrage(120)/Earthquake(100) stripped as over-cap.
-  const t3 = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
-  await ST.storyGateFoeMovesByCity(t3, cityRowIdx(3));
-  assert.ok(!t3[0].build.m.includes('Outrage'), 'C3 (cap 80) strips Outrage (120)');
-  assert.ok(!t3[0].build.m.includes('Earthquake'), 'C3 (cap 80) strips Earthquake (100)');
-  assert.ok(t3[0].build.m.includes('Dragon Claw'), 'C3 keeps the ≤80 Natural Dragon Claw');
-  for (const m of t3[0].build.m) {
-    const tag = ST.moveTagForSpecies('Garchomp', m.split('/')[0]);
-    assert.notEqual(tag, 'awakened', `C3 must not keep an off-legal Awakened move ("${m}")`);
-    assert.ok(bp(m.split('/')[0]) <= 80, `C3 foe kept "${m}" must be ≤80 BP (was ${bp(m.split('/')[0])})`);
+test('towns unlock five tiers and a starter moves up one whole tier', () => {
+  assert.deepEqual(Array.from({ length: 9 }, (_, city) => ST.storyMoveTierForCity(city)), [1, 2, 2, 3, 3, 4, 4, 5, 5]);
+  for (let city = 0; city < 9; city++) {
+    assert.equal(ST.storyMoveTierForCity(city, true), Math.min(5, ST.storyMoveTierForCity(city) + 1));
   }
-  // C0 (cap 40): every original move is >40 BP → all stripped, backfilled ≤40.
-  const t0 = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
-  await ST.storyGateFoeMovesByCity(t0, cityRowIdx(0));
-  assert.ok(!t0[0].build.m.includes('Outrage') && !t0[0].build.m.includes('Dragon Claw'), 'C0 (cap 40) strips both 120/80 BP moves');
-  for (const m of t0[0].build.m) assert.ok(bp(m.split('/')[0]) <= 40, `C0 foe kept "${m}" must be ≤40 BP`);
+  assert.deepEqual(Array.from({ length: 8 }, (_, city) => ST.storyMoveBpCapForCity(city)), [40, 60, 60, 80, 80, 100, 100, Infinity]);
 });
 
-test('Phase 1: foe gate at C5 lifts the BP cap and keeps the full LEGAL set (Learnt included)', async () => {
+test('impact ranks utility and conditional damage alongside base power', () => {
+  const expected = {
+    'Sand Attack': 1, Ember: 1, 'Quick Attack': 2, Growl: 1,
+    'Swords Dance': 3, 'Stealth Rock': 3, 'U-turn': 3, 'Seismic Toss': 3,
+    Roost: 3, 'Rain Dance': 3, 'Sticky Web': 4, Spore: 4, Return: 4, 'Shell Smash': 4,
+    Magnitude: 4, 'Double Team': 4, 'Rage Fist': 5, Fissure: 5, 'Sheer Cold': 5,
+  };
+  for (const [move, tier] of Object.entries(expected)) assert.equal(ST.storyMoveImpactTier(move), tier, move);
+});
+
+test('City 5 unlocks Earthquake for both sides and keeps Outrage for the final tier', async () => {
   primeStory();
-  // C5: per-city cap is ∞. Under the foe gate all LEGAL moves (Natural + Learnt/TM)
-  // are kept — coverage is no longer stripped. Only off-legal Awakened stays gated.
   const team = [{ name: 'Garchomp', build: { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(5));
-  const kept = team[0].build.m;
-  assert.ok(kept.includes('Outrage'), 'C5 keeps high-BP Natural (Outrage 120) — cap lifted');
-  assert.ok(kept.includes('Earthquake') && kept.includes('Stone Edge'), 'C5 now keeps legal Learnt/TM coverage (Phase 1)');
-  for (const m of kept) assert.notEqual(ST.moveTagForSpecies('Garchomp', m), 'awakened', `C5 must not keep an Awakened move ("${m}")`);
+  assert.ok(!team[0].build.m.includes('Outrage'));
+  assert.ok(team[0].build.m.includes('Earthquake'));
+  assert.ok(team[0].build.m.includes('Stone Edge'));
+  assert.ok(team[0].build.m.includes('Dragon Claw'));
 });
 
 test('Phase 1: stage 2 (Guru) leaves moves untouched', async () => {
@@ -117,15 +82,6 @@ test('Phase 1: stage 2 (Guru) leaves moves untouched', async () => {
   const team = [{ name: 'Garchomp', build: { m: ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance'] } }];
   await ST.storyGateFoeMovesByCity(team, cityRowIdx(cityAtTutorStage(2)));
   assert.deepEqual(team[0].build.m, ['Earthquake', 'Outrage', 'Stone Edge', 'Swords Dance']);
-});
-
-test('Phase 1: bpCapOverride threads a resolved per-city cap into the shared helper', async () => {
-  primeStory();
-  await ST.tutorFetchLearnsetMoveNames('Garchomp'); // warm the cache
-  const build = { m: ['Outrage', 'Earthquake', 'Stone Edge', 'Dragon Claw'] };
-  // Pass the resolved C0 foe cap (40) explicitly — what _storyGateFoeMovesByCity does.
-  ST.storyApplyMoveStageToBuild(build, 'Garchomp', 0, ST.storyCoherentMoveRanker, ST.storyFoeMoveBpCapForCity(0));
-  for (const m of build.m) assert.ok(bp(m.split('/')[0]) <= 40, `foe-capped "${m}" ≤40 (was ${bp(m.split('/')[0])})`);
 });
 
 test('Phase 4: coherent downgrade keeps the build on-identity (STAB attacker)', async () => {
@@ -157,7 +113,7 @@ test('E1: degenerate ceiling fallback never empties the set, picks lowest BP', a
   const learn = await ST.tutorFetchLearnsetMoveNames('Beldum'); // warm _tutorLearnsetCache
   assert.ok(learn.natural.length, 'precondition: Beldum has ≥1 Natural move');
   const build = { m: ['Flash Cannon', 'Meteor Mash', 'Bullet Punch', 'Zen Headbutt'] };
-  const changed = ST.storyApplyMoveStageToBuild(build, 'Beldum', 0, ST.storyCoherentMoveRanker, ST.storyMoveBpCapForCity(0));
+  const changed = ST.storyApplyMoveStageToBuild(build, 'Beldum', 1);
   assert.equal(changed, true, 'build changed — all originals were off-ceiling');
   assert.ok(build.m.length >= 1, 'fallback always yields at least one move (never empty)');
   const minNatBp = Math.min(...learn.natural.map(bp));

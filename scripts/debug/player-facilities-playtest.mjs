@@ -240,6 +240,7 @@ try {
     await ready(partner);
     await assertGoldIsClear('#story-tutor-gold');
     await partner.tap();
+    if (kind === 'nature') await facility.getByText('Compare all natures', { exact: true }).tap();
     const option = facility.locator(optionSelector).first();
     await ready(option);
     const selection = await option.getAttribute(attr);
@@ -287,6 +288,7 @@ try {
     await ready(partner);
     await assertGoldIsClear('#story-evtrainer-gold');
     await partner.tap();
+    await facility.getByText('Current EVs and other training spreads', { exact: true }).tap();
     const buy = facility.locator('[id$="-equal"]').getByRole('button', { name: 'Buy 504 EVs · 5,000G', exact: true });
     await ready(buy);
     const before = await saved();

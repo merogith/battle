@@ -1,59 +1,88 @@
-// Gym-badge art — original SVG medallions + journal badge case (visual-polish PR).
-//
-// The victory medallion showed a 🏅 emoji and the journal showed only a
-// "N / 8 earned" line. This replaces both with eight distinct original
-// geometric badge SVGs (not reproductions of any existing badge art): the
-// earned badge fills the victory medallion, and the journal renders an 8-slot
-// badge case (earned filled, rest dim). The victory-overlay tests still lock
-// the .story-victory-v2-medallion class + "Badge N of 8" line — this only
-// swaps the medallion's inner glyph.
-//
-// Source-level guard (reads battle.html as text).
-//
-// Run: node --test tests/suites/gym-badge-art.test.js
-
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { after, test } from 'node:test';
+import { loadEngine } from '../helpers/load-engine.js';
 
-const HTML = fs.readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'battle.html'),
-  'utf8'
-);
+const engine = await loadEngine();
+const { window } = engine;
+const story = window.__storyTest;
+const rows = story.STORY_EVENTS_RAW;
+const leaderIndex = number => rows.findIndex(row => row[2] === `Gym Leader ${number}`);
+const leaderId = number => rows[leaderIndex(number)][0];
 
-test('eight distinct badge shapes are defined with an accent colour each', () => {
-  const i = HTML.indexOf('const _GYM_BADGE_DEFS = [');
-  assert.ok(i !== -1, '_GYM_BADGE_DEFS must exist');
-  const block = HTML.slice(i, HTML.indexOf('];', i));
-  const colours = block.match(/c:\s*'#[0-9a-fA-F]{6}'/g) || [];
-  assert.equal(colours.length, 8, 'exactly eight badges');
-  assert.equal(new Set(colours).size, 8, 'each badge has a distinct accent colour');
-  // Shape variety: at least a few distinct silhouette kinds so they don't all read alike.
-  const kinds = new Set((block.match(/s:\s*'(\w+)'/g) || []));
-  assert.ok(kinds.size >= 3, 'badges use at least three distinct shape kinds');
+after(() => engine.teardown());
+
+function setup({ badges = 1, trainerAssignments = {} } = {}) {
+    story.sm = { ...story.sm, active: true, runSeed: 23, badges, trainerAssignments, gold: 5000,
+        eventIndex: leaderIndex(badges) + 1, team: [], pcBox: [], inventory: {}, scenesShown: {} };
+    window.__victoryInputArmMs = 0;
+}
+
+function notebook() {
+    const container = window.document.createElement('div');
+    container.innerHTML = story.journalRenderHTML();
+    return container.querySelector('.story-badge-case');
+}
+
+function reward(gymNumber, trainerName) {
+    const options = { result: { id: 'fixture', trainerName } };
+    story.showVictoryOverlay('VICTORY!', 500, true, () => {}, `Gym Leader ${gymNumber}`, leaderId(gymNumber), [], options);
+    return window.document.querySelector('[data-story-result-id="fixture"]');
+}
+
+test('a visiting Water leader awards the same named emblem on the victory card and in the Notebook', () => {
+    setup({ trainerAssignments: { [leaderId(1)]: 'Misty', [leaderId(2)]: 'Brock' } });
+    // A previous trainer may be in memory just after a resume. The saved result owns the badge.
+    story.sm.currentTrainerData = { name: 'Brock' };
+    const card = reward(1, 'Misty');
+    const emblem = card.querySelector('.gym-badge-art');
+    assert.equal(emblem.dataset.gymType, 'Water');
+    assert.ok(emblem.querySelector('path'), 'the Water medal uses the drop silhouette in Gym 1');
+    assert.equal(card.querySelector('.story-victory-badge-name').textContent, 'Cascade Badge');
+    assert.match(card.querySelector('.story-victory-v2-milestone').textContent, /Misty · Water/);
+
+    const list = notebook();
+    assert.equal(list.children.length, 8);
+    assert.equal(list.getAttribute('aria-label'), '1 of 8 gym badges earned');
+    assert.equal(list.children[0].querySelector('.gym-badge-art').outerHTML, emblem.outerHTML);
+    assert.match(list.children[0].textContent, /Cascade Badge.*Misty · Water/);
+    assert.match(list.children[1].textContent, /Badge 2.*Locked/);
+    assert.doesNotMatch(list.textContent, /Brock|Boulder Badge/, 'locked slots preserve the next badge reveal');
+    assert.equal(list.children[1].querySelector('svg').style.opacity, '0.55');
+    card.querySelector('.story-victory-v2-continue').click();
 });
 
-test('_gymBadgeSvg emits inline SVG and dims un-earned slots', () => {
-  const i = HTML.indexOf('function _gymBadgeSvg(');
-  assert.ok(i !== -1, '_gymBadgeSvg must exist');
-  const body = HTML.slice(i, i + 700);
-  assert.ok(/<svg class="gym-badge-svg"/.test(body), 'returns an inline <svg>');
-  assert.ok(/earned \?/.test(body), 'branches on earned vs locked');
-  assert.ok(/opacity:0\.55/.test(body), 'un-earned slot is dimmed');
+test('the town, both Gym lobby rounds and the earned badge agree on the leader’s primary type', () => {
+    const gym = 5;
+    const index = leaderIndex(gym);
+    assert.notEqual(leaderId(3), leaderIndex(3), 'Gym 3 exercises the row-ID lookup');
+    setup({ badges: gym, trainerAssignments: { [leaderId(3)]: 'Misty', [leaderId(gym)]: 'Iono' } });
+    assert.equal(story.preferredTypeBeforeGymBattle(leaderIndex(3) - 1), 'Water');
+    const visitor = story.gymVisitor(gym);
+    assert.equal(visitor.name, 'Iono');
+    assert.equal(visitor.type, 'Electric');
+    const lobby = [index - 2, index - 1];
+    assert.deepEqual(lobby.map(i => rows[i][2]), ['Gym Trainer 1', 'Gym Trainer 2']);
+    assert.deepEqual(lobby.map(i => story.preferredTypeBeforeGymBattle(i)), ['Electric', 'Electric']);
+    assert.equal(story.preferredTypeBeforeGymBattle(index), null);
+    assert.match(notebook().children[gym - 1].textContent, /Electric Badge.*Iono · Electric/);
 });
 
-test('the victory medallion uses the earned badge SVG for gym events', () => {
-  assert.ok(/isGymBadgeEvent \? _gymBadgeSvg\(\(sm\.badges \| 0\) - 1, true\)/.test(HTML),
-    'gym-badge wins render _gymBadgeSvg of the just-earned index');
-  assert.ok(/story-victory-v2-medallion/.test(HTML), 'the locked medallion class is preserved');
+test('every leader in the run pool has named badge art in their gym type', () => {
+    for (const { name, type, role } of story.getTrainerData()) {
+        if (!/^Gym Leader [1-8]$/.test(role)) continue;
+        setup({ trainerAssignments: { [leaderId(1)]: name } });
+        const [cell] = notebook().children;
+        const label = cell.querySelector('span:not(.gym-badge-art)').textContent;
+        assert.match(label, /^.+ Badge$/, name);
+        assert.notEqual(label, 'Gym Badge', name);
+        assert.equal(cell.querySelector('.gym-badge-art').dataset.gymType, type.split('/')[0], name);
+    }
 });
 
-test('the journal renders an eight-slot badge case', () => {
-  assert.ok(/class="story-badge-case"/.test(HTML), 'badge case container present');
-  assert.ok(/_bi < 8/.test(HTML), 'iterates eight slots');
-  assert.ok(/_bi < \(sm\.badges \| 0\)/.test(HTML), 'earned state keyed to badge count');
-  assert.ok(/\.story-badge-case\s*\{[^}]*grid-template-columns:\s*repeat\(8/.test(HTML),
-    'badge case is laid out as an 8-column grid');
+test('older saves without a trainer assignment keep their earned badge count and a neutral emblem', () => {
+    setup({ badges: 2 });
+    const list = notebook();
+    assert.equal(list.querySelectorAll('.is-earned').length, 2);
+    assert.equal(list.children[0].textContent, 'Badge 1');
+    assert.equal(list.children[0].querySelector('.gym-badge-art').hasAttribute('data-gym-type'), false);
 });

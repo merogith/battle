@@ -25,11 +25,12 @@ test('ability opt: no-opt C0-2, ramps C3-5, optimized C6+', () => {
   assert.equal(ST.storyAbilityOptChance(6, 0), 1, 'C6 optimized');
 });
 
-test('move opt: L1 C0-3, some L2 C4-5, full C6+', () => {
-  for (const c of [0, 1, 2, 3]) assert.equal(ST.storyMoveOptChance(c, 0), 0, `C${c} L1`);
-  assert.ok(ST.storyMoveOptChance(4, 0) > 0 && ST.storyMoveOptChance(4, 0) < 1, 'C4 some L2');
-  assert.ok(ST.storyMoveOptChance(5, 0) > ST.storyMoveOptChance(4, 0), 'C5 > C4');
-  assert.equal(ST.storyMoveOptChance(6, 0), 1, 'C6 full');
+test('move polish starts uncommon, grows at every city, and tops out at the League', () => {
+  assert.ok(ST.storyMoveOptChance(0, 0) < 0.10);
+  assert.ok(ST.storyMoveOptChance(3, 0) < 0.50);
+  assert.ok(ST.storyMoveOptChance(5, 0) > 0.50 && ST.storyMoveOptChance(5, 0) < 0.75);
+  assert.ok(ST.storyMoveOptChance(7, 0) > 0.80 && ST.storyMoveOptChance(7, 0) < 1);
+  assert.equal(ST.storyMoveOptChance(9, 0), 1);
 });
 
 test('difficulty raises the apply-probability at the same city', () => {
@@ -41,16 +42,10 @@ test('difficulty raises the apply-probability at the same city', () => {
   for (const c of [5, 6, 7, 8]) assert.ok(ST.storyNatureOptChance(c, 2) <= 1, `clamped <=1 @C${c}`);
 });
 
-test('foe item tier = parity Dojo clock (Phase 3: foe never leads the player)', () => {
-  // Aligned to the player's Battle-Dojo clock (NPC_STAGE_CITY.dojo=[1,4,6,8], 1.6.0):
-  // none C0-1 · berries C2-3 (White Belt) · staples C4-5 (Black Belt) · best meta C6-7
-  // (Master) · all C8+ (Grandmaster, tier-4 = nothing gated).
-  for (const c of [0, 1]) assert.equal(ST.storyFoeItemTier(c), 0, `C${c} none (Dojo itemless)`);
-  for (const c of [2, 3]) assert.equal(ST.storyFoeItemTier(c), 1, `C${c} berries (White Belt)`);
-  for (const c of [4, 5]) assert.equal(ST.storyFoeItemTier(c), 2, `C${c} staples (Black Belt)`);
-  for (const c of [6, 7]) assert.equal(ST.storyFoeItemTier(c), 3, `C${c} best meta (Master)`);
-  for (const c of [8, 9]) assert.equal(ST.storyFoeItemTier(c), 4, `C${c} all (Grandmaster)`);
-  assert.equal(ST.storyFoeItemTier(-1), 3, 'frontier/generator = full');
+test('foe item tier follows player Dojo access and tops out at Master', () => {
+  const caps = [0, 1, 1, 1, 2, 2, 3, 3, 3, 3];
+  for (const [city, expected] of caps.entries()) assert.equal(ST.storyFoeItemTier(city), expected);
+  assert.equal(ST.storyFoeItemTier(-1), 3, 'frontier or stand-alone generator has the full pool');
 });
 
 test('all opt gradients are monotonic non-decreasing with city', () => {

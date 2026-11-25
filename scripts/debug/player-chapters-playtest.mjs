@@ -199,10 +199,11 @@ function checkPanels(id, lines) {
     for (const panel of catalog.get(id).panels) assert.ok(lines.has(panel.text), 'Missing panel in ' + id);
 }
 
-async function pick(id, answer, { secret, echo } = {}) {
+async function pick(id, answer, { secret, echo, echoes = [] } = {}) {
     const lines = await readPanels();
     checkPanels(id, lines);
     if (echo) assert.ok(lines.has(echo), 'Previous choice did not change the scene');
+    for (const line of echoes) assert.ok(lines.has(line), 'Missing a scene consequence from a previous choice');
     const scene = catalog.get(id);
     const option = scene.choices.find(choice => choice.id === answer);
     assert.equal(await control('next').count(), 0, 'The final line presents the choices without a duplicate advance');
@@ -231,18 +232,19 @@ async function pick(id, answer, { secret, echo } = {}) {
     await control('done').tap();
     await modal().waitFor({ state: 'hidden' });
     assert.equal(await card(id).evaluate(node => document.activeElement === node), true, 'Return focuses invitation');
+    if (option.townNote) await page.getByText(option.townNote, { exact: true }).waitFor();
 }
 
 async function visitChapter(id, answer) {
     const scene = catalog.get(id);
     const { choices } = await progress();
-    const echo = scene.echoes?.find(entry => choices[chosen(entry.from)] === entry.choice)?.text;
+    const echoes = (scene.echoes || []).filter(entry => choices[chosen(entry.from)] === entry.choice).map(entry => entry.text);
     const hasClue = (entry, selection) => entry.choices.some(option => option.id === selection && option.clue);
     const secret = hasClue(scene, answer) && scene.secret.requires.every(requirement =>
         hasClue(catalog.get(requirement), choices[chosen(requirement)]));
     await checkpoint(id);
     await openScene(id);
-    await pick(id, answer, { secret, echo });
+    await pick(id, answer, { secret, echoes });
 }
 
 async function archive() {

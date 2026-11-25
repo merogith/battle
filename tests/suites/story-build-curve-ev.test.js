@@ -23,7 +23,7 @@ function setSm(extra = {}) {
 }
 setSm();
 
-const TOTAL = [[0, 50], [50, 100], [100, 150], [150, 200], [200, 250], [300, 350], [350, 400], [508, 508]];
+const TOTAL = [[0, 50], [50, 100], [100, 150], [150, 200], [200, 250], [244, 296], [292, 352], [352, 424], [424, 484], [508, 508]];
 const sum = (evs) => KEYS.reduce((s, k) => s + (evs[k] | 0), 0);
 
 test('city EV total lands within the band, for every city', () => {

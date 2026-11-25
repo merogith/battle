@@ -42,9 +42,9 @@ test('the opening Rival defeat shows recovery choices for a solo party', () => {
   try {
     G.openBattleReview();
     const recovery = W.document.querySelector('.upgrade-dialog').textContent;
-    assert.match(recovery, /Retry starts the fight again/);
-    assert.match(recovery, /Return to Last City to heal/);
-    assert.match(recovery, /Concede to Rival.*all your current gold \(10,000G\)/);
+    assert.match(recovery, /Retry faces the same rival team/);
+    assert.match(recovery, /Return to Last City gives you time to prepare/);
+    assert.match(recovery, /Continue the story.*keeps your gold/);
     G.openNotebook('team');
     const notebook = W.document.querySelector('.upgrade-dialog').textContent;
     assert.match(notebook, /You have one battle-ready partner/);
@@ -350,11 +350,12 @@ test('closing after a saved defeat retains the retry choice and does not charge 
   assert.equal(W.StoryMode.state.stats.battlesLost, 1);
 });
 
-test('an explicit opening Rival retreat clears its rerollable opponent lock', async () => {
+test('an explicit opening Rival retreat keeps its opponent lock', async () => {
   const run = await startHardTimelineBattle(W.__storySim.STORY_RIVAL_ROW_INTRO);
+  const lock = clone(run.currentEnemyLock);
   W.StoryMode.retreatToLastPokemonCenter();
   assert.equal(run.eventIndex, 0);
-  assert.equal(run.currentEnemyLock, null);
+  assert.deepEqual(run.currentEnemyLock, lock);
   assert.equal(run.gold, 5000);
 });
 
@@ -362,6 +363,7 @@ test('retreating from the final Rival preserves the League resume point across r
   const rowId = W.__storySim.STORY_RIVAL_ROW_LEAGUE;
   const run = await startHardTimelineBattle(rowId);
   const rivalIndex = run.eventIndex;
+  const lock = clone(run.currentEnemyLock);
   run.badges = 8;
   run.gold = 10201;
   useBattlePotion();
@@ -369,13 +371,13 @@ test('retreating from the final Rival preserves the League resume point across r
   W.StoryMode.onBattleEnd(false, 'Defeat', '');
   const hint = W.document.getElementById('story-gameover-center-hint');
   assert.match(hint.textContent, /costs 5,200G/);
-  assert.match(hint.textContent, /Conceding costs all your gold/);
+  assert.match(W.document.getElementById('story-gameover-btn-rival-concede').textContent, /Lose all gold/);
 
   W.StoryMode.retreatToLastPokemonCenter();
   assert.equal(W.__storyTest.STORY_EVENTS_RAW[run.eventIndex][2], 'City9');
   assert.equal(run.gold, 5001);
   assert.equal(run.inventory.potion, 2);
-  assert.equal(run.currentEnemyLock, null);
+  assert.deepEqual(run.currentEnemyLock, lock);
   assert.equal(JSON.parse(store.get('pbs_story_save')).storyRetreatBattleRowId, rowId);
 
   E.reset();

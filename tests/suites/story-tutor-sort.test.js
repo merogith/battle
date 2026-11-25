@@ -51,12 +51,10 @@ function moveNamesInGrid() {
   return [...host().querySelectorAll('.tx-card[data-card-kind="move"]')].map(c => c.getAttribute('data-card-value'));
 }
 
-test('default ★ grid is ordered by usage % — matches the badge on every card', async () => {
+test('the full catalog is ordered by usage % by default', async () => {
   primeCityTeam(7, GARCHOMP);
   await enterMovesAndSettle();
-  // ★ Recommended is ON by default and the species has data, so the locked label
-  // should advertise (and actually deliver) usage order.
-  assert.ok(host().innerHTML.includes('by usage'), 'curated view advertises the usage order');
+  assert.equal(host().querySelector('.tx-sort-select[data-kind="moves"]').value, 'usage');
   const pcts = [...host().querySelectorAll('.tx-card[data-card-kind="move"]')].map(cardPct);
   assert.ok(pcts.length >= 5, 'grid rendered a list of cards');
   for (let i = 1; i < pcts.length; i++) {
@@ -70,21 +68,19 @@ test('default ★ grid is ordered by usage % — matches the badge on every card
   assert.ok(pcts[0] >= 40, `staple move reads as % of builds (got ${pcts[0]}%), not a slot-share`);
 });
 
-test('Type and Accuracy sorts are gone; "By usage %" leads the menu', async () => {
+test('the catalog offers a short list of useful sorts', async () => {
   primeCityTeam(7, GARCHOMP);
   await enterMovesAndSettle();
-  // Toggle ★ off (Show all) so the sort selector appears.
-  host().querySelector('.tx-chip--rec[data-filter-kind="recOnly"]').click();
   for (let i = 0; i < 15; i++) { await sleep(40); if (host().querySelector('.tx-sort-select[data-kind="moves"]')) break; }
   const sel = host().querySelector('.tx-sort-select[data-kind="moves"]');
-  assert.ok(sel, 'sort selector visible in Show-all');
+  assert.ok(sel, 'sort selector visible in the full catalog');
   const values = [...sel.querySelectorAll('option')].map(o => o.value);
-  assert.deepEqual(values, ['usage', 'recommended', 'power', 'name'], 'menu = usage, recommended, power, name (no acc/type)');
+  assert.deepEqual(values, ['usage', 'recommended', 'tier', 'power', 'name'], 'orders include Move tier and Base power');
   assert.ok(!values.includes('acc'), 'Accuracy sort removed');
   assert.ok(!values.includes('type'), 'Type sort removed');
 });
 
-test('Power sort still works and breaks ties by usage (not alphabetical)', async () => {
+test('Power sort applies in the popular pool', async () => {
   primeCityTeam(7, GARCHOMP);
   await enterMovesAndSettle();
   host().querySelector('.tx-chip--rec[data-filter-kind="recOnly"]').click();
@@ -92,7 +88,7 @@ test('Power sort still works and breaks ties by usage (not alphabetical)', async
   const sel = host().querySelector('.tx-sort-select[data-kind="moves"]');
   sel.value = 'power'; sel.dispatchEvent(new w.Event('change', { bubbles: true }));
   for (let i = 0; i < 15; i++) { await sleep(40); if (host().querySelector('.tx-card[data-card-kind="move"]')) break; }
-  const bps = [...host().querySelectorAll('.tx-card[data-card-kind="move"]')]
+  const bps = [...host().querySelectorAll('.tx-card[data-card-kind="move"]:not([hidden])')]
     .map(c => parseInt((c.querySelector('.tx-stat-bp strong') || {}).textContent, 10) || 0);
   for (let i = 1; i < bps.length; i++) {
     assert.ok(bps[i] <= bps[i - 1], `power must be non-increasing (row ${i}: ${bps[i]} > ${bps[i - 1]})`);

@@ -1,10 +1,5 @@
-// Journal 3-track visibility (2026-06): the Adventure Journal must surface ALL
-// THREE story tracks — the static Main spine, the run's Villain arc, and the
-// run's Extra/Mystery arc — each with a "done / total chapters" progress count.
-// Before this change `_journalRenderHTML` rendered villain + extra only and
-// omitted the Main track entirely (same omission in the HUD objective subline
-// and the "Previously…" recap). These tests lock the Main track back in and
-// guard the progress count + per-chapter check marks.
+// The Notebook groups the scenes the player has seen by story track and hides
+// undiscovered tracks. The HUD and the recap still show the main journey's status.
 // Run: node --test tests/suites/story-journal-tracks.test.js
 
 import { test } from 'node:test';
@@ -32,23 +27,22 @@ function plantRun() {
     };
 }
 
-test('journal renders all three tracks with labels', () => {
+test('journal labels discovered story tracks', () => {
     plantRun();
     const html = ST.journalRenderHTML();
-    assert.match(html, /★ Main Story/, 'Main Story track must be present (was omitted before)');
+    assert.match(html, /<h3>Main Story<\/h3>/);
     assert.match(html, /Villain · Rocket/, 'Villain track must be labelled with its arc');
-    assert.match(html, /Mystery · Cubone/, 'Extra/Mystery track must be labelled with its arc');
+    assert.doesNotMatch(html, /Mystery · Cubone/, 'the Mystery track has yet to appear');
+    ST.sm.storyEventsFired['extra.cubone.event1'] = true;
+    assert.match(ST.journalRenderHTML(), /Mystery · Cubone/, 'the Mystery track appears after the first scene');
 });
 
-test('journal shows track progress and only reveals discovered chapter titles', () => {
+test('the encounter history is folded away and reveals discovered chapter titles', () => {
     plantRun();
     const html = ST.journalRenderHTML();
-    // Each track block carries an "N / M chapters" count.
-    assert.match(html, /\d+ \/ \d+ chapters/, 'a chapter progress count must render');
-    // A fired chapter is named and marked. Future titles stay hidden.
-    assert.match(html, /✓/, 'a fired chapter shows a check mark');
     const journal = W.document.createElement('div');
     journal.innerHTML = html;
+    assert.equal(journal.querySelector('details').open, false);
     assert.ok(journal.textContent.includes(ST.STORY_SCENES['main.event1'].title));
     assert.ok(!journal.textContent.includes(ST.STORY_SCENES['main.event3'].title));
 });

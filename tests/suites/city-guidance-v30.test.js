@@ -118,13 +118,17 @@ test('picker: post-HoF League pools (entries 10/11) are reachable at city 9', ()
   assert.ok(QUOTES[11].generic.includes(done), 'crucible-open pool (entry 11) serves city 9');
 });
 
-test('rendered hub: quote box shows blurb + a pool line for the city\'s current state', () => {
+test('rendered hub keeps town context separate and preserves the guide line on rerender', () => {
   const g = cityRowIdx(r => String(r[2]) === 'City1' && r[5].includes('Gym Battle'));
   assert.ok(g >= 0, 'City1 gym row exists');
   setSm({ eventIndex: g });
-  const { quote } = render(g);
-  assert.match(quote, /^📍 /, 'city blurb leads the box');
-  const line = quote.split('\n\n').pop();
+  const { quote: line } = render(g);
+  const specialty = W.document.getElementById('story-city-specialty');
+  assert.ok(!specialty.hidden && specialty.textContent);
+  const quote = W.document.getElementById('story-city-quote');
+  const node = quote.firstChild;
+  render(g);
+  assert.equal(quote.firstChild, node, 'an unchanged live quote is left alone');
   assert.ok(QUOTES[1].generic.concat(QUOTES[1].preGym).includes(line),
     `guide line is from city 1's generic∪preGym pools (got: ${line})`);
 });

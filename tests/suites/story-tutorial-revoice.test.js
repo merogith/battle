@@ -88,9 +88,9 @@ test('firstFanClub keeps every IV / Vitamin mechanic', () => {
   ].forEach((f) => present(b, f, 'firstFanClub'));
 });
 
-test('firstMoveTutor (already tight) is left alone', () => {
-  // §4.3 explicitly leaves the good ones untouched; lock its signature line.
+test('firstMoveTutor explains teaching, unlocks, recommendations, and the free lesson', () => {
   const b = sceneBlock('firstMoveTutor');
-  assert.ok(b.includes('I draw out what already sleeps in it'),
-    'firstMoveTutor: untouched signature line intact');
+  ['Pick a slot', 'empty one', 'tap Teach', 'stronger moves as you earn badges',
+   'show you a set', 'Heart Scale', 'One lesson’s on me', 'heartScale: 1',
+  ].forEach((f) => present(b, f, 'firstMoveTutor'));
 });

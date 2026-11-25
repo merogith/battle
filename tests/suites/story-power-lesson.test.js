@@ -9,10 +9,10 @@ const ST = W.__storyTest;
 const document = W.document;
 after(() => harness.teardown());
 
-async function element(selector) {
+async function element(selector, matches = () => true) {
   for (let attempt = 0; attempt < 75; attempt++) {
     const found = document.querySelector(selector);
-    if (found) return found;
+    if (found && matches(found)) return found;
     await delay(20);
   }
   assert.fail(`Missing ${selector}`);
@@ -33,11 +33,10 @@ test('City 5 links one newly unlocked move to the favorite partner in the Tutor'
   assert.doesNotMatch(W.__renderCityActionsForTest(city(4)), /^ERR:/);
   assert.equal(document.querySelector('#story-city-milestone').childElementCount, 0);
   assert.doesNotMatch(W.__renderCityActionsForTest(city(5)), /^ERR:/);
-  const action = await element('#story-city-milestone button');
+  const action = await element('#story-city-milestone button', button => button.textContent.startsWith('Teach Wake'));
   const move = action.querySelector('strong').textContent.match(/^Teach Wake (.+)$/)?.[1];
   assert.ok(move, 'the favorite gets priority when it has a newly unlocked lesson');
-  const power = Number(action.querySelector('small').textContent.match(/(\d+) power/)?.[1]);
-  assert.ok(power > 80, 'at City 4 the move was above the usual cap');
+  assert.equal(ST.storyMoveLessonTier('Gyarados', move), 4, 'the preview uses the newly unlocked tier');
   assert.match(action.querySelector('small').textContent, /1,000G or 1 Heart Scale/);
 
   action.click();

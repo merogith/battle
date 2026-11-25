@@ -53,7 +53,7 @@ test('read-only — does not mutate the slot build (no EV clamp / move pad)', ()
   assert.equal(JSON.stringify(build), before, 'helper must not mutate build.evs / build.m');
 });
 
-test('the displayed role stat includes the same mastered Camp bond as battle entry', () => {
+test('the displayed total includes the same mastered Camp bond as battle entry', () => {
   const slot = clone(CASES[0]);
   const story = eng.window.__storyTest;
   for (let i = 0; i < 8; i++) story.campAwardBond(slot, 'mimicry');
@@ -61,6 +61,6 @@ test('the displayed role stat includes the same mastered Camp bond as battle ent
   assert.equal(relationship.spe, 1.05);
   const built = buildPokemon(slot.name, { ...clone(slot.build), _relationshipStatMult: relationship });
   assert.equal(liveTotal(slot), sumBuilt(built));
-  assert.match(E._storyRoleCueHtml(slot), new RegExp(`Speed <strong>${built.stats.spe}</strong>`));
+  assert.match(E._storyRoleCueHtml(slot), new RegExp(`Stats <strong>${sumBuilt(built)}</strong>`));
   assert.equal(slot.build._relationshipStatMult, undefined);
 });

@@ -156,9 +156,10 @@ try {
   await button('Protect as favorite', panel()).click();
   assert.equal((await state()).team[0].favorite, true);
   await capture('Notebook team and favorite');
-  await button('Story & clues', panel()).click();
+  await button('Journal', panel()).click();
   await capture('Notebook story and clues');
-  await button('Battle rules', panel()).click();
+  await button('My team', panel()).click();
+  await panel().locator('summary', { hasText: 'Battle rules' }).click();
   await capture('Notebook battle rules');
   await button('Close', panel()).click();
 

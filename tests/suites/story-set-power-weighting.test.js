@@ -55,8 +55,10 @@ test('_stagePowerTargetForEvent: humble early, near-best in the league and after
   ST.sm.active = true; ST.sm.runSeed = 5; ST.sm._strngState = null;
   ST.sm.settings = Object.assign(ST.sm.settings || {}, { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
   ST.sm.badges = 0;
-  assert.equal(ST.stagePowerTargetForEvent('Gym Leader 1', 5, 0), 0.30, 'GL1 (T1) humble');
-  assert.equal(ST.stagePowerTargetForEvent('Gym Leader 6', 38, 5), 0.72, 'GL6 (T3) competent');
+  const early = ST.stagePowerTargetForEvent('Gym Leader 1', 5, 0);
+  assert.ok(early >= 0.30 && early < 0.40, 'GL1 rolls modest sets');
+  const late = ST.stagePowerTargetForEvent('Gym Leader 6', 38, 5);
+  assert.ok(late > early && late >= 0.8 && late < 0.90, 'GL6 rolls more coherent sets');
   const champ = ST.stagePowerTargetForEvent('Champion', 63, 8);
   const e1 = ST.stagePowerTargetForEvent('E1', 60, 8);
   const myst = ST.stagePowerTargetForEvent('Mystery Figure', null, 8);

@@ -30,7 +30,7 @@ test('items: foe item tier never exceeds the player Dojo tier (foe ≤ player)',
   // Dojo opens (C0-1). Foe must be ≤ that at every city.
   for (let c = 0; c <= 9; c++) {
     const foe = ST.storyFoeItemTier(c);
-    const playerTier = c <= 1 ? 0 : (ST.npcStageForCity('dojo', c) + 1);
+    const playerTier = c === 0 ? 0 : Math.min(3, ST.npcStageForCity('dojo', c) + 1);
     assert.ok(foe <= playerTier, `C${c}: foe item tier ${foe} must be ≤ player ${playerTier}`);
   }
   // Concretely (1.6.0 ladder [1,4,6,8]): berries C2-3, staples open at C4 (Black Belt),
@@ -39,7 +39,7 @@ test('items: foe item tier never exceeds the player Dojo tier (foe ≤ player)',
   assert.equal(ST.storyFoeItemTier(4), 2, 'C4 foe staples (== Black Belt)');
   assert.equal(ST.storyFoeItemTier(5), 2, 'C5 foe still staples');
   assert.equal(ST.storyFoeItemTier(6), 3, 'C6 foe best meta (== Master)');
-  assert.equal(ST.storyFoeItemTier(8), 4, 'C8 foe all (== Grandmaster; tier-4 = no item gated)');
+  assert.equal(ST.storyFoeItemTier(8), 3, 'Grandmaster adds abilities and shares the Master item cap');
 });
 
 test('hidden abilities: foe HA opens at the player Black Belt (C4), not C3', () => {
@@ -59,4 +59,37 @@ test('#23 fix: the intro rival (row 68) resolves to City 0, not City 9', () => {
 
 test('#23 fix: mid rival (row 12) resolves to its true city (C3)', () => {
   assert.equal(ST.cityIndexForStoryRow(12), 3, 'mid rival row 12 lives in the C3 segment');
+});
+
+test('normal Hidden, high-impact Hidden, and Awakened abilities unlock at successive Dojo ranks', () => {
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Rough Skin'), 1);
+  assert.equal(ST.dojoAbilityUnlockStage('Blaziken', 'Speed Boost'), 2);
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Tough Claws'), 3);
+
+  for (const city of [3, 4, 5, 6, 7, 8]) {
+    const blaziken = { a: 'Speed Boost', i: 'Focus Sash', m: ['Blaze Kick'] };
+    const garchomp = { a: 'Rough Skin', i: 'Leftovers', m: ['Sand Tomb'] };
+    ST.storyClampBuildLoadout('Blaziken', blaziken, city);
+    ST.storyClampBuildLoadout('Garchomp', garchomp, city);
+    assert.equal(blaziken.a, city >= 6 ? 'Speed Boost' : 'Blaze');
+    assert.equal(garchomp.a, city >= 4 ? 'Rough Skin' : 'Sand Veil');
+    assert.equal(blaziken.i, city >= 6 ? 'Focus Sash' : '');
+    assert.equal(garchomp.i, city >= 4 ? 'Leftovers' : '');
+  }
+});
+
+test('Cable Link rebuilds can learn and equip what is available in town', async () => {
+  const rows = ST.STORY_EVENTS_RAW;
+  const city = 2;
+  Object.assign(ST.sm, { active: true, badges: 1, runSeed: 129, eventIndex: rows.findIndex(row => row[2] === 'City2') });
+  const rebuilt = await ST.storyMakePlayerLinkBuild('Garchomp', 'TOURNAMENT');
+  const allowed = await ST.tutorGetStagedMovePool('Garchomp', []);
+  assert.ok(rebuilt.m.every(move => allowed.includes(move)), rebuilt.m.join(', '));
+  assert.equal(rebuilt.a, 'Sand Veil');
+  if (['MEGA', 'ZMOVE'].includes(rebuilt.gimmick)) {
+    assert.ok(rebuilt.i, 'a Cable Link form keeps its required item');
+  } else if (rebuilt.i && rebuilt.i !== 'None') {
+    assert.equal(ST.dojoItemTier(rebuilt.i), 1);
+  }
+  assert.ok(Object.values(rebuilt.evs).reduce((sum, ev) => sum + ev, 0) <= 152);
 });

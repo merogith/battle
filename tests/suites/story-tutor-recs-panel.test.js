@@ -150,20 +150,25 @@ test('Battle Dojo default (item tab) shows the curated "Best items" panel', asyn
   assert.ok(html.includes('Best items'), 'panel titled for items');
 });
 
-test('switching to the Ability tab shows the curated "Best abilities" panel', async () => {
+test('the Ability tab badge switches tabs on touch and shows the shared Mentor pick', async () => {
   primeC7Team();
   await renderLoadoutAndGetHtml();
   const host = w.document.getElementById('story-tutor-team');
   const abilTab = host && host.querySelector('button.tx-tab[data-tab="ability"]');
   assert.ok(abilTab, 'ability tab button exists');
-  abilTab.click(); // real delegated handler: flips _txState.dojoTab + re-renders
+  const badge = abilTab.querySelector('.tx-tab-badge');
+  assert.ok(badge, 'the fixture has abilities locked behind a later rank');
+  w._prefersFinePointerHover = () => false;
+  badge.click();
   let html = '';
   for (let i = 0; i < 20; i++) {
     await new Promise(r => setTimeout(r, 50));
     html = host.innerHTML;
-    if (html.includes('Best abilities') || html.includes('tx-card--ability')) break;
+    if (html.includes('Suggested ability')) break;
   }
-  // Garchomp at Grandmaster has 2+ abilities -> a panel; at minimum the ability grid renders.
-  assert.ok(html.includes('tx-card--ability') || html.includes('Best abilities'),
-    'ability tab rendered (panel when >1 option)');
+  assert.equal(host.querySelector('button.tx-tab[data-tab="ability"]').getAttribute('aria-selected'), 'true');
+  const pick = host.querySelector('.tx-rec-row[data-card-kind="ability"]');
+  assert.ok(pick, 'the selected tab shows its suggestion');
+  const proposed = ST.txBuildFastBuildPlan(0).parts.find(part => part.kind === 'ability');
+  assert.equal(pick.dataset.cardValue, proposed?.to || ST.sm.team[0].build.a);
 });

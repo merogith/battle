@@ -2,9 +2,8 @@
 // Fills ALL remaining gaps in the local animated-sprite set so the game renders every
 // in-roster Pokémon offline (no runtime fallback to play.pokemonshowdown.com / PokeAPI).
 //
-// Why: getSprite() serves sprites/<dir>/<slug>.gif when the slug is in LOCAL_SPRITE_MANIFEST,
-// otherwise it hits a remote CDN. Offline (installed PWA, no network) the remote rungs all
-// fail and the player sees a broken-image box. This vendors the missing files locally.
+// getSprite() only uses bundled assets. Importing the missing files lets them
+// render in either offline pack without needing same-form fallback art.
 //
 // Source: PokeAPI's Showdown mirror, keyed by National Dex number (works for every gen,
 // including Gen 9 — Showdown's own gen5ani dir stops at Gen 5):
@@ -17,7 +16,7 @@
 //     FORM_DEX_IDS in battle.html)               → keyed by that id.
 //   • FORMES without a known id (regional / cosmetic) are SKIPPED — the id-keyed mirror
 //     would return the *base* form under a forme slug, which is wrong. Those keep the
-//     runtime fallback + the bundled "unknown" placeholder (see handleSpriteError).
+//     same-form local fallbacks and the bundled unavailable-art placeholder.
 //   • CAP / fakemon (Dex num <= 0) are SKIPPED — PokeAPI has no sprite for them; the
 //     hand-made ones that ship already live in the folder.
 //

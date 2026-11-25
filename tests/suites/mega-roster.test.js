@@ -126,7 +126,7 @@ describe('mega formes stay out of the draft pool', () => {
 describe('mega sprites', () => {
   const DIRS = ['gen5ani', 'gen5ani-shiny', 'gen5ani-back', 'gen5ani-back-shiny'];
 
-  it('every mega forme has a FORM_DEX_IDS entry for the remote fallback', () => {
+  it('every mega forme has a FORM_DEX_IDS entry for the offline asset tools', () => {
     const missing = [];
     for (const [, , forme] of DEX_PAIRS) {
       const slug = evalIn(`toShowdownSpriteId(${JSON.stringify(forme)})`);

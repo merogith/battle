@@ -63,3 +63,11 @@ test('at C7+ with unlock, the gimmick passes through unchanged', () => {
   assert.equal(sanitized[0].build.gimmick, 'MEGA', 'Mega passes through at C7+ with unlock');
   assert.equal(sanitized[0].build.i, 'Sablenite', 'Sablenite kept');
 });
+
+test('a frozen opponent keeps its resolved ability on a rematch', () => {
+  primeAtCity(0);
+  const [{ build }] = ST.storyFreezeFoeTeamForPersistence([{ name: 'Sableye', build: { m: ['Leer'] } }]);
+  assert.ok(['Keen Eye', 'Stall'].includes(build.a));
+  const otherRng = ST.buildPokemon('Sableye', { ...build }, () => 0.99);
+  assert.equal(otherRng.ability, build.a);
+});
