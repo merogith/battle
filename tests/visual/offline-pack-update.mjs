@@ -216,6 +216,12 @@ try {
     await context.setOffline(false);
     page = await createPage();
     await waitForRelease(candidate);
+    if (!await page.evaluate(() => typeof window.checkForGameUpdate === 'function')) {
+        // The historical page can receive its first controller after loading.
+        // Reload that page once the verified replacement is already in control.
+        await page.reload({ waitUntil: 'commit' });
+        await waitForRelease(candidate);
+    }
     await page.waitForFunction(() => typeof window.checkForGameUpdate === 'function', null, { timeout: 15000 });
     await appReady(page);
     await page.exposeFunction('__publishOfflineTestRelease', () => {
