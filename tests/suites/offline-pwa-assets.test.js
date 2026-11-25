@@ -26,6 +26,16 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const HTML = read('battle.html');
 
+test('both offline title screens display the package version', () => {
+  const { version } = JSON.parse(read('package.json'));
+  const lock = JSON.parse(read('package-lock.json'));
+  assert.equal(lock.version, version);
+  assert.equal(lock.packages[''].version, version);
+  const label = `<p class="game-version">Version ${version}</p>`;
+  assert.ok(read('index.html').includes(label), 'public title matches package.json');
+  assert.ok(HTML.includes(label), 'in-game title matches package.json');
+});
+
 test('offline-assets.json exists, is hashed, and lists real files', () => {
   const m = JSON.parse(read('offline-assets.json'));
   assert.ok(m.totalBytes > 0, 'totalBytes > 0');

@@ -115,26 +115,6 @@
         body.is-mobile::before {
             background: radial-gradient(ellipse 100% 120% at 50% 38%, #182218 0%, #0a100e 48%, #030506 100%);
         }
-        /* Tiny deploy label: bump scripts/bump-deploy-version.ps1 on each git push (see hooks/pre-push). */
-        .deploy-version-patch {
-            position: fixed;
-            top: calc(2px + var(--safe-top));
-            left: calc(2px + var(--safe-left));
-            z-index: var(--sn-z-toast, 10001);
-            font-family: var(--ui-font);
-            font-size: 10px;
-            line-height: 1;
-            color: rgba(200, 200, 200, 0.38);
-            pointer-events: none;
-            user-select: none;
-            letter-spacing: 0.04em;
-            display: none;
-        }
-        body:has(#screen-menu:not(.hidden)) .deploy-version-patch { display: block; }
-        /* …but never over a modal/loading scrim — it read as stray debug text on top of
-           the settings sheet and boot screen. */
-        body:has(.modal:not(.hidden)) .deploy-version-patch,
-        body:has(#app-loading-overlay:not(.hidden)) .deploy-version-patch { display: none !important; }
         body { background-color: #000; color: var(--text-color); font-family: var(--ui-font); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; min-height: 100svh; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
         .screen { width: 100%; max-width: 1280px; height: 100vh; max-height: 720px; position: relative; background: var(--bg-color); overflow: hidden; }
         /* Desktop: outer box matches scaled 1280×720 footprint so the game centers and fills the window */
@@ -8484,6 +8464,15 @@
         #game-stage.screen-trans-enter-fade { animation: screenTransFade 0.28s ease-out; }
         /* Main menu — hero + accordion + mode grid */
         .menu-hero { text-align: center; margin-top: 16px; padding: 0 16px; }
+        .menu-hero .game-version {
+            width: max-content;
+            margin: 8px auto 0;
+            padding: 2px 10px;
+            border-radius: var(--radius-sm);
+            background: #151b24;
+            color: #e3e8f0;
+            font: 650 14px/1.4 system-ui, sans-serif;
+        }
         .menu-hero .menu-title { font-size: clamp(18px, 4.5vw, 26px); font-weight: 800; letter-spacing: 0.04em; margin: 0 0 6px; color: var(--text-color); }
         .menu-hero .menu-sub { font-size: 13px; color: var(--text-muted); margin: 0 0 4px; line-height: 1.45; }
         .menu-hero .menu-pool-line { font-size: 12px; color: var(--accent); margin: 0 0 14px; }
@@ -10369,8 +10358,6 @@
     <script src="data/story/adventure-progress.js"></script>
     <script src="data/story/frontier-challenges.js"></script>
     <script src="game-upgrades.js"></script>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v2.0.0</div>
-
     <div id="text-tooltip" class="white-outline hidden" style="background:#111; border:1px solid #fff; padding:8px; font-size:12px; max-width:250px; pointer-events:none; color: #ffd700;"></div>
     <div id="toast-host" aria-live="polite"></div>
     <div id="app-loading-overlay" role="status" aria-busy="true" aria-label="Loading game data">
@@ -10397,6 +10384,7 @@
             <div class="logo-container">
                 <h1 class="title-pokemon">POKéMON</h1>
                 <h2 class="title-arena">ARENA</h2>
+                <p class="game-version">Version 2.0.3</p>
             </div>
 
             <div class="menu-primary-actions">

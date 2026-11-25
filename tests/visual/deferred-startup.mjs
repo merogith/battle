@@ -1,11 +1,12 @@
 /* global state */
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 
 const url = new URL(process.env.BATTLE_TEST_URL || 'http://localhost:5173/battle.html');
 const publicTitle = new URL('./', url);
+const { version } = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
 const output = process.env.BATTLE_PLAYTEST_OUT;
 const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
 const heavy = /\/(?:vendor\/pkmn-dex[^/]*\.js|data\/(?:species\.json|moves\.json|builds\.csv)|competitive\/showdown-engine\.js|offline-assets\.json|sw\.js)$/;
@@ -33,6 +34,7 @@ async function title(page) {
   await page.goto(url.href, { waitUntil: 'load', timeout: 45000 });
   await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: /Story Mode/ }).waitFor();
+  await page.getByText(`Version ${version}`, { exact: true }).waitFor({ state: 'visible' });
 }
 
 const transfer = page => page.evaluate(() => {
@@ -49,6 +51,7 @@ try {
   try {
     await page.goto(publicTitle.href, { waitUntil: 'load' });
     await page.getByRole('heading', { name: 'Pokémon Arena', exact: true }).waitFor();
+    await page.getByText(`Version ${version}`, { exact: true }).waitFor({ state: 'visible' });
     assert.equal(await page.getByRole('link', { name: /Continue/ }).count(), 0);
     assert.deepEqual(requests.filter(path => heavy.test(path) || path.endsWith('/battle.html')), []);
     report.publicTitle = await transfer(page);

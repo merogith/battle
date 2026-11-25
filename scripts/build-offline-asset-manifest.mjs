@@ -21,6 +21,17 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
+// Embed the package version before hashing, so both installed titles can show it offline.
+const { version: gameVersion } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const titleVersionLabel = /<p class="game-version">[^<]*<\/p>/;
+for (const name of ['index.html', 'battle.html']) {
+  const file = path.join(ROOT, name);
+  const html = fs.readFileSync(file, 'utf8');
+  if (!titleVersionLabel.test(html)) throw new Error(`Missing game version label in ${name}`);
+  const updated = html.replace(titleVersionLabel, `<p class="game-version">Version ${gameVersion}</p>`);
+  if (updated !== html) fs.writeFileSync(file, updated);
+}
+
 // Keep CACHE_VERSION in sync with sw.js (drives the versioned app-shell cache).
 function readCacheVersion() {
   try {
