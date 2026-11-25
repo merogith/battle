@@ -81,6 +81,7 @@ try {
       assert.equal(await summary.getByRole('button', { name: 'Previous Pokémon' }).evaluate(element => element === document.activeElement), true);
       await summary.locator('.sum-corner-close:visible, .sum-close-btn:visible').first().click();
 
+      const fieldHeight = await battle.locator('#battle-field').evaluate(element => element.clientHeight);
       await fight.click();
       const tiles = battle.locator('#move-menu .battle-btn-move');
       assert.equal(await tiles.count(), 4);
@@ -106,11 +107,29 @@ try {
         assert.deepEqual(await clippedLabels(tiles.locator('.type-badge')), [], `${size} displays the full move type labels`);
       }
       if (width === 320) {
-        const clipped = await tiles.evaluateAll(buttons => buttons.filter(button => {
-          const scroll = button.closest('.move-menu-scroll').getBoundingClientRect();
-          return button.getBoundingClientRect().bottom > scroll.bottom + 1;
-        }).map(button => button.getAttribute('aria-label')));
-        assert.deepEqual(clipped, [], 'All four move choices fit above Back on the small portrait phone');
+        const log = battle.locator('#battle-log');
+        const assertMoveGrid = async (check) => {
+          // Class changes and the compact layout can settle on separate paints.
+          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          const movesFit = await tiles.evaluateAll(buttons => {
+            const scroll = buttons[0].closest('.move-menu-scroll').getBoundingClientRect();
+            const logHeight = document.getElementById('battle-log').getBoundingClientRect().height;
+            const clipped = buttons.filter(button => button.getBoundingClientRect().bottom > scroll.bottom + 1)
+              .map(button => button.getAttribute('aria-label'));
+            const targets = buttons.map(button => button.getBoundingClientRect().height);
+            return { clipped, logHeight, targets };
+          });
+          assert.deepEqual(movesFit.clipped, [], `${check} move choices fit above Back with a ${movesFit.logHeight}px log`);
+          assert.ok(movesFit.logHeight <= 42, `${check} collapsed log leaves the move grid its space`);
+          assert.ok(movesFit.targets.every(height => height >= 44), `${check} move targets are at least 44px tall`);
+        };
+        await assertMoveGrid('Initial');
+        await log.click();
+        assert.equal(await log.getAttribute('aria-expanded'), 'true');
+        await log.click();
+        assert.equal(await log.getAttribute('aria-expanded'), 'false');
+        await assertMoveGrid('After collapsing the log');
+        assert.equal(await battle.locator('#battle-field').evaluate(element => element.clientHeight), fieldHeight);
         const earthquake = tiles.locator('.move-tile-name').filter({ hasText: /^Earthquake$/ });
         assert.ok(await earthquake.evaluate(label => {
           const range = document.createRange();

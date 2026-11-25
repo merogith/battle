@@ -61,7 +61,7 @@ function assetPack(url) {
 }
 // Top-level boot files (explicit — not walked).
 const BOOT_FILES = [
-  'battle.html', 'index.html', 'manifest.webmanifest', 'game-upgrades.js', 'game-upgrades.css',
+  'battle.html', 'index.html', 'manifest.webmanifest', 'game-update.js', 'game-upgrades.js', 'game-upgrades.css',
   'online-config.js', 'online-pvp.js', 'move-anim-map.js', 'move-sfx-map.js', 'sw.js',
   'battle-encounter-profiles.js', 'battle-move-profiles.js', 'battle-motion.js',
   'competitive/index.html', 'competitive/arena.css', 'competitive/arena.js',

@@ -531,6 +531,34 @@ test('offline download UI clears readiness and refreshes when its checkpoint was
   assert.equal(settings.offlineDownload.digest,null);
   assert.equal(refreshed,1);
 });
+test('a manual update waits for verified activation and reports a rejected install', async () => {
+  const code = fs.readFileSync(new URL('../../game-update.js', import.meta.url), 'utf8');
+  for (const finalState of ['activated', 'redundant']) {
+    const worker = Object.assign(new EventTarget(), { state: 'installing' });
+    const registration = Object.assign(new EventTarget(), { active: {}, installing: null });
+    let checks = 0;
+    registration.update = async () => {
+      checks++;
+      registration.installing = worker;
+      registration.dispatchEvent(new Event('updatefound'));
+    };
+    const window = {};
+    vm.runInNewContext(code, { window, navigator: { serviceWorker: { getRegistration: async () => registration } }, setTimeout, clearTimeout });
+    let installing;
+    const installStarted = new Promise(resolve => { installing = resolve; });
+    const result = window.checkForGameUpdate(installing);
+    let settled = false;
+    void result.then(() => { settled = true; }, () => { settled = true; });
+    await installStarted;
+    assert.equal(checks, 1);
+    assert.equal(settled, false, 'an unverified worker cannot complete the update');
+    worker.state = finalState;
+    worker.dispatchEvent(new Event('statechange'));
+    if (finalState === 'activated') assert.equal(await result, true);
+    else await assert.rejects(result, /could not be installed/);
+  }
+});
+
 test('the first controller claim arms future updates without reloading a battle', () => {
   const html = fs.readFileSync(new URL('../../battle.html', import.meta.url), 'utf8');
   const start = html.indexOf("if ('serviceWorker' in navigator && location.protocol.startsWith('http'))");

@@ -10250,6 +10250,7 @@
          inside functions with typeof guards), so they don't need to block first paint. defer
          preserves order and runs them before DOMContentLoaded. -->
     <script src="online-pvp.js" defer></script>
+    <script src="game-update.js" defer></script>
     <script src="move-sfx-map.js" defer></script>
     <script src="move-anim-map.js" defer></script>
     <script src="battle-encounter-profiles.js" defer></script>
@@ -10293,7 +10294,12 @@
                 if (_swReloaded || !window.__swReloadPending) return;
                 if (_inBattleNow()) return;
                 _swReloaded = true;
-                location.reload();
+                const downloads = window.document?.getElementById('offline-dl-panel');
+                if (downloads && !downloads.closest('.hidden') && document.querySelector('#screen-menu:not(.hidden)')) {
+                    location.replace(new URL('battle.html?entry=offline', location.href).href);
+                } else {
+                    location.reload();
+                }
             };
             navigator.serviceWorker.addEventListener('controllerchange', function () {
                 if (_swReloaded || !navigator.serviceWorker.controller) return;
@@ -10304,43 +10310,9 @@
                 window.__swReloadPending = true;
                 window.__maybeSwReload();
             });
-            // The SW's background shell-revalidation found newer app code on the server
-            // (a redeploy). Offer a one-tap reload — deferred out of an active battle so a
-            // mis-tap can't nuke unsaved match progress.
             function _inBattleNow() {
                 try { return !!(typeof state !== 'undefined' && state && state.pActive && state.fActive && !state.isOver); } catch (e) { return false; }
             }
-            window.__maybeShowShellUpdate = function () {
-                if (!window.__shellUpdatePending || window.__shellUpdateShown) return;
-                if (_inBattleNow()) return;            // retried when the player returns to a menu
-                window.__shellUpdateShown = true;
-                if (document.getElementById('app-update-banner')) return;
-                var bar = document.createElement('div');
-                bar.id = 'app-update-banner';
-                bar.setAttribute('role', 'status');
-                bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:var(--radius-lg);background:#12241b;border:1px solid var(--hp-green,#7ad17a);box-shadow:0 6px 24px rgba(0,0,0,0.5);font-size:13px;color:#e8f5e9;';
-                var txt = document.createElement('span');
-                txt.textContent = 'A new version is available.';
-                var reload = document.createElement('button');
-                reload.type = 'button';
-                reload.textContent = 'Reload';
-                reload.style.cssText = 'min-height:36px;padding:6px 14px;border-radius:var(--radius-md);border:1px solid var(--hp-green,#7ad17a);background:var(--hp-green,#7ad17a);color:#06120b;font-weight:bold;cursor:pointer;';
-                reload.onclick = function () { location.reload(); };
-                var dismiss = document.createElement('button');
-                dismiss.type = 'button';
-                dismiss.setAttribute('aria-label', 'Dismiss update notice');
-                dismiss.textContent = '✕';
-                dismiss.style.cssText = 'min-height:36px;min-width:36px;padding:0 8px;border-radius:var(--radius-md);border:1px solid #3a3a3a;background:transparent;color:#9aa;cursor:pointer;';
-                dismiss.onclick = function () { try { bar.remove(); } catch (e) {} };
-                bar.appendChild(txt); bar.appendChild(reload); bar.appendChild(dismiss);
-                document.body.appendChild(bar);
-            };
-            navigator.serviceWorker.addEventListener('message', function (ev) {
-                var d = (ev && ev.data) || {};
-                if (d.type !== 'SHELL_UPDATED') return;
-                window.__shellUpdatePending = true;
-                window.__maybeShowShellUpdate();
-            });
         }
     </script>
     <script>
@@ -14683,7 +14655,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         async function _getOfflineManifest(force) {
             if (_offlineManifest && !force) return _offlineManifest;
+            // A controlled page gets the manifest bound to its verified app shell.
             const res = await fetch('offline-assets.json', { cache: 'no-cache' });
+            if (!res.ok) throw new Error('The offline manifest is unavailable.');
             _offlineManifest = await res.json();
             return _offlineManifest;
         }
@@ -14979,9 +14953,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 continueJob = true;
             }
         }
+        async function _checkOfflinePackUpdates() {
+            _offlineControls('Checking…', { busy: true });
+            _offlineText('status', 'Checking for a game update…');
+            try {
+                const updateReady = await window.checkForGameUpdate(() => {
+                    _offlineText('status', 'Installing the game update…');
+                });
+                if (updateReady || window.__swReloadPending) {
+                    _offlineText('status', 'Game update ready. Return to the main menu to finish updating.');
+                    window.__maybeSwReload?.();
+                    return;
+                }
+            } catch (_) {
+                _offlineText('status', 'Could not check for updates. Check your connection and try again.');
+                _offlineControls('Check for updates', { canRemove: settings.offlineDownload.completed });
+                return;
+            }
+            return window.openDownloadOfflineFlow();
+        }
         window.startOfflineDownload = async function() {
             if (_offlineDownloadRun) return;
-            if (['Check for updates', 'Check again'].includes(_offlineElement('start')?.textContent)) return window.openDownloadOfflineFlow();
+            const action = _offlineElement('start')?.textContent;
+            if (action === 'Check for updates') return _checkOfflinePackUpdates();
+            if (action === 'Check again') return window.openDownloadOfflineFlow();
             _offlineControls('Preparing…', { busy: true });
             const sw = await _offlineActiveSW();
             let manifest;
@@ -74394,7 +74389,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (id === 'screen-menu') {
                     try { window.restoreQuickMechSnapshot && window.restoreQuickMechSnapshot(); } catch (e) {}
                     try { window.syncBattleOptionsFromSettings && window.syncBattleOptionsFromSettings(); } catch (e) {}
-                    try { window.__maybeShowShellUpdate && window.__maybeShowShellUpdate(); } catch (e) {}
                     try { window.__maybeSwReload && window.__maybeSwReload(); } catch (e) {}
                 }
                 // One short fade-in on the newly shown screen (auto-cleared on animationend

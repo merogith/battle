@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. The manifest build sets CACHE_VERSION from the release contents.
  */
-const CACHE_VERSION = 'battle-v5-767cf76fb93c';
+const CACHE_VERSION = 'battle-v5-2a5565dcb091';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -32,6 +32,7 @@ const LAZY_CODE = new Set(['competitive/showdown-worker.js', 'vendor/pkmn-dex-le
 const SHELL = [
   './',
   'battle.html',
+  'game-update.js',
   'game-upgrades.js',
   'game-upgrades.css',
   'index.html',

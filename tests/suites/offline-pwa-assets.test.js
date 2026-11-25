@@ -149,17 +149,22 @@ test('settings modal is labelled and the ambient-particles toggle is wired', () 
   assert.ok(/applySettingSwitch\('ambientParticles'/.test(HTML), 'toggle wired to applySettingSwitch');
 });
 
-test('app self-updates like an installed app (SW revalidates the shell + page prompts reload)', () => {
+test('the title and Offline Play can check for a verified app update', () => {
   const sw = read('sw.js');
+  const update = read('game-update.js');
+  const title = read('index.html');
   assert.ok(/function revalidateShell/.test(sw), 'SW background shell revalidation exists');
   assert.match(sw,/cache:\s*'no-store'/, 'release manifest bypasses stale HTTP cache');
   assert.ok(/self.registration.update\(\)/.test(sw), 'browser installs a new complete worker');
   assert.ok(/precacheShell\(\).then/.test(sw), 'activation follows completed installation');
-  // The page listens and offers a deferred, non-blocking reload (never mid-battle).
-  assert.ok(/d\.type !== 'SHELL_UPDATED'/.test(HTML), 'page handles SHELL_UPDATED');
-  assert.ok(/window\.__maybeShowShellUpdate/.test(HTML), 'reload prompt is gated through __maybeShowShellUpdate');
-  assert.ok(/_inBattleNow\(\)\)\s*return/.test(HTML), 'prompt is suppressed during an active battle');
-  assert.ok(HTML.includes("id = 'app-update-banner'"), 'the reload banner is created');
+  assert.match(update, /await registration\.update\(\)/);
+  assert.match(update, /worker\.state === 'activated'/);
+  assert.match(title, /id="title-update"/);
+  for (const page of [title, HTML]) {
+    assert.match(page, /<script src="game-update\.js" defer>/);
+    assert.match(page, /window\.checkForGameUpdate\(/);
+  }
+  assert.match(HTML, /_inBattleNow\(\)\)\s*return/, 'reload is deferred during an active battle');
 });
 
 test('Battle Options: Classic (once-per-battle) toggle is wired + panel re-syncs from live settings', () => {

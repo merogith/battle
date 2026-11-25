@@ -8,6 +8,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <script src="game-update.js" defer></script>
     <style>
         :root { color-scheme: dark; font: 16px/1.4 system-ui, sans-serif; background: #11151c; color: #f3f0e8; }
         * { box-sizing: border-box; }
@@ -23,19 +24,23 @@
         h1 span { color: #f8d282; }
         .game-version { color: #d4dae6; font-size: .875rem; font-weight: 650; margin: 6px 0 clamp(12px, 4vh, 24px); }
         nav, .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; }
-        a, summary {
+        a, summary, #title-update {
             min-height: 44px; display: grid; align-content: center; padding: 10px 13px;
             border-radius: 8px; border: 1px solid #747784; font-weight: 650;
             text-decoration: none; color: inherit; background: #1b2029;
         }
-        a[hidden] { display: none; }
+        a[hidden], #title-update[hidden] { display: none; }
         .primary { background: #f8d282; border-color: #f8d282; color: #21180c; }
-        a:hover, summary:hover { border-color: #f8d282; }
+        a:hover, summary:hover, #title-update:hover { border-color: #f8d282; }
         :focus-visible { outline: 3px solid #f8d282; outline-offset: 3px; }
         details, footer { margin-top: 10px; }
         summary { cursor: pointer; display: list-item; }
         .modes { margin-top: 8px; }
         footer { display: flex; gap: 8px; flex-wrap: wrap; }
+        #title-update { font-family: inherit; font-size: 1rem; cursor: pointer; }
+        #title-update:disabled { cursor: wait; }
+        #title-update-status { margin: 8px 0 0; font-size: .875rem; color: #d4dae6; }
+        #title-update-status:empty { display: none; }
         small { font-weight: 550; }
         @media (orientation: landscape) and (max-height: 400px) {
             h1 { font-size: clamp(1.9rem, 8vh, 3.2rem); }
@@ -69,7 +74,9 @@
         <footer>
             <a href="battle.html?entry=offline">Offline play</a>
             <a href="battle.html?entry=settings">Settings</a>
+            <button type="button" id="title-update" hidden>Check for updates</button>
         </footer>
+        <p id="title-update-status" role="status"></p>
     </main>
     <script>
         function showSave() {
@@ -89,13 +96,42 @@
         window.addEventListener('storage', event => { if (event.key === 'pbs_story_save') showSave(); });
         // Preserve older invitation and diagnostic URLs on the site root.
         if (location.search || location.hash) location.replace('battle.html' + location.search + location.hash);
-        if ('serviceWorker' in navigator && (navigator.serviceWorker.controller || navigator.standalone ||
-                matchMedia('(display-mode: standalone)').matches)) {
-            const hadController = !!navigator.serviceWorker.controller;
+        if ('serviceWorker' in navigator) {
+            const update = document.getElementById('title-update');
+            const status = document.getElementById('title-update-status');
+            let hadController = !!navigator.serviceWorker.controller;
+            let reloading = false;
+            function reloadTitle() {
+                if (reloading) return;
+                reloading = true;
+                location.reload();
+            }
+            document.addEventListener('DOMContentLoaded', () => { update.hidden = false; }, { once: true });
+            update.addEventListener('click', async () => {
+                if (navigator.onLine === false) {
+                    status.textContent = 'Connect to the internet and try again.';
+                    return;
+                }
+                update.disabled = true;
+                status.textContent = 'Checking for updates…';
+                try {
+                    const result = await window.checkForGameUpdate(() => { status.textContent = 'Installing the game update…'; });
+                    if (result !== false) reloadTitle();
+                    else status.textContent = 'The game is up to date.';
+                } catch (_) {
+                    status.textContent = 'Could not check for updates. Check your connection and try again.';
+                } finally {
+                    if (!reloading) update.disabled = false;
+                }
+            });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (hadController) location.reload();
-            }, { once: true });
-            navigator.serviceWorker.register('sw.js').catch(() => {});
+                if (!navigator.serviceWorker.controller) return;
+                if (hadController) reloadTitle();
+                else hadController = true;
+            });
+            if (hadController || navigator.standalone || matchMedia('(display-mode: standalone)').matches) {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            }
         }
     </script>
 </body>
