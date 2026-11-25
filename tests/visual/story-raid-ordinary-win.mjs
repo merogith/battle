@@ -34,7 +34,7 @@ try {
     const roster = [
       ['Blastoise', 'Squirtle', 'Torrent', 'Aqua Tail', 'Surf'],
       ['Gyarados', 'Magikarp', 'Intimidate', 'Waterfall', 'Surf'],
-      ['Golduck', 'Psyduck', 'Cloud Nine', 'Aqua Tail', 'Surf'],
+      ['Venusaur', 'Bulbasaur', 'Overgrow', 'Seed Bomb', 'Giga Drain'],
       ['Poliwrath', 'Poliwag', 'Water Absorb', 'Waterfall', 'Surf'],
       ['Seadra', 'Horsea', 'Sniper', 'Waterfall', 'Surf'],
       ['Seaking', 'Goldeen', 'Swift Swim', 'Waterfall', 'Surf'],
@@ -93,18 +93,20 @@ try {
       continue;
     }
     await fight.click();
-    const category = before.phase?.category === 'Special' ? 'Physical' : 'Special';
-    const target = category === 'Physical' ? /^(Aqua Tail|Waterfall)\b/ : /^Surf\b/;
-    const buttons = screen.locator('#move-menu .battle-btn-move:enabled');
-    const preferred = buttons.and(screen.getByRole('button', { name: target }));
-    const choice = await preferred.count() ? preferred.first() : buttons.first();
+    // Use Gyarados's stronger Attack and let Venusaur recover HP with Giga Drain.
+    // Each partner can switch attack categories when Grave Guard comes up.
+    const preferPhysical = before.phase ? before.phase.category === 'Special' : before.player === 'Gyarados';
+    const category = preferPhysical ? 'Physical' : 'Special';
+    const choice = screen.locator('#move-menu .battle-btn-move:enabled')
+      .and(screen.getByRole('button', { name: new RegExp(`, ${category},`) }));
+    assert.equal(await choice.count(), 1, `${before.player} needs an available ${category} move on turn ${before.turn + 1}`);
     const label = await choice.getAttribute('aria-label');
     await choice.click();
     await page.waitForFunction(turn => state.isOver || state.nativeRequests?.[0]?.phase === 'replace' ||
       (state.turnNumber > turn && !state.isLocked), before.turn);
     const hp = await page.evaluate(() => state.fActive.currentHp);
     steps.push({ turn: before.turn + 1, player: before.player, label, from: before.hp, to: hp,
-      guard: before.phase?.category || null, category: /^Surf\b/.test(label) ? 'Special' : 'Physical' });
+      guard: before.phase?.category || null, category });
   }
   const victory = page.locator('.story-victory-v2');
   const final = await page.evaluate(() => ({ winner: state.nativeWinner, battleOver: state.isOver,

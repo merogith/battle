@@ -5,7 +5,7 @@ const url = new URL(process.env.BATTLE_TEST_URL || 'http://localhost:5173/battle
 const fixtures = [
   { seed: 17, species: 'Electrike' },
   { seed: 253, species: 'Togepi' },
-  { seed: 132, species: 'Horsea' },
+  { seed: 166, species: 'Horsea' },
 ];
 const introControls = [
   '.story-cold-open button:visible',
