@@ -267,51 +267,12 @@
             flex: 1;
             box-sizing: border-box;
         }
-        body.is-mobile #screen-battle .battle-bottom-stack {
-            background: linear-gradient(180deg, rgba(12,18,28,0.5) 0%, rgba(8,11,18,0.9) 100%) !important;
-        }
-        /* Portrait: solid opaque background so battle UI does not bleed into the arena */
-        body.is-mobile #screen-battle[data-battle-layout="stack"] .battle-bottom-stack {
-            background: #0a0e14 !important;
-        }
-        /* Portrait crop, vignette pan, and overlay pan removed — bg/vignette/overlays now anchor to --battle-ui-h directly */
-        /* Portrait: overlap chrome like GBA; z-index 5 < .battle-bottom-stack (6) so HP row paints on top.
-           Small Y nudge ties feet into the stat-bar; X nudge avoided so wider portrait viewports (tablets) don't overflow. */
-        body.is-mobile #screen-battle[data-battle-layout="stack"] #player-sprite-container {
-            z-index: 5;
-            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 4px - 0.45cm);
-            transform: translateY(0.45cm);
-        }
-        body.is-mobile #screen-battle[data-battle-layout="stack"] #foe-sprite-container {
-            transform: none;
-        }
-        /* Landscape: avoid a tall “film” over the arena — tint only the chrome rows, not the whole stack */
         @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
-            body.is-mobile #screen-battle .battle-bottom-stack { background: transparent !important; }
             body.is-mobile .stat-box-name {
                 white-space: nowrap;
-                -webkit-line-clamp: unset;
-                line-clamp: unset;
                 display: block;
                 overflow: hidden;
                 text-overflow: ellipsis;
-            }
-        }
-        /* Softer edge darkening on touch (less “empty black” over the stadium). */
-        body.is-mobile #screen-battle::before {
-            background:
-                radial-gradient(ellipse 85% 55% at 50% 100%, rgba(0,0,0,0.0) 45%, rgba(0,0,0,0.28) 100%),
-                radial-gradient(ellipse 100% 42% at 50% 0%, rgba(0,0,0,0.18) 0%, transparent 72%);
-        }
-        /* Touch landscape: no full-screen vignette (avoids a sharp “filter” seam through mid‑arena); tint only the lower area */
-        @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
-            body.is-mobile #screen-battle::before {
-                top: 42%;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                height: auto;
-                background: radial-gradient(ellipse 120% 90% at 50% 100%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.11) 100%);
             }
             /* Clip the command region, but NOT the stack in arena layout: the arena
                player HUD row floats above the stack via absolute positioning, so an
@@ -326,28 +287,6 @@
             #screen-battle[data-battle-layout="arena"] #command-menu.white-outline {
                 background: #0c0e14;
                 border-color: rgba(255, 255, 255, 0.18);
-            }
-            /* 6v6: six party balls + narrow landscape cards — wrap balls to a second row, compact orbs */
-            #screen-battle[data-battle-layout="arena"][data-party-size="6"] .stat-box-header {
-                flex-wrap: wrap;
-                align-items: center;
-                column-gap: 4px;
-                row-gap: 2px;
-            }
-            #screen-battle[data-battle-layout="arena"][data-party-size="6"] #foe-party-bar,
-            #screen-battle[data-battle-layout="arena"][data-party-size="6"] #player-party-bar {
-                flex-basis: 100%;
-                width: 100%;
-                gap: 2px !important;
-                margin-top: 1px;
-            }
-            #screen-battle[data-battle-layout="arena"][data-party-size="6"] #foe-party-bar {
-                justify-content: flex-end;
-            }
-            #screen-battle[data-battle-layout="arena"][data-party-size="6"] .party-bar-ball {
-                width: 10px !important;
-                height: 10px !important;
-                box-sizing: border-box;
             }
         }
         .hidden { display: none !important; } .active { display: block; }
@@ -4458,118 +4397,57 @@
              • Player sits "near" (larger, fills foreground)
            Per-layout overrides below keep this ratio across viewports. */
 
-        /* ── Variables (phone portrait base) ─────────────────────────────── */
         #screen-battle {
-            /* ── Size container = the whole battle screen ──────────────────────
-               cqw/cqh resolve against THIS element's box: 1280×720 inside the
-               scaled desktop frame (transform doesn't change layout size), and the
-               live viewport on touch. So one fluid rule set is correct in BOTH
-               coordinate spaces — the reason a single source of truth is possible
-               while keeping the crisp transform-scaled desktop frame. */
             container: battle / size;
             display: grid;
-            /* Base tokens = the "stack" template (portrait). "arena" overrides them below.
-               --battle-ui-h is the command-bar (log + actions) height AND the arena's bottom
-               inset (bg anchor, vignette, sprite baselines), so it stays the one knob. In
-               stack the log sits ABOVE the actions, so this band is tall (≈ old portrait). */
-            --battle-ui-h: clamp(300px, 46cqh, 430px);
-            --battle-player-hud-est: clamp(48px, 8cqh, 74px);
-            /* cqw drives phones; the px caps only bind on big tablets — sized so an iPad
-               portrait doesn't get tiny Pokémon in a roomy field (player ≈ 1.6× foe). */
-            --sprite-foe-w: min(34cqw, 26cqh, 214px);
-            --sprite-player-w: min(56cqw, 40cqh, 352px);
-            /* Nudge arena art downward (−Y in Y-up framing): smaller bottom inset ≈ field sits lower behind sprites */
-            --arena-bg-shift-y: 5cm;
-            font-family: var(--battle-font);
             position: relative;
-            background-image: url('sprites/backgrounds/battle/landscape/bg_neutral.webp');
-            background-color: #0a1a0a;
-            background-size: cover;
-            /* Anchor the image's bottom edge to the top of the HUD on every layout — sprite ground line stays put */
-            background-position: center bottom max(0px, calc(var(--battle-ui-h, 190px) - var(--arena-bg-shift-y)));
-            background-repeat: no-repeat;
-            transition: background-image 0.8s ease-in-out;
+            background: #10171d;
+            font-family: var(--battle-font);
+            --battle-ui-h: clamp(248px, 36cqh, 320px);
         }
-        /* ── Grid shell: two templates, selected by data-battle-layout ─────────
-           arena: [arena 1fr] / [command --battle-ui-h]  (HUD + sprites overlaid in arena)
-           stack: [foe auto] [arena 1fr] [command auto]   (foe strip is a real row) */
         #screen-battle[data-battle-layout="arena"] {
-            grid-template-rows: 1fr var(--battle-ui-h);
+            --battle-ui-h: clamp(152px, 29cqmin, 222px);
+            grid-template-rows: minmax(0, 1fr) var(--battle-ui-h);
             grid-template-areas: "arena" "command";
         }
         #screen-battle[data-battle-layout="stack"] {
-            width: 100%; min-width: 0;
-            grid-template-rows: auto 1fr auto;
+            width: 100%;
+            min-width: 0;
+            grid-template-rows: auto minmax(0, 1fr) auto;
             grid-template-areas: "foehead" "arena" "command";
         }
-        /* #battle-bottom-stack is the command region in both templates — a normal grid
-           item, so the base rule's absolute bottom:0 is replaced by grid placement. */
         #screen-battle .battle-bottom-stack { grid-area: command; position: relative; inset: auto; }
-        /* Foe head: overlaid in arena (children position independently); a real top
-           strip row in stack. */
         #screen-battle[data-battle-layout="arena"] .battle-foe-head { display: contents; }
         #screen-battle[data-battle-layout="stack"] .battle-foe-head { grid-area: foehead; }
+        #screen-battle.battle-log-dock[data-battle-layout="arena"] { --battle-ui-h: clamp(152px, 27cqmin, 204px); }
 
-        /* ── Per-template sizing tokens ────────────────────────────────────
-           Fluid via container units → one rule scales phone-landscape → the desktop
-           frame → 4K with no breakpoint. "stack" uses the #screen-battle base tokens
-           above; only "arena" overrides them here. Player ≈ 1.6× foe for VGC depth. */
-        #screen-battle[data-battle-layout="arena"] {
-            /* Command bar ≈ a constant comfortable height: cqmin tracks the smaller axis,
-               clamped so it never eats a tall arena (iPad landscape) nor starves a short one. */
-            --battle-ui-h: clamp(150px, 40cqmin, 290px);
-            --battle-player-hud-est: 0px;
-            /* Pull the stadium art UP so the PITCH (bottom band of the image) fills the lower
-               arena instead of hiding behind the command bar — otherwise the only visible
-               "field" is the barrier wall and the foe lands on it. See BATTLE_ARENA_PERSPECTIVE.md. */
-            --arena-bg-shift-y: 0.8cm;
-            /* foe "far" (small, back of arena), player ≈ 1.6× (foreground). cqw drives the
-               size; cqh caps it on short landscape so a sprite never clips the arena band. */
-            --sprite-foe-w: min(15cqw, 30cqh);
-            --sprite-player-w: min(24.5cqw, 44cqh);
+        #battle-field {
+            grid-area: arena;
+            position: relative;
+            container: battle-field / inline-size;
+            isolation: isolate;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: #141d24 url('sprites/backgrounds/battle/landscape/bg_neutral.webp') center 49% / cover no-repeat;
         }
-        /* Side-docked log (wide windows only) trades a little command height for arena. */
-        #screen-battle.battle-log-dock { --battle-ui-h: clamp(140px, 34cqmin, 250px); }
-
-        /* ── Vignette ─────────────────────────────────────────────────────── */
-        /* Top dim (stadium shadow), bottom dim (frame the action), centre breathes */
-        #screen-battle::before {
+        #screen-battle[data-battle-layout="stack"] #battle-field { background-position: center 42%; }
+        #battle-field::before,
+        #screen-battle[class*="battle-tint-"] #battle-field::after {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0;
-            bottom: var(--battle-ui-h, 190px);
-            background:
-                radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.50) 100%),
-                radial-gradient(ellipse 110% 45% at 50% 0%, rgba(0,0,0,0.38) 0%, transparent 72%);
+            inset: 0;
             pointer-events: none;
-            z-index: 0;
         }
-        /* Arena: extra foreground shade to push the floor edge toward the player */
-        #screen-battle[data-battle-layout="arena"]::before {
+        #battle-field::before {
             background:
-                radial-gradient(ellipse 95% 60% at 50% 110%, rgba(0,0,0,0.0) 28%, rgba(0,0,0,0.60) 100%),
-                radial-gradient(ellipse 135% 55% at 50% -8%, rgba(0,0,0,0.45) 0%, transparent 72%),
-                linear-gradient(180deg, transparent 58%, rgba(0,0,0,0.22) 100%);
+                radial-gradient(ellipse at 51% 60%, transparent 40%, #050a0d45 100%),
+                linear-gradient(180deg, #10171d30, transparent 25%, transparent 78%, #10171d80);
         }
-
-        /* P2c: story marquee arena tint — a type-colored grade over the shared
-           stadium for story Gym Leader / E4 / Champion fights (class applied by
-           refreshBattleBg, stripped everywhere else). Same geometry + z-tier as
-           the vignette ::before above, so it grades the arena only — never the
-           command bar over the original stadium art. The faint ring is
-           the arena's "crest": a stadium emblem circle in the gym's color. */
-        #screen-battle[class*="battle-tint-"]::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            bottom: var(--battle-ui-h, 190px);
+        #screen-battle[class*="battle-tint-"] #battle-field::after {
             background:
-                radial-gradient(circle at 50% 34%, transparent 88px, var(--arena-tint-strong, transparent) 89px, transparent 93px),
-                radial-gradient(ellipse 120% 80% at 50% 0%, var(--arena-tint-strong, transparent) 0%, transparent 64%),
-                radial-gradient(ellipse 90% 70% at 50% 100%, transparent 46%, var(--arena-tint-soft, transparent) 100%),
-                linear-gradient(180deg, var(--arena-tint-soft, transparent) 0%, transparent 40%);
-            pointer-events: none;
-            z-index: 0;
+                radial-gradient(ellipse at 85% 4%, var(--arena-tint-strong, transparent), transparent 62%),
+                radial-gradient(ellipse at 15% 95%, var(--arena-tint-soft, transparent), transparent 54%);
         }
         .battle-tint-normal   { --arena-tint-strong: rgba(168,168,120,0.28); --arena-tint-soft: rgba(168,168,120,0.14); }
         .battle-tint-fire     { --arena-tint-strong: rgba(240,128,48,0.30);  --arena-tint-soft: rgba(240,80,32,0.15); }
@@ -4591,23 +4469,22 @@
         .battle-tint-fairy    { --arena-tint-strong: rgba(238,153,172,0.26); --arena-tint-soft: rgba(216,120,144,0.13); }
         .battle-tint-league   { --arena-tint-strong: rgba(186,104,200,0.26); --arena-tint-soft: rgba(255,213,79,0.10); }
 
-        /* ── Battle field ─────────────────────────────────────────────────── */
-        /* Floor shadows scale with container so larger Pokémon get larger shadows */
-        .foe-platform {
-            position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
-            width: 76%; height: 22px;
-            background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 60%, transparent 100%);
-            border-radius: 50%; filter: blur(3px); pointer-events: none; z-index: 0;
+        /* Contact shadows and reflected light stay on the same plane as the fighters. */
+        #battle-field :is(.foe-platform, .player-platform) {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            translate: -50% 0;
+            width: 88%;
+            height: 18%;
+            border-radius: 50%;
+            background:
+                radial-gradient(ellipse, #030507da, #0305075c 43%, transparent 69%),
+                radial-gradient(ellipse, transparent 35%, var(--floor-light) 60%, transparent 73%);
+            pointer-events: none;
         }
-        .player-platform {
-            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-            width: 82%; height: 32px;
-            background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 60%, transparent 100%);
-            border-radius: 50%; filter: blur(4px); pointer-events: none; z-index: 0;
-        }
-        /* Stack: hide the per-sprite platforms (the old portrait arena stayed clean). */
-        #screen-battle[data-battle-layout="stack"] .foe-platform,
-        #screen-battle[data-battle-layout="stack"] .player-platform { display: none; }
+        #battle-field .foe-platform { --floor-light: #7fc8c24f; }
+        #battle-field .player-platform { --floor-light: #d7ac6d55; }
 
         /* ── Stat box (shared) ────────────────────────────────────────────── */
         .stat-box { width: 260px; position: relative; background: var(--battle-panel-bg); border-radius: var(--battle-radius); padding: 10px 12px; border: 1px solid var(--border-color); font-size: 14px; }
@@ -4731,7 +4608,7 @@
         #screen-battle[data-battle-layout="arena"] #foe-stat-box {
             top: calc(10px + var(--safe-top, 0px));
             left: auto; right: calc(50px + var(--safe-right, 0px)); bottom: auto;
-            width: clamp(170px, 25cqw, 300px); max-width: 46cqw; border-radius: var(--radius-md);
+            width: clamp(124px, 22cqw, 274px); max-width: 35cqw; border-radius: var(--radius-md);
             border: 1px solid rgba(255,255,255,0.12);
             padding: clamp(5px, 0.9cqw, 8px) clamp(7px, 1.1cqw, 12px);
             font-size: clamp(9px, 2.4cqh, 13px);
@@ -4740,93 +4617,49 @@
         }
         #screen-battle[data-battle-layout="arena"] #foe-stat-box .stat-info-row { margin-top: 3px; font-size: clamp(8px, 2cqh, 10px); gap: 4px; }
 
-        /* ── FOE SPRITE ───────────────────────────────────────────────────── */
         #screen-battle .battle-sprite-pending, #screen-battle .battle-empty-slot { visibility: hidden !important; }
-        #foe-sprite-container {
+        #battle-field :is(#player-sprite-container, #foe-sprite-container) {
             position: absolute;
-            top: max(64px, calc(env(safe-area-inset-top, 0px) + 60px));
-            right: clamp(8px, 4vw, 24px); left: auto; bottom: auto;
-            transform: none; display: inline-block;
-            width: var(--sprite-foe-w); aspect-ratio: 1 / 1.08; z-index: 3;
+            left: var(--fighter-x);
+            bottom: var(--fighter-floor);
+            height: var(--fighter-size);
+            aspect-ratio: 1;
+            translate: -50% 0;
+            z-index: 3;
         }
-        #foe-sprite {
-            position: absolute; bottom: 10px; left: 50%;
-            transform: translateX(-50%); image-rendering: pixelated;
-            width: 100%; height: 92%; max-width: 100%; max-height: 92%;
-            object-fit: contain; object-position: bottom center; z-index: 2;
+        #battle-field #player-sprite-container {
+            --fighter-size: min(22cqw, 54%, 288px);
+            --fighter-x: 38%;
+            --fighter-floor: 7%;
+            z-index: 4;
         }
-        /* Arena: foe stands on the BACK of the field (right-of-centre, smaller — perspective).
-           Anchored from the BOTTOM (the command bar) like the player — NOT from the top — so its
-           feet stay on the pitch instead of drifting up into the crowd when the arena aspect
-           changes (the bg is bottom-anchored `cover`, so the pitch lives in the lower band). It
-           sits a fixed band above the player for near/far depth. */
-        #screen-battle[data-battle-layout="arena"] #foe-sprite-container {
-            /* Feet on the BACK of the pitch (a band above the player). Tuned together with
-               --arena-bg-shift-y so the foe stands on the tiles, not the barrier wall. */
-            bottom: calc(var(--battle-ui-h) + clamp(40px, 21cqh, 240px));
-            top: auto;
-            right: clamp(44px, 11cqw, 180px); left: auto;
-            width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) * 1.04);
-            aspect-ratio: auto; transform: none;
-        }
-        #screen-battle[data-battle-layout="arena"] #foe-sprite { width: 100%; height: 100%; bottom: 8px; object-position: bottom center; }
-        #screen-battle[data-battle-layout="arena"] #foe-sprite-container > .foe-platform {
-            width: 78% !important; height: clamp(10px, 2.2cqh, 22px) !important; bottom: 0 !important;
-            background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 60%, transparent 100%) !important;
-            filter: blur(3px) !important;
-        }
-
-        /* ── PLAYER SPRITE ────────────────────────────────────────────────── */
-        #player-sprite-container {
-            position: absolute;
-            left: clamp(6px, 3vw, 16px); right: auto; top: auto;
-            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(8px, env(safe-area-inset-bottom, 0px)) + 14px);
-            transform: none; display: inline-block;
-            width: var(--sprite-player-w); aspect-ratio: 1 / 1.08; z-index: 4;
-        }
-        #player-sprite {
-            position: absolute; bottom: 14px; left: 50%;
-            transform: translateX(-50%); image-rendering: pixelated;
-            width: 100%; height: 92%; max-width: 100%; max-height: 96%;
-            object-fit: contain; object-position: bottom center; z-index: 2;
-        }
-        /* Arena: player fills the foreground — slightly left of centre, feet tucked just
-           above the command bar (the player card floats over that gap, bottom-left). */
-        #screen-battle[data-battle-layout="arena"] #player-sprite-container {
-            left: clamp(16px, 5cqw, 84px); right: auto; top: auto;
-            bottom: calc(var(--battle-ui-h) + clamp(34px, 7cqh, 94px));
-            width: var(--sprite-player-w); height: calc(var(--sprite-player-w) * 0.96);
-            aspect-ratio: auto; transform: none;
-        }
-        #screen-battle[data-battle-layout="arena"] #player-sprite { width: 100%; height: 100%; bottom: 8px; object-position: bottom center; }
-        #screen-battle[data-battle-layout="arena"] #player-sprite-container > .player-platform {
-            width: 82% !important; height: clamp(16px, 4cqh, 36px) !important; bottom: 0 !important;
-            background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 60%, transparent 100%) !important;
-            filter: blur(4px) !important;
-        }
-        /* Stack: DS-style depth — foe upper-right (smaller), player front lower-left (larger).
-           Player ≈ 1.6× foe for clear "near/far" depth. */
-        #screen-battle[data-battle-layout="stack"] #foe-sprite-container {
-            /* Bottom-anchored to the back of the field (like arena), so on tall portrait
-               (iPad) the foe doesn't float up by the jumbotron. A band above the player. */
-            bottom: calc(var(--battle-ui-h) + clamp(56px, 20cqh, 300px)); top: auto;
-            right: calc(clamp(20px, 7cqw, 56px) + var(--safe-right, 0px)); left: auto;
-            width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) + 6px);
-        }
-        #screen-battle[data-battle-layout="stack"] #foe-sprite {
-            width: 100%; height: 92%;
-            max-width: 100%; max-height: 92%; object-fit: contain;
-            object-position: bottom center;
+        #battle-field #foe-sprite-container {
+            --fighter-size: min(17cqw, 43%, 214px);
+            --fighter-x: 64%;
+            --fighter-floor: 27%;
         }
         #screen-battle[data-battle-layout="stack"] #player-sprite-container {
-            width: var(--sprite-player-w); height: calc(var(--sprite-player-w) + 8px);
-            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 6px);
-            left: clamp(4px, 2cqw, 20px);
+            --fighter-size: min(44cqw, 55%, 288px);
+            --fighter-x: 30%;
+            --fighter-floor: 8%;
         }
-        #screen-battle[data-battle-layout="stack"] #player-sprite {
-            width: 100%; height: 92%;
-            max-width: 100%; max-height: 96%; object-fit: contain;
-            object-position: bottom center;
+        #screen-battle[data-battle-layout="stack"] #foe-sprite-container {
+            --fighter-size: min(32cqw, 43%, 214px);
+            --fighter-x: 73%;
+            --fighter-floor: 25%;
+        }
+        #battle-field :is(#player-sprite, #foe-sprite) {
+            position: absolute;
+            left: 50%;
+            bottom: 7%;
+            width: 100%;
+            height: 100%;
+            transform: translateX(-50%);
+            transform-origin: center bottom;
+            image-rendering: pixelated;
+            object-fit: contain;
+            object-position: center bottom;
+            z-index: 2;
         }
 
         /* Foe bar + field pills. arena: display:contents — the foe card and field pills
@@ -4909,35 +4742,85 @@
         }
         .field-pill:active { filter: brightness(1.15); }
 
-        /* ── Gauntlet score ───────────────────────────────────────────────── */
+        .battle-score-chip {
+            z-index: 7;
+            color: var(--field-muted);
+            background: var(--field-panel);
+            border: 1px solid var(--field-line);
+            border-radius: 6px;
+            font-variant-numeric: tabular-nums;
+            font-size: 11px;
+            padding: 3px 7px;
+            pointer-events: none;
+        }
         #gauntlet-score {
             position: absolute;
-            right: 6px; left: auto; top: auto;
-            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + 20px);
-            font-weight: bold; color: #fff; z-index: 10;
-            font-size: 12px; background: rgba(0,0,0,0.55);
-            padding: 2px 10px; border-radius: var(--radius-lg);
-            white-space: nowrap; text-shadow: 0 1px 3px #000;
+            top: calc(7px + var(--safe-top, 0px));
+            left: calc(8px + var(--safe-left, 0px));
+            font-weight: 700;
         }
-        #screen-battle[data-battle-layout="arena"] #gauntlet-score { bottom: calc(var(--battle-ui-h) + clamp(48px, 11cqh, 88px)); }
-        /* ── Move tooltip ─────────────────────────────────────────────────── */
+        #online-battle-score {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 3px 6px;
+            margin-inline: 6px;
+        }
+        #screen-battle[data-battle-layout="arena"] #online-battle-score {
+            position: absolute;
+            top: calc(5px + var(--safe-top, 0px));
+            left: 50%;
+            translate: -50% 0;
+            max-width: 42cqw;
+            width: max-content;
+        }
+        #screen-battle[data-battle-layout="arena"] #online-battle-score:not(.hidden) + #field-conditions {
+            top: calc(34px + var(--safe-top, 0px));
+        }
+
         #move-tooltip {
             position: absolute;
-            bottom: calc(var(--battle-ui-h) + 8px); left: 5px; right: auto;
-            width: min(92vw, 280px); max-width: min(92vw, 320px);
-            z-index: 100; pointer-events: none;
-            background: var(--surface); border: 1px solid #444;
-            border-radius: var(--radius-sm); padding: 10px;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.65);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 450;
+            width: min(360px, calc(100% - 24px));
+            max-height: calc(100% - 20px);
+            overflow: auto;
+            overscroll-behavior: contain;
+            font-family: var(--battle-font);
+            line-height: 1.45;
         }
-        #screen-battle[data-battle-layout="arena"] #move-tooltip {
-            bottom: calc(var(--battle-ui-h) + clamp(40px, 9cqh, 76px));
-            right: 0; left: auto; width: min(280px, 40cqw);
+        #move-tooltip .move-tip-close {
+            float: right;
+            min-width: 44px;
+            min-height: 44px;
+            margin: 0 0 4px 8px;
+            padding: 0;
+            border-radius: 6px;
+            border: 1px solid var(--field-line);
+            background: var(--field-control);
+            color: var(--field-ink);
+            font-size: 20px;
         }
-        #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
-        #move-tooltip .move-tip-close { float: right; margin: -4px -4px 4px 8px; min-width: 36px; min-height: 36px; border-radius: var(--radius-md); border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
+        .move-details-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 6px;
+            margin: 8px 0 16px;
+        }
+        .move-details-heading strong { color: var(--field-warm); }
+        .move-details-stats {
+            clear: both;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px 10px;
+            margin-block: 8px;
+        }
+        .move-details-effect { margin-block: 8px 0; color: var(--field-muted); }
 
-        /* ── Active side highlight ────────────────────────────────────────── */
         #screen-battle.battle-active-player #player-stat-box { box-shadow: 0 0 0 2px rgba(255,213,79,0.65), 0 0 14px rgba(255,213,79,0.22); border-color: rgba(255,213,79,0.5); }
         #screen-battle.battle-active-foe #foe-stat-box { box-shadow: 0 0 0 2px rgba(239,83,80,0.55), 0 0 14px rgba(239,83,80,0.2); border-color: rgba(239,83,80,0.45); }
 
@@ -5001,13 +4884,13 @@
         #screen-battle[data-battle-layout="arena"] #battle-player-hud-row {
             position: absolute; z-index: 6;
             left: calc(8px + var(--safe-left, 0px)); right: auto;
-            bottom: calc(var(--battle-ui-h) + clamp(2px, 0.8cqh, 9px));
+            bottom: calc(100% + clamp(2px, 0.8cqh, 9px));
             width: auto; max-width: 46cqw; padding: 0;
             background: transparent; border-top: 1px solid transparent;
             justify-content: flex-start; align-items: flex-end;
         }
         #screen-battle[data-battle-layout="arena"] #battle-bottom-stack #player-stat-box {
-            width: clamp(170px, 25cqw, 300px); max-width: 46cqw;
+            width: clamp(124px, 22cqw, 274px); max-width: 35cqw;
             align-self: flex-end;
             border-radius: var(--radius-md);
             border: 1px solid rgba(255,255,255,0.12);
@@ -5024,6 +4907,11 @@
             position: relative; bottom: auto; left: auto;
             flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h);
             width: 100%; z-index: 2;
+        }
+        #screen-battle[data-battle-layout="arena"] .battle-bottom-stack .ui-bottom {
+            height: 100%;
+            min-height: 0;
+            flex: 1 1 0;
         }
         .ui-bottom {
             position: absolute; bottom: 0; width: 100%;
@@ -5208,48 +5096,34 @@
         #screen-battle.battle-phase-moves #move-menu.move-menu-layout { flex: 1 1 0%; min-height: 0; }
         #screen-battle.battle-phase-moves #move-menu .move-menu-scroll { flex: 1 1 0%; min-height: 0; }
 
-        /* ── Command buttons (Game Boy raised-tile style) ────────────────── */
         #command-menu.command-grid .battle-cmd-btn {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 4px; padding: var(--battle-space-2); border-radius: var(--radius-md);
-            min-height: 0; position: relative; overflow: hidden;
-            background: #1a2030;
-            border: 2px solid #3a4a60;
-            border-top-color: #5a6a80; border-left-color: #5a6a80;
-            border-bottom-color: #0e1420; border-right-color: #0e1420;
-            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.08), inset -1px -1px 0 rgba(0,0,0,0.3),
-                        0 2px 0 #0a0e18, 0 3px 6px rgba(0,0,0,0.5);
-            transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.1s ease;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(5px, 1.4cqw, 12px);
+            min-height: 44px;
+            padding: 6px 10px;
+            position: relative;
+            border: 1px solid var(--field-line);
+            border-radius: 7px;
+            background: var(--field-control);
+            box-shadow: inset 0 1px #ffffff0d;
+            color: var(--field-ink);
         }
-        #command-menu.command-grid .battle-cmd-btn::before {
-            content: ""; position: absolute; inset: 3px; border-radius: 3px;
-            border: 1px solid rgba(255,255,255,0.04);
-            pointer-events: none;
+        #command-menu.command-grid .battle-cmd-btn[data-cmd="fight"] {
+            border-color: #9b794c;
+            background: #34291e;
+            color: var(--field-warm);
         }
         #command-menu.command-grid .battle-cmd-btn:hover:not(:disabled) {
-            background: #222e42;
-            border-top-color: #6a7a94; border-left-color: #6a7a94;
-            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.12), inset -1px -1px 0 rgba(0,0,0,0.3),
-                        0 2px 0 #0a0e18, 0 3px 8px rgba(0,0,0,0.6);
-            transform: translateY(-1px);
+            border-color: var(--field-warm);
+            background: #2d3940;
         }
-        #command-menu.command-grid .battle-cmd-btn:active:not(:disabled) {
-            transform: translateY(2px);
-            border-top-color: #0e1420; border-left-color: #0e1420;
-            border-bottom-color: #5a6a80; border-right-color: #5a6a80;
-            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 0 0 transparent;
-        }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="showMoves"] { background: #2a2418; border-top-color: #7a6a3a; border-left-color: #7a6a3a; border-bottom-color: #1a1508; border-right-color: #1a1508; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="showMoves"]:hover:not(:disabled) { background: #383020; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="openParty"] { background: #1a2818; border-top-color: #3a7a3a; border-left-color: #3a7a3a; border-bottom-color: #0a1808; border-right-color: #0a1808; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="openParty"]:hover:not(:disabled) { background: #203820; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="openBag"]   { background: #181e2a; border-top-color: #3a4a7a; border-left-color: #3a4a7a; border-bottom-color: #080e1a; border-right-color: #080e1a; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="openBag"]:hover:not(:disabled) { background: #202838; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="runAway"]   { background: #2a1818; border-top-color: #7a3a3a; border-left-color: #7a3a3a; border-bottom-color: #1a0808; border-right-color: #1a0808; }
-        #command-menu.command-grid .battle-cmd-btn[onclick*="runAway"]:hover:not(:disabled) { background: #382020; }
-        #command-menu.command-grid .battle-cmd-ico { font-size: clamp(20px, 5cqh, 30px); line-height: 1; opacity: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7)); }
-        #command-menu.command-grid .battle-cmd-label { font-size: 13px; font-weight: bold; letter-spacing: 0.12em; color: #e8e0d0; text-shadow: 0 1px 2px rgba(0,0,0,0.7); text-transform: uppercase; }
-        #screen-battle[data-battle-layout="arena"] #command-menu.command-grid .battle-cmd-btn { min-height: clamp(46px, 9cqh, 64px); }
+        #command-menu.command-grid .battle-cmd-btn:disabled { opacity: .48; }
+        #command-menu.command-grid .battle-cmd-ico { flex: 0 0 22px; display: flex; justify-content: center; }
+        #command-menu.command-grid .battle-cmd-ico svg { display: block; width: 22px; height: 22px; }
+        .battle-cmd-label { color: inherit; font-weight: 750; }
         /* Keyboard hints (F/P/B/R) by INPUT CAPABILITY, not viewport: a device with a fine
            pointer + hover (mouse / trackpad / keyboard) gets them in either template; a pure
            touch screen — phone or 4K kiosk — does not. (Q5) */
@@ -5263,46 +5137,21 @@
             }
         }
 
-        /* ── Move tiles (Game Boy raised-tile style) ─────────────────────── */
-        #move-menu button.battle-btn-move {
-            flex-direction: row; align-items: stretch; justify-content: flex-start;
-            min-height: 0; padding: 7px 10px; border-radius: var(--radius-md);
-            border: 2px solid #3a3a3a;
-            border-top-color: var(--text-muted); border-left-color: var(--text-muted);
-            border-bottom-color: #111; border-right-color: #111;
-            background: #1a1a22;
-            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.06), inset -1px -1px 0 rgba(0,0,0,0.25),
-                        0 2px 0 #080810, 0 3px 5px rgba(0,0,0,0.4);
-            transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.1s ease, border-color 0.1s ease;
+        #screen-battle #move-menu button.battle-btn-move {
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: flex-start;
+            min-height: 0;
+            padding: 7px 10px;
+            border: 1px solid var(--field-line);
+            border-inline-start: 3px solid var(--move-edge, var(--field-line));
+            border-radius: 6px;
+            background: var(--field-control);
+            box-shadow: none;
         }
-        #move-menu button.battle-btn-move:has(.type-Normal)   { background: #22201a; border-top-color: #6a6848; border-left-color: #6a6848; border-bottom-color: #14130c; border-right-color: #14130c; }
-        #move-menu button.battle-btn-move:has(.type-Fire)     { background: #281a12; border-top-color: #884820; border-left-color: #884820; border-bottom-color: #180c06; border-right-color: #180c06; }
-        #move-menu button.battle-btn-move:has(.type-Water)    { background: #141c2a; border-top-color: #385088; border-left-color: #385088; border-bottom-color: #0a0e18; border-right-color: #0a0e18; }
-        #move-menu button.battle-btn-move:has(.type-Grass)    { background: #1a2414; border-top-color: #487830; border-left-color: #487830; border-bottom-color: #0c1408; border-right-color: #0c1408; }
-        #move-menu button.battle-btn-move:has(.type-Electric) { background: #28241a; border-top-color: #907818; border-left-color: #907818; border-bottom-color: #18140c; border-right-color: #18140c; }
-        #move-menu button.battle-btn-move:has(.type-Ice)      { background: #1a2424; border-top-color: #588080; border-left-color: #588080; border-bottom-color: #0c1414; border-right-color: #0c1414; }
-        #move-menu button.battle-btn-move:has(.type-Fighting) { background: #281414; border-top-color: #701818; border-left-color: #701818; border-bottom-color: #180808; border-right-color: #180808; }
-        #move-menu button.battle-btn-move:has(.type-Poison)   { background: #221422; border-top-color: #602060; border-left-color: #602060; border-bottom-color: #140814; border-right-color: #140814; }
-        #move-menu button.battle-btn-move:has(.type-Ground)   { background: #262018; border-top-color: #887038; border-left-color: #887038; border-bottom-color: #18140c; border-right-color: #18140c; }
-        #move-menu button.battle-btn-move:has(.type-Flying)   { background: #1c1a28; border-top-color: #605088; border-left-color: #605088; border-bottom-color: #0e0c18; border-right-color: #0e0c18; }
-        #move-menu button.battle-btn-move:has(.type-Psychic)  { background: #281420; border-top-color: #903050; border-left-color: #903050; border-bottom-color: #180810; border-right-color: #180810; }
-        #move-menu button.battle-btn-move:has(.type-Bug)      { background: #202014; border-top-color: #606810; border-left-color: #606810; border-bottom-color: #101008; border-right-color: #101008; }
-        #move-menu button.battle-btn-move:has(.type-Rock)     { background: #242018; border-top-color: #685820; border-left-color: #685820; border-bottom-color: #14100c; border-right-color: #14100c; }
-        #move-menu button.battle-btn-move:has(.type-Ghost)    { background: #1c1420; border-top-color: #403058; border-left-color: #403058; border-bottom-color: #0e0810; border-right-color: #0e0810; }
-        #move-menu button.battle-btn-move:has(.type-Dragon)   { background: #181028; border-top-color: #402090; border-left-color: #402090; border-bottom-color: #0c0618; border-right-color: #0c0618; }
-        #move-menu button.battle-btn-move:has(.type-Dark)     { background: #1e1814; border-top-color: #403028; border-left-color: #403028; border-bottom-color: #100c08; border-right-color: #100c08; }
-        #move-menu button.battle-btn-move:has(.type-Steel)    { background: #1e1e24; border-top-color: #686878; border-left-color: #686878; border-bottom-color: #0e0e14; border-right-color: #0e0e14; }
-        #move-menu button.battle-btn-move:has(.type-Fairy)    { background: #261a20; border-top-color: #885868; border-left-color: #885868; border-bottom-color: #140c10; border-right-color: #140c10; }
-        #move-menu button.battle-btn-move:hover:not(:disabled) {
-            transform: translateY(-1px);
-            filter: brightness(1.15);
-            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.1), inset -1px -1px 0 rgba(0,0,0,0.25),
-                        0 3px 0 #080810, 0 4px 8px rgba(0,0,0,0.5);
-        }
-        #move-menu button.battle-btn-move:active:not(:disabled) {
-            transform: translateY(2px);
-            filter: brightness(0.9);
-            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 0 0 transparent;
+        #screen-battle #move-menu button.battle-btn-move:hover:not(:disabled) {
+            background: #2b373d;
+            border-color: var(--move-edge, var(--field-warm));
         }
         /* ── Charging-move sprite states ───────────────────────────────────── */
         /* Dig / Dive / Phantom Force / Shadow Force: sprite hidden underground or vanished */
@@ -5609,7 +5458,6 @@
             grid-auto-rows: minmax(44px, auto);
         }
         @media (max-width: 430px), (max-height: 430px) and (orientation: landscape) {
-            #screen-battle.battle-phase-moves[data-battle-layout="arena"] { --battle-ui-h: max(164px, 40cqmin); }
             #screen-battle #move-menu .move-menu-scroll .battle-btn-move { min-height: 44px; padding: 4px 6px; }
             #screen-battle #move-menu .move-tile-meta > :not([title="PP"], .move-disabled-reason, .move-tile-matchup) { display: none; }
             #screen-battle #move-menu .move-tile-meta { margin-top: 2px; }
@@ -5624,7 +5472,7 @@
         }
         @media (max-height: 360px) and (orientation: landscape) {
             /* Keep the field and controls in place when switching between commands and moves. */
-            #screen-battle[data-battle-layout="arena"] { --battle-ui-h: max(164px, 40cqmin); }
+            #screen-battle[data-battle-layout="arena"] { --battle-ui-h: 152px; }
             #screen-battle[data-battle-layout="arena"] #move-menu .move-tile-core {
                 display: grid; grid-template-columns: max-content 14px minmax(min-content, 1fr) max-content;
                 align-items: center; column-gap: 2px; row-gap: 2px;
@@ -5660,20 +5508,7 @@
             #screen-battle[data-battle-layout="arena"] .stat-info-row .type-badge {
                 font: 700 9px/1.1 system-ui, sans-serif; padding: 2px 4px;
             }
-            #screen-battle[data-battle-layout="arena"] :is(#player-sprite-container, #foe-sprite-container) {
-                /* Reserve room for the largest lore scale, including Dynamax. */
-                --compact-sprite-size: clamp(24px, calc((100cqh - var(--battle-ui-h) - 16px) / 1.4), 76px);
-                grid-area: arena;
-                width: var(--compact-sprite-size); height: var(--compact-sprite-size);
-                right: auto; bottom: 2px;
-            }
-            #screen-battle[data-battle-layout="arena"] :is(#player-sprite, #foe-sprite) {
-                bottom: 2px; transform-origin: center bottom;
-            }
-            #screen-battle[data-battle-layout="arena"] #player-sprite-container { left: calc(42% - var(--compact-sprite-size) / 2); }
-            #screen-battle[data-battle-layout="arena"] #foe-sprite-container {
-                left: calc(56% - var(--compact-sprite-size) / 2); bottom: 10px;
-            }
+            #screen-battle[data-battle-layout="arena"] #foe-sprite-container { --fighter-x: 59%; }
         }
         .move-info-hit:active { background: rgba(255,213,79,0.22); filter: brightness(0.95); }
         #text-tooltip { position: fixed; z-index: 8000; box-sizing: border-box; }
@@ -5741,7 +5576,7 @@
             top: auto; left: auto; right: auto;
             width: 100%; box-sizing: border-box;
             border-radius: 0; border-left: none; border-right: none; border-top: none;
-            padding: 5px calc(56px + var(--safe-right, 0px)) 5px 10px !important;
+            padding: 5px 10px;
             font-size: clamp(11px, 3vw, 13px); z-index: 6;
         }
         #screen-battle[data-battle-layout="stack"] #battle-bottom-stack #player-stat-box {
@@ -5751,7 +5586,7 @@
             padding: 5px 10px; font-size: clamp(11px, 3vw, 13px);
             z-index: 6; background: var(--battle-chrome-bg);
         }
-        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack { z-index: 6; background: #0a0e14 !important; }
+        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack { z-index: 6; }
         #screen-battle[data-battle-layout="stack"] .hp-bar-container { height: 7px; margin-top: 3px; }
         #screen-battle[data-battle-layout="stack"] #player-hp-text,
         #screen-battle[data-battle-layout="stack"] #foe-hp-text { font-size: 10px; color: var(--text-dim); }
@@ -5759,8 +5594,11 @@
         #screen-battle[data-battle-layout="stack"] #player-types { font-size: 10px; }
         #screen-battle[data-battle-layout="stack"] .type-badge { padding: 1px 4px; font-size: 10px; }
         #screen-battle[data-battle-layout="stack"] #gauntlet-score {
-            top: auto; left: auto; right: 6px; font-size: 10px;
-            background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 3px;
+            position: relative;
+            align-self: flex-start;
+            top: auto;
+            left: auto;
+            margin: 0 6px 4px;
         }
         #screen-battle[data-battle-layout="stack"] .ui-bottom {
             height: var(--battle-ui-h); flex-direction: column; padding: 4px 5px; gap: 4px;
@@ -5808,16 +5646,7 @@
             font-size: 12px; min-height: 44px; padding: 4px 6px;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        #screen-battle[data-battle-layout="stack"] #command-menu.command-grid .battle-cmd-btn { min-height: 68px; }
-        #screen-battle[data-battle-layout="stack"] .battle-bottom-stack button.battle-btn-move {
-            background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.3) 100%);
-            border: 1px solid rgba(255,255,255,0.12);
-        }
-        #screen-battle[data-battle-layout="stack"] #move-tooltip {
-            bottom: calc(var(--battle-ui-h) + 8px); right: auto; left: 5px;
-            width: min(92vw, 260px); font-size: 10px;
-        }
-
+        #screen-battle[data-battle-layout="stack"] #command-menu.command-grid .battle-cmd-btn { min-height: 44px; }
         /* ── Portrait phone media query: viewport/safe-area/screen rules only ─ */
         @media screen and (max-width: 768px) and (orientation: portrait) {
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; }
@@ -8144,7 +7973,7 @@
         @keyframes statArrowDown { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(30px); } }
 
         /* Weather & Terrain overlays */
-        .weather-overlay, .terrain-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: var(--battle-ui-h, 190px); pointer-events: none; z-index: 1; opacity: 0; transition: opacity 0.5s; }
+        .weather-overlay, .terrain-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: 0; transition: opacity 0.5s; }
         .weather-overlay.active, .terrain-overlay.active { opacity: 1; }
         
         .weather-sun { background: radial-gradient(ellipse at top, rgba(255,200,0,0.15) 0%, transparent 70%); animation: sunPulse 4s ease-in-out infinite; }
@@ -9290,97 +9119,6 @@
             padding: 10px 12px !important;
         }
 
-        /* --- Command buttons: Pokemon menu style --- */
-        #command-menu.command-grid .battle-cmd-btn {
-            border: 3px solid #e9ecef !important;
-            border-radius: 0 !important;
-            background: linear-gradient(180deg, #2a2a3e 0%, #1a1a2e 100%) !important;
-            box-shadow:
-                inset -2px -2px 0 #495057,
-                inset 2px 2px 0 rgba(255,255,255,0.15);
-            position: relative;
-            transition: all 0.1s ease;
-        }
-        #command-menu.command-grid .battle-cmd-btn::before {
-            content: "▶" !important;
-            position: absolute !important;
-            left: 6px !important;
-            top: 50% !important;
-            bottom: auto !important;
-            transform: translateY(-50%) !important;
-            width: auto !important;
-            background: none !important;
-            font-size: 10px !important;
-            color: var(--accent) !important;
-            opacity: 0 !important;
-            transition: opacity 0.12s !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn:hover:not(:disabled)::before,
-        #command-menu.command-grid .battle-cmd-btn:focus-visible::before {
-            opacity: 1 !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn:hover:not(:disabled) {
-            background: linear-gradient(180deg, #3a3a52 0%, #2a2a3e 100%) !important;
-            border-color: var(--accent) !important;
-            transform: none !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn:active:not(:disabled) {
-            box-shadow: inset 2px 2px 0 #495057, inset -2px -2px 0 rgba(255,255,255,0.15) !important;
-        }
-        .battle-cmd-label {
-            font-size: 10px !important;
-            letter-spacing: 1px !important;
-            text-transform: uppercase;
-        }
-        #command-menu.command-grid .battle-cmd-ico {
-            display: flex !important; align-items: center !important; justify-content: center !important;
-            width: 36px !important; height: 36px !important; min-height: 36px !important; margin: 0 auto 2px !important;
-        }
-        #command-menu.command-grid .battle-cmd-ico svg {
-            display: block !important; width: 32px !important; height: 32px !important;
-            image-rendering: pixelated; image-rendering: crisp-edges;
-            filter: drop-shadow(0 2px 0 rgba(0,0,0,0.85));
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="fight"] {
-            background: linear-gradient(180deg, #3a3020 0%, #221a10 100%) !important;
-            border-color: #8a7a4a !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="fight"]:hover:not(:disabled) {
-            background: linear-gradient(180deg, #4a4030 0%, #2a2218 100%) !important;
-            box-shadow: inset -2px -2px 0 #495057, inset 2px 2px 0 rgba(255,255,255,0.1), 0 0 10px rgba(255,213,79,0.25) !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="party"] {
-            background: linear-gradient(180deg, #1a3020 0%, #0e1a10 100%) !important;
-            border-color: #4a8a4a !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="party"]:hover:not(:disabled) {
-            background: linear-gradient(180deg, #204028 0%, #122618 100%) !important;
-            box-shadow: inset -2px -2px 0 #495057, inset 2px 2px 0 rgba(255,255,255,0.1), 0 0 10px rgba(76,175,80,0.3) !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"] {
-            background: linear-gradient(180deg, #1a2235 0%, #0e1422 100%) !important;
-            border-color: #4a6a9a !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"]:disabled {
-            opacity: 0.4 !important; cursor: not-allowed !important; box-shadow: none !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"]:hover:not(:disabled) {
-            background: linear-gradient(180deg, #223045 0%, #141a2a 100%) !important;
-            box-shadow: inset -2px -2px 0 #495057, inset 2px 2px 0 rgba(255,255,255,0.1), 0 0 10px rgba(144,202,249,0.25) !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="run"] {
-            background: linear-gradient(180deg, #351a1a 0%, #1a0e0e 100%) !important;
-            border-color: #9a4a4a !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="run"]:hover:not(:disabled) {
-            background: linear-gradient(180deg, #452222 0%, #221010 100%) !important;
-            box-shadow: inset -2px -2px 0 #495057, inset 2px 2px 0 rgba(255,255,255,0.1), 0 0 10px rgba(244,67,54,0.3) !important;
-        }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="fight"] .battle-cmd-label { color: #ffecb3 !important; text-shadow: 1px 1px 0 #3a2a00 !important; }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="party"] .battle-cmd-label { color: #a5d6a7 !important; text-shadow: 1px 1px 0 #0d3010 !important; }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="bag"] .battle-cmd-label { color: #b3d7ff !important; text-shadow: 1px 1px 0 #0a1a2e !important; }
-        #command-menu.command-grid .battle-cmd-btn[data-cmd="run"] .battle-cmd-label { color: #ffabae !important; text-shadow: 1px 1px 0 #3a0a0a !important; }
-
         #modal-story-bag .story-bag-modal-content { max-width: 500px; }
         #modal-story-bag .story-bag-modal-title {
             font-family: var(--battle-font) !important;
@@ -9504,26 +9242,6 @@
         @media (hover: none) and (pointer: coarse) {
             #modal-story-party .party-lead-btn { width: 40px; min-height: 44px; align-self: stretch; }
             #modal-story-party .party-sort-btn { width: 40px; min-height: 34px; }
-        }
-
-        /* --- Move buttons: type-colored with pixel border --- */
-        #move-menu .move-menu-scroll button.battle-btn-move {
-            border: 2px solid #e9ecef !important;
-            border-radius: 0 !important;
-            box-shadow:
-                inset -2px -2px 0 rgba(0,0,0,0.3),
-                inset 2px 2px 0 rgba(255,255,255,0.1);
-        }
-        #move-menu .move-menu-scroll button.battle-btn-move:hover:not(:disabled) {
-            border-color: var(--accent) !important;
-            box-shadow:
-                inset -2px -2px 0 rgba(0,0,0,0.3),
-                inset 2px 2px 0 rgba(255,255,255,0.1),
-                0 0 8px rgba(255,213,79,0.3);
-        }
-        #move-menu .move-menu-back {
-            border: 2px solid #777 !important;
-            border-radius: 0 !important;
         }
 
         /* --- Main menu: Pokemon title styling --- */
@@ -9706,16 +9424,6 @@
             border-color: var(--accent) !important;
         }
 
-        /* --- Arena: slight vignette for battle feel --- */
-        #screen-battle::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 1;
-            background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
-        }
-
         /* --- Gauntlet row: pixel borders --- */
         .menu-gauntlet-main,
         .menu-gauntlet-lb {
@@ -9731,7 +9439,6 @@
         @media (max-width: 600px) {
             .stat-box-name { font-size: 10px !important; }
             .hp-bar-container::before { font-size: 10px; left: -22px; }
-            .battle-cmd-label { font-size: 10px !important; }
             .logo-container { transform: perspective(500px) rotateX(5deg); margin-bottom: 6px; margin-top: 4px; }
         }
         /* Landscape phone: compact NES borders and readable names */
@@ -9746,7 +9453,6 @@
                 padding: 6px 8px !important;
             }
             .ui-bottom .white-outline { padding: 4px 5px !important; }
-            .battle-cmd-label { font-size: 10px !important; }
         }
 
         /* --- Main menu title (same pixel font as battle UI) --- */
@@ -10844,7 +10550,6 @@
         </div>
     </div>
 
-    <div id="move-tooltip" class="white-outline hidden"></div>
 
     <div id="modal-settings" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
         <div class="modal-content white-outline" onclick="event.stopPropagation()">
@@ -12025,27 +11730,17 @@
 
     <div id="screen-battle" class="screen hidden" role="region" aria-label="Battle">
         <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings"><svg class="ui-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.25em;height:1.25em;display:inline-block;vertical-align:-0.18em;flex-shrink:0;"><path fill="currentColor" d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39 1a7 7 0 0 0-1.62-.94l-.36-2.54A.49.49 0 0 0 13.4 2H10.6a.49.49 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-1a.5.5 0 0 0-.59.22L3.23 8.44a.5.5 0 0 0 .12.61l2 1.58a7.49 7.49 0 0 0 0 1.88l-2 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-1a7 7 0 0 0 1.62.94l.36 2.54a.49.49 0 0 0 .49.42h2.8a.49.49 0 0 0 .49-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39 1a.5.5 0 0 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg></button>
-        <div id="terrain-overlay" class="terrain-overlay"></div>
-        <div id="weather-overlay" class="weather-overlay"></div>
-        <div id="gauntlet-score" class="hidden">Score: 0</div>
-        <div id="online-battle-score" class="hidden" style="position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:8;background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:12px;padding:3px 12px;font-size:11px;color:var(--text-dim);white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:8px;">
-            <span id="obs-p1-name" style="color:var(--hp-green);font-weight:bold;">P1</span>
-            <span id="obs-p1-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
-            <span style="color:var(--text-muted);">–</span>
-            <span id="obs-p2-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
-            <span id="obs-p2-name" style="color:#81d4fa;font-weight:bold;">P2</span>
-            <span id="obs-round-info" style="color:#9aa3b2;font-size:10px;"></span>
-        </div>
-
         <!-- Side-matched HUD: foe column + global field pills (stacked below foe strip in portrait). -->
         <div class="battle-foe-head" id="battle-foe-head">
         <div class="stat-box white-outline" id="foe-stat-box">
             <div class="stat-box-header">
                 <span id="foe-name" class="stat-box-name">MissingNo</span>
-                <span id="foe-hp-text" class="stat-hp-text">0/0</span>
                 <div id="foe-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
-            <div class="hp-bar-container border-white"><div id="foe-hp-bar" class="hp-fill"></div></div>
+            <div class="stat-hp-row">
+                <div class="hp-bar-container border-white"><div id="foe-hp-bar" class="hp-fill"></div></div>
+                <span id="foe-hp-text" class="stat-hp-text">0/0</span>
+            </div>
             <div class="stat-info-row">
                 <div id="foe-types"></div>
                 <div class="status-indicator" id="foe-status"></div>
@@ -12053,21 +11748,34 @@
             </div>
             <div class="stat-volatile-row" id="foe-volatiles" aria-label="Ongoing effects"></div>
         </div>
+        <div id="gauntlet-score" class="battle-score-chip hidden">Score: 0</div>
+        <div id="online-battle-score" class="battle-score-chip hidden" aria-label="Match score">
+            <span id="obs-p1-name" style="color:var(--hp-green);font-weight:bold;">P1</span>
+            <span id="obs-p1-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
+            <span style="color:var(--text-muted);">–</span>
+            <span id="obs-p2-w" style="color:#fff;font-weight:bold;font-size:14px;">0</span>
+            <span id="obs-p2-name" style="color:#81d4fa;font-weight:bold;">P2</span>
+            <span id="obs-round-info"></span>
+            <span id="online-battle-timer" class="hidden" style="color:var(--field-cool);font-weight:700;"></span>
+        </div>
+
         <div id="field-conditions" aria-live="polite"></div>
         </div>
 
-        <!-- Foe sprite: upper-back (CSS positions per layout) -->
-        <div id="foe-sprite-container">
-            <div class="foe-platform"></div>
-            <img id="foe-sprite" class="sprite opponent-sprite battle-sprite-pending" alt="" fetchpriority="high" onerror="if(typeof handleSpriteError==='function')handleSpriteError(this)">
-            <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
-        </div>
-
-        <!-- PLAYER: lower-front (left); bottom tracks --battle-ui-h + player HUD strip -->
-        <div id="player-sprite-container">
-            <div class="player-platform"></div>
-            <img id="player-sprite" class="sprite player-sprite battle-sprite-pending" alt="" fetchpriority="high" data-back="true" onerror="if(typeof handleSpriteError==='function')handleSpriteError(this)">
-            <span id="player-status-icon" class="status-icon" style="display:none;"></span>
+        <div id="move-tooltip" class="white-outline hidden"></div>
+        <div id="battle-field">
+            <div id="terrain-overlay" class="terrain-overlay" aria-hidden="true"></div>
+            <div id="weather-overlay" class="weather-overlay" aria-hidden="true"></div>
+            <div id="foe-sprite-container">
+                <div class="foe-platform" aria-hidden="true"></div>
+                <img id="foe-sprite" class="sprite opponent-sprite battle-sprite-pending" alt="" fetchpriority="high" onerror="if(typeof handleSpriteError==='function')handleSpriteError(this)">
+                <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
+            </div>
+            <div id="player-sprite-container">
+                <div class="player-platform" aria-hidden="true"></div>
+                <img id="player-sprite" class="sprite player-sprite battle-sprite-pending" alt="" fetchpriority="high" data-back="true" onerror="if(typeof handleSpriteError==='function')handleSpriteError(this)">
+                <span id="player-status-icon" class="status-icon" style="display:none;"></span>
+            </div>
         </div>
 
         <!-- Bottom chrome: player HP strip + log/commands (column — not overlaid on arena) -->
@@ -12076,10 +11784,12 @@
         <div class="stat-box white-outline" id="player-stat-box">
             <div class="stat-box-header">
                 <span id="player-name" class="stat-box-name">MissingNo</span>
-                <span id="player-hp-text" class="stat-hp-text">0/0</span>
                 <div id="player-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
-            <div class="hp-bar-container border-white"><div id="player-hp-bar" class="hp-fill"></div></div>
+            <div class="stat-hp-row">
+                <div class="hp-bar-container border-white"><div id="player-hp-bar" class="hp-fill"></div></div>
+                <span id="player-hp-text" class="stat-hp-text">0/0</span>
+            </div>
             <div class="stat-info-row">
                 <div id="player-types"></div>
                 <div class="status-indicator" id="player-status"></div>
@@ -12090,15 +11800,14 @@
         </div>
 
         <div class="ui-bottom">
-            <div id="online-battle-timer" class="hidden" style="position:absolute; top:-22px; right:8px; z-index:12; font-size:11px; font-weight:bold; color:#81d4fa; padding:2px 8px; border-radius:var(--radius-md); background:rgba(0,0,0,0.5); pointer-events:none;"></div>
             <div id="battle-log" class="white-outline scrollable" role="log" aria-label="Battle log" tabindex="0"></div>
             <div class="ui-bottom-menus">
             <button type="button" id="battle-skip-motion" class="hidden" onclick="window.skipBattleMotion()">Skip animation</button>
             <div id="command-menu" class="command-grid white-outline hidden">
-                <button type="button" class="battle-cmd-btn" data-cmd="fight" data-shortcut="F" onclick="window.showMoves()" title="Fight (keyboard: F)" aria-label="Fight — choose a move (shortcut: F)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5d4037" d="M1 12h2v2H1v-2zm0-3h2v2H1V9zm0-3h2v2H1V6z"/><path fill="#ffecb3" d="M3 2h2v10H3V2zm1 0h1v1H4V2zm0 8h1v1H4v-1z"/><path fill="#ffe082" d="M5 1h1v1H5V1zm0 2h1v1H5V3zm0 2h1v1H5V5zm0 2h1v1H5V7zm0 2h1v1H5V9z"/><path fill="#8d6e63" d="M11 3h2v8h-2V3zm-1-1h2v1h-2V2zm0 9h2v1h-2v-1z"/><path fill="#d7ccc8" d="M10 1h1v1h-1V1zm0 2h1v1h-1V3zm0 2h1v1h-1V5zm0 2h1v1h-1V7zm0 2h1v1h-1V9z"/><path fill="#eceff1" d="M6 2h4v1H6V2zm0 2h3v1H6V4zm0 2h2v1H6V6z"/></svg></span><span class="battle-cmd-label">FIGHT</span></button>
-                <button type="button" class="battle-cmd-btn" data-cmd="party" data-shortcut="P" onclick="window.openParty(false)" title="Pokémon (keyboard: P)" aria-label="Pokémon — switch a party member (shortcut: P)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#1a1a1a" d="M1 1h14v14H1V1z"/><path fill="#c62828" d="M2 2h12v5H2V2z"/><path fill="#212121" d="M2 7h12v1H2V7z"/><path fill="#f5f5f5" d="M2 8h12v6H2V8z"/><rect fill="#424242" x="6" y="6" width="4" height="1"/><rect fill="#eceff1" x="7" y="7" width="2" height="2"/></svg></span><span class="battle-cmd-label">POKÉMON</span></button>
-                <button type="button" class="battle-cmd-btn" data-cmd="bag" data-shortcut="B" onclick="window.openBag()" title="Bag (keyboard: B)" aria-label="Bag — use an item (shortcut: B)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5c6bc0" d="M2 4h12v2H2V4zm0 2h12v8H2V6z"/><path fill="#3f51b5" d="M2 4h12v1H2V4z"/><path fill="#9fa8da" d="M5 2h6v3H5V2z"/><path fill="#c5cae9" d="M6 2h4v1H6V2z"/><path fill="#1a1a1a" d="M6 2h1v1H6V2zm3 0h1v1H9V2z"/><path fill="#5c6bc0" d="M3 7h2v2H3V7zm8 0h2v2h-2V7z"/></svg></span><span class="battle-cmd-label">BAG</span></button>
-                <button type="button" class="battle-cmd-btn" data-cmd="run" data-shortcut="R" onclick="window.runAway()" title="Run (keyboard: R)" aria-label="Run — flee the battle (shortcut: R)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#90a4ae" d="M1 2h2v2H1V2zm3 0h2v2H4V2zm0 3h2v2H4V5zm-3 3h2v2H1V8zm3 0h2v2H4V8z"/><path fill="#ef9a9a" d="M8 2h4v1H8V2zm0 2h2v1H8V4z"/><path fill="#e57373" d="M10 2h2v1h-2V2zm-1 1h1v1H9V3zm-1 2h3v1H8V5z"/><path fill="#ef5350" d="M10 5h4v1h-4V5zm0 2h3v1h-3V7zm-2 2h3v1H8V9z"/></svg></span><span class="battle-cmd-label">RUN</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="fight" data-shortcut="F" onclick="window.showMoves()" title="Fight (keyboard: F)" aria-label="Fight — choose a move (shortcut: F)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5d4037" d="M1 12h2v2H1v-2zm0-3h2v2H1V9zm0-3h2v2H1V6z"/><path fill="#ffecb3" d="M3 2h2v10H3V2zm1 0h1v1H4V2zm0 8h1v1H4v-1z"/><path fill="#ffe082" d="M5 1h1v1H5V1zm0 2h1v1H5V3zm0 2h1v1H5V5zm0 2h1v1H5V7zm0 2h1v1H5V9z"/><path fill="#8d6e63" d="M11 3h2v8h-2V3zm-1-1h2v1h-2V2zm0 9h2v1h-2v-1z"/><path fill="#d7ccc8" d="M10 1h1v1h-1V1zm0 2h1v1h-1V3zm0 2h1v1h-1V5zm0 2h1v1h-1V7zm0 2h1v1h-1V9z"/><path fill="#eceff1" d="M6 2h4v1H6V2zm0 2h3v1H6V4zm0 2h2v1H6V6z"/></svg></span><span class="battle-cmd-label">Fight</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="party" data-shortcut="P" onclick="window.openParty(false)" title="Pokémon (keyboard: P)" aria-label="Pokémon — switch a party member (shortcut: P)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#1a1a1a" d="M1 1h14v14H1V1z"/><path fill="#c62828" d="M2 2h12v5H2V2z"/><path fill="#212121" d="M2 7h12v1H2V7z"/><path fill="#f5f5f5" d="M2 8h12v6H2V8z"/><rect fill="#424242" x="6" y="6" width="4" height="1"/><rect fill="#eceff1" x="7" y="7" width="2" height="2"/></svg></span><span class="battle-cmd-label">Pokémon</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="bag" data-shortcut="B" onclick="window.openBag()" title="Bag (keyboard: B)" aria-label="Bag — use an item (shortcut: B)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5c6bc0" d="M2 4h12v2H2V4zm0 2h12v8H2V6z"/><path fill="#3f51b5" d="M2 4h12v1H2V4z"/><path fill="#9fa8da" d="M5 2h6v3H5V2z"/><path fill="#c5cae9" d="M6 2h4v1H6V2z"/><path fill="#1a1a1a" d="M6 2h1v1H6V2zm3 0h1v1H9V2z"/><path fill="#5c6bc0" d="M3 7h2v2H3V7zm8 0h2v2h-2V7z"/></svg></span><span class="battle-cmd-label">Bag</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="run" data-shortcut="R" onclick="window.runAway()" title="Run (keyboard: R)" aria-label="Run — flee the battle (shortcut: R)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#90a4ae" d="M1 2h2v2H1V2zm3 0h2v2H4V2zm0 3h2v2H4V5zm-3 3h2v2H1V8zm3 0h2v2H4V8z"/><path fill="#ef9a9a" d="M8 2h4v1H8V2zm0 2h2v1H8V4z"/><path fill="#e57373" d="M10 2h2v1h-2V2zm-1 1h1v1H9V3zm-1 2h3v1H8V5z"/><path fill="#ef5350" d="M10 5h4v1h-4V5zm0 2h3v1h-3V7zm-2 2h3v1H8V9z"/></svg></span><span class="battle-cmd-label">Run</span></button>
             </div>
             <div id="move-menu" class="move-menu-layout white-outline hidden"></div>
             </div>
@@ -12150,7 +11859,7 @@
             : _computeAutoIsMobile();
 
         if (isMobile) document.body.classList.add('is-mobile');
-        function applyBattleLayoutMode() {
+        function applyBattleLayoutMode({ refresh = true } = {}) {
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
             /* Single source of truth → two reflow templates (see DISPLAY MODES header).
@@ -12167,20 +11876,17 @@
                 if (ps >= 1 && ps <= 6) sb.setAttribute('data-party-size', String(ps));
                 else sb.removeAttribute('data-party-size');
             } catch (e) {}
-            if (typeof refreshBattleBg === 'function') refreshBattleBg();
+            if (refresh) refreshBattleBg();
         }
         window.applyBattleLayoutMode = applyBattleLayoutMode;
 
-        const BATTLE_BG_TERRAINS = ['neutral', 'grassy', 'electric', 'psychic', 'misty'];
-        const BATTLE_BG_LAYOUTS  = ['portrait', 'landscape'];
+        const BATTLE_TERRAIN_ART = new Set(['grassy', 'electric', 'psychic', 'misty']);
 
-        function getBattleBgUrl(terrain, folder) {
-            const t = (terrain || 'neutral').toLowerCase();
-            /* Two background sets remain: "portrait" (stack) and the wide "landscape" stadium
-               (arena — desktop frame AND touch). The old crowd-ringed "desktop" set is retired,
-               so anything that isn't portrait maps to landscape. */
-            const f = (folder === 'stack' || folder === 'portrait') ? 'portrait' : 'landscape';
-            return `url('sprites/backgrounds/battle/${f}/bg_${t}.webp')`;
+        function getBattleBgUrl(scene, folder) {
+            const kind = String(scene || '').toLowerCase();
+            const art = BATTLE_TERRAIN_ART.has(kind) || kind === 'road' || kind === 'raid' ? kind : 'neutral';
+            const crop = folder === 'stack' || folder === 'portrait' ? 'portrait' : 'landscape';
+            return `url('sprites/backgrounds/battle/${crop}/bg_${art}.webp')`;
         }
         window.getBattleBgUrl = getBattleBgUrl;
 
@@ -12209,31 +11915,32 @@
                 return isLeague ? 'battle-tint-league' : '';
             } catch (e) { return ''; }
         }
+        function storyBattleVenue() {
+            if (state.mode !== 'story') return 'neutral';
+            if (state._storyBossProfile || /^extra\.[a-z0-9]+\.(raid|miniRaid\d*)$/.test(state._activeStoryBeatKey || '')) return 'raid';
+            const story = window.StoryMode?.state;
+            const row = window.STORY_EVENTS_RAW?.[story?.eventIndex];
+            if (row?.[1] !== 'Battle' || story?.crucibleBattleSource) return 'neutral';
+            if (/^(Basic Trainer|Elite Trainer|Rival)$/.test(row[2])) return 'road';
+            return 'neutral';
+        }
         function refreshBattleBg() {
-            const sb = document.getElementById('screen-battle');
-            if (!sb) return;
-            // P2c: strip any prior tint FIRST so non-marquee battles (and Quick
-            // Play / PvP, which reuse this screen) always start clean.
-            try {
-                Array.prototype.slice.call(sb.classList).forEach(c => { if (c.lastIndexOf('battle-tint-', 0) === 0) sb.classList.remove(c); });
-                const _tint = _storyArenaTintClass();
-                if (_tint) sb.classList.add(_tint);
-            } catch (e) {}
-            const layout = sb.getAttribute('data-battle-layout') || 'arena';
-            /* arena → the wide "landscape" stadium (deep flat field) on every screen — desktop
-               frame and touch alike; stack → the "portrait" stadium. */
-            const folder = layout === 'stack' ? 'portrait' : 'landscape';
-            let terrain = 'neutral';
-            try {
-                if (settings && settings.terrainBackground && state && state.terrain) {
-                    const t = state.terrain;
-                    if (t === 'Grassy') terrain = 'grassy';
-                    else if (t === 'Electric') terrain = 'electric';
-                    else if (t === 'Psychic') terrain = 'psychic';
-                    else if (t === 'Misty') terrain = 'misty';
-                }
-            } catch (e) {}
-            sb.style.backgroundImage = getBattleBgUrl(terrain, folder);
+            const screen = document.getElementById('screen-battle');
+            const field = document.getElementById('battle-field');
+            if (!screen || !field || typeof state === 'undefined' || !state) return;
+            const tint = _storyArenaTintClass();
+            for (const oldTint of [...screen.classList].filter(name => name.startsWith('battle-tint-') && name !== tint)) {
+                screen.classList.remove(oldTint);
+            }
+            if (tint && !screen.classList.contains(tint)) screen.classList.add(tint);
+
+            const terrain = String(state.terrain || '').toLowerCase();
+            const scene = settings.terrainBackground && BATTLE_TERRAIN_ART.has(terrain) ? terrain : storyBattleVenue();
+            const crop = screen.dataset.battleLayout === 'stack' ? 'portrait' : 'landscape';
+            if (field.dataset.scene === scene && field.dataset.crop === crop) return;
+            field.dataset.scene = scene;
+            field.dataset.crop = crop;
+            field.style.backgroundImage = getBattleBgUrl(scene, crop);
         }
         window.refreshBattleBg = refreshBattleBg;
 
@@ -12384,7 +12091,7 @@
                 ? 'Recent notifications\n\n' + history.join('\n\n')
                 : 'No notifications in this session yet.');
         };
-        applyBattleLayoutMode();
+        applyBattleLayoutMode({ refresh: false });
         // Re-toggle .is-mobile on viewport change so DevTools device toolbar and window
         // resizes flip the body class without a page reload. applyDisplayMode (defined later,
         // hence the guard) re-toggles .is-mobile and THEN re-runs applyBattleLayoutMode +
@@ -17192,8 +16899,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // shake itself; the hit FLASH stays wired at the hit sites (this is the shake +
         // hit-stop dispatcher). Purely visual — never touches state / RNG / damage. async so
         // the caller can `await` the hit-stop beat.
-        // Type-tinted impact accent for the hit-burst (one representative colour per type;
-        // the nested battle-anim TYPE_COLORS table isn't reachable from this scope).
+        // One readable type accent for battle impact particles and move tiles.
         const _TYPE_BURST_COLOR = { Normal:'#c6c6a7', Fire:'#ff7043', Water:'#42a5f5', Electric:'#ffd54f', Grass:'#66bb6a', Ice:'#80deea', Fighting:'#e57373', Poison:'#ba68c8', Ground:'#d4a85a', Flying:'#9fa8da', Psychic:'#f06292', Bug:'#c0ca33', Rock:'#bcaaa4', Ghost:'#9575cd', Dragon:'#7e57c2', Dark:'#90a4ae', Steel:'#b0bec5', Fairy:'#f48fb1' };
         // One-shot particle pop on the TARGET sprite for the punchy tiers (crit / boss-phase
         // gold; super-effective tinted by move type). Localised to the sprite-container (it's
@@ -18082,7 +17788,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const source = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             const target = selfTarget ? source : document.getElementById(isPlayer ? 'foe-sprite' : 'player-sprite');
             const profile = window.BattleMoveProfiles?.get(move.name, move);
-            const run = window.BattleMotion.createRun(screen, { rate: battleVisualRate, valid: () =>
+            const run = window.BattleMotion.createRun(document.getElementById('battle-field') || screen, { rate: battleVisualRate, valid: () =>
                 state === owner && state.turnNumber === turn && !screen.classList.contains('hidden') });
             try { await run.play(profile, { from: source, to: target, outcome }); }
             catch (error) { console.warn('[battle] compatibility effect:', error); }
@@ -19012,8 +18718,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ].join(','));
             if (!tipZone) {
                 if (tt) tt.classList.add('hidden');
-                let mt = battleEls.moveTooltip;
-                if (mt && !mt.classList.contains('sticky-open')) mt.classList.add('hidden');
             }
         });
         document.addEventListener('touchstart', function(ev) {
@@ -22900,7 +22604,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const valid = () => state.mode === 'pvp' && !state.isOver && state._onlineNativeRevision === revision + 1
                 && screen && !screen.classList.contains('hidden');
             if (!valid()) return;
-            const run = battleVisualRate() ? window.BattleMotion?.createRun(screen, { rate: battleVisualRate, valid }) : null;
+            const run = battleVisualRate() ? window.BattleMotion?.createRun(document.getElementById('battle-field') || screen, { rate: battleVisualRate, valid }) : null;
             activeOnlineMotion = run;
             try {
                 for (const cue of cues.slice(0, 3)) {
@@ -23016,7 +22720,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const online = owner.mode === 'pvp' && window.OnlineBattle?.isActive();
             if (online) pendingOnlineMotion = [];
             const rate = () => online ? 0 : battleVisualRate();
-            const run = rate() ? window.BattleMotion?.createRun(screen, { rate, valid: current }) : null;
+            const run = rate() ? window.BattleMotion?.createRun(document.getElementById('battle-field') || screen, { rate, valid: current }) : null;
             const sound = new AbortController();
             const soundRate = run ? rate() : 0;
             const skip = document.getElementById('battle-skip-motion');
@@ -26108,17 +25812,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : '';
                 let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
                 const matchupTip = effString ? `<div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}${knownBlockText ? '<p class="battle-observed-note">Observed earlier: ' + _escHtml(knownBlockText) + '</p>' : ''}</div>` : '';
-                let moveTipHtml = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: ${moveCategoryTooltipHtml(shownMove.cat)}</div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div><div style="grid-column:1/-1;font-size:11px;">Priority: <strong>${priStr}</strong> <span style="color:var(--text-muted);">(within bracket: faster / Trick Room)</span></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:var(--text-dim);">${_effDesc}</div>${matchupTip}`;
-                btn.onmouseenter = () => {
-                    let tt = getMoveTooltipEl();
-                    if (tt.classList.contains('sticky-open') || matchMedia('(hover: none)').matches) return;
-                    tt.innerHTML = moveTipHtml;
-                    tt.classList.remove('hidden');
-                };
-                btn.onmouseleave = () => {
-                    let tt = getMoveTooltipEl();
-                    if (!tt.classList.contains('sticky-open')) tt.classList.add('hidden');
-                };
+                const moveTipHtml = `<div class="move-details-heading"><strong>${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div>
+                    <div class="move-details-stats">
+                        <div>Cat: ${moveCategoryTooltipHtml(shownMove.cat)}</div>
+                        <div>Power: <strong>${_powStr}</strong></div>
+                        <div>Acc: <strong>${_accStr}</strong></div>
+                        <div>PP: <strong>${_ppStr}</strong></div>
+                        <div style="grid-column:1/-1;">Priority: <strong>${priStr}</strong></div>
+                    </div>
+                    <p class="move-details-effect">${_effDesc}</p>${matchupTip}`;
                 const info = document.createElement('button');
                 info.type = 'button';
                 info.className = 'move-info-hit';
@@ -26129,6 +25831,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 info.setAttribute('aria-expanded', 'false');
                 info.onclick = () => window.openStickyMoveTooltip(moveTipHtml, info, shownMove.name);
 
+                btn.style.setProperty('--move-edge', _TYPE_BURST_COLOR[shownMove.type] || '');
                 let isTaunted = activeMon.volatile.taunt > 0 && rawMove.cat === "Status";
                 let isEncored = activeMon.volatile.encore > 0 && activeMon.volatile.encoreMove !== rawMove.name;
                 let isNoConsec = (rawMove.name === "Gigaton Hammer" || rawMove.name === "Blood Moon") && activeMon.volatile.lastMoveUsed === rawMove.name;

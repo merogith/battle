@@ -15,6 +15,7 @@ const sizes = [
   { name: 'phone-portrait', width: 320, height: 568, touch: true },
   { name: 'phone-landscape', width: 844, height: 390, touch: true },
   { name: 'phone-short-landscape', width: 568, height: 260, touch: true },
+  { name: 'tablet-portrait', width: 820, height: 1180, touch: true },
   { name: 'desktop', width: 1440, height: 900, touch: false },
 ];
 
@@ -216,9 +217,11 @@ async function testWeatherPreview(page) {
   await page.getByRole('button', { name: /Downpour \(Pelipper\).*Lead/ }).click();
   await atTurn(page, 1);
   assert.equal(await page.locator('#field-weather').innerText(), 'Rain');
+  assert.equal(await page.locator('#match').getAttribute('data-weather'), 'rain');
   assert.match(await page.locator('#battle-log').innerText(), /Weather changed to Rain\./);
   const weatherBall = page.getByRole('button', { name: /Weather Ball/ });
-  assert.match(await weatherBall.innerText(), /Water · Special/);
+  assert.equal(await weatherBall.locator('.move-button-type').innerText(), 'Water');
+  assert.equal(await weatherBall.locator('.move-button-category').innerText(), 'Special');
   const guide = await openMoveDetails(page);
   assert.match(await guide.innerText(), /Current weather · Rain/);
   assert.match(await moveCard(guide, 'Weather Ball').innerText(), /Power 100 in rain[\s\S]*Base power 50/);
@@ -344,6 +347,17 @@ try {
     await atTurn(page, 1);
     assert.equal(await page.locator('#match').getAttribute('data-send-out'), 'true');
     assert.equal(await page.locator('.battlefield img').first().evaluate(image => getComputedStyle(image).animationName), 'none', 'reduced motion keeps the ready field still');
+    const field = page.locator('.battlefield');
+    const orientation = name === 'phone-portrait' ? 'portrait' : 'landscape';
+    assert.ok((await field.evaluate(node => getComputedStyle(node).backgroundImage)).includes(`/battle/${orientation}/bg_neutral.webp`));
+    const sprites = field.locator('img:not([hidden])');
+    await sprites.nth(1).waitFor();
+    const bounds = await field.boundingBox();
+    const [opponent, player] = [await sprites.nth(0).boundingBox(), await sprites.nth(1).boundingBox()];
+    assert.ok(player.x < opponent.x && player.y > opponent.y, 'the player and opponent have distinct near and far positions');
+    for (const sprite of [opponent, player]) {
+      assert.ok(sprite.x >= bounds.x && sprite.y >= bounds.y && sprite.x + sprite.width <= bounds.x + bounds.width && sprite.y + sprite.height <= bounds.y + bounds.height, 'sprites remain inside the battlefield');
+    }
     if (name === 'phone-short-landscape') {
       await page.evaluate(() => scrollTo(0, 0));
       const reachable = await page.locator('#moves button, #switches button').evaluateAll(buttons => buttons.filter(button => {
@@ -362,10 +376,29 @@ try {
     await page.getByRole('button', { name: /Headlong Rush/ }).click();
     await atTurn(page, 2);
     assert.ok((await page.locator('#battle-log').innerText()).includes('Corviknight was immune.'));
-    await page.getByRole('button', { name: /Gholdengo.*Switch/ }).click();
-    await atTurn(page, 3);
+    let failBackSprite;
+    if (name === 'tablet-portrait') {
+      const pending = new Promise(resolve => { failBackSprite = resolve; });
+      await page.route('**/sprites/gen5ani-back/gholdengo.gif', async route => {
+        await pending;
+        await route.abort();
+      }, { times: 1 });
+    }
+    try {
+      await page.getByRole('button', { name: /Gholdengo.*Switch/ }).click();
+      await atTurn(page, 3);
+      if (failBackSprite) {
+        assert.equal(await page.locator('#player-active img').isVisible(), false, 'the previous species disappears while the incoming sprite loads');
+        assert.equal(await page.locator('#player-active .sprite-placeholder').innerText(), 'Gholdengo');
+      }
+    } finally {
+      failBackSprite?.();
+    }
     assert.equal(await page.locator('#player-active .combatant-name').innerText(), 'Gholdengo');
-    await page.locator('#player-active img').evaluate(image => image.decode());
+    const playerSprite = page.locator('#player-active img');
+    await playerSprite.waitFor();
+    await playerSprite.evaluate(image => image.decode());
+    if (failBackSprite) assert.match(await playerSprite.getAttribute('src'), /\/gen5ani\/gholdengo\.gif$/, 'the same-form front sprite covers a missing back sprite');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     if (out) {
       await page.evaluate(() => scrollTo(0, 0));

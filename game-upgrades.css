@@ -1093,6 +1093,245 @@
 #modal-summary .sum-tabs .sum-tab { font-family: var(--upgrade-font); font-size: .875rem; }
 #modal-summary .sum-tab { min-width: 0; }
 
+/* Battle chrome uses the same brass and teal cues as the field lighting. */
+#screen-battle {
+  --battle-font: var(--upgrade-font);
+  --ui-font: var(--upgrade-font);
+  --field-ink: #eff3ef;
+  --field-muted: #bdc8cd;
+  --field-shell: #121b22;
+  --field-panel: #18232b;
+  --field-control: #202c34;
+  --field-line: #455761;
+  --field-warm: #f2cf93;
+  --field-cool: #95d7d1;
+  color: var(--field-ink);
+}
+#screen-battle .stat-box.white-outline {
+  border: 1px solid var(--field-line) !important;
+  border-inline-start: 3px solid var(--side-rim) !important;
+  border-radius: 7px !important;
+  background: var(--field-panel) !important;
+  box-shadow: 0 3px 10px #060b1170 !important;
+  padding: 7px 9px !important;
+}
+#screen-battle #foe-stat-box { --side-rim: var(--field-cool); }
+#screen-battle #player-stat-box { --side-rim: var(--field-warm); }
+#screen-battle.battle-active-player #player-stat-box { border-inline-start-color: #ffdc9e !important; }
+#screen-battle.battle-active-foe #foe-stat-box { border-inline-start-color: #c3eae7 !important; }
+#screen-battle .stat-info-row .status-indicator:empty { display: none; }
+#screen-battle .stat-box-name {
+  font-size: clamp(.8125rem, 1.3cqw, 1rem) !important;
+  font-weight: 750;
+  letter-spacing: normal;
+  text-shadow: none;
+  color: var(--field-ink);
+}
+#screen-battle .stat-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-block-start: 3px;
+}
+#screen-battle .stat-hp-row .hp-bar-container {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+#screen-battle .stat-box .stat-hp-text {
+  color: var(--field-muted);
+  font-size: .6875rem;
+  white-space: nowrap;
+}
+#screen-battle .hp-bar-container {
+  height: 8px !important;
+  border: 1px solid #40515a !important;
+  border-radius: 3px !important;
+  background: #0b1219 !important;
+  box-shadow: none;
+}
+#screen-battle .hp-bar-container::before { content: none; }
+#screen-battle .hp-fill { box-shadow: inset 0 1px #ffffff45 !important; }
+#screen-battle .party-bar-ball { box-shadow: none; }
+#screen-battle[data-battle-layout="stack"] .battle-foe-head { padding-block-start: max(5px, var(--safe-top, 0px)); }
+#screen-battle[data-battle-layout="stack"] #foe-stat-box {
+  width: auto;
+  margin: 0 calc(56px + var(--safe-right, 0px)) 5px calc(6px + var(--safe-left, 0px));
+}
+#screen-battle[data-battle-layout="stack"] #battle-bottom-stack #player-stat-box {
+  width: auto;
+  flex: 1;
+  margin: 5px calc(6px + var(--safe-right, 0px)) 0 calc(6px + var(--safe-left, 0px));
+}
+#screen-battle .battle-settings-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 7px;
+  border-color: var(--field-line);
+  background: var(--field-panel);
+  box-shadow: none;
+}
+#screen-battle .battle-settings-btn:hover { border-color: var(--field-cool); }
+@media (pointer: coarse) {
+  #screen-battle .battle-settings-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+}
+#screen-battle .battle-bottom-stack { background: var(--field-shell); }
+#screen-battle .ui-bottom {
+  background: var(--field-shell);
+  border-top: 1px solid #293740;
+}
+#screen-battle[data-battle-layout="stack"] .ui-bottom { border-top: 0; }
+#screen-battle :is(#command-menu, #move-menu).white-outline {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  background: transparent;
+}
+#screen-battle #battle-log {
+  border: 1px solid var(--field-line) !important;
+  border-inline-start: 3px solid #698280 !important;
+  border-radius: 6px !important;
+  background: #101820 !important;
+  color: var(--field-ink);
+  padding: 6px 8px !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  font-size: clamp(.75rem, 1.04cqw, .875rem) !important;
+  letter-spacing: normal;
+  text-shadow: none;
+}
+#screen-battle #move-tooltip {
+  border: 1px solid var(--field-line) !important;
+  border-radius: 8px !important;
+  background: var(--field-panel);
+  box-shadow: 0 12px 40px #03070ce3 !important;
+  color: var(--field-ink);
+  font-size: .875rem;
+}
+body:has(#screen-battle:not(.hidden)) #text-tooltip { font-family: var(--upgrade-font); }
+#screen-battle #command-menu .battle-cmd-label {
+  font-size: clamp(.8125rem, 1.4cqw, 1.125rem);
+  letter-spacing: normal;
+}
+#screen-battle #move-menu :is(.move-info-hit, .move-menu-back) {
+  background: var(--field-panel);
+  color: var(--field-muted);
+  border: 1px solid var(--field-line);
+  border-radius: 6px;
+  box-shadow: none;
+  letter-spacing: normal;
+}
+#screen-battle #move-menu :is(.move-info-hit, .move-menu-back):hover {
+  color: var(--field-warm);
+  border-color: var(--field-warm);
+}
+#screen-battle :is(button, [tabindex]):focus-visible {
+  outline: 2px solid var(--field-warm);
+  outline-offset: -2px;
+}
+#screen-battle #move-menu .battle-btn-move:disabled {
+  opacity: .78;
+  color: var(--field-muted);
+  border-style: dashed;
+  background: var(--field-shell);
+}
+#screen-battle .field-pill {
+  background: #162630;
+  color: #e8f0ee;
+  border-color: var(--field-line);
+  box-shadow: none;
+}
+body:has(#screen-battle:not(.hidden)) :is(#modal-party, #modal-story-bag) .modal-content {
+  --battle-font: var(--upgrade-font);
+  --ui-font: var(--upgrade-font);
+  background: #152029;
+  border: 1px solid #57666c !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 40px #03070cc9;
+}
+body:has(#screen-battle:not(.hidden)) #modal-party .party-slot {
+  background: #202d36;
+  border-color: #41555e;
+  border-radius: 6px;
+}
+body:has(#screen-battle:not(.hidden)) #modal-party .party-slot.active-mon { border-color: #bd9a62; }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  #screen-battle[data-battle-layout="arena"] :is(#foe-stat-box, #player-stat-box) {
+    padding: 4px 6px !important;
+  }
+  #screen-battle[data-battle-layout="arena"] #foe-stat-box { top: calc(5px + var(--safe-top, 0px)); }
+  #screen-battle[data-battle-layout="arena"] .stat-box-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  #screen-battle[data-battle-layout="arena"] .stat-box .stat-box-name {
+    min-width: 0;
+    font-size: .75rem !important;
+    white-space: nowrap;
+    display: block;
+    text-overflow: ellipsis;
+  }
+  #screen-battle[data-battle-layout="arena"] :is(#foe-party-bar, #player-party-bar) {
+    grid-column: 1 / -1;
+    gap: 3px !important;
+    padding-block-end: 2px;
+  }
+  #screen-battle[data-battle-layout="arena"] .party-bar-ball {
+    width: 9px !important;
+    height: 9px !important;
+  }
+  #screen-battle[data-battle-layout="arena"] .party-ball-hp { height: 2px !important; bottom: -2px !important; }
+  #screen-battle[data-battle-layout="arena"] .hp-bar-container { height: 6px !important; }
+  #screen-battle[data-battle-layout="arena"] .stat-hp-row { margin-block-start: 2px; }
+  #screen-battle[data-battle-layout="arena"] .stat-info-row .type-badge {
+    margin-inline-end: 2px;
+    padding: 1px 3px;
+    font: 700 .5625rem/1.18 var(--upgrade-font);
+    letter-spacing: normal;
+  }
+  #screen-battle[data-battle-layout="arena"] :is(#foe-types, #player-types) { line-height: 1.2; }
+  #screen-battle[data-battle-layout="arena"] .stat-info-row .type-badge::before { display: none; }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  body.is-mobile #screen-battle[data-battle-layout="arena"] .ui-bottom #battle-log {
+    flex: 0 0 clamp(108px, 31cqw, 185px);
+    width: clamp(108px, 31cqw, 185px);
+    max-width: clamp(108px, 31cqw, 185px);
+  }
+  #screen-battle[data-battle-layout="arena"] #move-menu .move-menu-scroll { gap: 4px; }
+  #screen-battle[data-battle-layout="arena"] #battle-player-hud-row {
+    bottom: 100%;
+  }
+  #screen-battle[data-battle-layout="arena"] .stat-volatile-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-block-start: 2px;
+  }
+}
+@media (max-width: 430px) and (orientation: portrait) {
+  #screen-battle[data-battle-layout="stack"] .battle-foe-head {
+    position: relative;
+    padding-block-end: 0;
+  }
+  #screen-battle[data-battle-layout="stack"] #field-conditions:not(:empty):has(.field-pill:only-child) {
+    position: absolute;
+    left: auto;
+    right: calc(6px + var(--safe-right, 0px));
+    top: calc(49px + var(--safe-top, 0px));
+    width: auto;
+    padding: 0;
+  }
+  #screen-battle[data-battle-layout="stack"] #field-conditions:not(:empty):has(.field-pill:only-child) .field-pill {
+    min-height: 25px;
+    padding-inline: 5px;
+  }
+}
+
 #screen-battle #move-menu .battle-btn-move { --ui-font: var(--upgrade-font); }
 #screen-battle #move-menu .move-tile-name { font: 700 .8125rem/1.16 var(--upgrade-font); letter-spacing: normal; }
 #screen-battle #move-menu .move-tile-head .type-badge { font: 700 .625rem/1.1 var(--upgrade-font); letter-spacing: normal; }
@@ -1107,6 +1346,15 @@
 @media (max-width: 360px) and (orientation: portrait) {
   #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-scroll .battle-btn-move { padding-inline: 4px; }
   #screen-battle[data-battle-layout="stack"] #move-menu .move-tile-name { font-size: .75rem; overflow-wrap: normal; }
+}
+@container battle (max-width: 280px) {
+  #screen-battle[data-battle-layout="stack"] #move-menu .move-menu-scroll .battle-btn-move { padding-inline: 3px; }
+  #screen-battle[data-battle-layout="stack"] #move-menu .move-tile-name { font-size: .6875rem; }
+  #screen-battle[data-battle-layout="stack"] .party-bar-ball {
+    width: 11px !important;
+    height: 11px !important;
+  }
+  #screen-battle[data-battle-layout="stack"] .party-ball-hp { height: 2px !important; bottom: -3px !important; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
   #modal-summary .sum-header-name { font: 750 1rem/1.2 var(--upgrade-font); }

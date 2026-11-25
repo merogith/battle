@@ -1,5 +1,13 @@
 # Battle Background Image Generation — Gemini Prompts
 
+## Current battle art
+
+The game loads an original ImageGen series of night battlefields, encoded as WebP. The seven wide images are 1536 × 1024 and the seven portrait crops are 850 × 1020. Together they use 801,654 bytes. Each portrait crop keeps that scene’s landmarks in view. A broad floor with subdued values preserves sprite and move readability. The far architecture and side lighting establish the setting, and the player and opponent stand on an open diagonal.
+
+The neutral arena uses weathered slate, warm bronze light on the left, and cool cyan light on the right. The terrain fields keep the same visual hierarchy as their palette and architecture change. The forest road and the raid ruins give ordinary Story encounters and signature fights their own settings.
+
+The prompts below document the previous stadium art series.
+
 ## Overview
 
 Each terrain needs **3 variants** optimized for different screen layouts.

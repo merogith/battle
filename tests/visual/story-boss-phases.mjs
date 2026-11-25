@@ -61,6 +61,11 @@ try {
   await cinematic.waitFor({ state: 'detached' });
 
   const screen = page.locator('#screen-battle[data-battle-engine="showdown"]');
+  const waitForVenue = (venue, crop) => page.waitForFunction(({ venue, crop }) => {
+    const arena = document.querySelector('#battle-field');
+    return arena?.dataset.scene === venue && arena.dataset.crop === crop &&
+      getComputedStyle(arena).backgroundImage.includes(`/sprites/backgrounds/battle/${crop}/bg_${venue}.webp`);
+  }, { venue, crop }, { timeout: 5000 });
   const fight = screen.locator('#command-menu [data-cmd="fight"]');
   const hpMarks = screen.locator('.boss-hp-threshold');
   const pending = screen.locator('#boss-status-indicator button[data-next="true"]');
@@ -74,6 +79,7 @@ try {
     await page.waitForFunction(lastTurn => state.isOver || (state.turnNumber > lastTurn && !state.isLocked), turn);
   };
   await ready();
+  await waitForVenue('raid', 'landscape');
   assert.equal(await hpMarks.count(), 3);
   const hitPoints = () => page.evaluate(() => [state.fActive.currentHp, state.fActive.maxHp]);
   const initial = await hitPoints();
@@ -89,6 +95,7 @@ try {
   await page.locator('.story-boss-banner').first().waitFor({ state: 'detached' });
   for (const [width, height] of [[320, 568], [568, 320], [820, 1180], [1600, 900]]) {
     await page.setViewportSize({ width, height });
+    await waitForVenue('raid', height > width ? 'portrait' : 'landscape');
     await pending.first().focus();
     await pending.first().press('Enter');
     await detail.waitFor();
@@ -122,6 +129,8 @@ try {
   await screenshot('gym-intro-desktop');
   await gym.getByRole('button', { name: 'Challenge the Gym Leader' }).click();
   await ready();
+  await waitForVenue('neutral', 'landscape');
+  assert.equal(await screen.evaluate(node => node.classList.contains('battle-tint-rock')), true, 'the Rock gym adds its own color to the stadium');
   assert.equal(await hpMarks.count(), 0);
   await choose('Surf');
   assert.match(await screen.locator('#battle-log').innerText(), /Blastoise used Surf!/);

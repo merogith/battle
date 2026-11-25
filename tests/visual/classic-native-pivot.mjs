@@ -169,7 +169,7 @@ try {
 
   await page.evaluate(async () => {
     state.mode = 'pvp';
-    state.p1Draft = [{ name: 'Pikachu', build: { a: 'Static', teraType: 'Ghost', m: ['Thunderbolt'] } }];
+    state.p1Draft = [{ name: 'Pikachu', build: { a: 'Static', teraType: 'Ghost', m: ['Charge'] } }];
     state.p2Draft = [{ name: 'Snorlax', build: { a: 'Immunity', gimmick: 'GMAXDYNAMAX', m: ['Body Slam'] } }];
     await window.startBattle();
   });
@@ -178,7 +178,7 @@ try {
   const moves = screen.locator('#move-menu');
   await fight.tap();
   await moves.getByRole('button', { name: 'Use Terastallize to Ghost type', exact: true }).tap();
-  await moves.locator('.battle-btn-move:enabled').filter({ hasText: 'Thunderbolt' }).tap();
+  await moves.locator('.battle-btn-move:enabled').filter({ hasText: 'Charge' }).tap();
   await page.waitForFunction(() => state.currentPlayer === 2);
   await fight.tap();
   await moves.getByRole('button', { name: 'Use Gigantamax', exact: true }).tap();

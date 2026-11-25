@@ -3,6 +3,13 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.3 — Battle screen overhaul
+
+- Battles have a dedicated field with grounded Pokémon sprites. Opening the move menu keeps the field in place, and the layout adapts when you rotate the screen.
+- Seven illustrated environments cover arenas, road fights, raids and signature bosses, and the four battle terrains. Each has a portrait crop. The full backdrop set loads from local files and totals 0.80 MB.
+- HP numbers sit beside their bars, Fight is easier to spot, and compact move layouts keep names, PP, and matchup cues readable. Select a move’s info button for details.
+- Competitive Arena shares the new field style. Delayed switches clear the previous Pokémon, and a missing rear sprite falls back to the same form’s front sprite.
+
 ## 2.0.2 — Playtest fixes and interface polish
 
 ### Playtest fixes

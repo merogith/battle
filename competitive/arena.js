@@ -55,10 +55,25 @@ function combatant(root, label, reverse) {
   const stage = element('div', { className: 'sprite-stage' });
   const image = element('img');
   image.alt = '';
+  image.decoding = 'async';
   const placeholder = element('p', { className: 'sprite-placeholder' });
+  const spriteDir = reverse ? 'gen5ani-back' : 'gen5ani';
+  const fallback = '../sprites/placeholder.svg';
+  let sprite = '';
+  const revealReadySprite = () => {
+    if (!sprite || image.currentSrc !== image.src || !image.naturalWidth) return;
+    image.hidden = false;
+    placeholder.hidden = true;
+  };
+  image.addEventListener('load', revealReadySprite);
   image.addEventListener('error', () => {
-    image.hidden = true;
-    placeholder.hidden = false;
+    if (!sprite) return;
+    const requested = image.getAttribute('src');
+    if (reverse && requested === `../sprites/${spriteDir}/${sprite}.gif`) {
+      image.src = `../sprites/gen5ani/${sprite}.gif`;
+    } else if (requested !== fallback) {
+      image.src = fallback;
+    }
   });
   stage.append(image, placeholder);
   const card = element('div', { className: 'combatant-card' });
@@ -80,18 +95,19 @@ function combatant(root, label, reverse) {
     const mon = team.find(member => member.active && !member.fainted);
     const preview = phase === 'preview';
     const emptyLabel = phase === 'ended' ? (team.every(member => member.fainted) ? 'Team fainted' : 'Battle complete') : 'No active Pokémon';
+    root.dataset.occupied = String(Boolean(mon));
     name.textContent = mon?.name || (preview ? 'Team preview' : emptyLabel);
     placeholder.textContent = mon?.name || (preview ? 'Awaiting lead' : '');
-    if (!mon) {
+    const nextSprite = mon?.sprite || '';
+    if (sprite !== nextSprite || !nextSprite) {
       image.hidden = true;
       placeholder.hidden = false;
-    } else {
-      const src = `../sprites/${reverse ? 'gen5ani-back' : 'gen5ani'}/${mon.sprite}.gif`;
-      const changed = image.getAttribute('src') !== src;
-      if (changed) image.src = src;
-      if (changed || (image.complete && image.naturalWidth > 0)) {
-        image.hidden = false;
-        placeholder.hidden = true;
+      sprite = nextSprite;
+      if (sprite) {
+        image.src = `../sprites/${spriteDir}/${sprite}.gif`;
+        revealReadySprite();
+      } else {
+        image.removeAttribute('src');
       }
     }
     health.hidden = !mon;
@@ -103,7 +119,7 @@ function combatant(root, label, reverse) {
       return tag;
     });
     const status = mon?.fainted ? 'Fainted' : statusNames[mon?.status];
-    if (status) tags.push(element('span', { text: status }));
+    if (status) tags.push(element('span', { className: 'combatant-status', text: status }));
     if (mon?.sizeForm) tags.push(element('span', { text: mon.sizeForm }));
     if (mon?.disguise) tags.push(element('span', { text: `Disguised as ${mon.disguise}` }));
     detail.replaceChildren(...tags);
@@ -247,9 +263,12 @@ function displayedMoves() {
 
 function renderMoves() {
   $('moves').replaceChildren(...displayedMoves().map(move => {
-    const pp = typeof move.pp === 'number' ? ` · ${move.pp}/${move.maxPp} PP` : '';
-    const source = move.source ? `${move.source} · ` : '';
-    const detail = move.type ? [`${source}${move.type}`, element('span', { className: 'move-button-category', text: ` · ${move.category}` }), pp] : move.effect;
+    const detail = move.type ? [
+      element('span', { className: 'move-button-type', text: move.type }),
+      element('span', { className: 'move-button-category', text: move.category }),
+    ] : move.effect;
+    if (move.type && typeof move.pp === 'number') detail.push(element('span', { className: 'move-button-pp', text: `${move.pp}/${move.maxPp} PP` }));
+    if (move.type && move.source) detail.push(element('span', { className: 'move-button-source', text: move.source }));
     const button = actionButton('move', move.slot, move.name, detail);
     if (move.type) button.dataset.type = move.type.toLowerCase();
     button.disabled = move.disabled;
@@ -303,6 +322,7 @@ function draw(next, focus = true) {
   match.dataset.sendOut = String(sendOut);
   match.dataset.motion = String(motionRate() > 0);
   match.dataset.result = next.result || '';
+  match.dataset.weather = next.weather?.toLowerCase() || '';
   $('format-label').textContent = `${next.formatLabel}${next.format.endsWith('ou') ? ` · ${next.teamSize}v${next.teamSize}` : ''}`;
   $('match-seed').textContent = `Seed ${next.seed}`;
   $('field-weather').textContent = next.weather || '';

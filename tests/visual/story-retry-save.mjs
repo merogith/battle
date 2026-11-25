@@ -202,6 +202,12 @@ try {
       await objective.click();
       const fight = page.locator('#command-menu [data-cmd="fight"]');
       await reach(page, fight);
+      const crop = viewport.height > viewport.width ? 'portrait' : 'landscape';
+      await page.waitForFunction(crop => {
+        const field = document.querySelector('#battle-field');
+        return field?.dataset.scene === 'road' && getComputedStyle(field).backgroundImage.includes(`/${crop}/bg_road.webp`);
+      }, crop, { timeout: 5000 });
+      if (out) await page.screenshot({ path: join(out, `rival-battle-${viewport.width}.png`) });
       const initial = await snapshot(page);
       if (process.env.BATTLE_EXPECT_STORY_ENGINE) {
         assert.equal(initial.engine, process.env.BATTLE_EXPECT_STORY_ENGINE);
