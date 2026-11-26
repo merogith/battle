@@ -40,6 +40,8 @@ page.setDefaultNavigationTimeout(45000);
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 const modal = () => page.locator('dialog.story-chapter-dialog[open]');
+// Native close clears [open] before the close event removes the dialog and restores focus.
+const waitForChapterClose = () => page.locator('dialog.story-chapter-dialog').waitFor({ state: 'detached' });
 const control = name => modal().locator('[data-adventure-' + name + ']');
 const card = id => page.locator(`[data-adventure-open="${id}"]:visible`);
 const chosen = id => 'adventure.' + id;
@@ -251,7 +253,7 @@ async function pick(id, answer, { secret, echo, echoes = [] } = {}) {
         await capture(id + '-secret');
     }
     await control('done').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
     assert.equal(await card(id).evaluate(node => document.activeElement === node), true, 'Return focuses invitation');
     if (option.townNote) await page.getByText(option.townNote, { exact: true }).waitFor();
 }
@@ -327,7 +329,7 @@ try {
     assert.equal(await control('read').evaluate(button => button === document.activeElement), true);
     assert.deepEqual(await progress(), beforeReadAgain);
     await control('done').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
 
     phase = 'readonly-replay';
     const beforeReplay = await progress();
@@ -355,7 +357,7 @@ try {
     await control('done').tap();
     assert.equal(await discovery.evaluate(button => button === document.activeElement), true);
     await control('close').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
     assert.deepEqual(await progress(), beforeReplay, 'Replay changed progress');
 
     phase = 'same-run-backup-restore';
@@ -375,7 +377,7 @@ try {
     await modal().getByText(catalog.get('chapter-1').choices[0].reply, { exact: true }).waitFor();
     await capture('chapter-1-restored-choice');
     await control('done').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
 
     phase = 'clue-followthrough';
     await checkpoint('chapter-2');
@@ -416,7 +418,7 @@ try {
     assert.ok(!replay.has(echoes.find(echo => echo.choice === 'act').text), 'An active run must not overwrite the recorded context');
     await control('done').tap();
     await control('close').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
     await page.evaluate(({ runId, archive }) => {
         const meta = JSON.parse(localStorage.getItem('pbs_story_meta'));
         // One recorded answer can occur in different journeys with different evidence.
@@ -450,14 +452,14 @@ try {
     await capture('afterword');
     await control('done').tap();
     await control('close').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
 
     const clerkCopy = page.locator('[data-adventure-crucible-keepsake="keepers-spare-copy"]:visible');
     await clerkCopy.tap();
     await modal().getByText(/Two dispatches sit beneath the same brass key/).waitFor();
     await capture('crucible-clerk-copy');
     await control('done').tap();
-    await modal().waitFor({ state: 'hidden' });
+    await waitForChapterClose();
     assert.equal(await clerkCopy.evaluate(button => button === document.activeElement), true);
     assert.deepEqual(await progress(), final);
     assert.deepEqual(errors, []);
