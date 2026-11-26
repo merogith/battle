@@ -86,6 +86,66 @@ try {
         console.log(`Flintreach ${id} stayed in the city with its own notice and receipt.`);
     }
 
+    // The Atlas only reads the run. Closing it returns to the same control.
+    const snapshot = () => page.evaluate(() => {
+        const run = window.StoryMode.state;
+        return { index: run.eventIndex, rng: run._strngState, choices: run.storyChoices, gold: run.gold };
+    });
+    const beforeAtlas = await snapshot();
+    const openAtlas = page.getByRole('button', { name: 'Journey Atlas', exact: true });
+    await openAtlas.click();
+    const atlas = page.getByRole('dialog', { name: 'Journey Atlas' });
+    await atlas.waitFor();
+    assert.match(await atlas.getByRole('list', { name: 'Journey stops' }).innerText(), /Flintreach Town\s+Here/);
+    assert.match(await atlas.getByRole('list', { name: 'Journey stops' }).innerText(), /Kettlestone Town\s+Known/);
+    assert.equal(await atlas.locator('.world-atlas-stop.locked').count(), 1);
+    assert.doesNotMatch(await atlas.innerText(), /Vespergate/);
+    if (output) await page.screenshot({ path: join(output, 'journey-atlas.png') });
+    await atlas.getByRole('button', { name: 'Back', exact: true }).press('Escape');
+    assert.equal(await atlas.count(), 0);
+    assert.equal(await openAtlas.evaluate(el => el === document.activeElement), true);
+    assert.deepEqual(await snapshot(), beforeAtlas);
+    console.log('Journey Atlas preserves the run and restores focus.');
+
+    // Loss of optional illustrated art leaves the town and its objective intact.
+    await page.route('**/flintreach-quarry.webp', route => route.abort());
+    await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => Boolean(window.__testReady));
+    await launchTown(page, 1, { 'road.discovery.1': 'help' });
+    const moveOn = page.locator('[data-wander-moveon]:visible');
+    const enterFallbackTown = page.locator('[data-arrival-dismiss]:visible');
+    await moveOn.or(enterFallbackTown).first().waitFor();
+    if (await moveOn.isVisible()) await moveOn.click();
+    await enterFallbackTown.click();
+    await acknowledgeTips(page);
+    await page.waitForFunction(() => {
+        const plate = document.querySelector('#story-city-identity .world-scene-plate');
+        return plate?.complete && plate.naturalWidth > 0 && plate.src.endsWith('/city-1.svg');
+    });
+    assert.equal(await page.locator('.story-city-objective').isVisible(), true);
+    await page.unroute('**/flintreach-quarry.webp');
+
+    // Stable row 1 follows the intro rival before any wild interruptions.
+    const departureShown = await page.evaluate(() => {
+        const rows = window.STORY_EVENTS_RAW;
+        const eventIndex = rows.findIndex(row => row[0] === 1);
+        Object.assign(window.__storyTest.sm, { eventIndex, routeShown: {}, roadDiscoveriesEnabled: false });
+        window.__testDepartureContinued = false;
+        return window.__storyTest.maybeShowRouteInterstitial(rows[eventIndex], () => { window.__testDepartureContinued = true; });
+    });
+    assert.equal(departureShown, true);
+    const departure = page.locator('.world-road-departure');
+    await departure.waitFor();
+    assert.match(await departure.innerText(), /To Flintreach Town/i);
+    await page.waitForFunction(() => {
+        const plate = document.querySelector('.world-road-departure .world-scene-plate');
+        return plate?.complete && plate.naturalWidth > 0 && plate.src.endsWith('/route1-unlit-signal.webp');
+    });
+    if (output) await page.screenshot({ path: join(output, 'breakwater-departure.png') });
+    await departure.getByRole('button', { name: /Set out/ }).click();
+    await page.waitForFunction(() => window.__testDepartureContinued);
+    assert.equal(await page.evaluate(() => window.__storyTest.sm.roadDiscoveriesEnabled), true);
+
     await page.setViewportSize({ width: 568, height: 320 });
     await page.goto(url.href, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => Boolean(window.__testReady));
@@ -101,7 +161,7 @@ try {
     await notes.locator('summary').click();
     const privateNote = notes.locator('[data-world-source="chapter-3"]');
     await privateNote.waitFor({ state: 'visible' });
-    assert.match(await privateNote.textContent(), /Private field note.*clerk’s name stays off the notice/s);
+    assert.match(await privateNote.textContent(), /Private field note.*Private duty-desk appointment.*away from the duty board/s);
     assert.ok(await notes.evaluate(node => node.scrollWidth <= node.clientWidth));
     if (output) await page.screenshot({ path: join(output, 'reedmarket-private-field-note.png') });
     console.log('Reedmarket kept the previous chapter’s private note in the town disclosure.');

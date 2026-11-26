@@ -55,6 +55,6 @@ test('the egg-event and idle scenes carry the token accent', () => {
     'the drop-off scene beat must use the token accent');
   assert.ok(/\{ id:'end', accent:'var\(--fac-recover\)'/.test(HTML),
     'the egg-received scene beat must use the token accent');
-  assert.ok(/_storyScene\(\[\{ accent:'var\(--fac-recover\)', title:'Daycare Inn', html \}\]/.test(HTML),
+  assert.ok(/_daycareScene\(\[\{ accent:'var\(--fac-recover\)', title:'Daycare Inn', html \}\], null, 'story-daycare-idle'\)/.test(HTML),
     'the idle scene must use the token accent');
 });

@@ -6,7 +6,7 @@ const statusNames = { brn: 'Burned', frz: 'Frozen', par: 'Paralyzed', psn: 'Pois
 const matchMessages = {
   preview: 'Choose your lead',
   move: 'Choose an action',
-  replace: 'Send in a Pokémon',
+  replace: 'Choose a replacement',
   wait: 'Waiting for the opponent',
   ended: 'Battle complete',
 };
@@ -20,6 +20,7 @@ let view;
 let busy = false;
 let matchEpoch = 0;
 let activeMotion;
+let followBattleLog = true;
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 const pacing = { normal: 1, fast: .5, instant: 0 };
 const motionBreaks = new Set(['move', 'switch', 'drag', 'replace', 'cant', 'turn', 'win', 'tie']);
@@ -67,7 +68,7 @@ function combatant(root, label, reverse) {
   };
   image.addEventListener('load', revealReadySprite);
   image.addEventListener('error', () => {
-    if (!sprite) return;
+    if (!sprite || !image.complete || image.naturalWidth) return;
     const requested = image.getAttribute('src');
     if (reverse && requested === `../sprites/${spriteDir}/${sprite}.gif`) {
       image.src = `../sprites/gen5ani/${sprite}.gif`;
@@ -118,7 +119,7 @@ function combatant(root, label, reverse) {
       tag.dataset.type = type.toLowerCase();
       return tag;
     });
-    const status = mon?.fainted ? 'Fainted' : statusNames[mon?.status];
+    const status = statusNames[mon?.status];
     if (status) tags.push(element('span', { className: 'combatant-status', text: status }));
     if (mon?.sizeForm) tags.push(element('span', { text: mon.sizeForm }));
     if (mon?.disguise) tags.push(element('span', { text: `Disguised as ${mon.disguise}` }));
@@ -136,11 +137,18 @@ function logItem(event) {
   return item;
 }
 
+function followLatestLogEvents() {
+  followBattleLog = true;
+  const log = $('battle-log');
+  log.scrollTop = log.scrollHeight;
+  $('latest-events').hidden = true;
+}
+
 function drawPublicEvent(event) {
   if (event.text) {
     const log = $('battle-log');
     log.append(logItem(event));
-    log.scrollTop = log.scrollHeight;
+    if (followBattleLog) log.scrollTop = log.scrollHeight;
   }
   if (!event.side) return;
   const drawSide = event.side === 'p1' ? showPlayer : showOpponent;
@@ -314,6 +322,7 @@ function openMoveGuide() {
 }
 
 function draw(next, focus = true) {
+  const opening = !view;
   const sendOut = next.turn > 0 && (!view || view.phase === 'preview');
   view = next;
   $('setup').hidden = true;
@@ -321,6 +330,7 @@ function draw(next, focus = true) {
   match.hidden = false;
   match.dataset.sendOut = String(sendOut);
   match.dataset.motion = String(motionRate() > 0);
+  match.dataset.phase = next.phase;
   match.dataset.result = next.result || '';
   match.dataset.weather = next.weather?.toLowerCase() || '';
   $('format-label').textContent = `${next.formatLabel}${next.format.endsWith('ou') ? ` · ${next.teamSize}v${next.teamSize}` : ''}`;
@@ -329,6 +339,7 @@ function draw(next, focus = true) {
   $('field-weather').hidden = !next.weather;
   $('engine-note').textContent = `Powered by Pokémon Showdown · @pkmn/sim ${next.engineVersion}`;
   $('turn').textContent = next.turn ? `Turn ${next.turn}` : 'Team preview';
+  if (opening) $('match-teams').open = matchMedia('(min-width: 721px) and (min-height: 501px)').matches;
   $('actions').dataset.phase = next.phase;
   $('request-heading').textContent = results[next.result] || matchMessages[next.phase];
   announceError('battle-error', next.error);
@@ -362,9 +373,14 @@ function draw(next, focus = true) {
   $('download-replay').hidden = !next.replay;
   $('reset').hidden = next.phase === 'ended';
   const log = $('battle-log');
+  const scrollTop = log.scrollTop;
   log.replaceChildren(...next.events.map(logItem));
-  log.scrollTop = log.scrollHeight;
-  if (focus) $('request-heading').focus({ preventScroll: true });
+  if (sendOut || followBattleLog) followLatestLogEvents();
+  else log.scrollTop = scrollTop;
+  if (focus) {
+    if (opening) window.scrollTo(0, 0);
+    $('request-heading').focus({ preventScroll: true });
+  }
 }
 
 async function choose(action) {
@@ -443,11 +459,12 @@ function updateSetup() {
   const size = stadium ? 3 : Number($('team-size').value);
   const [player, opponent] = format.value === 'gen9ou' ? modernRoster : historicalRoster;
   const [playerReserve, opponentReserve] = format.value === 'gen9ou' ? modernReserves : historicalReserves;
-  $('setup-player').textContent = $('team-text').value.trim() ? 'Imported team · Checked at start' : `${player}${size === 6 ? `, ${playerReserve}` : ''}`;
+  const customTeam = Boolean($('team-text').value.trim());
+  $('setup-player').textContent = customTeam ? 'Your imported team' : `${player}${size === 6 ? `, ${playerReserve}` : ''}`;
   $('setup-opponent').textContent = `${opponent}${size === 6 ? `, ${opponentReserve}` : ''}`;
-  $('setup-intro').textContent = `${size}-on-${size} against the CPU with Showdown rules.`;
-  $('team-import-help').textContent = `Paste ${size === 6 ? 'six' : 'three'} Pokémon from a Showdown export. Leave this blank to play with the preset.`;
-  $('format-label').textContent = `${format.selectedOptions[0].textContent}${stadium ? '' : ` · ${size}v${size}`}`;
+  const matchup = customTeam ? 'Imported team' : 'Preset teams';
+  $('setup-match-summary').textContent = stadium ? `${matchup} · 3-on-3` : matchup;
+  $('team-import-help').textContent = `Paste a Showdown export with ${size === 6 ? 'six' : 'three'} Pokémon.`;
   $('format-rules').hidden = !stadium;
   $('team-size-choice').hidden = stadium;
   announceTeamError();
@@ -458,6 +475,19 @@ $('format').addEventListener('change', updateSetup);
 $('team-size').addEventListener('change', updateSetup);
 $('team-text').addEventListener('input', updateSetup);
 $('battle-form-toggle').addEventListener('change', renderMoves);
+$('battle-log').addEventListener('scroll', event => {
+  const log = event.currentTarget;
+  if (!log.closest('details').open) return;
+  followBattleLog = log.scrollHeight - log.clientHeight - log.scrollTop <= 12;
+  $('latest-events').hidden = followBattleLog;
+}, { passive: true });
+$('battle-log').closest('details').addEventListener('toggle', event => {
+  if (event.currentTarget.open && followBattleLog) followLatestLogEvents();
+});
+$('latest-events').addEventListener('click', () => {
+  followLatestLogEvents();
+  $('battle-log').closest('details').querySelector('summary').focus({ preventScroll: true });
+});
 $('inspect-moves').addEventListener('click', openMoveGuide);
 $('move-guide').addEventListener('close', () => $('inspect-moves').focus({ preventScroll: true }));
 
@@ -482,6 +512,8 @@ function reset() {
   unlockActions();
   client.close();
   view = null;
+  $('battle-log').replaceChildren();
+  followLatestLogEvents();
   $('setup').hidden = false;
   $('match').hidden = true;
   announceTeamError();
@@ -490,3 +522,4 @@ function reset() {
 }
 $('reset').addEventListener('click', reset);
 $('play-again').addEventListener('click', reset);
+window.gameUpdateCanApply = () => $('match').hidden && !$('start').disabled;

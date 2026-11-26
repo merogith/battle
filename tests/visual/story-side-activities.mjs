@@ -60,6 +60,7 @@ async function caseRun(name, viewport, run, reducedMotion = 'reduce') {
     await context.route('**/*', route => new URL(route.request().url()).origin === base.origin ? route.continue() : route.abort());
     const page = await context.newPage();
     page.setDefaultTimeout(9000);
+    page.setDefaultNavigationTimeout(30000);
     page.on('pageerror', error => results.findings.push({ name, message: error.message }));
     await page.goto(fixture.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#screen-story-city:visible').waitFor({ timeout: 25000 });
@@ -232,7 +233,9 @@ try {
     await scene.locator('[data-scene-cont]').waitFor();
     assert.equal(await numEggs(), before + 1);
     await record(page, 'daycare-free-egg');
-    await scene.locator('[data-scene-cont]').click();
+    await page.keyboard.press('Escape');
+    await scene.waitFor({ state: 'hidden' });
+    assert.equal(await numEggs(), before + 1, 'Closing a committed receipt keeps exactly one Egg');
 
     await page.evaluate(() => {
       window.StoryMode.state.pcBox.push({ id: 'daycare-pc-reserve', name: 'Rattata', build: window.makeBuild('Rattata') });
@@ -269,11 +272,19 @@ try {
     await scene.getByRole('button', { name: /take the egg and go/i }).click();
     await scene.locator('[data-scene-cont]').click();
 
+    const beforeHatch = await live(page, 'team', 'pcBox');
+    const eggIds = new Set([...beforeHatch.team, ...beforeHatch.pcBox].filter(slot => slot.isEgg).map(slot => slot.id));
     await checkpoint(page, 6, { badges: 6, pits: { fightClubUnlocked: false } }, true);
     const hatch = page.locator('#story-hatch-scene');
     await hatch.waitFor({ state: 'visible' });
     assert.match(await hatch.innerText(), /Your Eggs Hatched!/i);
     assert.equal(await hatch.locator('.story-egg-hatch-mon').count(), 2);
+    const afterHatch = await live(page, 'team', 'pcBox');
+    const destinations = [
+      ...afterHatch.team.filter(slot => eggIds.has(slot.id)).map(() => 'Party'),
+      ...afterHatch.pcBox.filter(slot => eggIds.has(slot.id)).map(() => 'PC'),
+    ];
+    assert.deepEqual((await hatch.locator('.story-daycare-hatchling > span').allTextContents()).sort(), destinations.sort());
     await record(page, 'daycare-two-eggs-hatched');
     await hatch.locator('[data-scene-cont]').click();
     await advance(page, daycare);
@@ -327,7 +338,18 @@ try {
     await picks.nth(2).click();
     await picker.locator('#pits-start-btn').click();
     const draft = page.locator('#story-pits-draft-overlay');
-    assert.equal(await draft.locator('[role="list"]').first().locator(':scope > *').count(), 6);
+    const house = draft.getByRole('list', { name: 'House team' });
+    const reserves = draft.getByRole('list', { name: 'House reserves' });
+    assert.equal(await house.getByRole('listitem').count(), 3);
+    assert.equal(await reserves.count(), 0);
+    await draft.getByText('House reserves', { exact: true }).click();
+    assert.equal(await reserves.getByRole('listitem').count(), 3);
+    await draft.getByText('House reserves', { exact: true }).click();
+    assert.ok(await house.locator('img').evaluateAll(images => images.length === 3 && images.every(image => {
+      const sprite = image.getBoundingClientRect();
+      const card = image.parentElement.getBoundingClientRect();
+      return sprite.width <= card.width && sprite.height <= 41;
+    })), 'house sprites stay within their cards');
     await record(page, 'fight-club-house-draft');
     await draft.locator('#pits-draft-go').click();
     const fight = page.locator('#command-menu [data-cmd="fight"]');
@@ -340,6 +362,7 @@ try {
     await fight.or(switches.first()).first().waitFor({ state: 'visible' });
     if (await switches.count()) await switches.first().click();
     await page.locator('#screen-battle').getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.locator('#modal-settings').getByRole('button', { name: 'Data', exact: true }).click();
     const dev = page.locator('#modal-settings details').filter({ hasText: 'Developer / Story tools' });
     if (await dev.getAttribute('open') === null) await dev.locator('summary').click();
     await dev.getByRole('button', { name: 'Dev: Auto-lose battle' }).click();

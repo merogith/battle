@@ -68,7 +68,13 @@ try {
     assert.ok(cue, `Expected ${move} to render the ${outcome} cue`);
     return cue;
   };
-  const ready = player => page.waitForFunction(expected => !state.isLocked && state.currentPlayer === expected, player);
+  const ready = async (player, handoff = true) => {
+    await page.waitForFunction(expected => !state.isLocked && state.currentPlayer === expected, player);
+    if (handoff) {
+      const playerScreen = page.getByRole('dialog', { name: `Player ${player}`, exact: true });
+      await playerScreen.getByRole('button', { name: 'Ready', exact: true }).tap();
+    }
+  };
   const start = async ({ speed, attacker, defender, skip = false }) => {
     await page.evaluate(async ({ speed, attacker, defender, skip }) => {
       Object.assign(window.motionProbe, { cues: [], skip });
@@ -81,7 +87,7 @@ try {
       await window.startBattle();
     }, { speed, attacker, defender, skip });
     await screen.waitFor();
-    await ready(1);
+    await ready(1, false);
   };
   const select = async name => {
     await fight.tap();

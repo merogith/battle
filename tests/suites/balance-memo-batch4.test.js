@@ -13,7 +13,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 function freshSide() {
   return {
@@ -124,6 +124,7 @@ test('Boss heal phase (memo #7): the 0.50-HP heal fires exactly once per battle'
 test('Featured stones: sellItem now sells mega_*/ultra_* ids (sell-everything policy)', async () => {
   const eng = await loadEngine();
   const W = eng.window;
+  installWritableStorage(W);
   const SM = W.StoryMode;
   assert.ok(SM && typeof SM.sellItem === 'function', 'StoryMode.sellItem missing');
   const sm = SM.state;

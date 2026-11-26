@@ -54,7 +54,7 @@ after(() => harness.teardown());
 test('the courier choice rolls back a failed write and persists a single reward on retry', () => {
     const scene = arriveAt(1);
     assert.match(scene.textContent, /The Unlit Signal/);
-    assert.match(scene.style.backgroundImage, /route1-unlit-signal\.webp/);
+    assert.match(scene.querySelector('.world-scene-plate').getAttribute('src'), /route1-unlit-signal\.webp/);
     const escort = scene.querySelector('[data-narr-choice-idx="1"]');
     assert.match(escort.textContent, /Poké Ball \+ Potion/);
     const cityRow = debug.sm.eventIndex;
@@ -80,7 +80,7 @@ test('the courier choice rolls back a failed write and persists a single reward 
     moveIntoTown();
     const town = window.document.getElementById('story-world-city');
     assert.match(town.querySelector('summary').textContent, /Warning lamp relit/);
-    assert.match(town.querySelector('[data-world-choice="help"]').textContent, /Iona said you waited until she was clear/);
+    assert.match(town.querySelector('[data-world-choice="help"]').textContent, /Iona’s dispatch.*you waited till she was clear/);
     assert.match(window._journalRenderHTML(), /Escort the courier/);
     story.enterCity();
     assert.equal(window.document.querySelector('.story-road-discovery'), null);

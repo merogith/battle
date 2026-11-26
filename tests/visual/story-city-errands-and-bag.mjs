@@ -102,7 +102,7 @@ try {
     assert.match(await offer.innerText(), /Talk to Mine Foreman/);
     assert.match(await scene.innerText(), /Mine Foreman/i);
     assert.match(await scene.innerText(), /Flintreach Town/i);
-    await button(/Not right now/, scene).click();
+    await button(/Keep walking/, scene).click();
     assert.equal(await scene.locator('[data-narr-body]').evaluate(node => node === document.activeElement), true);
     await button('Continue →', scene).click();
     await offer.waitFor();
@@ -139,7 +139,7 @@ try {
     await setCheckpoint(5);
     await reloadToStoryMenu();
     await continueRun();
-    await button(/Pick up the pouch/, scene).click();
+    await button(/Take it to the ranger station/, scene).click();
     assert.equal((await saved()).errands.recover_trail_pouch.recovered, true);
     await reloadToStoryMenu();
     await continueRun();
@@ -149,8 +149,53 @@ try {
     assert.equal((await saved()).balls.ultra, 1);
     assert.equal(await pouch.count(), 0);
 
+    // Seed only the acquired rewards. The real Bag owns every action below.
+    await page.evaluate(() => {
+        const run = window.StoryMode.state;
+        Object.assign(run.inventory, { expShareVoucher: 1, evResetCharm: 1, heartScale: 1 });
+        run.team[0].build.evs = { atk: 48 };
+        run.scenesShown['tutorial-first-move-tutor'] = true;
+        window.StoryMode.upgrades.save();
+        window.StoryMode.enterCity();
+    });
+    await button(/^Bag/).click();
+    await button('Training', bag).click();
+    assert.equal(await bag.locator('[data-bag-item="ultra"]').isVisible(), false);
+    await button('Use', bag.locator('[data-bag-item="expShareVoucher"]')).press('Enter');
+    await page.keyboard.press('Tab');
+    assert.match(await page.locator(':focus').getAttribute('aria-label'), /Eevee.*Lv\. 50 → 51/);
+    await page.keyboard.press('Enter');
+    assert.equal((await saved()).inventory.expShareVoucher, 0);
+    assert.equal((await saved()).team[0].build.expShareLevels, 1);
+    await button('Use', bag.locator('[data-bag-item="evResetCharm"]')).press('Enter');
+    await page.keyboard.press('Tab');
+    const confirm = page.locator('#modal-game-confirm');
+    await page.keyboard.press('Enter');
+    await button('Cancel', confirm).click();
+    assert.equal((await saved()).team[0].build.evs.atk, 48);
+    assert.equal((await saved()).inventory.evResetCharm, 1);
+    await button(/Eevee.*48\/510 EV/, bag).press('Enter');
+    await button('OK', confirm).click();
+    assert.equal((await saved()).team[0].build.evs.atk, 0);
+    assert.equal((await saved()).inventory.evResetCharm, undefined);
+
+    await button('Key items', bag).click();
+    await button('Visit Move Tutor with this voucher', bag).press('Enter');
+    const tutor = page.locator('#screen-story-tutor');
+    await tutor.waitFor();
+    for (const control of await page.locator('.story-tutorial-overlay .story-tutorial-continue:visible, #modal-game-alert:not(.hidden) button').all()) {
+        await control.click();
+    }
+    const voucherUnits = (await saved()).inventory.heartScale;
+    assert.ok(voucherUnits >= 1, 'visiting a service does not redeem the linked voucher');
+    await tutor.locator('.story-shop-back-btn').click();
+    await bag.waitFor();
+    assert.equal(await button('Key items', bag).getAttribute('aria-pressed'), 'true');
+    assert.equal(await button('Visit Move Tutor with this voucher', bag).evaluate(el => el === document.activeElement), true);
+    assert.equal((await saved()).inventory.heartScale, voucherUnits);
+
     assert.deepEqual(errors, []);
-    console.log('Passed city summary, keyboard vitamin use, errand decline, acceptance and recovery across reloads.');
+    console.log('Passed city summary, keyboard training items, voucher return, and errands across reloads.');
 } catch (error) {
     console.error((await page.locator('body').ariaSnapshot()).slice(0, 6500));
     throw error;

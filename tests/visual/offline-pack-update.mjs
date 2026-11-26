@@ -176,7 +176,7 @@ try {
         }
         throw new Error(`The browser did not activate release ${next.manifest.version}.`);
     }
-    async function checkFromOpenPage(next, path, button) {
+    async function checkFromOpenPage(next, path, button, blockedTab) {
         const releaseMarker = page.locator('meta[name="offline-test-release"]');
         assert.equal(await releaseMarker.count(), 0, 'The existing document is still open');
         pendingRelease = next;
@@ -192,11 +192,22 @@ try {
             };
         });
         try {
-            await Promise.all([
-                page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() && new URL(frame.url()).pathname === path,
-                    timeout: 60000 }),
-                button.click(),
-            ]);
+            const navigation = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() && new URL(frame.url()).pathname === path,
+                timeout: 60000 });
+            await button.click();
+            if (blockedTab) {
+                await page.waitForFunction(() => /Update ready/.test(document.getElementById('offline-dl-status')?.textContent));
+                const staged = await page.evaluate(async () => ({
+                    waiting: (await navigator.serviceWorker.getRegistration())?.waiting?.state,
+                    shells: (await caches.keys()).filter(key => key.endsWith('-shell')),
+                }));
+                assert.equal(staged.waiting, 'installed');
+                assert.ok(staged.shells.includes(`${candidate.manifest.version}-shell`));
+                assert.ok(staged.shells.includes(`${next.manifest.version}-shell`));
+                assert.equal(await releaseMarker.count(), 0, 'A busy tab keeps the old document open');
+                await blockedTab.close();
+            }
+            await navigation;
         } catch (error) {
             const status = await page.locator('#offline-dl-status, #title-update-status').allTextContents();
             throw new Error(`Checking from ${path} did not load ${next.manifest.version}. Status: ${status.join(' ')}. Worker requests: ${requests.get('sw.js') || 0}.`, { cause: error });
@@ -225,6 +236,21 @@ try {
     requests.clear();
     await context.setOffline(false);
     page = await createPage();
+    // A legacy document cannot attest to a safe boundary. Finish the browser's
+    // verified waiting install by closing it, which keeps storage in this context.
+    await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
+    const handoffDeadline = Date.now() + 45000;
+    while (Date.now() < handoffDeadline) {
+        const handoff = await page.evaluate(async version => {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const names = await caches.keys();
+            if (!names.includes(`${version}-shell`)) return null;
+            return registration?.waiting ? 'close' : registration?.active?.state === 'activated' && !registration.installing ? 'active' : null;
+        }, candidate.manifest.version).catch(() => null);
+        if (handoff === 'close') { await page.close(); page = await createPage(); break; }
+        if (handoff === 'active') break;
+        await new Promise(resolve => setTimeout(resolve, 150));
+    }
     await waitForRelease(candidate);
     if (!await page.evaluate(() => typeof window.checkForGameUpdate === 'function')) {
         // The historical page can receive its first controller after loading.
@@ -260,7 +286,10 @@ try {
     await check.click();
     await packReady(page);
     await check.click({ trial: true });
-    await checkFromOpenPage(settingsRelease, base.pathname, check);
+    const busyTab = await context.newPage();
+    await busyTab.goto(title.href, { waitUntil: 'load' });
+    await busyTab.evaluate(() => { window.gameUpdateCanApply = () => false; });
+    await checkFromOpenPage(settingsRelease, base.pathname, check, busyTab);
     await appReady(page);
     await updateOneClip(settingsRelease, await packAction(page));
     console.log('The open Settings panel found a new release, reopened after the shell reload, and installed one changed file.');

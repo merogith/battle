@@ -42,8 +42,12 @@ run_case() {
 screenshots="${BATTLE_CANDIDATE_SCREENSHOTS:-all}"
 story_args=(--seed="${STORY_SEED:-1}" --road-choice="${ROAD_CHOICE:-scout}" --chapters
   --screenshots="$screenshots" --out-dir="$output/campaign")
-if [[ "${OFFLINE_PACK:-false}" == true ]]; then story_args+=(--offline-pack); fi
-run_case campaign npm run playtest:player -- "${story_args[@]}"
+if [[ "${OFFLINE_PACK:-false}" == true ]]; then
+  story_args+=(--offline-pack --offline-profile="${OFFLINE_PACK_PROFILE:-compact}")
+  run_case campaign env BATTLE_TEST_RESUME_OFFLINE_TURN=1 npm run playtest:player -- "${story_args[@]}"
+else
+  run_case campaign npm run playtest:player -- "${story_args[@]}"
+fi
 if [[ "${BATTLE_CANDIDATE_MIXED:-false}" == true ]]; then
   run_case campaign-mixed npm run playtest:player -- --only=story --seed=77 \
     --road-choices=scout,help,pass,scout,help,pass,scout,help,pass --chapter-choice=act \
@@ -60,6 +64,7 @@ run_case competitive-motion node tests/visual/competitive-motion.mjs
 run_case battle-motion-catalog node tests/visual/battle-motion-catalog.mjs
 run_case native-room-mock env BATTLE_TEST_ROOM_PIVOT=1 node tests/visual/online-native-room.mjs
 run_case native-room-reconnect env BATTLE_TEST_ROOM_RECONNECT=1 node tests/visual/online-native-room.mjs
+run_case native-room-setup-timeout env BATTLE_TEST_ROOM_SETUP_TIMEOUT=1 node tests/visual/online-native-room.mjs
 
 for visual in deferred-startup classic-native-pivot story-retry-save story-exact-resume keyboard-navigation story-town-tools story-city-errands-and-bag \
   story-starter-parity story-cinematic-hierarchy story-boss-phases story-audio story-side-activities \

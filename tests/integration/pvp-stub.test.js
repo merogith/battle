@@ -291,14 +291,16 @@ test('an online draft card can retry the same pick after an RPC rejection', asyn
   const app = readFileSync('battle.html', 'utf8');
   const select = app.indexOf('async function selectDraft(draftItem)');
   const selectCore = app.indexOf('function selectDraftCore(draftItem)', select);
-  const card = app.indexOf('let _drafted = false;');
-  const bind = app.indexOf('btn.onclick = _pickThis;', card);
-  assert.ok(select >= 0 && selectCore > select && card >= 0 && bind > card);
+  const picks = app.indexOf('currentPool.forEach(draftItem => {');
+  const card = app.indexOf('let pending = false;', picks);
+  const bind = app.indexOf('grid.appendChild(compactDraftCard(draftItem, { pick }));', card);
+  assert.ok(select >= 0 && selectCore > select && picks >= 0 && card > picks && bind > card);
   const makeClick = new Function('window', 'state', 'settings', 'isOnlineParallelDraft', 'selectDraftCore', 'draftItem',
-    app.slice(select, selectCore) + app.slice(card, bind) + 'return _pickThis;');
+    app.slice(select, selectCore) + app.slice(card, bind) + 'return pick;');
   const click = makeClick(window, state, { partySize: 2 }, () => true, () => {}, starter);
-  await click();
+  await Promise.all([click(), click()]);
   await flushRoomQueue();
+  assert.equal(attempts, 1, 'an in-flight pick blocks duplicate activation');
   assert.equal(online.isDraftWritePending(), false);
   assert.deepEqual(state.p1Draft, []);
   await click();

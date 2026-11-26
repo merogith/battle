@@ -51,6 +51,8 @@ try {
   await playerSprite.waitFor();
   await foeSprite.waitFor();
   const fight = screen.locator('#command-menu [data-cmd="fight"]');
+  const readyPlayer = player => page.getByRole('dialog', { name: `Player ${player}`, exact: true })
+    .getByRole('button', { name: 'Ready', exact: true }).tap();
   const chooseMove = async name => {
     await fight.tap();
     await screen.locator('#move-menu button:enabled').filter({ hasText: name }).first().tap();
@@ -66,8 +68,9 @@ try {
   }));
   const starting = await snapshot();
   await chooseMove('U-turn');
-  await page.waitForFunction(() => state.currentPlayer === 2);
+  await readyPlayer(2);
   await chooseMove('Seismic Toss');
+  await readyPlayer(1);
 
   try {
     await party.waitFor();
@@ -78,7 +81,7 @@ try {
     }));
     throw new Error(`U-turn did not open replacement. ${JSON.stringify(stateAtFailure)} ${errors.join(' ')}`, { cause: error });
   }
-  assert.match(await party.locator('#party-context-text').innerText(), /switching move|finish U-turn/i);
+  assert.match(await party.locator('#party-context-text').innerText(), /finish the move/i);
   assert.equal(await party.getByRole('button', { name: 'Cancel', exact: true }).isDisabled(), true);
   const during = await snapshot();
   assert.equal(during.active, 'Scizor');
@@ -163,7 +166,7 @@ try {
   const partySlot = name => party.locator('.party-slot').filter({ has: page.getByRole('img', { name, exact: true }) });
   await partySlot('Raichu').getByRole('button', { name: 'Switch' }).tap();
   await party.waitFor();
-  assert.match(await party.locator('#party-context-text').innerText(), /fainted.*replacement for free/i);
+  assert.match(await party.locator('#party-context-text').innerText(), /send in a replacement/i);
   assert.equal(await party.getByRole('button', { name: 'Cancel', exact: true }).isDisabled(), true);
   assert.equal(await party.locator('.active-mon').count(), 0);
   assert.equal(await partySlot('Raichu').getByRole('button', { name: 'Switch' }).isDisabled(), true);
@@ -196,10 +199,11 @@ try {
   await fight.tap();
   await moves.getByRole('button', { name: 'Use Terastallize to Ghost type', exact: true }).tap();
   await moves.locator('.battle-btn-move:enabled').filter({ hasText: 'Charge' }).tap();
-  await page.waitForFunction(() => state.currentPlayer === 2);
+  await readyPlayer(2);
   await fight.tap();
   await moves.getByRole('button', { name: 'Use Gigantamax', exact: true }).tap();
   await moves.locator('.battle-btn-move:enabled').filter({ hasText: 'G-Max Replenish' }).tap();
+  await readyPlayer(1);
   await page.waitForFunction(() => state.turnNumber === 1 && !state.isLocked && state.currentPlayer === 1);
   const afterForms = await page.evaluate(() => ({
     playerTera: state.pActive.teraActivated, foeMax: state.fActive.dynamaxed,
@@ -224,17 +228,19 @@ try {
   });
   await screen.waitFor();
   await chooseMove('Final Gambit');
-  await page.waitForFunction(() => state.currentPlayer === 2);
+  await readyPlayer(2);
   await chooseMove('Splash');
+  await readyPlayer(1);
   await party.waitFor();
   assert.deepEqual(await page.evaluate(() => [state.currentPlayer, state.pActive.fainted, state.fActive.fainted]), [1, true, true]);
   assert.equal(await playerSprite.isVisible(), false);
   assert.equal(await foeSprite.isVisible(), false);
   const availableReplacement = party.locator('.party-slot').getByRole('button', { name: 'Switch' }).filter({ visible: true });
   await party.locator('.party-slot').filter({ hasText: 'Pikachu' }).getByRole('button', { name: 'Switch' }).tap();
-  await page.waitForFunction(() => state.currentPlayer === 2);
+  await readyPlayer(2);
   await party.waitFor();
   await availableReplacement.and(party.locator('button:enabled')).tap();
+  await readyPlayer(1);
   await party.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => state.currentPlayer === 1 && state.pActive.name === 'Pikachu' && !state.isLocked);
   const afterDoubleFaint = await page.evaluate(() => ({
@@ -271,8 +277,9 @@ try {
   await fight.tap();
   assert.match(await moves.locator('.battle-btn-move').filter({ hasText: 'Low Kick' }).getAttribute('aria-label'), /super effective/);
   await moves.locator('.battle-btn-move:enabled').filter({ hasText: 'Thunderbolt' }).tap();
-  await page.waitForFunction(() => state.currentPlayer === 2);
+  await readyPlayer(2);
   await chooseMove('Shadow Ball');
+  await readyPlayer(1);
   await page.waitForFunction(() => state.turnNumber === 1 && !state.isLocked);
   assert.equal(await foe.innerText(), 'Zoroark-Hisui');
   await foeSprite.waitFor();

@@ -25,12 +25,19 @@ const E = window.__engine;
 const SM = window.StoryMode;
 const sm = SM.state;
 const doc = window.document;
+// The real exchange now checks persistence before granting the egg. This
+// file-origin harness needs writable storage so it exercises the commit path.
+const storage = new Map();
+Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+  getItem: key => storage.get(key) ?? null,
+  setItem: (key, value) => storage.set(key, String(value)),
+  removeItem: key => storage.delete(key),
+} });
 
 window.confirm = () => true;
 window.alert = () => {};
 window.showGameAlert = () => {};
 window.showToast = () => {};
-window.save = window.save || (() => {});
 
 const baseStats = E.baseStats;
 const isExcluded = window.__rivalTest.isStoryRollExcluded; // harness-only seam (inner StoryMode scope)

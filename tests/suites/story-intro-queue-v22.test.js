@@ -109,6 +109,7 @@ function tutorialFixture(t) {
     const previousStorage = Object.getOwnPropertyDescriptor(W, 'localStorage');
     const storage = new Map();
     const writes = [];
+    let failNextSave = false;
     ST.sm = {
         ...previousRun,
         active: true,
@@ -128,6 +129,10 @@ function tutorialFixture(t) {
         value: {
             getItem: key => storage.get(key) ?? null,
             setItem: (key, value) => {
+                if (key === 'pbs_story_save' && failNextSave) {
+                    failNextSave = false;
+                    throw new Error('Save unavailable');
+                }
                 storage.set(key, String(value));
                 if (key === 'pbs_story_save') writes.push(JSON.parse(value));
             },
@@ -139,7 +144,7 @@ function tutorialFixture(t) {
         W.showGameAlert = previousAlert;
         Object.defineProperty(W, 'localStorage', previousStorage);
     });
-    return { storage, writes, play: W.StoryMode.playTutorial };
+    return { storage, writes, play: W.StoryMode.playTutorial, rejectNextSave: () => { failNextSave = true; } };
 }
 
 test('the Mart remains eligible until Continue and saves its five-ball gift once', t => {
@@ -201,6 +206,27 @@ test('Center, Fan Club, Daycare, and Hidden Power persist their reward with comp
     }
 });
 
+test('Daycare can retry the same Egg after an interrupted welcome save', t => {
+    const { writes, play, rejectNextSave } = tutorialFixture(t);
+    const key = 'tutorial-first-daycare';
+    const rng = ST.sm._strngState;
+    rejectNextSave();
+    assert.equal(play('firstDaycare'), true);
+    W.document.querySelector('.story-tutorial-continue').click();
+    assert.equal(writes.length, 0);
+    assert.equal(ST.sm.scenesShown[key], undefined);
+    assert.equal(ST.sm.daycare.freeEggClaimed, undefined);
+    assert.equal(ST.sm.team.length + ST.sm.pcBox.length, 0);
+    assert.equal(ST.sm._strngState, rng);
+    assert.equal(W.document.getElementById('story-daycare-scene'), null);
+
+    assert.equal(play('firstDaycare'), true);
+    W.document.querySelector('.story-tutorial-continue').click();
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0].scenesShown[key], true);
+    assert.equal([...writes[0].team, ...writes[0].pcBox].filter(slot => slot.isEgg).length, 1);
+});
+
 test('regression: enterShop no longer contains inline 5-ball toast block', async () => {
     // Source-level check: the old inline `sm.balls.poke = ... + 5` + toast was
     // removed; the welcome gift now lives in the firstMart tutorial scene.
@@ -243,7 +269,7 @@ test('regression: firstMart tutorial scene grants 5 balls in onContinue (source 
         block.includes("_storyGrantBundle({ pokeBall: 5 })"),
         'firstMart onContinue should grant 5 Poké Balls'
     );
-    assert.match(block, /five Poké Balls, welcome gift/);
+    assert.match(block, /five Poké Balls/);
     assert.doesNotMatch(block, /showGameAlert/, 'the welcome itself explains the gift');
     assert.equal(
         block.includes("pokeBall: 1"),

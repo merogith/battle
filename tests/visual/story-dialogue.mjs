@@ -91,7 +91,17 @@ try {
     const gear = page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first();
     const dialogueVolume = settings.getByRole('slider', { name: 'Dialogue volume' });
     const closeSettings = () => settings.getByRole('button', { name: 'Close settings' }).tap();
-    const toggle = id => settings.locator(`label[for="${id}"]`).tap();
+    const openAudio = async () => {
+        await gear.tap();
+        await settings.getByRole('button', { name: 'Audio', exact: true }).tap();
+    };
+    const toggle = async id => {
+        const control = settings.locator(`label[for="${id}"]`);
+        if (id === 'sw-generative-music' && !await control.isVisible()) {
+            await settings.getByText('Soundtrack options', { exact: true }).tap();
+        }
+        await control.tap();
+    };
     const start = async () => {
         await page.goto(url.href, { waitUntil: 'domcontentloaded' });
         await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
@@ -126,7 +136,7 @@ try {
         await page.waitForTimeout(950);
         assert.equal(requests.length, 0, 'A blocked audio context does not fetch speech');
     }
-    await gear.tap();
+    await openAudio();
     await dialogueVolume.fill('62');
     await closeSettings();
     await page.waitForFunction(() => window.dialogueProbe.music.some(audio => audio.src.includes('/music/background/')
@@ -165,7 +175,7 @@ try {
     await dialog.getByRole('button', { name: 'Close', exact: true }).tap();
     assert.deepEqual(requests, [assetPath(relayLine.url)]);
 
-    await gear.tap();
+    await openAudio();
     await toggle('sw-dialogue');
     await closeSettings();
     await enterVoicedPanel();
@@ -174,7 +184,7 @@ try {
     assert.equal(requests.length, 1, 'Mute still shows the full story caption and fetches no clip');
 
     await start();
-    await gear.tap();
+    await openAudio();
     assert.equal(await dialogueVolume.inputValue(), '62');
     assert.equal(await settings.locator('#sw-dialogue').isChecked(), false);
     await toggle('sw-dialogue');
@@ -245,7 +255,7 @@ try {
 
     await apiVoice('relay-reserve', relayLine.caption);
     await page.waitForFunction(count => window.dialogueProbe.played.length === count, beforeReentry.plays + 3);
-    await gear.tap();
+    await openAudio();
     await toggle('sw-dialogue');
     await page.waitForFunction(() => window.dialogueProbe.stopped.includes(window.dialogueProbe.played.at(-1))
         && window.AudioSystem.getMusicOutputVolume() === 0.45);

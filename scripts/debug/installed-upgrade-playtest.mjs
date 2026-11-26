@@ -149,15 +149,22 @@ async function confirmPackageDocument(page, { file, version, replaces, navigatio
   assert.fail(`The activated worker did not serve the verified ${version} battle page`);
 }
 
-async function downloaded(page) {
+async function downloaded(page, manifest) {
   const storage = await page.evaluate(async () => {
     const cache = await caches.open('battle-assets');
     const files = (await cache.match('__OFFLINE_MANIFEST__'));
     const metadata = files ? await files.json() : null;
     const settings = JSON.parse(localStorage.getItem('pbs_settings'));
-    return { files: metadata?.files.length || 0, cached: (await cache.keys()).length, settings: settings.offlineDownload };
+    return { files: metadata?.files.length || 0, cached: (await cache.keys()).length,
+      profile: metadata?.profile ?? 'full', digest: metadata?.digest, settings: settings.offlineDownload };
   });
+  assert.ok(['compact', 'full'].includes(storage.profile));
+  assert.equal(storage.settings.profile ?? 'full', storage.profile);
+  const digest = storage.profile === 'compact' ? `${manifest.digest}:compact` : manifest.digest;
+  assert.equal(storage.digest, digest);
+  assert.equal(storage.settings.digest, digest);
   assert.equal(storage.settings.completed, true);
+  assert.ok(storage.files > 0 && storage.files <= manifest.fileCount);
   assert.ok(storage.cached >= storage.files);
   return storage;
 }
@@ -270,9 +277,7 @@ try {
   phase = 'baseline-download';
   console.log('Downloading earlier release', older.version, older.fileCount, older.totalBytes);
   report.originalDownload = await download(page);
-  report.originalStorage = await downloaded(page);
-  assert.equal(report.originalStorage.settings.digest, older.digest);
-  assert.ok(report.originalStorage.files > 0 && report.originalStorage.files <= older.fileCount);
+  report.originalStorage = await downloaded(page, older);
   await snapshot(page, 'baseline-installed');
 
   phase = 'baseline-story';
@@ -288,6 +293,26 @@ try {
     const registration = await navigator.serviceWorker.getRegistration();
     registration.update().catch(console.warn);
   });
+  const handoffDeadline = Date.now() + 45000;
+  while (Date.now() < handoffDeadline) {
+    const handoff = await page.evaluate(async version => {
+      const names = await caches.keys();
+      if (!names.includes(version + '-shell')) return null;
+      const registration = await navigator.serviceWorker.getRegistration();
+      return registration?.waiting ? 'close' : registration?.active?.state === 'activated' && !registration.installing ? 'active' : null;
+    }, newer.version).catch(() => null);
+    if (handoff === 'close') {
+      // The prior build has no safe-handoff protocol. Close its last controlled
+      // page so activation happens naturally with the saved run still on device.
+      await page.close();
+      page = await context.newPage();
+      page.on('pageerror', error => report.errors.push(error.message));
+      await page.goto(origin + '/battle.html', { waitUntil: 'domcontentloaded' });
+      break;
+    }
+    if (handoff === 'active') break;
+    await delay(150);
+  }
   await install(page, newer.version, { replaces: older.version });
   report.candidateNavigations = [];
   report.activatedBattleHash = await confirmPackageDocument(page, {
@@ -301,8 +326,8 @@ try {
   phase = 'candidate-download';
   console.log('Updating installed media', newer.version);
   report.deltaDownload = await download(page);
-  report.updatedStorage = await downloaded(page);
-  assert.equal(report.updatedStorage.settings.digest, newer.digest);
+  report.updatedStorage = await downloaded(page, newer);
+  assert.equal(report.updatedStorage.profile, report.originalStorage.profile);
   report.unchangedOptionalTransfers = transfers.filter(entry => entry.phase === phase &&
     current.has(entry.path) && previous.get(entry.path)?.h === current.get(entry.path)?.h).map(entry => entry.path);
   assert.deepEqual(report.unchangedOptionalTransfers, []);

@@ -49,6 +49,17 @@ function makeFetchStub() {
   };
 }
 
+// The harness uses a file URL. Tests that exercise a successful save need
+// writable storage because browsers disallow Web Storage on opaque origins.
+export function installWritableStorage(window) {
+  const values = new Map();
+  Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: key => values.delete(key),
+  } });
+}
+
 export async function loadEngine() {
   if (_cachedEngine) return _cachedEngine;
 

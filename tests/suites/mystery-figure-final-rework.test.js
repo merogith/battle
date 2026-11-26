@@ -124,17 +124,22 @@ test('main.mfSpare scene: branches on the first-encounter result + default, mask
         ['main.mfFirst.result=declined', 'main.mfFirst.result=lost', 'main.mfFirst.result=won'],
         'all three first-encounter results branch');
     assert.ok(branchAct.branches.some(b => !b.when), 'default branch present');
-    const allText = JSON.stringify(scene.acts);
-    assert.ok(/do not remove the cap/i.test(allText), 'the mask stays on in the spare scene');
+    const closure = scene.acts.find(act => act.phase === 'outro');
+    assert.match(closure.lines.join(' '), /pull it down against the draft/i, 'the cap stays on in the spare scene');
+    assert.ok(scene.acts.every(act => act.gallery !== 'face'), 'accepting the loss has no face reveal');
 });
 
-test('mfReveal gains the multiverse-sorting act with per-result branches', () => {
+test('mfReveal shows the trainer and the divergent roads with per-result branches', () => {
     const scene = ST.STORY_SCENES['main.mfReveal'];
-    const branchActs = (scene.acts || []).filter(a => Array.isArray(a.branches));
-    assert.ok(branchActs.length >= 1, 'reveal has a branch act');
-    const text = JSON.stringify(branchActs);
-    assert.ok(/more Professor Oaks than there are stars/.test(text), 'multiverse framing present');
-    assert.ok(/sort/i.test(text), 'sorting/elimination framing present');
+    const reveal = scene.acts.find(act => act.gallery === 'face');
+    assert.match(reveal.lines.join(' '), /the face under it is yours/i);
+    const branchAct = scene.acts.find(act => Array.isArray(act.branches));
+    const results = [...branchAct.branches].filter(branch => branch.when?.key === 'main.mfFirst.result')
+        .map(branch => branch.when.eq).sort();
+    assert.deepEqual(results, ['declined', 'lost', 'won']);
+    assert.ok(branchAct.branches.some(branch => !branch.when), 'default branch present');
+    const turn = scene.acts.find(act => act.phase === 'turn');
+    assert.match(turn.lines.join(' '), /goes into another world/i, 'starting again opens a different road');
 });
 
 test('post-HoF Oak epilogue carries a coda per final result', () => {

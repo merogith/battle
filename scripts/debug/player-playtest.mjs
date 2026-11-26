@@ -26,6 +26,7 @@ const { values } = parseArgs({ options: {
   'milestone-turns': { type: 'string', default: '0' },
   'fight-style': { type: 'string', default: 'first' },
   'offline-pack': { type: 'boolean' },
+  'offline-profile': { type: 'string' },
   chapters: { type: 'boolean' },
 } });
 const out = resolve(values['out-dir'] || join(root, 'agent-state/playthrough',
@@ -41,7 +42,9 @@ const suites = [
       ...(values['no-items'] ? ['--no-items=true'] : []),
       ...(values['road-choices'] ? [`--road-choices=${values['road-choices']}`] : []),
       `--chapter-choice=${values['chapter-choice']}`,
-      ...(values['offline-pack'] ? ['--offline-pack=true'] : []), ...(values.chapters ? ['--chapters=true'] : [])] },
+      ...(values['offline-pack'] ? ['--offline-pack=true'] : []),
+      ...(values['offline-profile'] ? [`--offline-profile=${values['offline-profile']}`] : []),
+      ...(values.chapters ? ['--chapters=true'] : [])] },
   { id: 'facilities', label: 'City services and training', script: 'player-facilities-playtest.mjs' },
   { id: 'postgame', label: 'Optional routes and postgame', script: 'player-postgame-playtest.mjs' },
   { id: 'casino', label: 'Game Corner', script: 'player-casino-playtest.mjs' },
@@ -166,7 +169,6 @@ const inventory = Array.from(parsed.window.document.querySelectorAll('.screen[id
   label: node.getAttribute('aria-label') || node.querySelector('h1,h2')?.textContent.trim() || node.id,
   kind: node.classList.contains('screen') ? 'screen' : 'dialog',
   developer: node.id === 'screen-story-tester',
-  note: node.id === 'modal-story-artifact' ? 'No player-facing opener found. Current relic details are inline.' : null,
   evidence: locations.get(node.id) || [],
 }));
 parsed.window.close();
@@ -174,6 +176,7 @@ const counts = (items, predicate) => items.filter(predicate).length;
 const sections = [
   ['Player screens', inventory.filter(item => item.kind === 'screen' && !item.developer)],
   ['Dialogs', inventory.filter(item => item.kind === 'dialog')],
+  ['Developer tools', inventory.filter(item => item.developer)],
 ];
 const total = results.reduce((sum, result) => sum + result.trace.length, 0);
 const dynamic = Array.from(locations.keys()).filter(id =>
@@ -189,7 +192,7 @@ const inventoryHtml = sections.map(([label, items]) => `
   <h3>${label} <span>${counts(items, item => item.evidence.length)}/${items.length}</span></h3>
   <table><thead><tr><th>Surface</th><th>Evidence</th></tr></thead><tbody>
   ${items.map(item => `<tr><td>${escape(item.label)} <small>${escape(item.id)}</small></td>
-    <td>${item.evidence.map(evidenceLink).join(', ') || 'Unobserved'}${item.note ? `<small>${escape(item.note)}</small>` : ''}</td></tr>`).join('')}
+    <td>${item.evidence.map(evidenceLink).join(', ') || 'Unobserved'}</td></tr>`).join('')}
   </tbody></table>`).join('');
 const body = results.map(result => `
   <section id="${result.id}"><h2>${escape(result.label)} <span>${escape(result.status)}</span></h2>

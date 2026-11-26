@@ -244,10 +244,12 @@ try {
     assert.equal((await run('frontier')).frontier.currentStreak, 1);
     assert.ok(await frontier.getByRole('button', { name: 'Begin Round 2', exact: true }).isVisible());
     await capture('ladder-round-cleared');
-    await frontier.getByRole('button', { name: /Surrender/ }).click();
+    await frontier.getByText('Round 2 rules', { exact: true }).click();
+    const endLadder = frontier.getByRole('button', { name: 'End run and record streak' });
+    await endLadder.click();
     await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal((await run('frontier')).frontier.currentStreak, 1);
-    await frontier.getByRole('button', { name: /Surrender/ }).click();
+    await endLadder.click();
     await confirm.getByRole('button', { name: 'OK', exact: true }).click();
     await frontier.getByRole('heading', { name: 'Streak banked' }).waitFor();
     assert.match(await frontier.getByRole('status').filter({ hasText: 'Streak banked' }).innerText(), /New personal best/);
@@ -275,7 +277,7 @@ try {
         await battle.waitFor();
         await fight.waitFor();
     }
-    await enterLeagueMatch(/League Run \(E1/);
+    await enterLeagueMatch(/^League Run/);
     assert.equal(await page.evaluate(() => window.__devAutoWinBattle()), true);
     await crucible.getByRole('heading', { name: 'League Run · 1 of 5 cleared' }).waitFor();
     await capture('league-intermission');

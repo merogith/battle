@@ -110,6 +110,7 @@ async function chooseStarter() {
 async function newJourney(name) {
     await boot();
     await page.locator('.menu-btn-quickplay--story').tap();
+    await page.locator('#screen-story-menu').waitFor({ timeout: 45000 });
     await page.locator('.story-menu-btn--new').tap();
     await page.locator('#story-create-name').fill(name);
     const input = page.locator('#story-create-seed');
@@ -177,8 +178,8 @@ async function openScene(id) {
     await waitForCityControl(card(id));
     const chapter = catalog.get(id);
     if (chapter.hideSpeakerOnInvite) {
-        const eyebrow = card(id).locator('..').locator('.story-chapter-eyebrow');
-        assert.ok(!(await eyebrow.innerText()).includes(chapter.speaker.name));
+        const invitation = card(id).locator('..');
+        assert.ok(!(await invitation.innerText()).includes(chapter.speaker.name));
     }
     await card(id).tap();
     await modal().waitFor();
@@ -233,7 +234,7 @@ async function pick(id, answer, { secret, echo, echoes = [] } = {}) {
     }
     if (option.clue) {
         const evidence = modal().locator('.story-chapter-evidence');
-        await evidence.getByText('Filed in the Field Archive', { exact: true }).waitFor();
+        await evidence.getByText('Clue saved', { exact: true }).waitFor();
         await evidence.getByText(option.clue, { exact: true }).waitFor();
     }
     assert.equal((await progress()).choices[chosen(id)], answer);
@@ -245,7 +246,7 @@ async function pick(id, answer, { secret, echo, echoes = [] } = {}) {
     if (secret) {
         await control('secret').tap();
         await modal().getByText(scene.secret.text, { exact: true }).waitFor();
-        await modal().locator('[data-chapter-phase="discovery"]').getByText('Field note', { exact: true }).waitFor();
+        await modal().getByRole('heading', { name: scene.secret.title, exact: true }).waitFor();
         assert.equal((await progress()).choices[discovery(id)], true);
         await capture(id + '-secret');
     }
@@ -284,6 +285,7 @@ async function archive() {
 
 async function recovery() {
     await page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first().tap();
+    await page.locator('#modal-settings').getByRole('button', { name: 'Data', exact: true }).tap();
     await page.locator('#modal-settings').getByRole('button', { name: 'Save & recovery', exact: true }).tap();
     const panel = page.locator('.upgrade-dialog');
     await panel.getByRole('heading', { name: 'Save & recovery', exact: true }).waitFor();
@@ -317,6 +319,13 @@ try {
     await modal().getByText(catalog.get('chapter-1').choices[0].reply, { exact: true }).waitFor();
     assert.equal(await control('pick').count(), 0);
     await capture('chapter-1-saved-reply');
+    const beforeReadAgain = await progress();
+    await control('read').tap();
+    checkPanels('chapter-1', await readPanels());
+    assert.equal(await control('pick').count(), 0, 'Reading a committed scene cannot change its answer');
+    await control('done').tap();
+    assert.equal(await control('read').evaluate(button => button === document.activeElement), true);
+    assert.deepEqual(await progress(), beforeReadAgain);
     await control('done').tap();
     await modal().waitFor({ state: 'hidden' });
 
@@ -406,6 +415,32 @@ try {
     assert.ok(replay.has(echoes.find(echo => echo.choice === 'listen').text), 'Replay must show the recorded run’s context');
     assert.ok(!replay.has(echoes.find(echo => echo.choice === 'act').text), 'An active run must not overwrite the recorded context');
     await control('done').tap();
+    await control('close').tap();
+    await modal().waitFor({ state: 'hidden' });
+    await page.evaluate(({ runId, archive }) => {
+        const meta = JSON.parse(localStorage.getItem('pbs_story_meta'));
+        // One recorded answer can occur in different journeys with different evidence.
+        // Seed only the missing archive variant without replaying the active campaign.
+        const run = archive.runs[runId];
+        meta.adventureArchive.runs['run-test-replay-with-echo'] = { ...run, choices: { ...run.choices, 'chapter-2': 'act' } };
+        localStorage.setItem('pbs_story_meta', JSON.stringify(meta));
+    }, { runId: second.id, archive: final.archive });
+    const beforeAlternateReplay = await progress();
+    await archive();
+    await firstRunSecondChapter.tap();
+    const journeys = modal().locator('[data-adventure-replay-journey="chapter-2"]');
+    assert.equal(await journeys.count(), 2, 'Equivalent answers with distinct earlier evidence have different read-only journeys');
+    await journeys.filter({ hasText: catalog.get('chapter-1').choices.find(option => option.id === 'act').label }).tap();
+    const alternate = await readPanels();
+    assert.ok(alternate.has(echoes.find(echo => echo.choice === 'act').text));
+    assert.ok(!alternate.has(echoes.find(echo => echo.choice === 'listen').text));
+    await control('done').tap();
+    assert.deepEqual(await progress(), beforeAlternateReplay, 'Archive branch selection changed a recorded journey');
+    await page.evaluate(() => {
+        const meta = JSON.parse(localStorage.getItem('pbs_story_meta'));
+        delete meta.adventureArchive.runs['run-test-replay-with-echo'];
+        localStorage.setItem('pbs_story_meta', JSON.stringify(meta));
+    });
     const afterword = modal().locator('[data-adventure-reward]');
     await afterword.tap();
     await modal().getByRole('heading', { name: 'The Keeper’s Spare Copy', exact: true }).waitFor();

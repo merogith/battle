@@ -57,7 +57,7 @@ test('City 0 start: professor objective agrees with the professor-gated route', 
 });
 
 // ── Pre-gym state: gates clear → gym objective ↔ enabled gym button ──────────
-test('gym city with gates clear: objective and gym button both go to the gym', () => {
+test('gym city with gates clear: the objective is the only visible way into the gym', () => {
   const g = gymCityRow();
   assert.ok(g, 'timeline has a gym city');
   const cityIdx = (() => { let n = 0; for (const { r, i } of cityRows()) { if (i === g.i) break; n++; } return n; })();
@@ -73,6 +73,10 @@ test('gym city with gates clear: objective and gym button both go to the gym', (
   assert.match(obj.click, /proceedToNextBattle/, 'objective click matches the gym button');
   assert.match(grid, /Enter the Gym/, 'gym button present');
   assert.ok(!/Enter the Gym <span[^>]*>\(Visit/.test(grid), 'gym button is NOT gated when the objective says to enter');
+  const quest = W.document.getElementById('town-services-quest').closest('section');
+  assert.equal(quest.querySelector('[data-action-key="gym"]').hidden, true, 'the duplicate gym button stays out of the menu');
+  assert.equal(quest.querySelector('button:disabled').hidden, true, 'the locked route stays out of the menu');
+  assert.equal(quest.hidden, true, 'a group with no independent choices stays out of the menu');
 });
 
 // ── Swap mode: full party + unused professor ─────────────────────────────────

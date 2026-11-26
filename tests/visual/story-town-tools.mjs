@@ -308,7 +308,7 @@ try {
       assert.match(await preset.innerText(), /Recommended/);
       assert.deepEqual(await page.evaluate(() => window._evTrainerRecPreset('Garchomp').evs), evs.evs);
       await preset.getByRole('button', { name: /^Buy 508 EVs/ }).waitFor();
-      const comparison = page.getByText('Current EVs and other training spreads', { exact: true });
+      const comparison = page.getByText('Compare other training plans', { exact: true });
       assert.equal(await comparison.evaluate(el => el.parentElement.open), false);
 
       await page.evaluate(() => window.StoryMode.enterMentor());
@@ -347,7 +347,7 @@ try {
       assert.ok(await arrival.locator('.story-city-arrival-title').evaluate(el =>
         el.getBoundingClientRect().top >= el.parentElement.getBoundingClientRect().top - 1), 'the town name fits when road notes are closed');
       if (out) await page.screenshot({ path: join(out, `arrival-${width}.png`) });
-      const enter = arrival.getByRole('button', { name: /Enter the City/ });
+      const enter = arrival.getByRole('button', { name: 'Enter Flintreach Town', exact: true });
       await enter.press('Tab');
       assert.ok(await arrival.evaluate(el => el.contains(document.activeElement)), 'focus stays in arrival');
       await enter.click();

@@ -109,4 +109,5 @@ test('the city places the objective ahead of dialogue and groups secondary contr
   assert.equal(city.querySelector('.story-hud-more summary').textContent, 'More');
   assert.ok(city.querySelector('.story-hud-more .story-hud-abandon'));
   assert.ok(city.querySelector('.story-hud-actions > .story-hud-savequit'));
+  assert.ok(city.querySelector('.story-hud-actions > button[aria-label="Journey Atlas"]'));
 });

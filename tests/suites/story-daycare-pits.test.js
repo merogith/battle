@@ -208,6 +208,32 @@ test('a ready egg waits when storage is full and hatches when a spot opens', asy
   assert.ok(!egg.isEgg);
 });
 
+test('a blocked Daycare save keeps the original partner and cannot hatch an uncommitted Egg', async () => {
+  setupStory();
+  const partner = sm.team[0];
+  const egg = SM._makeEggSlot('Pikachu', 0);
+  sm.pcBox.push(egg);
+  const confirm = window.showGameConfirm;
+  window.showGameConfirm = async () => true;
+  window.__storyExternalSave = true;
+  try {
+    SM.enterDaycare();
+    $('story-daycare-overlay').querySelector('[data-daycare-drop]:enabled').click();
+    await Promise.resolve();
+    assert.equal(sm.team[0], partner);
+    assert.equal(sm.daycare.eggEventDone, false);
+    assert.equal(sm.team.some(slot => slot.isEgg), false);
+
+    assert.equal((await SM._hatchEligibleEggs()).length, 0);
+    assert.equal(sm.pcBox[0], egg);
+    assert.equal(egg.isEgg, true);
+    assert.equal(egg.build, undefined);
+  } finally {
+    window.__storyExternalSave = false;
+    window.showGameConfirm = confirm;
+  }
+});
+
 test('a City 8 egg can hatch at the League', async () => {
   setupStory();
   const timeline = window.__storyTest.STORY_EVENTS_RAW;
@@ -257,10 +283,11 @@ test('Fight Club story win: 5-round 3v3 sweep grants +10 all stats, gold, NO rel
   assert.ok(start && !start.disabled, 'start enabled after 3 picks');
   start.click();
   assert.equal(sm.pits._enemyRoster.length, 5, 'rolled a 5-round gauntlet');
-  // Round 1 opens with the draft reveal: the house's six + its counter-picked three.
+  // The active matchup is visible and the rest of the six remain available on request.
   const draft = $('story-pits-draft-overlay');
   assert.ok(draft, 'round-1 draft reveal renders');
-  assert.equal(draft.querySelectorAll('[role="list"]')[0].children.length, 6, 'house fields six');
+  assert.equal(draft.querySelector('[aria-label="House team"]').children.length, 3, 'house sends three');
+  assert.equal(draft.querySelector('[aria-label="House reserves"]').children.length, 3, 'house roster has three reserves');
   assert.equal(sm.pits._enemyRoster[0].picked.length, 3, 'house counter-picks exactly three');
   draft.querySelector('#pits-draft-go').click(); // send the trio in
   assert.equal(sm.pits._inBattle, true, 'marked in-battle after sending them in');

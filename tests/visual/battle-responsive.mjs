@@ -319,9 +319,25 @@ try {
           `${fieldLabel}: ${command} is reachable in the command dock`);
       }
       if (height === 260 || width === 1600) await testCommandDialogs(page, touch);
+      if (width === 1600) {
+        const summaryLink = page.getByRole('button', { name: /Garchomp summary/ });
+        await summaryLink.press('Enter');
+        await page.locator('#modal-summary').waitFor({ state: 'visible' });
+        await page.keyboard.press('Escape');
+        await page.locator('#modal-summary').waitFor({ state: 'hidden' });
+      }
       await fight.focus();
       await page.keyboard.press('f');
       await move.waitFor({ state: 'visible' });
+      if (width === 320) {
+        const history = page.getByRole('button', { name: 'Battle history' });
+        assert.equal(await history.getAttribute('aria-expanded'), 'false');
+        await history.press('Enter');
+        assert.equal(await history.getAttribute('aria-expanded'), 'true');
+        await history.press('Enter');
+      } else if (height === 260) {
+        assert.equal(await page.getByRole('log', { name: 'Battle log' }).count(), 1);
+      }
       const moveField = await measureField(page);
       assertField(moveField, `${fieldLabel}, moves`);
       assertFieldSteady(commandField, moveField, fieldLabel);

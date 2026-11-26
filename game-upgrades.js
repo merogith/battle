@@ -1,7 +1,7 @@
 /* Player-facing tools built on StoryMode's deterministic product interface. */
 (function (global) {
   'use strict';
-  const VERSION = '1.8.0';
+  const VERSION = global.document.querySelector('meta[name="battle-version"]')?.content || 'Unknown';
   const RULESET = 'story-singles-2026-09';
   const SAVE = 'pbs_story_save';
   const META = 'pbs_story_meta';
@@ -18,20 +18,20 @@
     ...Object.fromEntries(SLOT_KEYS.map((key, index) => [key, `save slot ${index + 1}`])),
   };
   const SERVICES = [
-    ['mentor','Battle Mentor','Check the effect and cost. A full build plan is also available.'],
-    ['tutor','Move Tutor','Compare attacks, coverage and utility. Earlier towns have smaller move pools.'],
-    ['dojo','Battle Dojo','Each belt opens more choices. Read the effect before changing your build.'],
-    ['nature','Nature Rater','Trade one stat for another. Check the exact before-and-after values.'],
-    ['evolab','Evolution Tutor','Check the stage, fee and any stone or trade requirement.'],
-    ['evtrainer','EV Trainer','Early access redistributes earned EVs; full spread purchases open later.'],
-    ['fanclub','Pokémon Fan Club','IV upgrades improve a partner’s potential. They are separate from EV training.'],
-    ['center','Pokémon Center','Swap between your party and PC. Your current party cap still applies.'],
-    ['stoneShop','Stones and Beyond','Get the stone or trade item required by an evolution.'],
-    ['link','Cable Link','A trade replaces the partner. A rebuild keeps the Pokémon and rerolls parts of its build.'],
-    ['colress','Colress','Choose among Mega Evolution, Z-Moves, Dynamax and Tera when enabled in your run.'],
-    ['mart','Pokémart','Buy Poké Balls and items to use during battle.'],
-    ['safari','Safari Zone','Try bait and rocks to help you catch Pokémon. The first visit is free.'],
-    ['daycare','Daycare Inn','Meet the matron to learn about her Eggs. Confirm before trading away a partner permanently.'],
+    ['mentor','Battle Mentor','Get a build recommendation'],
+    ['tutor','Move Tutor','Teach moves'],
+    ['dojo','Battle Dojo','Change held items and abilities'],
+    ['nature','Nature Rater','Change a nature'],
+    ['evolab','Evolution Tutor','Evolve a partner'],
+    ['evtrainer','EV Trainer','Adjust battle training'],
+    ['fanclub','Pokémon Fan Club','Raise IVs with vitamins'],
+    ['center','Pokémon Center','Manage your party and PC'],
+    ['stoneShop','Stones and Beyond','Buy evolution items'],
+    ['link','Cable Link','Trade or rebuild a partner'],
+    ['colress','Colress','Unlock battle forms'],
+    ['mart','Pokémart','Buy balls and battle supplies'],
+    ['safari','Safari Zone','Catch wild Pokémon'],
+    ['daycare','Daycare Inn','Visit the matron about Eggs'],
   ];
   const LESSONS = [
     { title:'Type matchups', prompt:'A Water-type attack faces a Rock/Ground opponent. What happens?', choices:['It is resisted','It is four times effective','It has no effect'], answer:1, explanation:'Water is strong against both Rock and Ground. The two type multipliers combine: 2 × 2 = 4. An ability or other effect can still change the result.' },
@@ -99,6 +99,12 @@
     return Number.isFinite(date.getTime()) ? date.toLocaleString() : '';
   }
   function activeBattle() { return !!(api() && api().battleActive()); }
+  function restoreBlockedReason() {
+    if (activeBattle()) return 'Finish the battle before restoring a backup.';
+    if (document.getElementById('screen-draft')?.classList.contains('hidden') === false
+        || global.OnlineBattle?.isActive?.()) return 'Exit the draft or online room before restoring a backup.';
+    return '';
+  }
 
   function analyzeTeam(team, effectiveness) {
     const notes = [];
@@ -142,21 +148,29 @@
         close();
         nextAction.click();
       },true));
-      append(objective,element('p',s.active ? `${s.badges}/8 badges · ${s.gold.toLocaleString()}G · ${s.team.length}/${s.cap} partners` : 'Start Story Mode to meet your first partner.'));
       append(p,objective);
       if (s.errand) append(p,card('Current errand',s.errand));
-      if (s.discoveryHints?.length) append(p,card('Heard in town',s.discoveryHints.at(-1)));
+      else if (s.discoveryHints?.length) append(p,card('Heard in town',s.discoveryHints.at(-1)));
+      const shortcuts = element('div',null,'upgrade-notebook-shortcuts');
+      if (s.active && global.StoryMode?.openJourneyAtlas) {
+        append(shortcuts,button('Journey Atlas',()=>{
+          close();
+          global.StoryMode.openJourneyAtlas(()=>openNotebook('next',true));
+        }));
+      }
+      append(p,append(shortcuts,button('Practice a battle concept',openPractice)));
       const available = new Set(s.availableFacilities);
       const guide = append(element('details'), element('summary', 'Services in this town'));
-      const grid=element('div',null,'upgrade-grid');
+      const list=element('ul',null,'upgrade-notebook-services');
       for (const [key,name,description] of SERVICES) {
         const localKey = key === 'mart' && available.has('dept') ? 'dept' : key;
         if (!available.has(localKey)) continue;
         const localName = localKey === 'dept' ? 'Department Store' : name;
-        grid.appendChild(append(card(localName,description),button(`Visit ${localName}`,()=>{ close(); api().visit(localKey); })));
+        const visit = button(localName,()=>{ close(); api().visit(localKey); });
+        visit.setAttribute('aria-label', `Visit ${localName}`);
+        list.appendChild(append(element('li'),visit,element('span',description)));
       }
-      if (grid.children.length) append(p,append(guide,grid));
-      append(p,button('Practice a battle concept',openPractice));
+      if (list.children.length) append(p,append(guide,list));
     } else if (tab === 'team') {
       if (s.openingRivalDefeat && s.team.length === 1) append(p,openingRivalRecovery());
       const notes = analyzeTeam(s.team,api().typeEffectiveness);
@@ -202,17 +216,30 @@
   }
 
   function openPractice(index = 0) {
-    index = Number.isInteger(index) ? index : 0;
+    index = Number.isInteger(index) && LESSONS[index] ? index : 0;
     const p=open('Practice lessons');
-    append(p,element('p','Try a decision, read the explanation, and try again. These lessons do not change your team, money, story progress or battle RNG.'));
-    const nav=element('div',null,'upgrade-actions');
-    LESSONS.forEach((lesson,i)=>append(nav,button(`${i+1}. ${lesson.title}`,()=>openPractice(i)))); append(p,nav);
+    p.classList.add('upgrade-dialog--practice');
+    const nav=element('label',null,'upgrade-practice-topic');
+    append(nav,element('span','Topic'));
+    const topics=element('select');
+    LESSONS.forEach((lesson,i)=>{
+      const option=element('option',lesson.title);
+      option.value=String(i);
+      option.selected=i===index;
+      append(topics,option);
+    });
+    topics.addEventListener('change',()=>{
+      openPractice(Number(topics.value));
+      panel.querySelector('.upgrade-practice-topic select')?.focus();
+    });
+    append(p,append(nav,topics));
     const lesson=LESSONS[index] || LESSONS[0]; append(p,element('h3',lesson.title),element('p',lesson.prompt));
     const feedback=element('p',null,'upgrade-feedback'); feedback.hidden=true; feedback.setAttribute('role','status');
     lesson.choices.forEach((choice,i)=>append(p,button(choice,()=>{
       feedback.hidden=false; feedback.textContent=`${i===lesson.answer ? 'Correct.' : 'Try another approach.'} ${lesson.explanation}`;
     })));
-    append(p,feedback,button('Next lesson',()=>openPractice((index+1)%LESSONS.length)));
+    append(p,feedback,append(element('div',null,'upgrade-actions'),
+      button('Next lesson',()=>openPractice((index+1)%LESSONS.length)), button('Back to Notebook',()=>openNotebook('next',true))));
   }
 
   function openingRivalRecovery() {
@@ -415,7 +442,8 @@
     return {format:'battle-backup',version:1,game:VERSION,rules:RULESET,createdAt:new Date().toISOString(),entries};
   }
   function restoreBackup(value) {
-    if(activeBattle()) throw new Error('Finish the battle before restoring a backup.');
+    const blocked = restoreBlockedReason();
+    if (blocked) throw new Error(blocked);
     const b=validateBackup(value), previous={};
     const entries={...b.entries};
     if (entries[SETTINGS]) {
@@ -540,9 +568,10 @@
       }
     }, true);
     if (replaced.length) restore.classList.add('upgrade-danger');
-    if (activeBattle()) {
+    const blocked = restoreBlockedReason();
+    if (blocked) {
       restore.disabled = true;
-      append(body, element('p', 'Finish the battle before restoring a backup.', 'upgrade-feedback'));
+      append(body, element('p', blocked, 'upgrade-feedback'));
     }
     const backUp = current ? button('Back up current progress', exportBackup) : null;
     if (backUp) backUp.classList.add('upgrade-restore-export');
@@ -590,23 +619,25 @@
   }
   function openData() {
     const p = open('Save & recovery');
+    p.classList.add('upgrade-dialog--data');
     const stored = read(SAVE);
     const current = currentRun(stored);
     const lastSave = displayDate(stored?._lastSave) || displayDate(current?._lastSave);
     const status = global.__storySaveError || (lastSave ? `Last saved ${lastSave}`
-      : current ? 'There is a Story run on this device.' : 'No Story run on this device.');
+      : current ? 'Story run saved on this device.' : 'No Story run on this device.');
     append(p, element('p', status, global.__storySaveError ? 'upgrade-feedback upgrade-error' : null));
     const hasProgress = current || read(META) || SLOT_KEYS.some(key => read(key));
     const hasBackup = hasProgress || portableSettings(read(SETTINGS)) || read(PREFS);
+    const backup = element('div', null, 'upgrade-backup');
     if (hasBackup) {
       const actions = element('div', null, 'upgrade-actions');
       append(actions, button(hasProgress ? 'Download complete backup' : 'Download settings backup', exportBackup, true));
       if (global.__storySaveError && global.StoryMode?.state.active) {
         append(actions, button('Retry saving', () => { api()?.save(); openData(); }));
       }
-      append(p, actions);
+      append(backup, actions);
     }
-    append(p, backupImport());
+    append(p, append(backup, backupImport()));
     const grid=element('div',null,'upgrade-grid');
     for(const [index, key] of SLOT_KEYS.entries()) {
       const i = index + 1, slot=read(key);
@@ -619,11 +650,12 @@
       }));
       if(slot)append(c,button('Review and load',()=>reviewRestore(slot,`Save slot ${i}`))); append(grid,c);
     }
-    if (grid.childElementCount) append(p,grid);
+    if (grid.childElementCount) append(p,element('h3','Local save slots'),grid);
+    const checkpoints = element('div', null, 'upgrade-actions');
     for(const [key,labelText] of [[SAVE+'.checkpoint','Latest checkpoint'],[SAVE+'.checkpoint.previous','Earlier checkpoint']]) {
-      const run=read(key); if(run)append(p,button(`Review ${labelText.toLowerCase()}`,()=>reviewRestore(run,labelText)));
+      const run=read(key); if(run)append(checkpoints,button(`Review ${labelText.toLowerCase()}`,()=>reviewRestore(run,labelText)));
     }
-    if (hasBackup) append(p,element('p','Keep a backup before clearing site data or moving devices.','upgrade-muted'));
+    if (checkpoints.childElementCount) append(p,element('h3','Automatic checkpoints'),checkpoints);
   }
 
   function applyPreferences() {
@@ -637,12 +669,24 @@
   }
   function openPreferences() {
     const p=open('Reading & accessibility'), prefs=read(PREFS,{});
-    for(const [key,labelText] of [['readable','Use a readable interface font'],['largeText','Larger Notebook and story text'],['reducedMotion','Reduce interface motion'],['camp','Use untimed camp activities']]) {
+    p.classList.add('upgrade-dialog--preferences');
+    for(const [key,labelText,hint] of [
+      ['readable','Use a readable interface font'],
+      ['largeText','Larger Notebook and story text'],
+      ['reducedMotion','Reduce interface motion'],
+      ['camp','Use untimed camp activities','The rewards stay the same.'],
+    ]) {
       const label=element('label',null,'upgrade-preference'), input=element('input');input.type='checkbox';input.checked=!!prefs[key];
       input.addEventListener('change',()=>{prefs[key]=input.checked;try{global.localStorage.setItem(PREFS,JSON.stringify(prefs));applyPreferences();}catch(e){notice('This preference could not be saved.');}});
-      append(label,input,element('span',labelText));append(p,label);
+      const caption=element('span',labelText);
+      if (hint) {
+        input.setAttribute('aria-label', labelText);
+        input.setAttribute('aria-describedby', 'upgrade-preference-camp-hint');
+        const detail=element('small',hint); detail.id='upgrade-preference-camp-hint';
+        append(caption,detail);
+      }
+      append(p,append(label,input,caption));
     }
-    append(p,element('p','Battle speed, animation switches and independent music/SFX volume remain in Settings. Untimed camp activities provide the same successful activity reward.'));
   }
   function saveResult(ok) {
     const existing=document.getElementById('upgrade-save-alert');
@@ -681,7 +725,17 @@
   }
   function campActivity(game, onResult) {
     const p=open(game.name || 'Camp together');
-    append(p,element('p','Take your time. Spend a quiet moment caring for your partner. This gives the same reward as completing the activity successfully.'));
+    p.classList.add('camp-timing-free');
+    if (game.partnerName) {
+      const partner=element('div', null, 'camp-activity-partner');
+      if (game.partnerSprite) {
+        const sprite=element('img');
+        sprite.alt=''; sprite.src=game.partnerSprite;
+        partner.appendChild(sprite);
+      }
+      append(p, append(partner, element('strong',game.partnerName)));
+    }
+    append(p,element('p','Take your time. Spend a quiet moment with your partner for the same bond progress as a successful timed activity.'));
     let settled=false;
     const finish=(won)=>{if(settled)return;settled=true;close();onResult(won);};
     append(p,button('Spend time together',()=>finish(true),true),button('Cancel activity',()=>finish(null)));

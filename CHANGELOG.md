@@ -3,6 +3,14 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.5 — North Road world and interface update
+
+- Towns, roads, Camp, and facilities have distinct artwork and local sound. The Atlas tracks places you’ve visited and discoveries you’ve made. Gym rounds, raids, and legendary encounters have their own entrances and battle cues.
+- Story and Battles lead from the title. Towns put the next objective up front, and the Bag, Notebook, Pokédex, and training screens keep extra details one tap away. Dialogue and choices give each place room to breathe.
+- Move Tutor previews keep the replacement and price visible. Relics show their bound type, and the Game Corner keeps Roulette playable with Stats open in short landscape.
+- Canceling or timing out of an online room clears the pending setup so a late reply can’t reopen it.
+- Update checks identify the installed release and refresh changed offline files. Save & Apply can park supported Story battles and resume them at the same turn.
+
 ## 2.0.4 — North Road and game polish
 
 ### Story and presentation

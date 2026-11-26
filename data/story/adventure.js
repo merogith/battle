@@ -52,6 +52,10 @@ function chosen(chapter, choices) {
     return chapter.choices.find(option => option.id === choices[choiceKey(chapter.id)]);
 }
 
+function matchingEchoes(chapter, readChoice) {
+    return (chapter.echoes || []).filter(echo => readChoice(echo.from) === echo.choice);
+}
+
 function hasTrail(chapter, chapters, choices) {
     return Boolean(chosen(chapter, choices)?.clue && chapter.secret.requires.every(id => {
         const earlier = chapters.find(entry => entry.id === id);
@@ -93,16 +97,16 @@ export async function mountAdventure(host, city, bridge) {
     let origin;
     const card = element('aside', 'story-chapter-card');
     const invitation = element('div', 'story-chapter-invitation');
-    const invitationContext = city === 1 ? 'Optional story' : here.place;
-    const publicSpeaker = here.hideSpeakerOnInvite ? '' : here.speaker.name;
-    const eyebrow = element('p', 'story-chapter-eyebrow', [invitationContext, publicSpeaker].filter(Boolean).join(' · '));
+    const eyebrow = city === 1 ? element('p', 'story-chapter-eyebrow', 'Optional story') : null;
     const teaser = element('p', 'story-chapter-teaser', here.invitation);
+    card.setAttribute('aria-label', here.title);
     const open = button(here.title, 'open', here.id, () => {
         origin = open;
         const saved = chosen(here, snapshot().choices);
         openScene(here, { saved, fromArchive: false, readOnly: false });
     }, true);
-    invitation.append(eyebrow, open, teaser);
+    if (eyebrow) invitation.append(eyebrow);
+    invitation.append(open, teaser);
     const archiveButton = button('Field Archive', 'archive', '', () => {
         origin = archiveButton;
         openArchive();
@@ -116,9 +120,14 @@ export async function mountAdventure(host, city, bridge) {
     function updateCard() {
         const { choices, archive } = snapshot(false);
         const option = chosen(here, choices);
-        teaser.textContent = option ? option.townNote || `Recorded: ${option.label}.` : here.invitation;
+        open.textContent = option ? `Read ${here.title}` : here.title;
+        if (option) open.setAttribute('aria-label', `Read ${here.title} again`);
+        else open.removeAttribute('aria-label');
+        if (eyebrow) eyebrow.hidden = Boolean(option);
+        teaser.textContent = option ? option.townNote || '' : here.invitation;
+        teaser.hidden = !teaser.textContent;
         if (option && here.secret.requires.length && !choices[secretKey(here.id)] && hasTrail(here, chapters, choices)) {
-            bridge.notice?.(`records:${here.id}`, `There’s more to read in ${here.title}. Bring both records back to the witness.`);
+            bridge.notice?.(`records:${here.id}`, `Two records match. Reopen ${here.title} to compare them.`);
         }
         if (keepsakeSlot) {
             const copy = progress.summarize(archive).keepsakes.find(item => item.id === 'keepers-spare-copy');
@@ -141,11 +150,13 @@ export async function mountAdventure(host, city, bridge) {
     let pageProgress;
     let stopRelayMotif;
     let stopDialogue;
+    let backWithinDialog;
     function show(titleText, place, art) {
         stopDialogue?.();
         stopDialogue = null;
         stopRelayMotif?.();
         stopRelayMotif = null;
+        backWithinDialog = null;
         if (!dialog || !dialog.open) {
             dialog = element('dialog', 'story-chapter-dialog');
             dialog.setAttribute('aria-labelledby', 'story-chapter-title');
@@ -165,8 +176,16 @@ export async function mountAdventure(host, city, bridge) {
             dialog.append(shell);
             document.body.append(dialog);
             const opened = dialog;
+            const dismiss = () => backWithinDialog ? backWithinDialog() : opened.close();
+            const release = globalThis._registerAppDialog?.(opened, dismiss);
+            opened.addEventListener('cancel', event => {
+                if (!backWithinDialog) return;
+                event.preventDefault();
+                backWithinDialog();
+            });
             opened.addEventListener('close', () => {
                 opened.remove();
+                release?.();
                 if (dialog !== opened) return;
                 stopDialogue?.();
                 stopDialogue = null;
@@ -184,9 +203,8 @@ export async function mountAdventure(host, city, bridge) {
         } else {
             shell.style.removeProperty('--chapter-art');
         }
-        const placeChapter = chapters.find(chapter => chapter.place === place);
-        const town = placeChapter && bridge.townName?.(placeChapter.city);
-        location.textContent = town ? `${town} · ${place}` : place;
+        location.textContent = place || '';
+        location.hidden = !location.textContent;
         title.textContent = titleText;
         dialogueFocus(title);
     }
@@ -196,7 +214,7 @@ export async function mountAdventure(host, city, bridge) {
         target.focus({ preventScroll: true });
     }
 
-    function sceneBody(scene, speakerName, prose, actions, { phase = 'reading', clue, sprite, tone, step, source } = {}) {
+    function sceneBody(scene, speakerName, prose, actions, { phase = 'reading', clue, sprite, tone, step, source, savedAnswer, records } = {}) {
         stopDialogue?.();
         stopDialogue = null;
         body.dataset.chapterPhase = phase;
@@ -221,51 +239,73 @@ export async function mountAdventure(host, city, bridge) {
             stage.append(portrait);
         }
         const copy = element('div', 'story-chapter-copy');
-        const label = phase === 'discovery' ? 'Field note'
-            : source ? `From ${source}` : recording ? (speakerName || 'Recording') : spoken ? speakerName : '';
+        const label = source ? `From ${source}` : recording ? (speakerName || 'Recording') : spoken ? speakerName : '';
         if (label) copy.append(element('p', 'story-chapter-eyebrow', label));
         const caption = element(spoken ? 'blockquote' : 'p', 'story-chapter-caption', prose);
         caption.tabIndex = -1;
         copy.append(caption);
+        if (savedAnswer) copy.append(element('p', 'story-chapter-replay-answer', `You chose “${savedAnswer}.”`));
         if (clue) {
             const record = element('div', 'story-chapter-evidence');
             record.append(
-                element('p', 'story-chapter-eyebrow', 'Filed in the Field Archive'),
+                element('p', 'story-chapter-eyebrow', 'Clue saved'),
                 element('p', 'story-chapter-evidence-text', clue),
             );
             copy.append(record);
+        }
+        if (records?.length) {
+            const comparison = element('dl', 'story-chapter-records');
+            for (const record of records) {
+                const evidence = element('div', 'story-chapter-evidence');
+                evidence.append(element('dt', 'story-chapter-eyebrow', record.title),
+                    element('dd', 'story-chapter-evidence-text', record.clue));
+                comparison.append(evidence);
+            }
+            copy.append(comparison);
         }
         stage.append(copy);
         body.replaceChildren(stage, actions);
         return caption;
     }
 
-    function openScene(chapter, { saved, fromArchive, readOnly, replayChoices, archiveKey }) {
+    function openScene(chapter, { saved, fromArchive, readOnly, replayChoices, archiveKey, onBack }) {
         show(chapter.title, chapter.place, chapter.art);
         const panels = [...chapter.panels];
-        const choices = fromArchive ? null : snapshot().choices;
-        for (const echo of chapter.echoes || []) {
-            if ((fromArchive ? replayChoices?.[echo.from] : choices[choiceKey(echo.from)]) !== echo.choice) continue;
+        const choices = readOnly ? replayChoices || {} : snapshot(false).choices;
+        const readChoice = id => choices[readOnly ? id : choiceKey(id)];
+        for (const echo of matchingEchoes(chapter, readChoice)) {
             panels.push({ text: echo.text, source: chapters.find(entry => entry.id === echo.from)?.title });
         }
-        const back = () => fromArchive ? openArchive(archiveKey) : dialog.close();
-        const returnLabel = fromArchive ? 'Back to Field Archive' : (city === null ? 'Return to the Crucible' : 'Return to town');
+        const back = onBack || (() => fromArchive ? openArchive(archiveKey) : dialog.close());
+        if (onBack || fromArchive) backWithinDialog = back;
+        const returnLabel = fromArchive ? 'Back to archive' : onBack ? 'Back to outcome'
+            : (city === null ? 'Back to the Crucible' : 'Back to town');
         const done = () => button(returnLabel, 'done', '', back, true);
         const endScene = option => {
             const actions = element('div', 'story-chapter-actions');
-            const current = readOnly ? null : snapshot().choices;
+            const current = readOnly ? null : snapshot(false).choices;
             const found = current?.[secretKey(chapter.id)] === true;
             if (current && hasTrail(chapter, chapters, current)) {
-                actions.append(button(found ? 'Read the discovery' : 'Compare the records', 'secret', chapter.id, () => {
+                actions.append(button(found ? 'Read discovery' : 'Compare records', 'secret', chapter.id, () => {
                     if (!found && !commit(secretKey(chapter.id), true)) {
                         actions.querySelector('[role="alert"]').textContent = 'Could not save the discovery. Try again.';
                         return;
                     }
                     if (!found) sound('shing', 0.32);
+                    const restoreOutcome = () => {
+                        show(chapter.title, chapter.place, chapter.art);
+                        endScene(option);
+                        body.querySelector('[data-adventure-secret]')?.focus({ preventScroll: true });
+                    };
                     const footer = element('div', 'story-chapter-actions');
-                    footer.append(done());
+                    footer.append(button('Back to outcome', 'result', '', restoreOutcome), done());
                     show(chapter.secret.title, chapter.place, chapter.art);
-                    const caption = sceneBody(chapter, chapter.speaker.name, chapter.secret.text, footer, { phase: 'discovery' });
+                    backWithinDialog = restoreOutcome;
+                    const records = [...chapter.secret.requires, chapter.id].map(id => {
+                        const source = chapters.find(entry => entry.id === id);
+                        return { title: source.title, clue: chosen(source, current).clue };
+                    });
+                    const caption = sceneBody(chapter, chapter.speaker.name, chapter.secret.text, footer, { phase: 'discovery', records });
                     dialogueFocus(caption);
                 }));
                 const status = element('p', 'story-chapter-status');
@@ -273,7 +313,7 @@ export async function mountAdventure(host, city, bridge) {
                 actions.append(status);
             } else if (!readOnly && option.clue) {
                 const hint = element('details', 'story-chapter-hint');
-                hint.append(element('summary', '', 'Follow the trail'), element('p', '', chapter.secret.hint));
+                hint.append(element('summary', '', 'Clue hint'), element('p', '', chapter.secret.hint));
                 actions.append(hint);
             }
             if (option.consequence) {
@@ -281,8 +321,22 @@ export async function mountAdventure(host, city, bridge) {
                 receipt.append(element('summary', '', 'What changed'), element('p', '', option.consequence));
                 actions.append(receipt);
             }
+            if (current) {
+                actions.append(button('Read full scene', 'read', chapter.id, () => openScene(chapter, {
+                    saved: option,
+                    readOnly: true,
+                    replayChoices: Object.fromEntries(chapters.map(entry => [entry.id, current[choiceKey(entry.id)]])),
+                    onBack: () => {
+                        show(chapter.title, chapter.place, chapter.art);
+                        endScene(option);
+                        body.querySelector('[data-adventure-read]')?.focus();
+                    },
+                })));
+            }
             actions.append(done());
-            const caption = sceneBody(chapter, chapter.speaker?.name, option.reply, actions, { phase: 'result', clue: option.clue });
+            const caption = sceneBody(chapter, chapter.speaker?.name, option.reply, actions, {
+                phase: 'result', clue: option.clue, savedAnswer: readOnly ? option.label : null,
+            });
             dialogueFocus(caption);
         };
         const showChoices = (entry, presentation) => {
@@ -292,10 +346,18 @@ export async function mountAdventure(host, city, bridge) {
             const status = element('p', 'story-chapter-status');
             status.setAttribute('role', 'alert');
             for (const option of chapter.choices) {
-                actions.append(button(option.label, 'pick', option.id, () => {
+                const choice = button(option.label, 'pick', option.id, () => {
+                    const controls = [...actions.querySelectorAll('button')];
+                    controls.forEach(control => { control.disabled = true; });
                     if (commit(choiceKey(chapter.id), option.id)) endScene(option);
-                    else status.textContent = 'Could not save your choice. Try again.';
-                }));
+                    else {
+                        controls.forEach(control => { control.disabled = false; });
+                        choice.focus();
+                        status.textContent = 'Could not save your choice. Try again.';
+                    }
+                });
+                if (option.detail) choice.append(element('span', 'story-chapter-choice-detail', option.detail));
+                actions.append(choice);
             }
             actions.append(status);
             dialogueFocus(sceneBody(chapter, entry.speaker, entry.text, actions, { ...presentation, phase: 'choice' }));
@@ -311,7 +373,7 @@ export async function mountAdventure(host, city, bridge) {
                     stopRelayMotif = null;
                 }
             }
-            sound(entry.cue, 0.26);
+            if (!readOnly) sound(entry.cue, 0.26);
             if (last && chapter.choices && !saved) {
                 showChoices(entry, presentation);
             } else {
@@ -330,9 +392,10 @@ export async function mountAdventure(host, city, bridge) {
 
     function openKeepsake(item, fromArchive) {
         show(item.title, 'Field keepsake');
+        const back = () => fromArchive ? openArchive(`keepsake/${item.id}`) : dialog.close();
+        if (fromArchive) backWithinDialog = back;
         const footer = element('div', 'story-chapter-actions');
-        footer.append(button(fromArchive ? 'Back to Field Archive' : 'Return to the Crucible', 'done', '',
-            () => fromArchive ? openArchive(`keepsake/${item.id}`) : dialog.close(), true));
+        footer.append(button(fromArchive ? 'Back to archive' : 'Back to the Crucible', 'done', '', back, true));
         const caption = sceneBody(item, '', item.note, footer, { phase: 'keepsake' });
         const illustration = element('img', 'story-archive-keepsake-art');
         illustration.alt = '';
@@ -344,8 +407,38 @@ export async function mountAdventure(host, city, bridge) {
         dialogueFocus(caption);
     }
 
+    function openRecordedJourney(chapter, option, variants, archiveKey) {
+        const replay = ({ record }) => openScene(chapter, {
+            saved: option, fromArchive: true, readOnly: true, replayChoices: record.choices, archiveKey,
+        });
+        if (variants.length === 1) {
+            replay(variants[0]);
+            return;
+        }
+        show(chapter.title, 'Recorded journeys', chapter.art);
+        delete body.dataset.chapterPhase;
+        delete body.dataset.chapterRegister;
+        delete body.dataset.chapterTone;
+        pageProgress.hidden = true;
+        backWithinDialog = () => openArchive(archiveKey);
+        const list = element('div', 'story-archive-entry');
+        list.append(element('p', 'story-chapter-replay-answer', `You chose “${option.label}.”`));
+        for (const variant of variants) {
+            const context = variant.echoes.map(echo => {
+                const earlier = chapters.find(entry => entry.id === echo.from);
+                return earlier?.choices.find(choice => choice.id === echo.choice)?.label;
+            }).filter(Boolean);
+            const control = button(`Replay journey ${variant.number}`, 'replay-journey', chapter.id, () => replay(variant));
+            if (context.length) control.append(element('span', 'story-chapter-choice-detail', context.join(' · ')));
+            list.append(control);
+        }
+        list.append(button('Back to archive', 'done', '', backWithinDialog, true));
+        body.replaceChildren(list);
+        dialogueFocus(title);
+    }
+
     function openArchive(focusKey) {
-        show('Field Archive', 'The Open Circle');
+        show('Field Archive');
         delete body.dataset.chapterPhase;
         delete body.dataset.chapterTone;
         delete body.dataset.chapterRegister;
@@ -353,7 +446,9 @@ export async function mountAdventure(host, city, bridge) {
         const { archive } = snapshot(false);
         const summary = progress.summarize(archive);
         const discoveries = summary.distinctSecrets === 1 ? 'discovery' : 'discoveries';
-        const intro = element('p', 'story-archive-count', `${summary.distinctChapters} of ${chapters.length} scenes · ${summary.distinctSecrets} hidden ${discoveries}`);
+        const counts = [`${summary.distinctChapters} of ${chapters.length} scenes`];
+        if (summary.distinctSecrets) counts.push(`${summary.distinctSecrets} ${discoveries}`);
+        const intro = element('p', 'story-archive-count', counts.join(' · '));
         const scenes = element('div', 'story-archive-scenes');
         const records = Object.values(archive.runs);
         let focus;
@@ -368,25 +463,33 @@ export async function mountAdventure(host, city, bridge) {
             const entry = element('section', 'story-archive-entry');
             entry.append(element('h3', '', chapter.title));
             for (const option of options) {
-                const record = records.find(run => run.choices[chapter.id] === option.id);
+                const variants = new Map();
+                records.forEach((record, index) => {
+                    if (record.choices[chapter.id] !== option.id) return;
+                    const echoes = matchingEchoes(chapter, id => record.choices[id]);
+                    const key = JSON.stringify(echoes.map(echo => [echo.from, echo.choice]));
+                    if (!variants.has(key)) variants.set(key, { record, echoes, number: index + 1 });
+                });
                 const archiveKey = `scene/${chapter.id}/${option.id}`;
-                entry.append(identify(button(option.label, 'replay', chapter.id, () => openScene(chapter, {
-                    saved: option, fromArchive: true, readOnly: true, replayChoices: record?.choices, archiveKey,
-                })), archiveKey));
+                const replay = button(option.label, 'replay', chapter.id,
+                    () => openRecordedJourney(chapter, option, [...variants.values()], archiveKey));
+                if (variants.size > 1) replay.append(element('span', 'story-chapter-choice-detail', `${variants.size} recorded journeys`));
+                entry.append(identify(replay, archiveKey));
             }
             const clues = options.filter(option => option.clue);
             if (clues.length) {
                 const notes = element('details', 'story-chapter-hint story-archive-notes');
-                notes.append(element('summary', '', 'Clues filed'));
+                notes.append(element('summary', '', 'Clues'));
                 for (const option of clues) notes.append(element('p', 'story-chapter-clue', option.clue));
                 entry.append(notes);
             }
             if (records.some(record => record.secrets[chapter.id])) {
                 const archiveKey = `discovery/${chapter.id}`;
-                entry.append(identify(button(`Read discovery · ${chapter.secret.title}`, 'replay-secret', chapter.id, () => {
+                entry.append(identify(button(chapter.secret.title, 'replay-secret', chapter.id, () => {
                     show(chapter.secret.title, chapter.place, chapter.art);
+                    backWithinDialog = () => openArchive(archiveKey);
                     const footer = element('div', 'story-chapter-actions');
-                    footer.append(button('Back to Field Archive', 'done', '', () => openArchive(archiveKey), true));
+                    footer.append(button('Back to archive', 'done', '', backWithinDialog, true));
                     dialogueFocus(sceneBody(chapter, chapter.speaker.name, chapter.secret.text, footer, { phase: 'discovery' }));
                 }), archiveKey));
             }
@@ -396,11 +499,15 @@ export async function mountAdventure(host, city, bridge) {
             scenes.append(element('p', '', 'Talk to a witness to open your first record.'));
         }
         const rewards = element('section', 'story-archive-entry');
-        rewards.append(element('h3', '', 'Archive rewards'));
+        const checklist = element('details', 'story-chapter-hint story-archive-notes');
+        checklist.append(element('summary', '', 'Archive rewards'));
         for (const milestone of summary.milestones) {
-            const note = element('p', 'story-archive-milestone', `${milestone.earned ? 'Earned · ' : ''}${milestone.title} — ${milestone.description}`);
-            rewards.append(note);
+            const note = element('p', 'story-archive-milestone');
+            note.append(element('strong', '', milestone.earned ? `${milestone.title} ✓` : milestone.title));
+            note.append(document.createTextNode(` · ${milestone.description}`));
+            checklist.append(note);
         }
+        rewards.append(checklist);
         for (const scene of summary.replayScenes) {
             const archiveKey = `reward/${scene.id}`;
             rewards.append(identify(button(scene.title, 'reward', scene.id,
@@ -412,7 +519,7 @@ export async function mountAdventure(host, city, bridge) {
             keepsakes.append(element('h3', '', 'Field keepsakes'));
             for (const item of summary.keepsakes) {
                 const archiveKey = `keepsake/${item.id}`;
-                keepsakes.append(identify(button(`Inspect · ${item.title}`, 'keepsake', item.id,
+                keepsakes.append(identify(button(item.title, 'keepsake', item.id,
                     () => openKeepsake(item, true)), archiveKey));
             }
             sections.push(keepsakes);

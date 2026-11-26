@@ -7,6 +7,7 @@
   <title>Competitive Arena · Pokémon Arena</title>
   <link rel="icon" href="../icons/icon-192.png">
   <link rel="stylesheet" href="arena.css">
+  <script src="../game-update.js" defer></script>
   <script src="../battle-move-profiles.js" defer></script>
   <script src="../battle-motion.js" defer></script>
   <script type="module" src="arena.js"></script>
@@ -15,7 +16,6 @@
   <header class="page-header">
     <a class="home-link" href="../">← Main menu</a>
     <div class="header-tools">
-      <span id="format-label" class="format-label">Gen 9 OU · 3v3</span>
       <label class="arena-speed"><span><span class="arena-speed-prefix">Battle </span>Speed</span>
         <select id="arena-speed" aria-label="Battle speed">
           <option value="normal">Normal</option>
@@ -28,6 +28,7 @@
   <main>
     <section id="setup" class="setup-panel">
       <h1>Competitive Arena</h1>
+      <p class="setup-intro">Play a singles match against the computer.</p>
       <form id="setup-form">
         <div class="battle-rules-grid">
           <div>
@@ -54,22 +55,21 @@
           </div>
         </div>
         <div class="setup-actions">
-          <button id="start" class="primary" type="submit">Start battle</button>
-        </div>
-        <div class="setup-extras">
           <details id="setup-teams">
-            <summary>Teams and rules</summary>
-            <p id="setup-intro" class="format-rules">3-on-3 against the CPU with Showdown rules.</p>
+            <summary id="setup-match-summary">Preset teams</summary>
             <p id="format-rules" class="format-rules" hidden>Level 50 · Dynamax and Gigantamax available</p>
             <dl class="team-preview">
               <div><dt>Your team</dt><dd id="setup-player">Great Tusk, Gholdengo, Dragapult</dd></div>
-              <div><dt>Arena AI</dt><dd id="setup-opponent">Corviknight, Slowking-Galar, Meowscarada</dd></div>
+              <div><dt>Opponent</dt><dd id="setup-opponent">Corviknight, Slowking-Galar, Meowscarada</dd></div>
             </dl>
           </details>
+          <button id="start" class="primary" type="submit">Start battle</button>
+        </div>
+        <div class="setup-extras">
           <details id="team-import" class="team-import">
             <summary>Import your team</summary>
             <label for="team-text">Showdown team export</label>
-            <p id="team-import-help">Paste three Pokémon from a Showdown export. Leave this blank to play with the preset.</p>
+            <p id="team-import-help">Paste a Showdown export with three Pokémon.</p>
             <textarea id="team-text" rows="7" maxlength="12000" aria-describedby="team-import-help" spellcheck="false" autocapitalize="off" aria-invalid="false"></textarea>
             <p id="team-import-error" class="error" role="alert" hidden></p>
           </details>
@@ -84,9 +84,7 @@
       <p id="setup-error" class="error" role="alert" hidden></p>
     </section>
     <div id="match" hidden>
-      <div class="match-heading">
-        <h1>Competitive Arena</h1>
-      </div>
+      <h1 id="format-label" class="match-heading">Gen 9 OU · 3v3</h1>
       <div class="battle-layout">
         <div class="battle-column">
           <section class="battlefield" aria-label="Battlefield">
@@ -118,13 +116,17 @@
           </section>
         </div>
         <aside class="side-column">
-          <section class="panel rosters" aria-label="Teams">
-            <div><h2>Your team</h2><ul id="player-team"></ul></div>
-            <div><h2>Arena AI</h2><ul id="opponent-team"></ul></div>
-          </section>
+          <details id="match-teams" class="panel match-teams">
+            <summary>Teams</summary>
+            <div class="rosters">
+              <div><h2>Your team</h2><ul id="player-team"></ul></div>
+              <div><h2>Opponent</h2><ul id="opponent-team"></ul></div>
+            </div>
+          </details>
           <details class="panel log">
             <summary>Battle log</summary>
             <p id="match-seed"></p>
+            <button id="latest-events" class="subtle" type="button" hidden>Latest events</button>
             <ol id="battle-log" aria-label="Recent battle events"></ol>
           </details>
           <button id="reset" class="subtle" type="button">Reset battle</button>

@@ -99,6 +99,44 @@ test('the advance cue stays hidden while a choice is pending, then shows after a
   ov.querySelector('button[data-narr-continue="1"]').click();
 });
 
+test('an authored payment and its branch are committed together, including after a failed write', () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  const storage = new Map();
+  let rejectWrite = true;
+  Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+    getItem: key => storage.get(key) ?? null,
+    setItem(key, value) {
+      if (rejectWrite && key === 'pbs_story_save') throw Error('full');
+      storage.set(key, String(value));
+    },
+  } });
+  try {
+    nt.sm = { storyChoices: {}, gold: 250, inventory: {}, flags: {} };
+    const ov = nt.renderNarrativeOverlay({
+      lines: ['Pay the toll?'], resumeChoice: true,
+      choices: [{ label: 'Pay', persistKey: 'fixture.toll', value: 'paid', requireGold: 100,
+        effect: { gold: -100, flag: { key: 'fixture.gate' } }, reply: 'The gate is open.' }],
+    });
+    const choice = ov.querySelector('[data-narr-choice-idx]');
+    choice.click();
+    assert.equal(nt.sm.gold, 250);
+    assert.equal(nt.sm.flags['fixture.gate'], undefined);
+    assert.equal(nt.sm.storyChoices['fixture.toll'], undefined);
+    assert.match(ov.querySelector('[role="alert"]').textContent, /could not be saved/i);
+    assert.equal(choice.disabled, false);
+    rejectWrite = false;
+    choice.click();
+    choice.click();
+    const saved = JSON.parse(storage.get('pbs_story_save'));
+    assert.equal(saved.gold, 150);
+    assert.equal(saved.flags['fixture.gate'], true);
+    assert.equal(saved.storyChoices['fixture.toll'], 'paid');
+    assert.equal(ov.querySelector('[data-narr-continue]').textContent, 'Continue →');
+  } finally {
+    Object.defineProperty(window, 'localStorage', originalStorage);
+  }
+});
+
 test('staged revealLines keep the cue hidden until the final line is surfaced', () => {
   const ov = nt.renderNarrativeOverlay({
     sceneKey: 'main.event1', revealLines: true, typewriter: false,

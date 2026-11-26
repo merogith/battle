@@ -42,8 +42,8 @@ test('plasma.boss pays off villain.plasma.n at the Ghetsis reveal (non-forking r
   assert.ok(b.includes('"key": "villain.plasma.n"'), 'plasma.boss branches on villain.plasma.n');
   assert.ok(b.includes('"eq": "uncaged"') && b.includes('"eq": "ball"'),
     'plasma.boss handles both villain.plasma.n outcomes');
-  assert.ok(b.includes('trick with the open ball') || b.includes('wouldn\'t open the ball'),
-    'plasma.boss text references the open-ball choice');
+  assert.match(b, /"eq": "uncaged"[\s\S]*?opened a Ball[\s\S]*?let the Pokémon decide/);
+  assert.match(b, /"eq": "ball"[\s\S]*?refused to put on a demonstration/);
   // Non-forking by construction: a `branches` read-back, never a `choice`. The global
   // no-fork contract is enforced authoritatively by story-choice-contract.test.js.
   assert.ok(b.includes('"branches"') && !b.includes('"choice"'),

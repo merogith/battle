@@ -7,6 +7,7 @@
  * Options: --max-iters=1600 --real-turns=4 --viewport=430x880
  *          --out-dir=/tmp/story-playthrough --url=http://127.0.0.1:5177/battle.html
  *          --offline-pack=true (download the default offline pack, disconnect, then play)
+ *          --offline-profile=compact (or full, select and verify that pack)
  *          --road-choice=scout (or help or pass)
  *          --road-choices=scout,help,pass,scout,help,pass,scout,help,pass
  *          --chapters=true --chapter-choice=clue (or listen or act)
@@ -43,6 +44,7 @@ const milestoneTurns = Number(args['milestone-turns'] ?? 0);
 const fightStyle = args['fight-style'] ?? 'first';
 const expectedBattleEngine = process.env.BATTLE_EXPECT_STORY_ENGINE;
 const offlinePack = args['offline-pack'] === 'true';
+const offlineProfile = args['offline-profile'];
 const resumeOfflineTurn = offlinePack && process.env.BATTLE_TEST_RESUME_OFFLINE_TURN === '1';
 const roadChoice = args['road-choice'] ?? 'scout';
 const roadOptions = ['scout', 'help', 'pass'];
@@ -77,8 +79,9 @@ if (![seed, width, height, maxIters, realBattles, realTurns, milestoneTurns].eve
     !['all', 'surfaces'].includes(screenshotMode) ||
     !generations.length || generations.some(value => !Number.isInteger(value) || value < 1 || value > 9) ||
     roadChoices.length !== 9 || roadChoices.some(choice => !roadOptions.includes(choice)) ||
-    !['clue', 'listen', 'act'].includes(chapterChoice) || !['first', 'matchup'].includes(fightStyle)) {
-    throw new Error('Expected a valid seed, viewport, battle sample, road choice, chapter choice, and fight style.');
+    !['clue', 'listen', 'act'].includes(chapterChoice) || !['first', 'matchup'].includes(fightStyle) ||
+    (offlineProfile && (!offlinePack || !['compact', 'full'].includes(offlineProfile)))) {
+    throw new Error('Expected valid campaign settings. Select compact or full only with --offline-pack.');
 }
 mkdirSync(outDir, { recursive: true });
 mkdirSync(shotsDir, { recursive: true });
@@ -174,13 +177,13 @@ function button(page, scope, name) {
 
 async function click(page, match, label, snapshot = null) {
     if (!await match.isVisible()) return false;
-    try { await match.click({ trial: true, timeout: 500 }); }
+    try { await match.click({ trial: true, timeout: 2000 }); }
     catch (error) {
         if (error.name !== 'TimeoutError') throw error;
         return false;
     }
     await capture(page, label, snapshot);
-    await match.click({ timeout: 1600 });
+    await match.click({ timeout: 8000 });
     return true;
 }
 
@@ -205,15 +208,17 @@ async function playMinigame(page, label, view) {
     if (!await overlay.count()) return false;
     const pads = overlay.locator('.story-mg-pad:enabled');
     if (await pads.count()) {
-        const lines = await overlay.locator('.story-dialog-box .story-dialog-text').allTextContents();
-        const sequence = lines[1]?.trim().split(/\s+/) || [];
+        const order = await overlay.locator('.story-mg-order').allTextContents();
+        const lines = order.length ? order : await overlay.locator('.story-dialog-box .story-dialog-text').allTextContents();
+        const sequence = order.length ? [...order[0].matchAll(/\b\d+\b/g)].map(match => new RegExp('^Tile ' + match[0] + ','))
+            : lines[1]?.trim().split(/\s+/) || [];
         if (!sequence.length) throw new Error('The memory scene did not expose its prompt in reduced-motion mode.');
         await capture(page, label + '-remember', view);
-        for (const symbol of sequence) await overlay.getByRole('button', { name: symbol, exact: true }).click();
+        for (const tile of sequence) await overlay.getByRole('button', { name: tile, exact: true }).click();
         return true;
     }
-    return await click(page, overlay.getByRole('button', { name: /^Continue/ }).first(), label + '-continue', view) ||
-        await click(page, overlay.locator('.story-mg-btn:enabled').first(), label + '-pick', view);
+    return await click(page, overlay.getByRole('button', { name: /^Continue\s*→$/ }).first(), label + '-continue', view) ||
+        await click(page, overlay.locator('.story-mg-btn:enabled').filter({ hasNotText: /Replay pattern|Read pattern|Continue without/ }).first(), label + '-pick', view);
 }
 
 async function waitForServer() {
@@ -271,6 +276,7 @@ async function main() {
             await page.locator('#menu-offline-entry').click();
             await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 120000 });
             const download = page.locator('#offline-dl-start');
+            if (offlineProfile) await page.getByLabel('Offline pack', { exact: true }).selectOption(offlineProfile);
             await page.waitForFunction(() => /remaining.*files|files remaining/.test(document.getElementById('offline-dl-size')?.textContent), null, { timeout: 20000 });
             await capture(page, 'offline-download-size');
             await download.click();
@@ -288,6 +294,7 @@ async function main() {
             coverage.offlinePack = true;
             coverage.offlineProfile = await page.evaluate(() =>
                 JSON.parse(localStorage.getItem('pbs_settings') || '{}').offlineDownload?.profile || 'full');
+            if (offlineProfile) assert.equal(coverage.offlineProfile, offlineProfile, 'The requested pack stayed active after disconnecting');
             if (coverage.offlineProfile === 'compact') {
                 const sprite = await page.evaluate(async () => {
                     const path = 'sprites/gen5ani/pikachu.gif';
@@ -304,8 +311,11 @@ async function main() {
         await page.locator('.menu-btn-quickplay--story').waitFor({ state: 'visible' });
         const action = (selector, label, snapshot) => click(page, page.locator(selector).first(), label, snapshot);
         if (!await action('.menu-btn-quickplay--story', 'home')) throw new Error('Story mode was not actionable.');
-        await page.locator('.story-menu-btn--new').waitFor({ state: 'visible' });
-        if (!await action('.story-menu-btn--new', 'story-menu')) throw new Error('Story creation was not actionable.');
+        const launch = page.locator('.story-menu-btn--new:visible, #story-create-name:visible');
+        // Opening Story may load the first run's local data on a cold boot.
+        await launch.first().waitFor({ timeout: 35000 });
+        if (await page.locator('.story-menu-btn--new').isVisible() &&
+            !await action('.story-menu-btn--new', 'story-menu')) throw new Error('Story creation was not actionable.');
         await page.locator('#story-create-name').fill('Field Tester');
         if (difficulty !== 'normal') {
             await page.locator(`.story-create-diff-card[data-diff="${difficulty}"]`).click();
@@ -361,15 +371,17 @@ async function main() {
                 const chapterModal = '.story-chapter-dialog:visible';
                 if (chapters && activeChapter && await page.locator(chapterModal).count()) {
                     const choice = choiceForChapter(activeChapter.id);
+                    const discovery = page.locator(chapterModal + ' [data-adventure-secret]').first();
                     if (await run(chapterModal + ` [data-adventure-pick="${choice}"]`, 'chapter-choice-' + activeChapter.id)) {
                         activeChapter.choice = choice;
                         advanced = true;
                     } else if (await run(chapterModal + ' [data-adventure-next]', 'chapter-panel-' + activeChapter.id)) {
                         activeChapter.panels++;
                         advanced = true;
-                    } else if (await run(chapterModal + ' [data-adventure-secret]', 'chapter-secret-' + activeChapter.id)) {
-                        activeChapter.secret = true;
-                        advanced = true;
+                    } else if (!activeChapter.secret && await discovery.count()) {
+                        // A momentarily unsettled discovery button must finish before the driver leaves the scene.
+                        advanced = await click(page, discovery, 'chapter-secret-' + activeChapter.id, view);
+                        if (advanced) activeChapter.secret = true;
                     } else if (await run(chapterModal + ' [data-adventure-done]', 'chapter-return-' + activeChapter.id)) {
                         activeChapter = null;
                         advanced = true;
@@ -391,7 +403,7 @@ async function main() {
                 else if (await run('.story-hof-gb-overlay:visible .story-hof-gb-btn-primary', 'hall-of-fame')) {
                     coverage.hallOfFame = true;
                     advanced = true;
-                } else if (view.dialogs.includes('story-minigame-overlay')) {
+                } else if (await page.locator('.story-minigame-overlay').first().isVisible()) {
                     advanced = await playMinigame(page, `minigame-${eventName}`, view);
                 } else if (view.dialogs.includes('camp-microgame')) {
                     advanced = await run('#camp-microgame [data-camp-exit]', `camp-leave-activity-${eventName}`);

@@ -17,6 +17,12 @@ const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
 const RAW = W.STORY_EVENTS_RAW;
+const saved = new Map();
+Object.defineProperty(W, 'localStorage', { value: {
+    getItem: key => saved.get(key) ?? null,
+    setItem: (key, value) => saved.set(key, String(value)),
+    removeItem: key => saved.delete(key),
+} });
 
 test('no-renumber guard: STORY_EVENTS_RAW shape is unchanged (camp adds NO rows)', () => {
     assert.equal(RAW.length, 67, 'event-table length — camp must live in the flow, not the table');

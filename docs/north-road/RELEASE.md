@@ -34,7 +34,7 @@ npm --version
 git rev-parse HEAD
 git status --short
 npm ci
-npx playwright install chromium webkit
+npx playwright install chromium webkit firefox
 ~~~
 
 Regenerate only in the implementation checkout when generated inputs need updating. `build:pwa` also regenerates sprite metadata and icons, builds competitive bundles and refreshes the offline manifest. `offline:manifest` is sufficient for changed packaged assets when generated bundles already match. Freeze the generated inputs before candidate verification. `build:release` hashes allowlisted files, rejects stale entries and recreates `dist/`. Keep any baseline artifact elsewhere first.
@@ -135,17 +135,22 @@ for viewport in 320x568 568x260; do
 done
 ~~~
 
-Allow for a full optional pack download, storage and repeat runtime. Pass a retained artifact with `--baseline-dist`, or select the actually published Git tree with `--baseline`. In Git mode the installed upgrade driver uses `git show` to read the previous manifest and differing files.
+Allow for both optional pack profiles, storage and repeat runtime. A fresh profile defaults to Compact. The campaign driver selects and checks the downloaded profile when `--offline-profile` is present. Run both using independent browser contexts. Pass a retained artifact with `--baseline-dist`, or select the actually published Git tree with `--baseline`. In Git mode the installed upgrade driver uses `git show` to read the previous manifest and differing files.
 
 ~~~bash
-npm run playtest:player -- --only=story --seed=253 --road-choice=scout --chapters \
-  --offline-pack --out-dir="$QA_RUN/full-offline"
+for profile in compact full; do
+  BATTLE_TEST_RESUME_OFFLINE_TURN=1 npm run playtest:player -- --only=story \
+    --seed=253 --road-choice=scout --chapters --real-battles=1 \
+    --offline-pack --offline-profile="$profile" --out-dir="$QA_RUN/$profile-offline"
+done
+node tests/visual/offline-pack-update.mjs \
+  "${NORTH_ROAD_PREVIOUS_ARTIFACT:?Set the path of the retained artifact}" dist
 node scripts/debug/installed-upgrade-playtest.mjs --dist=dist \
   --baseline-dist="${NORTH_ROAD_PREVIOUS_ARTIFACT:?Set the path of the retained artifact}" \
   --rollback --out="$QA_RUN/installed-upgrade"
 ~~~
 
-Pages depends on both reusable Quality and Player playtest. Player playtest runs the packaged browser checks, including the mixed route and a fresh full offline campaign, then uploads the tested `dist/`. Pages deploys that artifact. The workflow records the commit, release manifest identity and checksums of the game and simulator files. Run the same browser gate locally with `BATTLE_CANDIDATE_MIXED=true OFFLINE_PACK=true bash scripts/debug/release-candidate-playtest.sh` after building the candidate. Rehearse on staging and bind the physical and manual evidence to the same revision and digest before updating a deployment-triggering ref. [Quality](../../.github/workflows/quality.yml) · [Player workflow](../../.github/workflows/player-playtest.yml) · [Pages workflow](../../.github/workflows/static.yml)
+Pages depends on both reusable Quality and Player playtest. Player playtest runs the packaged browser checks, including the mixed route and a fresh offline campaign, then uploads the tested `dist/`. Pages deploys that artifact. The workflow records the commit, release manifest identity and checksums of the game and simulator files. Run the browser gate locally with `BATTLE_CANDIDATE_MIXED=true BATTLE_CANDIDATE_STATEFUL=true OFFLINE_PACK=true bash scripts/debug/release-candidate-playtest.sh` after building the candidate. Run `node tests/visual/battle-long-session.mjs` against the candidate and measure repeated Town → tool → Camp → Battle → Town visits to check cross-screen resource cleanup as well as sustained battle input. Rehearse on staging and bind the physical and manual evidence to the same revision and digest before updating a deployment-triggering ref. [Quality](../../.github/workflows/quality.yml) · [Player workflow](../../.github/workflows/player-playtest.yml) · [Pages workflow](../../.github/workflows/static.yml)
 
 ## 3. Physical devices, accessibility, and human testing
 
@@ -176,7 +181,7 @@ Initial targets are five of six novices finding and trying a valid preparation a
 
 ## 4. Save, offline, performance and rollback fixtures
 
-For each transaction, interrupt before confirm, after confirm before feedback, during animation or reply, after persistence, and after replay/reimport. Compare the seed, party and foe stable IDs, badges, row, cash, bag, held gear, PC, opportunity/reward receipts and relevant archive. Unfinished matches use the supported fight-entry recovery boundary. Already committed results show the aftermath without a second battle.
+For each transaction, interrupt before confirm, after confirm before feedback, during animation or reply, after persistence, and after replay/reimport. Compare the seed, party and foe stable IDs, badges, row, cash, bag, held gear, PC, opportunity/reward receipts and relevant archive. Eligible seeded Story fights resume from a compatible native snapshot, including forced replacement. An unavailable or incompatible snapshot uses the locked encounter recovery boundary. Check that a resumable terminal turn settles once and already committed results show the aftermath without another fight. [Exact-turn fixture](../../tests/visual/story-exact-resume.mjs)
 
 | Case | Expected outcome |
 | --- | --- |

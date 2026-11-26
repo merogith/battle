@@ -333,6 +333,40 @@ test('turning off effects interrupts live cries and cancels already queued cues'
     assert.equal(builtWith('faint.wav').length, 0, 'the previous faint cue did not survive mute');
 });
 
+test('place ambience retains one bed, releases on mute and switches only to the latest place', () => {
+    const coast = 'music/world/coast-surf.mp3';
+    const quarry = 'music/world/quarry-air.mp3';
+    try {
+        W.applySettingSwitch('soundEnabled', true);
+        AS.setSoundVolume(0.55);
+        AS.setPlaceAmbience(coast);
+        const first = T.state().placeBed;
+        assert.ok(first?.loop && !first.paused);
+        assert.equal(first.src, coast);
+        AS.setPlaceAmbience(coast);
+        assert.equal(T.state().placeBed, first);
+        W.applySettingSwitch('soundEnabled', false);
+        assert.equal(first.src, '');
+        const count = built.length;
+        AS.setPlaceAmbience(quarry);
+        assert.equal(built.length, count, 'mute avoids loading the next place');
+        W.applySettingSwitch('soundEnabled', true);
+        const second = T.state().placeBed;
+        assert.equal(second?.src, quarry);
+        AS.setPlaceAmbience('');
+        assert.equal(second.src, '');
+        assert.equal(T.state().placeBed, null);
+        AS.playPlaceCue('music/world/camp-ember.mp3');
+        const cue = builtWith('camp-ember.mp3').at(-1);
+        assert.ok(cue);
+        AS.setPlaceAmbience('');
+        assert.equal(cue.src, '', 'leaving still stops a cue when no bed was active');
+    } finally {
+        AS.setPlaceAmbience('');
+        W.applySettingSwitch('soundEnabled', true);
+    }
+});
+
 test('a rejected effect returns its voice to the live pool', async () => {
     const Audio = W.Audio;
     const starting = T.state().sfxActive;

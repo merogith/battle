@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const harness = await loadEngine();
 const { window: W } = harness;
@@ -19,6 +19,7 @@ async function element(selector, matches = () => true) {
 }
 
 test('City 5 links one newly unlocked move to the favorite partner in the Tutor', async () => {
+  installWritableStorage(W);
   const rows = ST.STORY_EVENTS_RAW;
   const city = number => rows.findIndex(row => row[1] === 'City' && row[2] === `City${number}`);
   const team = [
@@ -45,6 +46,8 @@ test('City 5 links one newly unlocked move to the favorite partner in the Tutor'
   assert.match(document.querySelector('#story-tutor-team').textContent, /Wake|Gyarados/);
   assert.equal(ST.sm.gold, 4500, 'opening the lesson leaves the purchase to the player');
   assert.deepEqual(team[1].build.m, ['Tackle']);
+  const saved = JSON.parse(W.localStorage.getItem('pbs_story_save'));
+  assert.equal(saved.scenesShown['city5-move-power-preview'], true);
   W.__renderCityActionsForTest(city(5));
   assert.equal(document.querySelector('#story-city-milestone').childElementCount, 0, 'opening the lesson acknowledges the city tip');
 });

@@ -316,14 +316,14 @@ test('a named preparation action opens the chosen partner directly', () => {
 test('the Notebook uses actual town facilities and keeps boxed hatches a surprise', () => {
   const city = W.document.getElementById('screen-story-city');
   const setVisible = () => city.classList.remove('hidden');
-  const names = () => [...W.document.querySelectorAll('.upgrade-dialog button')].map(button => button.textContent);
+  const services = () => [...W.document.querySelectorAll('.upgrade-notebook-services button')];
   const c = cityRowIdx(row => row[2] === 'City3');
   setSm({ eventIndex: c, daycare: { unlocked: true }, pcBox: [{ id: 'egg', isEgg: true, name: 'Geodude' }] });
   render(c);
   setVisible();
   W.GameUpgrades.openNotebook();
   assert.equal(W.StoryMode.upgrades.visit('daycare'), false);
-  assert.ok(!names().includes('Visit Daycare Inn'));
+  assert.ok(!services().some(button => button.textContent === 'Daycare Inn'));
   assert.equal(W.StoryMode.upgrades.snapshot().storage.length, 0);
   W.GameUpgrades.close();
 
@@ -331,8 +331,9 @@ test('the Notebook uses actual town facilities and keeps boxed hatches a surpris
   render(0);
   setVisible();
   W.GameUpgrades.openNotebook();
-  assert.ok(names().includes('Visit Department Store'));
-  assert.ok(!names().includes('Visit Pokémart'));
+  const department = services().find(button => button.textContent === 'Department Store');
+  assert.equal(department?.getAttribute('aria-label'), 'Visit Department Store');
+  assert.ok(!services().some(button => button.textContent === 'Pokémart'));
   W.GameUpgrades.close();
   city.classList.add('hidden');
 });

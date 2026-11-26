@@ -47,6 +47,12 @@ try {
     await story.launchBattle(foes, 29);
   });
   await teamReady();
+  const liveField = page.locator('#battle-field');
+  assert.match(await liveField.evaluate(el => getComputedStyle(el).backgroundImage), /recovery-lake\.webp/);
+  await page.evaluate(() => { state.terrain = 'Grassy'; window.refreshBattleBg(); });
+  assert.match(await liveField.evaluate(el => getComputedStyle(el).backgroundImage), /recovery-lake\.webp/,
+    'field effects retain the current Story venue');
+  await page.evaluate(() => { state.terrain = null; window.refreshBattleBg(); });
 
   await page.evaluate(() => {
     const write = Storage.prototype.setItem;
@@ -66,6 +72,8 @@ try {
   assert.equal(await trainersWon(), 0, 'lifetime credit follows the authoritative save');
   await retry.click();
   await result.getByRole('heading', { name: 'Trainer cleared · 1 of 3' }).waitFor();
+  assert.equal(await result.getByRole('button').first().innerText(), 'Next trainer',
+    'the next fight is the primary action');
   const lakeVenue = el => getComputedStyle(el).backgroundImage;
   assert.match(await result.evaluate(lakeVenue), /recovery-lake\.webp/);
   const first = await run();
@@ -92,8 +100,9 @@ try {
   assert.equal((await run()).gold, first.gold);
 
   await result.getByRole('button', { name: 'Back to town' }).click();
-  const resume = page.locator('#story-action-buttons').getByRole('button', { name: 'Resume Gym · Round 2 of 3' });
+  const resume = page.locator('#screen-story-city').getByRole('button', { name: 'Resume Gym · Round 2 of 3' });
   await resume.waitFor();
+  assert.equal(await resume.count(), 1, 'the town offers one Gym resume action');
   const town = await run();
   assert.equal(town.gold, first.gold);
   assert.equal(town.pendingBattleResult.phase, 'town');

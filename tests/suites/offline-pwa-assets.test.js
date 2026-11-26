@@ -34,6 +34,8 @@ test('both offline title screens display the package version', () => {
   const label = `<p class="game-version">Version ${version}</p>`;
   assert.ok(read('index.html').includes(label), 'public title matches package.json');
   assert.ok(HTML.includes(label), 'in-game title matches package.json');
+  const meta = `<meta name="battle-version" content="${version}">`;
+  assert.ok(read('index.html').includes(meta) && HTML.includes(meta), 'backup and title version metadata share the release value');
 });
 
 test('offline-assets.json exists, is hashed, and lists real files', () => {
@@ -152,15 +154,16 @@ test('the title and Offline Play can check for a verified app update', () => {
   assert.ok(/function revalidateShell/.test(sw), 'SW background shell revalidation exists');
   assert.match(sw,/cache:\s*'no-store'/, 'release manifest bypasses stale HTTP cache');
   assert.ok(/self.registration.update\(\)/.test(sw), 'browser installs a new complete worker');
-  assert.ok(/precacheShell\(\).then/.test(sw), 'activation follows completed installation');
+  assert.match(sw, /event\.waitUntil\(precacheShell\(\)\)/, 'installation verifies the complete shell');
+  assert.match(sw, /activatePreparedUpdate/, 'replacement activation checks open clients');
   assert.match(update, /await registration\.update\(\)/);
-  assert.match(update, /worker\.state === 'activated'/);
+  assert.match(update, /\['installed', 'activating', 'activated'\]\.includes\(worker\.state\)/);
   assert.match(title, /id="title-update"/);
   for (const page of [title, HTML]) {
     assert.match(page, /<script src="game-update\.js" defer>/);
     assert.match(page, /window\.checkForGameUpdate\(/);
   }
-  assert.match(HTML, /_inBattleNow\(\)\)\s*return/, 'reload is deferred during an active battle');
+  assert.match(HTML, /!window\.__gameUpdateParkRequested \|\| !window\.canParkStoryUpdate\(\)/, 'reload requires an explicit native-turn save during active battle');
 });
 
 test('Battle Options: Classic (once-per-battle) toggle is wired + panel re-syncs from live settings', () => {

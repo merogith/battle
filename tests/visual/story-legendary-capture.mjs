@@ -67,7 +67,8 @@ async function approach(page, reducedMotion = false) {
   const cinematic = await waitForSighting(page);
   if (!reducedMotion) {
     assert.equal(await cinematic.getAttribute('aria-label'), 'Tracks on the road');
-    assert.equal(await cinematic.locator('img').getAttribute('alt'), '');
+    assert.equal(await cinematic.locator('.story-legend-sighting-sprite').getAttribute('alt'), '');
+    assert.match(await cinematic.locator('.world-scene-plate').getAttribute('src'), /legendary-sighting\.webp$/);
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Step closer →');
     await page.keyboard.press('Enter');
@@ -204,7 +205,9 @@ try {
     await page.locator('#modal-game-confirm').getByRole('button', { name: 'OK' }).click();
     await page.locator('[data-catch-continue]').waitFor();
     await resumeSavedRun(page);
-    assert.match(await page.locator('#story-catch-body').innerText(), /won’t appear again this run/);
+    const receipt = page.locator('#story-catch-body');
+    assert.equal(await receipt.getByRole('heading', { name: 'You left the encounter' }).count(), 1);
+    assert.match(await receipt.innerText(), /won’t appear again this run/);
     assert.equal(await page.getByRole('button', { name: 'View in Pokédex' }).count(), 0);
     await page.locator('[data-catch-continue]').click();
     assert.equal((await saved(page)).receipt, null);
@@ -221,7 +224,9 @@ try {
     await page.getByRole('button', { name: /Poké Ball ×2/i }).click();
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('pbs_story_save')).catchRecovery?.roamingOutcome);
     await resumeSavedRun(page);
-    assert.match(await page.locator('#story-catch-body').innerText(), /Suicune.*gone for good/is);
+    const receipt = page.locator('#story-catch-body');
+    await receipt.getByRole('heading', { name: 'The legend fled' }).waitFor();
+    assert.match(await receipt.innerText(), /Suicune.*(?:gone for good|won’t appear again this run)/is);
     const escaped = await saved(page);
     assert.equal(escaped.balls.poke, 1);
     assert.equal(escaped.balls.master, 1);

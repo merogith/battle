@@ -32,7 +32,7 @@ function introBlock() {
 
 test('the opening cold-open narration says "your rival", not a name token', () => {
   const b = introBlock();
-  assert.ok(b.includes('Your rival got their starter'), 'intro: narration names "your rival"');
+  assert.match(b, /\byour rival\b/i, 'intro: narration names "your rival"');
   assert.ok(!b.includes('{rival}'), 'intro: no {rival} name interpolation in the narration');
 });
 

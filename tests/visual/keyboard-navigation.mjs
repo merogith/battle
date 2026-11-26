@@ -93,6 +93,7 @@ async function verifyPreferencesAndHistory(page) {
   await tabTo(page, weather);
   await page.keyboard.press('Space');
   assert.deepEqual(await Promise.all(toggles.map(control => control.isChecked())), [true, false, true]);
+  await activate(page, settings.getByRole('button', { name: 'Help', exact: true }));
   await activate(page, reading);
   const prefs = page.getByRole('dialog', { name: 'Reading & accessibility' });
   const readable = prefs.getByRole('checkbox', { name: 'Use a readable interface font' });
@@ -112,6 +113,7 @@ async function verifyPreferencesAndHistory(page) {
   await page.goBack();
   await prefs.waitFor({ state: 'hidden' });
   await hasFocus(reading);
+  await activate(page, settings.getByRole('button', { name: 'Display', exact: true }));
   assert.ok(await settings.locator('#settings-motion-note').isVisible());
   assert.deepEqual(await Promise.all(toggles.map(control => control.isDisabled())), [true, true, true]);
   assert.deepEqual(await Promise.all(toggles.map(control => control.isChecked())), [false, false, false]);
@@ -125,11 +127,13 @@ async function verifyPreferencesAndHistory(page) {
   await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 40000 });
   await activate(page, settingsButton);
   assert.deepEqual(await Promise.all(toggles.map(control => control.isDisabled())), [true, true, true]);
+  await activate(page, settings.getByRole('button', { name: 'Help', exact: true }));
   await activate(page, reading);
   await tabTo(page, reduce);
   await page.keyboard.press('Space');
   await page.keyboard.press('Escape');
   await prefs.waitFor({ state: 'hidden' });
+  await activate(page, settings.getByRole('button', { name: 'Display', exact: true }));
   assert.deepEqual(await Promise.all(toggles.map(control => control.isDisabled())), [false, false, false]);
   assert.deepEqual(await Promise.all(toggles.map(control => control.isChecked())), [true, false, true]);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -141,6 +145,7 @@ async function verifyPreferencesAndHistory(page) {
 async function verifyCollection(page) {
   await activate(page, page.locator('.menu-btn-quickplay--story'));
   const trigger = page.locator('.story-menu-btn--collection');
+  await trigger.waitFor({ timeout: 45000 });
   await activate(page, trigger);
   await tabTo(page, page.locator('#collection-tab-pokedex'));
   await page.keyboard.press('ArrowRight');
@@ -170,6 +175,7 @@ async function verifyNotebookAndRecovery(page) {
 
   const settings = page.locator('#modal-settings');
   await activate(page, page.locator('.story-hud-settings'));
+  await activate(page, settings.getByRole('button', { name: 'Data', exact: true }));
   const entry = settings.getByRole('button', { name: 'Save & recovery' });
   await activate(page, entry);
   const recovery = page.getByRole('dialog', { name: 'Save & recovery' });
@@ -243,6 +249,7 @@ async function verifyFreshRecovery(backup) {
     await page.goto(url.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 40000 });
     await activate(page, page.getByRole('button', { name: 'Settings', exact: true }));
+    await activate(page, page.locator('#modal-settings').getByRole('button', { name: 'Data', exact: true }));
     await activate(page, page.getByRole('button', { name: 'Save & recovery' }));
     const recovery = page.getByRole('dialog', { name: 'Save & recovery' });
     assert.match(await recovery.innerText(), /No Story run on this device/);
@@ -273,6 +280,31 @@ async function verifyFreshRecovery(backup) {
     const { entries } = JSON.parse(backup);
     assert.deepEqual(imported.run, entries.pbs_story_save);
     assert.deepEqual(imported.slot, entries.pbs_slot_1);
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyBattleBack() {
+  const context = await browser.newContext({ reducedMotion: 'reduce', serviceWorkers: 'block' });
+  try {
+    await context.route('**/*', route =>
+      new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
+    const page = await context.newPage();
+    await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+    const home = page.getByRole('region', { name: 'Main menu' });
+    await home.getByText('Battles', { exact: true }).click();
+    await home.getByRole('button', { name: 'Quick Battle', exact: true }).click();
+    const fight = page.getByRole('region', { name: 'Battle', exact: true }).getByRole('button', { name: /^Fight/ });
+    const confirm = page.locator('#modal-game-confirm');
+    await fight.waitFor({ timeout: 40000 });
+    await page.goBack();
+    await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await fight.waitFor();
+    await page.goBack();
+    await confirm.getByRole('button', { name: 'OK', exact: true }).click();
+    await home.waitFor();
+    console.log('Browser Back guards Quick Battle and permits cancel then confirmed forfeit.');
   } finally {
     await context.close();
   }
@@ -320,6 +352,7 @@ try {
       await context.close();
     }
   }
+  await verifyBattleBack();
 } finally {
   await browser.close();
 }

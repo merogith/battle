@@ -51,7 +51,14 @@ try {
   const cinematic = page.getByRole('dialog', { name: /Marowak/ });
   await cinematic.waitFor();
   assert.match(await cinematic.innerText(), /Solo raid · Final encounter/);
-  assert.match(await cinematic.evaluate(element => getComputedStyle(element).backgroundImage), /menu_bg_ground\.webp/);
+  const plate = cinematic.locator('img.world-scene-plate');
+  await plate.waitFor();
+  const artwork = await plate.evaluate(async image => {
+    await image.decode();
+    return { path: new URL(image.currentSrc).pathname, width: image.naturalWidth };
+  });
+  assert.match(artwork.path, /\/sprites\/(?:backgrounds|story)\//);
+  assert.ok(artwork.width > 0, 'the raid uses decoded local art');
   const commit = cinematic.getByRole('button', { name: 'Stand your ground →' });
   const promptBox = await commit.boundingBox();
   assert.ok(promptBox.y + promptBox.height <= 568, 'the raid entry action fits the smallest portrait');
@@ -61,11 +68,13 @@ try {
   await cinematic.waitFor({ state: 'detached' });
 
   const screen = page.locator('#screen-battle[data-battle-engine="showdown"]');
-  const waitForVenue = (venue, crop) => page.waitForFunction(({ venue, crop }) => {
+  const waitForVenue = (venue, crop, fallback, art) => page.waitForFunction(({ venue, crop, fallback, art }) => {
     const arena = document.querySelector('#battle-field');
-    return arena?.dataset.scene === venue && arena.dataset.crop === crop &&
-      getComputedStyle(arena).backgroundImage.includes(`/sprites/backgrounds/battle/${crop}/bg_${venue}.webp`);
-  }, { venue, crop }, { timeout: 5000 });
+    if (arena?.dataset.scene !== venue || arena.dataset.crop !== crop) return false;
+    const background = getComputedStyle(arena).backgroundImage;
+    return background.includes(`/sprites/backgrounds/battle/${crop}/bg_${fallback}.webp`) &&
+      (!art || background.includes(`/sprites/backgrounds/story/${art}.webp`));
+  }, { venue, crop, fallback, art }, { timeout: 5000 });
   const fight = screen.locator('#command-menu [data-cmd="fight"]');
   const hpMarks = screen.locator('.boss-hp-threshold');
   const pending = screen.locator('#boss-status-indicator button[data-next="true"]');
@@ -79,7 +88,7 @@ try {
     await page.waitForFunction(lastTurn => state.isOver || (state.turnNumber > lastTurn && !state.isLocked), turn);
   };
   await ready();
-  await waitForVenue('raid', 'landscape');
+  await waitForVenue('extra.cubone.raid', 'landscape', 'raid');
   assert.equal(await hpMarks.count(), 3);
   const hitPoints = () => page.evaluate(() => [state.fActive.currentHp, state.fActive.maxHp]);
   const initial = await hitPoints();
@@ -95,7 +104,7 @@ try {
   await page.locator('.story-boss-banner').first().waitFor({ state: 'detached' });
   for (const [width, height] of [[320, 568], [568, 320], [820, 1180], [1600, 900]]) {
     await page.setViewportSize({ width, height });
-    await waitForVenue('raid', height > width ? 'portrait' : 'landscape');
+    await waitForVenue('extra.cubone.raid', height > width ? 'portrait' : 'landscape', 'raid');
     await pending.first().focus();
     await pending.first().press('Enter');
     await detail.waitFor();
@@ -129,7 +138,7 @@ try {
   await screenshot('gym-intro-desktop');
   await gym.getByRole('button', { name: 'Challenge the Gym Leader' }).click();
   await ready();
-  await waitForVenue('neutral', 'landscape');
+  await waitForVenue('gym-1-leader', 'landscape', 'neutral', 'battle-dojo');
   assert.equal(await screen.evaluate(node => node.classList.contains('battle-tint-rock')), true, 'the Rock gym adds its own color to the stadium');
   assert.equal(await hpMarks.count(), 0);
   await choose('Surf');

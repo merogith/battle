@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. The manifest build sets CACHE_VERSION from the release contents.
  */
-const CACHE_VERSION = 'battle-v5-e6686a7a77b8';
+const CACHE_VERSION = 'battle-v5-b9f179b9dfc5';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -45,6 +45,9 @@ const SHELL = [
   'battle-encounter-profiles.js',
   'battle-move-profiles.js',
   'battle-motion.js',
+  'world-presentation.js',
+  'world-location.css',
+  'story-activities.css',
   'vendor/anime.min.js',
   'vendor/pkmn-dex.min.js',
   'sprites/placeholder.svg',
@@ -128,7 +131,9 @@ async function reuseVerifiedResponse(file, names) {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheShell().then(() => self.skipWaiting()));
+  // A first install activates naturally. A replacement waits for the current
+  // game clients to reach a safe boundary or close.
+  event.waitUntil(precacheShell());
 });
 
 self.addEventListener('activate', (event) => {
@@ -152,19 +157,88 @@ async function matchCache(name, req) {
   }
 }
 
-async function cacheFirst(req) {
-  for (const name of [SHELL_CACHE, ASSETS_CACHE, RUNTIME_CACHE]) {
-    const hit = await matchCache(name, req);
-    if (hit) return hit;
-  }
-  return null;
+async function gameWindows() {
+  const scope = new URL(self.registration.scope);
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  return windows.filter(client => {
+    const url = new URL(client.url);
+    return url.origin === scope.origin && url.pathname.startsWith(scope.pathname)
+      && shellDocument(url.pathname.slice(scope.pathname.length));
+  });
+}
+
+function probeGameWindow(client, type) {
+  return new Promise(resolve => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => finish(false), 1100);
+    function finish(ready) {
+      clearTimeout(timer);
+      channel.port1.close();
+      resolve(ready);
+    }
+    channel.port1.onmessage = event => finish(event.data === true);
+    try { client.postMessage({ type }, [channel.port2]); }
+    catch (_) { finish(false); }
+  });
+}
+
+let updateHandoff;
+function activatePreparedUpdate(sourceId) {
+  if (updateHandoff) return updateHandoff;
+  updateHandoff = (async () => {
+    const clients = await gameWindows();
+    if (!clients.some(client => client.id === sourceId)) return false;
+    if (!(await Promise.all(clients.map(client => probeGameWindow(client, 'CHECK_GAME_UPDATE')))).every(Boolean)) return false;
+    let applying = false;
+    try {
+      if (!(await Promise.all(clients.map(client => probeGameWindow(client, 'PREPARE_GAME_UPDATE')))).every(Boolean)) return false;
+      const readyIds = new Set(clients.map(client => client.id));
+      if ((await gameWindows()).some(client => !readyIds.has(client.id))) return false;
+      await self.skipWaiting();
+      applying = true;
+      return true;
+    } finally {
+      if (!applying) for (const client of clients) {
+        try { client.postMessage({ type: 'CANCEL_GAME_UPDATE' }); } catch (_) {}
+      }
+    }
+  })().catch(() => false).finally(() => { updateHandoff = null; });
+  return updateHandoff;
+}
+
+async function cacheFirst(req, bundleKey = req) {
+  return await matchCache(SHELL_CACHE, bundleKey) || await matchInstalledAsset(bundleKey) || await matchCache(RUNTIME_CACHE, req);
 }
 
 const PACK_FRAME_ARCHIVE = 'sprites/compact-frames.bin';
 let compactFrames;
+let installedAssetCompatibility;
+
+async function readInstalledAssetCompatibility() {
+  const applied = await matchCache(ASSETS_CACHE, APPLIED_MANIFEST_KEY);
+  if (!applied) return null;
+  const record = await applied.json();
+  if (!record?.release || record.release === CACHE_VERSION) return null;
+  const manifest = await matchCache(SHELL_CACHE, 'offline-assets.json');
+  if (!manifest) return null;
+  const previous = assetHashes(record);
+  const current = assetHashes(await manifest.json());
+  return new Set(Object.keys(previous).filter(url => previous[url] === current[url]));
+}
+
+async function matchInstalledAsset(request) {
+  const response = await matchCache(ASSETS_CACHE, request);
+  if (!response) return null;
+  const path = typeof request === 'string' ? request : relUrl(request.url);
+  // Unchanged downloads stay available while an updated shell waits for its
+  // optional media delta. Changed files use the current origin or the UI fallback.
+  installedAssetCompatibility ??= readInstalledAssetCompatibility().catch(() => null);
+  const compatible = await installedAssetCompatibility;
+  return !compatible || compatible.has(path) ? response : null;
+}
 
 async function loadCompactFrames() {
-  const archive = await matchCache(ASSETS_CACHE, PACK_FRAME_ARCHIVE);
+  const archive = await matchInstalledAsset(PACK_FRAME_ARCHIVE);
   if (!archive) return null;
   const blob = await archive.blob();
   const bytes = new DataView(await blob.slice(0, 4).arrayBuffer()).getUint32(0);
@@ -277,8 +351,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Same-origin assets → cache-first by precedence; populate RUNTIME on first network hit.
+  // Static artwork often carries an HTTP cache-busting version. Pack and shell
+  // entries already belong to a verified release and use plain manifest paths.
+  const bundleKey = /^\?v=[^&]*$/.test(url.search)
+    && /^(?:icons|sprites|music|fonts|data|vendor)\//.test(path) ? path : req;
   event.respondWith((async () => {
-    const hit = await cacheFirst(req) || await compactSprite(path);
+    const hit = await cacheFirst(req, bundleKey) || await compactSprite(path);
     if (hit) {
       const range = req.headers?.get('Range');
       if (!range) return hit;
@@ -363,7 +441,10 @@ self.addEventListener('message', (event) => {
     try { event.source?.postMessage(payload); } catch (_) {}
   };
 
-  if (msg.type === 'SYNC_ASSETS' && msg.manifest && Array.isArray(msg.manifest.files)) {
+  if (msg.type === 'APPLY_GAME_UPDATE' && event.ports?.[0]) {
+    const port = event.ports[0];
+    event.waitUntil(activatePreparedUpdate(event.source?.id).then(ready => port.postMessage(ready)));
+  } else if (msg.type === 'SYNC_ASSETS' && msg.manifest && Array.isArray(msg.manifest.files)) {
     event.waitUntil(syncAssets(msg, reply));
   } else if (msg.type === 'SYNC_STATUS') {
     reply({ type: 'SYNC_STATUS', batchId: msg.batchId, job: offlineJob });
@@ -418,6 +499,7 @@ async function clearAssets(msg, reply, sourceId) {
   try {
     await Promise.all([caches.delete(ASSETS_CACHE), caches.delete(RUNTIME_CACHE)]);
     compactFrames = null;
+    installedAssetCompatibility = null;
     offlineJob = null;
     reply({ type: 'CACHE_CLEARED', batchId: msg.batchId });
     await notifyOfflineClients({ type: 'OFFLINE_PACK_REMOVED' }, sourceId);
@@ -610,6 +692,9 @@ async function syncAssets(msg, reply) {
     if (!msg.dryRun) offlineJob.status = 'incomplete';
     reply({ type, batchId: msg.batchId, failed: true });
   } finally {
-    if (!msg.dryRun) assetMutationInProgress = false;
+    if (!msg.dryRun) {
+      installedAssetCompatibility = null;
+      assetMutationInProgress = false;
+    }
   }
 }

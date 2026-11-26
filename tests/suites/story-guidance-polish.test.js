@@ -6,8 +6,7 @@
 //     near `_storyRewardItemSummary`).
 //  2. The Help modal's BAG line is Story-accurate — Story Mode has a working
 //     in-battle bag, so it must not claim "No items in competitive format".
-//  3. Every STORY_TUTORIAL_SCENES entry carries a one-line action `cue`, and the
-//     Help modal documents the four Terrains.
+//  3. Tutorial scenes keep cues in dialogue and battle Help points to live field details.
 //
 // Source-level guard. Run: node --test tests/suites/story-guidance-polish.test.js
 
@@ -32,8 +31,8 @@ test('removed Pokédex-milestone reward path is gone from player-facing text', (
 test('Help BAG line reflects the Story-mode in-battle bag', () => {
   assert.ok(!/BAG<\/b> — No items in competitive format/.test(HTML),
     'the stale "No items in competitive format" BAG line must be replaced');
-  assert.ok(HTML.includes('Throw balls and use items mid-battle in Story Mode'),
-    'BAG help should state items are usable in Story Mode');
+  assert.ok(HTML.includes("story ? '<dt>Bag</dt><dd>Use an item if the fight allows it."),
+    'Battle Help should explain when the Story bag is available');
 });
 
 test('the stale "🎯 Next" chip guidance is replaced by the objective bar', () => {
@@ -44,9 +43,10 @@ test('the stale "🎯 Next" chip guidance is replaced by the objective bar', () 
     'Help must not reference the removed "🎯 Next:" chip');
   assert.ok(!HTML.includes('🎯 Next chip'),
     'the welcome tip must not reference the removed "🎯 Next chip"');
-  assert.ok(/gold <b>objective bar<\/b>/.test(HTML),
-    'Help should point at the gold objective bar');
-  assert.ok(HTML.includes('The gold objective at the top of town shows your next step.'),
+  assert.ok(HTML.includes('follow the objective at the top of the screen'),
+    'Help should point to the town objective');
+  const welcome = /_storyShowOneTimeTip\('welcome',\s*'([^']*)'/.exec(HTML)?.[1] || '';
+  assert.match(welcome, /gold (?:button|objective) at the top of town/i,
     'the welcome tip should point at the gold objective bar');
 });
 
@@ -61,8 +61,7 @@ test('tutorial scenes no longer carry the separate action-cue block', () => {
     'no scene should define a separate `cue` field');
 });
 
-test('Help modal documents Terrain effects', () => {
-  assert.ok(/<h3[^>]*>Terrain<\/h3>/.test(HTML), 'Help should include a Terrain section');
-  ['Electric', 'Grassy', 'Psychic', 'Misty'].forEach((t) =>
-    assert.ok(HTML.includes(t), `Terrain help should mention ${t}`));
+test('battle Help points to live field effects', () => {
+  assert.ok(HTML.includes('<summary>Read the battlefield</summary>'));
+  assert.ok(HTML.includes('Open a weather or field label to see its effect and remaining turns.'));
 });

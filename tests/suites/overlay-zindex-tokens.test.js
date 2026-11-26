@@ -71,7 +71,7 @@ const MIGRATED = [
   // overlay tier — formerly off-scale (z10000 / z9990), folded onto the scale here
   ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
   // spotlight tier (9999)
-  ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-spotlight);', null, '_showFirstSightingLoreOverlay'],
+  // First-sighting lore now appears inside the Pokédex rather than an overlay.
   ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;gap:16px;', null, 'showBattleIntro'],
   ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:14px;', null, 'showVictoryOverlay'],
 ];

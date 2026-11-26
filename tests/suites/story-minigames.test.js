@@ -189,6 +189,19 @@ test('new game types resolve through play() in headless mode', async () => {
     }
 });
 
+test('skipping an optional activity records the outcome without awarding its draw effect', async () => {
+    const gold = ST.sm.gold;
+    const play = MG.playAndApply({ gameId: 'fixture-optional', persistKey: 'fixture.skipped', onDraw: { gold: 100 } },
+        { forceDom: true, durable: true, config: { type: 'tell', title: 'A field test', options: ['Go', 'Stay'] } });
+    const overlay = W.document.querySelector('.story-minigame-overlay[aria-label="A field test"]');
+    assert.ok(overlay);
+    overlay.querySelector('.story-mg-skip').click();
+    assert.equal((await play).outcome, 'skip');
+    assert.equal(ST.sm.gold, gold);
+    assert.equal(ST.sm.storyChoices['fixture.skipped'], 'skip');
+    assert.equal(overlay.isConnected, false);
+});
+
 test('giftPokemon effect adds a species to the roster (no battle-stat touch)', () => {
     const sm = ST.sm;
     sm.team = []; sm.pcBox = [];

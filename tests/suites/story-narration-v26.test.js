@@ -114,20 +114,14 @@ test('ROUTE_LINES covers every city→next segment with a valid scene', () => {
 });
 
 // ── Route interstitial fire-once ────────────────────────────────────────────
-test('_maybeShowRouteInterstitial fires once per cross-city battle, not on resume', () => {
+test('Breakwater departure fires once after the Pallet rival, not during the duel or on resume', () => {
     const RAW = ST.STORY_EVENTS_RAW;
-    // First battle row that genuinely opens a city→next-city route (per the
-    // engine's own resolver), excluding the intro-rival starter duel.
-    let idx = -1;
-    for (let i = 1; i < RAW.length; i++) {
-        const cur = RAW[i];
-        if (!cur || cur[1] !== 'Battle') continue;
-        // Skip the intro-rival starter duel (the interstitial deliberately
-        // doesn't fire there) — find a normal trainer route-opener.
-        if (String(cur[2] || '') === 'Rival') continue;
-        if (ST.routeCitiesForBattle(i)) { idx = i; break; }
-    }
-    assert.ok(idx > 0, 'found a route-opening battle row');
+    const intro = RAW.findIndex(row => row[0] === 68);
+    const idx = RAW.findIndex(row => row[0] === 1);
+    assert.ok(intro >= 0 && idx === intro + 1, 'route opener follows the starter duel');
+    assert.equal(ST.routeCitiesForBattle(intro), null);
+    assert.equal(ST.routeCitiesForBattle(idx)?.fromCity, 0);
+    assert.equal(ST.routeCitiesForBattle(idx)?.toCity, 1);
     plantSave({ version: 25, eventIndex: idx });
     W.__storyLoad();
     const sm = ST.sm;

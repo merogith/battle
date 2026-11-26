@@ -78,14 +78,27 @@
         return Object.assign(base, patch);
     }
 
-    async function fetchRoomByCode(code) {
+    function awaitRoomRequest(request, signal) {
+        if (!signal) return request;
+        const timeoutError = new Error('The room request timed out. Check your connection and try again.');
+        if (signal.aborted) throw timeoutError;
+        const pending = typeof request.abortSignal === 'function' ? request.abortSignal(signal) : request;
+        return new Promise((resolve, reject) => {
+            const onTimeout = () => reject(timeoutError);
+            signal.addEventListener('abort', onTimeout, { once: true });
+            Promise.resolve(pending).then(resolve, reject).finally(() => signal.removeEventListener('abort', onTimeout));
+        });
+    }
+
+    async function fetchRoomByCode(code, signal) {
         const sb = getClient();
         if (!sb) return { error: 'not_configured' };
         const c = String(code || '').trim().toUpperCase();
         if (c.length < 4) return { error: 'bad_code' };
         // Explicit columns (not '*'): the token columns added in migration 006
         // are SELECT-revoked for anon, and the client never needs them.
-        const { data, error } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('code', c).maybeSingle();
+        const { data, error } = await awaitRoomRequest(
+            sb.from('pvp_rooms').select('id, code, data, updated_at').eq('code', c).maybeSingle(), signal);
         if (error) return { error: error.message };
         if (!data) return { error: 'not_found' };
         return { room: data };
@@ -499,7 +512,7 @@
             }).catch((e) => console.warn('[OnlinePvP] applyHostMatchOptions', e));
         },
 
-        async createRoom(matchOptions, enabledGens, poolPayload) {
+        async createRoom(matchOptions, enabledGens, poolPayload, signal) {
             const sb = getClient();
             if (!sb) throw new Error('Supabase not configured');
             const eg = (enabledGens && enabledGens.length)
@@ -549,9 +562,11 @@
             // matches the pre-fix collision behavior.
             let rpcRes = null;
             let lastErr = null;
+            let code;
             for (let attempt = 0; attempt < 8; attempt++) {
-                roomCode = randomCode();
-                const { data: r, error: rpcErr } = await sb.rpc('try_create_pvp_room', { p_code: roomCode, p_data: data });
+                code = randomCode();
+                const { data: r, error: rpcErr } = await awaitRoomRequest(
+                    sb.rpc('try_create_pvp_room', { p_code: code, p_data: data }), signal);
                 if (rpcErr) { lastErr = rpcErr; throw rpcErr; }
                 if (r && r.ok) { rpcRes = r; break; }
                 if (r && r.error === 'duplicate_code') { lastErr = new Error('duplicate_code'); continue; }
@@ -559,6 +574,7 @@
             }
             if (!rpcRes) throw lastErr || new Error('Could not create room (code collision).');
             roomId = rpcRes.id;
+            roomCode = code;
             roomToken = rpcRes.host_token;
             role = 1;
             nativeRoomReady = false;
@@ -567,19 +583,17 @@
             return { roomId, code: roomCode };
         },
 
-        async joinRoom(code, guestName) {
+        async joinRoom(code, guestName, signal) {
             const sb = getClient();
             if (!sb) throw new Error('Supabase not configured');
-            const r = await fetchRoomByCode(code);
+            const r = await fetchRoomByCode(code, signal);
             if (r.error) throw new Error(r.error);
             const prev = r.room.data || {};
             if (prev.guest_joined) throw new Error('Room is full — another player already joined.');
-            roomId = r.room.id;
-            roomCode = r.room.code;
-            role = 2;
             const nm = (guestName || '').trim() || 'Guest';
             global.localStorage.setItem(STORAGE_KEY, nm);
-            const { data: jr, error: jrErr } = await sb.rpc('try_join_pvp_room', { p_room_id: roomId, p_guest_name: nm });
+            const { data: jr, error: jrErr } = await awaitRoomRequest(
+                sb.rpc('try_join_pvp_room', { p_room_id: r.room.id, p_guest_name: nm }), signal);
             if (jrErr) throw jrErr;
             if (!jr || !jr.ok) {
                 const code = jr && jr.error;
@@ -590,10 +604,15 @@
             // Capture the guest token (issued only to the joining client) for
             // subsequent pvp_push_data calls. The token is the only secret
             // bound to the guest's identity in this room.
+            roomId = r.room.id;
+            roomCode = r.room.code;
+            role = 2;
             roomToken = jr.guest_token || null;
-            if (prev.host_engine_protocol === ENGINE_PROTOCOL) {
+            let joined = { ...r.room, data: jr.data || prev };
+            if (prev.host_engine_protocol === ENGINE_PROTOCOL && !signal?.aborted) {
                 try {
-                    await this.pushData({ guest_engine_protocol: ENGINE_PROTOCOL });
+                    const negotiated = await this._pushDataImpl({ guest_engine_protocol: ENGINE_PROTOCOL }, undefined, signal);
+                    if (negotiated) joined = { ...joined, data: negotiated };
                     nativeRoomReady = true;
                 } catch (error) {
                     // The join succeeded even if the optional handshake did not.
@@ -601,11 +620,19 @@
                     console.warn('[OnlinePvP] engine negotiation', error);
                 }
             }
-            lastRemoteSeq = (jr.data && jr.data.seq) != null ? jr.data.seq : lastRemoteSeq;
+            lastRemoteSeq = joined.data.seq ?? lastRemoteSeq;
             this._subscribe();
-            const { data: rowFresh, error: freshErr } = await sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', roomId).single();
-            if (freshErr) console.warn('[OnlinePvP] joinRoom refresh', freshErr);
-            return rowFresh || r.room;
+            if (!signal?.aborted) {
+                try {
+                    const { data: rowFresh, error: freshErr } = await awaitRoomRequest(
+                        sb.from('pvp_rooms').select('id, code, data, updated_at').eq('id', roomId).single(), signal);
+                    if (freshErr) console.warn('[OnlinePvP] joinRoom refresh', freshErr);
+                    if (rowFresh) joined = rowFresh;
+                } catch (error) {
+                    console.warn('[OnlinePvP] joinRoom refresh', error);
+                }
+            }
+            return joined;
         },
 
         async pushDraftState(state, extraTopLevel) {
@@ -787,7 +814,7 @@
             return op;
         },
 
-        async _pushDataImpl(patch, _existingData) {
+        async _pushDataImpl(patch, _existingData, signal) {
             const sb = getClient();
             if (!sb || !roomId) return;
             if (!roomToken) {
@@ -801,11 +828,11 @@
             // Surface the write failure upstream so callers .catch can show
             // UI; pre-fix the queue advanced as if the write succeeded and
             // local state diverged from Supabase.
-            const { data: result, error: rpcErr } = await sb.rpc('pvp_push_data', {
+            const { data: result, error: rpcErr } = await awaitRoomRequest(sb.rpc('pvp_push_data', {
                 p_room_id: roomId,
                 p_token: roomToken,
                 p_patch: patch,
-            });
+            }), signal);
             if (rpcErr) {
                 console.warn('[OnlinePvP] pushData RPC failed', rpcErr);
                 throw rpcErr;

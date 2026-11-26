@@ -43,6 +43,8 @@ try {
       const panel = collection.getByRole('tabpanel');
       const generation = panel.getByRole('combobox', { name: 'Generation', exact: true });
       const caught = panel.getByRole('button', { name: 'Caught only', exact: true });
+      const filters = panel.locator('.pdex-more-filters');
+      const filtersToggle = filters.locator('summary');
       const dex = collection.getByRole('tab', { name: 'Pokédex', exact: true });
       const achievements = collection.getByRole('tab', { name: 'Achievements', exact: true });
       const memorial = collection.getByRole('tab', { name: 'Memorial', exact: true });
@@ -51,9 +53,12 @@ try {
         const size = `${width}x${height}`;
         await page.setViewportSize({ width, height });
         await activate(dex);
+        if (!await filters.evaluate(details => details.open)) await activate(filtersToggle);
         await generation.selectOption('0');
         if (await caught.getAttribute('aria-pressed') === 'true') await activate(caught);
         assert.equal(await generation.locator('option').count(), 10);
+        await activate(filtersToggle);
+        assert.equal(await generation.isVisible(), false);
 
         const targetSize = touch ? 44 : 32;
         const layout = await collection.evaluate((screen, minimum) => {
@@ -86,21 +91,39 @@ try {
         assert.ok(layout.speciesBottom <= layout.panelBottom, `First Pokédex row is visible at ${size}: ${JSON.stringify(layout)}`);
         if (output) await page.screenshot({ path: join(output, `${size}-pokedex.png`), animations: 'disabled' });
 
+        await activate(filtersToggle);
         await generation.selectOption('1');
         await activate(caught);
         await activate(panel.getByRole('button', { name: 'Shiny', exact: true }));
         await panel.getByText('No shiny Pokémon caught in this view yet.').waitFor();
         assert.equal(await generation.inputValue(), '1');
         await activate(panel.getByRole('button', { name: 'Regular', exact: true }));
+        const search = panel.getByRole('searchbox', { name: 'Search Pokédex by name or number' });
+        await search.fill('#116');
+        assert.equal(await panel.locator('.pdex-grid .pdex-cell').count(), 1);
+        await search.fill('horse');
+        assert.equal(await search.evaluate(el => el === document.activeElement && el.selectionStart === 5), true);
         await activate(panel.getByRole('button', { name: 'Horsea — caught', exact: true }));
         await panel.getByRole('heading', { name: 'Horsea', exact: true }).waitFor();
         await activate(panel.getByRole('button', { name: '← Back to Pokédex', exact: true }));
         assert.equal(await generation.inputValue(), '1');
         assert.equal(await caught.getAttribute('aria-pressed'), 'true');
+        assert.equal(await search.inputValue(), 'horse');
+        await search.fill('no-match');
+        await panel.getByText('No entries match this search.').waitFor();
+        await search.fill('');
 
         await activate(achievements);
         assert.equal(await panel.locator('.ach-cat-title').first().textContent(), 'Story Milestones');
-        await panel.getByText('First Catch', { exact: true }).waitFor();
+        const browse = panel.locator('details.ach-browse');
+        const firstCatch = panel.getByText('First Catch', { exact: true });
+        if (!await firstCatch.isVisible()) {
+          assert.equal(await browse.evaluate(details => details.open), false);
+          await activate(browse.locator('summary').first());
+        }
+        await firstCatch.waitFor();
+        await activate(firstCatch);
+        await panel.locator('.ach-row-desc').filter({ hasText: 'Capture your first wild Pokémon.' }).waitFor();
         const hidden = panel.locator('details.ach-hidden');
         assert.equal(await hidden.evaluate(details => details.open), false);
         await activate(hidden.locator('summary'));
@@ -108,6 +131,12 @@ try {
         assert.match(await hidden.innerText(), /Look beyond the League ceremony/);
         assert.doesNotMatch(await hidden.innerText(), /Mystery Figure|Mask Removed|Two Ways Forward/);
         if (output) await page.screenshot({ path: join(output, `${size}-secret-hints.png`), animations: 'disabled' });
+        await page.evaluate(() => window.StoryMode._markDexCaught('Horsea', false, true));
+        await activate(achievements);
+        const earned = panel.locator('.ach-row--unlocked').filter({ hasText: 'First Catch' });
+        await earned.waitFor();
+        assert.equal(await browse.evaluate(details => details.open), false);
+        assert.equal(await earned.locator('.ach-row-desc').isVisible(), false);
         await activate(memorial);
         await panel.getByText('Beacon', { exact: true }).waitFor();
         assert.equal(await panel.getByRole('listitem').count(), 2, `Memorial shows both sides at ${size}`);

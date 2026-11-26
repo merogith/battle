@@ -13,10 +13,10 @@ test('the first rival tutorial gives an immediate action and a fallback', () => 
     assert.equal(window.StoryMode.playTutorial('firstTrainerBattle', () => { continued++; }), true);
     const tutorial = document.querySelector('.story-tutorial-overlay');
     const lines = tutorial.querySelectorAll('.story-dialog-text');
-    assert.equal(lines.length, 1);
-    assert.match(lines[0].textContent, /Fight.*inspect a move/);
-    assert.match(lines[0].textContent, /▲.*advantage.*▼.*reduced damage.*⊘.*immunity/);
-    assert.match(lines[0].textContent, /Abilities and move effects can change the result/);
+    assert.equal(lines.length, 2);
+    assert.match(lines[0].textContent, /Fight.*move’s info/);
+    assert.match(lines[1].textContent, /▲.*hits harder.*▼.*less damage.*⊘.*immune/);
+    assert.match(lines[1].textContent, /abilities and moves change the matchup/);
     tutorial.querySelector('.story-tutorial-continue').click();
     assert.equal(continued, 1);
     assert.equal(document.querySelector('.story-tutorial-overlay'), null);

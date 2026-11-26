@@ -63,7 +63,7 @@ async function ready(target) {
         return (dialog || button).innerText.trim();
       });
       if (current) current.dialogs.push(label);
-      await overlay.click({ timeout: 1600 });
+      await overlay.click();
       seenUnobstructed = false;
       continue;
     }
@@ -217,6 +217,15 @@ try {
     const withdraw = stored.getByRole('button', { name: 'Withdraw' });
     await ready(withdraw);
     assert.ok((await saved()).pcBox.some(slot => slot.name === 'Lucario'));
+    const boxTools = center.locator('.pc-box-tools');
+    const shiny = boxTools.getByRole('button', { name: 'Shinies only' });
+    assert.equal(await boxTools.evaluate(details => details.open), false);
+    await boxTools.locator('summary').click();
+    await shiny.press('Enter');
+    assert.equal(await shiny.getAttribute('aria-pressed'), 'true');
+    assert.equal(await shiny.evaluate(button => button === document.activeElement), true);
+    await shiny.press('Enter');
+    await boxTools.locator('summary').click();
     const search = center.getByRole('searchbox', { name: 'Search PC box by name' });
     await search.fill('Lucario');
     await mark('pc-lucario-deposited');
@@ -252,6 +261,15 @@ try {
     await ready(apply);
     const confirmation = await apply.innerText();
     assert.match(confirmation, /Confirm/i);
+    if (key === 'tutor') {
+      await page.evaluate(() => window.showToast('💾 Saved', 1100, { saved: true }));
+      const visibility = await page.waitForFunction(() => {
+        const toast = document.querySelector('#toast-host .story-save-toast');
+        return toast && getComputedStyle(toast).visibility;
+      });
+      assert.equal(await visibility.jsonValue(), 'hidden',
+        'a routine save receipt must leave the lesson price and replacement readable');
+    }
     await mark(`${key}-preview`, { selection });
     await apply.tap();
     const text = await decide('Cancel', key === 'tutor' ? 'tutor-purchase-confirmation' : undefined);
@@ -288,7 +306,7 @@ try {
     await ready(partner);
     await assertGoldIsClear('#story-evtrainer-gold');
     await partner.tap();
-    await facility.getByText('Current EVs and other training spreads', { exact: true }).tap();
+    await facility.getByText('Compare other training plans', { exact: true }).tap();
     const buy = facility.locator('[id$="-equal"]').getByRole('button', { name: 'Buy 504 EVs · 5,000G', exact: true });
     await ready(buy);
     const before = await saved();
@@ -492,6 +510,8 @@ try {
     const eventIndex = await page.evaluate(() => {
       const snapshot = JSON.parse(localStorage.getItem('pbs_story_save'));
       snapshot.eventIndex = window.STORY_EVENTS_RAW.findIndex(row => row[0] === 40);
+      snapshot.artifactShopOffersByCity = { ...snapshot.artifactShopOffersByCity, 6: ['typeAmplifier', 'tricksterWatch', 'vampiricFangs'] };
+      snapshot.deptArtifactTypesByCity = { ...snapshot.deptArtifactTypesByCity, 6: { typeAmplifier: 'Electric' } };
       window.StoryMode.state.active = false; // stop the old fixture from writing on pagehide
       localStorage.setItem('pbs_story_save', JSON.stringify(snapshot));
       return snapshot.eventIndex;
@@ -501,7 +521,7 @@ try {
     assert.equal((await saved()).eventIndex, eventIndex);
     await visit('relic');
     const shop = page.locator('#screen-story-artifact-shop');
-    const buy = shop.locator('.story-artifact-card .story-shop-buy-btn:enabled').first();
+    const buy = shop.locator('.story-artifact-card').filter({ hasText: 'Electric Plate Shard' }).locator('.story-shop-buy-btn:enabled');
     await ready(buy);
     const before = await saved();
     await buy.click();
@@ -509,7 +529,8 @@ try {
     await page.waitForFunction(gold => JSON.parse(localStorage.getItem('pbs_story_save')).gold === gold, before.gold - 5000);
     const bought = await saved();
     const id = bought.artifacts.find(artifact => !before.artifacts.includes(artifact));
-    assert.ok(id);
+    assert.equal(id, 'typeAmplifier');
+    assert.equal(bought.artifactTypeById[id], 'Electric');
     assert.ok(bought.artifactsDisabled.includes(id));
     assert.equal(bought.artifactShopPurchasedByCity['6'], id);
     assert.equal(await shop.locator('.story-artifact-card .story-shop-buy-btn:enabled').count(), 0);
@@ -519,6 +540,8 @@ try {
     const hall = page.locator('#screen-story-artifacts');
     const enable = hall.getByRole('button', { name: 'Enable Relic' });
     await ready(enable);
+    await hall.getByText('Electric Plate Shard', { exact: true }).waitFor();
+    assert.match(await hall.locator('.relic-rule').innerText(), /Electric-type moves deal 30% more damage/);
     await enable.click();
     assert.ok(!(await saved()).artifactsDisabled.includes(id));
     await mark('relic-enabled', { id });
@@ -541,7 +564,8 @@ try {
     await decide('OK');
     await page.waitForFunction(gold => JSON.parse(localStorage.getItem('pbs_story_save')).gold === gold, before.gold - price);
     const after = await saved();
-    assert.equal(after.inventory[id], (before.inventory[id] || 0) + 1);
+    if (id === 'ultra_ball') assert.equal(after.balls.ultra, (before.balls.ultra || 0) + 1);
+    else assert.equal(after.inventory[id], (before.inventory[id] || 0) + 1);
     assert.equal(after.deptShopPurchasedByCity['6'][id], true);
     assert.equal(await card.getByRole('button', { name: /Claimed/ }).isDisabled(), true);
     await mark('department-featured-purchase', { id, price, secondPurchaseLocked: true });

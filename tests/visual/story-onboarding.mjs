@@ -66,9 +66,10 @@ try {
     const capture = state => out && page.screenshot({ path: join(out, `${profile}-${state}.png`), animations: 'disabled' });
     await page.goto(url.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#screen-menu').getByRole('button', { name: /Story Mode/ }).tap();
-    await page.getByText('Battle frozen? Open Settings and choose Force Continue.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: /New Adventure/ }).waitFor();
     await page.getByRole('button', { name: 'Settings', exact: true }).tap();
     const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
+    await settings.getByRole('button', { name: 'Data', exact: true }).tap();
     await settings.getByRole('button', { name: 'Force Continue', exact: true }).waitFor();
     await settings.getByRole('button', { name: 'Close settings', exact: true }).tap();
     await page.getByRole('button', { name: /New Adventure/ }).tap();

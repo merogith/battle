@@ -62,6 +62,7 @@ try {
     requests.length = 0;
     await title(page);
     await page.getByRole('button', { name: 'Settings', exact: true }).first().click();
+    await page.locator('#modal-settings').getByRole('button', { name: 'Data', exact: true }).click();
     await page.locator('#install-app-btn').waitFor({ state: 'visible' });
     await page.locator('#modal-settings').getByRole('button', { name: 'Close settings' }).click();
     assert.deepEqual(requests.filter(path => heavy.test(path)), [], 'title browsing avoids game and install data');

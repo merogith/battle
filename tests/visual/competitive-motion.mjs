@@ -12,10 +12,10 @@ async function match(speed, { reducedMotion = 'no-preference' } = {}) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(url.href);
-  await page.getByLabel('Battle speed').selectOption(speed);
   await page.getByText('Play with a seed').click();
   await page.getByLabel('Battle seed').fill('125');
   await page.getByRole('button', { name: 'Start battle' }).click();
+  await page.getByLabel('Battle speed').selectOption(speed);
   await page.getByRole('button', { name: /Great Tusk.*Lead/ }).click();
   await page.locator('#moves button:enabled').first().waitFor();
   await page.evaluate(() => {

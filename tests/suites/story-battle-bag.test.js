@@ -51,7 +51,7 @@ test('healthy Full Heal targets and the city-only EV Reset Charm cannot spend a 
   bench.status = 'SLP';
   bench.statusTurns = 3;
   selectItem('Full Heal');
-  assert.equal(window.document.querySelectorAll('#story-bag-targets [role="button"]').length, 1);
+  assert.equal(window.document.querySelectorAll('#story-bag-targets .party-slot:not(:disabled)').length, 1);
   await window.StoryMode.useBagItemOn(1);
   assert.equal(inventory.fullHeal, 1);
   assert.equal(bench.status, null);
@@ -69,7 +69,7 @@ test('legacy Teleporter spends one action and one item on a valid switch through
     }
     if (trap === 'Ingrain') lead.volatile.ingrain = true;
     selectItem('Emergency Teleporter');
-    const target = window.document.querySelector('#story-bag-targets [role="button"]');
+    const target = window.document.querySelector('#story-bag-targets .party-slot:not(:disabled)');
     assert.match(target?.getAttribute('aria-label') || '', /Switch to Pikachu/);
     await window.StoryMode.useBagItemOn(0);
     assert.equal(inventory.emergencyTeleporter, 2, 'invalid active target does not spend');

@@ -91,6 +91,7 @@ async function reach(selector) {
 
 async function openUpgrade(name) {
   if (!await settings().isVisible()) await button('Settings').click();
+  await button(name === 'Save & recovery' ? 'Data' : 'Help', settings()).click();
   await button(name, settings()).click();
   await panel().waitFor({ state: 'visible' });
 }

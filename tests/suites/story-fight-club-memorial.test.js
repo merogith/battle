@@ -79,8 +79,8 @@ test('memorial defaults: empty lists, zero counters', () => {
   assert.equal(sm.memorial.fallen.length, 0);
   assert.equal(sm.memorial.defeated.length, 0);
   const body = doc.getElementById('collection-body');
-  assert.ok(body && body.innerHTML.includes('Memorial'), 'memorial tab renders');
-  assert.ok(body.innerHTML.includes("No one's fallen yet"), 'shows empty-state header note');
+  assert.match(body.querySelector('.ach-collection-empty').textContent, /No names.*Fight Club memorial/i);
+  assert.equal(body.querySelectorAll('[role="listitem"]').length, 0);
 });
 
 test('sweeping the bracket memorializes 3 enemies per round × 5 rounds = 15', () => {
@@ -153,10 +153,11 @@ test('memorial tab renders counters and a row for each entry', () => {
   SM._memorialAddFallen({ name:'Eevee', nickname:'Doodle' }, 'Fight Club');
   SM.openCollection('memorial');
   const body = doc.getElementById('collection-body');
-  const html = body.innerHTML;
-  assert.ok(/Defeated/.test(html) && /Fallen/.test(html) && /Souls/.test(html), 'all three counter labels render');
-  assert.ok(/Magikarp/.test(html), 'enemy species shown');
-  assert.ok(/Doodle/.test(html), 'player-given nickname preserved in the row');
+  const counts = body.querySelector('.pdex-count-strip').textContent;
+  assert.match(counts, /1\s+opponents? defeated/i);
+  assert.match(counts, /1\s+partners? lost/i);
+  assert.match(body.textContent, /Magikarp/, 'enemy species shown');
+  assert.match(body.textContent, /Doodle/, 'player-given nickname preserved in the row');
   // 2 entries → 2 listitem rows.
   assert.equal(body.querySelectorAll('[role="listitem"]').length, 2);
 });

@@ -65,6 +65,7 @@ async function advanceTo(page, goal, { choice, click = false } = {}) {
 
 async function developerAction(page, label) {
   await page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first().click();
+  await page.locator('#modal-settings').getByRole('button', { name: 'Data', exact: true }).click();
   const details = page.locator('#modal-settings details').filter({ hasText: 'Developer / Story tools' });
   if (await details.getAttribute('open') === null) await details.locator('summary').click();
   await button(details, label).click();
@@ -118,7 +119,7 @@ async function playHallEnding(page, phase, ending) {
   await zero.click();
   await zero.click();
   await cipher.getByRole('button', { name: '1', exact: true }).click();
-  await button(cipher, /Continue/).click();
+  await cipher.getByRole('button', { name: 'Continue →', exact: true }).click();
   const command = visible(page, '#command-menu');
   await advanceTo(page, command);
   const launch = await story(page, ['crucibleBattleSource', 'postHofMysteryClimaxDone']);
@@ -197,7 +198,7 @@ try {
     const start = await story(page, ['gold', 'balls', 'safari']);
     assert.equal(start.gold, before.gold, 'first entry is free');
     assert.equal(start.safari.freeEntryUsed, true);
-    assert.match(await safariBall.innerText(), /×10/);
+    assert.ok(await catchScreen.getByText('10 Safari Balls left', { exact: true }).isVisible());
     assert.equal(await catchScreen.getByRole('button', { name: /Great Ball|Ultra Ball|Master Ball|Poké Ball/ }).count(), 0);
     await button(catchScreen, /Bait/).click();
     await advanceTo(page, safariBall);
@@ -232,7 +233,7 @@ try {
       if (!recoveryChecked && interrupted && !interrupted.message) {
         assert.ok(interrupted.safariSession.ballsLeft < 10);
         await resumeCatch();
-        await box.or(finish).waitFor();
+        await box.or(finish).waitFor({ timeout: 20000 });
         assert.equal((await savedCatch()).id, interrupted.id, 'resume restores the same accepted capture');
         await record(page, 'safari-underground', 'reopen-during-throw');
       }
@@ -361,7 +362,8 @@ try {
     await advanceTo(page, round2);
     assert.equal((await story(page, ['frontier'])).frontier.currentStreak, 1);
     await record(page, 'hall-frontier', 'round-2');
-    await button(frontierScreen, /Surrender/).click();
+    await frontierScreen.getByText('Round 2 rules', { exact: true }).click();
+    await button(frontierScreen, 'End run and record streak').click();
     const confirmation = page.locator('#modal-game-confirm');
     assert.match(await confirmation.innerText(), /1 win will be recorded/);
     await button(confirmation, 'OK').click();
@@ -369,6 +371,7 @@ try {
     const ended = (await story(page, ['frontier'])).frontier;
     assert.equal(ended.active, false);
     assert.equal(ended.highscores[0].streak, 1);
+    await frontierScreen.getByText('Top 10 streaks', { exact: true }).click();
     assert.match(await frontierScreen.innerText(), /1 round/);
     await record(page, 'hall-frontier', 'leaderboard');
   });

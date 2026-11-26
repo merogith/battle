@@ -43,7 +43,14 @@ try {
         const press = target => touch ? target.tap() : target.click();
         const gear = page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first();
         const close = page.getByRole('button', { name: 'Close settings' });
-        const toggle = id => press(page.locator(`label[for="${id}"]`));
+        const audio = page.locator('#modal-settings').getByRole('button', { name: 'Audio', exact: true });
+        const toggle = async id => {
+            const control = page.locator(`label[for="${id}"]`);
+            if (id === 'sw-generative-music' && !await control.isVisible()) {
+                await press(page.getByText('Soundtrack options', { exact: true }));
+            }
+            await press(control);
+        };
         const state = () => page.evaluate(() => ({
             playing: window.audioProbe.elements.filter(({ audio }) => !audio.paused && !audio.ended).map(({ audio }) => new URL(audio.src).pathname),
             generated: window.ChiptuneEngine.isPlaying(), mood: window.ChiptuneEngine.currentMood(),
@@ -56,13 +63,14 @@ try {
         await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
         await press(gear);
         assert.equal(await page.locator('#settings-motion-note').isVisible(), touch);
+        await press(audio);
         await waitForField();
         const field = await state();
         assert.equal(field.playing.length, 1);
 
         // Verify actual file playback, a single foreground layer, and a short win cue.
         for (const [mood, file] of [['rival', 'rival-pursuit'], ['leader', 'gym-bout'], ['elite', 'league-chamber'], ['raid', 'raid-omen']]) {
-            const path = '/music/themes/' + file + '.mp3';
+            const path = new URL(`music/themes/${file}.mp3`, url).pathname;
             await page.evaluate(key => window.AudioSystem.playBattleTheme(key), mood);
             await page.waitForFunction(track => {
                 const playing = window.audioProbe.elements.filter(({ audio }) => !audio.paused && !audio.ended);
@@ -104,6 +112,7 @@ try {
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.locator('#app-loading-overlay').waitFor({ state: 'hidden' });
         await press(gear);
+        await press(audio);
         assert.equal(await volume.inputValue(), '24');
         assert.equal(await page.locator('#sw-generative-music').isChecked(), true);
         assert.equal(await page.locator('#sw-music').isChecked(), false);
@@ -124,6 +133,7 @@ try {
         await press(page.getByRole('button', { name: 'Back to story menu' }));
         await press(page.getByRole('button', { name: 'Back to Main Menu' }));
         await press(gear);
+        await press(audio);
         await toggle('sw-generative-music');
         await waitForField();
         assert.equal((await state()).generated, false);

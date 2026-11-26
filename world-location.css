@@ -1,0 +1,713 @@
+/* Readable place frames for the town, road and Atlas. */
+#screen-story-menu {
+    gap: 10px;
+    box-shadow: inset 0 0 0 100vmax rgb(8 16 15 / .57);
+}
+
+#screen-story-menu .story-title-main {
+    margin: 0;
+    color: #fff4dc;
+    font: 800 clamp(1.65rem, 5vw, 2.25rem)/1.18 system-ui, sans-serif !important;
+    letter-spacing: 0;
+    text-shadow: 0 2px 10px #0c1512;
+}
+
+#screen-story-menu .story-intro-stack {
+    width: min(100%, 400px);
+    padding: clamp(10px, 3vw, 16px);
+    gap: 7px;
+    border: 1px solid #50675b;
+    border-radius: 12px;
+    background: #121f1c;
+}
+
+#screen-story-menu .story-menu-btn {
+    min-height: 44px;
+    padding: 8px 14px;
+    color: #edf3ea;
+    border: 1px solid #547065 !important;
+    border-radius: 8px !important;
+    background: #1b2d27;
+    box-shadow: none;
+    font: 650 1rem/1.25 system-ui, sans-serif !important;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+#screen-story-menu :is(.story-menu-btn--continue, .story-intro-stack:has(#story-run-tools[hidden]) .story-menu-btn--new) {
+    color: #20190d;
+    border-color: #e6c183 !important;
+    background: #efce96;
+}
+
+#screen-story-menu .story-menu-btn--back {
+    color: #d1dfd5;
+    border-color: transparent !important;
+    background: transparent;
+}
+
+#screen-story-menu .story-menu-btn--abandon { color: #ffc6b8; }
+#screen-story-menu :is(.story-menu-btn, .story-run-tools > summary):focus-visible {
+    outline: 2px solid #f0cf93;
+    outline-offset: 2px;
+}
+
+#screen-story-menu .story-resume-card {
+    gap: 3px;
+    margin: 0 0 4px;
+    padding: 8px;
+    border: 0;
+    border-radius: 8px;
+    background: #1a2a24;
+    box-shadow: none;
+}
+
+#screen-story-menu :is(.story-resume-card-meta, .story-resume-card-status) {
+    color: #c8d7ca;
+    font: 500 .85rem/1.3 system-ui, sans-serif;
+}
+
+#screen-story-menu .story-run-tools > summary {
+    display: list-item;
+    min-height: 44px;
+    padding: 12px 8px;
+    color: #c8d7ca;
+    font: 600 .9rem/1.25 system-ui, sans-serif;
+    cursor: pointer;
+}
+
+.world-scene {
+    isolation: isolate;
+}
+
+.world-scene > .world-scene-plate {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.world-scene::after {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: '';
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(7 15 17 / .16), rgb(7 15 17 / .62) 48%, rgb(7 15 17 / .93));
+}
+
+#screen-story-city #story-city-bg-layer {
+    background: linear-gradient(160deg, #182b28, #0e1a1a 55%, #091416);
+}
+
+#screen-story-city .story-city-identity {
+    position: relative;
+    display: flex;
+    align-items: end;
+    gap: clamp(8px, 2vw, 24px);
+    min-height: clamp(74px, 12dvh, 128px);
+    flex-shrink: 0;
+    padding: 10px clamp(12px, 3vw, 28px);
+    border-bottom: 1px solid var(--city-edge);
+    background: #1d302b;
+}
+
+#screen-story-city .story-city-identity-text {
+    min-width: 0;
+    flex: 1;
+}
+
+#screen-story-city .story-city-identity-name {
+    color: #fff9ed;
+    font: 800 clamp(1.15rem, 2.2vw, 1.8rem)/1.18 system-ui, sans-serif;
+    text-shadow: 0 2px 8px #101e1c;
+}
+
+.world-town-landmark {
+    margin-top: 3px;
+    color: #f7e6c4;
+    font: 600 .85rem/1.35 system-ui, sans-serif;
+    text-shadow: 0 1px 5px #07120f;
+}
+
+.world-town-board {
+    flex: none;
+    padding: 3px;
+    line-height: 0;
+    border: 1px solid #a99161;
+    border-radius: 6px;
+    background: #261f19;
+}
+
+.world-town-board img {
+    display: block;
+    width: clamp(64px, 12vw, 96px);
+    height: auto;
+}
+
+#screen-story-city .story-city-main-row {
+    background: rgb(9 19 18 / .44);
+}
+
+#screen-story-city #story-hud-run,
+#screen-story-city .story-city-identity-badges,
+#screen-story-city .story-city-route,
+#screen-story-city .story-city-objective .obj-kicker {
+    display: none;
+}
+
+#screen-story-city #story-city-tips .story-city-objective {
+    grid-template-areas: "icon label go";
+    grid-template-rows: auto;
+    min-height: 48px;
+}
+
+#screen-story-city .story-city-objective .obj-label { align-self: center; }
+#screen-story-city .story-city-guide summary span {
+    font: inherit !important;
+    letter-spacing: normal;
+}
+
+@media (max-width: 540px) {
+    #screen-story-city .story-hud-actions {
+        display: grid;
+        grid-template-columns: minmax(64px, 1fr) minmax(44px, .7fr) minmax(76px, 1.2fr) minmax(51px, .8fr) 44px;
+        width: 100%;
+        gap: 3px;
+    }
+
+    #screen-story-city .story-hud-actions > button,
+    #screen-story-city .story-hud-more > summary {
+        min-width: 0;
+        padding-inline: 3px;
+        letter-spacing: 0;
+        white-space: nowrap;
+        font-size: .83rem !important;
+    }
+
+    #screen-story-city .story-hud-more > summary { justify-content: center; }
+    #screen-story-city .story-hud-more > summary::after { margin-left: 4px; }
+}
+
+#screen-story-city #story-action-buttons {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 11px;
+}
+
+#screen-story-city #story-action-buttons .story-action-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 7px;
+    letter-spacing: .065em;
+}
+
+.world-town-services {
+    min-width: 0;
+    padding: 9px 10px 10px;
+    border: 1px solid rgb(107 140 123 / .26);
+    border-radius: 12px;
+    background: rgb(13 25 23 / .48);
+}
+
+.world-town-service-grid {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+}
+
+#screen-story-city .world-town-services[hidden],
+#screen-story-city #story-action-buttons .story-action-btn[hidden] {
+    display: none !important;
+}
+
+@media (min-width: 900px), (min-width: 720px) and (orientation: landscape) {
+    .world-town-service-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+#screen-story-city .story-action-btn--visited {
+    opacity: 1;
+}
+
+#screen-story-city .story-action-badge.required {
+    animation: none;
+}
+
+.story-cold-open.world-scene::after {
+    background: linear-gradient(180deg, rgb(5 13 18 / .28), rgb(5 13 18 / .78));
+}
+
+.story-city-arrival.world-scene::after {
+    background: linear-gradient(180deg, rgb(5 13 18 / .28), rgb(5 13 18 / .85));
+}
+
+.story-city-arrival-content {
+    max-width: 680px;
+}
+
+.world-arrival-heading {
+    grid-column: 1 / -1;
+    text-align: center;
+}
+
+.world-arrival-heading p {
+    margin: 4px 0 0;
+    color: #f7e6c4;
+    font: 650 .85rem/1.4 system-ui, sans-serif;
+    text-shadow: 0 1px 5px #07120f;
+}
+
+.story-city-arrival .story-dialog-host,
+.story-city-arrival .story-city-road-notes {
+    max-width: 560px;
+}
+
+.story-city-arrival .story-city-road-notes,
+.story-wander .world-wander-card {
+    color: #f2f4e9;
+    border: 1px solid #5c7568;
+    border-radius: 12px;
+    background: #111e1c;
+}
+
+.story-city-arrival [data-arrival-dismiss],
+.story-wander button,
+.world-atlas button {
+    padding: 8px 16px;
+    min-height: 44px;
+    border: 1px solid #9c8658;
+    border-radius: 9px;
+    background: #403621;
+    color: #fff2d1;
+    font: 700 .96rem/1.3 system-ui, sans-serif !important;
+    cursor: pointer;
+}
+
+:is(.story-city-arrival, .story-wander, .world-atlas) :is(button, summary):focus-visible {
+    outline: 2px solid #f0ca80;
+    outline-offset: 2px;
+}
+
+.world-road-departure .story-dialog-text,
+.story-road-discovery .story-dialog-text,
+.story-road-discovery .story-road-choice-detail {
+    font-family: system-ui, sans-serif;
+}
+
+.story-road-discovery .story-narr-action {
+    text-align: start;
+    white-space: normal;
+}
+
+.story-wander .world-wander-card {
+    position: relative;
+    width: min(540px, 100%);
+    padding: clamp(12px, 4vw, 22px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    font: 500 1rem/1.45 system-ui, sans-serif;
+    box-sizing: border-box;
+}
+
+.world-wander-card header {
+    grid-column: 1;
+}
+
+.world-wander-card header p {
+    margin: 0;
+    color: #d6c7a2;
+    font: 650 .84rem/1.3 system-ui, sans-serif;
+}
+
+.world-wander-card h2 {
+    margin: 0;
+    color: #fff9ea;
+    font: 780 clamp(1.3rem, 4vw, 1.75rem)/1.18 system-ui, sans-serif;
+}
+
+.world-wander-lead {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    width: clamp(44px, 13vw, 76px);
+    height: clamp(44px, 13vw, 76px);
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.world-wander-message,
+.world-wander-count,
+.world-wander-error {
+    margin: 0;
+    grid-column: 1;
+}
+
+.world-wander-count {
+    color: #c0d9c7;
+    font-size: .84rem;
+}
+
+.world-wander-error {
+    grid-column: 1 / -1;
+    color: #ffcfb9;
+}
+
+.world-wander-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.story-wander [data-wander-search] {
+    background: #2c493a;
+    border-color: #759d83;
+    color: #edf8e8;
+}
+
+.world-atlas {
+    position: fixed;
+    inset: 0;
+    z-index: var(--sn-z-overlay);
+    display: grid;
+    place-items: safe center;
+    background: rgb(4 11 12 / .86);
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+        max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    font: 500 1rem/1.4 system-ui, sans-serif;
+}
+
+.world-atlas-panel {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    width: min(700px, 100%);
+    max-height: 100%;
+    min-height: 0;
+    color: #f3f4e9;
+    background: #122320;
+    border: 1px solid #708574;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.world-atlas-panel > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px clamp(10px, 3vw, 18px);
+    background: #1d302a;
+}
+
+.world-atlas-panel h2 {
+    margin: 0;
+    font: 750 clamp(1.16rem, 4vw, 1.55rem)/1.2 system-ui, sans-serif;
+}
+
+.world-atlas-current {
+    padding: 8px clamp(10px, 3vw, 18px);
+    border-bottom: 1px solid #567064;
+}
+
+.world-atlas-current p {
+    margin: 2px 0;
+}
+
+.world-atlas-panel ol {
+    display: grid;
+    align-content: start;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px clamp(10px, 3vw, 18px) 10px clamp(32px, 7vw, 46px);
+    margin: 0;
+    gap: 6px;
+    min-height: 0;
+    overflow: auto;
+    list-style: none;
+    overscroll-behavior: contain;
+}
+
+.world-atlas-stop {
+    position: relative;
+    align-self: start;
+    border: 1px solid #4a685b;
+    border-radius: 8px;
+    background: #182b26;
+}
+
+.world-atlas-stop::before,
+.world-atlas-stop:not(:last-child)::after {
+    position: absolute;
+    content: '';
+    pointer-events: none;
+}
+
+.world-atlas-stop::before {
+    z-index: 1;
+    top: 15px;
+    left: -23px;
+    width: 11px;
+    height: 11px;
+    border: 2px solid #b3cbb9;
+    border-radius: 50%;
+    background: #263e35;
+}
+
+.world-atlas-stop:not(:last-child)::after {
+    top: 20px;
+    bottom: -28px;
+    left: -19px;
+    width: 2px;
+    background: #557265;
+}
+
+.world-atlas-stop.here {
+    border-color: #ba985e;
+}
+
+.world-atlas-stop.here::before {
+    background: #f0c87a;
+    border-color: #f9dfae;
+}
+
+.world-atlas-stop.locked {
+    color: #bfcbc2;
+    background: #13221f;
+}
+
+.world-atlas-stop.locked::before {
+    border-color: #6d8278;
+    background: #182b26;
+}
+
+.world-atlas-stop summary,
+.world-atlas-stop > div {
+    display: flex;
+    padding: 6px 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.world-atlas-stop summary { cursor: pointer; }
+.world-atlas-stop summary::-webkit-details-marker { display: none; }
+.world-atlas-stop small { flex: none; color: #c5d7ca; }
+.world-atlas-stop.here small { color: #f9d592; }
+.world-atlas-stop p { margin: 0 10px 7px; color: #d4e2d8; font-size: .9rem; }
+
+@media (max-width: 719px) {
+    #screen-story-city .story-city-identity-name {
+        display: none;
+    }
+
+    body:not(.is-mobile) #screen-story-city #story-hud-city {
+        position: static;
+        width: auto;
+        height: auto;
+        clip-path: none;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 420px) {
+    #screen-story-city .story-city-identity {
+        display: none;
+    }
+
+    body:not(.is-mobile) #screen-story-city #story-hud-city {
+        position: static;
+        width: auto;
+        height: auto;
+        clip-path: none;
+    }
+
+    .story-wander .world-wander-card {
+        padding: 10px 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .world-scene,
+    .world-scene-plate {
+        animation: none !important;
+    }
+}
+
+.world-crucible-vista {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: end;
+    justify-content: flex-end;
+    min-height: 108px;
+    padding: 12px;
+    margin-block-end: 12px;
+    background: #1b292b;
+    border: 1px solid #63776c;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#screen-story-crucible .world-crucible-vista button {
+    margin: 0;
+    color: #fff6df;
+    font: 650 .93rem/1.35 system-ui, sans-serif !important;
+}
+
+.world-crucible-vista button {
+    padding: 8px 13px;
+    min-height: 44px;
+    border: 1px solid #b29864;
+    border-radius: 8px;
+    background: #3d3422;
+    cursor: pointer;
+}
+
+#screen-story-crucible .story-shop-header-row {
+    padding: 8px 58px 8px 10px !important;
+    gap: 6px !important;
+}
+
+#screen-story-crucible .story-shop-back-btn {
+    flex: none;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+}
+
+#screen-story-crucible .story-screen-head-title {
+    gap: 5px;
+    color: #fad89a;
+}
+
+#screen-story-crucible .story-screen-head-ico { width: 18px; height: 18px; }
+#screen-story-crucible :is(.story-screen-head-text, .story-gold-inline) {
+    font: 700 .95rem/1.2 system-ui, sans-serif !important;
+}
+
+#story-crucible-gold { flex: none; }
+
+#screen-story-crucible .world-crucible-group {
+    margin: 0 0 5px;
+    color: #e5bb75;
+    font: 700 .97rem/1.3 system-ui, sans-serif !important;
+}
+
+.world-crucible-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 6px;
+    margin-block-end: 14px;
+}
+
+#screen-story-crucible .world-crucible-action {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 48px;
+    gap: 9px;
+    padding: 8px 10px;
+    border: 1px solid #4a6458;
+    border-radius: 8px;
+    background: #152722;
+    color: #edf3e9;
+    text-align: left;
+    cursor: pointer;
+}
+
+#screen-story-crucible .world-crucible-action span {
+    font: 650 .94rem/1.3 system-ui, sans-serif !important;
+    overflow-wrap: anywhere;
+}
+
+.world-crucible-icon { flex: none; }
+.world-crucible-action small {
+    display: block;
+    color: #c6d7ca;
+    font: 500 .82rem/1.3 system-ui, sans-serif;
+}
+
+#screen-story-crucible .world-crucible-action:hover { background: #22382f; }
+
+#screen-story-gameover .story-defeat-card {
+    align-items: stretch;
+    gap: 8px;
+    max-width: 420px;
+    padding: clamp(10px, 3vw, 18px);
+    border: 1px solid #a2675e;
+    border-radius: 12px;
+    background: #241a1a;
+    box-shadow: 0 14px 44px #130d0b;
+}
+
+#screen-story-gameover .story-defeat-head {
+    align-items: start;
+    gap: 3px;
+    padding: 0;
+}
+
+#screen-story-gameover .story-defeat-head h1 {
+    margin: 0;
+    color: #ffd2c4;
+    font: 750 clamp(1.35rem, 4vw, 1.8rem)/1.16 system-ui, sans-serif;
+    text-shadow: none;
+}
+
+#screen-story-gameover :is(#story-gameover-desc, #story-gameover-center-hint, #story-gameover-team-recap) {
+    margin: 0;
+    color: #ead5ce;
+    font: 500 .9rem/1.4 system-ui, sans-serif;
+}
+
+#screen-story-gameover .story-defeat-options { max-width: none; gap: 6px; }
+#screen-story-gameover .story-defeat-card :is(button, summary) {
+    min-height: 44px;
+    padding: 7px 10px;
+    color: #f6e2dd;
+    border: 1px solid #846058;
+    border-radius: 8px;
+    background: #382725;
+    font: 650 .91rem/1.25 system-ui, sans-serif !important;
+    text-align: left;
+    cursor: pointer;
+}
+
+#screen-story-gameover .story-defeat-card button:hover { background: #513630; }
+#screen-story-gameover .story-defeat-options .story-defeat-continue--primary,
+#screen-story-gameover .story-defeat-options:not(:has(.story-defeat-continue--primary:not([hidden]))) .story-defeat-retry {
+    color: #281c11;
+    border-color: #dab97e;
+    background: #f2ca8e;
+}
+
+#screen-story-gameover .story-defeat-options .story-defeat-continue--primary:is(:hover, :focus-visible),
+#screen-story-gameover .story-defeat-options:not(:has(.story-defeat-continue--primary:not([hidden]))) .story-defeat-retry:is(:hover, :focus-visible) {
+    color: #281c11;
+    border-color: #ffe4b8;
+    background: #ffe0a6;
+}
+
+#screen-story-gameover .story-defeat-card :is(button, summary):focus-visible,
+#screen-story-crucible .world-crucible-action:focus-visible {
+    outline: 2px solid #ffe4b8;
+    outline-offset: 2px;
+}
+
+#screen-story-gameover .story-defeat-options button small {
+    display: block;
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+#screen-story-gameover .story-defeat-card .upgrade-inline-help { margin: 0; }
+#screen-story-gameover .story-defeat-details > summary { background: transparent; border-color: transparent; }
+#screen-story-gameover .story-defeat-details > :is(button, div, p) { margin-block: 5px; }

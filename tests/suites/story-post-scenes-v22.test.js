@@ -5,6 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
@@ -56,14 +57,17 @@ test('playPostBattleScene returns boolean indicating whether a scene fired', () 
     assert.equal(absentResult, false, 'should return false when no scene');
 });
 
-test('post-scene auto-extractor pulls from CSV "Post-fight -" prose', () => {
+test('post-scene auto-extractor keeps the bundled fallback after narrative revisions load', async () => {
     const post = ST.STORY_POST_SCENES;
-    const scenes = ST.STORY_SCENES;
-    // For every extracted post-scene, the source body should contain a Post-fight marker.
-    for (const key of Object.keys(post)) {
-        const sourceBody = scenes[key] && scenes[key].body;
-        assert.ok(sourceBody, `source scene ${key} missing`);
-        assert.match(sourceBody, /Post-(fight|raid)/i,
-            `source ${key} should contain a Post-fight or Post-raid marker`);
+    const html = await readFile(new URL('../../battle.html', import.meta.url), 'utf8');
+    const bundled = html.slice(html.indexOf('const STORY_SCENES = {'), html.indexOf('const STORY_POST_SCENES ='));
+    const records = bundled.matchAll(/"([^"]+)": \{\s*"title": "(?:\\.|[^"\\])*",\s*"body": ("(?:\\.|[^"\\])*")/g);
+    const bodies = new Map(Array.from(records, ([, key, body]) => [key, JSON.parse(body)]));
+    for (const [key, { body }] of Object.entries(post)) {
+        const sourceBody = bodies.get(key);
+        assert.ok(sourceBody, `bundled source scene ${key} missing`);
+        const marker = sourceBody.search(/Post-(fight|raid)/i);
+        assert.ok(marker >= 0, `bundled source ${key} missing its aftermath marker`);
+        assert.ok(sourceBody.slice(marker).includes(body), `${key} fallback differs from the bundled aftermath`);
     }
 });

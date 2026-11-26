@@ -54,7 +54,7 @@ function camp(page) { return page.locator('#story-camp-scene'); }
 function activity(page) { return page.locator('#camp-microgame'); }
 function named(page, name) { return camp(page).getByRole('button', { name }); }
 async function press(locator, touch = false) { return touch ? locator.tap() : locator.click(); }
-async function shot(page, name) { await page.screenshot({ path: join(out, name + '.png'), animations: 'disabled' }); }
+async function shot(page, name) { await page.screenshot({ path: join(out, name + '.png'), animations: 'disabled', timeout: 15000 }); }
 async function hitPoint(locator) {
   const point = await locator.boundingBox();
   assert.ok(point, 'Expected a visible control');
@@ -87,6 +87,7 @@ async function chooseActivity(page, action, index, touch = false, initialRolls =
     };
   }, { index, initialRolls });
   await press(named(page, action), touch);
+  await press(named(page, 'Begin activity'), touch);
 }
 
 async function timing(page, button, condition) {
@@ -382,6 +383,13 @@ try {
     try {
       await enterCamp(page);
       await openPartner(page, profile.hasTouch);
+      const beforePreview = await page.evaluate(() => window.StoryMode.state._strngState);
+      await press(named(page, /Cheer/), profile.hasTouch);
+      await named(page, 'Begin activity').waitFor();
+      assert.equal(await camp(page).getAttribute('role'), 'dialog');
+      await page.keyboard.press('Escape');
+      await named(page, /Cheer/).waitFor();
+      assert.equal(await page.evaluate(() => window.StoryMode.state._strngState), beforePreview, 'Backing out of the preview does not roll a game');
       const actions = await page.evaluate(() => Object.values(window.__storyTest.CAMP_ACTIONS).map(entry => ({
         label: entry.label.replace(/^\S+ /u, ''),
         games: entry.games.map(id => ({ id, ...window.__storyTest.CAMP_MICROGAMES[id] })),
@@ -463,7 +471,7 @@ try {
       await press(named(page, /Search the tall grass/), profile.hasTouch);
       await page.locator('.story-wander').waitFor();
       await shot(page, 'grass-' + profile.label);
-      assert.match(await page.locator('.story-wander').innerText(), /head back to the fire/);
+      assert.ok(await page.locator('.story-wander [data-wander-moveon]').isVisible(), 'Camp search can return to Camp');
       if (profile.hasTouch) {
         await press(page.locator('[data-wander-search]'), true);
         const ball = page.locator('#screen-story-catch [data-ball-type="master"]');

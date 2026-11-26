@@ -49,7 +49,6 @@ function generator(seed) {
 const readPrice = text => Number((String(text).match(/([\d,]+)\s*G\b/i)?.[1] || '').replaceAll(',', ''));
 const amounts = object => Object.fromEntries(Object.entries(object || {}).filter(([, value]) => value));
 const roster = run => [...run.team, ...run.pcBox];
-const slots = run => Object.fromEntries(roster(run).map(slot => [slot.id, slot]));
 const cap = run => Math.min(6, 2 + run.badges);
 const counter = (run, type, key) => run[type]?.[key] || 0;
 
@@ -60,6 +59,8 @@ function savedRoster(team) {
     ...slot, build: { ...slot.build, bonus: amounts(slot.build.bonus) },
   } : slot);
 }
+
+const slots = run => Object.fromEntries(savedRoster(roster(run)).map(slot => [slot.id, slot]));
 
 function ledger(run) {
   return {

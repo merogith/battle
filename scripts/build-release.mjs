@@ -14,7 +14,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = outputDirectory === undefined ? path.join(root, 'dist') : path.resolve(root, outputDirectory);
 const source = verify ? out : root;
 const manifest = JSON.parse(fs.readFileSync(path.join(source, 'offline-assets.json'), 'utf8'));
-const allowed = /^(?:battle\.html|battle-(?:motion|move-profiles|encounter-profiles)\.js|index\.html|manifest\.webmanifest|online-(?:config|pvp)\.js|move-(?:anim|sfx)-map\.js|game-update\.js|home-menu\.css|game-upgrades\.(?:js|css)|sw\.js|competitive\/(?:index\.html|arena\.css|arena\.js|arena-client\.js|showdown-worker\.js|classic-simulation\.js|showdown-engine\.js|THIRD_PARTY_NOTICES\.txt)|(?:sprites|music|data|fonts|icons|vendor)\/[^\0]+)$/;
+const allowed = /^(?:battle\.html|battle-(?:motion|move-profiles|encounter-profiles)\.js|index\.html|manifest\.webmanifest|online-(?:config|pvp)\.js|move-(?:anim|sfx)-map\.js|game-update\.js|home-menu\.css|game-upgrades\.(?:js|css)|world-presentation\.js|(?:world-location|story-activities)\.css|sw\.js|competitive\/(?:index\.html|arena\.css|arena\.js|arena-client\.js|showdown-worker\.js|classic-simulation\.js|showdown-engine\.js|THIRD_PARTY_NOTICES\.txt)|(?:sprites|music|data|fonts|icons|vendor)\/[^\0]+)$/;
 const publishedFiles = new Set();
 const metadata = { version: manifest.version, digest: manifest.digest, files: manifest.fileCount };
 let totalBytes = 0;

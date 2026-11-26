@@ -4,7 +4,7 @@
 //   • itemized rewards: {icon,label} entries render as sprite chips, plain
 //     strings keep rendering as full-width lines (mixed arrays work),
 //   • the dismissal contract from P0.1 is untouched (Continue/cb-once),
-//   • aria-label stays the title param; the heading stays "VICTORY!".
+//   • the dialog retains its accessible label and presents a readable heading.
 //   node --test tests/suites/victory-overlay-v27.test.js
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,6 +15,13 @@ before(async () => {
   ({ window: W } = await loadEngine());
   ST = W.__storyTest;
   W.__victoryInputArmMs = 0;
+  // Adding a reserve checks the actual save before showing its receipt.
+  const storage = new Map();
+  Object.defineProperty(W, 'localStorage', { configurable: true, value: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: key => storage.delete(key),
+  } });
 });
 
 function setSm(extra = {}) {
@@ -42,7 +49,7 @@ test('structured card: head, gold row, Continue lives inside the card', () => {
   const { ov, cbCount } = mount();
   const card = ov.querySelector('.story-victory-v2-card');
   assert.ok(card, 'card wrapper');
-  assert.equal(card.querySelector('.story-victory-v2-title').textContent, 'VICTORY!');
+  assert.equal(card.querySelector('.story-victory-v2-title').textContent, 'Victory');
   assert.ok(!card.querySelector('.story-victory-v2-medallion'), 'no medallion on plain wins');
   assert.match(card.querySelector('.story-victory-v2-gold').textContent, /250/, 'gold delta');
   assert.match(card.querySelector('.story-victory-v2-gold-total').textContent, /7,500/, 'running total');

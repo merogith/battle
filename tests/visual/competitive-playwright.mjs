@@ -293,7 +293,7 @@ async function testSixOnSix(page) {
   if (out) await page.screenshot({ path: join(out, 'six-on-six-setup.png') });
   await rules.selectOption('gen8battlestadiumsingles');
   assert.equal(await size.isVisible(), false);
-  assert.match(await page.locator('#setup-intro').innerText(), /3-on-3/);
+  assert.match(await page.locator('#setup-match-summary').innerText(), /3-on-3/);
   await rules.selectOption('gen9ou');
   assert.equal(await size.inputValue(), '6');
 

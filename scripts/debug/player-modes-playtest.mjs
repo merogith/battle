@@ -228,8 +228,8 @@ const cases = [
       const command = page.getByRole('button', { name: /Pokémon — switch a party member/ });
       const party = page.locator('#modal-party');
       await command.tap();
-      await party.getByRole('heading', { name: 'Pokémon Party' }).waitFor();
-      assert.match(await page.locator('#party-context-text').textContent(), /Pokémon to switch in.*uses your action this turn/);
+      await party.getByRole('heading', { name: 'Your party' }).waitFor();
+      assert.match(await page.locator('#party-context-text').textContent(), /Switching uses your action this turn/);
       assert.equal(await party.locator('.party-slot').count(), 2);
       assert.equal(await party.locator('.active-mon').getByRole('button', { name: 'Switch' }).isDisabled(), true);
       await snapshot(page, record, 'switch-menu');
@@ -270,9 +270,9 @@ const cases = [
       await modeButton(page, /Quick Battle/i).click();
       await cards(page).first().waitFor();
       await snapshot(page, record, 'team-pool');
-      await draft(page).getByRole('button', { name: "Inspect Foe's Pool" }).click();
-      const enemy = page.locator('#modal-enemy-pool');
-      await enemy.getByText("Foe's Potential Draft Pool").waitFor();
+      await draft(page).getByRole('button', { name: 'Opponent’s pool' }).click();
+      const enemy = page.getByRole('dialog', { name: 'Opponent’s pool' });
+      await enemy.waitFor();
       const poolSize = await page.locator('#enemy-pool-grid .draft-card').count();
       await snapshot(page, record, 'opponent-pool');
       if (poolSize > 0 && poolSize !== 6 && /All six possible builds/.test(await enemy.textContent())) {
@@ -286,12 +286,14 @@ const cases = [
       await snapshot(page, record, 'move-summary');
       await summary.getByRole('button', { name: /^Close(?: summary)?$/i }).first().click();
       await openSettings(page);
+      await settings(page).getByRole('button', { name: 'Help', exact: true }).click();
       await settings(page).getByRole('button', { name: 'Help & controls', exact: true }).click();
       const guide = page.getByRole('dialog', { name: 'Help Guide' });
       await guide.waitFor();
       assert.match(await guide.textContent(), /possible builds for this draft/);
       await snapshot(page, record, 'draft-guide');
-      await guide.getByRole('button', { name: 'Got it!' }).click();
+      await guide.getByRole('button', { name: 'Close guide' }).click();
+      await closeSettings(page);
       await cards(page).first().locator('img').click();
       await battleEngine(page, record, 'drafted-team');
       assert.equal(await page.evaluate(() => state.p1Draft.length), 1);
@@ -309,7 +311,9 @@ const cases = [
       await cards(page).first().waitFor();
       assert.match(await page.locator('#draft-title').textContent(), /Player 1/);
       await cards(page).first().locator('img').tap();
-      await page.getByText(/Player 2: Pick 1 Pokémon/).waitFor();
+      await page.getByText('Player 2: Pick a Pokémon', { exact: true }).waitFor();
+      const handoff = page.getByRole('dialog', { name: 'Player 2' });
+      await handoff.getByRole('button', { name: 'Ready' }).click();
       await snapshot(page, record, 'player-two-draft');
       await cards(page).first().locator('img').tap();
       await battleEngine(page, record, 'both-teams-drafted');
@@ -317,8 +321,12 @@ const cases = [
       const before = await page.evaluate(() => state.turnNumber);
       await selectMove(page);
       await page.waitForFunction(() => state.currentPlayer === 2 && !!state.p1Action);
+      await handoff.getByRole('button', { name: 'Ready' }).click();
       await selectMove(page);
       await waitForTurn(page, before);
+      if (await page.evaluate(() => !state.isOver)) {
+        await page.getByRole('dialog', { name: 'Player 1' }).getByRole('button', { name: 'Ready' }).click();
+      }
     },
   },
   {
@@ -356,7 +364,10 @@ const cases = [
           await loot.getByRole('heading', { name: /Round 1 cleared/i }).waitFor();
           await snapshot(page, record, 'loot');
           const capturedName = await page.evaluate(() => state.foeParty[0].name);
-          const confirm = loot.getByRole('button', { name: 'Confirm Swap' });
+          assert.equal(await loot.getByRole('button', { name: 'Begin round 2' }).isVisible(), true);
+          assert.equal(await loot.getByText('Change your lead', { exact: true }).isVisible(), false);
+          await loot.getByText('Swap a Pokémon', { exact: true }).tap();
+          const confirm = loot.getByRole('button', { name: 'Swap and continue' });
           assert.ok(await confirm.isDisabled());
           await loot.locator('#swap-foe-grid .draft-card .mini-sprite').first().tap();
           await loot.locator('#swap-player-grid .draft-card .mini-sprite').first().tap();
@@ -430,7 +441,7 @@ const cases = [
         await modeButton(page, 'Host online').tap();
         const alert = page.locator('#modal-game-alert');
         await alert.waitFor();
-        assert.match(await alert.textContent(), /Supabase/);
+        assert.match(await alert.textContent(), /Online rooms are unavailable/);
         await snapshot(page, record, 'unavailable');
         await alert.getByRole('button', { name: 'OK' }).tap();
         // Activate the same UI with a loopback-only placeholder config. This never creates a room.
@@ -446,7 +457,8 @@ const cases = [
       const host = page.locator('#modal-online-host');
       await host.getByRole('heading', { name: /Host online battle/ }).waitFor();
       await host.getByLabel('Match format').selectOption('3');
-      await host.getByLabel('Turn timers').selectOption('fast');
+      await host.getByLabel('Time limit').selectOption('fast');
+      assert.ok(await host.getByText(/computer acts when time runs out/).isVisible());
       await snapshot(page, record, 'host');
       await host.getByRole('button', { name: 'Cancel' }).tap();
       await modeButton(page, 'Join online').tap();
@@ -462,15 +474,17 @@ const cases = [
     name: 'collection-help', profile: phone,
     async play(page, record) {
       await openSettings(page);
+      await settings(page).getByRole('button', { name: 'Help', exact: true }).click();
       await settings(page).getByRole('button', { name: 'Help & controls', exact: true }).click();
       const help = page.getByRole('dialog', { name: 'Help Guide' });
       await help.waitFor();
-      assert.match(await help.textContent(), /Local PvP/);
+      assert.match(await help.textContent(), /Play with a friend/i);
       if (/six versus six/.test(await help.textContent())) {
         report.findings.push({ scenario: record.name, issue: 'The help guide describes Local PvP as six versus six. The menu allows six different party sizes.' });
       }
       await snapshot(page, record, 'guide');
-      await help.getByRole('button', { name: 'Got it!' }).click();
+      await help.getByRole('button', { name: 'Close guide' }).click();
+      await closeSettings(page);
       await main(page).getByRole('button', { name: /Story Mode/ }).tap();
       await page.locator('#screen-story-menu').getByRole('button', { name: /Collection/ }).tap();
       await page.locator('#collection-body .pdex-grid').waitFor();
@@ -479,7 +493,8 @@ const cases = [
       await first.focus();
       await first.press('ArrowRight');
       assert.equal(await page.getByRole('tab', { name: /Achievements/ }).getAttribute('aria-selected'), 'true');
-      assert.match(await page.locator('#collection-body').textContent(), /Unlocked/);
+      await page.locator('#collection-body').getByText(/No trophies earned yet/).waitFor();
+      assert.equal(await page.locator('#collection-body .ach-browse').evaluate(details => details.open), false);
       await snapshot(page, record, 'achievements');
       for (const name of ['Hall of Fame', 'Rivalry', 'Signatures', 'Memorial']) {
         const tab = page.getByRole('tab', { name: new RegExp(name) });

@@ -16,12 +16,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const W = eng.window;
 const SM = W.StoryMode;
 const story = W.__story;
+installWritableStorage(W);
 
 const reorder = SM.pcReorderByInsertion;
 

@@ -4,7 +4,7 @@
 
 ## 1. State ownership
 
-Current Story save schema is version 28. The active slot is `pbs_story_save`, career state lives in `pbs_story_meta`, and the Field Archive already has its own normalized version and run records inside career state. Backups already bundle active run, career, settings and accessibility preferences. Keep these storage and backup entry names. Add optional fields with explicit defaults. A schema version bump becomes necessary only if older readers could load new fields into an invalid or unsafe gameplay state. In that case, implement and test an ordered migration before authoring records in the new shape. [Story load and save](../../battle.html:47717) · [Archive normalization](../../data/story/adventure-progress.js) · [Backup handling](../../game-upgrades.js:245)
+Current Story save schema is version 28. The active slot is `pbs_story_save`, career state lives in `pbs_story_meta`, and the Field Archive already has its own normalized version and run records inside career state. Backups already bundle active run, career, settings and accessibility preferences. Keep these storage and backup entry names. Add optional fields with explicit defaults. A schema version bump becomes necessary only if older readers could load new fields into an invalid or unsafe gameplay state. In that case, implement and test an ordered migration before authoring records in the new shape. [Story load and save](../../battle.html#L48539) · [Archive normalization](../../data/story/adventure-progress.js) · [Backup handling](../../game-upgrades.js#L393)
 
 | State | Source of truth | New release behavior |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ When an old or restored run loads, normalize new fields from the parsed source, 
 5. Record a career update after the active run succeeds. Reconcile only a proved event when career save is interrupted. Use transaction identity or derived, monotonic merge so refreshing a settled receipt cannot pay it again.
 6. Present animation, narration, sound, achievement or a result card from committed state. These steps perform no random rolls or further grants. They may be skipped by the player and can be reconstructed when a committed receipt remains.
 
-Follow the current supported battle resume contract. Ordinary Story bouts reload from their documented encounter/retry boundary with a locked roster and seed. A partially displayed animation is not a native battle checkpoint. The new boss must reproduce the same decisions after retry. A campaign clear, entered choice, spent wager, paid Safari ticket, or accepted catch must retain the corresponding committed result.
+Follow the current supported battle resume contract. Eligible seeded Story bouts load compatible native battle snapshots, including pending replacement. A missing or incompatible snapshot returns to the encounter/retry boundary with the locked roster and seed. A partially displayed animation resumes from the supported native state. The boss must reproduce the same decisions after retry. A campaign clear, entered choice, spent wager, paid Safari ticket, or accepted catch must retain the corresponding committed result. [Exact-turn resume](../../tests/visual/story-exact-resume.mjs)
 
 ## 3. Deterministic boundaries
 
@@ -59,7 +59,7 @@ Add fixtures for page reload before choice, after commit but before reply, after
 
 ## 4. Replay content and how to earn it
 
-The Field Archive already supports replaying recorded choices and discoveries by originating run. Continue to use that behavior. Map secondary town consequences to the choice and chapter in the original record. Read-only archive time cannot grant a current journey an award, unlock a road, affect a habitat or change a conversation. Ensure the repaired lamp in the existing afterword reads correctly even if the current run chose Pass.
+The Field Archive currently chooses the first recorded run that matches the selected answer. The world upgrade adds the ability to select the originating journey when more than one matches. Map secondary town consequences to the choice and chapter in that record. Read-only archive time cannot grant a current journey an award, unlock a road, affect a habitat or change a conversation. Ensure the repaired lamp in the existing afterword reads correctly even if the current run chose Pass. [Current replay lookup](../../data/story/adventure.js#L371)
 
 | Entry | Earn trigger | Where it shows |
 | --- | --- | --- |

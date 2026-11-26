@@ -139,6 +139,24 @@ test('a shiny gift records ownership without earning wild-catch achievements', (
     assert.equal(readMeta().achievements.wilds_caught, undefined);
 });
 
+test('a field note is optional and follows real sightings of the selected form', () => {
+    story._markDexSeen('Cubone', false, 'Breakwater Road');
+    story.openCollection('pokedex');
+    assert.equal(story.pokedexOpenEntry('Cubone'), true);
+    const note = () => window.document.querySelector('.pdex-field-note');
+    assert.equal(note(), null, 'A tutorial or ordinary seen-only record is insufficient');
+    story._markDexCaught('Cubone', true, false, 'gift');
+    story._markDexSeen('Cubone', false, 'Breakwater Road', null, true);
+    story.pokedexOpenEntry('Cubone', false);
+    assert.equal(note().open, false);
+    assert.match(note().textContent, /Field note.*Regional observations.*skull/s);
+    story.pokedexOpenEntry('Cubone', true);
+    assert.equal(note(), null, 'A regular encounter does not prove a shiny sighting');
+    story._markDexSeen('Cubone', true, 'Safari Zone', null, true);
+    story.pokedexOpenEntry('Cubone', true);
+    assert.ok(note());
+});
+
 test('Caught only finds early captures and composes with generation and shiny views', () => {
     story._markDexCaught('Horsea', false, false, 'starter');
     story._markDexSeen('Eevee', false);
@@ -146,12 +164,16 @@ test('Caught only finds early captures and composes with generation and shiny vi
     story.pokedexSetGen(0);
     story.pokedexSetShinyView(false);
     const collection = window.document.getElementById('collection-body');
-    assert.match(collection.querySelector('.pdex-summary').textContent, /1\s*\/\s*1025 \(0\.1%\)/);
+    assert.match(collection.querySelector('.pdex-summary').textContent, /1\/1025 caught/);
+    const filters = collection.querySelector('.pdex-more-filters');
+    assert.equal(filters.open, false);
+    filters.open = true;
     const toggle = () => collection.querySelector('#pdex-caught-only');
     const entries = () => [...collection.querySelectorAll('.pdex-grid [data-dex-name]')].map(button => button.dataset.dexName);
     toggle().click();
     assert.equal(toggle().getAttribute('aria-pressed'), 'true');
     assert.equal(window.document.activeElement, toggle());
+    assert.equal(collection.querySelector('.pdex-more-filters').open, true);
     assert.deepEqual(entries(), ['Horsea']);
     assert.equal(collection.querySelectorAll('.pdex-cell--unknown').length, 0);
 

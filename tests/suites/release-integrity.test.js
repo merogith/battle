@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
+import { MessageChannel } from 'node:worker_threads';
 const source=fs.readFileSync(new URL('../../sw.js',import.meta.url),'utf8');
 function worker(options={}) {
   const handlers={},cacheContents=new Map(),responses=new Map(),fetches=[];
   const scope='https://example.test/battle/';
   const requestKey=request=>typeof request==='string'?request:request.url.slice(scope.length);
   let activated=0,updates=0;
-  const context=vm.createContext({crypto:crypto.webcrypto,Response,Headers,Uint8Array,URL,AbortController,TransformStream,setTimeout,clearTimeout,setInterval,clearInterval,console,
+  const context=vm.createContext({crypto:crypto.webcrypto,Response,Headers,Uint8Array,URL,AbortController,TransformStream,MessageChannel,setTimeout,clearTimeout,setInterval,clearInterval,console,
     caches:{
       open:async name=>{
         if(options.failOpen)throw Error('Cache storage unavailable');
@@ -63,12 +64,13 @@ function worker(options={}) {
     get activated(){return activated;},get updates(){return updates;},
     install:()=>dispatch('install'),
     activate:()=>dispatch('activate'),
-    async message(message,postMessage,id){
+    async message(message,postMessage,id,port){
       let pending;
       const responses=[];
       handlers.message({
         data:{batchId:'test',...message},
         source:{id,postMessage:postMessage||((response)=>responses.push(structuredClone(response)))},
+        ports:port?[{postMessage:port}]:[],
         waitUntil:p=>{pending=p;},
       });
       await pending;
@@ -89,7 +91,7 @@ function worker(options={}) {
   };
 }
 test('a complete core installs with game data and a failed update cannot activate',async()=>{
-  const good=worker();await good.install();assert.equal(good.activated,1);assert.ok(good.stored.has('data/moves.json'));
+  const good=worker();await good.install();assert.equal(good.activated,0);assert.ok(good.stored.has('data/moves.json'));
   for(const mode of ['missing','mismatch','quota']) {
     const bad=worker(mode==='quota'?{failWrite:'battle.html'}:{});
     if(mode==='missing')bad.responses.delete('game-upgrades.js');
@@ -99,6 +101,35 @@ test('a complete core installs with game data and a failed update cannot activat
     assert.equal(bad.stored,undefined,mode);
     assert.equal(await bad.cacheContents.get('battle-v4-shell').get('battle.html').text(),'previous release');
   }
+});
+test('a verified update waits for a busy game tab and prepares every tab before activating', async () => {
+  let busy = true;
+  const prepared = [];
+  const client = (id, name) => ({ id, url: 'https://example.test/battle/' + name, postMessage(message, [port] = []) {
+    if (!port) return;
+    if (message.type === 'PREPARE_GAME_UPDATE') prepared.push(id);
+    port.postMessage(id !== 'other' || !busy);
+    port.close();
+  } });
+  const w = worker({ clients: [client('title', 'index.html'), client('other', 'battle.html')] });
+  const previous = 'battle-v4-shell';
+  w.cacheContents.set(previous, new Map());
+  await w.install();
+  const apply = async () => {
+    let ready;
+    await w.message({ type: 'APPLY_GAME_UPDATE' }, null, 'title', value => { ready = value; });
+    return ready;
+  };
+  assert.equal(await apply(), false);
+  assert.equal(w.activated, 0);
+  assert.deepEqual(prepared, []);
+  assert.ok(w.cacheContents.has(previous));
+  busy = false;
+  assert.equal(await apply(), true);
+  assert.equal(w.activated, 1);
+  assert.deepEqual(prepared, ['title', 'other']);
+  await w.activate();
+  assert.equal(w.cacheContents.has(previous), false);
 });
 test('repair of an evicted core file reuses the installed pack and verifies the one missing file',async()=>{
   const track='music/repair.mp3', core='data/moves.json';
@@ -217,6 +248,34 @@ test('cached offline audio serves single byte ranges and reports unsatisfiable r
   assert.equal(await stale.text(),'abcdefg');
   assert.ok(!w.fetches.includes(path));
 });
+test('an updated shell reuses compatible media while changed downloads await their delta',async()=>{
+  const changed='music/world/changed.mp3';
+  const unchanged='music/world/unchanged.mp3';
+  const w=worker({lazyAssets:{[changed]:'new track',[unchanged]:'identical track'}});
+  await w.install();
+  const record={release:'battle-v5-previous',files:[mediaFile(changed,'old track'),mediaFile(unchanged,'identical track')]};
+  w.cacheContents.set('battle-assets',new Map([
+    [changed,new Response('old track')], [unchanged,new Response('identical track')],
+    ['__OFFLINE_MANIFEST__',new Response(JSON.stringify(record))],
+  ]));
+  assert.equal(await (await w.fetch(unchanged)).text(),'identical track');
+  assert.equal(await (await w.fetch(changed)).text(),'new track');
+  assert.ok(!w.fetches.includes(unchanged));
+  assert.ok(w.fetches.includes(changed));
+});
+test('cache-busted location icons resolve from the verified download when offline',async()=>{
+  const icons = ['story_center.png','story_gym.png','story_route.png'].map(name=>'icons/story/'+name);
+  const w = worker({lazyAssets:Object.fromEntries(icons.map(path=>[path,'pack:'+path]))});
+  await w.install();
+  const manifest = JSON.parse(w.responses.get('offline-assets.json'));
+  assert.equal((await w.message({type:'SYNC_ASSETS',manifest,profile:'full'})).applied,true);
+  for (const path of icons) {
+    assert.equal(await (await w.fetch(`${path}?v=20260516`)).text(),'pack:'+path);
+    assert.ok(!w.fetches.includes(`${path}?v=20260516`));
+    w.responses.set(`${path}?theme=night`,'variant artwork');
+    assert.equal(await (await w.fetch(`${path}?theme=night`)).text(),'variant artwork');
+  }
+});
 test('a new shell downloads only changed or missing core files',async()=>{
   const w=worker();
   const changed='data/moves.json';
@@ -227,7 +286,7 @@ test('a new shell downloads only changed or missing core files',async()=>{
   ]));
   w.responses.delete(unchanged);
   await w.install();
-  assert.equal(w.activated,1);
+  assert.equal(w.activated,0);
   assert.ok(w.fetches.includes(changed));
   assert.ok(!w.fetches.includes(unchanged));
   assert.equal(await w.stored.get(unchanged).text(),'content:battle.html');
@@ -568,9 +627,9 @@ test('offline download UI clears readiness and refreshes when its checkpoint was
   assert.equal(settings.offlineDownload.digest,null);
   assert.equal(refreshed,1);
 });
-test('a manual update waits for verified activation and reports a rejected install', async () => {
+test('a manual update distinguishes installation, safe waiting and a rejected install', async () => {
   const code = fs.readFileSync(new URL('../../game-update.js', import.meta.url), 'utf8');
-  for (const finalState of ['activated', 'redundant']) {
+  for (const finalState of ['activated', 'installed', 'redundant']) {
     const worker = Object.assign(new EventTarget(), { state: 'installing' });
     const registration = Object.assign(new EventTarget(), { active: {}, installing: null });
     let checks = 0;
@@ -580,7 +639,8 @@ test('a manual update waits for verified activation and reports a rejected insta
       registration.dispatchEvent(new Event('updatefound'));
     };
     const window = {};
-    vm.runInNewContext(code, { window, navigator: { serviceWorker: { getRegistration: async () => registration } }, setTimeout, clearTimeout });
+    const timer = (callback, ms) => ms === 3000 ? 0 : setTimeout(callback, ms);
+    vm.runInNewContext(code, { window, navigator: { serviceWorker: { getRegistration: async () => registration } }, setTimeout:timer, clearTimeout });
     let installing;
     const installStarted = new Promise(resolve => { installing = resolve; });
     const result = window.checkForGameUpdate(installing);
@@ -592,6 +652,7 @@ test('a manual update waits for verified activation and reports a rejected insta
     worker.state = finalState;
     worker.dispatchEvent(new Event('statechange'));
     if (finalState === 'activated') assert.equal(await result, true);
+    else if (finalState === 'installed') assert.equal(await result, 'waiting');
     else await assert.rejects(result, /could not be installed/);
   }
 });
@@ -605,10 +666,10 @@ test('the first controller claim arms future updates without reloading a battle'
     addEventListener: (name, handler) => { handlers[name] = handler; },
   };
   const state = { pActive: {}, fActive: {}, isOver: false };
-  const window = { addEventListener() {} };
+  const window = { addEventListener() {}, document: { getElementById: id => id === 'screen-menu' && state.isOver ? {classList:{contains:()=>false}} : null } };
   let reloads = 0;
   vm.runInNewContext(html.slice(start, html.indexOf('</script>', start)), {
-    window, state, navigator: { serviceWorker },
+    window, state, navigator: { serviceWorker }, _topAppDialog:()=>null, _offlineDownloadRun:false, _offlinePackRemoving:false,
     location: { protocol: 'https:', reload: () => { reloads++; } },
   });
 
@@ -627,6 +688,49 @@ test('the first controller claim arms future updates without reloading a battle'
   window.__maybeSwReload();
   assert.equal(reloads, 1);
 });
+test('a story update can park only when the requested native turn saves successfully', () => {
+  const html = fs.readFileSync(new URL('../../battle.html', import.meta.url), 'utf8');
+  const start = html.indexOf("if ('serviceWorker' in navigator && location.protocol.startsWith('http'))");
+  const state = { mode:'story',pActive:{},fActive:{},nativeRequests:[{phase:'replace'}] };
+  const engine = {};
+  let canSave = false;
+  const listeners = {};
+  const document = {getElementById: id => id === 'screen-battle' ? {classList:{contains:()=>false}} : null};
+  const window = {
+    addEventListener:(type,listener)=>{listeners[type]=listener;}, document,
+    StoryMode:{commitBattleTurn(value) { assert.equal(value,engine);return canSave; }},
+  };
+  const navigations = [];
+  function blocksUnload() {
+    let blocked = false;
+    listeners.beforeunload({preventDefault:()=>{blocked=true;}});
+    return blocked;
+  }
+  const context = vm.createContext({
+    window,state,URL,document,history:{pushState() {}},nativeBattle:engine,nativeBattleOwner:state,
+    navigator:{serviceWorker:{controller:{},addEventListener() {}}},
+    _topAppDialog:()=>({id:'modal-settings'}),_offlineDownloadRun:false,_offlinePackRemoving:false,
+    location:{protocol:'https:',href:'https://example.test/battle.html',replace:url=>navigations.push({url,blocked:blocksUnload()})},
+  });
+  vm.runInContext(html.slice(start,html.indexOf('</script>',start)),context);
+  const historyStart = html.indexOf('(function _installHistoryIntegration()');
+  vm.runInContext(html.slice(historyStart,html.indexOf('})();',historyStart)+5),context);
+  assert.equal(window.gameUpdateCanApply(),false);
+  assert.equal(blocksUnload(),true,'ordinary battle close prompts');
+  window.__gameUpdateParkRequested = true;
+  state.isLocked = true;
+  assert.equal(window.gameUpdateCanApply(),false);
+  state.isLocked = false;
+  assert.equal(window.gameUpdateCanApply(),true);
+  assert.equal(window.gameUpdateCanApply(true),false);
+  canSave = true;
+  assert.equal(window.gameUpdateCanApply(true),true);
+  assert.equal(blocksUnload(),true,'saving in preparation does not waive the warning');
+  window.finishPreparedGameUpdate();
+  window.finishPreparedGameUpdate();
+  assert.deepEqual(navigations,[{url:'https://example.test/battle.html?entry=continue',blocked:false}]);
+  assert.equal(blocksUnload(),true,'the confirmed handoff grants one unload');
+});
 test('returning from a standard battle applies a pending worker update at the menu',async()=>{
   const html=fs.readFileSync(new URL('../../battle.html',import.meta.url),'utf8');
   const start=html.indexOf('window.returnToHome = async function()');
@@ -634,13 +738,15 @@ test('returning from a standard battle applies a pending worker update at the me
   const state={mode:'pve',isOver:false};
   const visited=[];
   const nodes={'screen-menu':{classList:{remove:()=>visited.push('menu')}},
-    'draft-grid':{},'battle-log':{}};
+    'draft-grid':{},'battle-log':{},'draft-setup-status':{},'draft-inspect-foe':{},
+    'menu-more-play':{},'menu-more-play-summary':{focus:()=>{}}};
   const window={__maybeSwReload:()=>{
     assert.equal(state.isOver,true);
     visited.push('update');
   }};
   const ctx=vm.createContext({
     window,state,document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},
+    titleBattleSetupRevision:0,closeLocalBattleHandoff:()=>{},
     cancelNativeBattleMotion:()=>{},_isFullscreen:()=>false,_reenterFullscreenIfNeeded:()=>{},
   });
   vm.runInContext(html.slice(start,end),ctx);

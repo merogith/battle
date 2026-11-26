@@ -4,13 +4,14 @@
 // Run: node --test tests/suites/story-fight-club-bonus-visibility.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const { window } = eng;
 const SM = window.StoryMode;
 const sm = SM.state;
 const doc = window.document;
+installWritableStorage(window);
 
 window.confirm = () => true;
 window.alert = () => {};

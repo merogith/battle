@@ -15,6 +15,12 @@ const W = eng.window;
 const ST = W.__storyTest;
 const doc = W.document;
 const RAW = W.STORY_EVENTS_RAW;
+const saved = new Map();
+Object.defineProperty(W, 'localStorage', { value: {
+    getItem: key => saved.get(key) ?? null,
+    setItem: (key, value) => saved.set(key, String(value)),
+    removeItem: key => saved.delete(key),
+} });
 
 function clearOverlays() {
     ['story-camp-scene', 'camp-microgame'].forEach(id => { const e = doc.getElementById(id); if (e) e.remove(); });
@@ -56,6 +62,20 @@ test('campHeadBack stashes the return point and rewinds eventIndex to the city',
     assert.ok(sm.campReturnPoint && sm.campReturnPoint.eventIndex === 8, 'return point stashed');
 });
 
+test('campHeadBack stays at camp if its checkpoint cannot be written', () => {
+    const sm = baseSm();
+    sm.eventIndex = 8;
+    W.__storyExternalSave = true;
+    try {
+        ST.campHeadBack({ destIdx: 8, resume: () => {} });
+        assert.equal(sm.eventIndex, 8);
+        assert.equal(sm.campReturnPoint, null);
+        assert.ok(doc.getElementById('story-camp-scene'));
+    } finally {
+        W.__storyExternalSave = false;
+    }
+});
+
 test('proceedToNextBattle while a return point is set restores it and re-fires camp', () => {
     const sm = baseSm();
     sm.eventIndex = 6;                              // "at the town"
@@ -67,6 +87,22 @@ test('proceedToNextBattle while a return point is set restores it and re-fires c
     assert.equal(sm.campReturnPoint, null, 'return point cleared');
     // camp at idx8 wasn't broken (gate unstamped) → it re-fires, dropping us back at the fire.
     assert.ok(doc.getElementById('story-camp-scene'), 'camp re-opened on return');
+});
+
+test('Back to the road keeps its entry available if the checkpoint cannot be saved', () => {
+    const sm = baseSm();
+    sm.eventIndex = 6;
+    const returnPoint = { eventIndex: 8 };
+    sm.campReturnPoint = returnPoint;
+    W.__storyExternalSave = true;
+    try {
+        ST.proceedToNextBattle();
+        assert.equal(sm.eventIndex, 6);
+        assert.equal(sm.campReturnPoint, returnPoint);
+        assert.equal(doc.getElementById('story-camp-scene'), null);
+    } finally {
+        W.__storyExternalSave = false;
+    }
 });
 
 test('the camp menu offers "Head back to {town}" mid-route, but not at the very start', () => {

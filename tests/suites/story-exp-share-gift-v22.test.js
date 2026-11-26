@@ -10,11 +10,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const W = eng.window;
 const ST = W.__storyTest;
+installWritableStorage(W);
 
 const freshBuild = () => ({
     n: 'Hardy',
@@ -102,6 +103,19 @@ test('an empty wallet applies nothing', () => {
     W.StoryMode.applyExpShareLevel('team', 0);
     assert.equal(ST.sm.team[0].build.expShareLevels | 0, 0, 'no level applied on empty wallet');
     assert.equal(ST.sm.inventory.expShareVoucher | 0, 0);
+});
+
+test('an unsuccessful save leaves both the wallet and the target level unchanged', () => {
+    const build = freshBuild();
+    ST.sm = { ...ST.sm, team: [{ name: 'Pikachu', build }], inventory: { expShareVoucher: 1 } };
+    W.__storyExternalSave = true;
+    try {
+        W.StoryMode.applyExpShareLevel('team', 0);
+        assert.equal(ST.sm.inventory.expShareVoucher, 1);
+        assert.equal(ST.sm.team[0].build.expShareLevels, undefined);
+    } finally {
+        W.__storyExternalSave = false;
+    }
 });
 
 test('EXP-Share state survives a JSON save round-trip', () => {

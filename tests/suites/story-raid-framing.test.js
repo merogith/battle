@@ -133,36 +133,33 @@ test('BOSS_CONFIGS has phase entries for all 24 raid beats', () => {
     }
 });
 
-test('RAID_LORE covers all 8 arcs', () => {
-    const LORE = ST.RAID_LORE;
-    for (const arc of ARCS) {
-        assert.ok(typeof LORE[arc] === 'string' && LORE[arc].length > 20, `${arc} has lore`);
-    }
-});
-
-// Stronger guard: every roster key (24 of them) must resolve a lore line THROUGH the
-// arc-stem extraction _showRaidEncounterIntro actually uses (`/^extra\.([a-z0-9]+)\./`),
-// not just the arc-name lookup above. Catches a future roster addition (a 9th arc, or a
-// sceneKey whose stem doesn't match a RAID_LORE key) that the arc-only test would miss.
-test('every raid roster key resolves a RAID_LORE line via the intro arc-stem path', () => {
-    const LORE = ST.RAID_LORE;
-    const stemOf = (sceneKey) => (/^extra\.([a-z0-9]+)\./.exec(String(sceneKey || '')) || [])[1] || '';
-    for (const arc of ARCS) {
-        for (const suffix of SUFFIXES) {
-            const stem = stemOf(key(arc, suffix));
-            assert.ok(stem, `${key(arc, suffix)} yields a non-empty arc stem`);
-            assert.ok(typeof LORE[stem] === 'string' && LORE[stem].length > 20,
-                `${key(arc, suffix)} → RAID_LORE['${stem}'] is non-empty`);
+test('each raid arc presents distinct authored lore and matching labels at all three encounters', () => {
+    const labels = { miniRaid: 'First encounter', miniRaid2: 'Second encounter', raid: 'Final encounter' };
+    const authoredTitles = new Set();
+    for (const [arc, tiers] of Object.entries(ST.EXTRA_RAID_SPECIES_BY_TIER)) {
+        const lore = new Set();
+        const titles = new Set();
+        for (const [tier, species] of Object.entries(tiers)) {
+            const ov = ST.showRaidEncounterIntro(species, key(arc, tier));
+            try {
+                assert.equal(ov.dataset.raidTier, tier);
+                assert.equal(ov.querySelector('.story-legend-sighting-context span').textContent, `Solo raid · ${labels[tier]}`);
+                assert.equal(ov.querySelector('.story-legend-sighting-name').textContent, species);
+                const title = ov.querySelector('.story-legend-sighting-banner').textContent;
+                const line = ov.querySelector('.story-legend-sighting-lore').textContent;
+                assert.ok(title && title !== 'A RAID BEGINS', `${arc} uses its authored title`);
+                assert.ok(line.length > 20, `${key(arc, tier)} has authored scene text`);
+                titles.add(title);
+                lore.add(line);
+            } finally {
+                ov.querySelector('[data-encounter-enter]').click();
+            }
         }
+        assert.equal(titles.size, 1, `${arc} keeps the same arc title`);
+        assert.equal(lore.size, SUFFIXES.length, `${arc} has distinct text for all encounters`);
+        authoredTitles.add([...titles][0]);
     }
-});
-
-test('the raid narrator gives all three confrontations in each arc distinct lines', () => {
-    for (const arc of ARCS) {
-        const lines = SUFFIXES.map(tier => ST.raidNarratorLines(key(arc, tier)));
-        assert.ok(lines.every(couplet => couplet.length === 2 && couplet.every(Boolean)));
-        assert.equal(new Set(lines.map(couplet => couplet[0])).size, SUFFIXES.length, arc);
-    }
+    assert.equal(authoredTitles.size, ARCS.length, 'all eight arcs use distinct titles');
 });
 
 // ── 4. The intro mounts the Pokémon cinematic, NEVER the trainer VS-splash ──────

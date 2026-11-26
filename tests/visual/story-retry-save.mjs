@@ -205,7 +205,7 @@ try {
       const crop = viewport.height > viewport.width ? 'portrait' : 'landscape';
       await page.waitForFunction(crop => {
         const field = document.querySelector('#battle-field');
-        return field?.dataset.scene === 'road' && getComputedStyle(field).backgroundImage.includes(`/${crop}/bg_road.webp`);
+        return field?.dataset.crop === crop && getComputedStyle(field).backgroundImage.includes('/story/pallet-harbor.webp');
       }, crop, { timeout: 5000 });
       if (out) await page.screenshot({ path: join(out, `rival-battle-${viewport.width}.png`) });
       const initial = await snapshot(page);
@@ -264,7 +264,7 @@ try {
       assert.deepEqual(await snapshot(page), initial, 'Retry rebuilds the same opening board');
       assert.deepEqual(await playMove(page, fight, playToLoss), first, 'the first real action gets the same result after Retry');
       await lose(page);
-      await gameOver.getByRole('button', { name: /Return to Last City/ }).click();
+      await gameOver.getByRole('button', { name: /Return to last city/i }).click();
       await reach(page, objective);
       assert.deepEqual(await enemyLock(page), locked, 'retreat preserves the entire rival build');
       await page.reload({ waitUntil: 'domcontentloaded' });

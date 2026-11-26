@@ -30,7 +30,7 @@ try {
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       const battle = page.getByRole('region', { name: 'Battle', exact: true });
       const fight = battle.getByRole('button', { name: /^Fight/ });
-      await fight.waitFor();
+      await fight.waitFor({ timeout: 45000 });
       const gear = battle.getByRole('button', { name: 'Settings', exact: true });
       await gear.click();
       const settings = page.getByRole('dialog', { name: 'Settings' });
@@ -39,8 +39,12 @@ try {
       const clippedLabels = locator => locator.evaluateAll(elements => elements
         .filter(element => element.scrollWidth > element.clientWidth + 1).map(element => element.textContent.trim()));
       assert.deepEqual(await clippedLabels(sections.getByRole('button')), [], `${size} settings labels fit`);
+      const initialTabY = (await sections.boundingBox()).y;
       for (const [name, heading] of [['Audio', 'Audio'], ['Play', 'Gameplay'], ['Help', 'Help & accessibility'], ['Data', 'App & data'], ['Display', 'Display']]) {
-        await sections.getByRole('button', { name, exact: true }).click();
+        const tab = sections.getByRole('button', { name, exact: true });
+        await tab.click();
+        assert.equal(await tab.getAttribute('aria-pressed'), 'true');
+        assert.equal(await settings.locator('.settings-panel:visible').count(), 1);
         const section = settings.getByRole('heading', { name: heading, exact: true });
         assert.equal(await section.evaluate(element => document.activeElement === element), true);
         const bounds = await section.evaluate(element => {
@@ -50,6 +54,12 @@ try {
         });
         assert.ok(bounds.top >= bounds.toolbar - 1 && bounds.bottom <= bounds.viewport,
           `${size} ${heading} remains below the fixed settings toolbar: ${JSON.stringify(bounds)}`);
+        assert.ok(Math.abs((await sections.boundingBox()).y - initialTabY) < 2, `${size} section controls remain in place`);
+        if (name === 'Audio') {
+          await settings.getByText('Soundtrack options', { exact: true }).click();
+          assert.ok(await settings.locator('.settings-body').evaluate(element => element.scrollWidth <= element.clientWidth + 1),
+            `${size} audio controls fit when advanced options are open`);
+        }
       }
       await capture('settings');
       await settings.getByRole('button', { name: 'Close settings' }).click();

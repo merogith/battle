@@ -18,6 +18,11 @@ before(async () => {
   browserWindow = window;
   nt = window.__narrationTest;
   document = window.document;
+  const storage = new Map();
+  Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, String(value)),
+  } });
   assert.ok(nt, 'window.__narrationTest must be exposed under the harness');
 });
 
@@ -149,16 +154,17 @@ test('picking a choice persists to sm.storyChoices for later callbacks', () => {
 });
 
 test('an interrupted paid or declined toll resumes its saved reply and never charges again', () => {
+  const paid = nt.STORY_SCENES['villain.rocket.battle1'].acts.find(act => act.choice).choice.options[0];
   for (const { startingGold, afterPick, reply, skip } of [
-    { startingGold: 900, afterPick: 600, reply: /pockets them/, skip: true },
-    { startingGold: 150, afterPick: 150, reply: /come up short/, skip: undefined },
+    { startingGold: 900, afterPick: 600, reply: paid.reply[0], skip: true },
+    { startingGold: 150, afterPick: 150, reply: paid.lockedReply[0], skip: undefined },
   ]) {
     nt.sm = { eventIndex: 20, storyChoices: {}, scenesShown: {}, flags: {}, gold: startingGold };
     let finished = false;
     nt.playStoryBeatScene('villain.rocket.battle1', () => { finished = true; });
     document.querySelector('.story-narr-root [data-narr-continue]').click();
     document.querySelector('.story-narr-root [data-narr-choice-idx="0"]').click();
-    assert.match(document.querySelector('.story-narr-root [data-narr-body]').textContent, reply);
+    assert.ok(document.querySelector('.story-narr-root [data-narr-body]').textContent.includes(reply));
     assert.equal(nt.sm.gold, afterPick);
     assert.equal(nt.sm.flags['mgSkipBattle:20'], skip);
     assert.equal(finished, false);
@@ -173,7 +179,7 @@ test('an interrupted paid or declined toll resumes its saved reply and never cha
       nt.playStoryBeatScene('villain.rocket.battle1', () => { finished = true; });
       const resumed = document.querySelector('.story-narr-root');
       assert.equal(resumed.querySelector('[data-narr-choice-idx]'), null);
-      assert.match(resumed.querySelector('[data-narr-body]').textContent, reply);
+      assert.ok(resumed.querySelector('[data-narr-body]').textContent.includes(reply));
       resumed.querySelector('[data-narr-continue]').click();
       assert.equal(nt.sm.gold, afterPick + 1200);
       assert.equal(nt.sm.flags['mgSkipBattle:20'], skip);
@@ -565,6 +571,8 @@ test('e2e: a scene plays acts → choice → persistence → branch → cleared 
   _choiceBtns()[0].click();
   assert.equal(nt.sm.storyChoices['villain.rocket.driver'], 'leaned',
     'pick persisted to sm.storyChoices');
+  const saved = JSON.parse(browserWindow.localStorage.getItem('pbs_story_save'));
+  assert.equal(saved.storyChoices['villain.rocket.driver'], 'leaned', 'reply follows a durable write');
   assert.match(_body(), /gives you a name|drop-point/i, 'body swapped to the chosen reply');
 
   // finish; overlay clears

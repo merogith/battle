@@ -47,7 +47,7 @@ test('R1 — cross-run meta carries the loop capstone (lastLoopChoice)', () => {
   // The capstone pick is mirrored from the per-run choice into the meta.
   assert.ok(HTML.includes("if (key === 'main.loop.remember')"),
     'the loop capstone choice is special-cased on commit');
-  assert.ok(HTML.includes('_recordLoopChoice(choice, sm.loopChoiceCommittedAt);') &&
+  assert.ok(/if \(!save\(\{ quiet: true \}\)\)[\s\S]{0,250}_recordLoopChoice\(value, sm\.loopChoiceCommittedAt\);/.test(HTML) &&
     /function _recordLoopChoice\(choice, committedAt\)[\s\S]{0,600}meta\.lastLoopChoice = choice;/.test(HTML),
     'the committed capstone pick is reconciled into meta.lastLoopChoice');
 });

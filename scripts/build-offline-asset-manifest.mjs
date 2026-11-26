@@ -24,11 +24,14 @@ const ROOT = path.join(__dirname, '..');
 // Embed the package version before hashing, so both installed titles can show it offline.
 const { version: gameVersion } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const titleVersionLabel = /<p class="game-version">[^<]*<\/p>/;
+const versionMeta = /<meta name="battle-version" content="[^"]*">/;
 for (const name of ['index.html', 'battle.html']) {
   const file = path.join(ROOT, name);
   const html = fs.readFileSync(file, 'utf8');
   if (!titleVersionLabel.test(html)) throw new Error(`Missing game version label in ${name}`);
-  const updated = html.replace(titleVersionLabel, `<p class="game-version">Version ${gameVersion}</p>`);
+  if (!versionMeta.test(html)) throw new Error(`Missing game version metadata in ${name}`);
+  const updated = html.replace(titleVersionLabel, `<p class="game-version">Version ${gameVersion}</p>`)
+    .replace(versionMeta, `<meta name="battle-version" content="${gameVersion}">`);
   if (updated !== html) fs.writeFileSync(file, updated);
 }
 
@@ -64,6 +67,7 @@ const BOOT_FILES = [
   'battle.html', 'index.html', 'manifest.webmanifest', 'game-update.js', 'home-menu.css', 'game-upgrades.js', 'game-upgrades.css',
   'online-config.js', 'online-pvp.js', 'move-anim-map.js', 'move-sfx-map.js', 'sw.js',
   'battle-encounter-profiles.js', 'battle-move-profiles.js', 'battle-motion.js',
+  'world-presentation.js', 'world-location.css', 'story-activities.css',
   'competitive/index.html', 'competitive/arena.css', 'competitive/arena.js',
   'competitive/arena-client.js', 'competitive/showdown-worker.js',
   'competitive/classic-simulation.js', 'competitive/showdown-engine.js',

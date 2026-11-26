@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#11151c">
+    <meta name="battle-version" content="2.0.5">
     <title>Pokémon Arena</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
@@ -19,7 +20,7 @@
 <body class="home-screen">
     <main class="home-menu">
         <h1>Pokémon <span>Arena</span></h1>
-        <p class="game-version">Version 2.0.4</p>
+        <p class="game-version">Version 2.0.5</p>
         <nav class="home-actions" aria-label="Story">
             <a class="home-choice home-primary" id="title-continue" href="battle.html?entry=continue" hidden>
                 Continue <small id="title-save"></small>
@@ -29,9 +30,9 @@
         <details class="home-battles home-disclosure" id="menu-more-play">
             <summary id="menu-more-play-summary">Battles</summary>
             <nav class="home-modes" aria-label="Battle modes">
-                <a class="home-choice" href="battle.html?entry=battle">Quick Battle</a>
-                <a class="home-choice" href="battle.html?entry=gauntlet">Gauntlet</a>
-                <a class="home-choice" href="competitive/index.html">Competitive Arena</a>
+                <a class="home-choice" href="battle.html?entry=battle" aria-label="Quick Battle" aria-describedby="home-quick-cue">Quick Battle<small id="home-quick-cue">One match against the CPU</small></a>
+                <a class="home-choice" href="battle.html?entry=gauntlet" aria-label="Gauntlet" aria-describedby="home-gauntlet-cue">Gauntlet<small id="home-gauntlet-cue">Draft a team and build a streak</small></a>
+                <a class="home-choice" href="competitive/index.html" aria-label="Competitive Arena" aria-describedby="home-arena-cue">Competitive Arena<small id="home-arena-cue">Battle under generation rules</small></a>
                 <details class="home-friends home-disclosure">
                     <summary>Play with a friend</summary>
                     <div class="home-friend-actions">
@@ -45,14 +46,6 @@
                 <a class="home-tool" href="battle.html?entry=options">Battle options</a>
                 <a class="home-tool" href="battle.html?entry=leaderboard">Gauntlet scores</a>
             </div>
-            <details class="home-mode-help">
-                <summary>About the modes</summary>
-                <dl>
-                    <dt>Quick Battle</dt><dd>One match against the CPU.</dd>
-                    <dt>Gauntlet</dt><dd>Draft a team and try to keep a winning streak.</dd>
-                    <dt>Competitive Arena</dt><dd>Play a generation’s rules with a preset or an imported team.</dd>
-                </dl>
-            </details>
         </details>
         <footer class="home-tools">
             <a class="home-tool" href="battle.html?entry=settings">Settings</a>
@@ -71,7 +64,10 @@
             if (resumable) {
                 const name = run.trainerProfile?.name || 'Trainer';
                 const badges = Math.max(0, Math.min(8, run.badges | 0));
-                document.getElementById('title-save').textContent = `${String(name).slice(0, 24)} · ${badges}/8 badges`;
+                const place = typeof run._titleLocation === 'string' && run._titleLocation.slice(0, 48);
+                const turn = run.storyBattleCheckpoint?.eventIndex === run.eventIndex && run.storyBattleCheckpoint?.resume?.simulation?.battle?.turn;
+                const progress = Number.isSafeInteger(turn) && turn > 0 ? `Saved at turn ${turn}` : place || `${badges}/8 badges`;
+                document.getElementById('title-save').textContent = `${String(name).slice(0, 24)} · ${progress}`;
             }
         }
         showSave();
@@ -89,6 +85,8 @@
                 reloading = true;
                 location.reload();
             }
+            window.gameUpdateCanApply = () => true;
+            window.finishPreparedGameUpdate = reloadTitle;
             document.addEventListener('DOMContentLoaded', () => { update.hidden = false; }, { once: true });
             update.addEventListener('click', async () => {
                 if (navigator.onLine === false) {
@@ -99,7 +97,9 @@
                 status.textContent = 'Checking for updates…';
                 try {
                     const result = await window.checkForGameUpdate(() => { status.textContent = 'Installing the game update…'; });
-                    if (result !== false) reloadTitle();
+                    if (result === true || result === null) reloadTitle();
+                    else if (result === 'applying') status.textContent = 'Applying the verified update…';
+                    else if (result === 'waiting') status.textContent = 'Update ready. Finish your current action or close other game tabs.';
                     else status.textContent = 'The game is up to date.';
                 } catch (_) {
                     status.textContent = 'Could not check for updates. Check your connection and try again.';

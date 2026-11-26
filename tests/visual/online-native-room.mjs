@@ -19,6 +19,7 @@ const parallelDraft = process.env.BATTLE_TEST_ROOM_PARALLEL_DRAFT === '1';
 const expireDraft = process.env.BATTLE_TEST_ROOM_DRAFT_TIMEOUT === '1';
 const recoverDraft = process.env.BATTLE_TEST_ROOM_DRAFT_RECOVERY === '1';
 const hostRules = process.env.BATTLE_TEST_ROOM_HOST_RULES === '1';
+const setupTimeout = process.env.BATTLE_TEST_ROOM_SETUP_TIMEOUT === '1';
 const latencyMs = Number(process.env.BATTLE_TEST_ROOM_LATENCY_MS || 0);
 const out = process.env.BATTLE_TEST_ROOM_SHOTS;
 assert.ok([pivot, reconnect, series].filter(Boolean).length <= 1, 'Choose a single room fixture');
@@ -36,6 +37,14 @@ let draftFixtureRound = 0;
 const publishedTurns = [];
 let rejectNextGuestDraft = false;
 let blockGuestReads = false;
+let heldRoomRequest;
+
+function holdRoomRequest(name) {
+  const hold = { name, entered: false };
+  hold.wait = new Promise(resolve => { hold.release = resolve; });
+  heldRoomRequest = hold;
+  return hold;
+}
 
 const entry = (name, a, m) => ({ name, build: { a, m, n: 'Hardy', i: 'No Item' } });
 
@@ -199,6 +208,12 @@ async function openPlayer(options, side) {
   await context.route(endpoint, async route => {
     if (latencyMs) await new Promise(resolve => setTimeout(resolve, latencyMs));
     const request = route.request().postDataJSON();
+    if (heldRoomRequest && request.name === heldRoomRequest.name) {
+      const hold = heldRoomRequest;
+      heldRoomRequest = null;
+      hold.entered = true;
+      await hold.wait;
+    }
     if (side === 'guest') {
       if (blockGuestReads && request.kind === 'read') {
         return route.fulfill({ json: { data: null, error: { message: 'Mock head read unavailable' } } });
@@ -253,6 +268,15 @@ const roomPrefs = (page, fromStorage = false) => page.evaluate(fromStorage => {
   return { partySize, mechanics, randomWeather, randomTerrain, classicMode, draftGens, animations };
 }, fromStorage);
 
+async function assertPendingRoomForm(page, form, hold) {
+  const id = await form.getAttribute('id');
+  await page.waitForFunction(id => document.getElementById(id)?.querySelector('[data-room-cancel]')?.disabled, id, { timeout: 30000 });
+  await waitForRoom(() => hold.entered);
+  assert.equal(await form.getAttribute('aria-busy'), 'true');
+  await page.keyboard.press('Escape');
+  assert.ok(await form.isVisible(), 'Escape keeps a pending room request on its form');
+}
+
 try {
   const desktop = { viewport: { width: 1366, height: 900 } };
   const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
@@ -280,25 +304,67 @@ try {
     assert.equal(await guest.locator('#party-size-select').inputValue(), '3', 'the guest’s hidden local options are preserved');
   };
   await mode(host, /Host online/i).click();
-  if (timed) await host.locator('#modal-online-host').getByLabel('Turn timers').selectOption('fast');
+  const hostForm = host.locator('#modal-online-host');
+  if (timed) await hostForm.getByLabel('Time limit').selectOption('fast');
   if (series) {
-    const hostForm = host.locator('#modal-online-host');
     await hostForm.getByLabel('Match format').selectOption('3');
-    await hostForm.getByLabel('Your display name').fill('Test Host');
+    await hostForm.getByLabel('Display name').fill('Test Host');
   }
-  await host.locator('#modal-online-host').getByRole('button', { name: 'Create room', exact: true }).click();
+  const create = hostForm.getByRole('button', { name: 'Create room', exact: true });
+  if (setupTimeout) {
+    await host.evaluate(() => {
+      const load = window.OnlineBattle.ensureSdk;
+      window.OnlineBattle.ensureSdk = () => {
+        window.OnlineBattle.ensureSdk = load;
+        return new Promise(resolve => { window.releaseRoomPreparation = resolve; });
+      };
+    });
+    await create.click();
+    await host.waitForFunction(() => typeof window.releaseRoomPreparation === 'function');
+    await hostForm.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.ok(await hostForm.isHidden(), 'preparation can be cancelled before any room request');
+    await mode(host, /Host online/i).click();
+    await host.evaluate(() => window.releaseRoomPreparation(true));
+    await host.waitForFunction(() => document.getElementById('online-host-create').disabled === false);
+    assert.equal(await hostForm.getAttribute('aria-busy'), null);
+    assert.equal(room, undefined);
+
+    const noReply = holdRoomRequest('try_create_pvp_room');
+    await create.click();
+    await assertPendingRoomForm(host, hostForm, noReply);
+    await hostForm.getByRole('status').getByText(/room request timed out/i).waitFor({ timeout: 17000 });
+    assert.equal(await create.isEnabled(), true);
+    assert.equal(await hostForm.getByRole('button', { name: 'Cancel', exact: true }).isEnabled(), true);
+    noReply.release();
+    await waitForRoom(() => Boolean(room));
+    assert.equal(await host.evaluate(() => window.OnlineBattle.isActive()), false, 'late room reply cannot claim a timed out request');
+    await host.keyboard.press('Escape');
+    assert.ok(await hostForm.isHidden(), 'Escape is available once the room request finishes');
+    await mode(host, /Host online/i).click();
+  }
+  const hostReply = holdRoomRequest('try_create_pvp_room');
+  await create.click();
+  await assertPendingRoomForm(host, hostForm, hostReply);
+  await host.evaluate(() => history.back());
+  await host.waitForFunction(() => history.state?.pbs === 'modal-pop');
+  assert.ok(await hostForm.isVisible(), 'browser Back stays in the form while a room can be created');
+  hostReply.release();
   await host.locator('#screen-draft').waitFor({ state: 'visible', timeout: 30000 });
   assert.ok(room?.code);
 
   await guestPress(mode(guest, /Join online/i));
   const form = guest.locator('#modal-online-pvp');
   await form.getByLabel('Room code').fill(room.code);
+  const guestReply = holdRoomRequest('try_join_pvp_room');
   await guestPress(form.getByRole('button', { name: 'Join', exact: true }));
+  await assertPendingRoomForm(guest, form, guestReply);
+  guestReply.release();
   await guest.locator('#screen-draft').waitFor({ state: 'visible' });
   await host.waitForFunction(() => window.OnlineBattle.canUseNativeBattle());
   if (hostRules) {
     await assertHostRules();
-    assert.match(await guest.locator('#draft-title').textContent(), new RegExp(`^Pick ${partySize} `));
+    if (partySize === 1) assert.ok(await guest.locator('#draft-party-bar').isHidden());
+    else assert.equal(await guest.locator('#draft-pick-progress').textContent(), `(0/${partySize})`);
     await guestPress(guest.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first());
     const guestSettings = guest.locator('#modal-settings');
     await guestSettings.getByRole('combobox', { name: 'Battle speed', exact: true }).selectOption('fast');
