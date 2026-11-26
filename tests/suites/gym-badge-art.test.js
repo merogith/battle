@@ -86,3 +86,21 @@ test('older saves without a trainer assignment keep their earned badge count and
     assert.equal(list.children[0].textContent, 'Badge 1');
     assert.equal(list.children[0].querySelector('.gym-badge-art').hasAttribute('data-gym-type'), false);
 });
+
+test('a legacy or invalid upcoming assignment resolves the same leader for town, lobby and battle', () => {
+    const gym = 5;
+    const index = leaderIndex(gym);
+    const id = leaderId(gym);
+    const event = rows[index][2];
+    for (const trainerAssignments of [{ [id]: 'Hiker' }, {}]) {
+        setup({ badges: gym - 1, trainerAssignments });
+        const visitor = story.gymVisitor(gym);
+        assert.ok(visitor?.name && visitor?.type);
+        assert.equal(story.preferredTypeBeforeGymBattle(index - 2), visitor.type);
+        assert.equal(story.preferredTypeBeforeGymBattle(index - 1), visitor.type);
+        const trainer = story.scheduledStoryTrainer(event, id, [1, 9]);
+        assert.equal(trainer.name, visitor.name);
+        assert.equal(trainer.type.split('/')[0], visitor.type);
+        assert.equal(story.scheduledStoryTrainer(event, id, [1, 9]).name, trainer.name);
+    }
+});

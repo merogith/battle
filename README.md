@@ -8,7 +8,9 @@ Travel from Pallet to the Pokémon League. A road decision can change the notice
 
 Story uses base level 50 with the existing late Experience Share power-up. Your team grows through recruitment, evolution, moves, items, abilities, training, and bonds. Signature bosses show what they are preparing before the next turn. Historical formats are available separately in the Competitive Arena.
 
-Use **Settings → Save & recovery** to export or restore a backup. The title screen offers Compact and Full offline downloads. Use the same installation or restore a backup when moving to another device. [Player playtest](docs/PLAYER_PLAYTEST.md) · [Build and release checks](docs/north-road/RELEASE.md)
+The **Battles** menu offers **Quick Battle** for a single CPU match, **Gauntlet** for a draft and winning streak, **Competitive Arena** for generation-specific rules and Showdown teams, and **Play with a friend** for same-device or online play.
+
+Use **Settings → App & data** to export a backup or manage the installation. The title screen offers Compact and Full offline downloads. Restore a backup when moving to another device. [Player playtest](docs/PLAYER_PLAYTEST.md) · [Build and release checks](docs/north-road/RELEASE.md)
 
 ## Battle engine and testing
 

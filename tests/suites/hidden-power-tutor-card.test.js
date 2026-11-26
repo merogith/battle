@@ -7,7 +7,8 @@
 // This locks: (1) the unified card renders the mon's own hpType as its type badge
 // (not Normal) and BP 60; (2) the desc explains the "hidden element" mechanic;
 // (3) a waiting favor keeps the natural type visible and explains the choice.
-// Purely presentational — the teach path is covered by hidden-power-mentor.test.js.
+// It also covers changing an equipped move with the favor. New lessons are
+// covered by hidden-power-mentor.test.js.
 //
 // Run: node --test tests/suites/hidden-power-tutor-card.test.js
 
@@ -78,7 +79,7 @@ test('the card carries an accessible "?" explainer (hover + touch + SR labelled)
   assert.ok(info.getAttribute('title') && /secret element/i.test(info.getAttribute('title')), 'hover text explains the mechanic');
   assert.ok(info.getAttribute('aria-label') && /Hidden Power/i.test(info.getAttribute('aria-label')), 'screen-reader label present');
   // It must NOT be independently focusable — nested interactive content inside the
-  // card <button> would be invalid; the always-visible desc carries SR meaning.
+  // card button would be invalid. The description is available in Details.
   assert.ok(!info.hasAttribute('tabindex'), 'not a nested focusable (valid button content)');
 });
 
@@ -107,4 +108,48 @@ test('an equipped Hidden Power has one card with the real move name for Forget',
   assert.ok(equipped && !equipped.hidden);
   assert.equal(equipped.querySelector('[data-unlearn-move]')?.dataset.unlearnMove, 'Hidden Power Ice');
   assert.equal(hpCard(), null);
+});
+
+test('one favor changes an equipped Hidden Power in place only after confirmation', async t => {
+  prime({ choose: true });
+  const [partner] = ST.sm.team;
+  partner.build.m.push('Hidden Power Ice');
+  partner.currentHp = 42;
+  partner.pp = [7, 3];
+  ST.sm.inventory = { heartScale: 1 };
+  const { gold } = ST.sm;
+  const originalConfirm = w.showGameConfirm;
+  t.after(() => { w.showGameConfirm = originalConfirm; });
+  let accept = false;
+  let confirmed = 0;
+  w.showGameConfirm = async prompt => {
+    assert.match(prompt, /Garchomp’s Hidden Power to Fire/);
+    confirmed++;
+    return accept;
+  };
+  await w.StoryMode.enterTutor('moves');
+  await openTutorMon(w);
+  assert.ok(await settle('data-hp-retune'));
+  await searchHiddenPower();
+  const chooseFire = () => {
+    host().querySelector('[data-hp-retune="1"]').click();
+    w.document.querySelector('.story-hp-picker [data-hp="Fire"]').click();
+  };
+  chooseFire();
+  await sleep(40);
+  assert.equal(confirmed, 1);
+  assert.equal(ST.sm.hiddenPowerChoosePending, true);
+  assert.equal(partner.build.m[1], 'Hidden Power Ice');
+
+  accept = true;
+  chooseFire();
+  assert.ok(await settle('data-card-value="Hidden Power Fire"'));
+  assert.deepEqual(Array.from(partner.build.m), ['Earthquake', 'Hidden Power Fire']);
+  assert.equal(partner.build.hpType, 'Fire');
+  assert.equal(partner.currentHp, 42);
+  assert.deepEqual(partner.pp, [7, 3]);
+  assert.equal(ST.sm.gold, gold);
+  assert.equal(ST.sm.inventory.heartScale, 1);
+  assert.equal(ST.sm.hiddenPowerChoosePending, false);
+  assert.equal(host().querySelector('[data-hp-retune]'), null);
 });

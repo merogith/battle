@@ -14,6 +14,11 @@ const scenery = {
     crucible: 'recovery-crucible.webp',
 };
 const chapterFiles = ['opening', 'early', 'middle', 'finale'];
+// Brief excerpts from the original film's English dub. See the writing references.
+const screeningExcerpts = [
+    ['Meowth', 'We do have a lot in common.'],
+    ['Mewtwo', 'It is what you do with the gift of life that determines who you are.'],
+];
 let chapterRequest;
 
 function loadChapters() {
@@ -89,7 +94,8 @@ export async function mountAdventure(host, city, bridge) {
     const card = element('aside', 'story-chapter-card');
     const invitation = element('div', 'story-chapter-invitation');
     const invitationContext = city === 1 ? 'Optional story' : here.place;
-    const eyebrow = element('p', 'story-chapter-eyebrow', `${invitationContext} · ${here.speaker.name}`);
+    const publicSpeaker = here.hideSpeakerOnInvite ? '' : here.speaker.name;
+    const eyebrow = element('p', 'story-chapter-eyebrow', [invitationContext, publicSpeaker].filter(Boolean).join(' · '));
     const teaser = element('p', 'story-chapter-teaser', here.invitation);
     const open = button(here.title, 'open', here.id, () => {
         origin = open;
@@ -196,6 +202,10 @@ export async function mountAdventure(host, city, bridge) {
         body.dataset.chapterPhase = phase;
         if (tone) body.dataset.chapterTone = tone;
         else delete body.dataset.chapterTone;
+        const recording = tone === 'recording';
+        const spoken = Boolean(speakerName) && speakerName !== 'Narrator'
+            && (phase === 'reading' || phase === 'choice') && !recording;
+        body.dataset.chapterRegister = recording ? 'recording' : spoken ? 'speech' : 'narration';
         pageProgress.hidden = !step;
         if (step) {
             pageProgress.max = step.total;
@@ -211,10 +221,10 @@ export async function mountAdventure(host, city, bridge) {
             stage.append(portrait);
         }
         const copy = element('div', 'story-chapter-copy');
-        const person = [speakerName, speakerName === scene.speaker?.name ? scene.speaker?.role : ''].filter(Boolean).join(' · ');
-        if (phase === 'discovery') copy.append(element('p', 'story-chapter-eyebrow', 'Hidden discovery'));
-        else if (source || person) copy.append(element('p', 'story-chapter-eyebrow', source ? `Because of your choice in ${source}` : person));
-        const caption = element('p', 'story-chapter-caption', prose);
+        const label = phase === 'discovery' ? 'Field note'
+            : source ? `From ${source}` : recording ? (speakerName || 'Recording') : spoken ? speakerName : '';
+        if (label) copy.append(element('p', 'story-chapter-eyebrow', label));
+        const caption = element(spoken ? 'blockquote' : 'p', 'story-chapter-caption', prose);
         caption.tabIndex = -1;
         copy.append(caption);
         if (clue) {
@@ -266,16 +276,19 @@ export async function mountAdventure(host, city, bridge) {
                 hint.append(element('summary', '', 'Follow the trail'), element('p', '', chapter.secret.hint));
                 actions.append(hint);
             }
-            if (!readOnly) actions.append(element('p', 'story-chapter-hint', option.consequence ||
-                (chapter.city === null ? 'Your decision is saved in the Field Archive.' : 'Your decision is saved. The next witness may respond to it.')));
+            if (option.consequence) {
+                const receipt = element('details', 'story-chapter-hint');
+                receipt.append(element('summary', '', 'What changed'), element('p', '', option.consequence));
+                actions.append(receipt);
+            }
             actions.append(done());
             const caption = sceneBody(chapter, chapter.speaker?.name, option.reply, actions, { phase: 'result', clue: option.clue });
             dialogueFocus(caption);
         };
         const showChoices = (entry, presentation) => {
             const actions = element('div', 'story-chapter-actions');
-            actions.append(element('p', 'story-chapter-hint', chapter.city === null
-                ? 'Decide how Ivo’s account will be kept.' : 'Choose what to do here. It changes what you carry to the next witness.'));
+            actions.setAttribute('role', 'group');
+            actions.setAttribute('aria-label', chapter.city === null ? 'How should Ivo’s account be kept?' : 'What do you do?');
             const status = element('p', 'story-chapter-status');
             status.setAttribute('role', 'alert');
             for (const option of chapter.choices) {
@@ -285,7 +298,7 @@ export async function mountAdventure(host, city, bridge) {
                 }));
             }
             actions.append(status);
-            dialogueFocus(sceneBody(chapter, entry.speaker || 'Narrator', entry.text, actions, { ...presentation, phase: 'choice' }));
+            dialogueFocus(sceneBody(chapter, entry.speaker, entry.text, actions, { ...presentation, phase: 'choice' }));
         };
         const panel = index => {
             const entry = panels[index];
@@ -301,12 +314,12 @@ export async function mountAdventure(host, city, bridge) {
             sound(entry.cue, 0.26);
             if (last && chapter.choices && !saved) {
                 showChoices(entry, presentation);
-                return;
+            } else {
+                const footer = element('div', 'story-chapter-actions');
+                if (last && !chapter.choices) footer.append(done());
+                else footer.append(button('Continue', 'next', '', () => last ? endScene(saved) : panel(index + 1), true));
+                dialogueFocus(sceneBody(chapter, entry.speaker, entry.text, footer, presentation));
             }
-            const footer = element('div', 'story-chapter-actions');
-            if (last && !chapter.choices) footer.append(done());
-            else footer.append(button('Continue', 'next', '', () => last ? endScene(saved) : panel(index + 1), true));
-            dialogueFocus(sceneBody(chapter, entry.speaker || 'Narrator', entry.text, footer, presentation));
             if (entry.voiceId && !readOnly) {
                 stopDialogue = globalThis.AudioSystem?.playDialogue?.(entry.voiceId, entry.text);
             }
@@ -335,6 +348,7 @@ export async function mountAdventure(host, city, bridge) {
         show('Field Archive', 'The Open Circle');
         delete body.dataset.chapterPhase;
         delete body.dataset.chapterTone;
+        delete body.dataset.chapterRegister;
         pageProgress.hidden = true;
         const { archive } = snapshot(false);
         const summary = progress.summarize(archive);
@@ -359,7 +373,13 @@ export async function mountAdventure(host, city, bridge) {
                 entry.append(identify(button(option.label, 'replay', chapter.id, () => openScene(chapter, {
                     saved: option, fromArchive: true, readOnly: true, replayChoices: record?.choices, archiveKey,
                 })), archiveKey));
-                if (option.clue) entry.append(element('p', 'story-chapter-clue', option.clue));
+            }
+            const clues = options.filter(option => option.clue);
+            if (clues.length) {
+                const notes = element('details', 'story-chapter-hint story-archive-notes');
+                notes.append(element('summary', '', 'Clues filed'));
+                for (const option of clues) notes.append(element('p', 'story-chapter-clue', option.clue));
+                entry.append(notes);
             }
             if (records.some(record => record.secrets[chapter.id])) {
                 const archiveKey = `discovery/${chapter.id}`;
@@ -396,6 +416,17 @@ export async function mountAdventure(host, city, bridge) {
                     () => openKeepsake(item, true)), archiveKey));
             }
             sections.push(keepsakes);
+        }
+        if (summary.distinctChapters) {
+            const screening = element('details', 'story-archive-entry story-archive-screening');
+            screening.append(element('summary', '', 'Old screening'),
+                element('p', 'story-archive-screening-source', 'Pokémon: The First Movie · English dub'));
+            for (const [speaker, line] of screeningExcerpts) {
+                const figure = element('figure', '');
+                figure.append(element('blockquote', '', line), element('figcaption', '', speaker));
+                screening.append(figure);
+            }
+            sections.push(screening);
         }
         body.replaceChildren(...sections);
         if (focus) focus.focus();

@@ -26,6 +26,7 @@ function worker(options={}) {
           delete:async request=>entries.delete(requestKey(request)),
         };
       },
+      match:async(request,{cacheName}={})=>cacheContents.get(cacheName)?.get(requestKey(request))?.clone(),
       keys:async()=>[...cacheContents.keys()],
       delete:async name=>cacheContents.delete(name),
     },
@@ -62,12 +63,12 @@ function worker(options={}) {
     get activated(){return activated;},get updates(){return updates;},
     install:()=>dispatch('install'),
     activate:()=>dispatch('activate'),
-    async message(message,postMessage){
+    async message(message,postMessage,id){
       let pending;
       const responses=[];
       handlers.message({
         data:{batchId:'test',...message},
-        source:{postMessage:postMessage||((response)=>responses.push(structuredClone(response)))},
+        source:{id,postMessage:postMessage||((response)=>responses.push(structuredClone(response)))},
         waitUntil:p=>{pending=p;},
       });
       await pending;
@@ -93,8 +94,44 @@ test('a complete core installs with game data and a failed update cannot activat
     const bad=worker(mode==='quota'?{failWrite:'battle.html'}:{});
     if(mode==='missing')bad.responses.delete('game-upgrades.js');
     if(mode==='mismatch')bad.responses.set('data/moves.json','other release');
+    bad.cacheContents.set('battle-v4-shell',new Map([['battle.html',new Response('previous release')]]));
     await assert.rejects(bad.install());assert.equal(bad.activated,0,mode);
+    assert.equal(bad.stored,undefined,mode);
+    assert.equal(await bad.cacheContents.get('battle-v4-shell').get('battle.html').text(),'previous release');
   }
+});
+test('repair of an evicted core file reuses the installed pack and verifies the one missing file',async()=>{
+  const track='music/repair.mp3', core='data/moves.json';
+  const w=worker({lazyAssets:{[track]:'offline track'}});
+  await w.install();
+  const manifest={...JSON.parse(w.responses.get('offline-assets.json')),digest:'stored-release'};
+  const sync={type:'SYNC_ASSETS',manifest,profile:'full'};
+  assert.equal((await w.message(sync)).applied,true);
+  assert.equal((await w.message({type:'CACHE_STATE'})).complete,true);
+  w.stored.delete(core);
+  assert.equal((await w.message({type:'CACHE_STATE'})).complete,false);
+  const plan=await w.message({...sync,dryRun:true});
+  assert.equal(plan.fetchCount,0);
+  assert.equal(plan.shellReady,false);
+  assert.equal(plan.complete,false);
+  w.fetches.length=0;
+  assert.equal((await w.message(sync)).applied,true);
+  assert.deepEqual(w.fetches,['offline-assets.json',core]);
+  assert.equal((await w.message({type:'CACHE_STATE'})).complete,true);
+});
+test('removing a pack preserves the core shell and refreshes other tabs',async()=>{
+  const notifications=[];
+  const client=id=>({id,postMessage:data=>notifications.push({id,data:structuredClone(data)})});
+  const w=worker({clients:[client('first'),client('second')]});
+  await w.install();
+  w.cacheContents.set('battle-assets',new Map([['music/optional.mp3',new Response('track')]]));
+  const runtime=vm.runInContext('RUNTIME_CACHE',w.context);
+  w.cacheContents.set(runtime,new Map([['music/recent.mp3',new Response('recent track')]]));
+  assert.equal((await w.message({type:'CLEAR_CACHE'},null,'first')).type,'CACHE_CLEARED');
+  assert.deepEqual(notifications,[{id:'second',data:{type:'OFFLINE_PACK_REMOVED'}}]);
+  assert.equal(w.cacheContents.has('battle-assets'),false);
+  assert.equal(w.cacheContents.has(runtime),false);
+  assert.equal(await (await w.fetch('battle.html','navigate')).text(),'content:battle.html');
 });
 test('navigation update checks cannot mutate the active core cache',async()=>{
   const w=worker();await w.install();const before=[...w.stored.keys()];

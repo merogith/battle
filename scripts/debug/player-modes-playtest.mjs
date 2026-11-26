@@ -29,7 +29,7 @@ const cards = page => page.locator('#draft-grid .draft-card');
 const fight = page => page.locator('#command-menu [data-cmd="fight"]');
 const end = page => page.locator('#modal-end-screen');
 const confirmation = page => page.locator('#modal-game-confirm');
-const modeButton = (page, name) => main(page).locator('.menu-mode-grid').getByRole('button', { name });
+const modeButton = (page, name) => main(page).locator('#menu-other-modes-wrap').getByRole('button', { name });
 
 async function capture(page, screenshot) {
   const screens = await page.locator('.screen:visible').evaluateAll(nodes => nodes.map(node => node.id));
@@ -190,8 +190,8 @@ const cases = [
     async play(page, record) {
       await chooseFastBattles(page);
       await battleOptions(page);
-      await main(page).getByRole('button', { name: /Jump In/ }).click();
-      await battleEngine(page, record, 'jump-in');
+      await modeButton(page, 'Quick Battle').click();
+      await battleEngine(page, record, 'quick-battle');
       assert.equal(await page.evaluate(() => state.mode), 'pve');
       assert.deepEqual(await page.evaluate(() => [state.playerParty.length, state.foeParty.length]), [1, 1]);
       const before = await page.evaluate(() => state.turnNumber);
@@ -223,7 +223,7 @@ const cases = [
     async play(page, record) {
       await chooseFastBattles(page);
       await battleOptions(page, { size: '2' });
-      await main(page).getByRole('button', { name: /Jump In/ }).tap();
+      await modeButton(page, 'Quick Battle').tap();
       await battleEngine(page, record, 'party');
       const command = page.getByRole('button', { name: /Pokémon — switch a party member/ });
       const party = page.locator('#modal-party');
@@ -305,7 +305,7 @@ const cases = [
     async play(page, record) {
       await chooseFastBattles(page);
       await battleOptions(page);
-      await modeButton(page, /Local PvP/i).tap();
+      await modeButton(page, 'Same device').tap();
       await cards(page).first().waitFor();
       assert.match(await page.locator('#draft-title').textContent(), /Player 1/);
       await cards(page).first().locator('img').tap();
@@ -412,7 +412,7 @@ const cases = [
   {
     name: 'online-lobby-leaderboard', profile: phone,
     async play(page, record) {
-      await main(page).getByRole('button', { name: /Leaderboard/i }).tap();
+      await main(page).getByRole('button', { name: 'Gauntlet scores' }).tap();
       const leaderboard = page.locator('#modal-gauntlet-leaderboard');
       await leaderboard.getByRole('heading', { name: /Gauntlet leaderboard/ }).waitFor();
       await page.locator('#gauntlet-lb-loading').waitFor({ state: 'hidden' });
@@ -427,7 +427,7 @@ const cases = [
 
       const configured = await page.evaluate(() => window.__onlinePvpConfigured());
       if (!configured) {
-        await modeButton(page, /Online Host/i).tap();
+        await modeButton(page, 'Host online').tap();
         const alert = page.locator('#modal-game-alert');
         await alert.waitFor();
         assert.match(await alert.textContent(), /Supabase/);
@@ -439,15 +439,17 @@ const cases = [
           body: 'window.__PBS_SUPABASE_URL = location.origin; window.__PBS_SUPABASE_ANON_KEY = "local-playtest-placeholder-key";',
         }));
         await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.locator('#menu-more-play-summary').click();
+        await page.locator('.home-friends > summary').click();
       }
-      await modeButton(page, /Online Host/i).tap();
+      await modeButton(page, 'Host online').tap();
       const host = page.locator('#modal-online-host');
       await host.getByRole('heading', { name: /Host online battle/ }).waitFor();
       await host.getByLabel('Match format').selectOption('3');
       await host.getByLabel('Turn timers').selectOption('fast');
       await snapshot(page, record, 'host');
       await host.getByRole('button', { name: 'Cancel' }).tap();
-      await modeButton(page, /Online Join/i).tap();
+      await modeButton(page, 'Join online').tap();
       const guest = page.locator('#modal-online-pvp');
       await guest.getByRole('heading', { name: /Join online battle/ }).waitFor();
       await guest.getByRole('button', { name: 'Join', exact: true }).tap();
@@ -511,6 +513,7 @@ try {
       await main(page).waitFor();
       const more = page.locator('#menu-more-play-summary');
       if (await more.count() && !['settings-offline', 'collection-help'].includes(name)) await more.click();
+      if (['local-pvp', 'online-lobby-leaderboard'].includes(name)) await page.locator('.home-friends > summary').click();
       await play(page, record);
       assert.deepEqual(record.errors, []);
     } catch (error) {

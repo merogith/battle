@@ -4,11 +4,11 @@ const client = new ArenaBattleClient();
 const $ = id => document.getElementById(id);
 const statusNames = { brn: 'Burned', frz: 'Frozen', par: 'Paralyzed', psn: 'Poisoned', tox: 'Badly poisoned', slp: 'Asleep' };
 const matchMessages = {
-  preview: ['Choose your lead', 'Your remaining Pokémon are available to switch in.'],
-  move: ['Choose an action', 'Select a move or teammate to act.'],
-  replace: ['Send in a Pokémon', 'Select a teammate to bring into battle.'],
-  wait: ['Waiting for the opponent', ''],
-  ended: ['Battle complete', ''],
+  preview: 'Choose your lead',
+  move: 'Choose an action',
+  replace: 'Send in a Pokémon',
+  wait: 'Waiting for the opponent',
+  ended: 'Battle complete',
 };
 const results = { win: 'You win', loss: 'Arena AI wins', draw: 'Match drawn' };
 const modernRoster = [$('setup-player').textContent, $('setup-opponent').textContent];
@@ -329,11 +329,8 @@ function draw(next, focus = true) {
   $('field-weather').hidden = !next.weather;
   $('engine-note').textContent = `Powered by Pokémon Showdown · @pkmn/sim ${next.engineVersion}`;
   $('turn').textContent = next.turn ? `Turn ${next.turn}` : 'Team preview';
-  const [heading, instructions] = matchMessages[next.phase];
   $('actions').dataset.phase = next.phase;
-  $('request-heading').textContent = results[next.result] || heading;
-  $('action-copy').textContent = instructions;
-  $('action-copy').hidden = !instructions;
+  $('request-heading').textContent = results[next.result] || matchMessages[next.phase];
   announceError('battle-error', next.error);
   showPlayer(next.player, next.phase);
   showOpponent(next.opponent, next.phase);
@@ -448,7 +445,7 @@ function updateSetup() {
   const [playerReserve, opponentReserve] = format.value === 'gen9ou' ? modernReserves : historicalReserves;
   $('setup-player').textContent = $('team-text').value.trim() ? 'Imported team · Checked at start' : `${player}${size === 6 ? `, ${playerReserve}` : ''}`;
   $('setup-opponent').textContent = `${opponent}${size === 6 ? `, ${opponentReserve}` : ''}`;
-  $('setup-intro').textContent = `Play a ${size}-on-${size} battle against the Arena AI using Pokémon Showdown rules.`;
+  $('setup-intro').textContent = `${size}-on-${size} against the CPU with Showdown rules.`;
   $('team-import-help').textContent = `Paste ${size === 6 ? 'six' : 'three'} Pokémon from a Showdown export. Leave this blank to play with the preset.`;
   $('format-label').textContent = `${format.selectedOptions[0].textContent}${stadium ? '' : ` · ${size}v${size}`}`;
   $('format-rules').hidden = !stadium;

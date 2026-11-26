@@ -4,19 +4,19 @@ Story trainer battles swap the continuous field BGM for a mood-appropriate
 battle theme, then restore the field track (with a short victory fanfare on a
 win) when the fight ends. Wild / casual battles are left on the field BGM.
 
-The mood slots are **already wired** in `AudioSystem` (`BATTLE_THEMES`). Only
-content ships today: one dramatic track (`boss_climax.mp3`) covers every major
-fight, and ordinary trainers intentionally stay on the field BGM. Adding
-per-tier tracks is a drop-in — no code edit to the monolith required.
+`AudioSystem` selects a theme by encounter role. Ordinary trainers stay on the
+field music. Rival battles, Gym Leaders, League fights, raids, and Story climaxes
+each have their own theme.
 
 ## Slots
 
 | Mood key  | Fires for                                             | Ships today          |
 |-----------|-------------------------------------------------------|----------------------|
 | `trainer` | Route / gym filler trainers                           | *(empty → field BGM)*|
-| `leader`  | Gym Leaders                                            | `boss_climax.mp3`    |
-| `rival`   | Rival battles                                          | `boss_climax.mp3`    |
-| `elite`   | Elite Four / Victory Road                              | `boss_climax.mp3`    |
+| `leader`  | Gym Leaders                                            | `gym-bout.mp3`       |
+| `rival`   | Rival battles                                          | `rival-pursuit.mp3`  |
+| `elite`   | Elite Four / Victory Road                              | `league-chamber.mp3` |
+| `raid`    | Story raids and their earlier confrontations          | `raid-omen.mp3`      |
 | `boss`    | Champion / Mystery Figure / climax fights             | `boss_climax.mp3`    |
 
 An empty list skips the swap entirely (no duck, no theme, no victory fanfare) —
@@ -42,13 +42,14 @@ files are the field rotation.
      leader:  ['music/themes/leader.mp3'],
      rival:   ['music/themes/rival.mp3'],
      elite:   ['music/themes/elite.mp3'],
+     raid:    ['music/themes/raid.mp3'],
      boss:    ['music/themes/champion.mp3'],
    });
    ```
 
    Both mutate the live `BATTLE_THEMES` object in place. `addBattleTheme`
    ignores unknown moods and duplicate files; `setBattleThemes` only touches the
-   five known keys.
+   registered mood keys.
 
 3. Alternatively, edit the `BATTLE_THEMES` literal in `battle.html` directly
    (search for `const BATTLE_THEMES`) — the arrays accept multiple files per
@@ -60,10 +61,9 @@ If you don't want to source any track files, enable **Settings → Generative mu
 (chiptune)**. That runs `ChiptuneEngine` — an original procedural music engine that
 composes background music live (scales + chord progressions via the Web Audio API,
 no sample files). It has a distinct mood per screen and battle
-(menu / town / route / battle / boss / victory / Hall of Fame / Safari / casino /
-Crucible). While it's on, the file-based tracks below stand down so the two never
-overlap; turn it off to go back to the bundled tracks. It honours the Music toggle
-and volume like everything else.
+(menu, town, route, battle, rival, Gym Leader, Elite Four, raid, boss, victory,
+Safari, casino, and Crucible). Turn it off to go back to the bundled tracks. Both
+options honour the Music toggle and volume and pause when the game is hidden.
 
 The two systems are complementary: drop in real tracks for curated fidelity, or flip
 on the generative engine for always-on, zero-file music.
@@ -72,7 +72,7 @@ on the generative engine for always-on, zero-file music.
 
 - Prefer seamless-looping `.mp3`; keep files reasonably small (the field tracks
   are ~0.6–1.8 MB) so first paint and the pre-battle duck stay snappy.
-- Missing or blocked files fall back to the field BGM automatically — a bad path
-  never leaves a battle silent.
+- A missing theme falls back to the field music. If the browser requires a
+  gesture, the next click, tap, or keypress resumes the current scene's music.
 - Music honours the Settings → Music toggle and volume, and never plays under
   the test harness.

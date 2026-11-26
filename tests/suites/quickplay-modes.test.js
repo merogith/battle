@@ -1,6 +1,6 @@
 // Quick Play & Multiplayer re-exposure (2026-06): Quick Battle / Gauntlet /
 // Local PvP / Online were hidden behind a "paused for development" panel. They
-// are available in the More ways to play disclosure under Story Mode, with a
+// are available in the Battles disclosure below Story Mode, with a
 // Battle Options panel (team source, bot difficulty, party size,
 // gens, grades, gimmick toggles) and an instant Quick Battle path.
 // These tests lock in: (1) the modes share a discoverable entrance, (2) the gimmick toggles
@@ -17,17 +17,19 @@ const eng = await loadEngine();
 const W = eng.window;
 const D = W.document;
 
-test('More ways to play groups the secondary modes and options', () => {
+test('Battles groups distinct ways to play and keeps online and local play together', () => {
     const disclosure = D.getElementById('menu-more-play');
     const wrap = D.getElementById('menu-other-modes-wrap');
     assert.equal(disclosure.tagName, 'DETAILS');
-    assert.equal(disclosure.querySelector('summary').textContent.includes('More ways to play'), true);
+    assert.match(disclosure.querySelector('summary').textContent, /^\s*Battles/);
     assert.equal(wrap.closest('details'), disclosure);
     assert.ok(disclosure.querySelector('#menu-customize-toggle'));
-    // All five play modes are reachable as tiles; the leaderboard was demoted
-    // to a link row (UX 2026-07 — it's a lookup, not a play mode).
     for (const cls of ['--pve', '--gaunt', '--pvp', '--onlineh', '--onlinej']) {
-        assert.ok(D.querySelector('.menu-mode-btn' + cls), 'mode button ' + cls + ' present');
+        assert.ok(disclosure.querySelector('.menu-mode-btn' + cls), 'mode button ' + cls + ' present');
+    }
+    const friends = disclosure.querySelector('.home-friends');
+    for (const cls of ['--pvp', '--onlineh', '--onlinej']) {
+        assert.ok(friends.querySelector('.menu-mode-btn' + cls), 'friend mode ' + cls + ' present');
     }
     assert.ok(D.querySelector('.menu-lb-link'), 'leaderboard link row present');
     assert.ok(disclosure.querySelector('.menu-competitive-entry'), 'competitive link present');

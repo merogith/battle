@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. The manifest build sets CACHE_VERSION from the release contents.
  */
-const CACHE_VERSION = 'battle-v5-2a5565dcb091';
+const CACHE_VERSION = 'battle-v5-e6686a7a77b8';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
@@ -36,6 +36,7 @@ const SHELL = [
   'game-upgrades.js',
   'game-upgrades.css',
   'index.html',
+  'home-menu.css',
   'manifest.webmanifest',
   'online-config.js',
   'online-pvp.js',
@@ -74,7 +75,7 @@ async function verifyResponse(response, file, onChunk) {
   if(hash!==file.h || buffer.byteLength!==file.b) throw new Error(`Release mismatch: ${file.u}`);
   return response;
 }
-async function precacheShell() {
+async function precacheShell(repair = false) {
   const manifestResponse=await fetch('offline-assets.json',{cache:'no-store'});
   if(!manifestResponse.ok)throw new Error('Release manifest unavailable');
   const manifest=await manifestResponse.json();
@@ -85,13 +86,34 @@ async function precacheShell() {
     name !== SHELL_CACHE && VERSIONED_CACHE.test(name) && name.endsWith('-shell')
   ).reverse();
   const cache=await caches.open(SHELL_CACHE);
-  for(let i=0;i<core.length;i+=12) await Promise.all(core.slice(i,i+12).map(async file=>{
-    const response = await reuseVerifiedResponse(file, previousShells)
-      || await verifyResponse(await fetch(file.u,{cache:'reload'}),file);
-    await cache.put(file.u,response);
-  }));
-  await cache.put('./',await cache.match('index.html'));
-  await cache.put('offline-assets.json',new Response(JSON.stringify(manifest),{headers:{'Content-Type':'application/json'}}));
+  try {
+    for(let i=0;i<core.length;i+=12) {
+      const batch = await Promise.allSettled(core.slice(i,i+12).map(async file=>{
+        // A repair can keep verified files from its own shell.
+        if (repair && await reuseVerifiedResponse(file, [SHELL_CACHE])) return;
+        const response = await reuseVerifiedResponse(file, previousShells)
+          || await verifyResponse(await fetch(file.u,{cache:'reload'}),file);
+        await cache.put(file.u,response);
+      }));
+      const failure = batch.find(result => result.status === 'rejected');
+      if (failure) throw failure.reason;
+    }
+    await cache.put('./',await cache.match('index.html'));
+    await cache.put('offline-assets.json',new Response(JSON.stringify(manifest),{headers:{'Content-Type':'application/json'}}));
+  } catch (error) {
+    // A rejected installation should leave the last release available and no partial shell
+    // taking up space. A repair keeps the individual files it was able to restore.
+    if (!repair) {
+      try { await caches.delete(SHELL_CACHE); } catch (_) {}
+    }
+    throw error;
+  }
+}
+
+async function shellIsComplete(manifest) {
+  if (!await matchCache(SHELL_CACHE, 'offline-assets.json')) return false;
+  const urls = new Set((await (await caches.open(SHELL_CACHE)).keys()).map(entry => relUrl(entry.url)));
+  return manifest.files.filter(isCoreAsset).every(file => urls.has(file.u));
 }
 
 async function reuseVerifiedResponse(file, names) {
@@ -124,8 +146,7 @@ self.addEventListener('activate', (event) => {
 
 async function matchCache(name, req) {
   try {
-    const cache = await caches.open(name);
-    return await cache.match(req);
+    return await caches.match(req, { cacheName: name });
   } catch (_) {
     return null;
   }
@@ -351,7 +372,7 @@ self.addEventListener('message', (event) => {
     if (offlineJob?.status === 'continuing') offlineJob.status = 'paused';
     reply({ type: 'PAUSE_RESULT', batchId: msg.batchId, job: offlineJob });
   } else if (msg.type === 'CLEAR_CACHE') {
-    event.waitUntil(clearAssets(msg, reply));
+    event.waitUntil(clearAssets(msg, reply, event.source?.id));
   } else if (msg.type === 'CACHE_STATE') {
     event.waitUntil((async () => {
       const cache = await caches.open(ASSETS_CACHE);
@@ -360,8 +381,16 @@ self.addEventListener('message', (event) => {
       const applied = assetHashes(record);
       const partial = assetHashes(await readAssetRecord(cache, OFFLINE_PROGRESS_KEY));
       const urls = Object.keys(applied);
+      let shellReady = !record?.release;
+      if (!shellReady) {
+        try {
+          const shell = await matchCache(SHELL_CACHE, 'offline-assets.json');
+          shellReady = !!shell && await shellIsComplete(await shell.json());
+        } catch (_) {}
+      }
       reply({ type: 'CACHE_STATE', batchId: msg.batchId, cachedCount: present.size,
         appliedCount: urls.length, digest: record?.digest, profile: record?.profile || 'full', complete: urls.length > 0
+          && shellReady
           && urls.every(url => present.has(url))
           && Object.keys(partial).every(url => applied[url] === partial[url]) });
     })());
@@ -371,17 +400,27 @@ self.addEventListener('message', (event) => {
 let assetMutationInProgress = false;
 let offlineJob = null;
 
-async function clearAssets(msg, reply) {
+async function notifyOfflineClients(message, except) {
+  try {
+    for (const client of await self.clients.matchAll({ type: 'window' })) {
+      if (except && client.id === except) continue;
+      try { client.postMessage(message); } catch (_) {}
+    }
+  } catch (_) {}
+}
+
+async function clearAssets(msg, reply, sourceId) {
   if (assetMutationInProgress) {
     reply({ type: 'CACHE_CLEARED', batchId: msg.batchId, busy: true });
     return;
   }
   assetMutationInProgress = true;
   try {
-    await caches.delete(ASSETS_CACHE);
+    await Promise.all([caches.delete(ASSETS_CACHE), caches.delete(RUNTIME_CACHE)]);
     compactFrames = null;
     offlineJob = null;
     reply({ type: 'CACHE_CLEARED', batchId: msg.batchId });
+    await notifyOfflineClients({ type: 'OFFLINE_PACK_REMOVED' }, sourceId);
   } catch (_) {
     reply({ type: 'CACHE_CLEARED', batchId: msg.batchId, failed: true });
   } finally {
@@ -467,27 +506,36 @@ async function syncAssets(msg, reply) {
     const files = packFiles.filter(file => !isCoreAsset(file) && file.u !== 'sw.js');
     if (profile === 'compact' && !files.some(file => file.u === PACK_FRAME_ARCHIVE)) throw new Error('Compact sprite archive is missing');
     const plan = computeSyncPlan(files, { ...appliedHashes, ...partialHashes }, present);
+    const shellReady = !msg.manifest.version || await shellIsComplete(msg.manifest);
     // A continuation can outlive its worker, but it must still belong to a
     // saved download. Another tab's Remove action deletes that checkpoint.
     if (!msg.dryRun && msg.continueJob && partialRecord?.digest !== digest) {
-      const complete = appliedRecord?.digest === digest && plan.toFetch.length === 0 && plan.toRemove.length === 0;
+      const complete = shellReady && appliedRecord?.digest === digest && plan.toFetch.length === 0 && plan.toRemove.length === 0;
       offlineJob = null;
       reply({ type: 'SYNC_DONE', batchId: msg.batchId, applied: complete, cancelled: !complete });
       return;
     }
     if (msg.dryRun) {
       reply({ type: 'SYNC_PLAN', batchId: msg.batchId,
-        digest, profile, installedProfile: appliedRecord ? appliedRecord.profile || 'full' : null,
+        digest, profile, shellReady, installedDigest: appliedRecord?.digest,
+        installedProfile: appliedRecord ? appliedRecord.profile || 'full' : null,
         pendingProfile: partialRecord ? partialRecord.profile || 'full' : null,
         fetchCount: plan.toFetch.length, removeCount: plan.toRemove.length, bytes: plan.bytes,
         totalBytes: packFiles.reduce((sum, file) => sum + (file.b || 0), 0),
-        complete: Boolean(appliedRecord && files.length && plan.toFetch.length === 0 && plan.toRemove.length === 0),
+        complete: Boolean(shellReady && appliedRecord && files.length && plan.toFetch.length === 0 && plan.toRemove.length === 0),
         resumable: Boolean(partialRecord && (partialRecord.profile || 'full') === profile),
         paused: partialRecord?.digest === digest && partialRecord.paused === true });
       return;
     }
 
     const job = offlineJob;
+    if (!shellReady) {
+      const report = () => reply({ type: 'SYNC_PROGRESS', batchId: msg.batchId, ...job, status: 'repairing' });
+      report();
+      const pulse = setInterval(report, 10000);
+      try { await precacheShell(true); }
+      finally { clearInterval(pulse); }
+    }
     job.total = plan.toFetch.length;
     job.bytes = plan.bytes;
     job.remainingBytes = plan.bytes;
@@ -546,7 +594,7 @@ async function syncAssets(msg, reply) {
     }
     if (job.failed === 0) {
       try {
-        await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify({ files, digest, profile }),
+        await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify({ files, digest, profile, release: msg.manifest.version }),
           { headers: { 'Content-Type': 'application/json' } }));
         applied = true;
         compactFrames = null;
@@ -556,13 +604,7 @@ async function syncAssets(msg, reply) {
     if (!applied) await checkpointAssets(cache, progress, job);
     job.status = applied ? 'complete' : 'incomplete';
     reply({ type: 'SYNC_DONE', batchId: msg.batchId, ...job, removed, applied });
-    if (applied && digest) {
-      try {
-        for (const client of await self.clients.matchAll({ type: 'window' })) {
-          try { client.postMessage({ type: 'OFFLINE_PACK_READY', digest, profile }); } catch (_) {}
-        }
-      } catch (_) { /* Readiness is still available through CACHE_STATE. */ }
-    }
+    if (applied && digest) await notifyOfflineClients({ type: 'OFFLINE_PACK_READY', digest, profile });
   } catch (_) {
     const type = msg.dryRun ? 'SYNC_PLAN' : 'SYNC_DONE';
     if (!msg.dryRun) offlineJob.status = 'incomplete';

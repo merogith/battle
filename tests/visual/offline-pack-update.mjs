@@ -158,13 +158,23 @@ try {
     }
     async function waitForRelease(next) {
         // The old shell is removed only when the complete new build activates.
-        await page.waitForFunction(async version => {
-            const registration = await navigator.serviceWorker.getRegistration();
-            if (registration?.active?.state !== 'activated' || registration.active !== navigator.serviceWorker.controller ||
-                registration.installing || registration.waiting) return false;
-            const shells = (await caches.keys()).filter(key => key.endsWith('-shell'));
-            return shells.length === 1 && shells[0] === `${version}-shell`;
-        }, next.manifest.version, { timeout: 60000 });
+        // waitForFunction treats a Promise predicate as truthy before it resolves.
+        const deadline = Date.now() + 60000;
+        while (Date.now() < deadline) {
+            const active = await page.evaluate(async version => {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration?.active?.state !== 'activated' || registration.active !== navigator.serviceWorker.controller ||
+                    registration.installing || registration.waiting) return false;
+                const shells = (await caches.keys()).filter(key => key.endsWith('-shell'));
+                return shells.length === 1 && shells[0] === `${version}-shell`;
+            }, next.manifest.version).catch(error => {
+                if (!/execution context was destroyed/i.test(error.message)) throw error;
+                return false;
+            });
+            if (active) return;
+            await new Promise(resolve => setTimeout(resolve, 250));
+        }
+        throw new Error(`The browser did not activate release ${next.manifest.version}.`);
     }
     async function checkFromOpenPage(next, path, button) {
         const releaseMarker = page.locator('meta[name="offline-test-release"]');
@@ -231,12 +241,19 @@ try {
         requests.clear();
     });
     const upgrade = await openPack(page);
+    const profile = await page.getByLabel('Offline pack', { exact: true }).inputValue();
     if (await upgrade.textContent() === 'Update') await upgrade.click();
     await packReady(page);
     await assertSaved();
-    const candidateDownloads = Array.from(requests.keys()).filter(path => /^(sprites|music)\//.test(path));
-    assert.ok(candidateDownloads.length < 100, `Unexpected bulk media transfer during upgrade: ${candidateDownloads.length} URLs`);
-    console.log(`Upgraded to ${candidate.manifest.version} with saved journey intact and ${candidateDownloads.length} media URLs served.`);
+    const priorFiles = new Map(previous.manifest.files.filter(file => !file.p || file.p === profile).map(file => [file.u, file.h]));
+    const changedMedia = new Set(candidate.manifest.files
+        .filter(file => (!file.p || file.p === profile) && /^(sprites|music)\//.test(file.u) && priorFiles.get(file.u) !== file.h)
+        .map(file => decodeURI(file.u)));
+    const missingMedia = [...changedMedia].filter(path => !requests.has(path));
+    assert.deepEqual(missingMedia, [], 'The upgrade downloads every changed media file for the installed profile');
+    const extraMedia = [...requests.keys()].filter(path => /^(sprites|music)\//.test(path) && !changedMedia.has(path));
+    assert.ok(extraMedia.length <= 12, `Unexpected media outside the ${profile} delta: ${extraMedia.slice(0, 16).join(', ')}`);
+    console.log(`Upgraded to ${candidate.manifest.version} with saved journey intact, ${changedMedia.size} changed ${profile} files and ${extraMedia.length} runtime media lookups.`);
 
     const check = page.getByRole('button', { name: 'Check for updates', exact: true });
     // Finish any navigation-triggered recheck before the next version exists.
@@ -312,6 +329,51 @@ try {
         assert.deepEqual(errors, []);
         console.log('Switched the installed Full pack to Compact with one archive download and continued from the offline title.');
     }
+
+    await context.setOffline(false);
+    await load(page);
+    const corePath = 'data/moves.json';
+    assert.equal(await page.evaluate(async ({ shell, path }) => (await caches.open(shell)).delete(path),
+        { shell: `${titleRelease.manifest.version}-shell`, path: corePath }), true);
+    await page.locator('#menu-offline-entry').click();
+    const repairCore = page.getByRole('button', { name: 'Repair offline app', exact: true });
+    await repairCore.waitFor({ state: 'visible' });
+    requests.clear();
+    await repairCore.click();
+    await packReady(page);
+    assert.equal(requests.get(corePath), 1);
+    assert.deepEqual([...requests.keys()].filter(path => /^(music|sprites)\//.test(path)), []);
+    assert.equal(await page.evaluate(async path => !!(await caches.match(path)), corePath), true);
+
+    const mediaPath = titleRelease.probe.u;
+    assert.equal(await page.evaluate(async path => (await caches.open('battle-assets')).delete(path), mediaPath), true);
+    await (await packAction(page)).click();
+    const repairMedia = page.getByRole('button', { name: 'Repair download', exact: true });
+    await repairMedia.waitFor({ state: 'visible' });
+    requests.clear();
+    await repairMedia.click();
+    await packReady(page);
+    assert.deepEqual([...requests.keys()].filter(path => /^(music|sprites)\//.test(path)), [mediaPath]);
+    assert.equal(requests.get(mediaPath), 1);
+    await assertSaved();
+    console.log('Repaired one missing game file and one missing media file without reinstalling the pack.');
+
+    const secondTab = await createPage();
+    const secondAction = await openPack(secondTab);
+    assert.equal(await secondAction.textContent(), 'Check for updates');
+    const remove = page.getByRole('button', { name: 'Remove offline files', exact: true });
+    await remove.click();
+    const confirmation = page.getByRole('dialog', { name: /^Remove offline files\?/ });
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await packReady(page);
+    await remove.click();
+    await confirmation.getByRole('button', { name: 'OK', exact: true }).click();
+    assert.equal(await (await packAction(page)).textContent(), 'Download all');
+    await secondTab.getByRole('button', { name: 'Download all', exact: true }).waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(async () => (await (await caches.open('battle-assets')).keys()).length), 0);
+    await assertSaved();
+    assert.deepEqual(errors, []);
+    console.log('Removed offline files after confirmation. Both tabs reflected the change and kept the Story save.');
 } finally {
     await browser?.close();
     await new Promise(resolveClose => server.close(resolveClose));

@@ -65,7 +65,7 @@ async function advanceTo(page, goal, { choice, click = false } = {}) {
 
 async function developerAction(page, label) {
   await page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first().click();
-  const details = page.locator('#modal-settings details.settings-dev-block');
+  const details = page.locator('#modal-settings details').filter({ hasText: 'Developer / Story tools' });
   if (await details.getAttribute('open') === null) await details.locator('summary').click();
   await button(details, label).click();
 }
@@ -346,7 +346,7 @@ try {
   await caseRun('hall-frontier', async page => {
     const { command, frontier } = await playHallEnding(page, 'hall-frontier', {
       label: /Remember\. Carry it forward/,
-      reply: /You hold onto it\. All of it\./,
+      reply: /You keep the song running in your head/,
       value: 'remember',
     });
     await advanceTo(page, frontier, { click: true });
@@ -376,7 +376,7 @@ try {
   await caseRun('hall-ending-forget', async page => {
     await playHallEnding(page, 'hall-ending-forget', {
       label: /Try not to remember\. Walk through clean/,
-      reply: /You let it go - the song, the sticker/,
+      reply: /The song goes first\. Then the handwriting\./,
       value: 'forget',
     });
   });
@@ -404,6 +404,7 @@ try {
     await resume.waitFor();
     assert.equal(await resume.evaluate(el => el === document.activeElement), true);
     assert.deepEqual(await readRun(), expected);
+    await page.locator('#story-run-tools > summary').tap();
     const deleteRun = page.locator('#story-abandon-btn');
     await deleteRun.tap();
     const confirm = page.getByRole('dialog', { name: 'Delete this run?' });

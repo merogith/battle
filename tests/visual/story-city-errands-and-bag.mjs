@@ -49,12 +49,12 @@ async function setCheckpoint(city, fresh = false) {
 
 async function openStoryMenu() {
     await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 28000 });
-    await button('◆ Story Mode').click();
-    await button('▶ Continue Run').waitFor();
+    await button('Story Mode').click();
+    await button('Continue Run').waitFor();
 }
 
 async function continueRun() {
-    await button('▶ Continue Run').click();
+    await button('Continue Run').click();
     const alert = button('OK', page.locator('#modal-game-alert'));
     if (await alert.isVisible()) await alert.click();
 }
@@ -69,15 +69,19 @@ try {
     await page.waitForFunction(() => Boolean(window.__testReady));
     await setCheckpoint(1, true);
     await openStoryMenu();
-    assert.match(await page.locator('#story-menu-resume-meta').innerText(), /Party 2\/2/);
-    assert.match(await page.locator('#story-menu-resume-status').innerText(), /Currently at Flintreach Town/);
+    assert.equal(await page.locator('#story-menu-resume-meta').innerText(), 'Flintreach Town · 0/8 badges');
     await continueRun();
     await page.getByRole('heading', { name: 'Flintreach Town', exact: true }).waitFor();
 
     await button('Bag (4 types)').click();
     const calcium = bag.locator('.story-bag-item').filter({ hasText: 'Calcium' });
+    assert.equal(await calcium.locator('.eff').isVisible(), false);
+    await calcium.locator('summary').press('Enter');
     assert.match(await calcium.innerText(), /Sp\. Atk IV by 3 \(cap 31\)\./);
+    await calcium.locator('summary').press('Enter');
+    assert.equal(await calcium.locator('.eff').isVisible(), false);
     const protein = bag.locator('.story-bag-item').filter({ hasText: 'Protein' });
+    await protein.locator('summary').click();
     assert.doesNotMatch(await protein.innerText(), /31\)\.\./);
     await button('Use', protein).press('Enter');
     assert.equal(await page.locator(':focus').innerText(), '← Back to Bag');

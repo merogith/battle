@@ -35,7 +35,7 @@ test('every chapter dialogue recording matches its full visible speaker and capt
     }
 });
 
-test('selected battle entrances use one matching caption and cancel on entry', async () => {
+test('Gym and League entrances use one matching caption and cancel on entry', async () => {
     const { loadEngine } = await import('../helpers/load-engine.js');
     const { window } = await loadEngine();
     const story = window.__storyTest;
@@ -54,10 +54,16 @@ test('selected battle entrances use one matching caption and cancel on entry', a
     const trainer = { name: 'Test trainer', spriteFile: 'Worker', type: 'Normal' };
     const encounters = [
         ['Gym Leader 1', 'flintreach-gym-announcer'],
+        ['Gym Leader 2', 'kettlestone-court-pa'],
+        ['Gym Leader 3', 'lindenbell-exhibition-pa'],
+        ['Gym Leader 4', 'reedmarket-gate-pa'],
         ['Gym Leader 5', 'glasswater-court-pa'],
         ['Gym Leader 6', 'brasslock-shutter-pa'],
         ['Gym Leader 7', 'beaconrest-ring-pa'],
+        ['Gym Leader 8', 'vespergate-night-pa'],
         ['E1', 'league-first-chamber-pa'],
+        ['E2', 'league-second-chamber-pa'],
+        ['E3', 'league-third-chamber-pa'],
         ['E4', 'league-last-chamber-pa'],
         ['Champion', 'league-champion-announcer'],
     ];

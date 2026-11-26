@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Teams } from '@pkmn/sim';
 import { chromium } from 'playwright';
 /* global settings, state */
@@ -36,7 +37,8 @@ async function fromTitle(page, screenshot) {
   }
   await entry.click();
   await page.waitForURL(pageUrl);
-  await page.getByRole('heading', { name: 'Competitive Battle' }).waitFor();
+  await page.getByRole('heading', { name: 'Competitive Arena' }).waitFor();
+  assert.equal(await page.locator('#setup-player').isVisible(), false);
 }
 
 async function finishBattle(page) {
@@ -238,7 +240,10 @@ async function testBattleStadium(page) {
   await page.getByRole('button', { name: 'Reset battle' }).click();
   await page.getByLabel('Battle rules').selectOption(format);
   await page.getByRole('textbox', { name: 'Showdown team export' }).clear();
-  await page.getByText(/Pokémon are set to Lv. 50/).waitFor();
+  const teams = page.locator('#setup-teams > summary');
+  await teams.click();
+  await page.getByText(/Level 50 · Dynamax and Gigantamax available/).waitFor();
+  await teams.click();
   await page.getByRole('button', { name: 'Start battle' }).click();
   await page.getByRole('button', { name: /Snorlax.*Lead/ }).click();
   await atTurn(page, 1);
@@ -282,6 +287,7 @@ async function testSixOnSix(page) {
   await teamBox.clear();
   assert.equal(await size.inputValue(), '3');
   await size.selectOption('6');
+  await page.locator('#setup-teams > summary').click();
   assert.match(await page.locator('#setup-player').innerText(), /Primarina, Kingambit, Rillaboom/);
   assert.match(await page.locator('#setup-opponent').innerText(), /Iron Valiant, Ting-Lu, Cinderace/);
   if (out) await page.screenshot({ path: join(out, 'six-on-six-setup.png') });
@@ -341,6 +347,8 @@ try {
     assert.deepEqual(workers, []);
     await page.getByRole('button', { name: 'Start battle' }).click();
     await page.getByRole('heading', { name: 'Choose your lead' }).waitFor();
+    assert.equal(await page.locator('#battle-log').isVisible(), false);
+    await page.getByText('Battle log', { exact: true }).click();
     assert.equal(workers.length, 1);
     assert.match(workers[0], /competitive\/showdown-worker\.js$/);
     await page.getByRole('button', { name: /Great Tusk.*Lead/ }).click();
@@ -415,7 +423,7 @@ try {
       assert.equal(await page.locator('#player-active .combatant-name').innerText(), 'Team fainted');
       assert.equal(await page.locator('#request-heading').innerText(), 'Arena AI wins');
       assert.match(await page.locator('#result-text').innerText(), /\d+ turns? · Pokémon left: you 0, Arena AI [1-6]/);
-      assert.equal(await page.getByRole('link', { name: 'Return to main menu' }).getAttribute('href'), '../battle.html');
+      assert.equal(await page.getByRole('link', { name: 'Return to main menu' }).getAttribute('href'), '../');
       if (out) {
         await page.evaluate(() => scrollTo(0, 0));
         await page.screenshot({ path: join(out, 'replay-result.png') });
@@ -438,8 +446,8 @@ try {
       await testWeatherPreview(page);
       await testBattleStadium(page);
       await testSixOnSix(page);
-      await page.getByRole('link', { name: /Pokémon Arena/ }).click();
-      await page.waitForURL(base.href);
+      await page.getByRole('link', { name: '← Main menu' }).click();
+      await page.waitForURL(new URL('./', base).href);
       console.log('desktop: completed-match replay and an accepted browser turn in Gen 1–9 OU passed');
       console.log('desktop: illegal team rejected, imported team battled and replayed offline, Mega Evolution and Z-Move passed');
       console.log('desktop: import focus, move inspection, historical move effects and public identity labels passed');
@@ -466,7 +474,8 @@ try {
     const classicExports = await page.evaluate(async url => Object.keys(await import(url)), classicUrl);
     assert.ok(classicExports.length > 0, 'fresh offline shell can import the battle adapter');
     await page.evaluate(() => { settings.animations = false; });
-    await page.getByRole('button', { name: /Jump In/ }).click();
+    await page.locator('#menu-more-play-summary').click();
+    await page.getByRole('button', { name: 'Quick Battle' }).click();
     await page.waitForFunction(() => state.battleEngine === 'showdown' && !state.isLocked && state.nativeRequests?.[0]?.phase === 'move');
     await page.locator('#screen-battle[data-battle-engine="showdown"] #command-menu [data-cmd="fight"]').click();
     await page.locator('#move-menu .battle-btn-move:enabled').first().click();
@@ -485,7 +494,12 @@ try {
     await fromTitle(page);
     await page.getByRole('button', { name: 'Start battle' }).click();
     await page.getByRole('heading', { name: 'Choose your lead' }).waitFor();
-    await page.waitForFunction(async url => Boolean(await caches.match(url)), workerUrl);
+    let workerCached = false;
+    for (let attempt = 0; attempt < 50 && !workerCached; attempt++) {
+      workerCached = await page.evaluate(async url => Boolean(await caches.match(url)), workerUrl);
+      if (!workerCached) await delay(100);
+    }
+    assert.ok(workerCached, 'the Arena worker is available before going offline');
     await context.setOffline(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'Start battle' }).click();
@@ -493,7 +507,7 @@ try {
     await page.getByRole('button', { name: /Great Tusk.*Lead/ }).click();
     await atTurn(page, 1);
     await context.close();
-    console.log('Installed game: fresh offline Jump In turn and cached offline Arena match passed');
+    console.log('Installed game: fresh offline Quick Battle turn and cached offline Arena match passed');
   }
 } finally {
   await browser.close();

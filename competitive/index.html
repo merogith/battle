@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#12141c">
-  <title>Competitive Battle · Pokémon Arena</title>
+  <title>Competitive Arena · Pokémon Arena</title>
   <link rel="icon" href="../icons/icon-192.png">
   <link rel="stylesheet" href="arena.css">
   <script src="../battle-move-profiles.js" defer></script>
@@ -13,7 +13,7 @@
 </head>
 <body>
   <header class="page-header">
-    <a class="home-link" href="../battle.html">← Pokémon Arena</a>
+    <a class="home-link" href="../">← Main menu</a>
     <div class="header-tools">
       <span id="format-label" class="format-label">Gen 9 OU · 3v3</span>
       <label class="arena-speed"><span><span class="arena-speed-prefix">Battle </span>Speed</span>
@@ -27,8 +27,7 @@
   </header>
   <main>
     <section id="setup" class="setup-panel">
-      <h1>Competitive Battle</h1>
-      <p id="setup-intro">Play a 3-on-3 battle against the Arena AI using Pokémon Showdown rules.</p>
+      <h1>Competitive Arena</h1>
       <form id="setup-form">
         <div class="battle-rules-grid">
           <div>
@@ -54,20 +53,26 @@
             </select>
           </div>
         </div>
-        <p id="format-rules" class="format-rules" hidden>Pokémon are set to Lv. 50. Dynamax and Gigantamax are available.</p>
-        <dl class="team-preview">
-          <div><dt>Your team</dt><dd id="setup-player">Great Tusk, Gholdengo, Dragapult</dd></div>
-          <div><dt>Arena AI</dt><dd id="setup-opponent">Corviknight, Slowking-Galar, Meowscarada</dd></div>
-        </dl>
-        <details id="team-import" class="team-import">
-          <summary>Import your team</summary>
-          <label for="team-text">Showdown team export</label>
-          <p id="team-import-help">Paste three Pokémon from a Showdown export. Leave this blank to play with the preset.</p>
-          <textarea id="team-text" rows="7" maxlength="12000" aria-describedby="team-import-help" spellcheck="false" autocapitalize="off" aria-invalid="false"></textarea>
-          <p id="team-import-error" class="error" role="alert" hidden></p>
-        </details>
         <div class="setup-actions">
           <button id="start" class="primary" type="submit">Start battle</button>
+        </div>
+        <div class="setup-extras">
+          <details id="setup-teams">
+            <summary>Teams and rules</summary>
+            <p id="setup-intro" class="format-rules">3-on-3 against the CPU with Showdown rules.</p>
+            <p id="format-rules" class="format-rules" hidden>Level 50 · Dynamax and Gigantamax available</p>
+            <dl class="team-preview">
+              <div><dt>Your team</dt><dd id="setup-player">Great Tusk, Gholdengo, Dragapult</dd></div>
+              <div><dt>Arena AI</dt><dd id="setup-opponent">Corviknight, Slowking-Galar, Meowscarada</dd></div>
+            </dl>
+          </details>
+          <details id="team-import" class="team-import">
+            <summary>Import your team</summary>
+            <label for="team-text">Showdown team export</label>
+            <p id="team-import-help">Paste three Pokémon from a Showdown export. Leave this blank to play with the preset.</p>
+            <textarea id="team-text" rows="7" maxlength="12000" aria-describedby="team-import-help" spellcheck="false" autocapitalize="off" aria-invalid="false"></textarea>
+            <p id="team-import-error" class="error" role="alert" hidden></p>
+          </details>
           <details>
             <summary>Play with a seed</summary>
             <label for="seed">Battle seed</label>
@@ -80,12 +85,12 @@
     </section>
     <div id="match" hidden>
       <div class="match-heading">
-        <h1>Competitive Battle</h1>
+        <h1>Competitive Arena</h1>
       </div>
       <div class="battle-layout">
         <div class="battle-column">
           <section class="battlefield" aria-label="Battlefield">
-            <div class="match-meta"><span id="turn">Team preview</span><span id="field-weather" hidden></span><span id="match-seed"></span></div>
+            <div class="match-meta"><span id="turn">Team preview</span><span id="field-weather" hidden></span></div>
             <article id="opponent-active" class="combatant opponent" aria-label="Opponent’s active Pokémon"></article>
             <article id="player-active" class="combatant player" aria-label="Your active Pokémon"></article>
             <div id="arena-motion-caption" class="motion-caption" aria-live="polite"></div>
@@ -99,7 +104,6 @@
               </div>
             </div>
             <button id="arena-skip-motion" class="subtle" type="button" hidden>Skip animation</button>
-            <p id="action-copy" class="action-copy"></p>
             <p id="battle-error" class="error" role="alert" hidden></p>
             <div id="moves" class="moves"></div>
             <div id="switches" class="switches"></div>
@@ -108,7 +112,7 @@
               <div class="result-actions">
                 <button id="play-again" class="primary" type="button">New battle</button>
                 <button id="download-replay" class="subtle" type="button">Download replay</button>
-                <a class="result-exit" href="../battle.html">Return to main menu</a>
+                <a class="result-exit" href="../">Return to main menu</a>
               </div>
             </div>
           </section>
@@ -118,8 +122,9 @@
             <div><h2>Your team</h2><ul id="player-team"></ul></div>
             <div><h2>Arena AI</h2><ul id="opponent-team"></ul></div>
           </section>
-          <details class="panel log" open>
+          <details class="panel log">
             <summary>Battle log</summary>
+            <p id="match-seed"></p>
             <ol id="battle-log" aria-label="Recent battle events"></ol>
           </details>
           <button id="reset" class="subtle" type="button">Reset battle</button>

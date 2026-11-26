@@ -41,8 +41,7 @@ const present = (block, frag, label) =>
 
 test('firstColress keeps every battle-form mechanic', () => {
   const b = sceneBlock('firstColress');
-  ['Mega, Z-Moves, Dynamax, Tera',
-   'Six badges open my lab',
+  ['Six badges open my lab',
    'any move a form requires',
    'one form per partner',
    'Under Classic rules, the team can activate one per battle',
@@ -52,16 +51,12 @@ test('firstColress keeps every battle-form mechanic', () => {
    'Dynamax lasts up to three turns',
    'Mega Evolution and Terastallization last for the rest of the battle',
   ].forEach((f) => present(b, f, 'firstColress'));
-  // re-voice landed (Colress's clinical fascination) + old wall phrasings gone
-  assert.ok(b.includes('fascinating'), 'firstColress: Colress voice marker present');
-  assert.ok(!b.includes('committing a mon means committing'), 'firstColress: old dense phrasing gone');
-  assert.ok(!b.includes('spend the trick'), 'firstColress: old close phrasing gone');
 });
 
 test('firstCasino keeps every Game Corner mechanic', () => {
   const b = sceneBlock('firstCasino');
   ['coin swap',          // gold plays straight, no coin swap
-   '*Vitamins*',         // win big → Vitamins
+   'Vitamins',           // win big → Vitamins
    'IV by three',        // each Vitamin +3 IV
    'Rare Candies',       // jackpot reward
    'Ability Capsules',   // jackpot reward
@@ -71,7 +66,7 @@ test('firstCasino keeps every Game Corner mechanic', () => {
    '7-7-7',              // …its jackpot
    'Roulette',           // game 3
    '11×',                // …its single-cell payout
-   'STATS',              // the stats tracker
+   'Stats',              // the stats tracker
    'Lucky Chip',         // the grant (matches casinoChip500 onContinue)
    '500G',
   ].forEach((f) => present(b, f, 'firstCasino'));

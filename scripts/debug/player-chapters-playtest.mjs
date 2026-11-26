@@ -175,16 +175,28 @@ async function checkpoint(chapterId) {
 
 async function openScene(id) {
     await waitForCityControl(card(id));
+    const chapter = catalog.get(id);
+    if (chapter.hideSpeakerOnInvite) {
+        const eyebrow = card(id).locator('..').locator('.story-chapter-eyebrow');
+        assert.ok(!(await eyebrow.innerText()).includes(chapter.speaker.name));
+    }
     await card(id).tap();
     await modal().waitFor();
-    await modal().getByRole('heading', { name: catalog.get(id).title, exact: true }).waitFor();
+    await modal().getByRole('heading', { name: chapter.title, exact: true }).waitFor();
 }
 
 async function readPanels() {
     const lines = new Set();
     for (let index = 0; index < 12; index++) {
         const current = modal().locator('.story-chapter-caption');
-        if (await current.isVisible()) lines.add((await current.innerText()).trim());
+        if (await current.isVisible()) {
+            const register = await current.evaluate(node => ({
+                kind: node.closest('.story-chapter-body').dataset.chapterRegister,
+                tag: node.tagName,
+            }));
+            assert.equal(register.tag, register.kind === 'speech' ? 'BLOCKQUOTE' : 'P');
+            lines.add((await current.innerText()).trim());
+        }
         const readingProgress = modal().getByRole('progressbar', { name: 'Scene progress' });
         if (await readingProgress.isVisible()) {
             assert.equal(await readingProgress.evaluate(node => node.value), index + 1, 'Progress must follow the visible panel');
@@ -211,6 +223,14 @@ async function pick(id, answer, { secret, echo, echoes = [] } = {}) {
     if (id === 'chapter-1' || id === 'chapter-4' || id === 'chapter-7' || id === 'aftermath') await capture(id + '-choice');
     await modal().locator(`[data-adventure-pick="${answer}"]`).tap();
     await modal().getByText(option.reply, { exact: true }).waitFor();
+    if (option.consequence && id === 'chapter-1') {
+        const detail = modal().getByText('What changed', { exact: true });
+        const outcome = detail.locator('..').locator('p');
+        assert.equal(await outcome.isVisible(), false);
+        await detail.tap();
+        assert.equal(await outcome.innerText(), option.consequence);
+        await detail.tap();
+    }
     if (option.clue) {
         const evidence = modal().locator('.story-chapter-evidence');
         await evidence.getByText('Filed in the Field Archive', { exact: true }).waitFor();
@@ -225,7 +245,7 @@ async function pick(id, answer, { secret, echo, echoes = [] } = {}) {
     if (secret) {
         await control('secret').tap();
         await modal().getByText(scene.secret.text, { exact: true }).waitFor();
-        await modal().locator('[data-chapter-phase="discovery"]').getByText('Hidden discovery', { exact: true }).waitFor();
+        await modal().locator('[data-chapter-phase="discovery"]').getByText('Field note', { exact: true }).waitFor();
         assert.equal((await progress()).choices[discovery(id)], true);
         await capture(id + '-secret');
     }
@@ -250,6 +270,16 @@ async function visitChapter(id, answer) {
 async function archive() {
     await page.locator('[data-adventure-archive]:visible').tap();
     await modal().getByRole('heading', { name: 'Field Archive', exact: true }).waitFor();
+    const screening = modal().locator('.story-archive-screening');
+    if (await screening.count()) {
+        const quotes = screening.locator('blockquote');
+        assert.equal(await quotes.first().isVisible(), false);
+        const toggle = screening.getByText('Old screening', { exact: true });
+        await toggle.tap();
+        assert.deepEqual(await screening.locator('figcaption').allTextContents(), ['Meowth', 'Mewtwo']);
+        assert.equal(await quotes.last().isVisible(), true);
+        await toggle.tap();
+    }
 }
 
 async function recovery() {

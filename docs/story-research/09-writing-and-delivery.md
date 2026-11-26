@@ -1,0 +1,18 @@
+# North Road writing and delivery
+
+Pallet starts with a lamp left burning and a partner at your boot. Ordinary care establishes what the road can take away. As the League draws closer, dread comes from practical details that disagree. A dispatch says a bay is empty while someone inside is still answering. A clerk knows who filled in the form. A witness gets to decide who hears the tape.
+
+The Recovery Service and the time loop carry different kinds of responsibility. People made the decisions recorded on the Recovery forms. The loop has no author. The bench man’s question, the discovery of the challenger’s identity, and the cost of Remember or Forget hold the latter story together.
+
+## What goes on screen
+
+- Give characters something to do while they talk. Witnesses handle the evidence. A rival can check on their partner while trying to sound unconcerned. A Pokémon can interrupt with a gesture the player understands.
+- Put the immediate decision in its button label. Use the field note or a later reply to show the consequence. Keep the clue visible when the player earns it, and make the explanation of the consequence optional.
+- Set observations in prose, dialogue under the speaker’s name, and terminal recordings apart. Let the player advance at their own pace. Keep the display legible with large text and reduced motion.
+- Use familiar voices sparingly. The Field Archive’s Old screening contains two short excerpts from the original English dub. The story’s spoken scenes use original dialogue. [Verified film dialogue](https://en.wikiquote.org/wiki/Pok%C3%A9mon:_The_First_Movie)
+
+## Influences
+
+- Fans discussing *Black and White* praise N and the questions the story raises about training Pokémon. Arven’s care for Mabosstiff and the bond with the partner in *Explorers of Sky* drew similarly specific memories. North Road gives ordinary care time to register, from the starter to the Pokémon people look after on the way. [Main series story discussion](https://www.reddit.com/r/pokemon/comments/12u0fxv/which_pokemon_game_had_the_best_storyline/) · [Arven and Mabosstiff discussion](https://www.reddit.com/r/pokemon/comments/z2snq9/) · [Mystery Dungeon discussion](https://www.reddit.com/r/MysteryDungeon/comments/kswzut/)
+- Fans recall grief in Lavender Town, isolation in the Old Chateau, and the small changes in the Strange House. *Lost Silver* is fan fiction built around the unease of a familiar interface reporting something wrong. The Lavender Town Syndrome story is an urban legend. North Road uses ordinary locations, conflicting records, and short interruptions whose meaning changes on a return visit. [Pokémon horror discussion](https://www.reddit.com/r/pokemon/comments/py2o6w/october_fun_what_location_is_the_most_creepy/) · [Lost Silver](https://knowyourmeme.com/memes/pokemon-lost-silver) · [Lavender Town myth reporting](https://kotaku.com/pokemons-creepy-lavender-town-myth-explained-1651851621)
+- *Twin Peaks: Fire Walk with Me* makes subjective experience central to its horror. *Chernobyl* shows what happens when an institution rewards a false record. The creators of *The Terror* describe building the plot out of people’s choices under pressure. Those approaches inform the witness scenes, the Recovery Service records, and the choices at the relay and the League. [Criterion on Fire Walk with Me](https://www.criterion.com/current/posts/5050-surrendering-logic-in-twin-peaks-fire-walk-with-me) · [Craig Mazin interview](https://www.latimes.com/entertainment-arts/story/2019-08-15/craig-mazin-on-chernobyl-and-the-cost-of-lies) · [The Terror creators](https://www.amc.com/blogs/the-terror-qa-david-kajganich-and-soo-hugh-executive-producersshowrunners--1006591)

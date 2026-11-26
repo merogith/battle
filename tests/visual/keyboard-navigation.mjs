@@ -81,7 +81,7 @@ async function verifyRivalIntro(page) {
 }
 
 async function verifyPreferencesAndHistory(page) {
-  const settingsButton = page.locator('.settings-btn');
+  const settingsButton = page.getByRole('button', { name: 'Settings', exact: true });
   const settings = page.locator('#modal-settings');
   const reading = settings.getByRole('button', { name: 'Reading & accessibility' });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -152,7 +152,7 @@ async function verifyCollection(page) {
 }
 
 async function verifyNotebookAndRecovery(page) {
-  const cityNotebook = page.getByRole('button', { name: 'Team help and practice' });
+  const cityNotebook = page.locator('#screen-story-city').getByRole('button', { name: /Trainer’s Notebook/ });
   await activate(page, cityNotebook);
   const notebook = page.getByRole('dialog', { name: 'Trainer’s Notebook' });
   const primaryObjective = notebook.locator('.upgrade-objective > h3 + button');
@@ -212,6 +212,10 @@ async function verifyNotebookAndRecovery(page) {
   const save = await download;
   assert.equal(save.suggestedFilename(), 'pokemon-battle-backup.json');
   const backup = await readFile(await save.path());
+  const entries = JSON.parse(backup).entries;
+  const savedSlot = entries.pbs_slot_1.entries.pbs_story_save;
+  assert.equal(savedSlot.trainerProfile?.name || savedSlot.trainerName, 'Key Scout');
+  assert.equal(entries.pbs_settings?.offlineDownload, undefined);
   await activate(page, slot.getByRole('button', { name: 'Review and load' }));
   const restore = page.getByRole('dialog', { name: 'Review restoration' });
   await restore.waitFor({ state: 'visible' });
@@ -238,7 +242,7 @@ async function verifyFreshRecovery(backup) {
     await page.route('**/*', route => new URL(route.request().url()).origin === url.origin ? route.continue() : route.abort());
     await page.goto(url.href, { waitUntil: 'domcontentloaded' });
     await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 40000 });
-    await activate(page, page.locator('.settings-btn'));
+    await activate(page, page.getByRole('button', { name: 'Settings', exact: true }));
     await activate(page, page.getByRole('button', { name: 'Save & recovery' }));
     const recovery = page.getByRole('dialog', { name: 'Save & recovery' });
     assert.match(await recovery.innerText(), /No Story run on this device/);
@@ -248,12 +252,27 @@ async function verifyFreshRecovery(backup) {
     const restore = page.getByRole('dialog', { name: 'Review restoration' });
     await restore.waitFor({ state: 'visible' });
     assert.match(await restore.innerText(), /key-scout\.json.*Incoming backup.*Key Scout.*On this device.*No Story run on this device/s);
+    assert.match(await restore.innerText(), /save slot 1/i);
     assert.equal(await restore.getByRole('button', { name: 'Back up current progress' }).count(), 0);
     const restoreBox = await restore.getByRole('button', { name: 'Restore this backup' }).boundingBox();
     assert.ok(restoreBox.y + restoreBox.height <= page.viewportSize().height);
     await activate(page, restore.getByRole('button', { name: 'Cancel' }));
     await restore.waitFor({ state: 'hidden' });
-    await hasFocus(page.getByRole('button', { name: 'Save & recovery' }));
+    const recoveryButton = page.getByRole('button', { name: 'Save & recovery' });
+    await hasFocus(recoveryButton);
+    await activate(page, recoveryButton);
+    await recovery.getByLabel('Import a backup file').setInputFiles({ name: 'key-scout.json', mimeType: 'application/json', buffer: backup });
+    await Promise.all([
+      page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() }),
+      activate(page, restore.getByRole('button', { name: 'Restore this backup' })),
+    ]);
+    const imported = await page.evaluate(() => ({
+      run: JSON.parse(localStorage.getItem('pbs_story_save')),
+      slot: JSON.parse(localStorage.getItem('pbs_slot_1')),
+    }));
+    const { entries } = JSON.parse(backup);
+    assert.deepEqual(imported.run, entries.pbs_story_save);
+    assert.deepEqual(imported.slot, entries.pbs_slot_1);
   } finally {
     await context.close();
   }

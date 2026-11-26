@@ -35,26 +35,18 @@ test('--fac-recover is the green token daycare adopts', () => {
 });
 
 test('the daycare overlay accent reads the --fac-recover token, not the #aed581 literal', () => {
-  assert.ok(HTML.includes("const accent = 'var(--fac-recover)';"),
-    "_daycareRenderHTML must set accent = var(--fac-recover)");
-  assert.ok(!HTML.includes("const accent = '#aed581';"),
-    "the bespoke #aed581 daycare accent literal must be gone");
+  assert.match(HTML, /\.story-daycare-card\s*\{[^}]*border:\s*1px solid var\(--fac-recover\)/);
+  assert.match(HTML, /\.story-daycare-header h2\s*\{[^}]*color:\s*var\(--fac-recover\)/);
 });
 
 test('the overlay header uses the registry egg icon, not a raw 🥚', () => {
-  assert.ok(HTML.includes("storyFacilityIconHtml('daycare', { size: 18, cls: '' })"),
-    'daycare header must render the registry icon via storyFacilityIconHtml');
-  assert.ok(HTML.includes('<span>Daycare Inn</span>'),
-    'daycare header text must sit beside the icon in its own span');
-  assert.ok(!HTML.includes('>🥚 Daycare Inn</div>'),
-    'the raw 🥚 header literal must be gone');
+  assert.match(HTML, /<h2>\$\{storyFacilityIconHtml\('daycare', \{ size: 18, cls: '' \}\)\}Daycare Inn<\/h2>/);
 });
 
-test('the Drop Off button tracks the recover token', () => {
-  assert.match(HTML, /color:\$\{canDrop\?'var\(--fac-recover\)'/,
-    'the Drop Off button colour must read the recover token');
-  assert.match(HTML, /border:1px solid \$\{canDrop\?'var\(--fac-recover\)'/,
-    'the Drop Off button border must read the recover token');
+test('available trade buttons use the recover token', () => {
+  const available = HTML.match(/\.story-daycare-partner button:enabled\s*\{([^}]+)\}/)?.[1];
+  assert.match(available, /(?:^|;)\s*color:\s*var\(--fac-recover\)/);
+  assert.match(available, /border-color:\s*var\(--fac-recover\)/);
 });
 
 test('the egg-event and idle scenes carry the token accent', () => {

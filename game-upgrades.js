@@ -6,12 +6,16 @@
   const SAVE = 'pbs_story_save';
   const META = 'pbs_story_meta';
   const PREFS = 'pbs_accessibility';
-  const KEYS = [SAVE, META, 'pbs_settings', PREFS];
+  const SETTINGS = 'pbs_settings';
+  const SLOT_KEYS = ['pbs_slot_1', 'pbs_slot_2', 'pbs_slot_3'];
+  const KEYS = [SAVE, META, SETTINGS, PREFS];
+  const PORTABLE_KEYS = [...KEYS, ...SLOT_KEYS];
   const BACKUP_CONTENTS = {
     [SAVE]: 'Story run',
     [META]: 'collection records',
-    pbs_settings: 'game settings',
+    [SETTINGS]: 'game settings',
     [PREFS]: 'accessibility preferences',
+    ...Object.fromEntries(SLOT_KEYS.map((key, index) => [key, `save slot ${index + 1}`])),
   };
   const SERVICES = [
     ['mentor','Battle Mentor','Check the effect and cost. A full build plan is also available.'],
@@ -339,20 +343,7 @@
     append(p,button('Review my team',()=>openNotebook('team')),button('Export a bug report',exportBugReport));
   }
 
-  function validateBackup(value) {
-    if(!value || typeof value!=='object' || Array.isArray(value)) throw new Error('Choose a valid JSON backup.');
-    const visit=(v,depth=0)=>{
-      if(depth>60) throw new Error('Backup nesting is too deep.');
-      if(v && typeof v==='object') for(const [k,x] of Object.entries(v)) {
-        if(['__proto__','prototype','constructor'].includes(k)) throw new Error('Backup contains an unsafe key.');
-        visit(x,depth+1);
-      }
-    }; visit(value);
-    const backup=value.format==='battle-backup' ? value : {format:'battle-backup',version:1,entries:{[SAVE]:value}};
-    if(backup.version!==1 || !backup.entries || typeof backup.entries!=='object' || Array.isArray(backup.entries)) throw new Error('Unsupported backup format.');
-    if(Object.values(backup.entries).some(v=>!v || typeof v!=='object' || Array.isArray(v))) throw new Error('Backup entries must be data objects.');
-    if(Object.keys(backup.entries).some(k=>!KEYS.includes(k))) throw new Error('Backup contains unknown storage entries.');
-    const run=backup.entries[SAVE];
+  function validateRun(run) {
     if(!run || !Number.isInteger(run.version) || run.version<2 || run.version>(api()?.saveVersion || 28) || !Array.isArray(run.team)) throw new Error('This run is missing required data or uses a newer save version.');
     if(!Number.isFinite(run.gold) || run.gold<0 || !Number.isInteger(run.badges) || run.badges<0 || run.badges>8) throw new Error('This run contains invalid progress values.');
     if(run.team.length>6 || (run.pcBox!==undefined && !Array.isArray(run.pcBox))) throw new Error('This run contains an invalid party.');
@@ -363,27 +354,81 @@
       if(!Array.isArray(moves) || moves.length<1 || moves.length>4 || moves.some(name=>typeof name!=='string' || !name.trim())) throw new Error('This run contains an invalid party.');
     }
     if(!Number.isInteger(run.eventIndex) || run.eventIndex<0 || run.eventIndex>(api()?.maxEventIndex ?? 100)) throw new Error('This run contains an invalid journey position.');
+  }
+  function validateBackupEntries(backup, keys) {
+    if(backup.format!=='battle-backup' || backup.version!==1 || !backup.entries || typeof backup.entries!=='object' || Array.isArray(backup.entries)) throw new Error('Unsupported backup format.');
+    const entries = Object.entries(backup.entries);
+    if(!entries.length) throw new Error('This backup has no game data.');
+    for(const [key, data] of entries) {
+      if(!keys.includes(key)) throw new Error('Backup contains unknown storage entries.');
+      if(!data || typeof data!=='object' || Array.isArray(data)) throw new Error('Backup entries must be data objects.');
+    }
+    if(Object.hasOwn(backup.entries, SAVE)) validateRun(backup.entries[SAVE]);
+  }
+  function validateBackup(value) {
+    if(!value || typeof value!=='object' || Array.isArray(value)) throw new Error('Choose a valid JSON backup.');
+    const visit=(v,depth=0)=>{
+      if(depth>60) throw new Error('Backup nesting is too deep.');
+      if(v && typeof v==='object') for(const [k,x] of Object.entries(v)) {
+        if(['__proto__','prototype','constructor'].includes(k)) throw new Error('Backup contains an unsafe key.');
+        visit(x,depth+1);
+      }
+    }; visit(value);
+    const backup=value.format==='battle-backup' ? value : {format:'battle-backup',version:1,entries:{[SAVE]:value}};
+    validateBackupEntries(backup, PORTABLE_KEYS);
+    for (const key of SLOT_KEYS) {
+      const slot = backup.entries[key];
+      if (!slot) continue;
+      validateBackupEntries(slot, KEYS);
+      if (!slot.entries[SAVE]) throw new Error('A saved slot is missing its Story run.');
+    }
     return backup;
   }
-  function makeBackup() {
+  function portableSettings(value) {
+    if (!value) return null;
+    const settings = {...value};
+    delete settings.offlineDownload;
+    return Object.keys(settings).length ? settings : null;
+  }
+  function makeBackup(includeSlots = true) {
     const entries={};
-    for(const key of KEYS) { const value=read(key); if(value!==null) entries[key]=value; }
+    for(const key of includeSlots ? PORTABLE_KEYS : KEYS) {
+      let value = read(key);
+      if (key === SETTINGS) value = portableSettings(value);
+      if (value === null) continue;
+      if (SLOT_KEYS.includes(key)) {
+        try { validateBackupEntries(value, KEYS); }
+        catch (_) { continue; }
+        if (!value.entries[SAVE]) continue;
+        const slotEntries = {...value.entries};
+        const settings = portableSettings(slotEntries[SETTINGS]);
+        if (settings) slotEntries[SETTINGS] = settings;
+        else delete slotEntries[SETTINGS];
+        value = {...value, entries: slotEntries};
+      }
+      entries[key] = value;
+    }
     // On failed persistence the in-memory run is the newest recoverable progress.
     const run = currentRun(entries[SAVE] || null);
-    if(!run) throw new Error('There is no run to back up yet.');
-    entries[SAVE] = JSON.parse(JSON.stringify(run));
+    if (run) entries[SAVE] = JSON.parse(JSON.stringify(run));
+    if (!Object.keys(entries).length) throw new Error('There is no game data to back up yet.');
     return {format:'battle-backup',version:1,game:VERSION,rules:RULESET,createdAt:new Date().toISOString(),entries};
   }
   function restoreBackup(value) {
     if(activeBattle()) throw new Error('Finish the battle before restoring a backup.');
     const b=validateBackup(value), previous={};
     const entries={...b.entries};
+    if (entries[SETTINGS]) {
+      const deviceDownload = read(SETTINGS)?.offlineDownload;
+      entries[SETTINGS] = portableSettings(entries[SETTINGS]) || {};
+      if (deviceDownload) entries[SETTINGS].offlineDownload = deviceDownload;
+    }
     if(global.FrontierChallenges && entries[META]) {
       entries[META]={...entries[META],frontierChallengeRecords:global.FrontierChallenges.mergeRecords(
         read(META)?.frontierChallengeRecords,entries[META].frontierChallengeRecords)};
     }
     const archive=global.AdventureProgress;
-    if(archive) {
+    if(archive && entries[SAVE]) {
       const current=archive.normalize(read(META)?.adventureArchive);
       const run=entries[SAVE];
       const recorded=Object.hasOwn(current.runs,run.adventureRunId) && current.runs[run.adventureRunId];
@@ -395,7 +440,11 @@
     }
     for(const key of Object.keys(entries)) previous[key]=global.localStorage.getItem(key);
     // Keep a recovery journal until every write succeeds. Never include connection tokens.
-    global.localStorage.setItem('pbs_restore_pending',JSON.stringify(previous));
+    try {
+      global.localStorage.setItem('pbs_restore_pending',JSON.stringify(previous));
+    } catch (_) {
+      throw new Error('Storage is unavailable or too full to start restoring safely. Your current saves are still here.');
+    }
     try {
       for(const [key,data] of Object.entries(entries)) global.localStorage.setItem(key,JSON.stringify(data));
       global.localStorage.removeItem('pbs_restore_pending');
@@ -425,9 +474,9 @@
     if(!backup) { openData();notice('No diagnostic backup is available. Review a healthy checkpoint below.');return; }
     reviewRestore(backup, 'Recovered local save');
   }
-  function exportBackup() { try { download('pokemon-battle-backup.json',JSON.stringify(makeBackup(),null,2)); } catch(e) { if(!panel) openData(); notice(e.message); } }
-  function runSummary(title, run, backupDate) {
-    if (!run) return card(title, 'No Story run on this device.');
+  function exportBackup() { try { download('pokemon-battle-backup.json',JSON.stringify(makeBackup())); } catch(e) { if(!panel) openData(); notice(e.message); } }
+  function runSummary(title, run, backupDate, empty = 'No Story run on this device.') {
+    if (!run) return card(title, empty);
     const trainer = run.trainerProfile?.name || run.trainerName;
     const party = Array.isArray(run.team) ? run.team.map(mon => mon?.name).filter(name => typeof name === 'string') : [];
     const fields = [
@@ -463,13 +512,13 @@
     body.setAttribute('role', 'region');
     body.setAttribute('aria-label', 'Backup comparison');
     const details = element('div', null, 'upgrade-grid');
-    append(details, runSummary('Incoming backup', backup.entries[SAVE], backup.createdAt), runSummary('On this device', current));
+    append(details, runSummary('Incoming backup', backup.entries[SAVE], backup.createdAt, 'No Story run in this file.'), runSummary('On this device', current));
     const contents = element('ul', null, 'upgrade-scope');
     for (const key of scopes) append(contents, element('li', BACKUP_CONTENTS[key]));
     append(body, element('p', source, 'upgrade-muted'));
     if (replaced.length) {
       append(body, element('p', `Restoring will replace your ${replaced.map(key => BACKUP_CONTENTS[key]).join(', ')}.`, 'upgrade-feedback upgrade-error'));
-    } else {
+    } else if (backup.entries[SAVE]) {
       append(body, element('p', 'Restoring will create a Story run on this device.'));
     }
     append(body, details, element('h3', 'Included in this backup'), contents);
@@ -527,7 +576,7 @@
       input.removeAttribute('aria-invalid');
       error.hidden = true;
       error.textContent = '';
-      if (file.size > 5 * 1024 * 1024) return showError('Choose a Pokémon Arena backup smaller than 5 MB.');
+      if (file.size > 10 * 1024 * 1024) return showError('Choose a Pokémon Arena backup smaller than 10 MB.');
       let value;
       try {
         value = JSON.parse(await file.text());
@@ -547,10 +596,11 @@
     const status = global.__storySaveError || (lastSave ? `Last saved ${lastSave}`
       : current ? 'There is a Story run on this device.' : 'No Story run on this device.');
     append(p, element('p', status, global.__storySaveError ? 'upgrade-feedback upgrade-error' : null));
-    if (current) {
-      append(p, element('p', 'A complete backup includes your Story run, collection, settings and accessibility preferences.'));
+    const hasProgress = current || read(META) || SLOT_KEYS.some(key => read(key));
+    const hasBackup = hasProgress || portableSettings(read(SETTINGS)) || read(PREFS);
+    if (hasBackup) {
       const actions = element('div', null, 'upgrade-actions');
-      append(actions, button('Download complete backup', exportBackup, true));
+      append(actions, button(hasProgress ? 'Download complete backup' : 'Download settings backup', exportBackup, true));
       if (global.__storySaveError && global.StoryMode?.state.active) {
         append(actions, button('Retry saving', () => { api()?.save(); openData(); }));
       }
@@ -558,14 +608,14 @@
     }
     append(p, backupImport());
     const grid=element('div',null,'upgrade-grid');
-    for(let i=1;i<=3;i++) {
-      const key=`pbs_slot_${i}`, slot=read(key);
+    for(const [index, key] of SLOT_KEYS.entries()) {
+      const i = index + 1, slot=read(key);
       if (!slot && !current) continue;
       const date = displayDate(slot?.createdAt);
       const c=card(`Save slot ${i}`,slot ? (date ? `Saved ${date}` : 'Saved backup') : 'Empty');
       if (current) append(c,button(slot?'Replace this slot':'Save here',async()=>{
         if(slot && !await global.showGameConfirm('Replace this saved slot? Your active run will stay in place.'))return;
-        try{global.localStorage.setItem(key,JSON.stringify(makeBackup()));openData();}catch(e){notice(e.message);}
+        try{global.localStorage.setItem(key,JSON.stringify(makeBackup(false)));openData();}catch(e){notice(e.message);}
       }));
       if(slot)append(c,button('Review and load',()=>reviewRestore(slot,`Save slot ${i}`))); append(grid,c);
     }
@@ -573,7 +623,7 @@
     for(const [key,labelText] of [[SAVE+'.checkpoint','Latest checkpoint'],[SAVE+'.checkpoint.previous','Earlier checkpoint']]) {
       const run=read(key); if(run)append(p,button(`Review ${labelText.toLowerCase()}`,()=>reviewRestore(run,labelText)));
     }
-    if (current || grid.childElementCount) append(p,element('p','Clearing browser site data removes local saves and slots. Download a backup before clearing data or moving devices.','upgrade-muted'));
+    if (hasBackup) append(p,element('p','Keep a backup before clearing site data or moving devices.','upgrade-muted'));
   }
 
   function applyPreferences() {
@@ -653,7 +703,7 @@
   const pending=read('pbs_restore_pending');
   if(pending && typeof pending==='object') {
     try {
-      for(const [key,value] of Object.entries(pending)) if(KEYS.includes(key)) {
+      for(const [key,value] of Object.entries(pending)) if(PORTABLE_KEYS.includes(key)) {
         if(value===null)global.localStorage.removeItem(key);else if(typeof value==='string')global.localStorage.setItem(key,value);
       }
       global.localStorage.removeItem('pbs_restore_pending');

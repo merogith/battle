@@ -119,7 +119,6 @@
 @media (prefers-reduced-motion:reduce) { .upgrade-dialog * { scroll-behavior:auto; transition:none; animation:none; } }
 
 /* Shared navigation and input affordances across existing campaign screens. */
-.upgrade-action-purpose { display:block; margin-top:6px; font-size:0.72rem; font-weight:normal; line-height:1.6; color:var(--text-muted,#c0cede); letter-spacing:normal; white-space:normal; }
 .upgrade-inline-help button { min-height:44px; padding:10px 14px; line-height:1.6; white-space:normal; }
 .screen button:focus-visible,.modal button:focus-visible,.story-action-btn:focus-visible { outline:3px solid var(--hp-green,#a9efbc); outline-offset:3px; }
 @media (pointer:coarse) {
@@ -732,10 +731,22 @@
 }
 
 .story-chapter-caption {
+  margin: 0;
   font-size: 1.14em;
   line-height: 1.48;
   overflow-wrap: anywhere;
 }
+.story-chapter-body[data-chapter-register="narration"] .story-chapter-caption {
+  font-family: Georgia, "Times New Roman", serif !important;
+}
+.story-chapter-body[data-chapter-register="speech"] .story-chapter-copy {
+  border-inline-start: 3px solid var(--chapter-accent);
+}
+.story-chapter-body[data-chapter-register="recording"] .story-chapter-eyebrow {
+  color: #b9dddd;
+  font-family: ui-monospace, monospace !important;
+}
+.story-archive-notes { width: 100%; border-top: 1px solid rgb(151 180 160 / 35%); }
 
 .story-chapter-clue { color: var(--chapter-accent); font-size: 0.88em; overflow-wrap: anywhere; }
 .story-chapter-evidence {
@@ -812,6 +823,17 @@
 }
 .story-archive-entry h3 { margin: 0; font-size: 1.07em; line-height: 1.4; }
 .story-archive-entry .adventure-button { text-align: start; }
+.story-archive-screening > summary {
+  min-height: 44px;
+  padding: 0.55rem 0;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--chapter-accent);
+}
+.story-archive-screening .story-archive-screening-source { color: var(--chapter-muted); font-size: .85em; }
+.story-archive-screening figure { margin: .65rem 0 0; padding-inline-start: .7rem; border-inline-start: 2px solid var(--chapter-edge); }
+.story-archive-screening blockquote { margin: 0; font-family: Georgia, "Times New Roman", serif; }
+.story-archive-screening figcaption { margin-top: .2rem; color: var(--chapter-accent); font-size: .85em; }
 .story-chapter-dialog:has([data-chapter-phase="keepsake"]) {
   width: min(34rem, calc(100% - var(--chapter-left) - var(--chapter-right)));
 }
@@ -841,6 +863,8 @@
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  .story-chapter-card { align-items: start; padding-block: 0.4rem; }
+  .story-chapter-invitation { gap: 0.25rem; }
   .story-chapter-dialog { --chapter-gutter: 12px; }
   .story-chapter-title { font-size: clamp(1.35em, 2.8vw, 1.85em); }
   .story-chapter-portrait { height: clamp(5rem, 30vh, 8rem); }
@@ -1393,7 +1417,13 @@ body:has(#screen-battle:not(.hidden)) #modal-party .party-slot.active-mon { bord
 #screen-story-pokemoncenter .pc-section-switcher button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 #screen-story-pokemoncenter .pc-section-switcher button[aria-pressed="true"] { background: #23342e; border-bottom-color: #a0d3a8; color: #eff8ec; }
 #screen-story-pokemoncenter #story-pc-tab-underground-btn[aria-pressed="true"] { background: #35272c; border-bottom-color: #eaa8a8; }
-.pc-section-switcher img { flex: 0 0 18px; }
+.pc-section-switcher img {
+  flex: 0 0 18px;
+  inline-size: 18px;
+  block-size: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 #screen-story-pokemoncenter :is(.pc-card-name, .pc-card-stats, .pc-card-sub) { font-family: var(--upgrade-font); }
 #screen-story-pokemoncenter .pc-card-name { font-size: .875rem; }
 #screen-story-pokemoncenter :is(.pc-card-stats, .pc-card-sub) { font-size: .75rem; line-height: 1.35; }
@@ -1433,6 +1463,10 @@ body:has(#screen-battle:not(.hidden)) #modal-party .party-slot.active-mon { bord
   overflow-wrap: anywhere;
   word-break: normal;
   text-wrap: pretty;
+}
+.story-narr-root[data-story-voice="narration"] .story-dialog-nameplate { display: none; }
+.story-narr-root[data-story-voice="narration"] .story-dialog-box .story-dialog-text {
+  font-family: Georgia, "Times New Roman", serif !important;
 }
 .upgrade-large-text .story-narr-root .story-dialog-box .story-dialog-text { font-size: 1.125rem; line-height: 1.6; }
 .story-narr-root .story-dialog-host { width: min(100%, 35rem); }
@@ -1507,6 +1541,139 @@ body:has(#screen-battle:not(.hidden)) #modal-party .party-slot.active-mon { bord
 
 .story-stat-style { display: inline-flex; flex-wrap: wrap; align-items: center; }
 .story-stat-style-icon { display: inline-flex; gap: 2px; align-items: center; flex: none; }
+
+/* Story interiors and field tools */
+.story-screen-root :is(.story-shop-header-row, .story-link-header-row):has(.story-npc-dialog) {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+.story-npc-dialog { flex: none; }
+.story-npc-dialog > summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding: 0 7px;
+  border: 1px solid #536174;
+  border-radius: 4px;
+  background: #111924;
+  color: #eef2f7;
+  cursor: pointer;
+  list-style: none;
+  font: 600 12px/1 system-ui, sans-serif;
+}
+.story-npc-dialog > summary::-webkit-details-marker { display: none; }
+.story-npc-dialog > summary:hover,
+.story-npc-dialog[open] > summary { border-color: #c2a772; background: #242a34; }
+.story-npc-dialog > summary:focus-visible { outline: 2px solid #ffe1a0; outline-offset: 3px; }
+.story-npc-dialog > summary img {
+  flex: none;
+  inline-size: 28px;
+  block-size: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.story-npc-dialog > summary span { flex: none; font: inherit !important; }
+.story-npc-quote {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-end: 8px;
+  inline-size: min(290px, calc(100vw - 32px));
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #a58b59;
+  border-radius: 4px;
+  background: #151923;
+  color: #f4e7d0;
+  box-shadow: 0 6px 16px #0009;
+  font: 500 14px/1.5 system-ui, sans-serif !important;
+}
+:is(.story-shop-header-row,.story-link-header-row):has(.story-npc-dialog) :is(#story-evolab-portrait,#story-colress-portrait,#story-evtrainer-portrait) { display: none; }
+
+@media (max-width: 480px) {
+  .story-screen-root :is(.story-shop-header-row, .story-link-header-row):has(.story-npc-dialog) { column-gap: 5px !important; }
+  .story-screen-root :is(.story-shop-header-row, .story-link-header-row):has(.story-npc-dialog) .story-screen-head-ico { display: none; }
+  .story-screen-root :is(.story-shop-header-row, .story-link-header-row):has(.story-npc-dialog) .story-gold-inline {
+    font: 700 12px/1.2 system-ui, sans-serif !important;
+    white-space: nowrap;
+  }
+  .story-npc-dialog > summary { justify-content: center; padding-inline: 4px; }
+}
+@media (max-width: 380px) {
+  .story-npc-dialog > summary { box-sizing: border-box; flex-direction: column; gap: 2px; font-size: 10px; }
+  .story-npc-dialog > summary img { inline-size: 25px; block-size: 25px; }
+}
+
+#modal-story-bag .story-bag-modal-title,
+.upgrade-dialog--notebook .upgrade-header h2,
+.pdex-device-summary { --field-tool-size: 44px; }
+#modal-story-bag .story-bag-modal-title::after,
+.upgrade-dialog--notebook .upgrade-header h2::before,
+.pdex-device-summary::before {
+  content: '';
+  display: block;
+  flex: none;
+  inline-size: var(--field-tool-size);
+  block-size: var(--field-tool-size);
+  border: 1px solid #7e6c4c;
+  border-radius: 4px;
+  background: #171e28 var(--field-tool-art) center / cover no-repeat;
+}
+#modal-story-bag .story-bag-modal-title { --field-tool-art: url('sprites/backgrounds/story/field-bag.webp'); }
+#modal-story-bag .story-bag-modal-title::after { margin-inline-start: auto; }
+#story-bag-hint:empty { display: none; }
+#modal-story-bag .story-bag-item :is(.name,.qty,.eff) { font-family: system-ui, sans-serif !important; }
+.story-bag-details summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  inline-size: fit-content;
+  min-block-size: 44px;
+  color: #b5cee3;
+  cursor: pointer;
+  list-style: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font: 600 12px/1.2 system-ui, sans-serif !important;
+}
+.story-bag-details summary::-webkit-details-marker { display: none; }
+.story-bag-details summary::before { content: '▸'; }
+.story-bag-details[open] summary::before { transform: rotate(90deg); }
+.story-bag-details summary:focus-visible { outline: 2px solid #f8dfa6; outline-offset: 2px; }
+.upgrade-dialog--notebook .upgrade-header h2 {
+  --field-tool-art: url('sprites/backgrounds/story/field-journal.webp');
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pdex-device-summary { --field-tool-art: url('sprites/backgrounds/story/field-dex.webp'); }
+@media (max-width: 380px), (max-height: 500px) {
+  #modal-story-bag .story-bag-modal-title,
+  .upgrade-dialog--notebook .upgrade-header h2,
+  .pdex-device-summary { --field-tool-size: 34px; }
+}
+
+/* Reuse one venue on both sides of each Story battle. Its dialogue and roster stay interactive. */
+:is(.story-vs-intro:not(.story-champion-entrance), .story-victory-v2, .story-tutorial-overlay--lesson)[data-story-venue] {
+  background:
+    linear-gradient(180deg, #080b154d 0%, #080b15bb 48%, #080b15f5 90%),
+    radial-gradient(ellipse at 50% 34%, color-mix(in srgb, var(--encounter-glow, transparent) 30%, transparent), transparent 67%),
+    var(--story-venue-image) center 40% / cover no-repeat #080b15 !important;
+}
+.story-vs-intro[data-story-venue]:not(.story-champion-entrance) .vs-stage {
+  box-shadow: 0 16px 48px #0006, inset 0 -12px 36px #0a101a4f;
+}
+.story-victory-v2[data-story-venue] .story-victory-v2-card {
+  border-top-color: var(--encounter-accent, #c8a76f);
+}
+.story-raid-cinematic[data-raid-tier="raid"] .story-legend-sighting-sprite {
+  filter: drop-shadow(0 12px 20px #030510) drop-shadow(0 0 16px #b989605e);
+}
+
 #screen-battle #move-menu .move-tile-cat { inline-size: 14px; padding-block: 0; }
 @media (max-width: 430px) and (orientation: portrait) {
   #screen-battle[data-battle-layout="stack"] #move-menu .move-tile-head {

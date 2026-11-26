@@ -66,6 +66,8 @@ try {
   assert.equal(await trainersWon(), 0, 'lifetime credit follows the authoritative save');
   await retry.click();
   await result.getByRole('heading', { name: 'Trainer cleared · 1 of 3' }).waitFor();
+  const lakeVenue = el => getComputedStyle(el).backgroundImage;
+  assert.match(await result.evaluate(lakeVenue), /recovery-lake\.webp/);
   const first = await run();
   assert.equal(first.pendingBattleResult.completedRowId, 29);
   assert.equal(first.pendingBattleResult.nextRowId, 30);
@@ -105,6 +107,8 @@ try {
   const fight = page.locator('#screen-battle:not(.hidden) #command-menu:not(.hidden) [data-cmd="fight"]');
   const reachFight = async () => {
     for (let beat = 0; beat < 30; beat++) {
+      const venue = page.locator('.story-vs-intro[data-story-venue]');
+      if (await venue.isVisible()) assert.match(await venue.evaluate(lakeVenue), /recovery-lake\.webp/);
       if (await prompts.isVisible()) await prompts.click();
       else if (await fight.isVisible()) break;
       else await page.waitForTimeout(100);
@@ -131,6 +135,11 @@ try {
   assert.equal(await result.locator('.story-victory-badge-name').innerText(), 'Soul Badge');
   assert.equal(await result.locator('.gym-badge-art').getAttribute('data-gym-type'), 'Poison');
   assert.match(await result.locator('.story-victory-v2-milestone').innerText(), /Koga · Poison/);
+  const reflection = result.locator('details').filter({ hasText: 'Talk to Koga' });
+  assert.equal(await reflection.locator('p').isVisible(), false);
+  await reflection.locator('summary').press('Enter');
+  assert.match(await reflection.locator('p').innerText(), /I watch the hands/);
+  assert.equal(await result.isVisible(), true, 'reading the reflection leaves the result open');
   assert.equal((await run()).badges, 5);
   assert.equal(await trainersWon(), 3);
   await page.evaluate(() => window.StoryMode.onBattleEnd(true, 'VICTORY!'));
@@ -143,7 +152,7 @@ try {
   await result.getByText('Soul Badge', { exact: true }).waitFor();
   assert.equal(await trainersWon(), 3, 'reopening the badge result keeps a single reward');
   await result.getByRole('button', { name: /^Continue/ }).click();
-  await page.getByRole('button', { name: 'Team help and practice' }).click();
+  await page.locator('#screen-story-city').getByRole('button', { name: /Trainer’s Notebook/ }).click();
   await page.getByRole('button', { name: 'Journal', exact: true }).click();
   const badgeCase = page.getByRole('list', { name: '5 of 8 gym badges earned' });
   const journalBadge = badgeCase.locator('.story-badge-cell').nth(4);

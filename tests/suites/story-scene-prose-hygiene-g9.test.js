@@ -1,16 +1,5 @@
-// G9 — prose hygiene. Some battle/raid STORY_SCENES carry raw stage-directions in
-// their `body` field (e.g. extra.cubone.miniRaid2: "At 50% HP it gains +1 priority
-// on Bone Club"). That mechanics text must never reach the player as narration.
-//
-// It doesn't today: a scene's `body` is only rendered by _playStoryBeatScene's
-// legacy flat path, which runs ONLY when the scene has no `acts` array. Every
-// scene that carries stage-directions in its body also has `acts`, so the body is
-// never shown — the mechanics live there purely as authoring notes. (The post-scene
-// builder reads `body` too, but only scrapes "Post-fight - '…'" markers, and
-// _playPostBattleScene prefers the structured `outro`.)
-//
-// This test LOCKS that invariant so a future scene authored without `acts` can't
-// silently leak mechanics into prose.
+// Plain scene bodies and the live raid narration should contain story prose.
+// Mechanical phase instructions belong to the separate battle presentation.
 //
 // Run: node --test tests/suites/story-scene-prose-hygiene-g9.test.js
 
@@ -39,19 +28,11 @@ test('G9: no RENDERED scene body leaks stage-directions (body shows only for act
         'these acts-less scenes would render mechanics as prose: ' + leaks.join(', '));
 });
 
-test('G9: every scene with stage-directions in body also has acts (so the body stays unrendered)', () => {
-    const offenders = [];
-    let withStageDirs = 0;
-    for (const key of Object.keys(SCENES)) {
-        const s = SCENES[key];
-        if (!s || !s.body) continue;
-        if (!STAGE_DIRECTION.test(String(s.body))) continue;
-        withStageDirs++;
-        if (!hasActs(s)) offenders.push(key);
+test('G9: raid scenes keep phase instructions out of story prose', () => {
+    const raids = Object.entries(SCENES).filter(([key]) => /\.(?:miniRaid\d*|raid)$/i.test(key));
+    assert.ok(raids.some(([key]) => key === 'extra.cubone.miniRaid2'));
+    for (const [key, scene] of raids) {
+        const lines = [scene.body, ...Array.from(scene.acts || []).flatMap(act => Array.from(act.lines || []))];
+        assert.doesNotMatch(lines.join('\n'), STAGE_DIRECTION, key);
     }
-    assert.deepEqual(offenders, [],
-        'stage-direction body without acts (would leak to the player): ' + offenders.join(', '));
-    // Guard against a vacuous pass: there really ARE scenes with mechanics in body
-    // (the raids), so the invariant above is exercising live data.
-    assert.ok(withStageDirs > 0, 'expected some scene bodies to carry stage-directions (the raids)');
 });

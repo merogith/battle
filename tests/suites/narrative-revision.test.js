@@ -5,11 +5,15 @@ import {loadEngine} from '../helpers/load-engine.js';
 const E=await loadEngine();after(()=>E.teardown());
 const revision=JSON.parse(fs.readFileSync(new URL('../../data/story/narrative-revision.json',import.meta.url),'utf8'));
 const scenes=E.window.__narrationTest.STORY_SCENES;
-test('all 18 optional story tracks load their revised opening and resolution',()=>{
-  assert.equal(Object.keys(revision.scenes).length,36);
+test('the main story and every optional track load the revised prose',()=>{
+  assert.deepEqual(Object.keys(revision.scenes).sort(),Object.keys(scenes).sort());
   for(const [key,patch]of Object.entries(revision.scenes)) {
     assert.equal(scenes[key].body,patch.body,key);
-    for(const[phase,lines]of Object.entries(patch.phases))assert.deepEqual(Array.from(scenes[key].acts.find(a=>a.phase===phase).lines.slice(0,lines.length)),lines,key+' '+phase);
+    for(const[phase,lines]of Object.entries(patch.phases)) {
+      const act=scenes[key].acts.find(a=>a.phase===phase);
+      assert.ok(!act.branches,`${key} ${phase} keeps its own branch dialogue`);
+      assert.deepEqual(Array.from(act.lines.slice(0,lines.length)),lines,`${key} ${phase}`);
+    }
   }
 });
 test('applying the writing revision is idempotent and preserves every choice and callback condition',()=>{

@@ -86,7 +86,17 @@ try {
   assert.equal(during.tossPp, starting.tossPp, 'the queued opposing move waits for the replacement');
   const switchButton = party.locator('.party-slot').filter({ hasText: 'Pikachu' }).getByRole('button', { name: 'Switch' });
   if (out) await page.screenshot({ path: join(out, 'showdown-u-turn-request.png') });
-  await playerSprite.evaluate(sprite => sprite.classList.add('anim-hit-flash', 'tera-crystal-on', 'sprite-airborne'));
+  await playerSprite.evaluate(sprite => {
+    sprite.classList.add('anim-hit-flash', 'anim-hit-shake', 'tera-crystal-on', 'sprite-airborne');
+    sprite.animate([{ opacity: 0.4 }, { opacity: 0.8 }], { duration: 60000, id: 'outgoing-effect' });
+    const container = sprite.parentElement;
+    container.querySelector('.status-icon').style.display = 'block';
+    for (const className of ['sub-overlay', 'protect-overlay', 'battle-stat-arrow']) {
+      const overlay = document.createElement('div');
+      overlay.className = className;
+      container.append(overlay);
+    }
+  });
   await switchButton.tap();
   await party.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => state.pActive.name === 'Pikachu' && !state.isLocked && state.currentPlayer === 1);
@@ -98,10 +108,17 @@ try {
   assert.equal(await playerSprite.getAttribute('alt'), 'Pikachu');
   assert.equal(await playerSprite.isVisible(), false, 'a slow replacement must never show the outgoing sprite');
   assert.equal(await playerSprite.evaluate(sprite =>
-    sprite.matches('.anim-hit-flash, .tera-crystal-on, .sprite-airborne')), false, 'outgoing visual effects are cleared');
+    sprite.matches('.anim-hit-flash, .anim-hit-shake, .tera-crystal-on, .sprite-airborne')), false, 'outgoing visual effects are cleared');
+  assert.deepEqual(await playerSprite.evaluate(sprite => ({
+    loading: getComputedStyle(sprite.parentElement, '::before').content,
+    overlays: sprite.parentElement.querySelectorAll('.sub-overlay, .protect-overlay, .battle-stat-arrow').length,
+    status: sprite.parentElement.querySelector('.status-icon').style.display,
+    staleAnimation: sprite.getAnimations().some(animation => animation.id === 'outgoing-effect'),
+  })), { loading: '""', overlays: 0, status: 'none', staleAnimation: false });
   releasePikachu();
   await playerSprite.waitFor();
   assert.match(await playerSprite.evaluate(sprite => sprite.currentSrc), /\/pikachu\.gif$/);
+  assert.equal(await playerSprite.evaluate(sprite => getComputedStyle(sprite.parentElement, '::before').content), 'none');
   const log = await screen.locator('#battle-log').innerText();
   assert.match(log, /Scizor used U-turn![\s\S]*Pikachu[\s\S]*Blissey used Seismic Toss!/);
   assert.equal((log.match(/Scizor used U-turn!/g) || []).length, 1, 'the log preserves each event once');
@@ -264,12 +281,13 @@ try {
   assert.deepEqual(errors, []);
   console.log('Illusion hid the true sprite, name, types, and summary until damage revealed the Pokémon.');
 
+  await page.route(/\/sprites\/gen5ani-back\/meowth-galar\.gif$/, route => route.abort());
   await page.evaluate(async () => {
     window.__testHarness = true;
     state.mode = 'pve';
     state.p1Draft = [
       { name: 'Scizor', build: { a: 'Technician', m: ['Bullet Punch'] } },
-      { name: 'Pikachu', build: { a: 'Static', m: ['Thunderbolt'] } },
+      { name: 'Meowth-Galar', build: { a: 'Pickup', m: ['Iron Head'] } },
     ];
     state.p2Draft = [{ name: 'Blissey', build: { a: 'Natural Cure', m: ['Seismic Toss'] } }];
     await window.startBattle();
@@ -283,11 +301,11 @@ try {
   });
   await party.waitFor();
   assert.equal(await classicSprite.isVisible(), false, 'the compatibility engine hides a faint even with animations off');
-  await partySlot('Pikachu').getByRole('button', { name: 'Switch' }).tap();
+  await partySlot('Meowth-Galar').getByRole('button', { name: 'Switch' }).tap();
   await classicSprite.waitFor();
-  assert.match(await classicSprite.evaluate(sprite => sprite.currentSrc), /\/pikachu\.gif$/);
+  assert.match(await classicSprite.evaluate(sprite => sprite.currentSrc), /\/gen5ani\/meowth-galar\.gif$/);
   assert.deepEqual(errors, []);
-  console.log('The compatibility battle hid its fainted sprite and displayed the healthy replacement.');
+  console.log('The compatibility battle hid its fainted sprite and displayed exact regional front art after a failed back sprite request.');
 } finally {
   await browser.close();
 }

@@ -57,11 +57,12 @@ test('off-stage moves are locked, disabled, and carry a 🔒 unlock-tier pill', 
   }
 });
 
-test('Can learn now excludes future lessons and exposes a removable active filter', async () => {
+test('Can learn now excludes future lessons and known moves and exposes a removable active filter', async () => {
   await openTutorInner();
   host().querySelector('.tx-chip[data-filter-kind="learnableOnly"]').click();
   assert.ok(moveCards().length > 0);
   assert.ok(moveCards().every(card => card.dataset.locked !== '1'));
+  assert.ok(moveCards().every(card => card.dataset.equipped !== '1'));
   const filter = host().querySelector('.tx-active-filter[data-filter-kind="learnableOnly"]');
   assert.ok(filter);
   filter.click();

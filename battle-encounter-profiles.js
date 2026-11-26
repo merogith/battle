@@ -8,61 +8,61 @@
         {
             location: 'Flintreach Town', stage: 'circles', glow: '#795439', shadow: '#201814',
             rounds: [
-                ['Relay training floor', '#ffc27b', 'Water runs under the entrance mat. A trainer waits inside the first chalk ring.', 'One gate left. Take a breath. The next match starts when you say.'],
-                ['Inner chalk ring', '#ffd59d', 'A single lamp throws the broken bell’s shadow across the inner ring.', 'The trainer at the door lifts the bar and leaves the gate open.'],
+                ['Relay training floor', '#ffc27b', 'The chalk stops where runoff has got under the mat.', 'The trainer leaves a dry towel on the bar for your partner.'],
+                ['Inner chalk ring', '#ffd59d', 'A broken bell still has a rope. Someone has coiled it off the floor.', 'The trainer lifts the bar with both hands. Beyond it, somebody starts to sweep.'],
             ],
         },
         {
             location: 'Kettlestone Town', stage: 'shaft', glow: '#58625d', shadow: '#1b2523',
             rounds: [
-                ['Lift landing', '#c2e0bd', 'The lift cable ticks against the grating as a trainer clears the landing.', 'The lift is between shifts. The landing is quiet enough to hear your partner breathe.'],
-                ['Lower shaft marker', '#ebc886', 'The last service light picks out a white depth marker beside the ring.', 'The lift keeper turns the sign over. There’s room on the next car.'],
+                ['Lift landing', '#c2e0bd', 'The lift ticks past a floor whose number has been filed off.', 'The lift keeper props the gate open with a boot. You can hear people on the next landing.'],
+                ['Lower shaft marker', '#ebc886', 'Under the work light, the ring shares its paint with an old depth line.', 'The keeper waits until your partner is aboard, then puts a hand on the lever.'],
             ],
         },
         {
             location: 'Lindenbell Town', stage: 'panes', glow: '#346f59', shadow: '#152920',
             rounds: [
-                ['Academy practice panes', '#a4eac6', 'Cool light from the academy windows divides the floor into squares.', 'The trainer sets a clean practice marker beside the old survey marks.'],
-                ['Survey court', '#d2ecaa', 'An old field map hangs at the back of the court, its corners held down with stones.', 'A student takes down the match slate. The map stays where it is.'],
+                ['Academy practice panes', '#a4eac6', 'Somebody has counted practice turns in a fogged windowpane.', 'The trainer slides the damp practice sheet out of its holder. Ink has run into the next name.'],
+                ['Survey court', '#d2ecaa', 'A map papered over another one. At the corners you can still see the old road.', 'A student lifts the match slate. The map stays hanging behind it.'],
             ],
         },
         {
             location: 'Reedmarket City', stage: 'dispatch', glow: '#465f72', shadow: '#16212c',
             rounds: [
-                ['Duty desk annex', '#a9dce7', 'The dispatch radio crackles once as the first trainer takes their mark.', 'The duty radio falls quiet. There’s time to look over your team.'],
-                ['Dispatch court', '#e2cb8b', 'The duty light is on above the far doorway. Only the court is lit beyond it.', 'The desk radio returns to the ordinary patrol channel.'],
+                ['Duty desk annex', '#a9dce7', 'The radio calls for a patrol number the trainer has crossed off the board.', 'Somebody turns the volume down and brings a chair out for your team.'],
+                ['Dispatch court', '#e2cb8b', 'The duty lamp shows through the doorway. Under it, the visitor book lies open.', 'A reply comes over the radio after the person who called has left.'],
             ],
         },
         {
             location: 'Glasswater City', stage: 'ripples', glow: '#356984', shadow: '#112735',
             rounds: [
-                ['Lakefront gallery', '#8ce3f0', 'The last payout bell dies over the lake. One trainer stays beside the rail.', 'Upstairs, you can hear the lake through the floor. The stairs are open.'],
-                ['Backstage boards', '#cda9ef', 'Behind the gallery, lake light moves between gaps in the boards.', 'The attendant unhooks the rope at the end of the upper walk.'],
-                ['Upper lake court', '#c8f5d9', 'Low lights pick out the ring while the lake shows through the far windows.', 'Someone opens the doors to the lake again.'],
+                ['Lakefront gallery', '#8ce3f0', 'The payout bell rings. Out on the lake, a light goes off in answer.', 'The trainer slides the rail bolt back. From the stairs you can hear water below the floor.'],
+                ['Backstage boards', '#cda9ef', 'Lake light moves through the gaps in the boards. One plank is still wet.', 'The attendant unhooks the rope. The knot has left a dark mark on the post.'],
+                ['Upper lake court', '#c8f5d9', 'The ring looks white where it takes the light from the water.', 'The back doors open. The lake sounds much closer without the glass.'],
             ],
         },
         {
             location: 'Brasslock City', stage: 'shutters', glow: '#7f553e', shadow: '#271814',
             rounds: [
-                ['Freight lights', '#f3b076', 'Freight lamps come on one by one. The first trainer steps between their beams.', 'The outer lamps go dark. The next doorway is still lit.'],
-                ['Shutter corridor', '#e1beac', 'A shutter drops behind the second trainer. The crowd is suddenly far away.', 'The inside shutter stays up. The leader’s court is just beyond it.'],
-                ['Inside freight court', '#ffd083', 'The rails end at the marked edge of the ring. One work light stays on.', 'The last work light clicks off as the outside shutter lifts.'],
+                ['Freight lights', '#f3b076', 'The first lamp catches a hand-painted wagon number that leads into the ring.', 'The outer lamps go one at a time. A worker leaves the next doorway lit.'],
+                ['Shutter corridor', '#e1beac', 'The shutter cuts the crowd off halfway through a cheer.', 'The trainer knocks twice on the inside shutter. It lifts on the second knock.'],
+                ['Inside freight court', '#ffd083', 'Somebody extended the freight markings to make the ring. The old arrows still point out.', 'The outside shutter lifts before the work light goes out. The cold gets in first.'],
             ],
         },
         {
             location: 'Beaconrest Town', stage: 'relay', glow: '#365b79', shadow: '#132332',
             rounds: [
-                ['Wind ward', '#a3dbee', 'A windbreak rattles above the first patch of level ground.', 'The first relay light goes steady. The next trainer is up the steps.'],
-                ['Relay steps', '#a4f1d2', 'Two short relay notes sound behind the glass as you reach the upper landing.', 'The lookout closes the relay window. The upper court is clear.'],
-                ['Signal court', '#f5df9e', 'The ring is marked in white just below the signal mast.', 'The lookout turns a lamp toward the road leading down from the mast.'],
+                ['Wind ward', '#a3dbee', 'The windbreak has one pane left. A trainer waits in the strip it shelters.', 'The first relay light goes steady. Your partner picks the sheltered side of the steps.'],
+                ['Relay steps', '#a4f1d2', 'Two short relay notes reach you through the lookout glass. Nobody puts on a headset.', 'The lookout waits for a break in the wind and opens the upper door.'],
+                ['Signal court', '#f5df9e', 'The mast moves a little in its socket. You feel it in the floor.', 'The lookout turns a lamp down the road for you. Keep it in sight until the corner.'],
             ],
         },
         {
             location: 'Vespergate Town', stage: 'arches', glow: '#64527d', shadow: '#1c162c',
             rounds: [
-                ['Bell entrance', '#dbb9ea', 'A bell rings once. The first trainer stands where the steps meet the entrance.', 'The bell falls still. There’s a light behind the inner glass.'],
-                ['Inner glass', '#b7c8ff', 'A colored shadow crosses the floor as the second trainer shuts the door.', 'The steps beyond the glass lead straight to the leader’s court.'],
-                ['Glass court', '#f2d5ac', 'The bell rope hangs unused beside the ring. A narrow bar of light crosses the floor.', 'The outside door opens on the road to the League.'],
+                ['Bell entrance', '#dbb9ea', 'A bell rings once. The first trainer checks the rope before walking toward you.', 'The bell has stopped. The glass behind it is still moving.'],
+                ['Inner glass', '#b7c8ff', 'When the second trainer shuts the door, their reflection stays on the other side a little longer.', 'The trainer leaves a hand against the glass until you reach the steps.'],
+                ['Glass court', '#f2d5ac', 'The rope is still. Dust falls through the light as if somebody just rang the bell.', 'The outer door opens. The first thing you hear is traffic on the League road.'],
             ],
         },
     ];

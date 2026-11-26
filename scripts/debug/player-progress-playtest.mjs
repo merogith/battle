@@ -234,6 +234,7 @@ try {
   ]);
   await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
   await visible('.menu-btn-quickplay--story').click();
+  await visible('#story-run-tools > summary').click();
   await visible('#story-abandon-btn').click();
   await capture('Review delete-run confirmation');
   await button('Keep this run').click();

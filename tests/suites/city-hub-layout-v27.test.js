@@ -1,11 +1,9 @@
 // CITY HUB V2 layout guard (P1) — the desktop hub redesign is presentation-
 // only: CSS re-layout (grid via display:contents) + a static identity band.
-// renderCityActions' gate logic and makeActionBtn markup are untouched. This
-// suite locks that contract:
+// The golden captures city actions, their labels and their handlers:
 //   • per-city button parity: every City row's rendered (text, onclick, class)
-//     triples match the committed golden (captured from the pre-redesign
-//     renderer — regenerate with CITY_HUB_GOLDEN_REGEN=1 after an APPROVED
-//     behaviour change),
+//     triples match the committed golden (regenerate with CITY_HUB_GOLDEN_REGEN=1
+//     for an intentional change),
 //   • identity band renders the town name + 8 badge pips (earned = sm.badges),
 //   • casino canary: the shared .story-action-btn base block is intact and the
 //     casino-scoped rule survives; the V2 grid rules are desktop-gated and the
@@ -105,6 +103,7 @@ test('the city places the objective ahead of dialogue and groups secondary contr
   const city = W.document.getElementById('screen-story-city');
   const content = city.querySelector('#story-city-actions');
   assert.equal(content.firstElementChild.id, 'story-city-tips');
+  assert.equal(content.children[1].tagName, 'DETAILS');
   assert.ok(content.children[1].querySelector('#story-city-quote'));
   assert.equal(content.lastElementChild.id, 'story-action-buttons');
   assert.equal(city.querySelector('.story-hud-more summary').textContent, 'More');

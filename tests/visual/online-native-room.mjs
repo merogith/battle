@@ -145,7 +145,7 @@ function installTransport(endpoint) {
 const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
 const failures = [];
 const fight = page => page.locator('#command-menu [data-cmd="fight"]');
-const mode = (page, label) => page.locator('.menu-mode-grid').getByRole('button', { name: label });
+const mode = (page, label) => page.locator('.home-friends').getByRole('button', { name: label });
 
 async function markMotion(peer) {
   await peer.evaluate(() => {
@@ -226,6 +226,7 @@ async function openPlayer(options, side) {
   if (await page.locator('#menu-more-play').getAttribute('open') === null) {
     await page.locator('#menu-more-play-summary').click();
   }
+  await page.locator('.home-friends > summary').click();
   return page;
 }
 
@@ -278,7 +279,7 @@ try {
     assert.deepEqual(await roomPrefs(guest), { ...hostPrefs, draftGens: guestPrefs.draftGens, animations: guestPrefs.animations });
     assert.equal(await guest.locator('#party-size-select').inputValue(), '3', 'the guest’s hidden local options are preserved');
   };
-  await mode(host, /Online Host/i).click();
+  await mode(host, /Host online/i).click();
   if (timed) await host.locator('#modal-online-host').getByLabel('Turn timers').selectOption('fast');
   if (series) {
     const hostForm = host.locator('#modal-online-host');
@@ -289,7 +290,7 @@ try {
   await host.locator('#screen-draft').waitFor({ state: 'visible', timeout: 30000 });
   assert.ok(room?.code);
 
-  await guestPress(mode(guest, /Online Join/i));
+  await guestPress(mode(guest, /Join online/i));
   const form = guest.locator('#modal-online-pvp');
   await form.getByLabel('Room code').fill(room.code);
   await guestPress(form.getByRole('button', { name: 'Join', exact: true }));

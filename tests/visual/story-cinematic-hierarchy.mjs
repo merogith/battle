@@ -210,7 +210,7 @@ async function verifyFinaleRecovery(page, capture, { partner, decision, failOnce
   assert.ok((await readSave()).loopChoiceCommittedAt > 0);
   assert.equal((await readCareer()).lastLoopChoice, failOnce ? 'remember' : decision);
   await resume();
-  await narration.getByText(decision === 'remember' ? /You hold onto it/ : /You let it go/).waitFor();
+  await narration.getByText(decision === 'remember' ? /You keep the song running in your head/ : /The song goes first\. Then the handwriting\./).waitFor();
   assert.equal((await readCareer()).lastLoopChoice, decision, 'A delayed career write is recovered from the active receipt');
   assert.equal((await readCareer()).achievements.r_both_paths.currentRank, 1);
   assert.equal(await narration.locator('[data-narr-choice-idx]').count(), 0, 'A saved finale answer is not offered again');

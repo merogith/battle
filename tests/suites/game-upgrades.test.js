@@ -510,6 +510,40 @@ test('complete backups include collection and settings but exclude connection to
   assert.doesNotThrow(()=>G.validateBackup(backup));
 });
 
+test('portable backups preserve save slots and omit the originating device download',()=>{
+  const localDownload = {completed:true,profile:'compact',digest:'device-pack'};
+  store.set('pbs_settings',JSON.stringify({musicVolume:0.2,offlineDownload:localDownload}));
+  const slot=G.makeBackup(false);
+  slot.entries.pbs_settings.offlineDownload=localDownload; // Slots written by older releases.
+  store.set('pbs_slot_1',JSON.stringify(slot));
+  const backup=G.makeBackup();
+  assert.equal(backup.entries.pbs_slot_1.entries.pbs_story_save.team[0].name,'Pikachu');
+  assert.equal(backup.entries.pbs_slot_1.entries.pbs_settings.offlineDownload,undefined);
+  assert.equal(backup.entries.pbs_settings.offlineDownload,undefined);
+  assert.equal(G.makeBackup(false).entries.pbs_slot_1,undefined);
+  const receivingDownload={completed:true,profile:'full',digest:'receiving-pack'};
+  store.clear();
+  store.set('pbs_settings',JSON.stringify({musicVolume:0.7,offlineDownload:receivingDownload}));
+  assert.equal(G.restoreBackup(backup),true);
+  assert.deepEqual(JSON.parse(store.get('pbs_settings')),{musicVolume:0.2,offlineDownload:receivingDownload});
+  assert.deepEqual(JSON.parse(store.get('pbs_slot_1')),JSON.parse(JSON.stringify(backup.entries.pbs_slot_1)));
+  backup.entries.pbs_slot_1.entries.pbs_slot_2=slot;
+  assert.throws(()=>G.validateBackup(backup),/unknown storage entries/);
+});
+
+test('collection and preferences can transfer before creating a Story run',()=>{
+  W.__storyTest.sm.active=false;
+  store.set('pbs_story_meta',JSON.stringify({achievements:{test:1}}));
+  store.set('pbs_accessibility',JSON.stringify({readable:true}));
+  const backup=G.makeBackup();
+  assert.equal(backup.entries.pbs_story_save,undefined);
+  store.clear();
+  assert.equal(G.restoreBackup(backup),true);
+  assert.equal(store.has('pbs_story_save'),false);
+  assert.deepEqual(JSON.parse(store.get('pbs_accessibility')),{readable:true});
+  assert.equal(JSON.parse(store.get('pbs_story_meta')).achievements.test,1);
+});
+
 test('invalid imports reject malformed progress, storage, moves and prototype keys',()=>{
   for(const change of [b=>b.entries.pbs_story_save.eventIndex=999,
     b=>b.entries.pbs_story_save.team[0].build.m=[42],b=>b.entries.pbs_story_save.pcBox={},

@@ -11,7 +11,7 @@
 //      shown for an instant scene, hidden while a choice is pending then shown
 //      after a pick, hidden through staged revealLines until the final line.
 //   3. Reduced-motion safety — a media block neutralizes every new motion class.
-//   4. Hall of Fame hero moment — spotlight + cascade spread + triumph chime.
+//   4. Hall of Fame ceremony — spotlight, confetti cascade, and music.
 //
 // Surface under test: window.__narrationTest + battle.html source, jsdom only.
 
@@ -142,14 +142,14 @@ test('the new narration keyframes are defined', () => {
 });
 
 // ── 4. Hall of Fame hero moment ──────────────────────────────────────────────
-test('the Hall of Fame gets a spotlight, a wider confetti cascade, and a chime', () => {
+test('the Hall of Fame gets a spotlight, a cascade, and a ceremony theme', () => {
   // Spotlight element + CSS + reduced-motion gate.
   assert.match(SRC, /spotlight\.className = 'story-hof-spotlight'/, 'spotlight element appended to the stage');
   assert.ok(SRC.includes('@keyframes storyHofSpotlightIn'), 'spotlight fade-in keyframe defined');
   assert.match(SRC, /\.story-hof-spotlight \{ animation: none; opacity: 1; \}/, 'spotlight reduced-motion safe');
-  // Confetti spawned with the wider spread + the triumph chime on entry.
   assert.match(SRC, /storySpawnConfetti\(conf, 40, 1\.8\)/, 'HoF confetti uses the wider cascade window');
-  assert.match(SRC, /StoryFx\.playSfx\('achv', 0\.7\)/, 'a triumph chime plays as the hall lights up');
+  assert.match(SRC, /if \(!preview\) stopHallOfFameMusic = AudioSystem\.playStoryMotif\('hall'\)/);
+  assert.match(SRC, /if \(!stopHallOfFameMusic\) window\.StoryFx\?\.playSfx\('achv', 0\.7\)/);
   // The spread param is backward-compatible (older callers omit it).
   assert.match(SRC, /function storySpawnConfetti\(container, count, spreadSec\)/, 'spread param added');
 });

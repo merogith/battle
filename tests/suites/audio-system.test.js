@@ -347,3 +347,84 @@ test('a rejected effect returns its voice to the live pool', async () => {
         W.Audio = Audio;
     }
 });
+
+test('a browser autoplay block retries the current raid theme on the next gesture', async () => {
+    const Audio = W.Audio;
+    let attempts = 0;
+    try {
+        W.Audio = class AutoplayBlockedAudio extends Audio {
+            play() {
+                if (this.src.endsWith('/raid-omen.mp3') && ++attempts === 1) {
+                    return Promise.reject(new W.DOMException('Gesture required', 'NotAllowedError'));
+                }
+                return super.play();
+            }
+        };
+        AS.init();
+        AS.playBattleTheme('raid');
+        const raid = T.state().battleAudio;
+        await Promise.resolve();
+        assert.equal(raid.paused, true);
+        W.document.dispatchEvent(new W.Event('click'));
+        await Promise.resolve();
+        assert.equal(T.state().battleAudio, raid);
+        assert.equal(raid.paused, false);
+        assert.equal(attempts, 2);
+    } finally {
+        W.Audio = Audio;
+        AS.endBattleTheme(false);
+    }
+});
+
+test('a hidden game pauses the battle track at its position and releases effects', () => {
+    let hidden = false;
+    Object.defineProperty(W.document, 'hidden', { configurable: true, get: () => hidden });
+    const changeVisibility = value => {
+        hidden = value;
+        W.document.dispatchEvent(new W.Event('visibilitychange'));
+    };
+    try {
+        AS.init();
+        T.startBgTrack(0, 16);
+        const field = T.state().bgAudio;
+        AS.playBattleTheme('leader');
+        const theme = T.state().battleAudio;
+        theme.currentTime = 7;
+        const cue = T.playOneShot('test-effect.mp3', 0.5);
+        changeVisibility(true);
+        assert.equal(theme.paused, true);
+        assert.equal(field.paused, true);
+        assert.equal(cue.src, '');
+        assert.equal(T.playOneShot('test-effect.mp3', 0.5), null);
+        changeVisibility(false);
+        assert.equal(theme.paused, false);
+        assert.equal(theme.currentTime, 7);
+        assert.equal(field.paused, true);
+        assert.equal(field.currentTime, 16);
+    } finally {
+        delete W.document.hidden;
+        AS.endBattleTheme(false);
+    }
+});
+
+test('zero music volume defers theme loading and zero effect volume releases active cues', () => {
+    const musicVolume = AS.getMusicVolume();
+    const soundVolume = AS.getSoundVolume();
+    try {
+        AS.setMusicVolume(0);
+        AS.playBattleTheme('elite');
+        assert.equal(T.state().battleAudio, null);
+        assert.equal(T.state().bgAudio.paused, true);
+        AS.setMusicVolume(musicVolume);
+        assert.match(T.state().battleAudio.src, /league-chamber\.mp3$/);
+        assert.equal(T.state().battleAudio.paused, false);
+        const cue = T.playOneShot('test-effect.mp3', 0.5);
+        AS.setSoundVolume(0);
+        assert.equal(cue.src, '');
+        assert.equal(T.playOneShot('test-effect.mp3', 0.5), null);
+    } finally {
+        AS.setMusicVolume(musicVolume);
+        AS.setSoundVolume(soundVolume);
+        AS.endBattleTheme(false);
+    }
+});

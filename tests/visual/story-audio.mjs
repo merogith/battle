@@ -59,6 +59,23 @@ try {
         await waitForField();
         const field = await state();
         assert.equal(field.playing.length, 1);
+
+        // Verify actual file playback, a single foreground layer, and a short win cue.
+        for (const [mood, file] of [['rival', 'rival-pursuit'], ['leader', 'gym-bout'], ['elite', 'league-chamber'], ['raid', 'raid-omen']]) {
+            const path = '/music/themes/' + file + '.mp3';
+            await page.evaluate(key => window.AudioSystem.playBattleTheme(key), mood);
+            await page.waitForFunction(track => {
+                const playing = window.audioProbe.elements.filter(({ audio }) => !audio.paused && !audio.ended);
+                return playing.length === 1 && playing[0].audio.src.endsWith(track) && playing[0].audio.currentTime > 0;
+            }, path);
+            assert.ok(requests.some(entry => entry.path === path && entry.status < 400));
+        }
+        await page.evaluate(() => window.AudioSystem.endBattleTheme(true));
+        const victoryLength = await page.waitForFunction(() => window.audioProbe.elements.find(({ audio, requestedSource }) =>
+            requestedSource.endsWith('/victory.mp3') && Number.isFinite(audio.duration))?.audio.duration);
+        assert.ok(await victoryLength.jsonValue() < 4);
+        await waitForField();
+
         await page.evaluate(() => window.AudioSystem.playStoryMotif('gallery'));
         await page.waitForFunction(() => window.audioProbe.elements.some(({ audio, requestedSource }) =>
             requestedSource.endsWith('/the-portrait.mp3') && audio.currentTime > 0 && !audio.paused));
@@ -77,6 +94,7 @@ try {
         assert.deepEqual((await state()).playing, []);
         await volume.fill('0');
         await page.waitForFunction(() => window.audioProbe.masters.at(-1)?.gain.value === 0);
+        assert.equal((await state()).generated, false);
         await volume.fill('24');
         await toggle('sw-music');
         assert.equal((await state()).generated, false);
@@ -110,8 +128,10 @@ try {
         await waitForField();
         assert.equal((await state()).generated, false);
 
-        // A start-of-cry fixture lets the player use the real mute switch mid-effect.
-        await page.evaluate(() => window.AudioSystem.playFaintCry('Pikachu'));
+        // Start the fixture just before the real switch changes, independent of tap latency.
+        await page.evaluate(() => document.getElementById('sw-sound').addEventListener('click', () => {
+            window.AudioSystem.playFaintCry('Pikachu');
+        }, { once: true }));
         await toggle('sw-sound');
         assert.equal(await page.evaluate(() => window.AudioSystem.__test.state().sfxActive), 0);
         await toggle('sw-sound');
@@ -138,7 +158,7 @@ try {
         await page.waitForFunction(() => Array.from(document.querySelectorAll('#battle-log > *')).some(el => el.textContent.includes('used Earthquake')));
         assert.deepEqual(errors, []);
         assert.ok(requests.some(({ path, status }) => /hit(?:_strong|_weak)?\.wav/.test(path) && status < 400));
-        report.push({ viewport: `${width}×${height}`, touch, reducedMotion, controls: ['settings', 'gallery cue', 'mute', 'slider', 'reload', 'trainer creation', 'preset battle turn'], fireDuration, requests });
+        report.push({ viewport: `${width}×${height}`, touch, reducedMotion, controls: ['settings', 'encounter themes', 'victory cue', 'gallery cue', 'mute', 'slider', 'reload', 'trainer creation', 'preset battle turn'], fireDuration, requests });
         console.log(`${width}×${height} audio controls, reload, trainer creation and Showdown impact passed`);
         await context.close();
     }

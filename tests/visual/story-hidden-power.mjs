@@ -77,8 +77,36 @@ try {
       assert.equal(save.hiddenPowerChoosePending, false);
       assert.equal(save.inventory.heartScale, undefined);
       assert.equal(save.gold, 2500);
+
+      // An independent saved state in which the favor is available and a caught
+      // partner already knows its natural Hidden Power.
+      await page.evaluate(() => {
+        const { sm } = window.__storyTest;
+        sm.hiddenPowerChoosePending = true;
+        sm.team[0].currentHp = 38;
+        sm.team[0].pp = [9, 3];
+        window.StoryMode.enterTutor('moves', { partnerId: 'scout', move: 'Hidden Power' });
+      });
+      const changeType = tutor.getByRole('button', { name: 'Change type', exact: true });
+      const chooseGround = async () => {
+        await changeType.tap();
+        await picker.getByRole('button', { name: 'Choose Ground' }).tap();
+      };
+      await chooseGround();
+      await pricePrompt(/Use your favor.*Hidden Power to Ground/, 'Cancel');
+      assert.equal(await changeType.isVisible(), true);
+      await chooseGround();
+      await pricePrompt(/Use your favor.*Hidden Power to Ground/, 'OK');
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem('pbs_story_save'))?.team[0].build.m.includes('Hidden Power Ground'));
+      const retuned = await snapshot();
+      assert.deepEqual(retuned.team[0].build.m, ['Dragon Claw', 'Hidden Power Ground']);
+      assert.deepEqual(retuned.team[0].pp, [9, 3]);
+      assert.equal(retuned.team[0].currentHp, 38);
+      assert.equal(retuned.hiddenPowerChoosePending, false);
+      assert.equal(retuned.gold, 2500);
+      assert.equal(await changeType.count(), 0);
       assert.deepEqual(errors, []);
-      console.log(`${label} preserved the favor for a natural lesson, cancelled and confirmed a typed voucher lesson`);
+      console.log(`${label} verified natural lessons, typed voucher lessons and one-time changes to equipped Hidden Power`);
     } finally {
       await context.close();
     }

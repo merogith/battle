@@ -13,18 +13,24 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { statSync } from 'node:fs';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const AS = eng.window.AudioSystem;
 const T = AS.__test;
 
-test('the five mood slots exist and boss ships the climax track', () => {
+test('major encounters have distinct local tracks and routine trainers keep the field music', () => {
   const themes = T.battleThemes();
-  for (const mood of ['trainer', 'leader', 'rival', 'elite', 'boss']) {
-    assert.ok(Object.prototype.hasOwnProperty.call(themes, mood), `mood ${mood} exists`);
-    assert.ok(Array.isArray(themes[mood]), `mood ${mood} is a list`);
+  assert.deepEqual([...themes.trainer], []);
+  const tracks = new Set();
+  for (const mood of ['leader', 'rival', 'elite', 'raid', 'boss']) {
+    assert.equal(themes[mood].length, 1, `one track for ${mood}`);
+    const [track] = themes[mood];
+    assert.ok(statSync(new URL(`../../${track}`, import.meta.url)).isFile(), `local track for ${mood}`);
+    tracks.add(track);
   }
+  assert.equal(tracks.size, 5);
   assert.ok(themes.boss.some((f) => /boss_climax/.test(f)), 'boss ships the climax track');
 });
 

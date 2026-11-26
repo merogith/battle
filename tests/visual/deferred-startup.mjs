@@ -117,8 +117,16 @@ try {
 
   const { context: matchContext, page: match, errors: matchErrors } = await fresh();
   try {
+    await match.goto(url.href, { waitUntil: 'load' });
+    const gameMenu = match.getByRole('region', { name: 'Main menu', exact: true });
+    const gameModes = await gameMenu.locator('.home-modes .home-choice').allTextContents();
     await match.goto(publicTitle.href, { waitUntil: 'load' });
-    await match.getByRole('link', { name: /Jump In/ }).click();
+    assert.deepEqual(await match.locator('.home-modes .home-choice').allTextContents(), gameModes);
+    assert.equal(await match.getByRole('link', { name: 'Quick Battle' }).isVisible(), false);
+    await match.locator('#menu-more-play-summary').click();
+    assert.equal(await match.getByRole('link', { name: 'Same device' }).isVisible(), false);
+    assert.equal(await match.locator('.home-mode-help dl').isVisible(), false);
+    await match.getByRole('link', { name: 'Quick Battle' }).click();
     await match.locator('#screen-battle[data-battle-engine="showdown"] #command-menu [data-cmd="fight"]').click();
     const turn = await match.evaluate(() => state.turnNumber);
     await match.locator('#move-menu .battle-btn-move:enabled').first().click();

@@ -164,13 +164,14 @@ test('every supported regional variant ships its own art for all four orientatio
   }
 });
 
-test('every selectable species or form resolves to a bundled path in every orientation', () => {
-  const { getSprite } = makeContext();
+test('every selectable species or form resolves to bundled art in the requested perspective and color', () => {
+  const { getSprite, toShowdownSpriteId } = makeContext();
   for (const { name } of species) {
     for (const back of [true, false]) {
       for (const shiny of [true, false]) {
         const localPath = getSprite(name, shiny, back);
-        assert.match(localPath, /^sprites\//, name);
+        const directory = `gen5ani${back ? '-back' : ''}${shiny ? '-shiny' : ''}`;
+        assert.equal(localPath, `sprites/${directory}/${toShowdownSpriteId(name)}.gif`, name);
         assert.ok(fs.existsSync(path.join(ROOT, localPath)), localPath);
       }
     }

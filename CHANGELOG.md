@@ -3,6 +3,26 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.4 — North Road and game polish
+
+### Story and presentation
+
+- Rewrote 207 scenes across the main story and all 18 alternate tracks, along with the ten Field Archive chapters, town conversations, minigames, and major encounters. The Recovery Service story builds through records and the people willing to correct them.
+- Dialogue, field narration, and recordings have distinct treatments. Choices stay visible, and road callbacks, choice consequences, and Archive clues open on demand.
+- The Field Archive includes an optional screening with short, credited excerpts from Meowth and Mewtwo in *Pokémon: The First Movie*.
+- Story locations, training facilities, the Bag, the Notebook, and the Pokédex have dedicated artwork. Rivals, Gyms, League matches, and raids have distinct themes, with separate cues for boss phases, legendary encounters, and the Hall of Fame.
+
+### Menus, battles, and training
+
+- The title and in-game menu share one layout, with Story and Continue up front. Battles groups Quick Battle, Gauntlet, Competitive Arena, and friend matches. Draft cards show types, total stats, and attack style, with exact builds under Full summary.
+- Town actions use shorter labels, and the Trainer’s Notebook holds longer guidance. The Daycare trade keeps eligible partners and the permanent trade warning in view, with the PC available on demand.
+- Gym trainers, leaders, and badges use the same assignment. Switching and fainting clear old sprites and effects while the incoming art loads. Missing forms have matching artwork, and long battles make fewer duplicate layout updates.
+- Move Tutor search and filters work together. The Tutor and Battle Mentor share recommendations and show the suggested move slot and cost. A partner can use the Diviner’s favor to retune an already-learned Hidden Power while keeping its current PP.
+
+### Offline play and saves
+
+- Offline packs download changed files and can repair individual missing files. Removing an offline pack keeps local saves. Portable backups include save slots, collection records, and preferences.
+
 ## 2.0.3 — Battle screen overhaul
 
 - The opening screen and main menu display the installed game version, including offline.

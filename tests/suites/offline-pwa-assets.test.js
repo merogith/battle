@@ -79,11 +79,7 @@ test('home menu has a discoverable "Download for offline" entry wired to the flo
   assert.ok(HTML.includes('id="menu-offline-entry"'), 'home-menu offline entry present');
   assert.ok(HTML.includes('window.openOfflineSettings'), 'home entry opens the offline settings flow');
   assert.ok(/window\.openOfflineSettings\s*=\s*function/.test(HTML), 'openOfflineSettings wrapper defined');
-  // The utility is available before the collapsed secondary mode choices.
-  const titleIdx = HTML.indexOf('id="screen-menu"');
-  const entryIdx = HTML.indexOf('id="menu-offline-entry"');
-  const moreIdx = HTML.indexOf('id="menu-more-play"');
-  assert.ok(titleIdx > 0 && entryIdx > titleIdx && entryIdx < moreIdx, 'entry precedes the secondary play disclosure');
+  assert.match(HTML, /id="menu-more-play"[\s\S]*<footer class="home-tools">[\s\S]*?id="menu-offline-entry"/, 'offline play is available in home utilities');
   // Reuses the existing update signal so it flags when an update is available.
   assert.ok(/refreshOfflineUpdateBadge[\s\S]*menu-offline-update/.test(HTML), 'badge refresh drives the home chip');
 });
@@ -126,7 +122,7 @@ test('the download "remembers" its state — restore fn + reconciliation exist',
   // The button/menu label must be restorable from the persisted completed flag so a
   // returning player is not asked to download from scratch every visit.
   assert.ok(/window\.refreshOfflineDownloadUI\s*=\s*async function/.test(HTML), 'refreshOfflineDownloadUI defined');
-  assert.ok(HTML.includes('refreshOfflineDownloadUI()'), 'restore fn is actually called (load/open)');
+  assert.ok(HTML.includes('refreshOfflineDownloadUI(true)'), 'opening Settings rechecks the live download');
   // Reconciliation queries the SW cache so a wiped cache does not keep claiming "downloaded".
   assert.ok(/_swCacheState/.test(HTML), 'app queries CACHE_STATE via _swCacheState');
   const sw = read('sw.js');

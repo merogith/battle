@@ -122,6 +122,10 @@ test('E1 gets the marquee title card; Continue launches', async () => {
   assert.ok(name && name.textContent === 'Lorelei', 'marquee shows the rolled trainer');
   const kicker = W.document.querySelector('.vs-marquee-kicker');
   assert.match(kicker.textContent, /ELITE FOUR/, 'kicker from marquee-entries.json');
+  const dialogue = W.document.querySelector('.story-vs-intro .story-dialog-text');
+  assert.ok(["The ice by the rail is thin. I mark it every morning and it moves anyway.",
+    "I can turn down the cold if you want. My team won't mind."].some(line => dialogue.textContent.includes(line)),
+    'the rolled trainer speaks a line from their named pool');
   assert.ok(!W.document.querySelector('[data-vs2-picks]'), 'no exchange on league fights');
 
   W.document.querySelector('button[data-vs2-battle="1"]').click();

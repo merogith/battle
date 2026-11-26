@@ -91,7 +91,7 @@ test('victory card attributes the rival aftermath to "Rival"', () => {
   const ov = W.document.querySelector('div[role="dialog"][aria-label="VICTORY!"]');
   assert.ok(ov, 'victory overlay rendered');
   assert.ok(!ov.innerHTML.includes(ROLLED), 'rolled identity must not render on the card');
-  assert.match(ov.innerHTML, /Rival: "/, 'aftermath line attributed to the generic Rival');
+  assert.match(ov.textContent, /Rival: “/, 'aftermath line attributed to the generic Rival');
 
   const cont = [...ov.querySelectorAll('button')].find(b => /Continue/.test(b.textContent || ''));
   if (cont) cont.click();
@@ -117,5 +117,5 @@ test('concede alert attributes the rival line to "Rival"', () => {
 
   assert.ok(alertMsg, 'concede alert fired');
   assert.ok(!alertMsg.includes(ROLLED), 'rolled identity must not appear in the concede alert');
-  assert.match(alertMsg, /Rival: "/, 'rival line attributed to the generic Rival');
+  assert.match(alertMsg, /Rival: “/, 'rival line attributed to the generic Rival');
 });

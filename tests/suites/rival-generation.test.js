@@ -221,7 +221,8 @@ test('the generic-named rival preserves the canonical dialogue pool (via canonNa
   E.sm.active = false;
   E.sm.badges = 2;
   const row = E.STORY_RIVAL_ROW_EARLY;
-  const BLUE_LINES = ['Smell ya later… if you can win!', 'Gramps was right—you\'re not half bad!', 'I\'m the real deal!'];
+  const blueLines = eng.window.TRAINER_QUOTES_BY_NAME.Blue;
+  assert.ok(blueLines?.length, 'the authored pool for Blue loaded');
   const collect = (trainer, n) => {
     const out = new Set();
     for (let s = 0; s < n; s++) { eng.seedRng(11000 + s); out.add(E.getTrainerQuoteForBattle(trainer, 'Rival', row)); }
@@ -232,10 +233,10 @@ test('the generic-named rival preserves the canonical dialogue pool (via canonNa
   const generic = collect({ name: 'Rival', canonName: 'Blue', role: 'Rival' }, 400);
   // Generalising the displayed name to "Rival" must not change what the rival can say.
   assert.deepEqual([...generic].sort(), [...canonical].sort(), 'generic-named rival draws the identical quote pool');
-  assert.ok(BLUE_LINES.some((l) => generic.has(l)), 'Blue\'s canonical per-name lines survive (via canonName)');
+  assert.ok(blueLines.some((line) => generic.has(line)), 'Blue\'s per-name lines survive (via canonName)');
   // Control: without canonName the lookup would key on "Rival" and drop the per-name lines.
   const broken = collect({ name: 'Rival', role: 'Rival' }, 400);
-  assert.ok(!BLUE_LINES.some((l) => broken.has(l)), 'without canonName the per-name lines are lost (proves canonName matters)');
+  assert.ok(!blueLines.some((line) => broken.has(line)), 'without canonName the per-name lines are lost (proves canonName matters)');
 });
 
 test('trainer.sigs array is not mutated by a team roll', async () => {
@@ -270,8 +271,8 @@ test('B7: league rival intro turns dark only when the player is losing the rival
   const E = eng.window.__rivalTest;
   const sm = E.sm;
   sm.active = false;
-  const SHADOW = ['reluctant names', 'close the door', 'stopped seeing a rival'];
-  const hasShadow = (arr) => arr.some((l) => SHADOW.some((s) => l.includes(s)));
+  const shadowLines = ['folding chairs', 'owed you this one', 'walk from my name to the trophy'];
+  const hasShadow = (lines) => lines.some((line) => shadowLines.some((phrase) => line.includes(phrase)));
   function gather(phase, lossStreak, N) {
     sm.rivalConsecutiveLosses = lossStreak;
     sm.rivalConsecutiveWins = 0;

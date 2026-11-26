@@ -91,5 +91,47 @@ export const dialogueLines = Object.freeze({
         "url": "music/voices/crucible-witness-recorder.1b0cd517e0.mp3",
         "durationMs": 3168,
         "bytes": 19244
+    },
+    "kettlestone-court-pa": {
+        "speaker": "Workshop court PA",
+        "caption": "The floor is clear. Bring your lead Pokémon forward.",
+        "url": "music/voices/kettlestone-court-pa.6b93596cb0.mp3",
+        "durationMs": 3816,
+        "bytes": 23132
+    },
+    "lindenbell-exhibition-pa": {
+        "speaker": "Academy court PA",
+        "caption": "Exhibition is over. Clear the court for the challenger.",
+        "url": "music/voices/lindenbell-exhibition-pa.74e010ae6e.mp3",
+        "durationMs": 3552,
+        "bytes": 21548
+    },
+    "reedmarket-gate-pa": {
+        "speaker": "Gatehouse intercom",
+        "caption": "The east gate is shut. Challenger, step onto the mat.",
+        "url": "music/voices/reedmarket-gate-pa.2bf7aaf0af.mp3",
+        "durationMs": 4272,
+        "bytes": 25868
+    },
+    "vespergate-night-pa": {
+        "speaker": "Arena intercom",
+        "caption": "Last badge match tonight. Leave the lights on.",
+        "url": "music/voices/vespergate-night-pa.3dba68e3af.mp3",
+        "durationMs": 3336,
+        "bytes": 20252
+    },
+    "league-second-chamber-pa": {
+        "speaker": "Arena announcer",
+        "caption": "Second chamber ready. Please stay behind the floor lights.",
+        "url": "music/voices/league-second-chamber-pa.f3f225634b.mp3",
+        "durationMs": 4344,
+        "bytes": 26300
+    },
+    "league-third-chamber-pa": {
+        "speaker": "Arena announcer",
+        "caption": "Third chamber ready. Challenger, come through.",
+        "url": "music/voices/league-third-chamber-pa.4f73e620ce.mp3",
+        "durationMs": 3336,
+        "bytes": 20252
     }
 });

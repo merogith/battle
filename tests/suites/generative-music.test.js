@@ -29,7 +29,7 @@ test('ChiptuneEngine exposes a mood registry and is harness-safe', () => {
   const CE = W.ChiptuneEngine;
   assert.ok(CE, 'ChiptuneEngine present');
   const moods = CE.moods();
-  for (const m of ['menu', 'field', 'town', 'route', 'battle', 'boss', 'victory', 'hof', 'safari', 'casino', 'crucible']) {
+  for (const m of ['menu', 'field', 'town', 'route', 'battle', 'rival', 'leader', 'elite', 'raid', 'boss', 'victory', 'hof', 'safari', 'casino', 'crucible']) {
     assert.ok(moods.includes(m), `mood ${m} defined`);
   }
   assert.equal(CE.canAudio(), false, 'no Web Audio under the harness');
@@ -68,6 +68,22 @@ test('the file-based BGM + battle themes early-return while generative music is 
     'field BGM yields to the generative engine');
   assert.match(battle, /if \(settings\.generativeMusic\)\s*\{ _battleMood = mood; return; \}/,
     'battle themes yield to the generative engine');
+});
+
+test('generated music keeps each encounter mood through the transition into battle', () => {
+  W.applySettingSwitch('generativeMusic', true);
+  try {
+    for (const mood of ['rival', 'leader', 'elite', 'raid']) {
+      W.AudioSystem.playBattleTheme(mood);
+      assert.equal(W.ChiptuneEngine.currentMood(), mood);
+      W.MusicDirector.setScreen('screen-battle');
+      assert.equal(W.ChiptuneEngine.currentMood(), mood);
+    }
+  } finally {
+    W.AudioSystem.endBattleTheme(false);
+    W.applySettingSwitch('musicEnabled', false);
+    W.applySettingSwitch('generativeMusic', false);
+  }
 });
 
 test('the setting is wired: default off, modal switch, sync pair, live apply', () => {

@@ -204,7 +204,7 @@ try {
     await page.locator('#modal-game-confirm').getByRole('button', { name: 'OK' }).click();
     await page.locator('[data-catch-continue]').waitFor();
     await resumeSavedRun(page);
-    assert.match(await page.locator('#story-catch-body').innerText(), /Gone for this run/);
+    assert.match(await page.locator('#story-catch-body').innerText(), /won’t appear again this run/);
     assert.equal(await page.getByRole('button', { name: 'View in Pokédex' }).count(), 0);
     await page.locator('[data-catch-continue]').click();
     assert.equal((await saved(page)).receipt, null);

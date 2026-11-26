@@ -49,10 +49,13 @@ try {
       const notebook = page.getByRole('dialog', { name: 'Trainer’s Notebook' });
       const storyFlags = () => page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')).flags);
       const openNotebook = async () => {
-        await city.getByRole('button', { name: 'Team help and practice' }).click();
+        await city.getByRole('button', { name: /Trainer’s Notebook/ }).click();
         await notebook.waitFor();
         assert.equal(await notebook.evaluate(el => el.scrollWidth <= el.clientWidth + 1), true);
       };
+      const guide = city.locator('#story-city-guide');
+      assert.equal(await quote.isVisible(), false, 'guide dialogue is optional on an ordinary town visit');
+      await guide.locator('summary').click();
       await quote.waitFor();
       assert.equal((await storyFlags())['heard:relic'], true);
       await openNotebook();
@@ -76,9 +79,17 @@ try {
       for (let i = 0; i < 8 && await tutorial.count(); i++) await tutorial.click();
       const alert = page.locator('#modal-game-alert:visible');
       if (await alert.count()) await alert.getByRole('button', { name: 'OK', exact: true }).click();
+      const clerk = shop.locator('summary[aria-label="Talk to Mart Clerk"]');
+      const clerkLine = shop.locator('.story-npc-quote');
+      assert.equal(await clerkLine.isVisible(), false);
+      await clerk.press('Enter');
+      assert.ok((await clerkLine.innerText()).trim().length > 20);
+      await clerk.press('Escape');
+      assert.equal(await clerkLine.isVisible(), false);
       await shop.getByRole('button', { name: /Back/ }).first().click();
       await city.waitFor();
       for (let i = 0; i < 8 && await tutorial.count(); i++) await tutorial.click();
+      assert.equal(await quote.isVisible(), true, 'returning from a facility keeps the guide open');
       assert.deepEqual(await quote.evaluate(el => {
         const probe = window.townQuoteProbe;
         return [el.textContent === probe.text, el.firstChild === probe.node, probe.changes];
@@ -149,7 +160,7 @@ try {
       await page.evaluate(() => window.StoryMode.state.team.pop());
       await town(6, 6);
       assert.equal((await storyFlags())['heard:matron'], true);
-      assert.match(await city.locator('[data-action-key="daycare"]').innerText(), /Speak to the matron/);
+      assert.equal(await city.locator('[data-action-key="daycare"]').getAttribute('aria-description'), 'Speak to the matron');
 
       await town(7, 6);
       await page.evaluate(() => window.StoryMode.enterTutor('moves', { partnerId: 'garchomp' }));
@@ -166,6 +177,14 @@ try {
       const search = tutor.getByRole('searchbox', { name: 'Search moves' });
       assert.equal(await filters.getAttribute('aria-expanded'), 'false');
       const toolbar = tutor.locator('.tx-toolbar--moves');
+      const cardDetails = moves.first().locator('.tx-card-stats');
+      const detailsToggle = tutor.getByRole('button', { name: 'Details', exact: true });
+      assert.equal(await cardDetails.isVisible(), false);
+      await detailsToggle.press('Enter');
+      assert.equal(await detailsToggle.getAttribute('aria-pressed'), 'true');
+      assert.equal(await cardDetails.isVisible(), true);
+      await detailsToggle.press('Enter');
+      assert.equal(await cardDetails.isVisible(), false);
       assert.ok(await toolbar.evaluate(el => el.scrollWidth <= el.clientWidth + 1));
       assert.ok(await tutor.locator('.tx-slot-name').evaluateAll(labels =>
         labels.every(label => label.scrollWidth <= label.clientWidth + 1)));
@@ -180,6 +199,17 @@ try {
       }
       await filters.press('Enter');
       assert.equal(await filters.evaluate(el => el === document.activeElement), true);
+      const advanced = tutor.locator('[data-move-advanced]');
+      const popular = advanced.locator('[data-filter-kind="recOnly"][data-filter-value="moves"]');
+      assert.equal(await popular.isVisible(), false);
+      await advanced.locator('summary').press('Enter');
+      assert.equal(await popular.isVisible(), true);
+      await popular.press('Enter');
+      assert.equal(await popular.getAttribute('aria-pressed'), 'true');
+      assert.equal(await popular.isVisible(), true);
+      await popular.press('Enter');
+      assert.deepEqual(await names(), all);
+      await advanced.locator('summary').press('Enter');
       const types = tutor.getByRole('button', { name: /^Choose types/ });
       await types.press('Enter');
       assert.equal(await types.evaluate(el => el === document.activeElement), true);
@@ -216,9 +246,19 @@ try {
       await tutor.getByRole('button', { name: 'Clear', exact: true }).click();
       await tutor.locator('.tx-suggest-summary').click();
       const plan = await page.evaluate(() => window._txBuildFastBuildPlan(0));
+      const suggestedLesson = tutor.locator('[data-tutor-suggestion]');
+      assert.equal(await suggestedLesson.getAttribute('data-card-value'), plan.moveSteps[0].move);
+      assert.equal(Number(await suggestedLesson.getAttribute('data-rec-slot')), plan.moveSteps[0].slot);
       const suggestions = await tutor.locator('.tx-suggest [data-rec-slot]').evaluateAll(rows =>
         rows.map(row => ({ move: row.dataset.cardValue, slot: Number(row.dataset.recSlot) })));
       assert.deepEqual(suggestions, plan.moveSteps.map(step => ({ move: step.move, slot: step.slot })));
+      await suggestedLesson.press('Enter');
+      assert.equal(await suggestedLesson.getAttribute('aria-pressed'), 'true');
+      const purchase = tutor.locator('.tx-confirm-bar:has([data-action="move"])');
+      await purchase.waitFor();
+      assert.ok((await purchase.innerText()).includes(plan.moveSteps[0].move));
+      await purchase.getByRole('button', { name: 'Cancel', exact: true }).click();
+      assert.equal(await suggestedLesson.getAttribute('aria-pressed'), 'false');
       const itemPart = plan.parts.find(part => part.kind === 'item');
       const nature = plan.parts.find(part => part.kind === 'nature');
       const evs = plan.parts.find(part => part.kind === 'evs');
@@ -284,6 +324,34 @@ try {
       assert.ok(await mentor.locator('.tx-fb-row').count() > 1);
       await mentor.getByRole('button', { name: 'Cancel', exact: true }).click();
       assert.equal(await preview.evaluate(el => el === document.activeElement), true);
+
+      await town(1, 0);
+      await page.evaluate(() => {
+        const run = window.StoryMode.state;
+        delete run.citiesArrived[1];
+        run.wanderByEventIdx = { [run.eventIndex]: { done: true } };
+        run.storyChoices['road.discovery.1'] = 'scout';
+        window.StoryMode.enterCity();
+      });
+      const arrival = page.getByRole('dialog', { name: /Now Arriving.*Flintreach Town/ });
+      await arrival.waitFor();
+      await arrival.getByText('Shift Worker', { exact: true }).waitFor();
+      const roadNotes = arrival.locator('.story-city-road-notes');
+      const notesToggle = roadNotes.locator('summary');
+      assert.equal(await roadNotes.locator('p').first().isVisible(), false);
+      await notesToggle.press('Enter');
+      assert.equal(await roadNotes.evaluate(el => el.open), true);
+      assert.ok(await roadNotes.locator('p').first().isVisible());
+      await notesToggle.press('Enter');
+      assert.equal(await roadNotes.evaluate(el => el.open), false);
+      assert.ok(await arrival.locator('.story-city-arrival-title').evaluate(el =>
+        el.getBoundingClientRect().top >= el.parentElement.getBoundingClientRect().top - 1), 'the town name fits when road notes are closed');
+      if (out) await page.screenshot({ path: join(out, `arrival-${width}.png`) });
+      const enter = arrival.getByRole('button', { name: /Enter the City/ });
+      await enter.press('Tab');
+      assert.ok(await arrival.evaluate(el => el.contains(document.activeElement)), 'focus stays in arrival');
+      await enter.click();
+      await arrival.waitFor({ state: 'hidden' });
       assert.deepEqual(errors, []);
       console.log(`${width}×${height} · guide, Notebook, saved clues, visible filters, and matching Mentor advice verified`);
     } finally {
