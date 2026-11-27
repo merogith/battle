@@ -59,6 +59,11 @@ try {
         assert.equal(await generation.locator('option').count(), 10);
         await activate(filtersToggle);
         assert.equal(await generation.isVisible(), false);
+        if (height === 260) {
+          const message = 'Pokédex record updated.';
+          await page.evaluate(text => window.showToast(text, 3000), message);
+          await collection.locator('#toast-host').getByText(message, { exact: true }).waitFor();
+        }
 
         const targetSize = touch ? 44 : 32;
         const layout = await collection.evaluate((screen, minimum) => {

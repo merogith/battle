@@ -1,3 +1,4 @@
+/* global state */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,7 +17,9 @@ async function installProbe(page) {
         window.audioProbe = { elements: [], masters: [] };
         window.Audio = function (...args) {
             const audio = new NativeAudio(...args);
-            window.audioProbe.elements.push({ audio, requestedSource: args[0] || '' });
+            const record = { audio, requestedSource: args[0] || '', played: false };
+            window.audioProbe.elements.push(record);
+            audio.addEventListener('playing', () => { record.played = true; }, { once: true });
             return audio;
         };
         window.Audio.prototype = NativeAudio.prototype;
@@ -30,7 +33,9 @@ async function installProbe(page) {
 try {
     for (const [width, height, touch] of [[390, 844, true], [1440, 900, false]]) {
         const reducedMotion = touch ? 'reduce' : 'no-preference';
-        const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, reducedMotion });
+        const context = await browser.newContext({
+            viewport: { width, height }, hasTouch: touch, isMobile: touch, reducedMotion, serviceWorkers: 'block',
+        });
         const page = await context.newPage();
         const errors = [];
         const requests = [];
@@ -154,20 +159,26 @@ try {
         assert.ok(fireDuration > 0 && fireDuration < 1.5, `The Fire fallback should be a short cue (${fireDuration} seconds)`);
         await press(close);
 
-        // Load an in-game battle fixture, then command a real native turn through the UI.
-        const battleUrl = new URL(url.href);
-        battleUrl.searchParams.set('testbattle', 'charge6');
-        await page.goto(battleUrl.href, { waitUntil: 'domcontentloaded' });
+        // One legal move per side guarantees a damaging turn under the native engine.
+        assert.equal(await page.evaluate(async () => {
+            if (!await window.prepareGameData()) return false;
+            state.mode = 'pve';
+            state.p1Draft = [{ name: 'Machamp', build: { a: 'No Guard', m: ['Seismic Toss'] } }];
+            state.p2Draft = [{ name: 'Snorlax', build: { a: 'Immunity', m: ['Amnesia'] } }];
+            await window.startBattle();
+            return true;
+        }), true);
         await page.waitForFunction(() => document.getElementById('screen-battle').dataset.battleEngine === 'showdown'
             && !document.getElementById('command-menu').classList.contains('hidden'));
+        const startingHp = await page.evaluate(() => state.fActive.currentHp);
         await press(page.locator('#command-menu [data-cmd="fight"]'));
-        const impact = page.waitForResponse(res => /hit(?:_strong|_weak)?\.wav$/.test(new URL(res.url()).pathname) && res.ok());
-        await press(page.getByRole('button', { name: /Earthquake/ }).filter({ visible: true }).first());
-        await impact;
-        await page.waitForFunction(() => window.audioProbe.elements.some(({ requestedSource }) => /hit(?:_strong|_weak)?\.wav/.test(requestedSource)));
-        await page.waitForFunction(() => Array.from(document.querySelectorAll('#battle-log > *')).some(el => el.textContent.includes('used Earthquake')));
+        await press(page.getByRole('button', { name: /Seismic Toss/ }).filter({ visible: true }).first());
+        await page.waitForFunction(hp => state.fActive.currentHp === hp - 50, startingHp);
+        await page.waitForFunction(() => window.audioProbe.elements.some(({ requestedSource, played }) =>
+            played && /hit(?:_strong|_weak)?\.wav$/.test(requestedSource)));
+        assert.match(await page.locator('#battle-log').textContent(), /used Seismic Toss/);
         assert.deepEqual(errors, []);
-        assert.ok(requests.some(({ path, status }) => /hit(?:_strong|_weak)?\.wav/.test(path) && status < 400));
+        assert.ok(requests.some(({ path, status }) => /hit(?:_strong|_weak)?\.wav$/.test(path) && status < 400));
         report.push({ viewport: `${width}×${height}`, touch, reducedMotion, controls: ['settings', 'encounter themes', 'victory cue', 'gallery cue', 'mute', 'slider', 'reload', 'trainer creation', 'preset battle turn'], fireDuration, requests });
         console.log(`${width}×${height} audio controls, reload, trainer creation and Showdown impact passed`);
         await context.close();

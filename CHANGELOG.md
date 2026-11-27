@@ -3,6 +3,12 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.7 — Pokédex and release fixes
+
+- The first Pokédex result stays visible in short landscape layouts when a notification appears. Search, Filters, and totals share one row while the filters are collapsed.
+- The release checks follow the transition from a catch and Camp to the next Trainer. The battle audio check now confirms a landed attack and its impact sound.
+- This release includes the changes listed under 2.0.6 below.
+
 ## 2.0.6 — Cleaner menus and safer Story saves
 
 - Towns put the next step first. Shop and training screens keep prices and decisions in view, and the Crucible now offers direct access to Party, Bag, and the Trainer’s Notebook.

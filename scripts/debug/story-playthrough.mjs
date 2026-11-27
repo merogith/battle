@@ -63,6 +63,7 @@ const [width, height] = (args.viewport || '430x880').split('x').map(Number);
 const outDir = resolve(args['out-dir'] || join(root, 'agent-state', 'playthrough'));
 const shotsDir = args['out-dir'] ? join(outDir, 'screenshots') : join(root, 'screenshots', 'playthrough');
 const touch = args.touch === undefined ? width <= 900 : args.touch === 'true';
+const surfaceWaitMs = 12000;
 const executablePath = process.env.BATTLE_TEST_CHROMIUM ||
     (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 const wait = ms => new Promise(done => setTimeout(done, ms));
@@ -412,9 +413,22 @@ async function main() {
                     advanced = await run('#camp-microgame [data-camp-exit]', `camp-leave-activity-${eventName}`);
                 } else if (view.dialogs.includes('story-camp-scene')) {
                     const options = page.locator('#story-camp-scene [data-scene-opt]');
-                    advanced = await click(page, options.filter({ hasText: /Break camp/ }).first(), `camp-${eventName}`, view)
-                        || await click(page, options.filter({ hasText: /Back/ }).first(), `camp-back-${eventName}`, view)
-                        || await run('#story-camp-scene [data-scene-cont]', `camp-continue-${eventName}`);
+                    if (await click(page, options.filter({ hasText: /Break camp/ }).first(), `camp-${eventName}`, view)) {
+                        // The next encounter may load after Camp is gone while the old catch screen remains underneath.
+                        const destination = page.locator([
+                            '.story-vs-intro:visible button:enabled', '.story-narr-root:visible button:enabled',
+                            '.story-legend-sighting:visible button:enabled', '.story-minigame-overlay:visible button:enabled',
+                            '.story-tutorial-overlay:visible .story-tutorial-continue',
+                            '#screen-battle:visible #command-menu:visible', '#modal-game-alert:visible',
+                        ].join(', '));
+                        await page.locator('#story-camp-scene').waitFor({ state: 'hidden', timeout: surfaceWaitMs });
+                        try { await destination.first().waitFor({ timeout: surfaceWaitMs }); }
+                        catch (error) { throw new Error(`Breaking camp at row ${view.eventId} did not lead to a battle or story scene.`, { cause: error }); }
+                        advanced = true;
+                    } else {
+                        advanced = await click(page, options.filter({ hasText: /Back/ }).first(), `camp-back-${eventName}`, view)
+                            || await run('#story-camp-scene [data-scene-cont]', `camp-continue-${eventName}`);
+                    }
                 } else if (await run('.story-legend-sighting:visible button', `legend-or-raid-${eventName}`)) advanced = true;
                 else if (await run('.story-vs-intro:visible [data-vs2-battle]', `vs-start-${eventName}`) ||
                            await run('.story-vs-intro:visible [data-vs2-pick="stoic"]', `vs-choices-${eventName}`)) advanced = true;
@@ -447,12 +461,19 @@ async function main() {
                     advanced = true;
                 } else if (await run('[data-wander-moveon]:visible', `wander-move-on-${eventName}`)) advanced = true;
                 else if (view.screens.includes('screen-story-catch')) {
-                    const scope = '#screen-story-catch';
-                    advanced = (!viewedDex && await run(`${scope} button[data-dex-name]:visible`, `catch-open-dex-${eventName}`)) ||
-                        await run(`${scope} [onclick*="catchContinue"]:visible`, `catch-result-${eventName}`) ||
-                        await run(`${scope} [onclick*="catchResolveSendToPC"]:visible`, `catch-party-full-${eventName}`) ||
-                        await run(`${scope} [data-ball-type]:enabled:visible`, `throw-ball-${eventName}`) ||
-                        await run('#story-catch-run-btn:enabled:visible', `leave-wild-encounter-${eventName}`);
+                    const scope = '#screen-story-catch:not([inert])';
+                    const receipt = `${scope} [data-catch-continue]:visible`;
+                    if (!viewedDex && await run(`${scope} button[data-dex-name]:visible`, `catch-open-dex-${eventName}`)) {
+                        advanced = true;
+                    } else if (await run(receipt, `catch-result-${eventName}`)) {
+                        // A finished catch may show the same receipt until the next dialog takes focus.
+                        await page.locator(receipt).waitFor({ state: 'hidden', timeout: surfaceWaitMs });
+                        advanced = true;
+                    } else {
+                        advanced = await run(`${scope} [onclick*="catchResolveSendToPC"]:visible`, `catch-party-full-${eventName}`) ||
+                            await run(`${scope} [data-ball-type]:enabled:visible`, `throw-ball-${eventName}`) ||
+                            await run(`${scope} #story-catch-run-btn:enabled:visible`, `leave-wild-encounter-${eventName}`);
+                    }
                 } else if (view.screens.includes('screen-collection') && !viewedDex) {
                     await page.locator('#pdex-entry-title').waitFor({ state: 'visible', timeout: 6000 });
                     advanced = await run('#screen-collection .pdex-entry button:has-text("Back to Catch")', 'catch-dex-entry');
@@ -558,9 +579,15 @@ async function main() {
                 advancingSince = Date.now();
                 if (unchanged) await wait(90);
             } else {
-                if (Date.now() - advancingSince > 12000) {
-                    await capture(page, 'blocked', view);
-                    throw new Error(`No actionable surface at row ${view.eventId} ${eventName} (${view.screens.concat(view.dialogs).join(', ')})`);
+                if (Date.now() - advancingSince > surfaceWaitMs) {
+                    const live = await readPage(page);
+                    const surface = ({ eventId, screens, dialogs }) => JSON.stringify([eventId, screens, dialogs]);
+                    if (surface(live) !== surface(view)) {
+                        advancingSince = Date.now();
+                        continue;
+                    }
+                    await capture(page, 'blocked', live);
+                    throw new Error(`No actionable surface at row ${live.eventId} ${live.eventName || 'Opening'} (${live.screens.concat(live.dialogs).join(', ')})`);
                 }
                 await wait(110);
             }

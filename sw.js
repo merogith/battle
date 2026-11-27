@@ -15,7 +15,7 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. The manifest build sets CACHE_VERSION from the release contents.
  */
-const CACHE_VERSION = 'battle-v5-a2b858d66847';
+const CACHE_VERSION = 'battle-v5-2941c5965c77';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed

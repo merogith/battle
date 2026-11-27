@@ -11,7 +11,7 @@
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-180.png">
     <meta name="theme-color" content="#0a0a0a">
-    <meta name="battle-version" content="2.0.6">
+    <meta name="battle-version" content="2.0.7">
     <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
     <title>Pokémon Arena</title>
     <style>
@@ -10423,7 +10423,7 @@
     <div id="screen-menu" class="screen active home-screen" role="region" aria-label="Main menu">
         <div class="home-menu">
             <h1>Pokémon <span>Arena</span></h1>
-            <p class="game-version">Version 2.0.6</p>
+            <p class="game-version">Version 2.0.7</p>
             <nav class="home-actions" aria-label="Story">
                 <div id="menu-continue-slot">
                     <button type="button" class="home-choice home-primary menu-btn-quickplay--continue" onclick="window.StoryMode.continueRun()" hidden>
@@ -54239,11 +54239,11 @@
                 </details>
                 </div>`;
 
-            const summary = resultsOnly ? '' : `<div class="pdex-summary pdex-device-summary pdex-count-strip" aria-label="Pokédex totals across all runs">
+            const header = resultsOnly ? '' : `<div class="pdex-browse-header">${filters}<div class="pdex-summary pdex-device-summary pdex-count-strip" aria-label="Pokédex totals across all runs">
                 <span><strong>${caught}/${tot.total}</strong> ${shinyView ? 'shinies caught' : 'caught'}</span>
                 <span><strong>${seen}</strong> seen</span>
                 <small>Across all runs</small>
-            </div><span id="pdex-search-status" role="status"></span>`;
+            </div></div><span id="pdex-search-status" role="status"></span>`;
             if (resultsOnly) {
                 const live = document.getElementById('pdex-search-status');
                 if (live) live.textContent = `${filtered.length} ${filtered.length === 1 ? 'entry' : 'entries'}`;
@@ -54253,7 +54253,7 @@
                 const message = query ? 'No entries match this search.' : _collectionDexCaughtOnly
                     ? (shinyView ? 'No shiny Pokémon caught in this view yet.' : 'No Pokémon caught in this view yet.')
                     : 'No Pokémon data available for this filter.';
-                return filters + summary + '<p class="ach-empty">' + message + '</p>';
+                return header + '<p class="ach-empty">' + message + '</p>';
             }
             const cells = filtered.map(s => {
                 const slot = dex[s.name] || {};
@@ -54318,7 +54318,7 @@
                     ${bstHtml}
                 </${tag}>`;
             }).join('');
-            return filters + summary + '<div class="pdex-grid">' + cells + '</div>';
+            return header + '<div class="pdex-grid">' + cells + '</div>';
         }
         function _dexObservedForms(name, shiny) {
             const species = _storyDexSpeciesName(name);
